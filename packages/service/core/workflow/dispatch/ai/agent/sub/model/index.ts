@@ -18,11 +18,15 @@ type DispatchModelAgentProps = ModelAgentConfig & {
   onStreaming: ResponseEvents['onStreaming'];
 };
 
-type DispatchPlanAgentResponse = {
+type DispatchModelAgentResponse = {
   response: string;
   usages: ChatNodeUsageType[];
 };
 
+/**
+ * 执行一个轻量级模型子任务。
+ * 该函数不参与 agent loop，只负责按给定 systemPrompt/task 调一次 LLM 并返回文本和 usage。
+ */
 export async function dispatchModelAgent({
   model,
   temperature,
@@ -32,7 +36,7 @@ export async function dispatchModelAgent({
   task,
   onReasoning,
   onStreaming
-}: DispatchModelAgentProps): Promise<DispatchPlanAgentResponse> {
+}: DispatchModelAgentProps): Promise<DispatchModelAgentResponse> {
   const modelData = getLLMModel(model);
 
   const messages: ChatCompletionMessageParam[] = [

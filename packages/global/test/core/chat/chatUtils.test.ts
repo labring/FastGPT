@@ -440,42 +440,6 @@ describe('checkInteractiveResponseStatus', () => {
 
     expect(result).toBe('query');
   });
-
-  it('should return query for agentPlanAskUserForm with invalid JSON', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskUserForm' },
-      input: 'not json'
-    });
-
-    expect(result).toBe('query');
-  });
-
-  it('should return submit for agentPlanAskUserForm with valid JSON', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskUserForm' },
-      input: '{"field": "value"}'
-    });
-
-    expect(result).toBe('submit');
-  });
-
-  it('should return query for agentPlanCheck with non-confirm input', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanCheck' },
-      input: 'some other input'
-    });
-
-    expect(result).toBe('query');
-  });
-
-  it('should return submit for agentPlanCheck with confirm input', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanCheck' },
-      input: 'CONFIRM'
-    });
-
-    expect(result).toBe('submit');
-  });
 });
 
 describe('mergeChatResponseData', () => {
@@ -620,20 +584,22 @@ describe('removeAIResponseCite', () => {
   it('should handle value items without text or reasoning', () => {
     const value: AIChatItemValueItemType[] = [
       {
-        tool: {
-          id: 'tool1',
-          toolName: 'Test Tool',
-          toolAvatar: '',
-          params: '{}',
-          response: 'response',
-          functionName: 'test'
-        }
+        tools: [
+          {
+            id: 'tool1',
+            toolName: 'Test Tool',
+            toolAvatar: '',
+            params: '{}',
+            response: 'response',
+            functionName: 'test'
+          }
+        ]
       }
     ];
 
     const result = removeAIResponseCite(value, false);
 
-    expect(result[0].tool).toBeDefined();
+    expect(result[0].tools).toBeDefined();
   });
 
   it('should remove multiple cites from content', () => {

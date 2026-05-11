@@ -65,6 +65,7 @@ const selectRelevantChunksByLLM = async ({
   | {
       ids: string[];
       usage: ChatNodeUsageType;
+      requestId: string;
     }
   | undefined
 > => {
@@ -136,7 +137,7 @@ ${chunkSummaries}
       outputTokens: response.usage.outputTokens
     };
 
-    return { ids, usage };
+    return { ids, usage, requestId: response.requestId };
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] AI selection failed', {
       error
@@ -316,6 +317,7 @@ export const dispatchAgentDatasetSearch = async ({
             query: queryExtensionResult.query
           }
         : undefined,
+      llmRequestIds: pickResults?.requestId ? [pickResults.requestId] : undefined,
       // Results
       quoteList: searchResults
     };

@@ -7,10 +7,13 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  DispatchNodeResponseType,
+  DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getHistories, getNodeErrResponse } from '../../../utils';
-import { parseUserSystemPrompt } from '../sub/plan/prompt';
+import { parseUserSystemPrompt } from '../adapter/prompt';
 import { formatFileInput } from '../sub/file/utils';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -26,6 +29,7 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { Agent, type AgentEvent } from '@mariozechner/pi-agent-core';
+import { getLLMModel } from '../../../../../ai/model';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -67,6 +71,27 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
   const capabilities: AgentCapability[] = [];
+  const startTime = Date.now();
+
+  /**
+   * 构造 pi-agent-core 分支的 Agent 节点 responseData。
+   * 工具调用作为 childrenResponses 挂在当前 Agent 节点下，避免调度器只记录子工具而丢失 Agent 本身。
+   */
+  const createAgentResponseData = ({
+    answerText,
+    errorText
+  }: {
+    answerText?: string;
+    errorText?: string;
+  }): DispatchNodeResponseType => ({
+    moduleLogo: 'core/app/type/agentFill',
+    model: getLLMModel(model).name,
+    textOutput: answerText,
+    totalPoints: nodeResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
+    childrenResponses: nodeResponses,
+    runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+    ...(errorText && { errorText })
+  });
 
   try {
     // Get files — check whether fileUrlList input has actual values
@@ -125,7 +150,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         tools: selectedTools,
         tmbId: runningAppInfo.tmbId,
         lang,
-        getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
         useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
@@ -179,6 +203,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     const piTools = await buildAgentTools({
       ctx: toolCtx,
+      assistantResponses,
       nodeResponses,
       usagePush
     });
@@ -188,7 +213,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const lastHistory = chatHistories[chatHistories.length - 1];
     const restoredMessages =
       lastHistory?.obj === ChatRoleEnum.AI
-        ? (lastHistory.memories?.[piMessagesKey] as any[] | undefined) ?? []
+        ? ((lastHistory.memories?.[piMessagesKey] as any[] | undefined) ?? [])
         : [];
 
     /* ===== Create & run Agent ===== */
@@ -257,7 +282,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         [piMessagesKey]: agent.state.messages
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: createAgentResponseData({ answerText })
     };
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] dispatchPiAgent error`, { error });

@@ -1,5 +1,8 @@
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchAgentModuleProps } from '..';
 import { getExecuteTool, type ToolDispatchContext } from '../utils';
@@ -8,10 +11,12 @@ type AgentTool = import('@mariozechner/pi-agent-core').AgentTool<any>;
 
 export async function buildAgentTools({
   ctx,
+  assistantResponses,
   nodeResponses,
   usagePush
 }: {
   ctx: ToolDispatchContext;
+  assistantResponses: AIChatItemValueItemType[];
   nodeResponses: ChatHistoryItemResType[];
   usagePush: DispatchAgentModuleProps['usagePush'];
 }): Promise<AgentTool[]> {
@@ -20,11 +25,58 @@ export async function buildAgentTools({
   const executeTool = getExecuteTool(ctx);
   const tools: AgentTool[] = [];
 
+  const replaceOrAppendTool = (
+    toolList: ToolModuleResponseItemType[] | null | undefined,
+    tool: ToolModuleResponseItemType
+  ) => {
+    if (!toolList?.length) return [tool];
+
+    const hasTool = toolList.some((item) => item.id === tool.id);
+    return hasTool
+      ? toolList.map((item) => (item.id === tool.id ? tool : item))
+      : toolList.concat(tool);
+  };
+
+  const findToolResponseIndex = (callId: string) =>
+    assistantResponses.findIndex((item) => item.tools?.some((tool) => tool.id === callId));
+
+  const upsertAssistantTool = (tool: ToolModuleResponseItemType) => {
+    const responseIndex = findToolResponseIndex(tool.id);
+    if (responseIndex < 0) {
+      assistantResponses.push({
+        id: tool.id,
+        tools: [tool]
+      });
+      return;
+    }
+
+    const currentValue = assistantResponses[responseIndex];
+    assistantResponses[responseIndex] = {
+      ...currentValue,
+      tools: replaceOrAppendTool(currentValue.tools, tool)
+    };
+  };
+
+  const appendAssistantToolResponse = (callId: string, response: string) => {
+    const responseIndex = findToolResponseIndex(callId);
+    if (responseIndex < 0) return;
+
+    const currentValue = assistantResponses[responseIndex];
+    const currentTool = currentValue.tools?.find((tool) => tool.id === callId);
+    if (!currentTool) return;
+
+    const nextTool = {
+      ...currentTool,
+      response: `${currentTool.response || ''}${response}`
+    };
+    assistantResponses[responseIndex] = {
+      ...currentValue,
+      tools: replaceOrAppendTool(currentValue.tools, nextTool)
+    };
+  };
+
   for (const tool of ctx.completionTools) {
     const toolId = tool.function.name;
-
-    // pi-agent-core manages multi-turn reasoning; skip the plan tool
-    if (toolId === SubAppIds.plan) continue;
 
     const execute = async (callId: string, args: Record<string, any>, _signal?: AbortSignal) => {
       const argStr = JSON.stringify(args);
@@ -42,6 +94,7 @@ export async function buildAgentTools({
       {
         if (nodeResponse) nodeResponses.push(nodeResponse);
         if (usages.length > 0) usagePush(usages);
+        appendAssistantToolResponse(callId, response);
 
         ctx.streamResponseFn?.({
           id: callId,
@@ -60,17 +113,20 @@ export async function buildAgentTools({
       signal?: AbortSignal
     ) => {
       const subAppInfo = ctx.getSubAppInfo(toolId);
+      const assistantTool: ToolModuleResponseItemType = {
+        id: callId,
+        toolName: subAppInfo?.name || toolId,
+        toolAvatar: subAppInfo?.avatar || '',
+        functionName: toolId,
+        params: JSON.stringify(args)
+      };
+      upsertAssistantTool(assistantTool);
+
       ctx.streamResponseFn?.({
         id: callId,
         event: SseResponseEventEnum.toolCall,
         data: {
-          tool: {
-            id: callId,
-            toolName: subAppInfo?.name || toolId,
-            toolAvatar: subAppInfo?.avatar || '',
-            functionName: toolId,
-            params: JSON.stringify(args)
-          }
+          tool: assistantTool
         }
       });
       return execute(callId, args, signal);

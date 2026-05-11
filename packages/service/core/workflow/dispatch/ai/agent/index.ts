@@ -1,14 +1,10 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { getNodeErrResponse, getHistories } from '../../utils';
+import { getHistories } from '../../utils';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -18,18 +14,11 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
-  runtimePrompt2ChatsValue,
-  GPTMessages2Chats
+  runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
-import { getPlanCallResponseText } from '@fastgpt/global/core/chat/utils';
-import { filterMemoryMessages } from '../utils';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import type { DispatchPlanAgentResponse } from './sub/plan';
-import { dispatchPlanAgent } from './sub/plan';
-
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { formatFileInput } from './sub/file/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import { masterCall } from './master/call';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import {
   normalizeSkillIds,
@@ -39,14 +28,21 @@ import { getSubapps } from './utils';
 import type { AgentCapability } from './capability/type';
 import { createCapabilityToolCallHandler } from './capability/type';
 import { createSandboxSkillsCapability } from './capability/sandboxSkills';
-import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
-import type { PlanAgentParamsType } from './sub/plan/constants';
+import { parseUserSystemPrompt } from './adapter/prompt';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
+import { runUnifiedAgentLoop } from '../../../../ai/llm/agentLoop';
+import {
+  buildWorkflowAgentLoopMemories,
+  createWorkflowAgentLoopRuntime,
+  getWorkflowAgentLoopMemoryKeys,
+  readWorkflowAgentLoopMemory
+} from './adapter';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -58,13 +54,10 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
-  [NodeInputKeyEnum.skills]?: Array<string | SelectedAgentSkillItemType>; // 兼容 string[]（debugChat）和对象数组（workflow NodeAgent）
-  [NodeInputKeyEnum.useEditDebugSandbox]?: boolean; // 客户端显式指定使用 editDebug 沙箱
+  [NodeInputKeyEnum.skills]?: Array<string | SelectedAgentSkillItemType>;
+  [NodeInputKeyEnum.useEditDebugSandbox]?: boolean;
 
-  // Knowledge base search configuration
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
-
-  // Sandbox (Computer Use)
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
 }>;
 
@@ -72,78 +65,77 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
-/* Agent 调度流程
-  内置工具：文件解析、Plan 模式
-  1. 主动工具 + 内置工具，如果触发 plan，则进行阶段调度模式。不触发，则相当于纯 toolcall 模式。
-  2. 阶段调用模式：逐步完成任务，可以二次继续拆解任务。
-*/
+/**
+ * 将主 loop 的 ask_agent 追问转换成 workflow interactive 响应，交给前端展示并等待用户回答。
+ */
+const createAskInteractive = ({
+  planId,
+  question
+}: {
+  planId: string;
+  question?: string;
+}): InteractiveNodeResponseType => ({
+  type: 'agentPlanAskQuery',
+  planId,
+  params: {
+    content: question || i18nT('chat:agent_plan_parse_retry_tip')
+  }
+});
 
+/**
+ * Agent 节点入口。
+ * 负责准备历史、文件、工具、能力插件和持久化 memory，然后把实际循环执行交给通用 unified agent loop。
+ */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
-  // pi-agent-core engine: bypass Plan+Step orchestration
+  // 按环境配置选择 pi-agent-core 分支；默认使用 unified agent loop。
   if (serviceEnv.AGENT_ENGINE === 'pi') {
     return dispatchPiAgent(props);
   }
 
-  const MAX_PLAN_ITERATIONS = 10; // 最大规划轮次
+  // 这些数组会贯穿整轮 dispatch，并由 adapter / capability 持续写入。
+  // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
+  const capabilities: AgentCapability[] = [];
+  const assistantResponses: AIChatItemValueItemType[] = [];
+  let childNodeResponses: ChatHistoryItemResType[] = [];
 
-  let {
-    checkIsStopping,
+  const {
     node: { nodeId, inputs },
     lang,
     histories,
-    query, // 最新一轮对话输入的值
+    query,
     requestOrigin,
     chatConfig,
     lastInteractive,
     runningAppInfo,
-    stream,
     workflowStreamResponse,
     usagePush,
     mode,
     chatId,
     showSkillReferences,
     params: {
-      model,
       systemPrompt,
-      userChatInput, // 本次任务的输入
+      userChatInput,
       history = 6,
-      fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useEditDebugSandbox,
-      // Dataset search configuration
       agent_datasetParams: datasetParams,
-      // Sandbox (Computer Use)
       useAgentSandbox = false
     }
   } = props;
-  const chatHistories = getHistories(history, histories);
-  const aiHistoryValues = chatHistories
-    .filter((item) => item.obj === ChatRoleEnum.AI)
-    .flatMap((item) => item.value);
-  // 规范化：兼容 string[]（debugChat 路径）和 SelectedAgentSkillItemType[]（workflow NodeAgent 路径）
-  const normalizedSkillIds = normalizeSkillIds(skillIds);
-  const historiesMessages = chats2GPTMessages({
-    messages: chatHistories,
-    reserveId: false,
-    reserveTool: true
-  });
-
-  let planIterationCount = 0; // 规划迭代计数器
-
-  const masterMessagesKey = `masterMessages-${nodeId}`;
-  const planMessagesKey = `planMessages-${nodeId}`;
-  const agentPlanKey = `agentPlan-${nodeId}`;
-  const planBufferKey = `planBuffer-${nodeId}`;
-
-  // Get history messages
-
-  const assistantResponses: AIChatItemValueItemType[] = [];
-  const nodeResponses: ChatHistoryItemResType[] = [];
-  const capabilities: AgentCapability[] = [];
+  let fileLinks = props.params.fileUrlList;
 
   try {
-    // Get files
+    // 1. 将 workflow 历史与本轮用户输入转成 LLM messages。
+    // reserveTool=true 是为了保留历史工具上下文；system prompt 会在 unified loop 内重新组装。
+    const chatHistories = getHistories(history, histories);
+    const historiesMessages = chats2GPTMessages({
+      messages: chatHistories,
+      reserveId: false,
+      reserveTool: true
+    });
+    const normalizedSkillIds = normalizeSkillIds(skillIds);
+
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
@@ -161,7 +153,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       useSkill: skillIds.length > 0
     });
 
-    // 交互模式进来的话，这个值才是交互输入的值
+    // query 是前端原始输入，userChatInput 是 workflow 节点入参。
+    // 如果本轮有上传文件，需要把文件提示拼进当前 user message，供主 loop 直接看到。
     const { text: queryInput, files: queryFiles } = chatValue2RuntimePrompt(query);
     const formatUserChatInput = fileInputPrompt
       ? `${fileInputPrompt}\n\n${userChatInput}`
@@ -179,49 +172,23 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reserveId: false
     })[0];
 
-    let {
-      masterMessages: restoredMasterMessages,
-      planHistoryMessages,
-      agentPlan,
-      planBuffer
-    } = (() => {
-      const lastHistory = chatHistories[chatHistories.length - 1];
-      if (lastHistory && lastHistory.obj === ChatRoleEnum.AI) {
-        return {
-          masterMessages: lastHistory.memories?.[masterMessagesKey] as ChatCompletionMessageParam[],
-          planHistoryMessages: lastHistory.memories?.[
-            planMessagesKey
-          ] as ChatCompletionMessageParam[],
-          agentPlan: lastHistory.memories?.[agentPlanKey] as AgentPlanType,
-          planBuffer: lastHistory.memories?.[planBufferKey] as PlanAgentParamsType
-        };
-      }
-      return {
-        masterMessages: undefined,
-        planHistoryMessages: undefined,
-        agentPlan: undefined,
-        planBuffer: undefined
-      };
-    })();
+    // ask_agent 追问会把 pendingMainContext 写入 memory。
+    // 用户回答后从这里恢复同一条 messages，而不是重新生成一份独立 plan 上下文。
+    const restoredMemory = readWorkflowAgentLoopMemory({
+      histories: chatHistories,
+      nodeId
+    });
 
-    let masterMessages = (() => {
-      if (!restoredMasterMessages) {
-        return historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
-      } else if (planHistoryMessages?.length) {
-        return restoredMasterMessages ?? historiesMessages;
-      } else {
-        return currentUserMessage
-          ? restoredMasterMessages.concat(currentUserMessage)
-          : restoredMasterMessages;
-      }
-    })();
-    // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
-    // Skill capability is gated by SHOW_SKILL env: when disabled, we skip skill loading entirely
-    // (no MongoDB query, no sandbox init), even if existing apps still have skills configured.
+    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
+    const loopMessages = historiesMessages
+      .concat(currentUserMessage ? [currentUserMessage] : [])
+      .filter((message) => message.role !== 'system');
+
+    // Skill/Sandbox 是可插拔能力：它们可以追加 system prompt、completion tools 和 tool handler，
+    // 但不会改变 agent loop 本身的上下文协议。
     if (serviceEnv.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const useEditDebugSandbox_flag = !!useEditDebugSandbox;
-      const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';
+      const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -236,23 +203,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       capabilities.push(sandboxCap);
     }
 
-    // Aggregate capability contributions
     const capabilitySystemPrompt = capabilities
       .map((c) => c.systemPrompt)
       .filter(Boolean)
       .join('\n\n');
-    // TODO: 看看要不要和 getSubapps 合并
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
-    // Get sub apps
+    // 汇总用户选择工具、内置系统工具、知识库/文件工具和 capability tools。
+    // completionTools 只描述给模型看，subAppsMap 则供 runtime 执行工具时定位真实实现。
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
         tmbId: runningAppInfo.tmbId,
         lang,
-        getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
         useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
@@ -260,10 +225,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     );
 
+    // runtime 运行详情和工具卡需要根据 function name 反查展示名、头像和描述。
+    // 用户工具与系统工具的 id 形态不完全一致，这里统一归一化查询。
     const getSubAppInfo = (id: string) => {
-      // diff user tool id and system tool id by prefix 't'
       const formatId = id.startsWith('t') ? id.slice(1) : id;
-
       const userToolNode = agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
       if (userToolNode) {
         return {
@@ -274,7 +239,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       const systemToolNode = getSystemToolInfo(id, lang) || getSystemToolInfo(formatId, lang);
-
       return {
         name: systemToolNode?.name || '',
         avatar: systemToolNode?.avatar || '',
@@ -286,375 +250,123 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
+    // 用户配置 prompt、capability prompt、sandbox prompt 都作为 Main Agent 的背景输入。
+    // parseUserSystemPrompt 会补充知识库引用规则等 workflow 专属约束。
+    const sandboxSystemPrompt =
+      useAgentSandbox && !!global.feConfigs?.show_agent_sandbox ? SANDBOX_SYSTEM_PROMPT : '';
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: capabilitySystemPrompt
-        ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`.trim()
-        : systemPrompt,
+      userSystemPrompt: [systemPrompt || '', capabilitySystemPrompt, sandboxSystemPrompt]
+        .filter(Boolean)
+        .join('\n\n'),
       selectedDataset: datasetParams?.datasets
     });
 
-    /* ===== AI Start ===== */
-    const parsePlanCallResult = (result: DispatchPlanAgentResponse) => {
-      let { askInteractive, plan, planBuffer, completeMessages, usages, nodeResponse } = result;
-      // 调试代码
-      // if (plan) {
-      //   plan.steps = plan.steps.slice(0, 1);
-      // }
-      nodeResponses.push(nodeResponse);
-      usagePush(usages);
+    // 2. 创建 workflow adapter。
+    // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
+    childNodeResponses = [];
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: {
+        ...props,
+        systemPrompt: formatedSystemPrompt,
+        getSubAppInfo,
+        getSubApp,
+        completionTools: agentCompletionTools,
+        filesMap,
+        capabilityToolCallHandler,
+        streamResponseFn: workflowStreamResponse
+      },
+      usagePush,
+      workflowStreamResponse,
+      assistantResponses,
+      nodeResponses: childNodeResponses
+    });
 
-      // SSE response
-      // 只有当 plan 存在且有步骤时才推送
-      if (plan && plan.steps.length > 0) {
-        const formatPlan = {
-          ...plan,
-          steps: plan.steps.map((item) => ({
-            id: item.id,
-            title: item.title,
-            description: item.description
-          }))
-        };
-        assistantResponses.push({
-          plan: formatPlan
-        });
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.plan,
-          data: { plan: formatPlan }
-        });
+    // 3. 运行单主 loop。
+    // 如果上一轮因 ask_agent 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
+    const result = await runUnifiedAgentLoop({
+      runtime,
+      input: {
+        messages: loopMessages,
+        systemPrompt: formatedSystemPrompt,
+        pendingMainContext: restoredMemory.pendingMainContext,
+        userAnswer:
+          restoredMemory.pendingMainContext && lastInteractive
+            ? queryInput || userChatInput
+            : undefined
       }
+    });
 
-      if (askInteractive) {
-        // 这里存储一份冗余的 planId，便于告诉 AI value 也存储一份 planId
-        askInteractive.planId = planBuffer?.planId;
+    // capability 可能在工具执行期间追加技能引用等可见响应，需要在 loop 结束后统一并入保存内容。
+    assistantResponses.push(...artifacts.capabilityAssistantResponses);
+
+    if (result.status === 'ask') {
+      // ask 状态不产出最终 answer，只返回 interactive + memory。
+      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
+      const interactive = createAskInteractive({
+        // saveChat 会把该 planId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
+        planId:
+          result.pendingMainContext?.activePlan?.planId ||
+          getWorkflowAgentLoopMemoryKeys(nodeId).memoryKey,
+        question:
+          result.ask?.question ||
+          result.ask?.questions
+            ?.map((item) => item.question)
+            .filter(Boolean)
+            .join('\n')
+      });
+      for (let index = assistantResponses.length - 1; index >= 0; index--) {
+        const askValue = assistantResponses[index];
+        if (askValue.agentAsk && !askValue.agentAsk.planId) {
+          askValue.agentAsk.planId = interactive.planId;
+          break;
+        }
       }
 
       return {
-        completeMessages,
-        askInteractive,
-        plan
+        [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses,
+        [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+        [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
+          nodeId,
+          memory: {
+            pendingMainContext: result.pendingMainContext
+          }
+        }),
+        [DispatchNodeResponseKeyEnum.interactive]: interactive
       };
-    };
-    const planCallFn = async () => {
-      // Plan: 2,4 场景
-      if (!lastInteractive || !planHistoryMessages || !planBuffer) {
-        getLogger(LogCategories.MODULE.AI.AGENT).error('Plan 结构逻辑错误');
-        return Promise.reject('逻辑错误');
-      }
-      const result = await dispatchPlanAgent({
-        checkIsStopping,
-        completionTools: agentCompletionTools,
-        getSubAppInfo,
-        systemPrompt: formatedSystemPrompt,
-        model,
-        stream,
-
-        mode: 'interactive', // 初始规划模式
-        interactive: lastInteractive,
-        planMessages: planHistoryMessages || [],
-        queryInput,
-        ...planBuffer
-      });
-      const { completeMessages, askInteractive, plan } = parsePlanCallResult(result);
-
-      planHistoryMessages = undefined;
-      agentPlan = plan;
-
-      if (askInteractive) {
-        return {
-          [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-          [DispatchNodeResponseKeyEnum.memories]: {
-            [masterMessagesKey]: masterMessages,
-            [planMessagesKey]: filterMemoryMessages(completeMessages),
-            [agentPlanKey]: agentPlan,
-            [planBufferKey]: planBuffer
-          },
-          [DispatchNodeResponseKeyEnum.interactive]: askInteractive
-        };
-      }
-    };
-    const continuePlanCallFn = async () => {
-      // plan: 5 场景
-      if (!agentPlan) return;
-
-      getLogger(LogCategories.MODULE.AI.AGENT).debug(
-        `All steps completed, check if need continue planning`
-      );
-      const planResponseText = getPlanCallResponseText({
-        plan: agentPlan,
-        assistantResponses: [
-          ...aiHistoryValues.filter((v) => v.planId === agentPlan!.planId),
-          ...assistantResponses
-        ]
-      });
-
-      try {
-        const result = await dispatchPlanAgent({
-          checkIsStopping,
-          completionTools: agentCompletionTools,
-          getSubAppInfo,
-          systemPrompt: formatedSystemPrompt,
-          model,
-          stream,
-          mode: 'continue', // 继续规划模式
-          query: getContinuePlanQuery({
-            task: agentPlan.task,
-            description: agentPlan.description,
-            background: agentPlan.background,
-            response: planResponseText
-          }),
-          ...agentPlan
-        });
-
-        const { plan: continuePlan } = parsePlanCallResult(result);
-
-        if (continuePlan && continuePlan.steps.length > 0) {
-          getLogger(LogCategories.MODULE.AI.AGENT).debug(
-            `Continue planning: adding ${continuePlan.steps.length} new steps， ${continuePlan.steps.map((item) => item.title)}`
-          );
-          agentPlan.steps.push(...continuePlan.steps);
-        } else {
-          getLogger(LogCategories.MODULE.AI.AGENT).debug(
-            `Continue planning: no new steps, planning complete`
-          );
-          agentPlan = undefined;
-        }
-      } catch (error) {
-        getLogger(LogCategories.MODULE.AI.AGENT).error(`Continue planning failed`, { error });
-        // 规划失败时，清空 agentPlan，让任务正常结束
-        agentPlan = undefined;
-        return undefined;
-      }
-    };
-
-    // 执行 Plan
-    if (planHistoryMessages?.length) {
-      const result = await planCallFn();
-      // 有 result 代表 plan 有交互响应（ask）
-      if (result) return result;
     }
 
-    while (true) {
-      if (checkIsStopping()) {
-        break;
-      }
+    // 4. 结束态归一化。
+    // done 正常落 answer；error/aborted 转成可见文本，同时保留 error 输出给 workflow。
+    const errorText =
+      result.status === 'error'
+        ? getErrText(result.error)
+        : result.status === 'aborted'
+          ? i18nT('chat:completion_finish_error')
+          : undefined;
 
-      // Step calls
-      if (agentPlan) {
-        while (!checkIsStopping() && agentPlan.steps.filter((item) => !item.response).length) {
-          for await (const step of agentPlan.steps) {
-            if (checkIsStopping()) {
-              break;
-            }
-            if (step.response) continue;
-
-            getLogger(LogCategories.MODULE.AI.AGENT).debug(`Step call: ${step.id}`, step);
-            assistantResponses.push({
-              planId: agentPlan.planId,
-              stepTitle: {
-                stepId: step.id,
-                title: step.title
-              }
-            });
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.stepTitle,
-              data: {
-                stepTitle: {
-                  stepId: step.id,
-                  title: step.title
-                }
-              }
-            });
-
-            // Step call
-            const result = await masterCall({
-              ...props,
-              systemPrompt: formatedSystemPrompt,
-              masterMessages: [],
-              planMessages: [],
-              getSubAppInfo,
-              getSubApp,
-              completionTools: agentCompletionTools,
-              steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
-              step,
-              filesMap,
-              capabilityToolCallHandler
-            });
-            const stepCallErrorText =
-              result.nodeResponse.errorText?.trim() ||
-              (result.nodeResponse.finishReason === 'error'
-                ? i18nT('chat:completion_finish_error')
-                : '');
-
-            nodeResponses.push(result.nodeResponse);
-
-            if (stepCallErrorText) {
-              assistantResponses.push({
-                text: { content: stepCallErrorText },
-                planId: agentPlan.planId,
-                stepId: step.id
-              });
-              workflowStreamResponse?.({
-                stepId: step.id,
-                event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({ text: stepCallErrorText })
-              });
-
-              const answerText = assistantResponses
-                .filter((item) => item.text?.content)
-                .map((item) => item.text!.content)
-                .join('');
-
-              return {
-                data: {
-                  [NodeOutputKeyEnum.answerText]: answerText
-                },
-                error: {
-                  [NodeOutputKeyEnum.errorText]: stepCallErrorText
-                },
-                [DispatchNodeResponseKeyEnum.memories]: {
-                  [masterMessagesKey]: undefined,
-                  [agentPlanKey]: undefined,
-                  [planMessagesKey]: undefined,
-                  [planBufferKey]: undefined
-                },
-                [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-                [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses,
-                [DispatchNodeResponseKeyEnum.toolResponses]: stepCallErrorText
-              };
-            }
-
-            // Merge response
-            const assistantResponse = GPTMessages2Chats({
-              messages: result.assistantMessages,
-              reserveTool: true,
-              getToolInfo: getSubAppInfo
-            })
-              .map((item) => item.value)
-              .flat()
-              .map((item) => ({
-                ...item,
-                planId: agentPlan!.planId,
-                stepId: step.id
-              }));
-            assistantResponses.push(...assistantResponse);
-            if (result.capabilityAssistantResponses?.length) {
-              assistantResponses.push(
-                ...result.capabilityAssistantResponses.map((item) => ({
-                  ...item,
-                  stepId: step.id
-                }))
-              );
-            }
-
-            step.response = result.stepResponse?.rawResponse;
-            step.summary = result.stepResponse?.summary;
-          }
+    if (result.reasoningText) {
+      assistantResponses.push({
+        reasoning: {
+          content: result.reasoningText
         }
-
-        // 用户主动暂停（相当于强制结束本轮 task，会清空所有状态）
-        if (checkIsStopping()) {
-          break;
-        }
-
-        // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
-        const planResponseText = getPlanCallResponseText({
-          plan: agentPlan,
-          assistantResponses: [
-            ...aiHistoryValues.filter((v) => v.planId === agentPlan!.planId),
-            ...assistantResponses
-          ]
-        });
-        // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
-        const lastToolIndex = masterMessages.findLastIndex((item) => item.role === 'tool');
-        if (lastToolIndex !== -1) {
-          masterMessages[lastToolIndex].content = planResponseText;
-        }
-        planIterationCount++;
-
-        if (planIterationCount >= MAX_PLAN_ITERATIONS) {
-          getLogger(LogCategories.MODULE.AI.AGENT).warn(
-            `Max plan iteration reached: ${MAX_PLAN_ITERATIONS}, stopping`
-          );
-          agentPlan = undefined; // 强制结束规划
-        } else {
-          const continueResult = await continuePlanCallFn();
-
-          // 如果有交互需求（Ask），直接返回
-          if (continueResult) return continueResult;
-        }
-
-        // 如果 agentPlan 被清空（返回空步骤数组），说明规划完成，跳出 agentPlan 分支
-        // 如果 agentPlan 有新步骤，继续循环执行
-        if (!agentPlan) {
-          getLogger(LogCategories.MODULE.AI.AGENT).debug(
-            `Planning complete, hand over to master agent`
-          );
-          continue;
-        }
-      } else {
-        getLogger(LogCategories.MODULE.AI.AGENT).debug(`Start master agent`);
-        const result = await masterCall({
-          ...props,
-          masterMessages,
-          planMessages: planHistoryMessages || [],
-          systemPrompt: formatedSystemPrompt,
-          getSubAppInfo,
-          getSubApp,
-          completionTools: agentCompletionTools,
-          filesMap,
-          capabilityToolCallHandler
-        });
-        nodeResponses.push(result.nodeResponse);
-        masterMessages = result.masterMessages;
-
-        // Merge assistant responses
-        const assistantResponse = GPTMessages2Chats({
-          messages: result.assistantMessages,
-          reserveTool: true,
-          getToolInfo: getSubAppInfo
-        })
-          .map((item) => item.value as AIChatItemValueItemType[])
-          .flat();
-        assistantResponses.push(...assistantResponse);
-        if (result.capabilityAssistantResponses?.length) {
-          assistantResponses.push(...result.capabilityAssistantResponses);
-        }
-
-        // 触发了 plan
-        if (result.planResponse) {
-          const { completeMessages, askInteractive, plan } = parsePlanCallResult(
-            result.planResponse
-          );
-
-          // 收集用户信息，结束调用，等待用户反馈
-          if (askInteractive) {
-            return {
-              [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-              [DispatchNodeResponseKeyEnum.memories]: {
-                [masterMessagesKey]: masterMessages,
-                [planMessagesKey]: filterMemoryMessages(completeMessages),
-                [agentPlanKey]: plan,
-                [planBufferKey]: result.planResponse.planBuffer
-              },
-              [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
-              [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
-            };
-          }
-
-          // 生成了 plan，进入 stepCall 模式
-          if (plan) {
-            agentPlan = plan;
-            continue;
-          }
-          break;
-        }
-
-        // 没有触发 plan，也就是最基本的工具调用。直接结束任务。
-        break;
-      }
+      });
     }
 
-    // 任务结束
+    if (result.answerText) {
+      assistantResponses.push({
+        text: {
+          content: result.answerText
+        }
+      });
+    } else if (errorText) {
+      assistantResponses.push({
+        text: {
+          content: errorText
+        }
+      });
+    }
+
+    // workflow 节点输出需要一个纯文本 answerText；前端展示则继续使用结构化 assistantResponses。
     const answerText = assistantResponses
       .filter((item) => item.text?.content)
       .map((item) => item.text!.content)
@@ -664,21 +376,40 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       data: {
         [NodeOutputKeyEnum.answerText]: answerText
       },
-      [DispatchNodeResponseKeyEnum.memories]: {
-        [masterMessagesKey]: undefined,
-        [agentPlanKey]: undefined,
-        [planMessagesKey]: undefined,
-        [planBufferKey]: undefined
-      },
+      ...(errorText && {
+        error: {
+          [NodeOutputKeyEnum.errorText]: errorText
+        }
+      }),
+      [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
+        nodeId,
+        memory: {}
+      }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
     };
   } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent Debug] dispatchRunAgent caught error`, {
+    // dispatch 层兜底：异常仍要清理 pending memory，并把已有 assistantResponses/nodeResponses 返回给前端恢复。
+    getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
-    return getNodeErrResponse({ error });
+    const errorText = getErrText(error);
+    return {
+      error: {
+        [NodeOutputKeyEnum.errorText]: errorText
+      },
+      [DispatchNodeResponseKeyEnum.toolResponses]: {
+        error: errorText
+      },
+      [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
+        nodeId,
+        memory: {}
+      }),
+      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+    };
   } finally {
+    // capability 可能持有 sandbox/session 等外部资源，必须在 dispatch 结束时释放。
     for (const cap of capabilities) {
       await cap.dispose?.();
     }

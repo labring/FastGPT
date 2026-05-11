@@ -15,7 +15,10 @@ import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { runAgentLoop } from '../../../../ai/llm/agentLoop';
-import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  ToolCallChildrenInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import { SANDBOX_SYSTEM_PROMPT, SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxToolWorkflowResponse } from './constants';
@@ -200,7 +203,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     finish_reason,
     error,
     requestIds
-  } = await runAgentLoop({
+  } = await runAgentLoop<WorkflowInteractiveResponseType>({
     maxRunAgentTimes: 50,
     body: {
       messages: finalMessages,

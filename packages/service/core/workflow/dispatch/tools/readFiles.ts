@@ -7,7 +7,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../utils/file';
-import { getUserFilesPrompt } from '../../../ai/llm/agentLoop/prompt';
+import { getUserFilesPrompt } from '../../../ai/llm/prompt';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{

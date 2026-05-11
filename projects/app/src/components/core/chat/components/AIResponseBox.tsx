@@ -8,11 +8,11 @@ import {
   Box,
   Button,
   Flex,
-  HStack
+  HStack,
+  SkeletonText
 } from '@chakra-ui/react';
 import type {
   AIChatItemValueItemType,
-  StepTitleItemType,
   ToolModuleResponseItemType,
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
@@ -39,10 +39,7 @@ import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntime
 import { useCreation } from 'ahooks';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import Icon from '@fastgpt/web/components/common/Icon';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -55,6 +52,51 @@ const accordionButtonStyle = {
   pr: 2.5,
   _hover: {
     bg: 'auto'
+  }
+};
+
+const planStepStatusStyle: Record<
+  AgentPlanType['steps'][number]['status'],
+  { dot: string; line?: string }
+> = {
+  pending: {
+    dot: 'myGray.300'
+  },
+  in_progress: {
+    dot: 'blue.500',
+    line: 'blue.200'
+  },
+  done: {
+    dot: 'green.500'
+  },
+  blocked: {
+    dot: 'red.500'
+  },
+  skipped: {
+    dot: 'orange.400'
+  }
+};
+
+const planStepPulseAfterStyle = {
+  content: '""',
+  position: 'absolute',
+  inset: '-6px',
+  borderRadius: 'full',
+  border: '2px solid',
+  borderColor: 'blue.300',
+  animation: 'planStepPulse 1.4s ease-out infinite'
+};
+
+const planStepPulseSx = {
+  '@keyframes planStepPulse': {
+    '0%': {
+      transform: 'scale(0.45)',
+      opacity: 0.75
+    },
+    '100%': {
+      transform: 'scale(1.4)',
+      opacity: 0
+    }
   }
 };
 
@@ -205,15 +247,7 @@ ${response}`}
 );
 
 const RenderSkill = React.memo(
-  function RenderSkill({
-    showAnimation,
-    skill
-  }: {
-    showAnimation: boolean;
-    skill: SkillModuleResponseItemType;
-  }) {
-    const { t } = useSafeTranslation();
-
+  function RenderSkill({ skill }: { skill: SkillModuleResponseItemType }) {
     return (
       <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
@@ -277,7 +311,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
-    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item, index) => {
+    return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
       // 使用 ?? 运算符，只有 undefined 或 null 时才使用 defaultValue
       acc[item.key] = item.value ?? item.defaultValue;
       return acc;
@@ -343,9 +377,53 @@ const RenderPaymentPauseInteractive = React.memo(function RenderPaymentPauseInte
     </>
   );
 });
-const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanType }) {
-  const { t } = useTranslation();
 
+const RenderPlanStatus = React.memo(function RenderPlanStatus({
+  planStatus
+}: {
+  planStatus: AgentPlanStatusType;
+}) {
+  const { t } = useTranslation();
+  const title =
+    planStatus.status === 'updating'
+      ? t('chat:agent_plan_updating')
+      : t('chat:agent_plan_generating');
+
+  return (
+    <Box border={'base'} bg={'white'} overflow={'hidden'} borderRadius={'md'} w={'full'}>
+      <Flex alignItems={'center'} px={4} py={3} bg={'myGray.50'} borderBottom={'base'}>
+        <Box fontWeight={'bold'} fontSize={'sm'} color={'myGray.700'}>
+          {title}
+        </Box>
+      </Flex>
+      <Box px={4} py={4}>
+        <Flex direction="column" gap={4}>
+          {[0, 1, 2].map((item) => (
+            <Flex key={item} gap={3}>
+              <Flex direction="column" alignItems="center">
+                <Box
+                  w="10px"
+                  h="10px"
+                  borderRadius="full"
+                  border="2px solid"
+                  borderColor="myGray.200"
+                  bg="white"
+                  mt={1.5}
+                />
+                {item < 2 && <Box w="1.5px" h="34px" bg="myGray.200" mt={1} />}
+              </Flex>
+              <Box flex={1} minW={0}>
+                <SkeletonText noOfLines={2} spacing={2} skeletonHeight="10px" />
+              </Box>
+            </Flex>
+          ))}
+        </Flex>
+      </Box>
+    </Box>
+  );
+});
+
+const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanType }) {
   return (
     <Box border={'base'} bg={'white'} overflow={'hidden'} borderRadius={'md'} w={'full'}>
       <Flex alignItems={'center'} px={4} py={3} bg={'myGray.50'} borderBottom={'base'}>
@@ -356,105 +434,55 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
       </Flex>
       <Box px={4} py={4}>
         <Flex direction="column" gap={0}>
-          {plan.steps.map((step, index) => (
-            <Flex key={step.id} gap={3} position="relative">
-              {/* Left side: dot and line */}
-              <Flex direction="column" alignItems="center" position="relative">
-                {/* Dot */}
-                <Box
-                  w="10px"
-                  h="10px"
-                  borderRadius="full"
-                  border="2px solid"
-                  borderColor="primary.600"
-                  flexShrink={0}
-                  mt={1.5}
-                />
-                {/* Connecting line */}
-                {index < plan.steps.length - 1 && (
-                  <Box w="1.5px" h="100%" bg="myGray.250" mb={-1} flexGrow={1} minH="20px" />
-                )}
-              </Flex>
+          {plan.steps.map((step, index) => {
+            const style = planStepStatusStyle[step.status];
 
-              {/* Right side: content */}
-              <Box flex={1} pb={index < plan.steps.length - 1 ? 3 : 0}>
-                <Box fontSize="sm" fontWeight="medium" color="myGray.900">
-                  {step.title}
-                </Box>
-                {step.description && (
-                  <Box fontSize="xs" mt={1} color="myGray.500">
-                    {step.description}
+            return (
+              <Flex key={step.id} gap={3}>
+                <Flex direction="column" alignItems="center">
+                  <Box
+                    w="10px"
+                    h="10px"
+                    borderRadius="full"
+                    border="2px solid"
+                    borderColor={style.dot}
+                    bg={style.dot}
+                    flexShrink={0}
+                    mt={1.5}
+                    position="relative"
+                    _after={step.status === 'in_progress' ? planStepPulseAfterStyle : undefined}
+                    sx={step.status === 'in_progress' ? planStepPulseSx : undefined}
+                  />
+                  {index < plan.steps.length - 1 && (
+                    <Box
+                      w="1.5px"
+                      h="100%"
+                      bg={style.line ?? 'myGray.250'}
+                      mb={-1}
+                      flexGrow={1}
+                      minH="28px"
+                    />
+                  )}
+                </Flex>
+
+                <Box flex={1} pb={index < plan.steps.length - 1 ? 4 : 0} minW={0}>
+                  <Box fontSize="sm" fontWeight="medium" color="myGray.900">
+                    {step.title}
                   </Box>
-                )}
-              </Box>
-            </Flex>
-          ))}
+                  {step.description && (
+                    <Box fontSize="xs" mt={1} color="myGray.500">
+                      {step.description}
+                    </Box>
+                  )}
+                </Box>
+              </Flex>
+            );
+          })}
         </Flex>
       </Box>
     </Box>
   );
 });
-const RenderStepTitle = React.memo(function RenderStepTitle({
-  chatItemDataId,
-  step
-}: {
-  chatItemDataId: string;
-  step: StepTitleItemType;
-}) {
-  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const folded = step.folded ?? true;
-
-  return (
-    <HStack
-      pt={2}
-      pb={folded ? 0 : 2}
-      fontSize={'lg'}
-      userSelect={'none'}
-      cursor={'pointer'}
-      onClick={() => {
-        setChatRecords((prev) => {
-          return prev.map((item) => {
-            if (item.dataId === chatItemDataId && item.obj === ChatRoleEnum.AI) {
-              return {
-                ...item,
-                value: item.value.map((value) => {
-                  if (value.stepTitle?.stepId === step.stepId) {
-                    return {
-                      ...value,
-                      stepTitle: {
-                        ...value.stepTitle,
-                        folded: !folded
-                      }
-                    };
-                  }
-                  return value;
-                })
-              };
-            }
-            return item;
-          });
-        });
-      }}
-    >
-      <Box
-        w={'10px'}
-        h={'10px'}
-        borderRadius={'full'}
-        border={'2px solid'}
-        borderColor={'primary.600'}
-      ></Box>
-      <Box fontWeight={'bold'}>{step.title}</Box>
-      <Icon
-        name={'common/leftArrowLight'}
-        w={'1rem'}
-        h={'1rem'}
-        transition={'transform 0.2s ease-in-out'}
-        transform={folded ? 'rotate(90deg)' : 'rotate(-90deg)'}
-      />
-    </HStack>
-  );
-});
-
 const AIResponseBox = ({
   chatItemDataId,
   value,
@@ -472,7 +500,7 @@ const AIResponseBox = ({
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
-  const tools = value.tool ? [value.tool] : value.tools;
+  const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
 
@@ -507,16 +535,16 @@ const AIResponseBox = ({
   if (skills && showSkillReferences && showRunningStatus) {
     return skills.map((skill) => (
       <Box key={skill.id} _notLast={{ mb: 2 }}>
-        <RenderSkill showAnimation={isChatting} skill={skill} />
+        <RenderSkill skill={skill} />
       </Box>
     ));
   }
   if ('interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);
-    if (interactive.type === 'userSelect' || interactive.type === 'agentPlanAskUserSelect') {
+    if (interactive.type === 'userSelect') {
       return <RenderUserSelectInteractive interactive={interactive} />;
     }
-    if (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') {
+    if (interactive.type === 'userInput') {
       return (
         <RenderUserFormInteractive
           interactive={interactive}
@@ -524,9 +552,6 @@ const AIResponseBox = ({
           isLastChild={isLastChild}
         />
       );
-    }
-    if (interactive.type === 'agentPlanCheck') {
-      return null;
     }
     if (interactive.type === 'agentPlanAskQuery') {
       return <Box>{interactive.params.content}</Box>;
@@ -538,8 +563,8 @@ const AIResponseBox = ({
   if ('plan' in value && value.plan) {
     return <RenderPlan plan={value.plan} />;
   }
-  if ('stepTitle' in value && value.stepTitle) {
-    return <RenderStepTitle chatItemDataId={chatItemDataId} step={value.stepTitle} />;
+  if ('planStatus' in value && value.planStatus) {
+    return <RenderPlanStatus planStatus={value.planStatus} />;
   }
 
   return null;

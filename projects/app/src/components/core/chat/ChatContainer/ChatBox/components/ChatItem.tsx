@@ -1,4 +1,4 @@
-import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
+import { Box, type BoxProps, Button, Card, Flex } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
@@ -32,8 +32,6 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn, useSize } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
@@ -61,7 +59,6 @@ type Props = {
   };
   questionGuides?: string[];
   children?: React.ReactNode;
-  hasPlanCheck?: boolean;
 } & ChatControllerProps;
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
@@ -117,12 +114,6 @@ const AIContentCard = React.memo(function AIContentCard({
       {chatValue.map((value, i) => {
         const isLastResponse = isLastChild && i === chatValue.length - 1;
         const key = `${dataId}-ai-${i}`;
-        const folded = value.stepId
-          ? chatValue.find((item) => item.stepTitle?.stepId === value.stepId)?.stepTitle?.folded ??
-            true
-          : false;
-
-        if (folded) return null;
 
         return (
           <Box
@@ -164,7 +155,7 @@ const AIContentCard = React.memo(function AIContentCard({
   );
 });
 
-const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
+const ChatItem = (props: Props) => {
   const { avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { t } = useTranslation();
@@ -435,6 +426,10 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
 
       {/* content */}
       {splitAiResponseResults.map((value, i) => {
+        const isPlanCard =
+          chat.obj === ChatRoleEnum.AI &&
+          (value as AIChatItemValueItemType[]).some((item) => item.plan || item.planStatus);
+
         return (
           <Box
             key={i}
@@ -452,6 +447,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
               bg={styleMap.bg}
               borderRadius={styleMap.borderRadius}
               textAlign={'left'}
+              minW={isPlanCard ? ['calc(100% - 25px)', '50%'] : undefined}
             >
               {chat.obj === ChatRoleEnum.Human && (
                 <HumanContentCard chatValue={value as UserChatItemValueItemType[]} />
@@ -520,23 +516,6 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
           </Box>
         );
       })}
-
-      {hasPlanCheck && isLastChild && (
-        <Flex mt={3}>
-          <Button
-            leftIcon={<MyIcon name={'common/check'} w={'16px'} />}
-            variant={'primaryOutline'}
-            onClick={() => {
-              eventBus.emit(EventNameEnum.sendQuestion, {
-                text: ConfirmPlanAgentText,
-                focus: true
-              });
-            }}
-          >
-            {t('chat:confirm_plan')}
-          </Button>
-        </Flex>
-      )}
 
       {isChatLog && chat.obj === ChatRoleEnum.AI && errorText && (
         <Box

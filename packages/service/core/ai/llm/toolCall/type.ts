@@ -1,4 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export type ToolCallEventType = {
   onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
@@ -15,10 +16,7 @@ export type ToolCallEventType = {
   onAfterToolResponseCompress?: (e: {
     call: ChatCompletionMessageToolCall;
     response: string;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-      totalPoints: number;
-    };
+    usage: ChatNodeUsageType;
+    requestIds: string[];
   }) => void;
 };

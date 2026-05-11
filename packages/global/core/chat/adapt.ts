@@ -19,7 +19,6 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-import { getPlanCallResponseText } from './utils';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
@@ -65,7 +64,8 @@ export const chats2GPTMessages = ({
       }
     } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
-        // 有 planId 的过滤掉，会被 planTool 一起处理
+        // Agent 追问的用户答案会通过当轮 pendingMainContext 恢复为 ask_agent 的 tool response。
+        // 带 planId 的历史用户消息只作为 UI 记录保存，不再重复塞进普通对话上下文。
         .filter((item) => !item.planId)
         .map((item) => {
           if (item.text) {
@@ -105,13 +105,115 @@ export const chats2GPTMessages = ({
       }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+      const agentAskAnswerMap = new Map<string, string>();
+      item.value.forEach((value) => {
+        if (
+          value.interactive?.type === 'agentPlanAskQuery' &&
+          value.interactive.planId &&
+          typeof value.interactive.params.answer === 'string'
+        ) {
+          agentAskAnswerMap.set(value.interactive.planId, value.interactive.params.answer);
+        }
+      });
 
-      item.value.forEach((value, i) => {
-        /* Plan agent 产生的上下文都需要合并到一个 toolCall 里。
-          Plan agent 产生的上下文都会携带 planId
-          value.plan 代表的是 plan 的具体内容，根据这个值去转化成 toolcall
-        */
-        if (value.planId && !value.plan) return;
+      const appendAssistantToolCall = ({
+        id,
+        functionName,
+        params,
+        assistantText,
+        reasoningText
+      }: {
+        id: string;
+        functionName: string;
+        params: string;
+        assistantText?: string;
+        reasoningText?: string;
+      }) => {
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(assistantText ? { content: assistantText } : {}),
+          ...(reasoningText ? { reasoning_content: reasoningText } : {}),
+          tool_calls: [
+            {
+              id,
+              type: 'function',
+              function: {
+                name: functionName,
+                arguments: params
+              }
+            }
+          ]
+        });
+      };
+
+      const appendToolMessage = ({ id, response }: { id: string; response: string }) => {
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: id,
+          content: response
+        });
+      };
+
+      item.value.forEach((value) => {
+        if (reserveTool && value.agentPlanUpdate) {
+          appendAssistantToolCall({
+            id: value.agentPlanUpdate.id,
+            functionName: value.agentPlanUpdate.functionName,
+            params: value.agentPlanUpdate.params,
+            assistantText: value.agentPlanUpdate.assistantText,
+            reasoningText: value.agentPlanUpdate.reasoningText
+          });
+          if (typeof value.agentPlanUpdate.response === 'string') {
+            appendToolMessage({
+              id: value.agentPlanUpdate.id,
+              response: value.agentPlanUpdate.response
+            });
+          }
+          return;
+        }
+
+        if (reserveTool && value.agentAsk) {
+          appendAssistantToolCall({
+            id: value.agentAsk.id,
+            functionName: value.agentAsk.functionName,
+            params: value.agentAsk.params,
+            assistantText: value.agentAsk.assistantText,
+            reasoningText: value.agentAsk.reasoningText
+          });
+          const answer = value.agentAsk.planId
+            ? agentAskAnswerMap.get(value.agentAsk.planId)
+            : undefined;
+          if (typeof answer === 'string') {
+            appendToolMessage({
+              id: value.agentAsk.id,
+              response: answer
+            });
+          }
+          return;
+        }
+
+        if (reserveTool && value.agentStopGate) {
+          if (value.agentStopGate.assistantText || value.agentStopGate.reasoningText) {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              ...(value.agentStopGate.assistantText
+                ? { content: value.agentStopGate.assistantText }
+                : {}),
+              ...(value.agentStopGate.reasoningText
+                ? { reasoning_content: value.agentStopGate.reasoningText }
+                : {})
+            });
+          }
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: value.agentStopGate.feedback
+          });
+          return;
+        }
 
         const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
 
@@ -181,44 +283,8 @@ export const chats2GPTMessages = ({
             });
           }
         }
-        if (value.plan) {
-          // 查找该 Plan 产生的上下文，组成一个 toolcall
-          // 需要跨所有历史消息收集同 planId 的 values（ask 信息可能在之前的 AI 消息中）
-          const planId = value.plan.planId;
-          const allPlanValues = messages
-            .filter((msg) => msg.obj === ChatRoleEnum.AI)
-            .flatMap((msg) =>
-              (msg.value as AIChatItemValueItemType[]).filter((v) => v.planId === planId)
-            );
-          const planResponseText = getPlanCallResponseText({
-            plan: value.plan,
-            assistantResponses: allPlanValues
-          });
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            tool_calls: [
-              {
-                id: planId,
-                type: 'function',
-                function: {
-                  name: 'plan_agent',
-                  arguments: JSON.stringify({
-                    task: value.plan.task,
-                    description: value.plan.description,
-                    background: value.plan.background
-                  })
-                }
-              }
-            ]
-          });
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: planId,
-            content: planResponseText
-          });
-        }
+        // Plan 卡片只是 UI 状态；update_plan/stop gate/ask_agent 会通过独立字段恢复上下文。
+        // 这里不把历史 plan 伪造成 tool_call 注入模型上下文。
         if (value.interactive) {
           // 目前只有 plan 里会有交互，所以这里暂时不需要处理
         }
@@ -351,10 +417,6 @@ export const GPTMessages2Chats = ({
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
-            // Skil plan tool
-            if (tool.function.name === 'plan_agent') {
-              return [];
-            }
             let toolResponse =
               messages.find(
                 (msg) =>

@@ -33,6 +33,7 @@ export const compressRequestMessages = async ({
 }): Promise<{
   messages: ChatCompletionMessageParam[];
   usage?: ChatNodeUsageType;
+  requestIds?: string[];
 }> => {
   if (!messages || messages.length === 0) {
     return {
@@ -112,13 +113,12 @@ export const compressRequestMessages = async ({
       model: model.name,
       totalPoints,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens,
-      llmRequestIds: [requestId]
+      outputTokens: usage.outputTokens
     };
 
     if (finish_reason === 'close') {
       logger.info('Compression messages aborted: return original messages');
-      return { messages, usage: compressedUsage };
+      return { messages, usage: compressedUsage, requestIds: [requestId] };
     }
 
     const compressResult = parseJsonArgs<{
@@ -134,7 +134,7 @@ export const compressRequestMessages = async ({
       logger.warn('Message compression failed: invalid JSON', {
         messages: compressResult?.compressed_messages
       });
-      return { messages, usage: compressedUsage };
+      return { messages, usage: compressedUsage, requestIds: [requestId] };
     }
 
     const compressedTokens = usage.outputTokens;
@@ -150,7 +150,8 @@ export const compressRequestMessages = async ({
 
     return {
       messages: finalMessages,
-      usage: compressedUsage
+      usage: compressedUsage,
+      requestIds: [requestId]
     };
   } catch (error) {
     logger.error('Message compression failed', { error });
@@ -192,11 +193,13 @@ export const compressLargeContent = async ({
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
+  requestIds?: string[];
 }> => {
   type CompressUsageType = {
     inputTokens: number;
     outputTokens: number;
     totalPoints: number;
+    requestIds: string[];
   };
 
   async function chunkAndCompress(params: {
@@ -238,7 +241,7 @@ export const compressLargeContent = async ({
         }
       );
 
-      const { answerText, usage } = await createLLMResponse({
+      const { answerText, usage, requestId } = await createLLMResponse({
         userKey,
         body: {
           model,
@@ -273,7 +276,8 @@ export const compressLargeContent = async ({
         compressed: answerText.trim(),
         usage: {
           ...usage,
-          totalPoints
+          totalPoints,
+          requestIds: [requestId]
         }
       };
     }
@@ -297,7 +301,8 @@ export const compressLargeContent = async ({
     const usage: CompressUsageType = {
       inputTokens: 0,
       outputTokens: 0,
-      totalPoints: 0
+      totalPoints: 0,
+      requestIds: []
     };
 
     const compressedChunks = await batchRun(chunks, async (chunk, index) => {
@@ -310,6 +315,7 @@ export const compressLargeContent = async ({
       usage.inputTokens += result.usage.inputTokens;
       usage.outputTokens += result.usage.outputTokens;
       usage.totalPoints += result.usage.totalPoints;
+      usage.requestIds.push(...result.usage.requestIds);
 
       return result.compressed;
     });
@@ -422,7 +428,8 @@ export const compressLargeContent = async ({
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens
-      }
+      },
+      requestIds: result.usage.requestIds
     };
   } catch (error) {
     logger.error('Chunk compression failed, fallback to binary truncate', { error });
@@ -449,6 +456,7 @@ export const compressToolResponse = async ({
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
+  requestIds?: string[];
 }> => {
   if (!response) {
     return {

@@ -194,6 +194,85 @@ describe('pushChatRecords', () => {
       expect(String(chat?.teamId)).toBe(props.teamId);
     });
 
+    it('should persist agent loop control values in AI chat item value', async () => {
+      const plan = {
+        planId: 'plan_1',
+        task: 'Compare products',
+        description: 'Compare FastGPT and Dify',
+        steps: [
+          {
+            id: 's1',
+            title: 'Compare positioning',
+            description: 'Compare product positioning',
+            acceptanceCriteria: ['Positioning is clear'],
+            status: 'pending' as const,
+            evidence: []
+          }
+        ]
+      };
+      const agentPlanUpdate = {
+        id: 'call_update_plan',
+        functionName: 'update_plan',
+        params: '{"updates":[]}',
+        response: 'ok',
+        assistantText: 'draft while updating plan',
+        reasoningText: 'planning'
+      };
+      const agentAsk = {
+        id: 'call_ask_agent',
+        functionName: 'ask_agent',
+        params: '{"question":"请补充目标"}',
+        planId: 'plan_1',
+        assistantText: 'need more input',
+        reasoningText: 'asking'
+      };
+      const agentStopGate = {
+        id: 'stop_gate_2_req_too_early',
+        reason: 'Active plan is not complete.',
+        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>',
+        assistantText: 'too early',
+        reasoningText: 'checking'
+      };
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: { content: 'Final answer' }
+              },
+              {
+                plan
+              },
+              {
+                agentPlanUpdate
+              },
+              {
+                agentAsk
+              },
+              {
+                agentStopGate
+              }
+            ],
+            responseData: []
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+
+      expect(aiItem?.value).toEqual(
+        expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }, { agentStopGate }])
+      );
+    });
+
     it('should create chat item responses when responseData is provided', async () => {
       const props = createMockProps({
         aiContent: {

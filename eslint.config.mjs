@@ -27,6 +27,16 @@ export default defineConfig([
           disallowTypeAnnotations: false
         }
       ],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-expect-error': 'allow-with-description',
+          'ts-ignore': false,
+          'ts-nocheck': true,
+          'ts-check': false,
+          minimumDescriptionLength: 3
+        }
+      ],
 
       '@next/next/no-html-link-for-pages': 'off',
       'react-hooks/rules-of-hooks': 'off'

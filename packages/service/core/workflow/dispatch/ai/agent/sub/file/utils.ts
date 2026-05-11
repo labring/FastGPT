@@ -102,7 +102,7 @@ export const formatFileInput = ({
   const historyParseResult = parseFn(filesFromHistories);
   const queryParseResult = parseFn(fileUrls);
 
-  // 去重：基于文件名去重，避免历史记录和当前请求中的文件重复（避免 plan agent ask 之后的文件二次传入）
+  // 去重：基于文件名去重，避免历史记录和当前请求中的文件重复传入。
   // 优先使用新的 URL（queryParseResult），因为预签名 URL 有过期时间，新的更不容易过期
   const allFiles = [...queryParseResult, ...historyParseResult];
   const uniqueFilesMap = new Map<string, { type: string; name: string; url: string }>();

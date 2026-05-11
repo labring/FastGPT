@@ -12,7 +12,13 @@ import { DispatchNodeResponseSchema } from '../workflow/runtime/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import z from 'zod';
-import { AgentPlanSchema } from '../ai/agent/type';
+import {
+  AgentLoopAskSchema,
+  AgentLoopPlanUpdateSchema,
+  AgentLoopStopGateSchema,
+  AgentPlanSchema,
+  AgentPlanStatusSchema
+} from '../ai/agent/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -34,16 +40,6 @@ export const ToolModuleResponseItemSchema = z.object({
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
-
-/* step call */
-export const StepTitleItemSchema = z.object({
-  stepId: z.string(),
-  title: z.string(),
-
-  // Client data
-  folded: z.boolean().optional()
-});
-export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
 /* Sandbox lifecycle phase */
 export type SandboxStatusPhase =
@@ -216,14 +212,17 @@ export const AIChatItemValueSchema = z.object({
       content: z.string()
     })
     .nullish(),
+  // Deprecated single-tool field. Keep it readable for generic historical chat records.
+  // New writes should use tools[].
+  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
   skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
   plan: AgentPlanSchema.nullish(),
-  stepTitle: StepTitleItemSchema.nullish(),
-
-  /** @deprecated */
-  tool: ToolModuleResponseItemSchema.nullish()
+  planStatus: AgentPlanStatusSchema.nullish(),
+  agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
+  agentAsk: AgentLoopAskSchema.nullish(),
+  agentStopGate: AgentLoopStopGateSchema.nullish()
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

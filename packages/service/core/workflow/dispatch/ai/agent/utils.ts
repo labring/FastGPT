@@ -4,7 +4,6 @@ import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } f
 import { getAgentRuntimeTools } from './sub/tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { readFileTool, ReadFileToolSchema } from './sub/file/utils';
-import { PlanAgentParamsSchema, PlanAgentTool } from './sub/plan/constants';
 import { datasetSearchTool } from './sub/dataset/utils';
 import { SANDBOX_TOOLS, sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -16,9 +15,6 @@ import { dispatchSandboxTool } from './sub/sandbox';
 import type { CapabilityToolCallHandlerType } from './capability/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../ai/utils';
-import type { DispatchPlanAgentResponse } from './sub/plan';
-import { dispatchPlanAgent } from './sub/plan';
-import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
@@ -26,11 +22,14 @@ import { dispatchApp, dispatchPlugin } from './sub/app';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
+/**
+ * 收集 Agent 节点可用的系统工具、能力工具和用户选择的子应用工具。
+ * 返回给 LLM 的 completionTools 与运行时查找用的 subAppsMap 会在这里保持一致。
+ */
 export const getSubapps = async ({
   tmbId,
   tools,
   lang,
-  getPlanTool,
   hasDataset,
   hasFiles,
   useAgentSandbox,
@@ -39,7 +38,6 @@ export const getSubapps = async ({
   tmbId: string;
   tools: SkillToolType[];
   lang?: localeType;
-  getPlanTool?: Boolean;
   hasDataset?: boolean;
   hasFiles: boolean;
   useAgentSandbox?: boolean;
@@ -52,10 +50,6 @@ export const getSubapps = async ({
 
   // system tools
   {
-    /* Plan */
-    if (getPlanTool) {
-      completionTools.push(PlanAgentTool);
-    }
     /* File */
     if (hasFiles) {
       completionTools.push(readFileTool);
@@ -131,11 +125,14 @@ export type ToolDispatchContext = Pick<
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
+
+/**
+ * 创建 workflow 工具执行器。
+ * 该执行器屏蔽工具来源差异，将沙盒、文件读取、知识库搜索、能力工具和用户子应用统一成 agentLoop 可消费的工具结果。
+ */
 export const getExecuteTool = ({
-  systemPrompt,
   getSubAppInfo,
   getSubApp,
-  completionTools,
   filesMap,
   capabilityToolCallHandler,
   checkIsStopping,
@@ -146,7 +143,6 @@ export const getExecuteTool = ({
   uid,
   variableState,
   externalProvider,
-  stream,
   streamResponseFn,
   params: {
     model,
@@ -161,8 +157,10 @@ export const getExecuteTool = ({
   maxRunTimes,
   workflowDispatchDeep
 }: ToolDispatchContext) => {
+  /**
+   * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
+   */
   return async ({ callId, toolId, args }: { callId: string; toolId: string; args: string }) => {
-    let planResult: DispatchPlanAgentResponse | undefined;
     const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
     const startTime = Date.now();
 
@@ -239,42 +237,6 @@ export const getExecuteTool = ({
             nodeResponse: result.nodeResponse
           };
         }
-        if (toolId === SubAppIds.plan) {
-          try {
-            const toolArgs = await PlanAgentParamsSchema.safeParseAsync(parseJsonArgs(args));
-
-            if (!toolArgs.success) {
-              return {
-                response: 'Tool arguments is not valid'
-              };
-            }
-
-            // plan: 1,3 场景
-            planResult = await dispatchPlanAgent({
-              checkIsStopping,
-              completionTools,
-              getSubAppInfo,
-              systemPrompt,
-              model,
-              stream,
-              mode: 'initial',
-              ...toolArgs.data,
-              planId: callId
-            });
-
-            return {
-              response: '',
-              stop: true
-            };
-          } catch (error) {
-            getLogger(LogCategories.MODULE.AI.AGENT).error('dispatchPlanAgent error', { error });
-            return {
-              response: `Plan error: ${getErrText(error)}`,
-              stop: false
-            };
-          }
-        }
-
         // TODO: 所有skill工具，合并成一个 function，不要依赖 capabilityToolCallHandler
         // Capability tools (e.g. sandbox skills)
         const capResult = await capabilityToolCallHandler?.(toolId, args ?? '', callId);
@@ -428,7 +390,6 @@ export const getExecuteTool = ({
       usages,
       stop,
       nodeResponse: formatNodeResponse,
-      planResult,
       capabilityAssistantResponses
     };
   };
