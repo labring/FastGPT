@@ -31,7 +31,10 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import { upsertDatasetSyncJobScheduler } from '@fastgpt/service/core/dataset/datasetSync';
+import {
+  addDatasetSyncJob,
+  upsertDatasetSyncJobScheduler
+} from '@fastgpt/service/core/dataset/datasetSync';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -118,6 +121,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
 
   if (autoSync) {
     await upsertDatasetSyncJobScheduler({ datasetId: String(datasetId) });
+  }
+
+  // Website dataset: trigger first sync immediately after creation
+  if (type === DatasetTypeEnum.websiteDataset && websiteConfig?.url) {
+    addDatasetSyncJob({ datasetId: String(datasetId) });
   }
 
   pushTrack.createDataset({
