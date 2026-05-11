@@ -1,5 +1,5 @@
 import { getLogger, type Logger, type LogRecord, type Sink } from '@logtape/logtape';
-import { diag, type DiagLogger, DiagLogLevel } from '@opentelemetry/api';
+import { context, diag, type DiagLogger, DiagLogLevel } from '@opentelemetry/api';
 import {
   type AnyValue,
   type Logger as OTLogger,
@@ -37,18 +37,7 @@ type ILoggerProvider = LoggerProviderBase & {
   shutdown?: () => Promise<void>;
 };
 
-export type ObjectRenderer = 'json' | 'inspect';
-
-type Message = (string | null | undefined)[];
-
-export type BodyFormatter = (message: Message) => AnyValue;
-
-export type ExceptionAttributeMode = 'semconv' | 'raw' | false;
-
 interface OpenTelemetrySinkOptionsBase {
-  messageType?: 'string' | 'array' | BodyFormatter;
-  objectRenderer?: ObjectRenderer;
-  exceptionAttributes?: ExceptionAttributeMode;
   diagnostics?: boolean;
   loggerName?: string;
 }
@@ -94,34 +83,18 @@ async function initializeLoggerProvider(
   return loggerProvider;
 }
 
-function emitLogRecord(
-  logger: OTLogger,
-  record: LogRecord,
-  options: OpenTelemetrySinkOptions
-): void {
-  const objectRenderer = options.objectRenderer ?? 'inspect';
-  const exceptionMode = options.exceptionAttributes ?? 'semconv';
-  const { category, level, message, timestamp, properties } = record;
+function emitLogRecord(logger: OTLogger, record: LogRecord): void {
+  const { category, level, timestamp } = record;
   const severityNumber = mapLevelToSeverityNumber(level);
-  const attributes = convertToAttributes(properties ?? {}, objectRenderer, exceptionMode);
-
-  attributes['category'] = [...category];
 
   logger.emit({
     severityNumber,
     severityText: level,
-    body:
-      typeof options.messageType === 'function'
-        ? convertMessageToCustomBodyFormat(
-            message,
-            objectRenderer,
-            exceptionMode,
-            options.messageType
-          )
-        : options.messageType === 'array'
-          ? convertMessageToArray(message, objectRenderer, exceptionMode)
-          : convertMessageToString(message, objectRenderer, exceptionMode),
-    attributes,
+    body: convertRecordToStructuredBody(record),
+    attributes: {
+      category: [...category]
+    },
+    context: context.active(),
     timestamp: new Date(timestamp)
   } satisfies OTLogRecord);
 }
@@ -151,7 +124,7 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
         if (category[0] === 'logtape' && category[1] === 'meta' && category[2] === 'otel') {
           return;
         }
-        emitLogRecord(logger, record, options);
+        emitLogRecord(logger, record);
       },
       {
         ready: Promise.resolve(),
@@ -177,7 +150,7 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
       }
 
       if (logger != null) {
-        emitLogRecord(logger, record, options);
+        emitLogRecord(logger, record);
         return;
       }
 
@@ -193,14 +166,13 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
             loggerProvider = provider;
             logger = provider.getLogger(getOpenTelemetryLoggerName(options));
             for (const pendingRecord of pendingRecords) {
-              emitLogRecord(logger, pendingRecord, options);
+              emitLogRecord(logger, pendingRecord);
             }
             pendingRecords = [];
           })
           .catch((error) => {
             initError = error as Error;
             pendingRecords = [];
-            // eslint-disable-next-line no-console
             console.error('Failed to initialize OpenTelemetry logger:', error);
           });
       }
@@ -227,43 +199,41 @@ export function getOpenTelemetrySink(options: OpenTelemetrySinkOptions = {}): Op
   return sink;
 }
 
-function convertValueToAnyValue(
-  value: unknown,
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode
-): AnyValue | null {
+type SafeNormalizeOptions = {
+  seen?: WeakSet<object>;
+  depth?: number;
+  maxDepth?: number;
+  maxKeys?: number;
+  bytesAsSummary?: boolean;
+};
+
+const defaultMaxNormalizeDepth = 8;
+const defaultMaxObjectKeys = 128;
+const reservedStructuredBodyKeys = new Set(['traceId', 'spanId']);
+
+function convertValueToAnyValue(value: unknown): AnyValue | null {
   if (value == null) return null;
 
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
 
-  if (Array.isArray(value)) {
-    let primitiveType: string | null = null;
-    let isHomogeneous = true;
+  const normalized = normalizeLogValue(value, { bytesAsSummary: false });
+  if (normalized == null) return null;
 
-    for (const item of value) {
-      if (item == null) continue;
-      const itemType = typeof item;
-      if (itemType !== 'string' && itemType !== 'number' && itemType !== 'boolean') {
-        isHomogeneous = false;
-        break;
-      }
-      if (primitiveType === null) {
-        primitiveType = itemType;
-      } else if (primitiveType !== itemType) {
-        isHomogeneous = false;
-        break;
-      }
-    }
+  if (
+    typeof normalized === 'string' ||
+    typeof normalized === 'number' ||
+    typeof normalized === 'boolean'
+  ) {
+    return normalized;
+  }
+  if (normalized instanceof Uint8Array) return normalized;
 
-    if (isHomogeneous && primitiveType !== null) {
-      return value as AnyValue;
-    }
-
+  if (Array.isArray(normalized)) {
     const converted: AnyValue[] = [];
-    for (const item of value) {
-      const convertedItem = convertValueToAnyValue(item, objectRenderer, exceptionMode);
+    for (const item of normalized) {
+      const convertedItem = convertValueToAnyValue(item);
       if (convertedItem !== null) {
         converted.push(convertedItem);
       }
@@ -271,15 +241,10 @@ function convertValueToAnyValue(
     return converted;
   }
 
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (value instanceof Error) {
-    const errorObj = serializeValue(value) as Record<string, unknown>;
+  if (typeof normalized === 'object') {
     const converted: Record<string, AnyValue> = {};
-    for (const [key, val] of Object.entries(errorObj)) {
-      const convertedVal = convertValueToAnyValue(val, objectRenderer, exceptionMode);
+    for (const [key, val] of Object.entries(normalized as Record<string, unknown>)) {
+      const convertedVal = convertValueToAnyValue(val);
       if (convertedVal !== null) {
         converted[key] = convertedVal;
       }
@@ -287,58 +252,14 @@ function convertValueToAnyValue(
     return converted;
   }
 
-  if (typeof value === 'object') {
-    const proto = Object.getPrototypeOf(value);
-    const isPlainObject = proto === Object.prototype || proto === null;
-
-    if (isPlainObject) {
-      const converted: Record<string, AnyValue> = {};
-      for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-        const convertedVal = convertValueToAnyValue(val, objectRenderer, exceptionMode);
-        if (convertedVal !== null) {
-          converted[key] = convertedVal;
-        }
-      }
-      return converted;
-    }
-
-    if (objectRenderer === 'inspect') {
-      return nodeInspect(value);
-    }
-    return JSON.stringify(value);
-  }
-
-  return String(value);
+  return String(normalized);
 }
 
-function convertToAttributes(
-  properties: Record<string, unknown>,
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode
-): Record<string, AnyValue> {
-  const attributes: Record<string, AnyValue> = {};
-  for (const [name, value] of Object.entries(properties)) {
-    if (value == null) continue;
-
-    if (value instanceof Error && exceptionMode === 'semconv') {
-      attributes['exception.type'] = value.name;
-      attributes['exception.message'] = value.message;
-      if (typeof value.stack === 'string') {
-        attributes['exception.stacktrace'] = value.stack;
-      }
-      continue;
-    }
-
-    const convertedValue = convertValueToAnyValue(value, objectRenderer, exceptionMode);
-    if (convertedValue !== null) {
-      attributes[name] = convertedValue;
-    }
-  }
-  return attributes;
-}
-
-function serializeValue(value: unknown): unknown {
+function serializeValue(value: unknown, seen = new WeakSet<object>()): unknown {
   if (value instanceof Error) {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+
     const serialized: Record<string, unknown> = {
       name: value.name,
       message: value.message
@@ -350,16 +271,16 @@ function serializeValue(value: unknown): unknown {
 
     const cause = (value as { cause?: unknown }).cause;
     if (cause !== undefined) {
-      serialized.cause = serializeValue(cause);
+      serialized.cause = serializeValue(cause, seen);
     }
 
     if (typeof AggregateError !== 'undefined' && value instanceof AggregateError) {
-      serialized.errors = value.errors.map(serializeValue);
+      serialized.errors = value.errors.map((error) => serializeValue(error, seen));
     }
 
     for (const key of Object.keys(value)) {
       if (!(key in serialized)) {
-        serialized[key] = serializeValue((value as unknown as Record<string, unknown>)[key]);
+        serialized[key] = serializeValue((value as unknown as Record<string, unknown>)[key], seen);
       }
     }
 
@@ -367,13 +288,16 @@ function serializeValue(value: unknown): unknown {
   }
 
   if (Array.isArray(value)) {
-    return value.map(serializeValue);
+    return value.map((item) => serializeValue(item, seen));
   }
 
   if (value !== null && typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+
     const serialized: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
-      serialized[key] = serializeValue(val);
+      serialized[key] = serializeValue(val, seen);
     }
     return serialized;
   }
@@ -381,66 +305,153 @@ function serializeValue(value: unknown): unknown {
   return value;
 }
 
-function convertToString(
-  value: unknown,
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode
-): string | null | undefined {
-  if (value === null || value === undefined || typeof value === 'string') {
+function normalizeLogValue(value: unknown, options: SafeNormalizeOptions = {}): unknown {
+  const {
+    seen = new WeakSet<object>(),
+    depth = 0,
+    maxDepth = defaultMaxNormalizeDepth,
+    maxKeys = defaultMaxObjectKeys,
+    bytesAsSummary = false
+  } = options;
+
+  if (value == null) return null;
+
+  const valueType = typeof value;
+  if (valueType === 'string' || valueType === 'number' || valueType === 'boolean') {
     return value;
   }
-  if (objectRenderer === 'inspect') return nodeInspect(value);
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return value.toString();
+  if (valueType === 'bigint') return value.toString();
+  if (valueType === 'symbol') return value.toString();
+  if (valueType === 'function') {
+    return `[Function ${(value as { name?: string }).name || 'anonymous'}]`;
   }
+
   if (value instanceof Date) return value.toISOString();
-  if (value instanceof Error && (exceptionMode === 'raw' || exceptionMode === 'semconv')) {
-    return JSON.stringify(serializeValue(value));
+  if (value instanceof Error) return serializeValue(value, seen);
+  if (value instanceof Uint8Array) {
+    return bytesAsSummary ? `[${value.constructor.name} length=${value.byteLength}]` : value;
   }
-  return JSON.stringify(value);
+
+  if (typeof value !== 'object') return String(value);
+  if (seen.has(value)) return '[Circular]';
+  if (depth >= maxDepth) return '[MaxDepth]';
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      normalizeLogValue(item, { seen, depth: depth + 1, maxDepth, maxKeys, bytesAsSummary })
+    );
+  }
+
+  if (value instanceof Map) {
+    const normalized: Record<string, unknown> = {};
+    let count = 0;
+    for (const [key, val] of value.entries()) {
+      if (count >= maxKeys) {
+        normalized.__truncated = true;
+        break;
+      }
+      normalized[String(key)] = normalizeLogValue(val, {
+        seen,
+        depth: depth + 1,
+        maxDepth,
+        maxKeys,
+        bytesAsSummary
+      });
+      count += 1;
+    }
+    return normalized;
+  }
+
+  if (value instanceof Set) {
+    return Array.from(value.values()).map((item) =>
+      normalizeLogValue(item, { seen, depth: depth + 1, maxDepth, maxKeys, bytesAsSummary })
+    );
+  }
+
+  const proto = Object.getPrototypeOf(value);
+  const isPlainObject = proto === Object.prototype || proto === null;
+  const normalized: Record<string, unknown> = {};
+
+  if (!isPlainObject && value.constructor?.name) {
+    normalized.__type = value.constructor.name;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0 && !isPlainObject) {
+    return nodeInspect(value);
+  }
+
+  for (const [index, [key, val]] of entries.entries()) {
+    if (index >= maxKeys) {
+      normalized.__truncated = true;
+      break;
+    }
+
+    normalized[key] = normalizeLogValue(val, {
+      seen,
+      depth: depth + 1,
+      maxDepth,
+      maxKeys,
+      bytesAsSummary
+    });
+  }
+
+  return normalized;
 }
 
-function convertMessageToArray(
-  message: readonly unknown[],
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode
-): AnyValue {
-  const body: (string | null | undefined)[] = [];
-  for (let i = 0; i < message.length; i += 2) {
-    const msg = message[i] as string;
-    body.push(msg);
-    if (message.length <= i + 1) break;
-    const val = message[i + 1];
-    body.push(convertToString(val, objectRenderer, exceptionMode));
-  }
-  return body;
-}
-
-function convertMessageToString(
-  message: readonly unknown[],
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode
-): AnyValue {
+function convertMessageToText(record: LogRecord): AnyValue {
+  const { message } = record;
   let body = '';
   for (let i = 0; i < message.length; i += 2) {
     const msg = message[i] as string;
     body += msg;
     if (message.length <= i + 1) break;
-    const val = message[i + 1];
-    const extra = convertToString(val, objectRenderer, exceptionMode);
-    body += extra ?? JSON.stringify(extra);
+
+    const value = message[i + 1];
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      body += value.toString();
+      continue;
+    }
+    if (value instanceof Date) {
+      body += value.toISOString();
+    }
   }
-  return body;
+
+  const trimmed = body.trimEnd().replace(/[:：,，]\s*$/, '');
+  return trimmed || getStructuredLogFallback(record);
 }
 
-function convertMessageToCustomBodyFormat(
-  message: readonly unknown[],
-  objectRenderer: ObjectRenderer,
-  exceptionMode: ExceptionAttributeMode,
-  bodyFormatter: BodyFormatter
-): AnyValue {
-  const body = message.map((msg) => convertToString(msg, objectRenderer, exceptionMode));
-  return bodyFormatter(body);
+function getRawMessageText(record: LogRecord): string {
+  if (typeof record.rawMessage === 'string') {
+    return record.rawMessage;
+  }
+
+  return Array.from(record.rawMessage).join('');
+}
+
+function getStructuredLogFallback(record: LogRecord): string {
+  const rawMessage = getRawMessageText(record);
+  return rawMessage === '{*}' ? 'structured log' : rawMessage;
+}
+
+function convertRecordToStructuredBody(record: LogRecord): AnyValue {
+  const body: Record<string, AnyValue> = {
+    __log_message: convertMessageToText(record)
+  };
+
+  for (const [key, value] of Object.entries(record.properties ?? {})) {
+    if (reservedStructuredBodyKeys.has(key)) continue;
+
+    const convertedValue = convertValueToAnyValue(value);
+    if (convertedValue !== null) {
+      body[key] = convertedValue;
+    }
+  }
+
+  return body;
 }
 
 class DiagLoggerAdaptor implements DiagLogger {

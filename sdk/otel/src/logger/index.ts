@@ -1,13 +1,7 @@
 export { configureLogger, disposeLogger, getLogger } from './client';
 export { withContext, withCategoryPrefix } from '@logtape/logtape';
 export { getOpenTelemetrySink } from './otel';
-export type {
-  BodyFormatter,
-  ExceptionAttributeMode,
-  ObjectRenderer,
-  OpenTelemetrySink,
-  OpenTelemetrySinkOptions
-} from './otel';
+export type { OpenTelemetrySink, OpenTelemetrySinkOptions } from './otel';
 export type {
   ConsoleLoggerOptions,
   LogCategory,
