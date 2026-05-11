@@ -165,6 +165,7 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
+  relatedAppCount?: number;
 };
 
 export type AppDetailType = AppSchemaType & {

@@ -64,6 +64,11 @@ export const resumeInheritPer = (appId: string) =>
 
 export const changeOwner = (data: AppChangeOwnerBody) => POST(`/proApi/core/app/changeOwner`, data);
 
+export const getAppsByToolId = (toolId: string) =>
+  GET<import('@/pages/api/core/app/appsByToolId').AppsByToolIdItem[]>(
+    `/core/app/appsByToolId?toolId=${toolId}`
+  );
+
 /**
  * 导出应用为 SKILL
  */
