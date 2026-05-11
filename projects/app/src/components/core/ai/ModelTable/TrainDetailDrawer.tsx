@@ -458,7 +458,6 @@ const TrainDetailDrawer = ({
 
       return (
         <Flex flexDirection={'column'} gap={1}>
-          {renderMetricRow('Precision@5', metrics.precision5Before, metrics.precision5After, true)}
           {renderMetricRow(
             'Precision@10',
             metrics.precision10Before,
