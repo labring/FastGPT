@@ -139,7 +139,7 @@ export const FlowNodeOutputItemTypeSchema = z.object({
     .function({
       input: z.tuple([
         z.object({
-          inputs: z.array(FlowNodeInputItemTypeSchema),
+          inputs: z.custom<FlowNodeInputItemType[]>(),
           llmModelMap: z.record(z.string(), LLMModelItemSchema)
         })
       ]),
