@@ -142,7 +142,7 @@ export const insertDatasetDataPrecomputedVector = async ({
     })
   );
 
-  teamVectorCache.incr(props.teamId, insertIds.length);
+  await teamVectorCache.invalidate(props.teamId);
 
   return {
     tokens: 0,

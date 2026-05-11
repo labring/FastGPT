@@ -134,41 +134,49 @@ const QuoteItem = ({
               </Flex>
             </MyTooltip>
           )}
-          {score.secondaryScore.map((item, i) => (
-            <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
-              <Box fontSize={'xs'}>
-                <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
-                  <Box
-                    px={'5px'}
-                    borderWidth={'1px'}
-                    borderRadius={'sm'}
-                    mr={'2px'}
-                    {...(scoreTheme[i] && scoreTheme[i])}
-                  >
-                    <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
-                  </Box>
-                  <Box transform={'scale(0.9)'}>
-                    {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
-                  </Box>
-                </Flex>
-                <Box h={'4px'}>
-                  {SearchScoreTypeMap[item.type]?.showScore && (
-                    <Progress
-                      value={item.value * 100}
-                      h={'4px'}
-                      w={'100%'}
-                      size="sm"
-                      borderRadius={'20px'}
-                      {...(scoreTheme[i] && {
-                        colorScheme: scoreTheme[i].colorScheme
+          {score.secondaryScore.map((item, i) => {
+            const theme = scoreTheme[i];
+
+            return (
+              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
+                <Box fontSize={'xs'}>
+                  <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                    <Box
+                      px={'5px'}
+                      borderWidth={'1px'}
+                      borderRadius={'sm'}
+                      mr={'2px'}
+                      {...(theme && {
+                        color: theme.color,
+                        bg: theme.bg,
+                        borderColor: theme.borderColor
                       })}
-                      bg="#E8EBF0"
-                    />
-                  )}
+                    >
+                      <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
+                    </Box>
+                    <Box transform={'scale(0.9)'}>
+                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
+                    </Box>
+                  </Flex>
+                  <Box h={'4px'}>
+                    {SearchScoreTypeMap[item.type]?.showScore && (
+                      <Progress
+                        value={item.value * 100}
+                        h={'4px'}
+                        w={'100%'}
+                        size="sm"
+                        borderRadius={'20px'}
+                        {...(theme && {
+                          colorScheme: theme.colorScheme
+                        })}
+                        bg="#E8EBF0"
+                      />
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </MyTooltip>
-          ))}
+              </MyTooltip>
+            );
+          })}
         </Flex>
 
         <Box flex={'1 0 0'}>
