@@ -63,6 +63,14 @@ const RequiredFieldLabel = ({ children, ...props }: FlexProps & { children: Reac
   </Flex>
 );
 
+const formatIndexesForRebuild = (indexes: InputDataType['indexes'] = []) =>
+  indexes
+    .filter((item) => !!item.text?.trim())
+    .map(({ text, type }) => ({
+      text,
+      ...(type && { type })
+    }));
+
 const InputDataModal = ({
   collectionId,
   dataId,
@@ -200,7 +208,7 @@ const InputDataModal = ({
         dataId,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
-        indexes: e.indexes.filter((item) => !!item.text?.trim())
+        indexes: formatIndexesForRebuild(e.indexes)
       };
 
       await putDatasetDataById(updateData);
