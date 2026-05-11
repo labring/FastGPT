@@ -6,7 +6,6 @@ import {
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -14,10 +13,7 @@ import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
-import {
-  VariableInputEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -30,9 +26,13 @@ import {
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import {
+  getDebugInputFormProps,
+  getDebugInputFormValue,
+  getDebugRuntimeInputs
+} from './useDebugInput';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -159,15 +159,7 @@ export const useDebug = () => {
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
         nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
-          const isReference = checkInputIsReference(input);
-          if (isReference) {
-            acc[input.key] = undefined;
-          } else if (typeof input.value === 'object') {
-            acc[input.key] = JSON.stringify(input.value, null, 2);
-          } else {
-            acc[input.key] = input.value;
-          }
-
+          acc[input.key] = getDebugInputFormValue(input);
           return acc;
         }, {}),
         variables: defaultGlobalVariables
@@ -188,27 +180,9 @@ export const useDebug = () => {
           node.nodeId === runtimeNode.nodeId
             ? {
                 ...runtimeNode,
-                inputs: runtimeNode.inputs.map((input) => {
-                  let parseValue = (() => {
-                    try {
-                      if (
-                        input.valueType === WorkflowIOValueTypeEnum.string ||
-                        input.valueType === WorkflowIOValueTypeEnum.number ||
-                        input.valueType === WorkflowIOValueTypeEnum.boolean
-                      ) {
-                        return data.nodeVariables[input.key];
-                      }
-
-                      return JSON.parse(data.nodeVariables[input.key]);
-                    } catch (e) {
-                      return data.nodeVariables[input.key];
-                    }
-                  })();
-
-                  return {
-                    ...input,
-                    value: parseValue ?? input.value
-                  };
+                inputs: getDebugRuntimeInputs({
+                  inputs: runtimeNode.inputs,
+                  nodeVariables: data.nodeVariables
                 })
               }
             : node
@@ -263,19 +237,23 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
-            {renderInputs.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                label={item.label}
-                required={item.required}
-                description={t(item.placeholder || item.description)}
-                inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                form={variablesForm}
-                fieldName={`nodeVariables.${item.key}`}
-                bg={'myGray.50'}
-              />
-            ))}
+            {renderInputs.map((item) => {
+              const inputProps = getDebugInputFormProps(item);
+
+              return (
+                <LabelAndFormRender
+                  {...inputProps}
+                  key={item.key}
+                  label={item.label}
+                  required={item.required}
+                  description={t(item.placeholder || item.description)}
+                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                  form={variablesForm}
+                  fieldName={`nodeVariables.${item.key}`}
+                  bg={'myGray.50'}
+                />
+              );
+            })}
           </Box>
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
