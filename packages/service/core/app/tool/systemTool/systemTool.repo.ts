@@ -34,6 +34,7 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { getSystemToolWithVersionFallback } from './runtime';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -123,12 +124,14 @@ export class SystemToolRepo {
     pluginId,
     version,
     source = 'system',
-    lang
+    lang,
+    fallbackToLatestVersion = false
   }: {
     pluginId: string;
     version?: string;
     source?: string;
     lang?: `${LangEnum}`;
+    fallbackToLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
     const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
@@ -191,7 +194,9 @@ export class SystemToolRepo {
     }
 
     // System tool
-    const tool = await pluginClient.getTool({
+    const tool = await (
+      fallbackToLatestVersion ? getSystemToolWithVersionFallback : pluginClient.getTool
+    )({
       pluginId: parentPluginId,
       version,
       source
@@ -352,7 +357,7 @@ export class SystemToolRepo {
     const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
 
     if (!dbTool?.customConfig?.associatedPluginId) {
-      const tool = await pluginClient.getTool({
+      const tool = await getSystemToolWithVersionFallback({
         pluginId: parentPluginId,
         version,
         source

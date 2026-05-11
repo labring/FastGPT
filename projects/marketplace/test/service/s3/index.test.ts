@@ -14,6 +14,17 @@ describe('marketplace s3 key helpers', () => {
     );
   });
 
+  it('stores source-scoped package keys with the stable package filename', () => {
+    expect(
+      getPkgObjectKey({
+        source: 'official',
+        pluginId: 'tool/name',
+        version: '1.0.0 beta',
+        etag: 'etag/1'
+      })
+    ).toBe('pkgs/official/tool%2Fname@1.0.0%20beta@etag%2F1.pkg');
+  });
+
   it('builds a stable package download filename', () => {
     expect(getPkgFilename({ pluginId: 'tool-a', version: '1.0.0', etag: 'etag-1' })).toBe(
       'tool-a@1.0.0@etag-1.pkg'
@@ -26,10 +37,27 @@ describe('marketplace s3 key helpers', () => {
     );
   });
 
+  it('encodes source-scoped manifest object keys', () => {
+    expect(
+      getToolManifestObjectKey({ source: 'official', pluginId: 'tool/name', version: '2.0.0' })
+    ).toBe('marketplace/tools/official/tool%2Fname/2.0.0.json');
+  });
+
   it('builds asset prefix with plugin id, version and etag', () => {
     expect(getPluginAssetPrefix({ pluginId: 'tool/name', version: '1.0.0', etag: 'etag/1' })).toBe(
       'system/plugin/tools/tool%2Fname/1.0.0/etag%2F1'
     );
+  });
+
+  it('builds source-scoped asset prefix', () => {
+    expect(
+      getPluginAssetPrefix({
+        source: 'official',
+        pluginId: 'tool/name',
+        version: '1.0.0',
+        etag: 'etag/1'
+      })
+    ).toBe('official/plugin/tools/tool%2Fname/1.0.0/etag%2F1');
   });
 
   it('drops unsafe relative path segments and encodes asset filenames', () => {

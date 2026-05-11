@@ -11,16 +11,23 @@ const s3Mocks = vi.hoisted(() => ({
   downloadBufferFromS3: vi.fn(),
   getPkgDownloadURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
   getPkgFilename: vi.fn(({ pluginId, version, etag }) => `${pluginId}@${version}@${etag}.pkg`),
-  getPkgObjectKey: vi.fn(({ pluginId, version }) => `pkgs/${pluginId}/${version}.pkg`),
-  getPluginAssetObjectKey: vi.fn(({ pluginId, version, etag, filePath }) =>
-    ['assets', pluginId, version, etag, ...filePath].join('/')
+  getPkgObjectKey: vi.fn(({ source, pluginId, version, filename }) =>
+    source && filename
+      ? `pkgs/${source}/${filename}`
+      : `pkgs/${pluginId}/${version}.pkg`
   ),
-  getPluginAssetPrefix: vi.fn(({ pluginId, version, etag }) =>
-    ['assets', pluginId, version, etag].join('/')
+  getPluginAssetObjectKey: vi.fn(({ source, pluginId, version, etag, filePath }) =>
+    [source ?? 'assets', pluginId, version, etag, ...filePath].join('/')
+  ),
+  getPluginAssetPrefix: vi.fn(({ source, pluginId, version, etag }) =>
+    [source ?? 'assets', pluginId, version, etag].join('/')
   ),
   getPublicURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
   getToolManifestObjectKey: vi.fn(
-    ({ pluginId, version }) => `marketplace/tools/${pluginId}/${version}.json`
+    ({ source, pluginId, version }) =>
+      source
+        ? `marketplace/tools/${source}/${pluginId}/${version}.json`
+        : `marketplace/tools/${pluginId}/${version}.json`
   ),
   uploadJsonToS3: vi.fn()
 }));
@@ -66,16 +73,22 @@ vi.mock('../../../src/service/logger', () => ({
 const createIndex = ({
   pluginId = 'tool-a',
   version = '1.0.0',
-  etag = `etag-${version}`
+  etag = `etag-${version}`,
+  source,
+  filename
 }: {
   pluginId?: string;
   version?: string;
   etag?: string;
+  source?: string;
+  filename?: string;
 } = {}) => ({
   type: 'tool' as const,
   pluginId,
   version,
   etag,
+  ...(source ? { source } : {}),
+  ...(filename ? { filename } : {}),
   createTime: new Date('2024-01-01T00:00:00.000Z'),
   updateTime: new Date('2024-01-02T00:00:00.000Z')
 });
@@ -94,6 +107,7 @@ const createManifest = (index = createIndex()) => ({
   downloadUrl: `https://cdn.example.com/${index.pluginId}/${index.version}.pkg`,
   readmeUrl: `https://cdn.example.com/${index.pluginId}/README.md`,
   filename: `${index.pluginId}@${index.version}@${index.etag}.pkg`,
+  source: index.source ?? 'official',
   size: 10
 });
 
@@ -211,7 +225,12 @@ describe('PluginRepo', () => {
   it('publishes manifest index and deletes old assets when etag changes', async () => {
     const existing = createIndex({ pluginId: 'tool-a', version: '1.0.0', etag: 'old-etag' });
     const record = createManifest(
-      createIndex({ pluginId: 'tool-a', version: '1.0.0', etag: 'new-etag' })
+      createIndex({
+        pluginId: 'tool-a',
+        version: '1.0.0',
+        etag: 'new-etag',
+        source: 'official'
+      })
     );
     modelMocks.findOne.mockReturnValue(mockLean(existing));
     modelMocks.updateOne.mockResolvedValue({ acknowledged: true });
@@ -221,17 +240,27 @@ describe('PluginRepo', () => {
     const { PluginRepo } = await import('../../../src/service/plugin/repo');
     await new PluginRepo().publishToolManifest(record);
 
+    const indexFilter = {
+      type: 'tool',
+      pluginId: 'tool-a',
+      version: '1.0.0'
+    };
+
+    expect(modelMocks.findOne).toHaveBeenCalledWith(indexFilter);
     expect(s3Mocks.uploadJsonToS3).toHaveBeenCalledWith({
-      objectKey: 'marketplace/tools/tool-a/1.0.0.json',
+      objectKey: 'marketplace/tools/official/tool-a/1.0.0.json',
       data: {
         ...record,
         createTime: existing.createTime
       }
     });
     expect(modelMocks.updateOne).toHaveBeenCalledWith(
-      { pluginId: 'tool-a', version: '1.0.0' },
+      {
+        pluginId: 'tool-a',
+        version: '1.0.0'
+      },
       expect.objectContaining({
-        $set: expect.objectContaining({ etag: 'new-etag' }),
+        $set: expect.objectContaining({ etag: 'new-etag', source: 'official' }),
         $setOnInsert: { createTime: existing.createTime }
       }),
       { strict: false, upsert: true }
@@ -239,5 +268,36 @@ describe('PluginRepo', () => {
     expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith(
       'assets/tool-a/1.0.0/old-etag/'
     );
+  });
+
+  it('rejects non-official manifests when the toolId already exists under another source', async () => {
+    const record = createManifest(
+      createIndex({
+        pluginId: 'tool-a',
+        version: '2.0.0',
+        etag: 'new-etag',
+        source: 'community'
+      })
+    );
+
+    modelMocks.findOne
+      .mockReturnValueOnce(mockLean(null))
+      .mockReturnValueOnce(
+        mockLean(createIndex({ pluginId: 'tool-a', version: '1.0.0', source: 'official' }))
+      );
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+
+    await expect(new PluginRepo().publishToolManifest(record)).rejects.toThrow(
+      'Marketplace toolId already exists: tool-a'
+    );
+
+    expect(modelMocks.findOne).toHaveBeenNthCalledWith(2, {
+      type: 'tool',
+      pluginId: 'tool-a',
+      source: { $ne: 'community' }
+    });
+    expect(s3Mocks.uploadJsonToS3).not.toHaveBeenCalled();
+    expect(modelMocks.updateOne).not.toHaveBeenCalled();
   });
 });

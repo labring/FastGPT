@@ -102,8 +102,28 @@ const getPublicUrlStorage = () => {
 };
 
 const encodeObjectKeyPart = (value: string) => encodeURIComponent(value);
+const encodePkgFilename = (value: string) => encodeObjectKeyPart(value).replace(/%40/g, '@');
 
-export const getPkgObjectKey = ({ pluginId, version }: { pluginId: string; version: string }) => {
+export const getPkgObjectKey = ({
+  source,
+  pluginId,
+  version,
+  etag,
+  filename
+}: {
+  source?: string;
+  pluginId: string;
+  version: string;
+  etag?: string;
+  filename?: string;
+}) => {
+  const pkgFilename =
+    filename || (etag ? getPkgFilename({ pluginId, version, etag }) : undefined);
+
+  if (source && pkgFilename) {
+    return ['pkgs', encodeObjectKeyPart(source), encodePkgFilename(pkgFilename)].join('/');
+  }
+
   return `pkgs/${encodeObjectKeyPart(pluginId)}/${encodeObjectKeyPart(version)}.pkg`;
 };
 
@@ -120,26 +140,42 @@ export const getPkgFilename = ({
 };
 
 export const getToolManifestObjectKey = ({
+  source,
   pluginId,
   version
 }: {
+  source?: string;
   pluginId: string;
   version: string;
 }) => {
+  if (source) {
+    const manifestPath = [
+      'marketplace',
+      'tools',
+      encodeObjectKeyPart(source),
+      encodeObjectKeyPart(pluginId),
+      encodeObjectKeyPart(version)
+    ].join('/');
+
+    return `${manifestPath}.json`;
+  }
+
   return `marketplace/tools/${encodeObjectKeyPart(pluginId)}/${encodeObjectKeyPart(version)}.json`;
 };
 
 export const getPluginAssetPrefix = ({
+  source,
   pluginId,
   version,
   etag
 }: {
+  source?: string;
   pluginId: string;
   version: string;
   etag: string;
 }) => {
   return [
-    'system',
+    source ? encodeObjectKeyPart(source) : 'system',
     'plugin',
     'tools',
     encodeObjectKeyPart(pluginId),
@@ -149,11 +185,13 @@ export const getPluginAssetPrefix = ({
 };
 
 export const getPluginAssetObjectKey = ({
+  source,
   pluginId,
   version,
   etag,
   filePath
 }: {
+  source?: string;
   pluginId: string;
   version: string;
   etag: string;
@@ -164,6 +202,7 @@ export const getPluginAssetObjectKey = ({
     .filter((item) => item && item !== '.' && item !== '..');
   return [
     getPluginAssetPrefix({
+      source,
       pluginId,
       version,
       etag

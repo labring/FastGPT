@@ -12,9 +12,13 @@ const repoMocks = vi.hoisted(() => ({
 const s3Mocks = vi.hoisted(() => ({
   getPkgFilename: vi.fn(({ pluginId, version, etag }) => `${pluginId}@${version}@${etag}.pkg`),
   getPkgDownloadURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
-  getPkgObjectKey: vi.fn(({ pluginId, version }) => `pkgs/${pluginId}/${version}.pkg`),
-  getPluginAssetObjectKey: vi.fn(({ pluginId, version, etag, filePath }) =>
-    ['assets', pluginId, version, etag, ...filePath].join('/')
+  getPkgObjectKey: vi.fn(({ source, pluginId, version, filename }) =>
+    source && filename
+      ? `pkgs/${source}/${filename}`
+      : `pkgs/${pluginId}/${version}.pkg`
+  ),
+  getPluginAssetObjectKey: vi.fn(({ source, pluginId, version, etag, filePath }) =>
+    [source ?? 'assets', pluginId, version, etag, ...filePath].join('/')
   ),
   getPublicURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
   uploadBufferToS3: vi.fn(),
@@ -86,20 +90,23 @@ describe('uploadMarketplacePkg', () => {
     dataMocks.refreshToolList.mockResolvedValue(undefined);
 
     const { uploadMarketplacePkg } = await import('../../../src/service/tool/upload');
-    const result = await uploadMarketplacePkg({ buffer: Buffer.from('pkg') });
+    const result = await uploadMarketplacePkg({
+      buffer: Buffer.from('pkg'),
+      source: 'official'
+    });
 
     expect(sdkMocks.parsePkg).toHaveBeenCalledWith({
       input: Buffer.from('pkg'),
       getAccessURL: expect.any(Function)
     });
     expect(s3Mocks.uploadPkgToS3).toHaveBeenCalledWith({
-      objectKey: 'pkgs/tool-a/1.2.3.pkg',
+      objectKey: 'pkgs/official/tool-a@1.2.3@etag-123.pkg',
       buffer: Buffer.from('pkg'),
       filename: 'tool-a@1.2.3@etag-123.pkg'
     });
     expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledTimes(3);
     expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledWith({
-      objectKey: 'assets/tool-a/1.2.3/etag-123/README.md',
+      objectKey: 'official/tool-a/1.2.3/etag-123/README.md',
       buffer: Buffer.from('# readme'),
       filename: 'README.md',
       contentType: 'text/plain'
@@ -110,8 +117,9 @@ describe('uploadMarketplacePkg', () => {
         pluginId: 'tool-a',
         version: '1.2.3',
         etag: 'etag-123',
-        downloadObjectKey: 'pkgs/tool-a/1.2.3.pkg',
-        downloadUrl: 'https://cdn.example.com/pkgs/tool-a/1.2.3.pkg',
+        source: 'official',
+        downloadObjectKey: 'pkgs/official/tool-a@1.2.3@etag-123.pkg',
+        downloadUrl: 'https://cdn.example.com/pkgs/official/tool-a@1.2.3@etag-123.pkg',
         filename: 'tool-a@1.2.3@etag-123.pkg',
         size: 3
       })
@@ -121,7 +129,8 @@ describe('uploadMarketplacePkg', () => {
       pluginId: 'tool-a',
       version: '1.2.3',
       etag: 'etag-123',
-      downloadUrl: 'https://cdn.example.com/pkgs/tool-a/1.2.3.pkg',
+      source: 'official',
+      downloadUrl: 'https://cdn.example.com/pkgs/official/tool-a@1.2.3@etag-123.pkg',
       tool
     });
   });

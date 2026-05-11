@@ -52,11 +52,13 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     lang,
     // source: toolSetNode.toolConfig?.systemToolSet?.source,
     source: 'system',
-    version: toolSetNode.version
+    version: toolSetNode.version,
+    fallbackToLatestVersion: true
   });
 
   if (!tool.children) return [];
 
+  const runtimeVersion = tool.version || toolSetNode.version;
   const nodes = tool.children?.map((child) => {
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -64,7 +66,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       outputs: tool.outputs ?? [],
       name: child.name,
       nodeId: `${toolSetNode.nodeId}${child.id}`,
-      version: toolSetNode.version,
+      version: runtimeVersion,
       toolDescription: child.toolDescription,
       toolConfig: {
         systemTool: {

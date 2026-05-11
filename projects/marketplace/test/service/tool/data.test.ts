@@ -63,6 +63,7 @@ const createManifest = ({
   downloadUrl: `https://cdn.example.com/${pluginId}/${version}.pkg`,
   readmeUrl: `https://cdn.example.com/${pluginId}/README.md`,
   filename: `${pluginId}@${version}@${etag}.pkg`,
+  source: 'official',
   size: 12,
   createTime: new Date('2024-01-01T00:00:00.000Z'),
   updateTime: new Date('2024-01-02T00:00:00.000Z')
@@ -128,6 +129,7 @@ describe('marketplace tool data service', () => {
         version: '1.0.0',
         isLatestVersion: true,
         isToolset: true,
+        source: 'official',
         downloadCount: 7,
         downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
       },
@@ -139,6 +141,7 @@ describe('marketplace tool data service', () => {
         version: '1.0.0',
         author: 'FastGPT',
         tags: ['search'],
+        source: 'official',
         downloadCount: 0,
         downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
       }

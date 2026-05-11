@@ -3,6 +3,9 @@ import { PaginationSchema } from '../../../api';
 import { PluginToolTagSchema } from '../../../../core/plugin/type';
 import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 
+export const MarketplaceOfficialSource = 'official';
+export const MarketplacePkgSourceSchema = z.string().trim().min(1);
+
 const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
 
@@ -45,13 +48,19 @@ export type GetMarketplaceToolDetailResponseType = z.infer<typeof MarketplaceToo
 
 // Upload marketplace pkg
 export const UploadMarketplacePkgBodySchema = z.object({
-  file: z.any()
+  file: z.any(),
+  source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource)
 });
+export const UploadMarketplacePkgDataSchema = z.object({
+  source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource)
+});
+export type UploadMarketplacePkgDataType = z.infer<typeof UploadMarketplacePkgDataSchema>;
 
 export const UploadMarketplacePkgResponseSchema = z.object({
   pluginId: z.string(),
   version: z.string(),
   etag: z.string(),
+  source: MarketplacePkgSourceSchema,
   downloadUrl: z.string(),
   tool: z.record(z.string(), z.unknown())
 });

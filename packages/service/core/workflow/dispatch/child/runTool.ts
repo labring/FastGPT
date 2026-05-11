@@ -20,9 +20,9 @@ import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
 import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
-import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
+import { runSystemToolStreamWithVersionFallback } from '../../../app/tool/systemTool/runtime';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -103,7 +103,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const childId = toolConfig.systemTool.toolId.split('/')[1];
       let answerText = '';
 
-      const res = await pluginClient.runToolStream({
+      const res = await runSystemToolStreamWithVersionFallback({
         pluginId: formatToolId,
         version: version ?? '',
         source: 'system', // TODO: 后续用户调用时传 teamId

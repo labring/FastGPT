@@ -20,9 +20,9 @@ import { parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
+import { runSystemToolStreamWithVersionFallback } from '../../../../../../app/tool/systemTool/runtime';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -116,8 +116,9 @@ export const dispatchTool = async ({
         tmbId: runningAppInfo.tmbId
       }).generateToken();
 
-      const res = await pluginClient.runToolStream({
+      const res = await runSystemToolStreamWithVersionFallback({
         pluginId: formatToolId,
+        version: version ?? '',
         source: 'system', // TODO: 后续 source 需要从节点配置中获取到
         input: Object.fromEntries(Object.entries(params)),
         secrets: inputConfigParams,

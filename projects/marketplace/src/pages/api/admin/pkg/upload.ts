@@ -3,6 +3,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { AUTH_TOKEN } from '@/service/auth';
 import { uploadMarketplacePkg } from '@/service/tool/upload';
 import {
+  UploadMarketplacePkgDataSchema,
   UploadMarketplacePkgResponseSchema,
   type UploadMarketplacePkgResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
@@ -58,14 +59,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendJson(res, 401, null, 'Unauthorized');
     }
 
-    const result = await multer.resolveFormData<Record<string, never>>({
+    const result = await multer.resolveFormData<Record<string, unknown>>({
       request: req,
       allowedExtensions: ['.pkg']
     });
     filepaths.push(result.fileMetadata.path);
 
+    const data = UploadMarketplacePkgDataSchema.parse(result.data);
     const response = await uploadMarketplacePkg({
-      buffer: result.getBuffer()
+      buffer: result.getBuffer(),
+      source: data.source
     });
 
     return sendJson(res, 200, UploadMarketplacePkgResponseSchema.parse(response));

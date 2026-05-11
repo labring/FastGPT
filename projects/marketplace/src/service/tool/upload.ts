@@ -5,6 +5,10 @@ import {
   type ParsedPkgFile,
   type ToolDetailType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
+import {
+  MarketplaceOfficialSource,
+  MarketplacePkgSourceSchema
+} from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import { MarketplaceToolManifestZodSchema } from '../mongo/models/tool';
 import { pluginRepo } from '../plugin/repo';
 import {
@@ -28,16 +32,19 @@ const streamToBuffer = async (stream: Readable) => {
 
 const uploadParsedFile = async ({
   file,
+  source,
   pluginId,
   version,
   etag
 }: {
   file: ParsedPkgFile;
+  source: string;
   pluginId: string;
   version: string;
   etag: string;
 }) => {
   const objectKey = getPluginAssetObjectKey({
+    source,
     pluginId,
     version,
     etag,
@@ -63,11 +70,20 @@ const formatPkgParseError = (error: unknown) => {
   return error instanceof Error ? error.message : String(error);
 };
 
-export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
+export const uploadMarketplacePkg = async ({
+  buffer,
+  source: rawSource = MarketplaceOfficialSource
+}: {
+  buffer: Buffer;
+  source?: string;
+}) => {
+  const source = MarketplacePkgSourceSchema.parse(rawSource);
+
   const [parsedPkg, parseError] = await parsePkg({
     input: buffer,
     getAccessURL: async ({ pluginId, version, etag, filePath }) => {
       const objectKey = getPluginAssetObjectKey({
+        source,
         pluginId,
         version,
         etag,
@@ -86,14 +102,16 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
   }
 
   const tool = parsedPkg.info as ToolDetailType;
-  const pkgObjectKey = getPkgObjectKey({
-    pluginId: tool.pluginId,
-    version: tool.version
-  });
   const pkgFilename = getPkgFilename({
     pluginId: tool.pluginId,
     version: tool.version,
     etag: tool.etag
+  });
+  const pkgObjectKey = getPkgObjectKey({
+    source,
+    pluginId: tool.pluginId,
+    version: tool.version,
+    filename: pkgFilename
   });
   const downloadUrl = getPkgDownloadURLByKey(pkgObjectKey);
 
@@ -107,6 +125,7 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
       ? [
           uploadParsedFile({
             file: parsedPkg.files.readme,
+            source,
             pluginId: tool.pluginId,
             version: tool.version,
             etag: tool.etag
@@ -116,6 +135,7 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
     ...(parsedPkg.files.logos ?? []).map((file) =>
       uploadParsedFile({
         file,
+        source,
         pluginId: tool.pluginId,
         version: tool.version,
         etag: tool.etag
@@ -124,6 +144,7 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
     ...(parsedPkg.files.assets ?? []).map((file) =>
       uploadParsedFile({
         file,
+        source,
         pluginId: tool.pluginId,
         version: tool.version,
         etag: tool.etag
@@ -137,6 +158,7 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
     pluginId: tool.pluginId,
     version: tool.version,
     etag: tool.etag,
+    source,
     tool,
     downloadObjectKey: pkgObjectKey,
     downloadUrl,
@@ -155,6 +177,7 @@ export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
     pluginId: record.pluginId,
     version: record.version,
     etag: record.etag,
+    source: record.source,
     downloadUrl: record.downloadUrl,
     tool: record.tool
   };

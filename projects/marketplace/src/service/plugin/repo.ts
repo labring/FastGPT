@@ -19,6 +19,7 @@ import {
   uploadJsonToS3
 } from '../s3';
 import { getLogger, LogCategories } from '../logger';
+import { MarketplaceOfficialSource } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 
 const logger = getLogger(LogCategories.MODULE.API);
 
@@ -46,9 +47,12 @@ const getManifestCache = () => {
 };
 
 const getCacheKey = (
-  index: Pick<MarketplaceToolIndexSchemaType, 'pluginId' | 'version' | 'etag'>
+  index: Pick<MarketplaceToolIndexSchemaType, 'pluginId' | 'version' | 'etag' | 'source'>
 ) =>
-  `${index.pluginId}:${index.version}:${index.etag}`;
+  `${index.source ?? MarketplaceOfficialSource}:${index.pluginId}:${index.version}:${index.etag}`;
+
+const getIndexSource = (index: Pick<MarketplaceToolIndexSchemaType, 'source'>) =>
+  index.source ?? MarketplaceOfficialSource;
 
 export const compareVersions = (a: string, b: string) => {
   const aParts = a.split(/[.-]/).map((item) => Number(item));
@@ -71,13 +75,16 @@ const getLatestToolIndexes = (indexes: MarketplaceToolIndexSchemaType[]) => {
   const latestIndexMap = new Map<string, MarketplaceToolIndexSchemaType>();
 
   for (const index of indexes) {
-    const existing = latestIndexMap.get(index.pluginId);
+    const latestKey = index.pluginId;
+    const existing = latestIndexMap.get(latestKey);
     if (!existing || compareVersions(index.version, existing.version) > 0) {
-      latestIndexMap.set(index.pluginId, index);
+      latestIndexMap.set(latestKey, index);
     }
   }
 
-  return Array.from(latestIndexMap.values()).sort((a, b) => a.pluginId.localeCompare(b.pluginId));
+  return Array.from(latestIndexMap.values()).sort((a, b) => {
+    return a.pluginId.localeCompare(b.pluginId);
+  });
 };
 
 export class PluginRepo {
@@ -99,6 +106,20 @@ export class PluginRepo {
     }).lean();
 
     return index ? MarketplaceToolIndexZodSchema.parse(index) : null;
+  }
+
+  private async ensureNonOfficialToolIdAvailable(record: MarketplaceToolManifestSchemaType) {
+    if (record.source === MarketplaceOfficialSource) return;
+
+    const existing = await MongoMarketplaceTool.findOne({
+      type: 'tool',
+      pluginId: record.pluginId,
+      source: { $ne: record.source }
+    }).lean();
+
+    if (existing) {
+      throw new Error(`Marketplace toolId already exists: ${record.pluginId}`);
+    }
   }
 
   async listToolVersionIndexes(toolId?: string) {
@@ -124,6 +145,8 @@ export class PluginRepo {
     const recordToPublish = existing ? { ...record, createTime: existing.createTime } : record;
     const manifestObjectKey = getToolManifestObjectKey(record);
 
+    await this.ensureNonOfficialToolIdAvailable(record);
+
     await uploadJsonToS3({
       objectKey: manifestObjectKey,
       data: recordToPublish
@@ -140,6 +163,8 @@ export class PluginRepo {
           pluginId: record.pluginId,
           version: record.version,
           etag: record.etag,
+          source: record.source,
+          filename: record.filename,
           updateTime: record.updateTime
         },
         $setOnInsert: {
@@ -150,7 +175,6 @@ export class PluginRepo {
           downloadObjectKey: '',
           downloadUrl: '',
           readmeUrl: '',
-          filename: '',
           size: ''
         }
       },
@@ -167,6 +191,7 @@ export class PluginRepo {
 
     if (existing && existing.etag !== record.etag) {
       await this.deleteToolAssets({
+        source: existing.source,
         pluginId: record.pluginId,
         version: record.version,
         etag: existing.etag
@@ -181,7 +206,7 @@ export class PluginRepo {
     }
 
     for (const key of getManifestCache().keys()) {
-      const [pluginId, version] = key.split(':');
+      const [, pluginId, version] = key.split(':');
       if (pluginId !== filter.pluginId) continue;
       if (filter.version && version !== filter.version) continue;
       getManifestCache().delete(key);
@@ -232,6 +257,7 @@ export class PluginRepo {
       input: buffer,
       getAccessURL: async ({ pluginId, version, etag, filePath }) => {
         const objectKey = getPluginAssetObjectKey({
+          source: index.source,
           pluginId,
           version,
           etag,
@@ -251,11 +277,12 @@ export class PluginRepo {
       pluginId: index.pluginId,
       version: index.version,
       etag: index.etag,
+      source: getIndexSource(index),
       tool,
       downloadObjectKey: pkgObjectKey,
       downloadUrl: getPkgDownloadURLByKey(pkgObjectKey),
       readmeUrl: tool.readmeUrl,
-      filename: getPkgFilename(index),
+      filename: index.filename ?? getPkgFilename(index),
       size: buffer.length,
       createTime: index.createTime,
       updateTime: index.updateTime
@@ -263,15 +290,17 @@ export class PluginRepo {
   }
 
   private async deleteToolAssets({
+    source,
     pluginId,
     version,
     etag
   }: {
+    source?: string;
     pluginId: string;
     version: string;
     etag: string;
   }) {
-    const prefix = `${getPluginAssetPrefix({ pluginId, version, etag })}/`;
+    const prefix = `${getPluginAssetPrefix({ source, pluginId, version, etag })}/`;
 
     try {
       const result = await deleteObjectsByPrefixFromS3(prefix);
