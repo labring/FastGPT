@@ -13,7 +13,11 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
-const ChatSliderList = () => {
+type Props = {
+  isShareMode?: boolean;
+};
+
+const ChatSliderList = ({ isShareMode }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
@@ -95,14 +99,16 @@ const ChatSliderList = () => {
             position={'relative'}
             key={item.id}
             alignItems={'center'}
-            px={4}
-            h={'44px'}
+            pl={'8px'}
+            pr={'12px'}
+            h={'36px'}
             cursor={'pointer'}
             userSelect={'none'}
-            borderRadius={'md'}
-            fontSize={'sm'}
+            borderRadius={'6px'}
+            fontSize={'13px'}
+            lineHeight={'36px'}
             _hover={{
-              bg: 'myGray.50',
+              bg: isShareMode ? '#EBEDF0' : 'myGray.50',
               '& .more': {
                 display: 'block'
               },
@@ -116,7 +122,7 @@ const ChatSliderList = () => {
             bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeChatId
               ? {
-                  backgroundColor: 'primary.50 !important',
+                  backgroundColor: 'primary.1 !important',
                   color: 'primary.600'
                 }
               : {
@@ -126,7 +132,7 @@ const ChatSliderList = () => {
                   }
                 })}
             {...(i !== concatHistory.length - 1 && {
-              mb: '8px'
+              mb: '4px'
             })}
           >
             <MyIcon

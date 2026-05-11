@@ -6,11 +6,8 @@ import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
@@ -44,21 +41,6 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import BuildingAnimation from '@/pageComponents/dataset/detail/components/BuildingAnimation';
 
 const ResponseTags = dynamic(() => import('./SfResponseTags'));
-
-const colorMap = {
-  [ChatStatusEnum.loading]: {
-    bg: 'myGray.100',
-    color: 'myGray.600'
-  },
-  [ChatStatusEnum.running]: {
-    bg: 'green.50',
-    color: 'green.700'
-  },
-  [ChatStatusEnum.finish]: {
-    bg: 'green.50',
-    color: 'green.700'
-  }
-};
 
 type BasicProps = {
   avatar?: string;
@@ -123,7 +105,9 @@ const AIContentCard = React.memo(function AIContentCard({
   onOpenCiteModal,
   hideCiteIcon,
   durationSeconds,
-  citeSourceMap
+  citeSourceMap,
+  statusBoxData,
+  debuggerMode
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
@@ -134,7 +118,14 @@ const AIContentCard = React.memo(function AIContentCard({
   hideCiteIcon?: boolean;
   durationSeconds?: number;
   citeSourceMap?: Map<string, CiteSourceInfo>;
+  statusBoxData?: BasicProps['statusBoxData'];
+  debuggerMode?: boolean;
 }) {
+  const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+
+  const showStatusTag =
+    !!statusBoxData?.status && statusBoxData && isLastChild && showRunningStatus && debuggerMode;
+
   return (
     <Flex flexDirection={'column'} gap={2}>
       {chatValue.map((value, i) => {
@@ -142,7 +133,16 @@ const AIContentCard = React.memo(function AIContentCard({
         const isLastValue = isLastChild && i === chatValue.length - 1;
 
         if (isLastValue && isChatting && !value.text?.content?.trim()) {
-          return <BuildingAnimation key={key} />;
+          return (
+            <Flex key={key} alignItems={'center'} gap={2}>
+              <BuildingAnimation size={12} />
+              {showStatusTag && (
+                <Box color={'myGray.600'} fontSize={'12px'}>
+                  {statusBoxData.name}
+                </Box>
+              )}
+            </Flex>
+          );
         }
 
         return (
@@ -212,7 +212,6 @@ const ChatItem = (props: Props) => {
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -241,11 +240,6 @@ const ChatItem = (props: Props) => {
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
-
-  const chatStatusMap = useMemo(() => {
-    if (!statusBoxData?.status) return;
-    return colorMap[statusBoxData.status];
-  }, [statusBoxData?.status]);
 
   /*
     1. The interactive node is divided into n dialog boxes.
@@ -355,10 +349,6 @@ const ChatItem = (props: Props) => {
     }
   );
 
-  // 调试场景需要显示节点运行状态
-  const showStatusTag =
-    !!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && props.debuggerMode;
-
   return (
     <Box
       data-chat-id={chat.dataId}
@@ -368,30 +358,6 @@ const ChatItem = (props: Props) => {
         }
       }}
     >
-      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {showStatusTag && (
-          <Flex
-            alignItems={'center'}
-            px={3}
-            py={'1.5px'}
-            borderRadius="md"
-            bg={chatStatusMap.bg}
-            fontSize={'sm'}
-          >
-            <Box
-              className={styles.statusAnimation}
-              bg={chatStatusMap.color}
-              w="8px"
-              h="8px"
-              borderRadius={'50%'}
-              mt={'1px'}
-            />
-            <Box ml={2} color={'myGray.600'}>
-              {statusBoxData.name}
-            </Box>
-          </Flex>
-        )}
-      </Flex>
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
         showFeedbackContent &&
@@ -457,6 +423,8 @@ const ChatItem = (props: Props) => {
                   hideCiteIcon={hideCiteIcon}
                   durationSeconds={chat.durationSeconds}
                   citeSourceMap={citeSourceMap}
+                  statusBoxData={statusBoxData}
+                  debuggerMode={props.debuggerMode}
                 />
                 {i === splitAiResponseResults.length - 1 && (
                   <ResponseTags

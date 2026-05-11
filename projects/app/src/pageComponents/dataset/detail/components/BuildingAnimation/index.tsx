@@ -2,10 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { keyframes } from '@emotion/react';
 
-const B = 4; // block size px
-const G = 2; // gap px
-const U = B + G; // 6px unit
-
 const BLUE = '#197DFF';
 const GREEN = '#66CC88';
 
@@ -68,7 +64,11 @@ const EXIT_MS = 180; // exit animation duration
 const ENTER_MS = 180; // enter animation duration
 const STAGGER_MS = 50; // delay between each block appearing
 
-const BuildingAnimation = () => {
+const BuildingAnimation = ({ size = 16 }: { size?: number }) => {
+  const B = size / 4; // block size: 1/4 of container
+  const G = size / 8; // gap: 1/8 of container
+  const U = B + G;
+
   const [frameIdx, setFrameIdx] = useState(0);
   const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
 
@@ -90,7 +90,7 @@ const BuildingAnimation = () => {
   );
 
   return (
-    <Box w="16px" h="16px" position="relative" flexShrink={0}>
+    <Box w={`${size}px`} h={`${size}px`} position="relative" flexShrink={0}>
       {blocks.map((block, i) => (
         <Box
           key={
@@ -104,7 +104,7 @@ const BuildingAnimation = () => {
           w={`${B}px`}
           h={`${B}px`}
           bg={block.color === 'blue' ? BLUE : GREEN}
-          borderRadius="1px"
+          borderRadius={`${B / 4}px`}
           sx={
             phase === 'enter'
               ? {
