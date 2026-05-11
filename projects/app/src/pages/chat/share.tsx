@@ -103,7 +103,6 @@ const OutLink = (props: Props) => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const histories = useContextSelector(ChatContext, (v) => v.histories);
-  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
@@ -185,30 +184,11 @@ const OutLink = (props: Props) => {
       const completionChatId = chatId || getNanoid();
       const histories_messages = messages.slice(-1);
 
-      // 立即生成标题并添加新会话到列表
-      const newTitle = getChatTitleFromChatMessage(
-        GPTMessages2Chats({ messages: histories_messages })[0]
-      );
       const isNewChat = !histories.find((h) => h.chatId === completionChatId);
 
       if (isNewChat && completionChatId) {
-        // 标记禁止加载，防止切换回来时重新加载空数据
         forbidLoadChatMap.current.set(completionChatId, true);
         forbidLoadChat.current = true;
-
-        // 立即添加到历史列表，使用用户输入前20字作为标题
-        // customTitle 设置为 newTitle，确保刷新页面后也使用固定标题
-        setHistories((state) => [
-          {
-            chatId: completionChatId,
-            appId,
-            title: newTitle,
-            updateTime: new Date(),
-            customTitle: newTitle,
-            top: false
-          },
-          ...state
-        ]);
       }
 
       //post message to report chat start
@@ -244,7 +224,11 @@ const OutLink = (props: Props) => {
         onChangeChatId(completionChatId, true);
       }
 
-      // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
+      const newTitle = getChatTitleFromChatMessage(
+        GPTMessages2Chats({ messages: histories_messages })[0]
+      );
+
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
       setChatBoxData((state) => ({
         ...state,
         title: newTitle
@@ -275,7 +259,6 @@ const OutLink = (props: Props) => {
       forbidLoadChat,
       onChangeChatId,
       histories,
-      setHistories,
       appId
     ]
   );
