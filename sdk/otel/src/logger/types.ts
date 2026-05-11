@@ -25,7 +25,6 @@ export type OtelLoggerOptions = {
   serviceName: string;
   url?: string;
   loggerName?: string;
-  messageType?: 'string' | 'array' | 'text';
 };
 
 export type LoggerConfigureOptions = {

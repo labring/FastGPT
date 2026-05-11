@@ -30,6 +30,8 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [

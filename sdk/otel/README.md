@@ -80,6 +80,14 @@ import { configureTracingFromEnv, getTracer } from '@fastgpt-sdk/otel/tracing';
 - `OTEL_TRACES_SAMPLER`
 - `OTEL_TRACES_SAMPLER_ARG`
 
+## logger OTel 输出
+
+OTel logger 默认会把日志事件写成结构化 `body`，把业务上下文保留在 body 中，`attributes` 只保留日志元信息。
+
+- `body` 形如 `{ __log_message, ...properties }`：`__log_message` 是人读摘要，properties 是结构化上下文。
+- `attributes` 不再复制 properties，只保留 `category` 等日志元信息，避免 body 与 attributes 重复。
+- 遇到 Map、Set、Error、BigInt、循环引用、class instance 等 JS 特有值时，会先安全归一成普通对象/数组/标量，避免出现 `[object Object]` 或序列化异常。
+
 ## 说明
 
 - 这个包当前是“整理好的统一入口”，不是“已经迁移完成的替换方案”。
