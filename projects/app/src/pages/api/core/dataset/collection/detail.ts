@@ -56,6 +56,12 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
 
   return GetCollectionDetailResponseSchema.parse({
     ...collection,
+    dataset: {
+      ...collection.dataset,
+      synonymFiles: (collection.dataset as any)?.synonymFiles?.map(
+        (id: any) => id?.toString?.() ?? id
+      )
+    },
     indexAmount: indexAmount ?? 0,
     ...getCollectionSourceData(collection),
     tags: await collectionTagsToTagLabel({
