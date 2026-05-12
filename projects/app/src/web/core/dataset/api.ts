@@ -490,13 +490,17 @@ export const postUpdateDatasetCollectionConfigByDatabase = (data: ApplyChangesBo
  * 检测变更 | 刷新数据源
  */
 export const postDetectDatabaseChanges = (data: { datasetId: string }) =>
-  POST<DetectChangesResponse>(`/core/dataset/database/detectChanges?datasetId=${data.datasetId}`);
+  POST<DetectChangesResponse>(
+    `/core/dataset/database/detectChanges?datasetId=${data.datasetId}`,
+    {},
+    { timeout: 600000 }
+  );
 
 /**
  * 创建数据库知识库数据集
  */
 export const postCreateDatabaseCollections = (data: CreateDatabaseCollectionsBody) => {
-  return POST(`/core/dataset/database/createCollections`, data);
+  return POST(`/core/dataset/database/createCollections`, data, { timeout: 600000 });
 };
 
 /**
@@ -504,7 +508,8 @@ export const postCreateDatabaseCollections = (data: CreateDatabaseCollectionsBod
  */
 export const postGetDatabaseConfiguration = (data: { datasetId: string }) =>
   GET<GetConfigurationResponse>(
-    `/core/dataset/database/getConfiguration?datasetId=${data.datasetId}`
+    `/core/dataset/database/getConfiguration?datasetId=${data.datasetId}`,
+    { timeout: 600000 }
   );
 
 /**
