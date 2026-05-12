@@ -3,7 +3,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
@@ -89,13 +92,33 @@ async function handler(
       );
     }
 
-    const { teamId, tmbId, dataset } = await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: WritePermissionVal,
-      datasetId: data.datasetId
-    });
+    const normalizedParentId =
+      data.parentId && data.parentId.trim() !== '' ? data.parentId : undefined;
+
+    const { teamId, tmbId, dataset } = normalizedParentId
+      ? await authDatasetCollection({
+          req,
+          authToken: true,
+          authApiKey: true,
+          collectionId: normalizedParentId,
+          per: WritePermissionVal
+        }).then((res) => {
+          if (data.datasetId && String(res.collection.datasetId) !== String(data.datasetId)) {
+            return Promise.reject(DatasetErrEnum.unAuthDataset);
+          }
+          return {
+            teamId: res.teamId,
+            tmbId: res.tmbId,
+            dataset: res.collection.dataset
+          };
+        })
+      : await authDataset({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: WritePermissionVal,
+          datasetId: data.datasetId
+        });
 
     // 1. 验证模板格式（CSV 只读 4096 字节头部，Excel 读全量转换后验证）
     if (extension === 'xlsx' || extension === 'xls') {
@@ -124,10 +147,6 @@ async function handler(
     let fileName = decodeURIComponent(file.originalname);
     let deletedCollectionId: string | undefined;
     let overwritten = false;
-
-    // Normalize parentId: convert empty string to undefined
-    const normalizedParentId =
-      data.parentId && data.parentId.trim() !== '' ? data.parentId : undefined;
 
     await mongoSessionRun(async (session) => {
       // Build query for duplicate check - only check within the same parentId folder

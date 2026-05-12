@@ -181,7 +181,7 @@ export async function authDatasetCollection({
   });
 
   if (!permission.checkPer(per)) {
-    return Promise.reject(DatasetErrEnum.unAuthDataset);
+    return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
   }
 
   return {

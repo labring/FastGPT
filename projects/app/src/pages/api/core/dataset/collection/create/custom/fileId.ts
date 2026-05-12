@@ -1,6 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
@@ -13,6 +16,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
@@ -117,13 +121,32 @@ async function handler(
   const { datasetId, fileId, parentId, name, tags, overwriteDuplicate, enableEnhance } = req.body;
 
   // 1. Auth
-  const { teamId, tmbId, dataset } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal,
-    datasetId
-  });
+  const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
+
+  const { teamId, tmbId, dataset } = normalizedParentId
+    ? await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: normalizedParentId,
+        per: WritePermissionVal
+      }).then((res) => {
+        if (datasetId && String(res.collection.datasetId) !== String(datasetId)) {
+          return Promise.reject(DatasetErrEnum.unAuthDataset);
+        }
+        return {
+          teamId: res.teamId,
+          tmbId: res.tmbId,
+          dataset: res.collection.dataset
+        };
+      })
+    : await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: WritePermissionVal,
+        datasetId
+      });
 
   // 2. Get file info
   const file = await getS3DatasetSource().getFileMetadata(fileId);
@@ -142,9 +165,6 @@ async function handler(
   // 4. Handle duplicate file name (within transaction to avoid TOCTOU)
   let deletedCollectionId: string | undefined;
   let overwritten = false;
-
-  // Normalize parentId: convert empty string to undefined
-  const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
 
   await mongoSessionRun(async (session) => {
     // Build query for duplicate check - only check within the same parentId folder

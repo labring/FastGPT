@@ -1,4 +1,7 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateCollectionByFileIdBodySchema,
   type CreateCollectionWithResultResponseType
@@ -12,17 +15,35 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { fileId, customPdfParse, ...body } = CreateCollectionByFileIdBodySchema.parse(req.body);
 
-  const { teamId, tmbId, dataset } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal,
-    datasetId: body.datasetId
-  });
+  const { teamId, tmbId, dataset } = body.parentId
+    ? await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: body.parentId,
+        per: WritePermissionVal
+      }).then((res) => {
+        if (body.datasetId && String(res.collection.datasetId) !== String(body.datasetId)) {
+          return Promise.reject(DatasetErrEnum.unAuthDataset);
+        }
+        return {
+          teamId: res.teamId,
+          tmbId: res.tmbId,
+          dataset: res.collection.dataset
+        };
+      })
+    : await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: WritePermissionVal,
+        datasetId: body.datasetId
+      });
 
   if (!isS3ObjectKey(fileId, 'dataset')) {
     return Promise.reject('Invalid dataset file key');

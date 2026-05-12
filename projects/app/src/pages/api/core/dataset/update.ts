@@ -3,8 +3,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
-  PerResourceTypeEnum,
-  ReadPermissionVal
+  PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -77,7 +76,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     req,
     authToken: true,
     datasetId: id,
-    per: ReadPermissionVal
+    per: ManagePermissionVal
   });
 
   const isMove = parentId !== undefined && String(parentId) !== String(dataset.parentId ?? '');
@@ -122,9 +121,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         per: TeamDatasetCreatePermissionVal
       });
     }
-  } else {
-    // is not move
-    if (!permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;
