@@ -273,7 +273,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         parentId: fileData.parentId === null ? '' : fileData.parentId,
         type: fileData.type,
         updateTime: fileData.updateTime,
-        createTime: fileData.createTime
+        createTime: fileData.createTime,
+        permissions: fileData.permissions
       };
     }
 
