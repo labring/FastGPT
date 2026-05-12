@@ -77,6 +77,7 @@ export const compressRequestMessages = async ({
     const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
 
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
+      throwError: false,
       isAborted: checkIsStopping,
       userKey,
       body: {
@@ -96,11 +97,6 @@ export const compressRequestMessages = async ({
       }
     });
 
-    if (!answerText) {
-      logger.warn('Message compression failed: empty response');
-      return { messages };
-    }
-
     const totalPoints = userKey
       ? 0
       : formatModelChars2Points({
@@ -115,6 +111,11 @@ export const compressRequestMessages = async ({
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     };
+
+    if (!answerText) {
+      logger.warn('Message compression failed: empty response');
+      return { messages, usage: compressedUsage, requestIds: [requestId] };
+    }
 
     if (finish_reason === 'close') {
       logger.info('Compression messages aborted: return original messages');
@@ -242,6 +243,7 @@ export const compressLargeContent = async ({
       );
 
       const { answerText, usage, requestId } = await createLLMResponse({
+        throwError: false,
         userKey,
         body: {
           model,
@@ -260,10 +262,6 @@ export const compressLargeContent = async ({
         }
       });
 
-      if (!answerText) {
-        throw new Error('Empty response from LLM');
-      }
-
       const totalPoints = userKey
         ? 0
         : formatModelChars2Points({
@@ -271,14 +269,25 @@ export const compressLargeContent = async ({
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens
           }).totalPoints;
+      const chunkUsage = {
+        ...usage,
+        totalPoints,
+        requestIds: [requestId]
+      };
+
+      if (!answerText) {
+        logger.warn('Chunk compression failed: empty response from LLM', {
+          chunkIndex
+        });
+        return {
+          compressed: chunk,
+          usage: chunkUsage
+        };
+      }
 
       return {
         compressed: answerText.trim(),
-        usage: {
-          ...usage,
-          totalPoints,
-          requestIds: [requestId]
-        }
+        usage: chunkUsage
       };
     }
 

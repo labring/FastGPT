@@ -1,11 +1,10 @@
-/* eslint-disable react-hooks/static-components */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import Markdown from '@/components/Markdown';
-import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
+import QuoteList from '../../ChatContainer/ChatBox/components/QuoteList';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -13,18 +12,23 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import { ChatBoxContext } from '../../ChatContainer/ChatBox/Provider';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 import dynamic from 'next/dynamic';
-import ImagePreviewToken from '@/components/core/dataset/ImagePreviewToken';
 
-const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
-  ssr: false
-});
+const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'));
+const ImageQuery = dynamic(() => import('./ImageQuery'));
+
+const agentPlanStatusMap: Record<NonNullable<ChatHistoryItemResType['agentPlanStatus']>, string> = {
+  set_plan: i18nT('chat:agent_plan_status_set_plan'),
+  update_plan: i18nT('chat:agent_plan_status_update_plan'),
+  ask_question: i18nT('chat:agent_plan_status_ask_question')
+};
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -37,48 +41,265 @@ type sideTabItemType = {
   children: sideTabItemType[];
 };
 
-const QueryWithImages = React.memo(function QueryWithImages({
-  query,
-  queryImages,
-  datasetId
+const RowRender = ({
+  children,
+  label,
+  ...props
 }: {
-  query?: string;
-  queryImages: NonNullable<ChatHistoryItemResType['queryImages']>;
-  datasetId?: string;
-}) {
+  children: React.ReactNode;
+  label: string;
+} & BoxProps) => {
   return (
-    <Box
-      border={'1px solid'}
-      borderColor={'myGray.200'}
-      borderRadius={'6px'}
-      bg={'myGray.50'}
-      color={'myGray.900'}
-      minH={'32px'}
-      px={3}
-      py={2}
-    >
-      {!!query && (
-        <Box whiteSpace={'pre-wrap'} mb={queryImages.length > 0 ? 2 : 0}>
-          {query}
-        </Box>
-      )}
-      <ImagePreviewToken images={queryImages} datasetId={datasetId} />
+    <Box>
+      <Box
+        fontSize={'12px'}
+        lineHeight={'18px'}
+        mb={2}
+        color={'myGray.900'}
+        fontWeight={500}
+        letterSpacing={'0.5px'}
+      >
+        {label}
+      </Box>
+      <Box borderRadius={'6px'} fontSize={'12px'} bg={'myGray.50'} {...props}>
+        {children}
+      </Box>
     </Box>
   );
-});
+};
+
+const Row = ({
+  label,
+  value,
+  rawDom
+}: {
+  label: string;
+  value?: string | number | boolean | object;
+  rawDom?: React.ReactNode;
+}) => {
+  const { t } = useSafeTranslation();
+  const val = value || rawDom;
+  const isObject = typeof value === 'object';
+
+  const formatValue = useMemo(() => {
+    if (isObject) {
+      return `~~~json\n${JSON.stringify(value, null, 2)}`;
+    }
+    if (typeof value === 'string') {
+      return t(value);
+    }
+    return `${value}`;
+  }, [isObject, t, value]);
+
+  if (rawDom) {
+    return (
+      <RowRender label={label} bg={'transparent'}>
+        {rawDom}
+      </RowRender>
+    );
+  }
+
+  if (val === undefined || val === '' || val === 'undefined') return null;
+
+  return (
+    <RowRender
+      label={label}
+      {...(isObject
+        ? { bg: 'transparent' }
+        : {
+            minH: '32px',
+            px: 3,
+            display: 'flex',
+            alignItems: 'center',
+            border: '1px solid',
+            borderColor: 'myGray.200',
+            color: 'myGray.900',
+            bg: 'myGray.50'
+          })}
+    >
+      <Box
+        sx={{
+          '& .markdown': { fontSize: '12px !important' },
+          '& .markdown pre': { fontSize: '12px !important' }
+        }}
+      >
+        <Markdown source={formatValue} />
+      </Box>
+    </RowRender>
+  );
+};
+
+const NormalSideTabItem = ({
+  sideBarItem,
+  onChange,
+  value,
+  index,
+  children
+}: {
+  sideBarItem: sideTabItemType;
+  onChange: (id: string) => void;
+  value: string;
+  index: number;
+  children?: React.ReactNode;
+}) => {
+  const { t } = useSafeTranslation();
+  const leftIndex = index > 3 ? 3 : index;
+  const leftPad = leftIndex === 0 ? '8px' : `${8 + leftIndex * 32}px`;
+
+  return (
+    <Flex
+      alignItems={'center'}
+      onClick={() => {
+        onChange(sideBarItem.id);
+      }}
+      background={value === sideBarItem.id ? 'myGray.100' : ''}
+      _hover={{ background: 'myGray.100' }}
+      py={'6px'}
+      pl={leftPad}
+      pr={'4px'}
+      width={'100%'}
+      cursor={'pointer'}
+      borderRadius={'6px'}
+      position={'relative'}
+    >
+      <Avatar
+        src={
+          sideBarItem.moduleLogo ||
+          moduleTemplatesFlat.find((template) => sideBarItem.moduleType === template.flowNodeType)
+            ?.avatar
+        }
+        alt={''}
+        w={'24px'}
+        h={'24px'}
+        borderRadius={'4px'}
+      />
+      <Box ml={2}>
+        <Box
+          fontSize={'12px'}
+          lineHeight={'16px'}
+          fontWeight={500}
+          color={'myGray.900'}
+          letterSpacing={'0.5px'}
+        >
+          {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
+        </Box>
+        <Box
+          fontSize={'11px'}
+          lineHeight={'16px'}
+          fontWeight={500}
+          color={'myGray.500'}
+          letterSpacing={'0.5px'}
+        >
+          {t(sideBarItem.runningTime as any) + 's'}
+        </Box>
+      </Box>
+      <Box
+        h={'24px'}
+        w={'24px'}
+        position={'absolute'}
+        right={'4px'}
+        top={'50%'}
+        transform={'translateY(-50%)'}
+      >
+        {children}
+      </Box>
+    </Flex>
+  );
+};
+
+const AccordionSideTabItem = ({
+  sideBarItem,
+  onChange,
+  value,
+  index
+}: {
+  sideBarItem: sideTabItemType;
+  onChange: (id: string) => void;
+  value: string;
+  index: number;
+}) => {
+  const { isOpen: isShowAccordion, onToggle: onToggleShowAccordion } = useDisclosure({
+    defaultIsOpen: false
+  });
+
+  return (
+    <>
+      <Flex align={'center'} position={'relative'}>
+        <NormalSideTabItem
+          index={index}
+          value={value}
+          onChange={onChange}
+          sideBarItem={sideBarItem}
+        >
+          <MyIcon
+            h={'20px'}
+            w={'20px'}
+            name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleShowAccordion();
+            }}
+            _hover={{ color: 'primary.600', cursor: 'pointer' }}
+          />
+        </NormalSideTabItem>
+      </Flex>
+      {isShowAccordion && (
+        <Flex flexDirection={'column'} gap={1} position={'relative'}>
+          {sideBarItem.children.map((item) => (
+            <SideTabItem
+              value={value}
+              key={item.id}
+              sideBarItem={item}
+              onChange={onChange}
+              index={index + 1}
+            />
+          ))}
+        </Flex>
+      )}
+    </>
+  );
+};
+
+const WholeResponseSideTab = ({
+  response,
+  value,
+  onChange,
+  isMobile = false
+}: {
+  response: sideTabItemType[];
+  value: string;
+  onChange: (index: string) => void;
+  isMobile?: boolean;
+}) => {
+  return (
+    <Flex flexDirection={'column'} gap={1}>
+      {response.map((item) => (
+        <Flex
+          key={item.id}
+          flexDirection={'column'}
+          gap={1}
+          bg={isMobile ? 'myGray.100' : ''}
+          m={isMobile ? 3 : 0}
+          borderRadius={'md'}
+          w={isMobile ? 'auto' : '180px'}
+        >
+          <SideTabItem value={value} onChange={onChange} sideBarItem={item} index={0} />
+        </Flex>
+      ))}
+    </Flex>
+  );
+};
 
 /* Per response value */
 export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime,
   onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
-  chatTime?: Date;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
@@ -91,91 +312,6 @@ export const WholeResponseContent = ({
       ContentRef.current.scrollTop = 0;
     }
   }, [activeModule]);
-
-  const RowRender = useCallback(
-    ({ children, label, ...props }: { children: React.ReactNode; label: string } & BoxProps) => {
-      return (
-        <Box>
-          <Box
-            fontSize={'12px'}
-            lineHeight={'18px'}
-            mb={2}
-            color={'myGray.900'}
-            fontWeight={500}
-            letterSpacing={'0.5px'}
-          >
-            {label}
-          </Box>
-          <Box borderRadius={'6px'} fontSize={'12px'} bg={'myGray.50'} {...props}>
-            {children}
-          </Box>
-        </Box>
-      );
-    },
-    []
-  );
-  const Row = useCallback(
-    ({
-      label,
-      value,
-      rawDom
-    }: {
-      label: string;
-      value?: string | number | boolean | object;
-      rawDom?: React.ReactNode;
-    }) => {
-      const val = value || rawDom;
-      const isObject = typeof value === 'object';
-
-      const formatValue = useMemo(() => {
-        if (isObject) {
-          return `~~~json\n${JSON.stringify(value, null, 2)}`;
-        }
-        if (typeof value === 'string') {
-          return t(value);
-        }
-        return `${value}`;
-      }, [isObject, value]);
-
-      if (rawDom) {
-        return (
-          <RowRender label={label} bg={'transparent'}>
-            {rawDom}
-          </RowRender>
-        );
-      }
-
-      if (val === undefined || val === '' || val === 'undefined') return null;
-
-      return (
-        <RowRender
-          label={label}
-          {...(isObject
-            ? { bg: 'transparent' }
-            : {
-                minH: '32px',
-                px: 3,
-                display: 'flex',
-                alignItems: 'center',
-                border: '1px solid',
-                borderColor: 'myGray.200',
-                color: 'myGray.900',
-                bg: 'myGray.50'
-              })}
-        >
-          <Box
-            sx={{
-              '& .markdown': { fontSize: '12px !important' },
-              '& .markdown pre': { fontSize: '12px !important' }
-            }}
-          >
-            <Markdown source={formatValue} />
-          </Box>
-        </RowRender>
-      );
-    },
-    [RowRender, t]
-  );
 
   return activeModule ? (
     <Box
@@ -198,6 +334,14 @@ export const WholeResponseContent = ({
         <Row
           label={t('chat:response.node_name')}
           value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+        />
+        <Row
+          label={t('common:Status')}
+          value={
+            activeModule?.agentPlanStatus
+              ? t(agentPlanStatusMap[activeModule.agentPlanStatus] as any)
+              : undefined
+          }
         />
         {activeModule?.totalPoints !== undefined && (
           <Row
@@ -322,7 +466,7 @@ export const WholeResponseContent = ({
           <Row
             label={t('common:core.chat.response.module query')}
             rawDom={
-              <QueryWithImages
+              <ImageQuery
                 query={activeModule?.query}
                 queryImages={activeModule.queryImages}
                 datasetId={queryPreviewDatasetId}
@@ -644,144 +788,7 @@ const SideTabItem = ({
   value: string;
   index: number;
 }) => {
-  const { t } = useSafeTranslation();
-
   if (!sideBarItem) return null;
-
-  const AccordionSideTabItem = useCallback(
-    ({
-      sideBarItem,
-      onChange,
-      value,
-      index
-    }: {
-      sideBarItem: sideTabItemType;
-      onChange: (id: string) => void;
-      value: string;
-      index: number;
-    }) => {
-      const { isOpen: isShowAccordion, onToggle: onToggleShowAccordion } = useDisclosure({
-        defaultIsOpen: false
-      });
-      return (
-        <>
-          <Flex align={'center'} position={'relative'}>
-            <NormalSideTabItem
-              index={index}
-              value={value}
-              onChange={onChange}
-              sideBarItem={sideBarItem}
-            >
-              <MyIcon
-                h={'20px'}
-                w={'20px'}
-                name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleShowAccordion();
-                }}
-                _hover={{ color: 'primary.600', cursor: 'pointer' }}
-              />
-            </NormalSideTabItem>
-          </Flex>
-          {isShowAccordion && (
-            <Flex flexDirection={'column'} gap={1} position={'relative'}>
-              {sideBarItem.children.map((item) => (
-                <SideTabItem
-                  value={value}
-                  key={item.id}
-                  sideBarItem={item}
-                  onChange={onChange}
-                  index={index + 1}
-                />
-              ))}
-            </Flex>
-          )}
-        </>
-      );
-    },
-    []
-  );
-
-  const NormalSideTabItem = useCallback(
-    ({
-      sideBarItem,
-      onChange,
-      value,
-      index,
-      children
-    }: {
-      sideBarItem: sideTabItemType;
-      onChange: (id: string) => void;
-      value: string;
-      index: number;
-      children?: React.ReactNode;
-    }) => {
-      const leftIndex = index > 3 ? 3 : index;
-      const leftPad = leftIndex === 0 ? '8px' : `${8 + leftIndex * 32}px`;
-      return (
-        <Flex
-          alignItems={'center'}
-          onClick={() => {
-            onChange(sideBarItem.id);
-          }}
-          background={value === sideBarItem.id ? 'myGray.100' : ''}
-          _hover={{ background: 'myGray.100' }}
-          py={'6px'}
-          pl={leftPad}
-          pr={'4px'}
-          width={'100%'}
-          cursor={'pointer'}
-          borderRadius={'6px'}
-          position={'relative'}
-        >
-          <Avatar
-            src={
-              sideBarItem.moduleLogo ||
-              moduleTemplatesFlat.find(
-                (template) => sideBarItem.moduleType === template.flowNodeType
-              )?.avatar
-            }
-            alt={''}
-            w={'24px'}
-            h={'24px'}
-            borderRadius={'4px'}
-          />
-          <Box ml={2}>
-            <Box
-              fontSize={'12px'}
-              lineHeight={'16px'}
-              fontWeight={500}
-              color={'myGray.900'}
-              letterSpacing={'0.5px'}
-            >
-              {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
-            </Box>
-            <Box
-              fontSize={'11px'}
-              lineHeight={'16px'}
-              fontWeight={500}
-              color={'myGray.500'}
-              letterSpacing={'0.5px'}
-            >
-              {t(sideBarItem.runningTime as any) + 's'}
-            </Box>
-          </Box>
-          <Box
-            h={'24px'}
-            w={'24px'}
-            position={'absolute'}
-            right={'4px'}
-            top={'50%'}
-            transform={'translateY(-50%)'}
-          >
-            {children}
-          </Box>
-        </Flex>
-      );
-    },
-    [t]
-  );
 
   return sideBarItem.children.length !== 0 ? (
     <>
@@ -803,13 +810,11 @@ const SideTabItem = ({
 export const ResponseBox = React.memo(function ResponseBox({
   response,
   dataId,
-  chatTime,
   hideTabs = false,
   useMobile = false
 }: {
   response: ChatHistoryItemResType[];
   dataId?: string;
-  chatTime: Date;
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
@@ -911,39 +916,6 @@ export const ResponseBox = React.memo(function ResponseBox({
     onClose: onCloseMobileModal
   } = useDisclosure();
 
-  const WholeResponseSideTab = useCallback(
-    ({
-      response,
-      value,
-      onChange,
-      isMobile = false
-    }: {
-      response: sideTabItemType[];
-      value: string;
-      onChange: (index: string) => void;
-      isMobile?: boolean;
-    }) => {
-      return (
-        <Flex flexDirection={'column'} gap={1}>
-          {response.map((item) => (
-            <Flex
-              key={item.id}
-              flexDirection={'column'}
-              gap={1}
-              bg={isMobile ? 'myGray.100' : ''}
-              m={isMobile ? 3 : 0}
-              borderRadius={'md'}
-              w={isMobile ? 'auto' : '180px'}
-            >
-              <SideTabItem value={value} onChange={onChange} sideBarItem={item} index={0} />
-            </Flex>
-          ))}
-        </Flex>
-      );
-    },
-    []
-  );
-
   return (
     <>
       {isPc && !useMobile ? (
@@ -976,7 +948,6 @@ export const ResponseBox = React.memo(function ResponseBox({
               dataId={dataId}
               activeModule={activeModule}
               hideTabs={hideTabs}
-              chatTime={chatTime}
               onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
@@ -1042,7 +1013,6 @@ export const ResponseBox = React.memo(function ResponseBox({
                   dataId={dataId}
                   activeModule={activeModule}
                   hideTabs={hideTabs}
-                  chatTime={chatTime}
                   onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>
@@ -1059,15 +1029,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   );
 });
 
-const WholeResponseModal = ({
-  onClose,
-  dataId,
-  chatTime
-}: {
-  onClose: () => void;
-  dataId: string;
-  chatTime: Date;
-}) => {
+const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { t } = useSafeTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
@@ -1102,7 +1064,7 @@ const WholeResponseModal = ({
     >
       {!isLoading &&
         (!!response?.length ? (
-          <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
+          <ResponseBox response={response} dataId={dataId} />
         ) : (
           <EmptyTip text={t('chat:no_workflow_response')} />
         ))}

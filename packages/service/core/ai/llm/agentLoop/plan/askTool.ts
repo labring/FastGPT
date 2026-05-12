@@ -1,17 +1,11 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import z from 'zod';
 
-export const PlanAskQuestionSchema = z.object({
-  question: z.string(),
-  whyRequired: z.string(),
-  source: z.string()
-});
-
 export const PlanAskPayloadSchema = z.object({
   reason: z.string(),
   blockerType: z.enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal']),
   question: z.string(),
-  questions: z.array(PlanAskQuestionSchema).max(3).optional()
+  options: z.array(z.string().trim().min(1)).min(3).max(5)
 });
 export type PlanAskPayload = z.infer<typeof PlanAskPayloadSchema>;
 
@@ -38,29 +32,20 @@ export const createAskAgentTool = (name = 'ask_agent'): ChatCompletionTool => ({
         },
         question: {
           type: 'string',
-          description: 'A concise user-facing question.'
+          description: 'A concise user-facing question shown as the title of the choice card.'
         },
-        questions: {
+        options: {
           type: 'array',
-          maxItems: 3,
+          minItems: 3,
+          maxItems: 5,
+          description:
+            'Three to five concise answer choices the user can select directly. Each item must be a complete answer.',
           items: {
-            type: 'object',
-            properties: {
-              question: {
-                type: 'string'
-              },
-              whyRequired: {
-                type: 'string'
-              },
-              source: {
-                type: 'string'
-              }
-            },
-            required: ['question', 'whyRequired', 'source']
+            type: 'string'
           }
         }
       },
-      required: ['reason', 'blockerType', 'question']
+      required: ['reason', 'blockerType', 'question', 'options']
     }
   }
 });

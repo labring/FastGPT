@@ -87,10 +87,18 @@ export type LoopRunInteractive = InteractiveNodeType & {
   };
 };
 
+export const AgentPlanAskOptionSchema = z.string().min(1);
+export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
+
 export const AgentPlanAskQueryInteractiveSchema = z.object({
   type: z.literal('agentPlanAskQuery'),
   params: z.object({
     content: z.string(),
+    reason: z.string().optional(),
+    blockerType: z
+      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal'])
+      .optional(),
+    options: z.array(AgentPlanAskOptionSchema).min(3).max(5),
     answer: z.string().optional()
   })
 });

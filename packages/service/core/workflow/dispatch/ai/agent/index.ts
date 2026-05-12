@@ -33,7 +33,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
-import { runUnifiedAgentLoop } from '../../../../ai/llm/agentLoop';
+import { runUnifiedAgentLoop, type PlanAskPayload } from '../../../../ai/llm/agentLoop';
 import {
   buildWorkflowAgentLoopMemories,
   createWorkflowAgentLoopRuntime,
@@ -70,15 +70,18 @@ type Response = DispatchNodeResultType<{
  */
 const createAskInteractive = ({
   planId,
-  question
+  ask
 }: {
   planId: string;
-  question?: string;
+  ask: PlanAskPayload;
 }): InteractiveNodeResponseType => ({
   type: 'agentPlanAskQuery',
   planId,
   params: {
-    content: question || i18nT('chat:agent_plan_parse_retry_tip')
+    content: ask.question,
+    reason: ask.reason,
+    blockerType: ask.blockerType,
+    options: ask.options
   }
 });
 
@@ -300,6 +303,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     assistantResponses.push(...artifacts.capabilityAssistantResponses);
 
     if (result.status === 'ask') {
+      if (!result.ask) {
+        throw new Error('Agent loop returned ask status without ask payload.');
+      }
+
       // ask 状态不产出最终 answer，只返回 interactive + memory。
       // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
       const interactive = createAskInteractive({
@@ -307,12 +314,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         planId:
           result.pendingMainContext?.activePlan?.planId ||
           getWorkflowAgentLoopMemoryKeys(nodeId).memoryKey,
-        question:
-          result.ask?.question ||
-          result.ask?.questions
-            ?.map((item) => item.question)
-            .filter(Boolean)
-            .join('\n')
+        ask: result.ask
       });
       for (let index = assistantResponses.length - 1; index >= 0; index--) {
         const askValue = assistantResponses[index];

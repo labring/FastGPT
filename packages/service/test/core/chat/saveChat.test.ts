@@ -1216,7 +1216,10 @@ describe('pushChatRecords', () => {
               type: 'agentPlanAskQuery',
               planId: 'plan_1',
               params: {
-                content: '请补充目标'
+                content: '请补充目标',
+                reason: '需要用户明确任务目标',
+                blockerType: 'missing_required_input',
+                options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
               }
             }
           }
@@ -1241,7 +1244,10 @@ describe('pushChatRecords', () => {
         type: 'agentPlanAskQuery' as const,
         planId: 'plan_1',
         params: {
-          content: '请补充目标'
+          content: '请补充目标',
+          reason: '需要用户明确任务目标',
+          blockerType: 'missing_required_input',
+          options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -1266,6 +1272,12 @@ describe('pushChatRecords', () => {
       }
 
       expect(lastValue.interactive.params.answer).toBe('深入了解 Rust 系统编程方向');
+      expect(lastValue.interactive.params.reason).toBe('需要用户明确任务目标');
+      expect(lastValue.interactive.params.options).toEqual([
+        '继续研究 Rust',
+        '改为研究 Go',
+        '先给出学习路线'
+      ]);
     });
 
     it('should remove paymentPause interactive value', async () => {

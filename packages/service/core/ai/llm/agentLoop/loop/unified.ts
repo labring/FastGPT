@@ -26,7 +26,7 @@ const getTextFromMessages = (messages: ChatCompletionMessageParam[]) =>
   messages
     .map((message) => {
       if (message.role !== 'assistant' || !message.content) return '';
-      // Tool-call 轮里的 content 只是模型的中间草稿；最终 answerText 只取无工具调用的可见回答。
+      // answerText 表示本轮最终答案；工具调用轮的 content 已通过事件流透出，但不合并进最终答案。
       if (message.tool_calls?.length) return '';
       if (typeof message.content === 'string') return message.content;
       return message.content.map((item) => (item.type === 'text' ? item.text : '')).join('');
@@ -37,7 +37,7 @@ const getReasoningFromMessages = (messages: ChatCompletionMessageParam[]) =>
   messages
     .map((message) => {
       if (message.role !== 'assistant' || !message.reasoning_content) return '';
-      // 与 answerText 保持一致：工具调用轮的 reasoning 只是中间草稿，不作为可见思考保存。
+      // 与 answerText 保持一致：工具调用轮的 reasoning 可通过事件流透出，但不合并进最终 reasoning。
       if (message.tool_calls?.length) return '';
       return message.reasoning_content;
     })
@@ -147,6 +147,7 @@ export const runUnifiedAgentLoop = async ({
   runtime: AgentLoopRuntime;
   input: UnifiedAgentLoopInput;
 }): Promise<UnifiedAgentLoopResult> => {
+  // 格式化 tools，会移除重复的
   const normalized = normalizeToolCatalog(runtime.toolCatalog);
   normalized.warnings.forEach((message) => runtime.emitEvent?.({ type: 'warning', message }));
   runtime = {
@@ -167,6 +168,8 @@ export const runUnifiedAgentLoop = async ({
   const maxStopGateRejections = runtime.maxStopGateRejections ?? 2;
   const requirePlan =
     input.pendingMainContext?.requirePlan ?? shouldRequirePlanFromMessages(input.messages);
+
+  // 判断是否需要强制结束本轮对话
   const canStreamFinalAnswerNow = () => {
     if (!activePlan) return false;
 
@@ -177,6 +180,8 @@ export const runUnifiedAgentLoop = async ({
     }).allowStop;
   };
 
+  // ask_agent 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
+  // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
   const messages =
     input.pendingMainContext && input.userAnswer !== undefined
       ? [
@@ -201,17 +206,15 @@ export const runUnifiedAgentLoop = async ({
       tools: getToolsForUnifiedLoop({
         catalog: runtime.toolCatalog
       }),
-      parallel_tool_calls: false
+      parallel_tool_calls: true
     },
     userKey: runtime.userKey,
     usagePush: (usages) => runtime.usageSink?.(usages),
     isAborted: runtime.checkIsStopping,
-    deferStreamingUntilStopCandidate: true,
     getRequestControl: () => {
       const streamFinalAnswer = canStreamFinalAnswerNow();
 
       return {
-        deferStreamingUntilStopCandidate: !streamFinalAnswer,
         toolChoice: streamFinalAnswer ? 'none' : 'auto'
       };
     },
@@ -412,6 +415,7 @@ export const runUnifiedAgentLoop = async ({
     requestIds: result.requestIds
   });
 
+  // 触发了 ask 模式
   if (pendingAsk) {
     return {
       status: 'ask',
@@ -424,6 +428,7 @@ export const runUnifiedAgentLoop = async ({
     };
   }
 
+  // 用户 abort
   if (runtime.checkIsStopping?.()) {
     return {
       status: 'aborted',

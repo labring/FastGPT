@@ -156,6 +156,7 @@ export const dispatchFileRead = async ({
       nodeResponse: {
         moduleType: FlowNodeTypeEnum.readFiles,
         moduleName: i18nT('chat:read_file'),
+        llmRequestIds: result.requestIds?.length ? result.requestIds : undefined,
         compressTextAgent: result.usage
           ? {
               inputTokens: result.usage.inputTokens || 0,

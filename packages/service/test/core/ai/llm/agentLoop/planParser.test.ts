@@ -16,12 +16,10 @@ describe('agent loop plan parser', () => {
           reason: 'Need repository path',
           blockerType: 'missing_required_input',
           question: 'Which repository should I inspect?',
-          questions: [
-            {
-              question: 'Repository path?',
-              whyRequired: 'Code cannot be read without a path.',
-              source: 'user_request'
-            }
+          options: [
+            '/Volumes/code/FastGPT',
+            'Use the current workspace',
+            'I will provide another repository path'
           ]
         })
       }
@@ -33,18 +31,16 @@ describe('agent loop plan parser', () => {
         reason: 'Need repository path',
         blockerType: 'missing_required_input',
         question: 'Which repository should I inspect?',
-        questions: [
-          {
-            question: 'Repository path?',
-            whyRequired: 'Code cannot be read without a path.',
-            source: 'user_request'
-          }
+        options: [
+          '/Volumes/code/FastGPT',
+          'Use the current workspace',
+          'I will provide another repository path'
         ]
       }
     });
   });
 
-  it('rejects ask_agent arguments without required whyRequired fields', () => {
+  it('rejects ask_agent arguments without required options', () => {
     const result = parsePlanAskToolCall({
       id: 'call_ask',
       type: 'function',
@@ -53,13 +49,7 @@ describe('agent loop plan parser', () => {
         arguments: JSON.stringify({
           reason: 'Need repository path',
           blockerType: 'missing_required_input',
-          question: 'Which repository should I inspect?',
-          questions: [
-            {
-              question: 'Repository path?',
-              source: 'user_request'
-            }
-          ]
+          question: 'Which repository should I inspect?'
         })
       }
     });

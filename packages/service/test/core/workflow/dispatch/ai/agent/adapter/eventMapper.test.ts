@@ -229,6 +229,79 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     ]);
   });
 
+  it('streams partial tool call args and later tool params in order', () => {
+    const workflowStreamResponse = vi.fn();
+    const mapper = createWorkflowAgentLoopEventMapper({
+      workflowStreamResponse,
+      getSubAppInfo: (id) => ({
+        name: id === 'weather' ? 'Weather' : id,
+        avatar: 'avatar',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent({
+      type: 'tool_call',
+      profile: 'main_agent',
+      call: {
+        id: 'call_weather',
+        type: 'function',
+        function: {
+          name: 'weather',
+          arguments: '{"city"'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'tool_params',
+      profile: 'main_agent',
+      callId: 'call_weather',
+      argsDelta: ':"Beijing"}'
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(2);
+    expect(workflowStreamResponse).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: 'call_weather',
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: expect.objectContaining({
+            params: '{"city"'
+          })
+        }
+      })
+    );
+    expect(workflowStreamResponse).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: 'call_weather',
+        event: SseResponseEventEnum.toolParams,
+        data: {
+          tool: {
+            id: 'call_weather',
+            params: ':"Beijing"}'
+          }
+        }
+      })
+    );
+    expect(mapper.assistantResponses).toEqual([
+      {
+        id: 'call_weather',
+        tools: [
+          {
+            id: 'call_weather',
+            toolName: 'Weather',
+            toolAvatar: 'avatar',
+            functionName: 'weather',
+            params: '{"city":"Beijing"}'
+          }
+        ]
+      }
+    ]);
+  });
+
   it('recognizes agent loop control tools from injected tool names', () => {
     const workflowStreamResponse = vi.fn();
     const mapper = createWorkflowAgentLoopEventMapper({

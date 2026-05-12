@@ -32,6 +32,8 @@ import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
 
+const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
+
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
   2. 递归线，会根据最近的一个 target 分支进行分类，同一个分支的属于一组
@@ -167,6 +169,9 @@ export const DispatchNodeResponseSchema = z
     textOutput: z.string().optional().meta({ description: '文本输出' }),
 
     llmRequestIds: z.array(z.string()).optional().meta({ description: 'LLM 请求追踪 ID 列表' }),
+    agentPlanStatus: AgentPlanNodeStatusSchema.optional().meta({
+      description: 'Agent 计划节点状态'
+    }),
 
     error: z
       .union([z.record(z.string(), z.any()), z.string()])
@@ -371,7 +376,7 @@ export type DispatchNodeResponseType = Omit<
 };
 
 export type DispatchNodeResultType<
-  T = unknown,
+  T = Record<string, never>,
   ERR = { [NodeOutputKeyEnum.errorText]?: string }
 > = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;

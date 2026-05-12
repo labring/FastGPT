@@ -78,7 +78,7 @@ export type AgentLoopEvent =
   | {
       type: 'child_llm_request_end';
       profile: AgentLoopProfileName;
-      usage: ChatNodeUsageType;
+      usage?: ChatNodeUsageType;
       requestIds: string[];
       seconds?: number;
     }

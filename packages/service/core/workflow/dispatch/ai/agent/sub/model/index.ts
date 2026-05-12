@@ -3,6 +3,9 @@ import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type ModelAgentConfig = {
   model: string;
@@ -21,6 +24,7 @@ type DispatchModelAgentProps = ModelAgentConfig & {
 type DispatchModelAgentResponse = {
   response: string;
   usages: ChatNodeUsageType[];
+  nodeResponse: Omit<ChatHistoryItemResType, 'id' | 'nodeId' | 'runningTime'>;
 };
 
 /**
@@ -54,7 +58,8 @@ export async function dispatchModelAgent({
     }
   ];
 
-  const { answerText, usage } = await createLLMResponse({
+  const { answerText, usage, requestId, error } = await createLLMResponse({
+    throwError: false,
     body: {
       model: modelData.model,
       temperature,
@@ -71,17 +76,27 @@ export async function dispatchModelAgent({
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens
   });
+  const usageItem = {
+    moduleName: modelName,
+    model: modelData.model,
+    totalPoints,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens
+  };
 
   return {
     response: answerText,
-    usages: [
-      {
-        moduleName: modelName,
-        model: modelData.model,
-        totalPoints,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      }
-    ]
+    usages: [usageItem],
+    nodeResponse: {
+      moduleType: FlowNodeTypeEnum.agent,
+      moduleName: modelName,
+      model: modelData.model,
+      llmRequestIds: [requestId],
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalPoints,
+      textOutput: answerText,
+      ...(error ? { errorText: getErrText(error) } : {})
+    }
   };
 }

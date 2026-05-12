@@ -125,11 +125,11 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
-        id: 'call_search'
+        id: 'call_search',
+        llmRequestIds: ['req_tool_node']
       })
     ]);
     expect(artifacts.capabilityAssistantResponses).toHaveLength(1);
-    expect(artifacts.llmRequestIds).toEqual(['req_tool_node']);
 
     runtime.usageSink?.([
       {
@@ -145,8 +145,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
         totalPoints: 1
       }
     ]);
-    expect(artifacts.llmRequestIds).toEqual(['req_tool_node']);
-
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
       profile: 'main_agent',
@@ -157,10 +155,10 @@ describe('createWorkflowAgentLoopRuntime', () => {
       },
       requestIds: ['req_compress']
     });
-    expect(artifacts.llmRequestIds).toEqual(['req_tool_node', 'req_compress']);
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
-        id: 'call_search'
+        id: 'call_search',
+        llmRequestIds: ['req_tool_node']
       }),
       expect.objectContaining({
         id: 'agent_node-usage-req_compress',
@@ -225,7 +223,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestIds: ['req_1', 'req_2']
     });
 
-    expect(artifacts.llmRequestIds).toEqual(['req_1', 'req_2']);
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_1',
@@ -246,9 +243,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
       expect.objectContaining({
         id: 'agent_node-2-req_2',
         nodeId: 'agent_node-main_agent-2',
-        moduleName: 'chat:plan_agent',
+        moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
-        moduleLogo: 'core/app/agent/child/plan',
+        moduleLogo: 'core/workflow/template/agent',
         model: 'GPT-4',
         llmRequestIds: ['req_2'],
         inputTokens: 6,
@@ -267,7 +264,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
   });
 
-  it('skips empty agent node responses but keeps request ids', () => {
+  it('records empty agent node responses with request ids', () => {
     const usagePush = vi.fn();
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: createContext(),
@@ -352,13 +349,24 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     ]);
 
-    expect(artifacts.llmRequestIds).toEqual(['req_empty_start', 'req_tool_round', 'req_empty_end']);
     expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'agent_node-1-req_empty_start',
+        moduleName: 'chat:master_agent_call',
+        moduleLogo: 'core/workflow/template/agent',
+        llmRequestIds: ['req_empty_start']
+      }),
       expect.objectContaining({
         id: 'agent_node-2-req_tool_round',
         moduleName: 'chat:master_agent_call',
         moduleLogo: 'core/workflow/template/agent',
         llmRequestIds: ['req_tool_round']
+      }),
+      expect.objectContaining({
+        id: 'agent_node-3-req_empty_end',
+        moduleName: 'chat:master_agent_call',
+        moduleLogo: 'core/workflow/template/agent',
+        llmRequestIds: ['req_empty_end']
       })
     ]);
     expect(usagePush).toHaveBeenCalledTimes(3);
@@ -398,18 +406,23 @@ describe('createWorkflowAgentLoopRuntime', () => {
       seconds: 0.2
     });
 
-    expect(artifacts.llmRequestIds).toEqual(['req_master_tool_stop']);
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_master_tool_stop',
         moduleName: 'chat:master_agent_call',
         llmRequestIds: ['req_master_tool_stop'],
         finishReason: 'stop'
+      }),
+      expect.objectContaining({
+        id: 'agent_node-plan-call_update_plan',
+        moduleName: 'chat:plan_agent',
+        agentPlanStatus: 'update_plan',
+        runningTime: 0.2
       })
     ]);
   });
 
-  it('nests tool node responses under the active agent call', async () => {
+  it('flattens tool and child LLM node responses in call order', async () => {
     const executeTool = vi.fn(async () => ({
       response: 'search result',
       usages: [],
@@ -481,21 +494,136 @@ describe('createWorkflowAgentLoopRuntime', () => {
       expect.objectContaining({
         id: 'agent_node-1-req_master',
         moduleName: 'chat:master_agent_call',
-        totalPoints: 3.1,
-        childTotalPoints: 2.1,
-        childrenResponses: [
-          expect.objectContaining({
-            id: 'call_search',
-            moduleName: 'Search',
-            totalPoints: 2
-          }),
-          expect.objectContaining({
-            id: 'agent_node-usage-req_compress',
-            moduleName: 'Compress Agent',
-            totalPoints: 0.1,
-            llmRequestIds: ['req_compress']
-          })
-        ]
+        totalPoints: 1
+      }),
+      expect.objectContaining({
+        id: 'call_search',
+        moduleName: 'Search',
+        totalPoints: 2
+      }),
+      expect.objectContaining({
+        id: 'agent_node-usage-req_compress',
+        moduleName: 'Compress Agent',
+        totalPoints: 0.1,
+        llmRequestIds: ['req_compress']
+      })
+    ]);
+  });
+
+  it('records one agent node, each tool node, then the next agent node for a tool round', async () => {
+    const executeTool = vi.fn(async ({ callId }) => ({
+      response: `${callId} response`,
+      usages: [],
+      nodeResponse: {
+        nodeId: callId,
+        id: callId,
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: callId === 'call_search' ? 'Search' : 'Time'
+      }
+    }));
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn(() => executeTool)
+    });
+
+    runtime.emitEvent?.({
+      type: 'llm_request_end',
+      profile: 'main_agent',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      agentName: 'Master Agent',
+      requestId: 'req_call_tools',
+      finishReason: 'tool_calls',
+      toolCalls: [
+        {
+          id: 'call_search',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{"q":"FastGPT"}'
+          }
+        },
+        {
+          id: 'call_time',
+          type: 'function',
+          function: {
+            name: 'time',
+            arguments: '{}'
+          }
+        }
+      ],
+      usage: {
+        inputTokens: 10,
+        outputTokens: 2,
+        totalPoints: 1
+      },
+      seconds: 0.2
+    });
+
+    await runtime.executeTool({
+      profile: 'main_agent',
+      messages: [],
+      call: {
+        id: 'call_search',
+        type: 'function',
+        function: {
+          name: 'search',
+          arguments: '{"q":"FastGPT"}'
+        }
+      }
+    });
+    await runtime.executeTool({
+      profile: 'main_agent',
+      messages: [],
+      call: {
+        id: 'call_time',
+        type: 'function',
+        function: {
+          name: 'time',
+          arguments: '{}'
+        }
+      }
+    });
+
+    runtime.emitEvent?.({
+      type: 'llm_request_end',
+      profile: 'main_agent',
+      requestIndex: 2,
+      modelName: 'GPT-4',
+      agentName: 'Master Agent',
+      requestId: 'req_after_tools',
+      finishReason: 'stop',
+      answerText: 'done',
+      usage: {
+        inputTokens: 12,
+        outputTokens: 3,
+        totalPoints: 1.2
+      },
+      seconds: 0.3
+    });
+
+    expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'agent_node-1-req_call_tools',
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'tool_calls',
+        llmRequestIds: ['req_call_tools']
+      }),
+      expect.objectContaining({
+        id: 'call_search',
+        moduleName: 'Search'
+      }),
+      expect.objectContaining({
+        id: 'call_time',
+        moduleName: 'Time'
+      }),
+      expect.objectContaining({
+        id: 'agent_node-2-req_after_tools',
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'stop',
+        textOutput: 'done',
+        llmRequestIds: ['req_after_tools']
       })
     ]);
   });
@@ -551,21 +679,19 @@ describe('createWorkflowAgentLoopRuntime', () => {
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_master',
-        moduleName: 'chat:master_agent_call',
-        childrenResponses: [
-          expect.objectContaining({
-            id: 'agent_node-usage-req_compress',
-            moduleName: 'chat:compress_llm_messages',
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            llmRequestIds: ['req_compress']
-          }),
-          expect.objectContaining({
-            id: 'agent_node-usage-req_file_compress',
-            moduleName: 'account_usage:llm_compress_text',
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            llmRequestIds: ['req_file_compress']
-          })
-        ]
+        moduleName: 'chat:master_agent_call'
+      }),
+      expect.objectContaining({
+        id: 'agent_node-usage-req_compress',
+        moduleName: 'chat:compress_llm_messages',
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        llmRequestIds: ['req_compress']
+      }),
+      expect.objectContaining({
+        id: 'agent_node-usage-req_file_compress',
+        moduleName: 'account_usage:llm_compress_text',
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        llmRequestIds: ['req_file_compress']
       })
     ]);
   });

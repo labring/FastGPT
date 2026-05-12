@@ -133,39 +133,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     ]);
   });
 
-  it('replays deferred final streaming in paced chunks after stop is accepted', async () => {
-    const streamed: string[] = [];
-    const content = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-    mockCreateLLMResponseQueue(createLLMResponseMock, [text({ requestId: 'req_final', content })]);
-
-    await runAgentLoop({
-      maxRunAgentTimes: 5,
-      body: {
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'finish with delayed streaming'
-          }
-        ],
-        tools: []
-      },
-      usagePush: vi.fn(),
-      isAborted: () => false,
-      onRunTool: vi.fn(),
-      onRunInteractiveTool: vi.fn(),
-      onStopCandidate: vi.fn(async () => ({ allowStop: true })),
-      deferStreamingUntilStopCandidate: true,
-      onStreaming: ({ text }) => streamed.push(text)
-    });
-
-    expect(streamed.length).toBeGreaterThan(1);
-    expect(streamed.join('')).toBe(content);
-  });
-
-  it('streams immediately when request control marks the final answer as safe', async () => {
+  it('uses request control tool choice while streaming immediately', async () => {
     const streamed: string[] = [];
     const order: string[] = [];
     const requestEvents: Array<Record<string, unknown>> = [];
@@ -195,9 +163,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         expect(streamed.join('')).toBe(content);
         return { allowStop: true };
       }),
-      deferStreamingUntilStopCandidate: true,
       getRequestControl: () => ({
-        deferStreamingUntilStopCandidate: false,
         toolChoice: 'none'
       }),
       onLLMRequestStart: (event) => requestEvents.push({ type: 'start', ...event }),
@@ -295,6 +261,65 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
   });
 
+  it('forwards tool call events from createLLMResponse without replaying final tool calls', async () => {
+    const onToolCall = vi.fn();
+    const weatherCall = {
+      id: 'call_weather',
+      type: 'function' as const,
+      function: {
+        name: 'weather',
+        arguments: '{"city":"Beijing"}'
+      }
+    };
+    const timeCall = {
+      id: 'call_time',
+      type: 'function' as const,
+      function: {
+        name: 'time',
+        arguments: '{}'
+      }
+    };
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        requestId: 'req_parallel_tools',
+        finishReason: 'tool_calls',
+        toolCalls: [weatherCall, timeCall],
+        inputTokens: 100,
+        outputTokens: 20
+      },
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'call tools'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool: vi.fn(async ({ call }) => ({
+        response: `${call.id} result`,
+        assistantMessages: [],
+        usages: []
+      })),
+      onRunInteractiveTool: vi.fn(),
+      onToolCall
+    });
+
+    expect(onToolCall).toHaveBeenCalledTimes(2);
+    expect(onToolCall).toHaveBeenNthCalledWith(1, { call: weatherCall });
+    expect(onToolCall).toHaveBeenNthCalledWith(2, { call: timeCall });
+  });
+
   it('stops the loop when a tool handler returns stop=true', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'handled and stop',
@@ -380,7 +405,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       onRunTool: vi.fn(),
       onRunInteractiveTool: vi.fn(),
       onStopCandidate,
-      deferStreamingUntilStopCandidate: true,
       onStreaming: ({ text }) => streamed.push(text)
     });
 
@@ -397,6 +421,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         content: 'final answer'
       }
     ]);
-    expect(streamed).toEqual(['final answer']);
+    expect(streamed).toEqual(['done too early', 'final answer']);
   });
 });

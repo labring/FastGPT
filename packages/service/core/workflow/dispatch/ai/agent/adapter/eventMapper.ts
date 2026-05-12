@@ -181,6 +181,69 @@ export const createWorkflowAgentLoopEventMapper = ({
     };
   };
 
+  const applyToolParams = ({ callId, argsDelta }: { callId: string; argsDelta: string }) => {
+    const functionName = toolNameByCallId.get(callId);
+    if (isUpdatePlanTool(functionName)) {
+      updateAgentPlanUpdate(callId, (update) => ({
+        ...update,
+        params: `${update.params || ''}${argsDelta}`
+      }));
+      return;
+    }
+    if (isAskTool(functionName)) {
+      updateAgentAsk(callId, (ask) => ({
+        ...ask,
+        params: `${ask.params || ''}${argsDelta}`
+      }));
+      return;
+    }
+    if (!functionName || isInternalTool(functionName, internalToolNames)) return;
+
+    updateToolResponse(callId, (tool) => ({
+      ...tool,
+      params: `${tool.params || ''}${argsDelta}`
+    }));
+
+    workflowStreamResponse?.({
+      id: callId,
+      event: SseResponseEventEnum.toolParams,
+      data: {
+        tool: {
+          id: callId,
+          params: argsDelta
+        }
+      }
+    });
+  };
+
+  const applyToolResponse = ({ callId, response }: { callId: string; response: string }) => {
+    const functionName = toolNameByCallId.get(callId);
+    if (isUpdatePlanTool(functionName)) {
+      updateAgentPlanUpdate(callId, (update) => ({
+        ...update,
+        response: `${update.response || ''}${response}`
+      }));
+      return;
+    }
+    if (!functionName || isInternalTool(functionName, internalToolNames)) return;
+
+    updateToolResponse(callId, (tool) => ({
+      ...tool,
+      response: `${tool.response || ''}${response}`
+    }));
+
+    workflowStreamResponse?.({
+      id: callId,
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: callId,
+          response
+        }
+      }
+    });
+  };
+
   /**
    * 处理单个 loop event，并按事件类型决定是否转发给前端或写入 assistantResponses。
    */
@@ -237,12 +300,13 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       case 'tool_call': {
         const functionName = event.call.function.name;
+        const params = event.call.function.arguments ?? '';
         toolNameByCallId.set(event.call.id, functionName);
         if (isUpdatePlanTool(functionName)) {
           upsertAgentPlanUpdate({
             id: event.call.id,
             functionName,
-            params: event.call.function.arguments ?? ''
+            params
           });
           return;
         }
@@ -250,7 +314,7 @@ export const createWorkflowAgentLoopEventMapper = ({
           upsertAgentAsk({
             id: event.call.id,
             functionName,
-            params: event.call.function.arguments ?? ''
+            params
           });
           return;
         }
@@ -262,7 +326,7 @@ export const createWorkflowAgentLoopEventMapper = ({
           toolName: subApp?.name || functionName,
           toolAvatar: subApp?.avatar || '',
           functionName,
-          params: event.call.function.arguments ?? ''
+          params
         };
         upsertToolResponse(tool);
 
@@ -276,63 +340,16 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'tool_params': {
-        const functionName = toolNameByCallId.get(event.callId);
-        if (isUpdatePlanTool(functionName)) {
-          updateAgentPlanUpdate(event.callId, (update) => ({
-            ...update,
-            params: `${update.params || ''}${event.argsDelta}`
-          }));
-          return;
-        }
-        if (isAskTool(functionName)) {
-          updateAgentAsk(event.callId, (ask) => ({
-            ...ask,
-            params: `${ask.params || ''}${event.argsDelta}`
-          }));
-          return;
-        }
-        if (!functionName || isInternalTool(functionName, internalToolNames)) return;
-
-        updateToolResponse(event.callId, (tool) => ({
-          ...tool,
-          params: `${tool.params || ''}${event.argsDelta}`
-        }));
-
-        workflowStreamResponse?.({
-          id: event.callId,
-          event: SseResponseEventEnum.toolParams,
-          data: {
-            tool: {
-              params: event.argsDelta
-            }
-          }
+        applyToolParams({
+          callId: event.callId,
+          argsDelta: event.argsDelta
         });
         return;
       }
       case 'tool_response': {
-        const functionName = toolNameByCallId.get(event.callId);
-        if (isUpdatePlanTool(functionName)) {
-          updateAgentPlanUpdate(event.callId, (update) => ({
-            ...update,
-            response: `${update.response || ''}${event.response}`
-          }));
-          return;
-        }
-        if (!functionName || isInternalTool(functionName, internalToolNames)) return;
-
-        updateToolResponse(event.callId, (tool) => ({
-          ...tool,
-          response: `${tool.response || ''}${event.response}`
-        }));
-
-        workflowStreamResponse?.({
-          id: event.callId,
-          event: SseResponseEventEnum.toolResponse,
-          data: {
-            tool: {
-              response: event.response
-            }
-          }
+        applyToolResponse({
+          callId: event.callId,
+          response: event.response
         });
         return;
       }

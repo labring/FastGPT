@@ -290,13 +290,13 @@ describe('runUnifiedAgentLoop', () => {
         })
       ])
     );
-    expect(events).not.toContainEqual(
+    expect(events).toContainEqual(
       expect.objectContaining({
         type: 'answer_delta',
         text: 'final too early'
       })
     );
-    expect(events).not.toContainEqual(
+    expect(events).toContainEqual(
       expect.objectContaining({
         type: 'answer_delta',
         text: 'draft before plan tool'
@@ -441,7 +441,7 @@ describe('runUnifiedAgentLoop', () => {
           'text' in event &&
           event.text === '流式计划测试完成。'
       )
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 
   it('streams final answer live and disables tools when active plan is already complete', async () => {
@@ -615,7 +615,12 @@ describe('runUnifiedAgentLoop', () => {
         args: {
           reason: 'Need private repository path',
           blockerType: 'missing_required_input',
-          question: 'Which repository should I inspect?'
+          question: 'Which repository should I inspect?',
+          options: [
+            'Use the current workspace',
+            'I will provide a repository path',
+            'Skip repository inspection'
+          ]
         }
       })
     ]);
@@ -634,6 +639,11 @@ describe('runUnifiedAgentLoop', () => {
 
     expect(result.status).toBe('ask');
     expect(result.ask?.question).toBe('Which repository should I inspect?');
+    expect(result.ask?.options).toEqual([
+      'Use the current workspace',
+      'I will provide a repository path',
+      'Skip repository inspection'
+    ]);
     expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
     expect(result.pendingMainContext?.messages.at(-1)).toEqual({
       role: 'assistant',
@@ -644,7 +654,7 @@ describe('runUnifiedAgentLoop', () => {
           function: {
             name: 'ask_agent',
             arguments:
-              '{"reason":"Need private repository path","blockerType":"missing_required_input","question":"Which repository should I inspect?"}'
+              '{"reason":"Need private repository path","blockerType":"missing_required_input","question":"Which repository should I inspect?","options":["Use the current workspace","I will provide a repository path","Skip repository inspection"]}'
           }
         }
       ]
@@ -739,7 +749,12 @@ describe('runUnifiedAgentLoop', () => {
         args: {
           reason: 'Need user confirmation',
           blockerType: 'missing_required_input',
-          question: 'Should I include the latest evidence?'
+          question: 'Should I include the latest evidence?',
+          options: [
+            'Include the latest evidence',
+            'Use only the existing evidence',
+            'Ask me for a specific evidence source'
+          ]
         }
       }),
       text({

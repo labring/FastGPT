@@ -18,11 +18,6 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { AgentLoopChildrenInteractiveParams, AgentLoopToolChildrenInteractive } from './type';
 
 const AGENT_CALL_USAGE_MODULE_NAME = 'account_usage:agent_call';
-const DEFERRED_STREAM_REPLAY_INTERVAL_MS = 16;
-const DEFERRED_STREAM_REPLAY_MIN_CHARS = 24;
-const DEFERRED_STREAM_REPLAY_MAX_TICKS = 160;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -81,13 +76,9 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
         error?: unknown;
       }
   >;
-  // 开启后，普通 answer/reasoning delta 会先按单轮 LLM 请求暂存。
-  // 只有 stop candidate 被允许结束时才刷给调用方，避免被 stop gate 打回的草稿提前流到前端。
-  deferStreamingUntilStopCandidate?: boolean;
   // 每轮 LLM 请求前动态调整流式策略和工具选择。
-  // 当上层已经确认本轮只能是最终回答时，可关闭暂存并强制 tool_choice=none，让 answer 实时输出。
+  // 当上层已经确认本轮只能是最终回答时，可强制 tool_choice=none。
   getRequestControl?: (e: { runTimes: number; requestMessages: ChatCompletionMessageParam[] }) => {
-    deferStreamingUntilStopCandidate?: boolean;
     toolChoice?: CreateLLMResponseProps['body']['tool_choice'];
   };
   // 每次 createLLMResponse 的生命周期回调。
@@ -187,7 +178,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onAfterToolCall,
   onRunTool,
   onStopCandidate,
-  deferStreamingUntilStopCandidate,
   getRequestControl,
   onLLMRequestStart,
   onLLMRequestEnd,
@@ -328,72 +318,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       runTimes,
       requestMessages: cloneRequestMessages
     });
-    const shouldDeferCurrentResponse =
-      requestControl?.deferStreamingUntilStopCandidate ?? deferStreamingUntilStopCandidate;
-    const deferredResponseEvents: Array<
-      | {
-          type: 'reasoning';
-          payload: { text: string };
-        }
-      | {
-          type: 'streaming';
-          payload: { text: string };
-        }
-    > = [];
-    const mergeDeferredResponseEvents = (events: typeof deferredResponseEvents) =>
-      events.reduce<typeof deferredResponseEvents>((result, event) => {
-        const lastEvent = result[result.length - 1];
-        if (lastEvent?.type === event.type) {
-          lastEvent.payload.text += event.payload.text;
-          return result;
-        }
-
-        result.push({
-          type: event.type,
-          payload: { text: event.payload.text }
-        });
-        return result;
-      }, []);
-    const getDeferredReplayChunkSize = (events: typeof deferredResponseEvents) => {
-      const totalChars = events.reduce((sum, event) => sum + event.payload.text.length, 0);
-      return Math.max(
-        DEFERRED_STREAM_REPLAY_MIN_CHARS,
-        Math.ceil(totalChars / DEFERRED_STREAM_REPLAY_MAX_TICKS)
-      );
-    };
-    const flushDeferredResponseEvents = async () => {
-      if (!shouldDeferCurrentResponse) return;
-
-      const events = mergeDeferredResponseEvents(deferredResponseEvents.splice(0));
-      const chunkSize = getDeferredReplayChunkSize(events);
-      let emittedChunks = 0;
-
-      for (let eventIndex = 0; eventIndex < events.length; eventIndex++) {
-        const event = events[eventIndex];
-        for (let i = 0; i < event.payload.text.length; i += chunkSize) {
-          if (isAborted?.()) return;
-
-          const payload = {
-            text: event.payload.text.slice(i, i + chunkSize)
-          };
-          if (event.type === 'reasoning') {
-            onReasoning?.(payload);
-          } else {
-            onStreaming?.(payload);
-          }
-
-          emittedChunks++;
-          const hasMoreChunks =
-            i + chunkSize < event.payload.text.length || eventIndex < events.length - 1;
-          if (hasMoreChunks && emittedChunks < DEFERRED_STREAM_REPLAY_MAX_TICKS) {
-            await sleep(DEFERRED_STREAM_REPLAY_INTERVAL_MS);
-          }
-        }
-      }
-    };
-    const dropDeferredResponseEvents = () => {
-      deferredResponseEvents.length = 0;
-    };
 
     // 2. Request LLM
     const requestStartTime = Date.now();
@@ -425,26 +349,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       },
       userKey,
       isAborted,
-      onReasoning: (e) => {
-        if (shouldDeferCurrentResponse) {
-          deferredResponseEvents.push({
-            type: 'reasoning',
-            payload: e
-          });
-        } else {
-          onReasoning?.(e);
-        }
-      },
-      onStreaming: (e) => {
-        if (shouldDeferCurrentResponse) {
-          deferredResponseEvents.push({
-            type: 'streaming',
-            payload: e
-          });
-        } else {
-          onStreaming?.(e);
-        }
-      },
+      onReasoning,
+      onStreaming,
       onToolCall,
       onToolParam
     });
@@ -508,15 +414,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       if (llmAssistantMessage) {
         assistantMessages.push(llmAssistantMessage);
         requestMessages.push(llmAssistantMessage);
-      }
-
-      // 非最终回答轮次可以继续按原行为展示；统一 loop 会开启延迟流式，此时工具调用轮的文本也只作为内部草稿。
-      if (toolCalls.length) {
-        if (shouldDeferCurrentResponse) {
-          dropDeferredResponseEvents();
-        } else {
-          await flushDeferredResponseEvents();
-        }
       }
     }
 
@@ -614,7 +511,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
       if (stopResult && !stopResult.allowStop) {
         if (stopResult.error) {
-          dropDeferredResponseEvents();
           requestError = stopResult.error;
           break;
         }
@@ -627,13 +523,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           ) {
             assistantMessages.pop();
           }
-          dropDeferredResponseEvents();
           requestMessages.push(stopResult.feedbackMessage);
           continue;
         }
       }
-
-      await flushDeferredResponseEvents();
     }
 
     if (toolCalls.length === 0 || !!interactiveResponse || stopAgentLoop || isAborted?.()) {

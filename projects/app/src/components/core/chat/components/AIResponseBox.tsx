@@ -9,7 +9,8 @@ import {
   Button,
   Flex,
   HStack,
-  SkeletonText
+  SkeletonText,
+  Textarea
 } from '@chakra-ui/react';
 import type {
   AIChatItemValueItemType,
@@ -20,6 +21,7 @@ import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
+  AgentPlanAskQueryInteractive,
   InteractiveBasicType,
   PaymentPauseInteractive,
   UserInputInteractive,
@@ -40,6 +42,7 @@ import { useCreation } from 'ahooks';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -54,6 +57,7 @@ const accordionButtonStyle = {
     bg: 'auto'
   }
 };
+const AGENT_PLAN_ASK_OTHER_OPTION_VALUE = '__fastgpt_agent_plan_ask_other__';
 
 const planStepStatusStyle: Record<
   AgentPlanType['steps'][number]['status'],
@@ -195,7 +199,7 @@ const RenderTool = React.memo(
     const formatJson = useCallback((string: string) => {
       try {
         return JSON.stringify(JSON.parse(string), null, 2);
-      } catch (error) {
+      } catch {
         return string;
       }
     }, []);
@@ -301,11 +305,9 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive,
-  chatItemDataId,
   isLastChild
 }: {
   interactive: UserInputInteractive;
-  chatItemDataId: string;
   isLastChild: boolean;
 }) {
   const { t } = useTranslation();
@@ -351,6 +353,128 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
           </Button>
         )}
       />
+    </Flex>
+  );
+});
+const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInteractive({
+  interactive,
+  isLastChild
+}: {
+  interactive: AgentPlanAskQueryInteractive;
+  isLastChild: boolean;
+}) {
+  const { t } = useTranslation();
+  const { content, reason, options = [], answer } = interactive.params;
+  const [otherAnswer, setOtherAnswer] = React.useState('');
+  const [isOtherSelected, setIsOtherSelected] = React.useState(false);
+  const [submittedAnswer, setSubmittedAnswer] = React.useState('');
+  const normalizedOptions = useMemo(
+    () => Array.from(new Set(options.map((option) => option.trim()).filter(Boolean))).slice(0, 5),
+    [options]
+  );
+  const effectiveAnswer = answer || submittedAnswer;
+  const isDisabled = !!effectiveAnswer || !isLastChild;
+  const selectedOption =
+    effectiveAnswer && normalizedOptions.includes(effectiveAnswer) ? effectiveAnswer : '';
+  const answeredOther =
+    effectiveAnswer && !normalizedOptions.includes(effectiveAnswer) ? effectiveAnswer : '';
+  const showOtherInput = !!answeredOther || isOtherSelected;
+  const radioValue =
+    answeredOther || isOtherSelected ? AGENT_PLAN_ASK_OTHER_OPTION_VALUE : selectedOption;
+  const currentOtherAnswer = answeredOther || otherAnswer;
+  const submitOtherAnswer = useCallback(() => {
+    const value = otherAnswer.trim();
+    if (!value || isDisabled) return;
+
+    setSubmittedAnswer(value);
+    onSendPrompt(value);
+  }, [isDisabled, otherAnswer]);
+  const radioOptions = useMemo(
+    () => [
+      ...normalizedOptions.map((option) => ({
+        title: (
+          <Box fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
+            {option}
+          </Box>
+        ),
+        value: option
+      })),
+      {
+        title: (
+          <Box fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
+            {t('common:Other')}
+          </Box>
+        ),
+        value: AGENT_PLAN_ASK_OTHER_OPTION_VALUE
+      }
+    ],
+    [normalizedOptions, t]
+  );
+
+  return (
+    <Flex flexDirection={'column'} gap={3} maxW={'520px'}>
+      <Box fontWeight={'medium'} whiteSpace={'pre-wrap'}>
+        {content}
+      </Box>
+      {reason && (
+        <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
+          {reason}
+        </Box>
+      )}
+      {normalizedOptions.length > 0 && (
+        <Flex flexDirection={'column'} gap={3}>
+          <LeftRadio<string>
+            py={3}
+            gridGap={2}
+            align={'center'}
+            list={radioOptions}
+            value={radioValue}
+            defaultBg={'white'}
+            activeBg={'white'}
+            onChange={(value) => {
+              if (!value || isDisabled) return;
+              if (value === AGENT_PLAN_ASK_OTHER_OPTION_VALUE) {
+                setIsOtherSelected(true);
+                return;
+              }
+              setIsOtherSelected(false);
+              setSubmittedAnswer(value);
+              onSendPrompt(value);
+            }}
+            isDisabled={isDisabled}
+          />
+          {showOtherInput && (
+            <Flex flexDirection={'column'} gap={2}>
+              <Textarea
+                autoFocus={!isDisabled}
+                bg={'white'}
+                rows={3}
+                resize={'vertical'}
+                value={currentOtherAnswer}
+                placeholder={t('common:Other')}
+                isDisabled={isDisabled}
+                onChange={(e) => setOtherAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    submitOtherAnswer();
+                  }
+                }}
+              />
+              <Flex justifyContent={'flex-end'}>
+                {!isDisabled && (
+                  <Button
+                    flexShrink={0}
+                    isDisabled={!otherAnswer.trim()}
+                    onClick={submitOtherAnswer}
+                  >
+                    {t('common:Submit')}
+                  </Button>
+                )}
+              </Flex>
+            </Flex>
+          )}
+        </Flex>
+      )}
     </Flex>
   );
 });
@@ -545,16 +669,10 @@ const AIResponseBox = ({
       return <RenderUserSelectInteractive interactive={interactive} />;
     }
     if (interactive.type === 'userInput') {
-      return (
-        <RenderUserFormInteractive
-          interactive={interactive}
-          chatItemDataId={chatItemDataId}
-          isLastChild={isLastChild}
-        />
-      );
+      return <RenderUserFormInteractive interactive={interactive} isLastChild={isLastChild} />;
     }
     if (interactive.type === 'agentPlanAskQuery') {
-      return <Box>{interactive.params.content}</Box>;
+      return <RenderAgentPlanAskInteractive interactive={interactive} isLastChild={isLastChild} />;
     }
     if (interactive.type === 'paymentPause') {
       return <RenderPaymentPauseInteractive interactive={interactive} />;
