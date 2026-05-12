@@ -15,6 +15,8 @@ export const createClientAbortTracker = ({
   let clientAborted = false;
   let responseCompleted = !!(res?.writableEnded || res?.writableFinished);
 
+  // For workflow stopping, "client aborted" means the current response can no longer be written.
+  // It is intentionally broader than a strict user-initiated cancel audit signal.
   const responseFinished = () =>
     responseCompleted || !!(res?.writableEnded || res?.writableFinished);
   const responseWritableAborted = () =>
@@ -22,6 +24,7 @@ export const createClientAbortTracker = ({
   const hasExplicitAbort = () => !!(req?.aborted || responseWritableAborted());
   const hasBrokenConnection = () => !!(req?.socket?.destroyed || res?.destroyed || res?.errored);
   const isAbortedSnapshot = () => {
+    // A normal completed response may also emit close later. Do not treat that as abort.
     if (responseFinished()) return false;
 
     return hasExplicitAbort() || hasBrokenConnection();
