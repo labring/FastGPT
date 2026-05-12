@@ -369,6 +369,47 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   return val;
 };
 
+/*
+  Resolve $ref arrays embedded in a collectionFilterMatch JSON string.
+  Tag filter conditions use ['$ref', nodeId, outputId] (3-element) instead of
+  the standard [nodeId, outputId] (2-element) format, so getReferenceVariableValue
+  cannot handle them automatically.
+*/
+export const resolveTagFilterRefs = (
+  filterJson: string | undefined,
+  nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>,
+  variables: Record<string, any>
+): string | undefined => {
+  if (!filterJson) return filterJson;
+  try {
+    const parsed = JSON.parse(filterJson);
+    const logicKey: '$and' | '$or' = parsed?.tags?.$and ? '$and' : '$or';
+    const conditions: any[] = parsed?.tags?.[logicKey];
+    if (!Array.isArray(conditions) || conditions.length === 0) return filterJson;
+
+    const resolvedConditions = conditions.map((cond: Record<string, Record<string, any>>) => {
+      const tagName = Object.keys(cond)[0];
+      const opObj = cond[tagName];
+      const op = Object.keys(opObj)[0];
+      const val = opObj[op];
+
+      if (Array.isArray(val) && val.length === 3 && val[0] === '$ref') {
+        const resolved = getReferenceVariableValue({
+          value: [val[1], val[2]],
+          nodesMap,
+          variables
+        });
+        return { [tagName]: { [op]: resolved } };
+      }
+      return cond;
+    });
+
+    return JSON.stringify({ ...parsed, tags: { [logicKey]: resolvedConditions } });
+  } catch {
+    return filterJson;
+  }
+};
+
 // 模块级 RegExp 缓存，避免每次变量替换都重新编译正则
 const _replaceRegexCache = new Map<string, RegExp>();
 const _MAX_REGEX_CACHE_SIZE = 5000;

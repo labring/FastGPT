@@ -37,8 +37,8 @@ import {
 
 const tagTypeToValueType = (tagType: string): WorkflowIOValueTypeEnum => {
   if (tagType === 'number') return WorkflowIOValueTypeEnum.number;
-  // datetime stored as string in workflow variables
-  if (tagType === 'datetime') return WorkflowIOValueTypeEnum.string;
+  // datetime stored as UTC ms timestamp (number), same as storage side
+  if (tagType === 'datetime') return WorkflowIOValueTypeEnum.number;
   return WorkflowIOValueTypeEnum.any;
 };
 
