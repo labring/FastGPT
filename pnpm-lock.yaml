@@ -1105,7 +1105,7 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.19.9(hono@4.11.7)
+        version: 1.19.9(hono@4.12.18)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
@@ -1128,8 +1128,8 @@ importers:
         specifier: ^17.3.1
         version: 17.4.2
       hono:
-        specifier: ^4.7.6
-        version: 4.11.7
+        specifier: ^4.12.18
+        version: 4.12.18
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
@@ -8835,6 +8835,10 @@ packages:
     resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
+  hono@4.12.18:
+    resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
+    engines: {node: '>=16.9.0'}
+
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
 
@@ -16041,6 +16045,10 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
+  '@hono/node-server@1.19.9(hono@4.12.18)':
+    dependencies:
+      hono: 4.12.18
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -23007,6 +23015,8 @@ snapshots:
       react-is: 16.13.1
 
   hono@4.11.7: {}
+
+  hono@4.12.18: {}
 
   hookable@5.5.3: {}
 
