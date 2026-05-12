@@ -94,7 +94,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             </Flex>
           );
 
-          return currentTab === TabEnum.collectionCard ? (
+          return showNavBar ? (
             <CollectionPageContextProvider>{layout}</CollectionPageContextProvider>
           ) : (
             layout
@@ -103,23 +103,21 @@ const Detail = ({ datasetId, currentTab }: Props) => {
       ) : (
         <PageContainer insertProps={{ bg: 'white' }}>
           <MyBox display={'flex'} flexDirection={'column'} h={'100%'} pt={1}>
-            <NavBar currentTab={currentTab} />
+            <CollectionPageContextProvider>
+              <NavBar currentTab={currentTab} />
 
-            {!!datasetDetail._id && (
-              <Box flex={'1 0 0'} pb={0} overflow={'auto'}>
-                {currentTab === TabEnum.collectionCard && (
-                  <CollectionPageContextProvider>
-                    <CollectionCard />
-                  </CollectionPageContextProvider>
-                )}
-                {currentTab === TabEnum.synonym && <Synonym />}
-                {currentTab === TabEnum.dataCard && <DataCard />}
-                {currentTab === TabEnum.fileDataCard && <FileDataCard />}
-                {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-                {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
-                {currentTab === TabEnum.import && <Import />}
-              </Box>
-            )}
+              {!!datasetDetail._id && (
+                <Box flex={'1 0 0'} pb={0} overflow={'auto'}>
+                  {currentTab === TabEnum.collectionCard && <CollectionCard />}
+                  {currentTab === TabEnum.synonym && <Synonym />}
+                  {currentTab === TabEnum.dataCard && <DataCard />}
+                  {currentTab === TabEnum.fileDataCard && <FileDataCard />}
+                  {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
+                  {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
+                  {currentTab === TabEnum.import && <Import />}
+                </Box>
+              )}
+            </CollectionPageContextProvider>
           </MyBox>
         </PageContainer>
       )}

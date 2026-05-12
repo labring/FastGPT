@@ -25,8 +25,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
-import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
-import { utcTsToDisplayDate, displayDateToUtcTs } from '@fastgpt/global/common/string/time';
 import TagRowsEditor from './TagRowsEditor';
 
 type TagRow = {
@@ -63,17 +61,17 @@ const ValueInput = ({
     );
   }
   if (tagType === 'datetime') {
-    const ts = Number(value);
-    const dateValue = !isNaN(ts) && ts > 0 ? utcTsToDisplayDate(ts) : null;
     return (
-      <Box flex={1}>
-        <DateTimePicker
-          h="32px"
-          value={dateValue}
-          onChange={(date) => onChange(date ? String(displayDateToUtcTs(date)) : '')}
-          disabled={disabled}
-        />
-      </Box>
+      <Input
+        flex={1}
+        h="32px"
+        bg="white"
+        type="datetime-local"
+        step={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        isDisabled={disabled}
+      />
     );
   }
   return (
@@ -133,7 +131,11 @@ const BatchSetTagsModal = ({
               (t) => typeof t === 'object' && (t as CollectionTagValueType).tagId === tag._id
             ) as CollectionTagValueType | undefined;
             if (found) {
-              defaultValue = String(found.value);
+              const ts = Number(found.value);
+              defaultValue =
+                tag.tagType === 'datetime' && !isNaN(ts) && ts > 0
+                  ? new Date(ts).toISOString().slice(0, 19)
+                  : String(found.value);
               break;
             }
           }
@@ -169,11 +171,11 @@ const BatchSetTagsModal = ({
           .filter((row) => row.checked && !row.deleteFlag)
           .map((row) => {
             const isDatetime = tagMap.get(row.tagId)?.tagType === 'datetime';
-            return { tagId: row.tagId, value: isDatetime ? Number(row.value) : row.value };
+            return { tagId: row.tagId, value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value };
           }),
         ...newRows.map((row) => {
           const isDatetime = tagMap.get(row.tagId)?.tagType === 'datetime';
-          return { tagId: row.tagId, value: isDatetime ? Number(row.value) : row.value };
+          return { tagId: row.tagId, value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value };
         })
       ];
 

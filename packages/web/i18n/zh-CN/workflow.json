@@ -298,6 +298,7 @@
   "tag_filter_add_condition": "添加过滤条件",
   "tag_filter_input_value": "输入值",
   "tag_filter_select_tag": "选择标签",
+  "tag_filter_select_tag_first": "请先选择标签",
   "tag_filter_select_op": "选择条件",
   "tag_filter_no_dataset": "请先选择知识库",
   "tag_filter_no_tags": "当前所选知识库没有可用标签，请先在知识库中创建标签",

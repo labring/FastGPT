@@ -975,6 +975,22 @@ const CollectionCard = () => {
         <FloatingActionBar
           Controler={
             <HStack>
+              {feConfigs?.isPlus && (
+                <Button variant={'whiteBase'} onClick={() => setShowBatchSetTags(true)}>
+                  {t('dataset:tag.batch_set_tags')}
+                </Button>
+              )}
+              <Button
+                variant={'whiteBase'}
+                onClick={() => {
+                  const linkItems = selectedItems.filter(
+                    (e) => e.type === DatasetCollectionTypeEnum.link
+                  );
+                  linkItems.forEach((item) => onclickStartSync(item._id));
+                }}
+              >
+                {t('dataset:batch_sync')}
+              </Button>
               <Button
                 variant={'whiteBase'}
                 onClick={() =>
@@ -991,11 +1007,6 @@ const CollectionCard = () => {
               >
                 {t('dataset:batch_delete')}
               </Button>
-              {feConfigs?.isPlus && (
-                <Button variant={'whiteBase'} onClick={() => setShowBatchSetTags(true)}>
-                  {t('dataset:tag.batch_set_tags')}
-                </Button>
-              )}
             </HStack>
           }
         >

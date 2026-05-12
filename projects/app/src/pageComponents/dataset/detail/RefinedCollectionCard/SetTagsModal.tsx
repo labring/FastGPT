@@ -36,10 +36,18 @@ const SetTagsModal = ({
     if (!collection.tags || collection.tags.length === 0) return [];
     return collection.tags
       .filter((t) => typeof t === 'object' && t !== null)
-      .map((t) => ({
-        tagId: (t as CollectionTagValueType).tagId,
-        value: String((t as CollectionTagValueType).value)
-      }));
+      .map((t) => {
+        const tag = t as CollectionTagValueType;
+        const tagDef = allDatasetTags.find((d) => d._id === tag.tagId);
+        let value = String(tag.value);
+        if (tagDef?.tagType === 'datetime') {
+          const ts = Number(tag.value);
+          if (!isNaN(ts) && ts > 0) {
+            value = new Date(ts).toISOString().slice(0, 19);
+          }
+        }
+        return { tagId: tag.tagId, value };
+      });
   };
 
   const [rows, setRows] = useState<TagRow[]>(initRows);
@@ -78,7 +86,7 @@ const SetTagsModal = ({
           const isDatetime = tagDef?.tagType === 'datetime';
           return {
             tagId: row.tagId,
-            value: isDatetime ? Number(row.value) : row.value
+            value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value
           };
         })
       }),

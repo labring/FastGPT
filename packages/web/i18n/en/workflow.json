@@ -298,6 +298,7 @@
   "tag_filter_add_condition": "Add Condition",
   "tag_filter_input_value": "Input value",
   "tag_filter_select_tag": "Select tag",
+  "tag_filter_select_tag_first": "Please select a tag first",
   "tag_filter_select_op": "Select condition",
   "tag_filter_no_dataset": "Please select a dataset first",
   "tag_filter_no_tags": "No tags available in the selected dataset, please create tags in the dataset first",

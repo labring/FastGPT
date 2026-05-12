@@ -29,7 +29,6 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
@@ -54,7 +53,6 @@ type SynonymFile = NonNullable<ListSynonymFilesResponse['files']>[0];
 const ACCEPTED_FILE_TYPES = ['.xlsx', '.xls', '.csv'];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const POPOVER_WIDTH = '318px';
-const UPLOAD_AREA_WIDTH = '660px';
 
 interface UploadedFile {
   name: string;
@@ -72,7 +70,6 @@ interface FileInfoProps {
   uploadTime: Date;
   isUploadedFile?: boolean;
   uploaderName?: string;
-  uploaderAvatar?: string;
   onDownload?: () => void;
   onDelete?: (e: React.MouseEvent) => void;
   onClear?: () => void;
@@ -92,7 +89,6 @@ const FileInfo: React.FC<FileInfoProps> = ({
   uploadTime,
   isUploadedFile = false,
   uploaderName,
-  uploaderAvatar,
   onDownload,
   onDelete,
   onClear,
@@ -105,60 +101,63 @@ const FileInfo: React.FC<FileInfoProps> = ({
   errorMessage
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { userInfo } = useUserStore();
   const isFailedUpload = isUploadedFile && uploadStatus === 'failed';
 
+  const uploaderLabel = isUploadedFile
+    ? userInfo?.team?.memberName || '-'
+    : uploaderName || '-';
+
   return (
     <VStack spacing={2} alignItems="stretch" w={'100%'}>
-      <Box p={4} border={theme.borders.sm} borderRadius={'10px'} borderColor={theme.borders.base}>
-        <Flex alignItems={'center'} justifyContent={'space-between'}>
-          <Flex alignItems={'center'} gap={3}>
-            <MyIcon name={getFileIcon(name) as any} w={'32px'} h={'32px'} />
-            <Box flex={1}>
-              <Text fontSize={'16px'} fontWeight={500} color={'myGray.900'} noOfLines={1}>
+      <Box p={4} borderRadius="10px" bg="#FCFCFD" border="1px solid #E8EBF0">
+        <Flex alignItems="stretch" justifyContent="space-between">
+          <Flex alignItems="stretch" gap={3}>
+            {/* 图标容器 */}
+            <Flex
+              flexShrink={0}
+              alignItems="center"
+              justifyContent="center"
+              p="10px"
+              borderRadius="6px"
+              bg="white"
+              border="1px solid #DCE0E6"
+              sx={{ boxShadow: '0px 1px 4px 0px rgba(0, 0, 0, 0.08)' }}
+            >
+              <MyIcon name={getFileIcon(name) as any} w="32px" h="32px" />
+            </Flex>
+
+            {/* 文件信息 */}
+            <Flex flex={1} direction="column" justifyContent="center">
+              <Text
+                h="24px"
+                fontSize="16px"
+                fontWeight={600}
+                lineHeight="24px"
+                color="#111824"
+                noOfLines={1}
+              >
                 {name}
               </Text>
-              <HStack gap={'40px'} mt={2} fontSize={'sm'} color={'myGray.500'}>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'common/list'} color={'myGray.600'} w={'14px'} h={'14px'} mr={1} />
-                  {size}
+              <HStack gap="40px" mt={2} alignItems="center">
+                <Flex alignItems="center" gap={1}>
+                  <MyIcon name="common/list" color="#9CA0A6" w="16px" h="16px" />
+                  <Text fontSize="12px" color="#666666">{size}</Text>
                 </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'history'} w={'14px'} h={'14px'} mr={1} />
-                  {uploadTime.toLocaleString()}
+                <Flex alignItems="center" gap={1}>
+                  <MyIcon name="common/user" color="#9CA0A6" w="16px" h="16px" />
+                  <Text fontSize="12px" color="#666666">{uploaderLabel}</Text>
                 </Flex>
-                {isUploadedFile ? (
-                  <Flex alignItems={'center'}>
-                    <Avatar
-                      src={userInfo?.avatar}
-                      w={'14px'}
-                      h={'14px'}
-                      borderRadius="50%"
-                      mr={1}
-                    />
-                    {userInfo?.team?.memberName || '-'}
-                  </Flex>
-                ) : (
-                  <Flex alignItems={'center'}>
-                    {uploaderAvatar && (
-                      <Avatar
-                        src={uploaderAvatar}
-                        w={'14px'}
-                        h={'14px'}
-                        borderRadius="50%"
-                        mr={1}
-                      />
-                    )}
-                    {uploaderName || '-'}
-                  </Flex>
-                )}
+                <Flex alignItems="center" gap={1}>
+                  <MyIcon name="history" color="#9CA0A6" w="16px" h="16px" />
+                  <Text fontSize="12px" color="#666666">{uploadTime.toLocaleString()}</Text>
+                </Flex>
               </HStack>
-            </Box>
+            </Flex>
           </Flex>
 
           {/* 操作按钮 */}
-          <HStack gap={2}>
+          <HStack gap={2} alignSelf="center">
             {isFailedUpload && (
               <Center w={6} h={6}>
                 <MyIcon name={'common/warnTriangle'} w={'16px'} h={'16px'} />
@@ -172,9 +171,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
                 h={6}
                 cursor="pointer"
                 onClick={onDownload}
-                _hover={{
-                  color: 'primary.500'
-                }}
+                _hover={{ color: 'primary.500' }}
               >
                 <MyIcon name={'common/download'} w={'16px'} h={'16px'} />
               </Center>
@@ -207,9 +204,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
                     h={6}
                     cursor="pointer"
                     onClick={onDelete}
-                    _hover={{
-                      color: 'red.500'
-                    }}
+                    _hover={{ color: 'red.500' }}
                   >
                     <MyIcon name={'delete'} w={'16px'} h={'16px'} />
                   </Center>
@@ -219,7 +214,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
                   <PopoverBody p={3}>
                     <VStack spacing={3} align="stretch">
                       <HStack spacing={2}>
-                        <MyIcon name="common/warn" w={'24px'} h={'24px'}></MyIcon>
+                        <MyIcon name="common/warn" w={'24px'} h={'24px'} />
                         <Text fontSize="14px" fontWeight="medium">
                           {t('dataset:synonym_confirm_delete')}
                         </Text>
@@ -486,89 +481,197 @@ const SynonymTab = () => {
     const existingFileNode = (() => {
       if (uploadedFile) {
         return (
-          <FileInfo
-            name={uploadedFile.name}
-            size={uploadedFile.size}
-            uploadTime={uploadedFile.uploadTime}
-            isUploadedFile={true}
-            uploadStatus={uploadedFile.status}
-            errorMessage={uploadedFile.errorMessage}
-            onClear={handleClearUpload}
-            isUploading={isUploading}
-          />
+          <Box py="40px" px="32px">
+            <FileInfo
+              name={uploadedFile.name}
+              size={uploadedFile.size}
+              uploadTime={uploadedFile.uploadTime}
+              isUploadedFile={true}
+              uploadStatus={uploadedFile.status}
+              errorMessage={uploadedFile.errorMessage}
+              onClear={handleClearUpload}
+              isUploading={isUploading}
+            />
+          </Box>
         );
       }
       if (synonymFile) {
         return (
-          <FileInfo
-            name={synonymFile.fileName}
-            size={formatFileSize(synonymFile.size)}
-            uploadTime={new Date(synonymFile.uploadTime)}
-            isUploadedFile={false}
-            uploaderName={synonymFile.uploaderName}
-            uploaderAvatar={synonymFile.uploaderAvatar}
-            onDownload={handleFileDownload}
-            onDelete={handleDeleteClick}
-            showDeleteConfirm={deleteConfirmItem}
-            onCancelDelete={() => setDeleteConfirmItem(false)}
-            onConfirmDelete={handleDeleteConfirmClick}
-            isDeleting={isDeleting}
-          />
+          <Box py="40px" px="32px">
+            <FileInfo
+              name={synonymFile.fileName}
+              size={formatFileSize(synonymFile.size)}
+              uploadTime={new Date(synonymFile.uploadTime)}
+              isUploadedFile={false}
+              uploaderName={synonymFile.uploaderName}
+              onDownload={handleFileDownload}
+              onDelete={handleDeleteClick}
+              showDeleteConfirm={deleteConfirmItem}
+              onCancelDelete={() => setDeleteConfirmItem(false)}
+              onConfirmDelete={handleDeleteConfirmClick}
+              isDeleting={isDeleting}
+            />
+            {/* 卡片下方说明文字 */}
+            <Box mt="16px" ml="4px">
+              {[t('dataset:synonym_file_tip1'), t('dataset:synonym_file_tip2')].map((tip) => (
+                <Flex key={tip} alignItems="center" gap={2} lineHeight="24px">
+                  <Box flexShrink={0} w="4px" h="4px" borderRadius="full" bg="#666666" />
+                  <Text fontSize="14px" lineHeight="24px" color="#666666">
+                    {tip}
+                  </Text>
+                </Flex>
+              ))}
+            </Box>
+          </Box>
         );
       }
       return null;
     })();
 
-    // 文件上传区域
-    const uploadAreaNode = (
-      <Flex justifyContent={'center'}>
-        <VStack spacing={4} alignItems="stretch" w={UPLOAD_AREA_WIDTH}>
-          {/* 模板下载区域 */}
-          <HStack>
-            <VStack spacing={1} align="start" w={'100%'}>
-              <Button
-                variant={'whiteBase'}
-                w={'100%'}
-                leftIcon={<MyIcon name={'common/download'} w={4} />}
-                onClick={handleDownloadTemplate}
+    // 空状态：左右布局
+    const emptyStateNode = (
+      <Flex justifyContent="center" alignItems="center" h="100%">
+        <Flex gap="80px" alignItems="flex-start">
+          {/* 左侧说明区域 */}
+          <Box w="380px">
+            <Text
+              h="22px"
+              fontSize="16px"
+              fontWeight={600}
+              color="#333333"
+              lineHeight="22px"
+            >
+              {t('dataset:synonym_empty_title')}
+            </Text>
+
+            <Text mt="14px" fontSize="14px" lineHeight="20px" color="#333333">
+              {t('dataset:synonym_empty_description')}
+            </Text>
+
+            {/* 示例表格（渐变边框） */}
+            <Box
+              mt="14px"
+              position="relative"
+              borderRadius="8px"
+              p="1px"
+              sx={{
+                background:
+                  'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg)',
+                boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)'
+              }}
+            >
+              <Box
+                display="grid"
+                gridTemplateColumns="repeat(4, minmax(min-content, 1fr))"
+                borderRadius="8px"
+                overflow="hidden"
+                bg="white"
               >
+                {/* 表头 */}
+                <Box bg="#E6F1FF" h="40px" display="flex" alignItems="center" px={3}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_template_col_standard')}
+                  </Text>
+                </Box>
+                <Box
+                  bg="#E6F1FF"
+                  h="40px"
+                  display="flex"
+                  alignItems="center"
+                  px={3}
+                  sx={{ gridColumn: 'span 3' }}
+                >
+                  <Text fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_template_col_synonyms')}
+                  </Text>
+                </Box>
+
+                {/* 第一行：库存单位 */}
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term1')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term1_syn1')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term1_syn2')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term1_syn3')}
+                  </Text>
+                </Box>
+
+                {/* 第二行：应收账款 */}
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term2')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term2_syn1')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term2_syn2')}
+                  </Text>
+                </Box>
+                <Box px={3} py={2}>
+                  <Text whiteSpace="nowrap" fontSize="12px" lineHeight="20px" color="#475466">
+                    {t('dataset:synonym_display_term2_syn3')}
+                  </Text>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* 下载模板按钮 */}
+            <Box mt="8px">
+              <Button variant="link" fontSize="12px" color="#156AD9" onClick={handleDownloadTemplate}>
                 {t('dataset:synonym_download_template')}
               </Button>
-            </VStack>
-          </HStack>
+            </Box>
+          </Box>
 
-          {/* 文件选择区域 - 无文件且无上传状态时显示 */}
-          {!uploadedFile && (
-            <FileSelector
-              fileType={ACCEPTED_FILE_TYPES.join(',')}
-              selectFiles={selectFiles}
-              setSelectFiles={handleFileSelectorChange}
-              maxCount={1}
-              maxSize={MAX_FILE_SIZE}
-              FileTypeNode={
-                <Box fontSize={'xs'}>
-                  <Trans
-                    i18nKey={'file:template_csv_file_select_tip'}
-                    values={{
-                      fileType: ACCEPTED_FILE_TYPES.join(t('common:comma_symbol'))
-                    }}
-                    components={{
-                      highlight: <Box as="span" color="myGray.900" fontWeight="bold" />
-                    }}
-                  />
-                </Box>
-              }
-              fileTipNode={t('dataset:file_upload_tip', { maxCount: 1, maxSize: '50 MB' })}
-              autoFilterOverSize={true}
-            />
-          )}
-        </VStack>
+          {/* 右侧上传区域 */}
+          <FileSelector
+            fileType={ACCEPTED_FILE_TYPES.join(',')}
+            selectFiles={selectFiles}
+            setSelectFiles={handleFileSelectorChange}
+            maxCount={1}
+            maxSize={MAX_FILE_SIZE}
+            w="480px"
+            h="280px"
+            FileTypeNode={
+              <Box fontSize={'xs'}>
+                <Trans
+                  i18nKey={'file:template_csv_file_select_tip'}
+                  values={{
+                    fileType: ACCEPTED_FILE_TYPES.join(t('common:comma_symbol'))
+                  }}
+                  components={{
+                    highlight: <Box as="span" color="myGray.900" fontWeight="bold" />
+                  }}
+                />
+              </Box>
+            }
+            fileTipNode={t('dataset:file_upload_tip', { maxCount: 1, maxSize: '50 MB' })}
+            autoFilterOverSize={true}
+          />
+        </Flex>
       </Flex>
     );
 
     return {
       existingFileNode,
-      uploadAreaNode
+      emptyStateNode
     };
   }, [
     synonymFile,
@@ -588,15 +691,6 @@ const SynonymTab = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'} py={6} px={4}>
-      {/* 顶部提示Banner */}
-      <MyBox py={3} px={6} bg={'blue.50'} borderRadius={'md'} mb={4}>
-        <Flex alignItems={'center'}>
-          <MyIcon name={'infoRounded'} w={'16px'} h={'16px'} color={'primary.600'} mr={2} />
-          <Text fontSize={'sm'} color={'myGray.600'} fontWeight={500}>
-            {t('dataset:synonym_usage_tip')}
-          </Text>
-        </Flex>
-      </MyBox>
       {/* 主要内容区域 */}
       <MyBox
         flex={1}
@@ -605,7 +699,7 @@ const SynonymTab = () => {
         borderRadius={'md'}
         borderColor={theme.borders.base}
       >
-        {renderNodes.existingFileNode || renderNodes.uploadAreaNode}
+        {renderNodes.existingFileNode || renderNodes.emptyStateNode}
       </MyBox>
     </Flex>
   );

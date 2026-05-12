@@ -298,6 +298,7 @@
   "tag_filter_add_condition": "新增過濾條件",
   "tag_filter_input_value": "輸入值",
   "tag_filter_select_tag": "選擇標籤",
+  "tag_filter_select_tag_first": "請先選擇標籤",
   "tag_filter_select_op": "選擇條件",
   "tag_filter_no_dataset": "請先選擇知識庫",
   "tag_filter_no_tags": "當前所選知識庫沒有可用標籤，請先在知識庫中建立標籤",
