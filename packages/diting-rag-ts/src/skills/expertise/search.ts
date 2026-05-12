@@ -122,15 +122,19 @@ export class SearchSkill extends BaseSkill {
           (q, i, arr) => arr.indexOf(q) === i
         );
 
-        // 对每个 query 调用 reranker，记录每个 chunk 的最高得分
+        // 并发 rerank：所有 queries 并发调用 reranker，取每个 chunk 的最高得分
         const maxScoreMap = new Map<string, number>();
-        for (const rq of rerankQueries) {
-          const rerankResult = await this.rerankSkill.execute({
-            context: input.context,
-            query: rq,
-            chunks: capped,
-            topK: capped.length // 拿所有 chunk 的分数，后续统一截断
-          });
+        const rerankResults = await Promise.all(
+          rerankQueries.map((rq) =>
+            this.rerankSkill!.execute({
+              context: input.context,
+              query: rq,
+              chunks: capped,
+              topK: capped.length
+            })
+          )
+        );
+        for (const rerankResult of rerankResults) {
           if (rerankResult.success && rerankResult.data) {
             const rerankData = rerankResult.data as {
               chunks: ChunkItem[];

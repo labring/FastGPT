@@ -66,13 +66,13 @@ export class ChunkSelectorSkill extends BaseSkill {
   private infoGainCalc?: InformationGainCalculator;
   private config = {
     // 对齐 Python ChunkSelectorConfig 默认值
-    enableLLMRerank: false, // LLM Stage2 精排：开销大，默认关闭；CHUNK_SELECTOR_USE_LLM=true 开启
+    enableLLMRerank: true, // LLM Stage2 精排：默认开启；CHUNK_SELECTOR_USE_LLM=false 关闭
     maxDocLength: 30000,
     llmScoreThreshold: 4.0,
     enableInfoGain: true,
     infoGainThreshold: 0.2,
     infoGainMaxHistory: 10,
-    useLLMSubQuery: false, // subQueryFilter LLM 评分：开销大，默认关闭；CHUNK_SELECTOR_USE_LLM_SUB_QUERY=true 开启
+    useLLMSubQuery: true, // subQueryFilter LLM 评分：默认开启；CHUNK_SELECTOR_USE_LLM_SUB_QUERY=false 关闭
     llmSubQueryKeepTopK: 12, // Python: llm_sub_query_keep_top_k = 12
     // 内部扩展参数（无 Python 直接对应）
     stage1Threshold: 7.0,

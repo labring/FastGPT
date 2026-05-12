@@ -1332,7 +1332,7 @@ export function createToolsNode(
       ctx.playbook = state.playbook;
     }
 
-    logger?.info(`[tools] ${toolNames.join(',')} (${Date.now() - startTime}ms)`);
+    logger?.info(`[tools] ${toolNames.join(',')} duration: (${Date.now() - startTime}ms)`);
 
     return {
       messages: toolMessages,
@@ -1920,7 +1920,8 @@ export function createSyncBlackboardNode(
     // ── LanguageTracker 初始化（首次调用时）────────────────
     if (!ctx.languageTracker && _state.languageTrackerConfig) {
       ctx.languageTracker = LanguageTracker.fromConfig(
-        _state.languageTrackerConfig as LanguageTrackerConfig
+        _state.languageTrackerConfig as LanguageTrackerConfig,
+        ctx.logger
       );
     }
 

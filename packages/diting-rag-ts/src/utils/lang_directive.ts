@@ -5,6 +5,7 @@
 import type { ChunkItem } from '../types/chunk';
 import { detectLang } from './lang';
 import ISO6391 from 'iso-639-1-dir';
+import type { Logger } from '../ports/logger';
 
 // 使用 iso-639-1-dir 提供 ISO 639-1 → 母语名映射，覆盖 184 种语言
 function langName(code: string): string {
@@ -140,16 +141,18 @@ export class LanguageTracker {
   readonly confidence: 'authoritative' | 'tentative' | 'fallback';
   private records: LanguageRecord[] = [];
   private activeAnomaly: string | null = null;
+  private logger?: Logger;
 
-  constructor(config: LanguageTrackerConfig) {
+  constructor(config: LanguageTrackerConfig, logger?: Logger) {
     this.defaultLang = config.defaultLang;
     this.userLang = config.userLang;
     this.confidence = config.confidence;
+    this.logger = logger;
   }
 
   /** 从 trackerConfig 创建实例（sync_blackboard 调用） */
-  static fromConfig(config: LanguageTrackerConfig): LanguageTracker {
-    return new LanguageTracker(config);
+  static fromConfig(config: LanguageTrackerConfig, logger?: Logger): LanguageTracker {
+    return new LanguageTracker(config, logger);
   }
 
   /**
@@ -209,10 +212,9 @@ export class LanguageTracker {
     debugInfo: string
   ): LangGuidanceResult {
     const log = (branch: string, result: LangGuidanceResult) => {
-      console.log(
+      this.logger?.debug(
         `[LanguageTracker] ${debugInfo} branch=${branch} → guidance=${result.guidance ? 'yes' : 'null'} suppress=${result.suppressEarlyStop} shouldPush=${result.shouldPush}`
       );
-      return result;
     };
 
     // 正常：搜索语言与返回主导语言一致；无法判断（语言未知）
@@ -231,47 +233,55 @@ export class LanguageTracker {
       ) {
         const userLangKey = `user-lang:${last.queryLang}`;
         if (this.activeAnomaly === userLangKey) {
-          return log('user-lang-dup', {
+          const result: LangGuidanceResult = {
             guidance: null,
             suppressEarlyStop: false,
             shouldPush: false
-          });
+          };
+          log('user-lang-dup', result);
+          return result;
         }
         this.activeAnomaly = userLangKey;
-        return log('user-lang-disconnect', {
+        const result: LangGuidanceResult = {
           guidance:
             `⚠ LANGUAGE: Searches in ${langName(resultDominant!)} returned weak results. User asked in ${langName(this.userLang)}.\n` +
             `NEXT STEP: You MUST call @query_rewrite with strategy "translate_to ${this.userLang}" to search effectively.`,
           suppressEarlyStop: false,
           shouldPush: true
-        });
+        };
+        log('user-lang-disconnect', result);
+        return result;
       }
-      return log('normal', { guidance: null, suppressEarlyStop: false, shouldPush: false });
+      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: false, shouldPush: false };
+      log('normal', result);
+      return result;
     }
 
     // 语言不匹配 — 检查是否是跨语言 embedding 生效
     if (isRelevant) {
-      return log('cross-lingual-relevant', {
-        guidance: null,
-        suppressEarlyStop: false,
-        shouldPush: false
-      });
+      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: false, shouldPush: false };
+      log('cross-lingual-relevant', result);
+      return result;
     }
 
     // 异常：语言不匹配且相关性低
     const anomalyKey = `${last.queryLang}→${resultDominant}`;
     if (this.activeAnomaly === anomalyKey) {
-      return log('anomaly-dup', { guidance: null, suppressEarlyStop: true, shouldPush: false });
+      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: true, shouldPush: false };
+      log('anomaly-dup', result);
+      return result;
     }
 
     this.activeAnomaly = anomalyKey;
-    return log('anomaly', {
+    const result: LangGuidanceResult = {
       guidance:
         `⚠ LANGUAGE MISMATCH: Searched in ${langName(last.queryLang)} but results are mostly ${langName(resultDominant!)}.\n` +
         `NEXT STEP: You MUST call @query_rewrite to reformulate all queries in ${resultDominant}. Do NOT search again without rewording first.`,
       suppressEarlyStop: true,
       shouldPush: true
-    });
+    };
+    log('anomaly', result);
+    return result;
   }
 
   clearAnomaly(): void {

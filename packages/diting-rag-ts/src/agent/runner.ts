@@ -98,16 +98,16 @@ export const AGENT_EVENTS = {
 function mapNodeUpdateToEvent(
   nodeName: string,
   nodeOutput: Partial<AgenticRAGStateType>
-): AgentEvent | null {
+): AgentEvent[] {
   switch (nodeName) {
     case 'route_playbook':
-      return {
+      return [{
         step: AGENT_EVENTS.PLAYBOOK_SELECTED,
         detail: `Playbook selected: ${nodeOutput.playbook ?? 'general'}`,
         playbook: nodeOutput.playbook ?? 'general',
         extra: { analysis: nodeOutput.analysis ?? '' },
         timestamp: Date.now()
-      };
+      }];
 
     case 'agent':
     case 'native_agent':
@@ -116,53 +116,34 @@ function mapNodeUpdateToEvent(
       const pendingToolCalls = nodeOutput.pendingToolCalls ?? [];
       const toolNames = pendingToolCalls.map((tc) => tc.function.name);
       if (toolNames.length === 0) {
-        return null;
+        return [];
       }
-      if (toolNames.includes('search')) {
-        // 从 tool call arguments 提取实际查询词
-        const searchCall = pendingToolCalls.find((tc) => tc.function.name === 'search');
-        let queries: string[] = [];
-        if (searchCall) {
-          try {
-            const args = JSON.parse(searchCall.function.arguments);
-            queries = args.queries || (args.query ? [args.query] : []);
-          } catch {}
-        }
-        return {
-          step: AGENT_EVENTS.SEARCHING,
-          detail: queries.join(', ') || 'Searching...',
-          timestamp: Date.now(),
-          extra: { queries }
-        };
-      }
+      // 注意：search 的 SEARCHING 事件由 tools 节点在执行时发射，
+      // 避免 shouldContinue 早停时用户看到未实际执行的搜索文本
       if (toolNames.includes('query_rewrite')) {
-        return {
+        return [{
           step: AGENT_EVENTS.REWRITING,
           detail: 'Rewriting query',
           timestamp: Date.now()
-        };
+        }];
       }
       if (toolNames.includes('summary')) {
-        return {
+        return [{
           step: AGENT_EVENTS.GENERATING,
           detail: 'Generating answer',
           timestamp: Date.now()
-        };
+        }];
       }
-      return {
-        step: AGENT_EVENTS.THINKING,
-        detail: `Agent: ${toolNames.join(',')}`,
-        timestamp: Date.now()
-      };
+      // 未识别的 tool call（如 assess 等内部决策工具），不产生用户可见事件
+      return [];
     }
 
     case 'tools': {
       const path = nodeOutput.executionPath ?? [];
       const lastPath = path[path.length - 1] ?? '';
       if (lastPath.includes('search')) {
-        // searchQueries delta = this round's queries (append reducer, so delta has new ones)
         const usedQueries = nodeOutput.searchQueries ?? [];
-        return {
+        const searchDoneEvent: AgentEvent = {
           step: AGENT_EVENTS.SEARCH_DONE,
           detail: `Found ${nodeOutput.allChunks?.length ?? 0} chunks`,
           timestamp: Date.now(),
@@ -171,28 +152,39 @@ function mapNodeUpdateToEvent(
             queries: usedQueries
           }
         };
+        // 有实际查询词时才发射 SEARCHING（避免空查询产生无意义文本）
+        if (usedQueries.length > 0) {
+          const searchingEvent: AgentEvent = {
+            step: AGENT_EVENTS.SEARCHING,
+            detail: usedQueries.join(', ') || 'Searching...',
+            timestamp: Date.now(),
+            extra: { queries: usedQueries }
+          };
+          return [searchingEvent, searchDoneEvent];
+        }
+        return [searchDoneEvent];
       }
       if (lastPath.includes('query_rewrite')) {
-        return {
+        return [{
           step: AGENT_EVENTS.REWRITE_DONE,
           detail: `Rewritten to ${nodeOutput.rewriteQueries?.length ?? 0} queries`,
           timestamp: Date.now(),
           extra: { queries: nodeOutput.rewriteQueries ?? [] }
-        };
+        }];
       }
       if (lastPath.includes('summary') || nodeOutput.answer) {
-        return {
+        return [{
           step: AGENT_EVENTS.ANSWER_DONE,
           detail: `Answer generated (confidence: ${nodeOutput.confidence ?? 0})`,
           timestamp: Date.now(),
           extra: { confidence: nodeOutput.confidence }
-        };
+        }];
       }
-      return null;
+      return [];
     }
 
     default:
-      return null;
+      return [];
   }
 }
 
@@ -466,8 +458,10 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
             // 将 delta 合并到累积 state
             mergeStateUpdate(nodeOutput);
 
-            const event = mapNodeUpdateToEvent(nodeName, nodeOutput);
-            if (event) yield event;
+            const events = mapNodeUpdateToEvent(nodeName, nodeOutput);
+            for (const event of events) {
+              if (event) yield event;
+            }
           }
         }
         // 流结束后使用累积完整 state
