@@ -146,6 +146,7 @@ const AppCard = ({
                               <Flex>
                                 <ExportConfigPopover
                                   appName={appDetail.name}
+                                  appIntro={appDetail.intro}
                                   appForm={appForm}
                                   chatConfig={appDetail.chatConfig}
                                   filterSensitiveInfo={filterSensitiveInfo}

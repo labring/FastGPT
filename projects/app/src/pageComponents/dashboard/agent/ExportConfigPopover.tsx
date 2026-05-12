@@ -32,6 +32,8 @@ const ExportConfigPopover = ({ appName, appId }: { appName: string; appId: strin
       // 构建配置
       const config = JSON.stringify(
         {
+          name: appDetail.name,
+          intro: appDetail.intro,
           nodes: filterSensitiveInfo
             ? filterSensitiveNodesData(appDetail.modules)
             : appDetail.modules,

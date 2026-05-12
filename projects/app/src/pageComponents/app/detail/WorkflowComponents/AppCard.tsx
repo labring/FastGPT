@@ -114,6 +114,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 <ExportConfigPopover
                   chatConfig={appDetail.chatConfig}
                   appName={appDetail.name}
+                  appIntro={appDetail.intro}
                   getWorkflowData={flowData2StoreData}
                 />
               </MyBox>
