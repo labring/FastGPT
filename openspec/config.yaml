@@ -1,5 +1,18 @@
 schema: spec-driven
+context: |
+  项目拥有本地维护的内部UI组件库，所有界面修改必须优先复用现有组件。可以使用 skill（component-guide）查询是否存在相应组件
 
+  **数据模型一致性规则**：
+  Mongoose schema (packages/service/) 和 Zod schema (packages/global/) 是同一份数据的双重定义，二者必须保持字段同步：
+  - 在 MongoDB schema 中新增/修改/删除字段时，必须同步更新对应的 Zod schema 和手写 `.d.ts` 类型声明
+  - 修改字段类型或约束时，两端保持一致的 optional/required/type 语义
+  - 改动涉及多个模块时，逐模块检查 Mongo schema → Zod schema → `.d.ts` 的一致性
+rules:
+  task:
+    - 一些复杂的逻辑或者关键改动必须写注释
+  archive:
+    - 合并后的规范必须使用英文文标题，需求描述得为中文
+    - 使用： ADDED/MODIFIED/REMOVED/RENAMED
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.

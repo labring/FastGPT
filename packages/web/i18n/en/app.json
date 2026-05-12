@@ -354,7 +354,7 @@
   "saved_success": "Changes saved successfully. To make the version available to others, please click Save and publish.",
   "search_agent": "Search Agent",
   "search_app": "App name",
-  "search_name_intro": "Name/Description",
+  "search_name_intro": "Name/Description/Creator",
   "new_folder": "New folder",
   "new_tool": "New tool",
   "search_tool": "Tool name",

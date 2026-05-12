@@ -52,6 +52,7 @@ export type AppSchema = {
   scheduledTriggerNextTime?: Date;
 
   inheritPermission?: boolean;
+  isPinned?: boolean;
 
   // if access the app by favourite or quick
   favourite?: boolean;
@@ -80,6 +81,7 @@ export type AppListItemType = {
   pluginData?: AppSchema['pluginData'];
   permission: AppPermission;
   inheritPermission?: boolean;
+  isPinned?: boolean;
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
