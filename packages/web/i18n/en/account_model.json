@@ -104,13 +104,9 @@
   "evaluation_model_tip": "Used to evaluate apps and quality of data in datasets.",
   "action": "Action",
   "train": "Train",
-  "train_model": "Train Model",
   "train_model_generate_new": "Train Model (Generate New Model)",
-  "train_base_model": "Base Model",
-  "train_base_model_tip": "Only rerank and embedding models are supported",
   "train_new_model_name": "New Model Name",
   "train_data": "Training Data",
-  "select_base_model_type": "Select model type",
   "train_select_base_model_first": "Please select a base model first",
   "please_select": "Please select",
   "last_train_time": "Last Train Time",
@@ -136,5 +132,5 @@
   "train_detail_confirm_delete": "Are you sure you want to delete this task record?",
   "all_datasets": "All Knowledge Bases",
   "base_model_tab": "Base Models",
-  "custom_model_tab": "Custom Models"
+  "custom_model_tab": "Trained Models"
 }
