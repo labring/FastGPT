@@ -221,7 +221,7 @@ const LogsInner = () => {
                 />
                 <PopoverConfirm
                   Trigger={
-                    <Button size={'sm'} rounded="4px">
+                    <Button h={'36px'} rounded="4px" variant={'whiteBase'}>
                       {t('common:Export')}
                     </Button>
                   }

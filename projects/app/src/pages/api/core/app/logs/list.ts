@@ -13,6 +13,7 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import { FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -36,6 +37,7 @@ async function handler(
     outLinkUids,
     chatSearch,
     feedbackType,
+    feedbackFilter,
     unreadOnly,
     errorFilter
   } = GetAppChatLogsBodySchema.parse(req.body);
@@ -53,6 +55,26 @@ async function handler(
     appId,
     per: AppReadChatLogPerVal
   });
+
+  // Build feedbackFilter MongoDB condition (used when feedbackType is not provided)
+  const feedbackFilterCondition =
+    !feedbackType && feedbackFilter && feedbackFilter.length < 3
+      ? (() => {
+          const hasGood = feedbackFilter.includes(FeedbackFilterEnum.good);
+          const hasBad = feedbackFilter.includes(FeedbackFilterEnum.bad);
+          const hasNo = feedbackFilter.includes(FeedbackFilterEnum.noFeedback);
+
+          if (feedbackFilter.length === 1) {
+            if (hasGood) return { hasGoodFeedback: true };
+            if (hasBad) return { hasBadFeedback: true };
+            return { hasGoodFeedback: { $ne: true }, hasBadFeedback: { $ne: true } };
+          }
+          // Two selected — exclude the missing one
+          if (hasGood && hasBad) return { $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }] };
+          if (hasGood && hasNo) return { hasBadFeedback: { $ne: true } };
+          return { hasGoodFeedback: { $ne: true } };
+        })()
+      : {};
 
   const where = {
     appId: new Types.ObjectId(appId),
@@ -81,6 +103,7 @@ async function handler(
       unreadOnly && {
         hasUnreadBadFeedback: true
       }),
+    ...feedbackFilterCondition,
     ...(errorFilter === 'has_error' && {
       errorCount: { $gt: 0 }
     }),

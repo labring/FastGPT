@@ -3,7 +3,7 @@
  * @description 智能客服应用的对话日志列表页面，显示筛选后的日志数据
  */
 import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap, FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import React, { useMemo, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -24,9 +24,10 @@ const DetailLogsModal = dynamic(() => import('./DetailLogs'));
 
 interface LogListProps {
   filters: LogFiltersType | null;
+  onTotalChange?: (total: number) => void;
 }
 
-const LogList: React.FC<LogListProps> = ({ filters }) => {
+const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
   const { t } = useTranslation();
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -60,6 +61,11 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
     disabled: !params,
     refreshDeps: [params]
   });
+
+  // Report total to parent component
+  useEffect(() => {
+    onTotalChange?.(total);
+  }, [total, onTotalChange]);
 
   const HeaderRenderMap: Record<string, React.ReactNode> = useMemo(() => {
     if (!filters?.logKeys) return {};
