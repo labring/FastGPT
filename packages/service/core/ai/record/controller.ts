@@ -4,7 +4,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const createLLMRequestId = () => {
-  return getNanoid();
+  return getNanoid(12);
 };
 
 /**

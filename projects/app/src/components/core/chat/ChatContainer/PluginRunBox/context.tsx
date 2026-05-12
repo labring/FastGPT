@@ -60,45 +60,14 @@ const PluginRunContextProvider = ({
   }, []);
 
   const generatingMessage = useCallback(
-    ({
-      responseValueId,
-      stepId,
-      event,
-      text = '',
-      reasoningText,
-      status,
-      name,
-      tool,
-      interactive,
-      plan,
-      planStatus,
-      nodeResponse,
-      variables
-    }: generatingMessageProps) => {
+    ({ event, text = '', status, name, tool, nodeResponse, variables }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
 
-          const getUpdateIndex = () => {
-            if (!responseValueId) return item.value.length - 1;
-
-            const index = item.value.findIndex(
-              (value) =>
-                value.id === responseValueId ||
-                value.tool?.id === responseValueId ||
-                value.tools?.some((tool) => tool.id === responseValueId)
-            );
-            if (index !== -1) return index;
-
-            return item.value.length - 1;
-          };
-          const updateIndex = getUpdateIndex();
-          const updateValue: AIChatItemValueItemType = JSON.parse(
-            JSON.stringify(item.value[updateIndex] || {})
+          const lastValue: AIChatItemValueItemType = JSON.parse(
+            JSON.stringify(item.value[item.value.length - 1])
           );
-          if (stepId) {
-            updateValue.stepId = stepId;
-          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -114,41 +83,11 @@ const PluginRunContextProvider = ({
               moduleName: name
             };
           } else if (
-            event === SseResponseEventEnum.answer ||
-            event === SseResponseEventEnum.fastAnswer
+            (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
+            text
           ) {
-            if (reasoningText) {
-              if (updateValue.reasoning && updateValue.stepId === stepId) {
-                updateValue.reasoning.content += reasoningText;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
-                };
-              }
-
-              const val: AIChatItemValueItemType = {
-                id: responseValueId,
-                stepId,
-                reasoning: {
-                  content: reasoningText
-                }
-              };
-              return {
-                ...item,
-                value: item.value.concat(val)
-              };
-            }
-
-            if (!text) return item;
-
-            if (!updateValue.text) {
+            if (!lastValue || !lastValue.text) {
               const newValue: AIChatItemValueItemType = {
-                id: responseValueId,
-                stepId,
                 text: {
                   content: text
                 }
@@ -158,50 +97,39 @@ const PluginRunContextProvider = ({
                 value: item.value.concat(newValue)
               };
             } else {
-              updateValue.text.content += text;
+              lastValue.text.content += text;
               return {
                 ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
+                value: item.value.slice(0, -1).concat(lastValue)
               };
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              id: responseValueId || tool.id,
               tools: [tool]
             };
             return {
               ...item,
               value: item.value.concat(val)
             };
-          } else if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
-            const toolId = responseValueId || tool.id;
-            updateValue.tools = updateValue.tools.map((item) => {
-              if (item.id === toolId && tool.params) {
+          } else if (event === SseResponseEventEnum.toolParams && tool && lastValue?.tools) {
+            lastValue.tools = lastValue.tools.map((item) => {
+              if (item.id === tool.id) {
                 item.params += tool.params;
               }
               return item;
             });
             return {
               ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
+              value: item.value.slice(0, -1).concat(lastValue)
             };
           } else if (event === SseResponseEventEnum.toolResponse && tool) {
-            const toolId = responseValueId || tool.id;
             // replace tool response
             return {
               ...item,
               value: item.value.map((val) => {
                 if (val.tools) {
                   const tools = val.tools.map((item) =>
-                    item.id === toolId ? { ...item, response: tool.response } : item
+                    item.id === tool.id ? { ...item, response: tool.response } : item
                   );
                   return {
                     ...val,
@@ -209,71 +137,6 @@ const PluginRunContextProvider = ({
                   };
                 }
                 return val;
-              })
-            };
-          } else if (event === SseResponseEventEnum.planStatus && planStatus) {
-            const planStatusIndex = item.value.findIndex(
-              (value) => !!value.planStatus || (!!responseValueId && value.id === responseValueId)
-            );
-            const nextPlanStatusValue: AIChatItemValueItemType = {
-              id: responseValueId,
-              planStatus
-            };
-
-            if (planStatusIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planStatusIndex),
-                  {
-                    ...item.value[planStatusIndex],
-                    ...nextPlanStatusValue
-                  },
-                  ...item.value.slice(planStatusIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: item.value.concat(nextPlanStatusValue)
-            };
-          } else if (event === SseResponseEventEnum.plan && plan) {
-            const planIndex = item.value.findIndex(
-              (value) =>
-                (!!responseValueId && value.id === responseValueId) ||
-                !!value.planStatus ||
-                (value.plan?.planId && value.plan.planId === plan.planId)
-            );
-            const nextPlanValue: AIChatItemValueItemType = {
-              id: responseValueId || plan.planId,
-              plan,
-              planStatus: undefined
-            };
-
-            if (planIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planIndex),
-                  {
-                    ...item.value[planIndex],
-                    ...nextPlanValue
-                  },
-                  ...item.value.slice(planIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: item.value.concat(nextPlanValue)
-            };
-          } else if (event === SseResponseEventEnum.interactive && interactive) {
-            return {
-              ...item,
-              value: item.value.concat({
-                interactive
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {

@@ -2,13 +2,14 @@ import { customNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type {
+  ChatCompletionTool,
   ChatCompletionMessageToolCall,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { AgentEvent } from '@mariozechner/pi-agent-core';
+import type { AgentEvent, AgentMessage } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage, Model, StopReason, ToolCall } from '@mariozechner/pi-ai';
 import { saveLLMRequestRecord, createLLMRequestId } from '../../../../../../ai/record/controller';
 import { getLLMModel } from '../../../../../../ai/model';
@@ -36,6 +37,154 @@ const stringifyToolArguments = (args: Record<string, unknown> | undefined) => {
   } catch {
     return '{}';
   }
+};
+
+type AssistantContentItem = AssistantMessage['content'][number];
+type ToolMatchInfo = {
+  properties: Set<string>;
+  required: Set<string>;
+};
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const isEmptyToolArguments = (args: unknown) =>
+  !isObjectRecord(args) || Object.keys(args).length === 0;
+
+const isToolCallContent = (item: AssistantContentItem): item is ToolCall =>
+  item.type === 'toolCall';
+
+const getToolMatchInfo = (tool: ChatCompletionTool): ToolMatchInfo => {
+  const schema = tool.function.parameters as
+    | {
+        properties?: Record<string, unknown>;
+        required?: string[];
+      }
+    | undefined;
+
+  return {
+    properties: new Set(Object.keys(schema?.properties || {})),
+    required: new Set(schema?.required || [])
+  };
+};
+
+const scoreToolArguments = ({
+  toolName,
+  args,
+  toolInfoMap
+}: {
+  toolName: string;
+  args: Record<string, unknown>;
+  toolInfoMap: Map<string, ToolMatchInfo>;
+}) => {
+  const argKeys = Object.keys(args);
+  if (argKeys.length === 0) return 0;
+
+  const toolInfo = toolInfoMap.get(toolName);
+  if (!toolInfo) return 1;
+
+  const propertyHits = argKeys.filter((key) => toolInfo.properties.has(key)).length;
+  const requiredHits = argKeys.filter((key) => toolInfo.required.has(key)).length;
+  const hasSchemaKeys = toolInfo.properties.size > 0 || toolInfo.required.size > 0;
+
+  if (hasSchemaKeys && propertyHits === 0 && requiredHits === 0) return -1;
+
+  return propertyHits + requiredHits * 4;
+};
+
+const normalizeAssistantToolCalls = ({
+  message,
+  completionTools = []
+}: {
+  message: AssistantMessage;
+  completionTools?: ChatCompletionTool[];
+}) => {
+  const toolInfoMap = new Map(
+    completionTools.map((tool) => [tool.function.name, getToolMatchInfo(tool)] as const)
+  );
+  const normalizedContent: AssistantContentItem[] = [];
+
+  const canMergeIntoToolCall = (
+    item: AssistantContentItem,
+    args: Record<string, unknown>
+  ): item is ToolCall => {
+    if (!isToolCallContent(item) || !item.name) return false;
+
+    const score = scoreToolArguments({
+      toolName: item.name,
+      args,
+      toolInfoMap
+    });
+    if (score < 0) return false;
+
+    // 空参数的命名 toolCall 是 provider streaming 拆块时最常见的合并目标。
+    if (isEmptyToolArguments(item.arguments)) return true;
+
+    // 同一个工具的参数可能被拆成多个匿名块；有 schema 命中时继续合并。
+    return score > 0;
+  };
+
+  const findMergeTargetIndex = (args: Record<string, unknown>) => {
+    const previousIndex = normalizedContent.length - 1;
+    const previousItem = normalizedContent[previousIndex];
+    if (previousItem && canMergeIntoToolCall(previousItem, args)) {
+      const previousScore = scoreToolArguments({
+        toolName: previousItem.name,
+        args,
+        toolInfoMap
+      });
+      if (previousScore >= 0) return previousIndex;
+    }
+
+    let bestIndex = -1;
+    let bestScore = -1;
+    normalizedContent.forEach((item, index) => {
+      if (!canMergeIntoToolCall(item, args)) return;
+
+      const score = scoreToolArguments({
+        toolName: item.name,
+        args,
+        toolInfoMap
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  };
+
+  for (const item of message.content) {
+    if (!isToolCallContent(item)) {
+      normalizedContent.push(item);
+      continue;
+    }
+
+    const toolArguments = isObjectRecord(item.arguments) ? item.arguments : {};
+    if (item.name) {
+      normalizedContent.push({
+        ...item,
+        id: item.id || createFallbackRequestId(),
+        arguments: toolArguments
+      });
+      continue;
+    }
+
+    const mergeTargetIndex = findMergeTargetIndex(toolArguments);
+    const target = normalizedContent[mergeTargetIndex];
+    if (target && isToolCallContent(target)) {
+      normalizedContent[mergeTargetIndex] = {
+        ...target,
+        arguments: {
+          ...(isObjectRecord(target.arguments) ? target.arguments : {}),
+          ...toolArguments
+        }
+      };
+    }
+  }
+
+  message.content = normalizedContent.filter((item) => !isToolCallContent(item) || !!item.name);
 };
 
 const formatToolCalls = (toolCalls: ToolCall[]): ChatCompletionMessageToolCall[] =>
@@ -77,6 +226,28 @@ const readAssistantMessage = (message: AssistantMessage) => {
 const isAssistantMessage = (message: unknown): message is AssistantMessage =>
   !!message && typeof message === 'object' && (message as { role?: string }).role === 'assistant';
 
+export const normalizePiAgentMessages = ({
+  messages,
+  completionTools = []
+}: {
+  messages: AgentMessage[];
+  completionTools?: ChatCompletionTool[];
+}): AgentMessage[] =>
+  messages.map((message) => {
+    if (!isAssistantMessage(message)) return message;
+
+    const normalizedMessage: AssistantMessage = {
+      ...message,
+      content: [...message.content]
+    };
+    normalizeAssistantToolCalls({
+      message: normalizedMessage,
+      completionTools
+    });
+
+    return normalizedMessage;
+  });
+
 type PendingRequest = {
   requestId: string;
   requestIndex: number;
@@ -97,41 +268,24 @@ export const createPiAgentWorkflowRuntime = ({
   props,
   nodeResponses,
   workflowStreamResponse,
-  usagePush
+  usagePush,
+  completionTools,
+  saveLLMRequestRecordFn = saveLLMRequestRecord
 }: {
   props: DispatchAgentModuleProps;
   nodeResponses: ChatHistoryItemResType[];
   workflowStreamResponse?: WorkflowResponseType;
   usagePush: DispatchAgentModuleProps['usagePush'];
+  completionTools?: ChatCompletionTool[];
+  saveLLMRequestRecordFn?: typeof saveLLMRequestRecord;
 }): PiAgentWorkflowRuntimeArtifacts => {
   const modelData = getLLMModel(props.params.model);
   const pendingRequests: PendingRequest[] = [];
   let requestIndex = 0;
   let answerText = '';
   let reasoningText = '';
-  let activeAgentResponse: ChatHistoryItemResType | undefined;
-
-  const addChildPointsToActiveAgent = (childPoints?: number) => {
-    if (!activeAgentResponse || !childPoints) return;
-
-    activeAgentResponse.childTotalPoints = +(
-      (activeAgentResponse.childTotalPoints || 0) + childPoints
-    ).toFixed(12);
-    activeAgentResponse.totalPoints = +(
-      (activeAgentResponse.totalPoints || 0) + childPoints
-    ).toFixed(12);
-  };
 
   const appendChildNodeResponse = (nodeResponse: ChatHistoryItemResType) => {
-    if (activeAgentResponse) {
-      activeAgentResponse.childrenResponses = [
-        ...(activeAgentResponse.childrenResponses || []),
-        nodeResponse
-      ];
-      addChildPointsToActiveAgent(nodeResponse.totalPoints);
-      return;
-    }
-
     nodeResponses.push(nodeResponse);
   };
 
@@ -142,7 +296,7 @@ export const createPiAgentWorkflowRuntime = ({
     request: PendingRequest;
     response: Record<string, unknown>;
   }) => {
-    void saveLLMRequestRecord({
+    void saveLLMRequestRecordFn({
       requestId: request.requestId,
       body: request.body,
       response
@@ -195,6 +349,7 @@ export const createPiAgentWorkflowRuntime = ({
           inputTokens,
           outputTokens
         },
+        ...(message.responseId ? { providerResponseId: message.responseId } : {}),
         ...(errorText && { error: errorText })
       }
     });
@@ -217,7 +372,6 @@ export const createPiAgentWorkflowRuntime = ({
       ...(errorText ? { errorText: getErrText(errorText) } : {})
     };
 
-    activeAgentResponse = agentResponse;
     nodeResponses.push(agentResponse);
   };
 
@@ -275,6 +429,10 @@ export const createPiAgentWorkflowRuntime = ({
           body: {},
           startTime: Date.now()
         };
+        normalizeAssistantToolCalls({
+          message: event.message,
+          completionTools
+        });
         const messageData = readAssistantMessage(event.message);
         if (!answerText && messageData.answerText) {
           answerText = messageData.answerText;

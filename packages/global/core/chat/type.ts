@@ -212,9 +212,6 @@ export const AIChatItemValueSchema = z.object({
       content: z.string()
     })
     .nullish(),
-  // Deprecated single-tool field. Keep it readable for generic historical chat records.
-  // New writes should use tools[].
-  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
   skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
@@ -222,7 +219,8 @@ export const AIChatItemValueSchema = z.object({
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
-  agentStopGate: AgentLoopStopGateSchema.nullish()
+  agentStopGate: AgentLoopStopGateSchema.nullish(),
+  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true })
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

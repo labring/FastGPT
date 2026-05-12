@@ -22,10 +22,11 @@ import { getHistories } from '../../../utils';
 import { getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
+  normalizePiAgentMessages,
   type PiAgentWorkflowRuntimeArtifacts
 } from './adapter/runtime';
 import { buildPiModel, getModelApiKey } from './modelBridge';
-import { buildAgentTools } from './toolAdapter';
+import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -195,7 +196,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       props,
       nodeResponses,
       workflowStreamResponse,
-      usagePush
+      usagePush,
+      completionTools: agentCompletionTools
     });
 
     const piModel = buildPiModel(model, aiChatVision, props.externalProvider.openaiAccount);
@@ -217,6 +219,12 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       appendChildNodeResponse: piRuntime.appendChildNodeResponse,
       usagePush
     });
+    const handlePiToolEvent = createPiAgentToolEventHandler({
+      ctx: toolCtx,
+      assistantResponses,
+      appendChildNodeResponse: piRuntime.appendChildNodeResponse,
+      nodeResponses
+    });
 
     // 6. 恢复上一轮 PiAgent messages。只从当前节点 memory 恢复，保持 PiAgent 独立 loop 的连续性。
     const lastHistory = chatHistories[chatHistories.length - 1];
@@ -224,20 +232,30 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       lastHistory?.obj === ChatRoleEnum.AI
         ? ((lastHistory.memories?.[piMessagesKey] as AgentMessage[] | undefined) ?? [])
         : [];
+    const normalizedRestoredMessages = normalizePiAgentMessages({
+      messages: restoredMessages,
+      completionTools: agentCompletionTools
+    });
 
     agent = new Agent({
       initialState: {
         systemPrompt: formatedSystemPrompt,
         model: piModel,
         tools: piTools,
-        messages: restoredMessages
+        messages: normalizedRestoredMessages
       },
       getApiKey: () => apiKey,
-      onPayload: piRuntime.onPayload
+      onPayload: piRuntime.onPayload,
+      transformContext: async (messages) =>
+        normalizePiAgentMessages({
+          messages,
+          completionTools: agentCompletionTools
+        })
     });
 
     agent.subscribe((event: AgentEvent) => {
       piRuntime?.handleAgentEvent(event);
+      handlePiToolEvent(event);
 
       if (event.type === 'turn_end') {
         const errMsg = (event.message as { errorMessage?: string }).errorMessage;
