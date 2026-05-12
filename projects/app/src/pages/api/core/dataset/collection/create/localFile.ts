@@ -1,4 +1,7 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateCollectionByLocalFileBodySchema,
   type CreateCollectionWithResultResponseType
@@ -13,6 +16,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -25,13 +29,35 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
     filepaths.push(result.fileMetadata.path);
 
-    const { teamId, tmbId, dataset } = await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: WritePermissionVal,
-      datasetId: result.data.datasetId
-    });
+    const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);
+
+    const { teamId, tmbId, dataset } = collectionData.parentId
+      ? await authDatasetCollection({
+          req,
+          authToken: true,
+          authApiKey: true,
+          collectionId: collectionData.parentId,
+          per: WritePermissionVal
+        }).then((res) => {
+          if (
+            result.data.datasetId &&
+            String(res.collection.datasetId) !== String(result.data.datasetId)
+          ) {
+            return Promise.reject(DatasetErrEnum.unAuthDataset);
+          }
+          return {
+            teamId: res.teamId,
+            tmbId: res.tmbId,
+            dataset: res.collection.dataset
+          };
+        })
+      : await authDataset({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: WritePermissionVal,
+          datasetId: result.data.datasetId
+        });
 
     // Check dataset limit
     await checkDatasetIndexLimit({
@@ -39,7 +65,6 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       insertLen: 1
     });
 
-    const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);
     const collectionName = decodeURIComponent(result.fileMetadata.originalname);
 
     const fileId = await getS3DatasetSource().upload({

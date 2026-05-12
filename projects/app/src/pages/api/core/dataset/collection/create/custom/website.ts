@@ -1,6 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -17,6 +20,7 @@ import {
 import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types/index';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 export type CustomWebsiteImportBody = {
   datasetId: string;
@@ -76,13 +80,30 @@ async function handler(
     }
   }
 
-  const { teamId, tmbId, dataset } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    datasetId,
-    per: WritePermissionVal
-  });
+  const { teamId, tmbId, dataset } = parentId
+    ? await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: parentId,
+        per: WritePermissionVal
+      }).then((res) => {
+        if (datasetId && String(res.collection.datasetId) !== String(datasetId)) {
+          return Promise.reject(DatasetErrEnum.unAuthDataset);
+        }
+        return {
+          teamId: res.teamId,
+          tmbId: res.tmbId,
+          dataset: res.collection.dataset
+        };
+      })
+    : await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        datasetId,
+        per: WritePermissionVal
+      });
 
   const importMode = getLinkImportMode();
   const collectionIds: string[] = [];

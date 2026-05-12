@@ -2,7 +2,10 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
@@ -15,6 +18,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -33,13 +37,30 @@ async function handler(req: ApiRequestProps) {
       return Promise.reject('File must be a CSV file');
     }
 
-    const { teamId, tmbId, dataset } = await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: WritePermissionVal,
-      datasetId
-    });
+    const { teamId, tmbId, dataset } = parentId
+      ? await authDatasetCollection({
+          req,
+          authToken: true,
+          authApiKey: true,
+          collectionId: parentId,
+          per: WritePermissionVal
+        }).then((res) => {
+          if (datasetId && String(res.collection.datasetId) !== String(datasetId)) {
+            return Promise.reject(DatasetErrEnum.unAuthDataset);
+          }
+          return {
+            teamId: res.teamId,
+            tmbId: res.tmbId,
+            dataset: res.collection.dataset
+          };
+        })
+      : await authDataset({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: WritePermissionVal,
+          datasetId
+        });
 
     // Check dataset limit
     await checkDatasetIndexLimit({

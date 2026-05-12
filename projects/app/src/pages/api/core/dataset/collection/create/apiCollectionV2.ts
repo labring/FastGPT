@@ -2,7 +2,10 @@ import {
   CreateApiCollectionV2BodySchema,
   type CreateApiCollectionV2BodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
   createOneCollection
@@ -18,19 +21,36 @@ import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/ty
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
-import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   const body = CreateApiCollectionV2BodySchema.parse(req.body);
 
-  const { teamId, tmbId, dataset } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    datasetId: body.datasetId,
-    per: WritePermissionVal
-  });
+  const { teamId, tmbId, dataset } = body.parentId
+    ? await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: body.parentId,
+        per: WritePermissionVal
+      }).then((res) => {
+        if (body.datasetId && String(res.collection.datasetId) !== String(body.datasetId)) {
+          return Promise.reject(DatasetErrEnum.unAuthDataset);
+        }
+        return {
+          teamId: res.teamId,
+          tmbId: res.tmbId,
+          dataset: res.collection.dataset
+        };
+      })
+    : await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        datasetId: body.datasetId,
+        per: WritePermissionVal
+      });
 
   // Check dataset limit
   await checkDatasetIndexLimit({
@@ -58,9 +78,7 @@ export const createApiDatasetCollection = async ({
 }: CreateApiCollectionV2BodyType & {
   teamId: string;
   tmbId: string;
-  dataset: DatasetSchemaType & {
-    permission: DatasetPermission;
-  };
+  dataset: DatasetSchemaType;
 }) => {
   // FileId deduplication
   const existCollections = await MongoDatasetCollection.find(

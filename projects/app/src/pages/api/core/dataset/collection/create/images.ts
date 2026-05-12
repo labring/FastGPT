@@ -1,4 +1,7 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateImageCollectionFormSchema,
   type CreateCollectionWithResultResponseType
@@ -22,6 +25,7 @@ import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -37,13 +41,30 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       result.data
     );
 
-    const { dataset, teamId, tmbId } = await authDataset({
-      datasetId,
-      per: WritePermissionVal,
-      req,
-      authToken: true,
-      authApiKey: true
-    });
+    const { dataset, teamId, tmbId } = parentId
+      ? await authDatasetCollection({
+          req,
+          authToken: true,
+          authApiKey: true,
+          collectionId: parentId,
+          per: WritePermissionVal
+        }).then((res) => {
+          if (datasetId && String(res.collection.datasetId) !== String(datasetId)) {
+            return Promise.reject(DatasetErrEnum.unAuthDataset);
+          }
+          return {
+            dataset: res.collection.dataset,
+            teamId: res.teamId,
+            tmbId: res.tmbId
+          };
+        })
+      : await authDataset({
+          datasetId,
+          per: WritePermissionVal,
+          req,
+          authToken: true,
+          authApiKey: true
+        });
 
     // Check dataset limit
     await checkDatasetIndexLimit({

@@ -11,8 +11,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
-  PerResourceTypeEnum,
-  WritePermissionVal
+  PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -131,7 +130,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
     authToken: true,
     authApiKey: true,
     collectionId: id,
-    per: WritePermissionVal
+    per: ManagePermissionVal
   });
 
   // Validate collection name if name is being updated (only check extension)
