@@ -295,6 +295,8 @@ export class SystemToolRepo {
           }),
       permissions: tool.permission
     };
+
+    console.log(toolDetail.secrets);
     return toolDetail;
   };
 

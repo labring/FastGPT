@@ -315,7 +315,7 @@ export const jsonSchema2SecretInput = ({
       label: value.title ?? key,
       description: value.description,
       required: jsonSchema?.required?.includes(key),
-      list: value.enum
+      ...(value.enum ? { list: value.enum.map((v) => ({ label: v, value: v })) } : {})
     } satisfies InputConfigType;
   });
 };
