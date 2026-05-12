@@ -1,6 +1,6 @@
 # 侧边导航栏设计文档
 
-> 最后更新：2026-04-16
+> 最后更新：2026-05-12
 
 ## 概述
 
@@ -196,6 +196,14 @@ isCollapsed = false  → 宽度 224px，显示完整导航列表
 - **展开状态**默认值：Dashboard 页面默认 `false`（展开），应用详情页默认 `true`（折叠）
 - **切换方式**：点击底部 `navbar/bottomIcon` 按钮
 - **动画**：`transition: width 0.2s ease` / `padding-left 0.2s ease`
+- **分组展开状态（expandedKeys）初始化规则**：
+  - 使用模块级变量 `savedExpandedKeys` 在 SPA 会话内跨页面导航记忆展开状态
+  - **首次加载**（`savedExpandedKeys === null`）：
+    - `app-build` 分组：仅当当前路由匹配 `/dashboard/agent`、`/dashboard/skill`、`/dashboard/tool`、`/dashboard/systemTool`、`/dashboard/mcpServer` 其中之一时默认展开
+    - `settings` 分组：当当前路由以 `/account` 或 `/config` 开头时默认展开
+    - 其他路由均不默认展开任何分组
+  - **页面间导航**：直接复用 `savedExpandedKeys` 记忆值，已展开的分组保持展开不自动收起
+  - **用户手动切换**：`toggleExpand` 同步更新 `savedExpandedKeys`，确保偏好被记住
 
 ---
 

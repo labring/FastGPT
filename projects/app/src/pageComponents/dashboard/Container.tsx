@@ -19,6 +19,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
+let savedExpandedKeys: string[] | null = null;
+
 export enum TabEnum {
   agent = 'agent',
   skill = 'skill',
@@ -391,17 +393,33 @@ export const DashboardNavbar = ({
   const { lastChatAppId, lastPane } = useChatStore();
 
   const [expandedKeys, setExpandedKeys] = useState<string[]>(() => {
-    const keys = ['app-build'];
+    if (savedExpandedKeys !== null) {
+      return savedExpandedKeys;
+    }
+    const keys: string[] = [];
+    const appBuildPaths = [
+      '/dashboard/agent',
+      '/dashboard/skill',
+      '/dashboard/tool',
+      '/dashboard/systemTool',
+      '/dashboard/mcpServer'
+    ];
+    if (appBuildPaths.some((p) => router.pathname.startsWith(p))) {
+      keys.push('app-build');
+    }
     if (router.pathname.startsWith('/account') || router.pathname.startsWith('/config')) {
       keys.push('settings');
     }
+    savedExpandedKeys = keys;
     return keys;
   });
 
   const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
+    setExpandedKeys((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      savedExpandedKeys = next;
+      return next;
+    });
   };
 
   const pathname = router.pathname;
