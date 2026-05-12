@@ -7,6 +7,7 @@ import { clientInitData } from '@/web/common/system/staticData';
 import dynamic from 'next/dynamic';
 import type { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import BaseModelTrainModal from './BaseModelTrainModal';
 import TrainDetailDrawer from './TrainDetailDrawer';
 import type { FilterState, ModelRow, ModelTabType, ProviderOption, TeamPermission } from './types';
 import { modelTableTabValues } from './types';
@@ -94,12 +95,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
     isOpenDefaultModel,
     onOpenDefaultModel,
     onCloseDefaultModel,
-    // isOpenTrainModel,
-    // openTrainModel,
-    // onCloseTrainModel,
-    // handleOpenTrainDrawer,
-    // trainModelData,
-    // setTrainModelData,
+    isOpenTrainModel,
+    openTrainModel,
+    onCloseTrainModel,
+    handleOpenTrainDrawer,
+    trainModelData,
+    setTrainModelData,
     trainDetailDrawer,
     setTrainDetailDrawer
   } = useModelTableState({
@@ -168,21 +169,20 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
       {isOpenDefaultModel && (
         <DefaultModelModal onClose={onCloseDefaultModel} onSuccess={() => clientInitData()} />
       )}
-      {/* 训练模型入口隐藏，先不删除 */}
-      {/* {isOpenTrainModel && (
+      {isOpenTrainModel && (
         <BaseModelTrainModal
           onClose={() => {
             onCloseTrainModel();
             setTrainModelData(undefined);
           }}
-          onSuccess={() => clientInitData()}
+          onSuccess={() => clientInitData(undefined, { forceRefresh: true })}
           defaultBaseModel={trainModelData}
         />
-      )} */}
+      )}
       {trainDetailDrawer && (
         <TrainDetailDrawer
           onClose={() => setTrainDetailDrawer(null)}
-          onSuccess={() => clientInitData()}
+          onSuccess={() => clientInitData(undefined, { forceRefresh: true })}
           modelName={trainDetailDrawer.name}
           modelId={trainDetailDrawer.model}
           baseModelType={trainDetailDrawer.baseModelType}

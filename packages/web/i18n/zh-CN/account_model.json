@@ -91,13 +91,9 @@
   "model_permission_config_hint": "若无协作者，默认全部成员可用",
   "action": "操作",
   "train": "训练",
-  "train_model": "训练模型",
   "train_model_generate_new": "训练模型（生成新模型）",
-  "train_base_model": "基座模型",
-  "train_base_model_tip": "仅支持重排模型和向量模型",
   "train_new_model_name": "新模型名称",
   "train_data": "训练数据",
-  "select_base_model_type": "请选择模型类型",
   "train_select_base_model_first": "请先选择基座模型",
   "please_select": "请选择",
   "last_train_time": "最近训练时间",
@@ -123,5 +119,5 @@
   "train_detail_confirm_delete": "确认删除该任务记录？",
   "all_datasets": "全部知识库",
   "base_model_tab": "基础模型",
-  "custom_model_tab": "新建模型"
+  "custom_model_tab": "已训练模型"
 }

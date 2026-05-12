@@ -168,7 +168,7 @@ const ModelTable = () => {
         ) : (
           '-'
         ),
-        tagColor: 'red'
+        tagColor: 'adora'
       }));
 
     const list = (() => {

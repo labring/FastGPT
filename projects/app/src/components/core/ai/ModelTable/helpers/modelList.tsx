@@ -194,7 +194,7 @@ export const getFilteredModelList = ({
     ) : (
       '-'
     ),
-    tagColor: 'red',
+    tagColor: 'adora',
     trainableModelType: item.supportTrain ? ModelTypeEnum.rerank : undefined
   }));
 

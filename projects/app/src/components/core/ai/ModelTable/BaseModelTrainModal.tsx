@@ -5,7 +5,6 @@ import {
   Checkbox,
   Flex,
   Grid,
-  HStack,
   IconButton,
   Input,
   ModalBody,
@@ -17,10 +16,8 @@ import { useTranslation } from 'next-i18next';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
@@ -82,25 +79,12 @@ const BaseModelTrainModal = ({
   const { t } = useTranslation();
   const { embeddingModelList, reRankModelList } = useSystemStore();
 
-  const baseModelTypeOptions = useMemo(
-    () => [
-      { label: t('common:model.type.reRank'), value: ModelTypeEnum.rerank },
-      { label: t('common:model.type.embedding'), value: ModelTypeEnum.embedding }
-    ],
-    [t]
-  );
-
-  const [baseModelType, setBaseModelType] = useState<
+  const baseModelType = useMemo<
     ModelTypeEnum.rerank | ModelTypeEnum.embedding | ''
-  >(defaultBaseModel?.type ?? ModelTypeEnum.rerank);
-  const [selectedBaseModel, setSelectedBaseModel] = useState<string>(defaultBaseModel?.model ?? '');
+  >(() => defaultBaseModel?.type ?? ModelTypeEnum.rerank, [defaultBaseModel]);
+  const selectedBaseModel = useMemo(() => defaultBaseModel?.model ?? '', [defaultBaseModel]);
   const [modelName, setModelName] = useState('');
-  const isModelNameManuallyEdited = useRef(false);
-  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType[]>([]);
-  const [selectedEmptyFolderIds, setSelectedEmptyFolderIds] = useState<Set<string>>(new Set());
-  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
-  const [searchKey, setSearchKey] = useState('');
-  const hasInitializedSelectionRef = useRef(false);
+  const hasAutoFilledRef = useRef(false);
 
   const availableBaseModelList = useMemo(
     () => ({
@@ -110,33 +94,24 @@ const BaseModelTrainModal = ({
     [reRankModelList, embeddingModelList]
   );
 
-  const modelOptions = useMemo(() => {
-    if (baseModelType === ModelTypeEnum.rerank) {
-      return availableBaseModelList.rerank.map((item) => ({ label: item.name, value: item.model }));
+  useEffect(() => {
+    if (hasAutoFilledRef.current || !defaultBaseModel?.model) return;
+    hasAutoFilledRef.current = true;
+    const allModels = [...availableBaseModelList.rerank, ...availableBaseModelList.embedding];
+    const found = allModels.find((m) => m.model === defaultBaseModel.model);
+    if (found) {
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      const randomNum = Math.floor(Math.random() * 900 + 100).toString();
+      setModelName(`${found.name}-${dateStr}-${randomNum}`);
     }
-    if (baseModelType === ModelTypeEnum.embedding) {
-      return availableBaseModelList.embedding.map((item) => ({
-        label: item.name,
-        value: item.model
-      }));
-    }
-    return [];
-  }, [baseModelType, availableBaseModelList]);
+  }, [defaultBaseModel, availableBaseModelList]);
 
-  const autoFillModelName = useCallback(
-    (modelId: string) => {
-      if (isModelNameManuallyEdited.current) return;
-      const allModels = [...availableBaseModelList.rerank, ...availableBaseModelList.embedding];
-      const found = allModels.find((m) => m.model === modelId);
-      if (found) {
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-        const randomNum = Math.floor(Math.random() * 900 + 100).toString();
-        setModelName(`${found.name}-${dateStr}-${randomNum}`);
-      }
-    },
-    [availableBaseModelList]
-  );
+  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType[]>([]);
+  const [selectedEmptyFolderIds, setSelectedEmptyFolderIds] = useState<Set<string>>(new Set());
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [searchKey, setSearchKey] = useState('');
+  const hasInitializedSelectionRef = useRef(false);
 
   const { data: datasetTree = [], loading: isFetching } = useRequest(
     async () => {
@@ -225,13 +200,6 @@ const BaseModelTrainModal = ({
     hasInitializedSelectionRef.current = true;
   }, [datasetTree, treeState]);
 
-  useEffect(() => {
-    if (defaultBaseModel?.model) {
-      autoFillModelName(defaultBaseModel.model);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const matchedState = useMemo(() => {
     const keyword = searchKey.trim().toLowerCase();
     const directMatchMap = new Map<string, boolean>();
@@ -290,19 +258,6 @@ const BaseModelTrainModal = ({
 
     return result;
   }, [expandedFolderIds, matchedState, treeState]);
-
-  const handleBaseModelTypeChange = useCallback((type: string) => {
-    setBaseModelType(type as ModelTypeEnum.rerank | ModelTypeEnum.embedding);
-    setSelectedBaseModel('');
-  }, []);
-
-  const handleBaseModelChange = useCallback(
-    (model: string) => {
-      setSelectedBaseModel(model);
-      autoFillModelName(model);
-    },
-    [autoFillModelName]
-  );
 
   const getFolderCheckState = useCallback(
     (folderId: string) => {
@@ -445,42 +400,11 @@ const BaseModelTrainModal = ({
             <Box mr={0.5} color={'red.500'}>
               *
             </Box>
-            <Box mr={1}>{t('account_model:train_base_model')}</Box>
-            <QuestionTip label={t('account_model:train_base_model_tip')} />
-          </Flex>
-          <HStack w={'100%'}>
-            <MySelect
-              flexShrink={0}
-              w={'160px'}
-              value={baseModelType}
-              onChange={handleBaseModelTypeChange}
-              list={baseModelTypeOptions}
-              placeholder={t('account_model:select_base_model_type')}
-            />
-            <Box flex={1} minW={0}>
-              <MySelect
-                w={'100%'}
-                value={selectedBaseModel}
-                onChange={handleBaseModelChange}
-                list={modelOptions}
-                placeholder={t('account_model:please_select')}
-                isDisabled={!baseModelType}
-              />
-            </Box>
-          </HStack>
-        </Box>
-
-        <Box mb={4}>
-          <Flex {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5} color={'red.500'}>
-              *
-            </Box>
             <Box>{t('account_model:train_new_model_name')}</Box>
           </Flex>
           <Input
             value={modelName}
             onChange={(e) => {
-              isModelNameManuallyEdited.current = true;
               setModelName(e.target.value);
             }}
           />
@@ -696,7 +620,7 @@ const BaseModelTrainModal = ({
           {t('common:Cancel')}
         </Button>
         <Button
-          isDisabled={!selectedBaseModel || !modelName.trim() || selectedDatasets.length === 0}
+          isDisabled={!modelName.trim() || selectedDatasets.length === 0}
           isLoading={isSubmitting}
           onClick={handleConfirm}
         >

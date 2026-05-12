@@ -251,7 +251,7 @@ const ModelTableRow = ({
                       animation: 'modelTrainTaskSpin 1s linear infinite'
                     }}
                   >
-                    <MyIcon name={'common/running'} w={'16px'} h={'16px'} />
+                    <MyIcon name={'common/running'} w={'16px'} h={'16px'} transform={'scaleX(-1)'} />
                   </Box>
                 </MyTooltip>
               )}
@@ -296,6 +296,7 @@ const ModelTableActionCell = ({
     <Button
       size={'sm'}
       variant={'whiteBase'}
+      fontSize={'12px'}
       onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.model)}
     >
       {t('account_model:train')}
@@ -304,9 +305,6 @@ const ModelTableActionCell = ({
 
   return (
     <HStack spacing={2}>
-      {showTrainButton && (
-        <MyTooltip label={t('account_model:base_model_train_tip')}>{trainButton}</MyTooltip>
-      )}
       {showPermissionButton && (
         <LazyCollaboratorProvider
           selectedHint={t('account_model:model_permission_config_hint')}
@@ -321,11 +319,14 @@ const ModelTableActionCell = ({
           permission={userPermission}
         >
           {({ onOpenManageModal }) => (
-            <Button size={'sm'} variant={'whiteBase'} onClick={onOpenManageModal}>
+            <Button size={'sm'} variant={'whiteBase'} fontSize={'12px'} onClick={onOpenManageModal}>
               {t('common:permission.Permission')}
             </Button>
           )}
         </LazyCollaboratorProvider>
+      )}
+      {showTrainButton && (
+        <MyTooltip label={t('account_model:base_model_train_tip')}>{trainButton}</MyTooltip>
       )}
     </HStack>
   );
