@@ -70,7 +70,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       toolDescription: child.toolDescription,
       toolConfig: {
         systemTool: {
-          toolId: child.id
+          toolId: `${systemToolId}/${child.id}`
         }
       },
       pluginId: `${systemToolId}/${child.id}`
