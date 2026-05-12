@@ -33,6 +33,7 @@ import {
   filterWorkflowEdges,
   getReferenceVariableValue,
   replaceEditorVariable,
+  resolveTagFilterRefs,
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -873,6 +874,15 @@ export class WorkflowQueue {
             nodesMap: this.runtimeNodesMap,
             variables: this.data.variables
           });
+
+          // resolve $ref arrays embedded in collectionFilterMatch JSON string
+          if (
+            input.key === NodeInputKeyEnum.collectionFilterMatch &&
+            typeof value === 'string'
+          ) {
+            value =
+              resolveTagFilterRefs(value, this.runtimeNodesMap, this.data.variables) ?? value;
+          }
 
           // Dynamic input is stored in the dynamic key
           if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
