@@ -354,7 +354,7 @@ const NodeCard = (props: Props) => {
                       appId={pluginId}
                     />
 
-                    <Box flex={1} mr={1} />
+                    <Box mr={1} />
 
                     {showVersion && <NodeVersion node={node!} />}
 
@@ -428,6 +428,8 @@ const NodeCard = (props: Props) => {
 
 export default React.memo(NodeCard);
 
+const NODE_NAME_MAX_LENGTH = 50;
+
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
   nodeId: string;
@@ -490,9 +492,25 @@ const NodeTitleSection = React.memo<{
   });
 
   return (
-    <Flex alignItems={'center'}>
+    <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
-      <Box ml={2} fontSize={'18px'} fontWeight={'medium'} color={'myGray.900'}>
+      <Box
+        ml={2}
+        flex={1}
+        minW={0}
+        fontSize={'18px'}
+        fontWeight={'medium'}
+        color={'myGray.900'}
+        overflow={'hidden'}
+        textOverflow={'ellipsis'}
+        whiteSpace={'nowrap'}
+        title={t(name as any)}
+        sx={{
+          '& > div': {
+            display: 'inline'
+          }
+        }}
+      >
         <HighlightText
           rawText={t(name as any)}
           matchText={searchedText ?? ''}
@@ -500,11 +518,11 @@ const NodeTitleSection = React.memo<{
           color={'#ffe82d'}
         />
       </Box>
-      <Box ml={1} visibility={'hidden'}>
+      <Box ml={1} flexShrink={0} visibility={'hidden'}>
         <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
       </Box>
       {childAppId && (
-        <Box ml={1} visibility={'hidden'}>
+        <Box ml={1} flexShrink={0} visibility={'hidden'}>
           <MyIconButton
             className="node-hover-controller"
             icon="common/link"
@@ -514,7 +532,7 @@ const NodeTitleSection = React.memo<{
         </Box>
       )}
 
-      <EditTitleModal maxLength={100} />
+      <EditTitleModal maxLength={NODE_NAME_MAX_LENGTH} />
     </Flex>
   );
 });
@@ -653,7 +671,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         )}
       </Flex>
     );
-  }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
+  }, [node.isLatestVersion, node.version, node.versionLabel, t]);
 
   const ScrollDataWrapper = useCallback(
     (props: { children: React.ReactNode }) => (
