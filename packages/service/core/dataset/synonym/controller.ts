@@ -4,6 +4,7 @@ import { MongoDatasetSynonym } from './schema';
 import { MongoDatasetSynonymMapping } from './mappingSchema';
 import { MongoDataset } from '../schema';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { removeS3TTL } from '../../../common/s3/utils';
 import streamConsumer from 'node:stream/consumers';
 import fs from 'node:fs';
 import { i18nT } from '../../../../global/common/i18n/utils';
@@ -375,6 +376,9 @@ export async function uploadSynonymFile({
         },
         { session }
       );
+
+      // 8. 移出S3的TTL，防止同义词文件被自动清理
+      await removeS3TTL({ key: fileId, bucketName: 'private', session });
 
       return synonymFile;
     });
