@@ -1,11 +1,21 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import {
   CreateDatasetBodySchema,
   CreateDatasetResponseSchema,
   type CreateDatasetResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
+import {
+  adaptiveAdjustConfig,
+  logAdaptiveAdjustments
+} from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -84,6 +94,45 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   // check limit
   await checkTeamDatasetLimit(teamId);
 
+  // Compute chunkSettings from systemEnv for website and API datasets
+  let chunkSettings: Record<string, any> | undefined;
+
+  if (type === DatasetTypeEnum.websiteDataset || apiDatasetServer) {
+    const linkImportConfig = global.systemEnv?.customLinkImport;
+    const targetMode = linkImportConfig?.defaultActivateMode || 'default';
+    const importMode = linkImportConfig?.modes?.find(
+      (m: any) => m.name === targetMode && m.enabled !== false
+    );
+
+    if (importMode) {
+      const { adjustedEnhanceConfig, adjustments } = adaptiveAdjustConfig({
+        dataset: { agentModel, vlmModel } as any,
+        modeConfig: importMode
+      });
+      logAdaptiveAdjustments('new_dataset', adjustments);
+
+      chunkSettings = {
+        imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
+        autoIndexes: adjustedEnhanceConfig.autoIndexes ?? true,
+        hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
+        trainingType:
+          importMode?.chunkConfig?.trainingType === 'qa'
+            ? DatasetCollectionDataProcessModeEnum.qa
+            : DatasetCollectionDataProcessModeEnum.chunk,
+        chunkTriggerType:
+          importMode?.chunkConfig?.chunkTriggerType || ChunkTriggerConfigTypeEnum.minSize,
+        chunkTriggerMinSize: importMode?.chunkConfig?.chunkTriggerMinSize ?? 1000,
+        chunkSettingMode: importMode?.chunkConfig?.chunkSettingMode || ChunkSettingModeEnum.auto,
+        chunkSplitMode: importMode?.chunkConfig?.chunkSplitMode || DataChunkSplitModeEnum.size,
+        chunkSize: importMode?.chunkConfig?.chunkSize ?? 1024,
+        indexSize: importMode?.chunkConfig?.indexSize ?? 512,
+        chunkSplitter: importMode?.chunkConfig?.chunkSplitter || undefined,
+        autoIndexesPrompt: importMode?.promptConfig?.autoIndexesPrompt || '',
+        hypeIndexPrompt: importMode?.promptConfig?.hypeIndexPrompt || ''
+      };
+    }
+  }
+
   const datasetId = await mongoSessionRun(async (session) => {
     const [dataset] = await MongoDataset.create(
       [
@@ -100,7 +149,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           type,
           apiDatasetServer,
           ...(websiteConfig && { websiteConfig }),
-          ...(typeof autoSync === 'boolean' && { autoSync })
+          ...(typeof autoSync === 'boolean' && { autoSync }),
+          ...(chunkSettings && { chunkSettings })
         }
       ],
       { session, ordered: true }
