@@ -695,15 +695,17 @@ export async function findMissingIndexType(
 }
 
 /**
- * Count total valid chunks across datasets.
- * "Valid" means the document has at least one index (indexes.0 exists).
+ * Count total valid chunks across datasets for a specific index type.
  */
-export async function countValidChunksForDatasets(datasetIds: string[]): Promise<number> {
+export async function countValidChunksForDatasets(
+  datasetIds: string[],
+  indexType: `${DatasetDataIndexTypeEnum}`
+): Promise<number> {
   let total = 0;
   for (const datasetId of datasetIds) {
     const count = await MongoDatasetData.countDocuments({
       datasetId,
-      'indexes.0': { $exists: true }
+      'indexes.type': indexType
     });
     total += count;
   }
@@ -774,7 +776,7 @@ export async function validateDatasetReadiness(
   }
 
   // Check 2: total chunk count threshold
-  const totalChunks = await countValidChunksForDatasets(datasetIds);
+  const totalChunks = await countValidChunksForDatasets(datasetIds, indexType);
   if (totalChunks < minChunkThreshold) {
     addLog.warn('Dataset readiness check failed: insufficient chunks', {
       datasetIds,
