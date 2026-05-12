@@ -53,7 +53,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     // source: toolSetNode.toolConfig?.systemToolSet?.source,
     source: 'system',
     version: toolSetNode.version,
-    fallbackToLatestVersion: true
+    fallbackLatestVersion: true
   });
 
   if (!tool.children) return [];

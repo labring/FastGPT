@@ -34,10 +34,10 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { getSystemToolWithVersionFallback } from './runtime';
 
 type SystemToolRuntimeType = {
   id: string;
+  version?: string;
   currentCost: number;
   systemKeyCost: number;
   secretsVal?: Record<string, any>;
@@ -125,13 +125,13 @@ export class SystemToolRepo {
     version,
     source = 'system',
     lang,
-    fallbackToLatestVersion = false
+    fallbackLatestVersion = false
   }: {
     pluginId: string;
     version?: string;
     source?: string;
     lang?: `${LangEnum}`;
-    fallbackToLatestVersion?: boolean;
+    fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
     const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
@@ -194,12 +194,11 @@ export class SystemToolRepo {
     }
 
     // System tool
-    const tool = await (
-      fallbackToLatestVersion ? getSystemToolWithVersionFallback : pluginClient.getTool
-    )({
+    const tool = await pluginClient.getTool({
       pluginId: parentPluginId,
       version,
-      source
+      source,
+      ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
     });
 
     const getToolParent = tool.isToolset && !getChildToolDetail;
@@ -357,14 +356,16 @@ export class SystemToolRepo {
     const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
 
     if (!dbTool?.customConfig?.associatedPluginId) {
-      const tool = await getSystemToolWithVersionFallback({
+      const tool = await pluginClient.getTool({
         pluginId: parentPluginId,
         version,
-        source
+        source,
+        fallbackLatestVersion: true
       });
 
       return {
         id: pluginId,
+        version: tool.version,
         currentCost: dbTool?.currentCost ?? 0,
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
         secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
@@ -374,6 +375,7 @@ export class SystemToolRepo {
 
     return {
       id: pluginId,
+      version,
       currentCost: dbTool.currentCost ?? 0,
       systemKeyCost: dbTool.systemKeyCost ?? 0,
       secretsVal: dbTool.secretsVal ?? dbTool.inputListVal
