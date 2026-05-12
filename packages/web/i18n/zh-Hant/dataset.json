@@ -556,6 +556,7 @@
   "vlm_model_label": "圖片解析模型",
   "vlm_model_tip": "當知識中存在圖片時，可配置圖片解析模型，用於識別其中的文字和結構資訊（如表格、流程圖等）。",
   "vector_model_tip": "將文字轉化為用數值表示的向量，同時在知識問答過程中實現語義向量檢索，是實現知識檢索的必要能力。",
+  "web_page_url": "網頁地址",
   "website_url": "網站地址",
   "website_url_placeholder": "請填寫根地址，將讀取根地址下所有靜態網頁",
   "website_selector_label": "選擇器",

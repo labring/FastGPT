@@ -6,7 +6,6 @@ import {
   Button,
   ModalBody,
   ModalFooter,
-  Input,
   Textarea,
   Switch,
   HStack,
@@ -17,7 +16,6 @@ import { useTranslation, Trans } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import TagRowsEditor, { type TagEditorRow } from './TagRowsEditor';
 import FileSelector, {
@@ -54,7 +52,6 @@ import TagManageModal from './TagManageModal';
 
 type AddMode = 'file' | 'faq' | 'web';
 
-type CrawlMode = 'root' | 'single';
 
 export type AddFileModalProps = {
   isOpen: boolean;
@@ -142,9 +139,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── 读取网页专有状态 ──────────────────────
-  const [crawlMode, setCrawlMode] = useState<CrawlMode>('root');
   const [webUrl, setWebUrl] = useState('');
-  const [webSelector, setWebSelector] = useState('');
   const [webAutoSync, setWebAutoSync] = useState(false);
 
   // ── 文件上传逻辑 ──────────────────────────
@@ -355,29 +350,19 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
         setIsImportingFaq(false);
       } else if (addMode === 'web') {
         if (!webUrl.trim()) return;
-        if (crawlMode === 'single') {
-          const urls = webUrl
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .slice(0, 10);
-          if (urls.length === 0) return;
-          await postCreateCustomWebsiteCollection({
-            datasetId,
-            parentId,
-            urls,
-            tags
-          });
-        } else {
-          await postCreateCustomWebsiteCollection({
-            datasetId,
-            parentId,
-            url: webUrl.trim(),
-            selector: webSelector.trim() || undefined,
-            autoSync: webAutoSync,
-            tags
-          });
-        }
+        const urls = webUrl
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 10);
+        if (urls.length === 0) return;
+        await postCreateCustomWebsiteCollection({
+          datasetId,
+          parentId,
+          urls,
+          autoSync: webAutoSync,
+          tags
+        });
       }
 
       onFinish();
@@ -395,9 +380,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
     docSuccessFiles,
     imageSuccessFiles,
     faqSelectFiles,
-    crawlMode,
     webUrl,
-    webSelector,
     webAutoSync,
     onFinish,
     onClose,
@@ -652,12 +635,8 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
           )}
           {addMode === 'web' && (
             <WebFields
-              crawlMode={crawlMode}
-              setCrawlMode={setCrawlMode}
               webUrl={webUrl}
               setWebUrl={setWebUrl}
-              webSelector={webSelector}
-              setWebSelector={setWebSelector}
               webAutoSync={webAutoSync}
               setWebAutoSync={setWebAutoSync}
               tagSection={TagSection}
@@ -867,102 +846,31 @@ const FaqFields: React.FC<{
 };
 
 const WebFields: React.FC<{
-  crawlMode: CrawlMode;
-  setCrawlMode: (v: CrawlMode) => void;
   webUrl: string;
   setWebUrl: (v: string) => void;
-  webSelector: string;
-  setWebSelector: (v: string) => void;
   webAutoSync: boolean;
   setWebAutoSync: (v: boolean) => void;
   tagSection: React.ReactNode;
   t: (key: any) => string;
-}> = ({
-  crawlMode,
-  setCrawlMode,
-  webUrl,
-  setWebUrl,
-  webSelector,
-  setWebSelector,
-  webAutoSync,
-  setWebAutoSync,
-  tagSection,
-  t
-}) => {
-  const isRoot = crawlMode === 'root';
-
+}> = ({ webUrl, setWebUrl, webAutoSync, setWebAutoSync, tagSection, t }) => {
   return (
     <>
-      {/* 网页地址 */}
-      <Flex alignItems="center" mt={4}>
+      <Flex alignItems="flex-start" mt={4}>
         <FormLabel flex="0 0 95px" h="32px" required>
-          {t('dataset:website_url')}
+          {t('dataset:web_page_url')}
         </FormLabel>
-        <HStack flex={1} spacing={1}>
-          <MySelect
-            flex={1}
-            minW="200px"
-            h="36px"
-            value={crawlMode}
-            list={[
-              { label: t('dataset:crawl_mode_root'), value: 'root' },
-              { label: t('dataset:crawl_mode_single'), value: 'single' }
-            ]}
-            onChange={(val) => {
-              setCrawlMode(val as CrawlMode);
-              setWebUrl('');
-            }}
-          />
-          {isRoot && (
-            <Input
-              flex={2}
-              size="sm"
-              h="36px"
-              placeholder={t('dataset:web_root_url_placeholder')}
-              value={webUrl}
-              onChange={(e) => setWebUrl(e.target.value)}
-              bg="white"
-            />
-          )}
-        </HStack>
+        <Textarea
+          flex={1}
+          h="120px"
+          placeholder={t('dataset:web_single_url_placeholder')}
+          value={webUrl}
+          onChange={(e) => setWebUrl(e.target.value)}
+          bg="white"
+          fontSize="sm"
+          resize="vertical"
+        />
       </Flex>
 
-      {/* 多 URL 输入框（single 模式） */}
-      {!isRoot && (
-        <Flex mt={2}>
-          <Box flex="0 0 95px" flexShrink={0} />
-          <Textarea
-            flex={1}
-            h="120px"
-            placeholder={t('dataset:web_single_url_placeholder')}
-            value={webUrl}
-            onChange={(e) => setWebUrl(e.target.value)}
-            bg="white"
-            fontSize="sm"
-            resize="vertical"
-          />
-        </Flex>
-      )}
-
-      {/* 选择器（仅 root 模式） */}
-      {isRoot && (
-        <Flex alignItems="center" mt={4}>
-          <FormLabel flex="0 0 95px" h="32px">
-            {t('dataset:website_selector_label')}
-          </FormLabel>
-          <Input
-            flex={1}
-            size="sm"
-            h="36px"
-            placeholder={t('dataset:website_selector_placeholder')}
-            value={webSelector}
-            onChange={(e) => setWebSelector(e.target.value)}
-            bg="white"
-          />
-        </Flex>
-      )}
-
-      {/* 自动同步（始终显示） */}
       <Flex alignItems="center" mt={4}>
         <FormLabel flex="0 0 95px" h="32px">
           <HStack spacing={1}>
