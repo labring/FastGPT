@@ -210,7 +210,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             const newOutput: FlowNodeOutputItemType = {
               id: getNanoid(),
               key: data.key,
-              label: `${t('common:extraction_results')}-${data.key}`,
+              label: `${data.key} - ${t('common:extraction_results')}`,
               valueType: data.valueType || WorkflowIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.static
             };
