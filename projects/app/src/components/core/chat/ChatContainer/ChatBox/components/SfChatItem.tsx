@@ -110,7 +110,7 @@ const AIContentCard = React.memo(function AIContentCard({
   debuggerMode
 }: {
   dataId: string;
-  chatValue: ChatItemValueItemType[];
+  chatValue: AIChatItemValueItemType[];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
@@ -132,7 +132,7 @@ const AIContentCard = React.memo(function AIContentCard({
         const key = `${dataId}-ai-${i}`;
         const isLastValue = isLastChild && i === chatValue.length - 1;
 
-        if (isLastValue && isChatting && !value.text?.content?.trim()) {
+        if (isLastValue && isChatting && !value.text?.content?.trim() && !value.reasoning?.content?.trim()) {
           return (
             <Flex key={key} alignItems={'center'} gap={2}>
               <BuildingAnimation size={12} />
