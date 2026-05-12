@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -60,6 +60,21 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     { manual: false }
   );
 
+  // 从导入的 JSON 中自动回填名称
+  useEffect(() => {
+    if (!workflowStr) return;
+
+    const utmParams = getUtmParams();
+    if (utmParams.shortUrlContent) return;
+
+    try {
+      const parsed = JSON.parse(workflowStr);
+      if (parsed.name && typeof parsed.name === 'string') {
+        setValue('name', parsed.name);
+      }
+    } catch {}
+  }, [workflowStr, setValue]);
+
   const handleCloseJsonImportModal = () => {
     onClose();
     removeUtmParams();
@@ -94,7 +109,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest(
     async ({ name, workflowStr }: FormType) => {
-      const { workflow, appType } = await (async () => {
+      const { workflow, appType, intro } = await (async () => {
         try {
           const workflow = JSON.parse(workflowStr);
           const appType = getAppType(workflow);
@@ -106,13 +121,15 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           if (appType === AppTypeEnum.simple) {
             return {
               workflow: form2AppWorkflow(workflow, t),
-              appType
+              appType,
+              intro: workflow.intro
             };
           }
 
           return {
             workflow,
-            appType
+            appType,
+            intro: workflow.intro
           };
         } catch (err) {
           return Promise.reject(t('app:invalid_json_format'));
@@ -123,6 +140,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         parentId,
         avatar: selectedAvatar,
         name,
+        intro,
         type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,

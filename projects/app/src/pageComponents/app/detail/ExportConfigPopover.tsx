@@ -17,6 +17,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type ExportConfigPopoverProps = {
   appName: string;
+  appIntro?: string;
   chatConfig?: AppChatConfigType;
   filterSensitiveInfo?: boolean;
   onFilterSensitiveInfoChange?: (value: boolean) => void;
@@ -35,6 +36,7 @@ const ExportConfigPopover = ({
   getWorkflowData,
   chatConfig,
   appName,
+  appIntro,
   filterSensitiveInfo: filterSensitiveInfoProp,
   onFilterSensitiveInfoChange
 }: ExportConfigPopoverProps) => {
@@ -61,7 +63,11 @@ const ExportConfigPopover = ({
 
       if (appForm) {
         config = JSON.stringify(
-          filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm,
+          {
+            ...(filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm),
+            name: appName,
+            intro: appIntro
+          },
           null,
           2
         );
@@ -70,6 +76,8 @@ const ExportConfigPopover = ({
         if (!workflowData) return;
         config = JSON.stringify(
           {
+            name: appName,
+            intro: appIntro,
             nodes: filterSensitiveInfo
               ? filterSensitiveNodesData(workflowData.nodes)
               : workflowData.nodes,
@@ -100,7 +108,7 @@ const ExportConfigPopover = ({
         });
       }
     },
-    [appForm, appName, chatConfig, copyData, getWorkflowData, t, filterSensitiveInfo]
+    [appForm, appName, appIntro, chatConfig, copyData, getWorkflowData, t, filterSensitiveInfo]
   );
 
   return (
