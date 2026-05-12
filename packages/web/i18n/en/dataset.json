@@ -557,6 +557,7 @@
   "vlm_model_label": "Image Parsing Model",
   "vlm_model_tip": "When knowledge contains images, you can configure an image parsing model to recognize text and structural information (e.g., tables, flowcharts).",
   "vector_model_tip": "Converts text into numerical vectors, enabling semantic vector search during knowledge Q&A. This is essential for knowledge retrieval.",
+  "web_page_url": "Webpage URL",
   "website_url": "Website URL",
   "website_url_placeholder": "Enter the root URL; all static pages under it will be crawled",
   "website_selector_label": "Selector",
