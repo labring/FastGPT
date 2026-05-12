@@ -14,15 +14,21 @@ import React, {
   useState
 } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useDebounceEffect, useMemoizedFn, useUnmount } from 'ahooks';
+import { useDebounceEffect, useUnmount } from 'ahooks';
 import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
-import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useTranslation } from 'next-i18next';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  getWorkflowLocalDraftIdentity,
+  removeWorkflowLocalDraftByApp,
+  saveWorkflowLocalDraft,
+  WORKFLOW_AUTH_INVALID_EVENT
+} from '@/web/core/workflow/localDraft';
 
 // 创建 Context
 type WorkflowPersistenceContextValue = {
@@ -52,6 +58,38 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const [isSaved, setIsSaved] = useState(true);
   // 离开保存标志
   const leaveSaveSign = useRef(true);
+  const userInfo = useUserStore((state) => state.userInfo);
+  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
+  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+
+  const saveLocalDraft = useCallback(() => {
+    const identity = getWorkflowLocalDraftIdentity(userInfo);
+    const data = flowData2StoreData();
+
+    if (!data) {
+      removeWorkflowLocalDraftByApp({
+        appId: appDetail._id,
+        identity
+      });
+      return false;
+    }
+
+    return saveWorkflowLocalDraft({
+      appId: appDetail._id,
+      identity,
+      data: {
+        ...data,
+        chatConfig: appDetail.chatConfig
+      }
+    });
+  }, [appDetail._id, appDetail.chatConfig, flowData2StoreData, userInfo]);
+
+  const removeCurrentLocalDraft = useCallback(() => {
+    removeWorkflowLocalDraftByApp({
+      appId: appDetail._id,
+      identity: getWorkflowLocalDraftIdentity(userInfo)
+    });
+  }, [appDetail._id, userInfo]);
 
   /**
    * 计算 isSaved 状态 - 防抖 500ms
@@ -76,8 +114,14 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
         }
       );
       setIsSaved(val);
+
+      if (val) {
+        removeCurrentLocalDraft();
+      } else {
+        saveLocalDraft();
+      }
     },
-    [future, past, nodes, edges, appDetail.chatConfig],
+    [future, past, nodes, edges, appDetail.chatConfig, removeCurrentLocalDraft, saveLocalDraft],
     {
       wait: 500
     }
@@ -89,11 +133,10 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
    * 1. 手动调用
    * 2. 离开页面前
    */
-  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
-  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const autoSaveFn = useCallback(async () => {
     if (isSaved || !leaveSaveSign.current) return;
     console.log('Leave auto save');
+    saveLocalDraft();
     const data = flowData2StoreData();
     if (!data || data.nodes.length === 0) return;
     await onSaveApp({
@@ -102,7 +145,22 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       chatConfig: appDetail.chatConfig,
       autoSave: true
     });
-  }, [appDetail.chatConfig, flowData2StoreData, isSaved, onSaveApp]);
+    removeCurrentLocalDraft();
+  }, [
+    appDetail.chatConfig,
+    flowData2StoreData,
+    isSaved,
+    onSaveApp,
+    removeCurrentLocalDraft,
+    saveLocalDraft
+  ]);
+
+  useEffect(() => {
+    window.addEventListener(WORKFLOW_AUTH_INVALID_EVENT, saveLocalDraft);
+    return () => {
+      window.removeEventListener(WORKFLOW_AUTH_INVALID_EVENT, saveLocalDraft);
+    };
+  }, [saveLocalDraft]);
 
   // 页面关闭前自动保存
   useUnmount(() => {

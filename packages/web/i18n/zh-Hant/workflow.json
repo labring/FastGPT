@@ -273,5 +273,8 @@
   "workflow.My edit": "我的編輯",
   "workflow.Switch_success": "切換成功",
   "workflow.Team cloud": "團隊雲端",
-  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
+  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "workflow.local_draft_account_mismatch": "偵測到其他帳號的未儲存工作流草稿，已略過恢復。",
+  "workflow.local_draft_restore_failed": "偵測到未儲存的工作流草稿，自動儲存失敗。草稿已保留，請重新登入後再試。",
+  "workflow.local_draft_restore_success": "偵測到未儲存的工作流草稿，已自動儲存。"
 }

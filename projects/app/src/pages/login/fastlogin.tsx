@@ -10,6 +10,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
+import { clearAuthRedirecting } from '@/web/common/api/request';
 
 const FastLogin = ({
   code,
@@ -24,15 +26,23 @@ const FastLogin = ({
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponseType) => {
+    async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
+      clearAuthRedirecting();
+
+      const safeCallbackUrl = validateRedirectUrl(callbackUrl);
+      const targetRoute = await restoreWorkflowLocalDraft({
+        user: res.user,
+        fallbackRoute: safeCallbackUrl
+      });
 
       setTimeout(() => {
-        router.push(validateRedirectUrl(callbackUrl));
+        router.push(targetRoute);
       }, 100);
     },
-    [setUserInfo, router, callbackUrl]
+    [callbackUrl, restoreWorkflowLocalDraft, router, setUserInfo]
   );
 
   const authCode = useCallback(
@@ -51,7 +61,7 @@ const FastLogin = ({
             router.replace('/login');
           }, 1000);
         }
-        loginSuccess(res);
+        await loginSuccess(res);
       } catch (error) {
         toast({
           status: 'warning',

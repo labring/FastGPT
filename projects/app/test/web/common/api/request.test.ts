@@ -4,14 +4,17 @@ import {
   checkMaxQuantity,
   requestFinish,
   checkRes,
-  responseError
+  responseError,
+  clearAuthRedirecting
 } from '../../../../src/web/common/api/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { clearToken } from '@/web/support/user/auth';
+import { WORKFLOW_AUTH_INVALID_EVENT } from '@/web/core/workflow/localDraft';
 
 // Mock all required dependencies
 vi.mock('@fastgpt/web/common/system/utils', () => ({
-  getWebReqUrl: vi.fn().mockReturnValue('http://test.com'),
+  getWebReqUrl: vi.fn((url: string) => url),
   subRoute: '/test-route' // Add subRoute mock
 }));
 
@@ -33,16 +36,37 @@ const mockLocation = {
   replace: vi.fn(),
   search: ''
 };
+const sessionStorageMap = new Map<string, string>();
+const mockSessionStorage = {
+  getItem: vi.fn((key: string) => sessionStorageMap.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    sessionStorageMap.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    sessionStorageMap.delete(key);
+  })
+};
+const mockHistory = {
+  state: {},
+  replaceState: vi.fn()
+};
+const mockDispatchEvent = vi.fn();
 
 vi.stubGlobal('window', {
-  location: mockLocation
+  location: mockLocation,
+  sessionStorage: mockSessionStorage,
+  history: mockHistory,
+  dispatchEvent: mockDispatchEvent
 });
 
 describe('request utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorageMap.clear();
+    clearAuthRedirecting();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
     mockLocation.pathname = '/test';
+    mockLocation.search = '';
   });
 
   describe('checkMaxQuantity', () => {
@@ -124,6 +148,40 @@ describe('request utils', () => {
       await expect(responseError(err)).rejects.toEqual({
         code: Object.values(TOKEN_ERROR_CODE)[0]
       });
+    });
+
+    it('should cache workflow draft event and redirect to login once for real token error', async () => {
+      mockLocation.pathname = '/app/detail';
+      mockLocation.search = '?appId=app1&currentTab=appEdit';
+      const err = {
+        response: {
+          data: {
+            code: 403
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({
+        message: 'Unauthorized token'
+      });
+
+      expect(mockDispatchEvent.mock.calls[0]?.[0]?.type).toBe(WORKFLOW_AUTH_INVALID_EVENT);
+      expect(clearToken).toHaveBeenCalledTimes(1);
+      expect(mockHistory.replaceState).toHaveBeenCalledWith(
+        mockHistory.state,
+        '',
+        '/login?lastRoute=%2Fapp%2Fdetail%3FappId%3Dapp1%26currentTab%3DappEdit'
+      );
+      expect(mockLocation.replace).toHaveBeenCalledWith(
+        '/login?lastRoute=%2Fapp%2Fdetail%3FappId%3Dapp1%26currentTab%3DappEdit'
+      );
+
+      await expect(responseError(err)).rejects.toEqual({
+        message: 'Unauthorized token'
+      });
+
+      expect(clearToken).toHaveBeenCalledTimes(1);
+      expect(mockLocation.replace).toHaveBeenCalledTimes(1);
     });
 
     it('should handle team error', async () => {

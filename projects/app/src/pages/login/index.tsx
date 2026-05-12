@@ -11,6 +11,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
+import { clearAuthRedirecting } from '@/web/common/api/request';
 
 const Login = () => {
   const router = useRouter();
@@ -18,10 +20,12 @@ const Login = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setUserInfo } = useUserStore();
+  const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
+      clearAuthRedirecting();
 
       const decodeLastRoute = validateRedirectUrl(lastRoute);
 
@@ -45,9 +49,15 @@ const Login = () => {
         return decodeLastRoute;
       })();
 
-      navigateTo && router.replace(navigateTo);
+      if (navigateTo) {
+        const targetRoute = await restoreWorkflowLocalDraft({
+          user: res.user,
+          fallbackRoute: navigateTo
+        });
+        router.replace(targetRoute);
+      }
     },
-    [lastRoute, router, setUserInfo, t, toast]
+    [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]
   );
 
   useMount(() => {

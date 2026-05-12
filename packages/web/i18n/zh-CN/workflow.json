@@ -273,5 +273,8 @@
   "workflow.My edit": "我的编辑",
   "workflow.Switch_success": "切换成功",
   "workflow.Team cloud": "团队云端",
-  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
+  "workflow.local_draft_account_mismatch": "检测到其他账号的未保存工作流草稿，已跳过恢复。",
+  "workflow.local_draft_restore_failed": "检测到未保存的工作流草稿，自动保存失败。草稿已保留，请重新登录后重试。",
+  "workflow.local_draft_restore_success": "检测到未保存的工作流草稿，已自动保存。"
 }
