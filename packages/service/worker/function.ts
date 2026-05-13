@@ -1,18 +1,44 @@
 import {
-  splitText2Chunks,
   type SplitProps,
-  type SplitResponse
+  type SplitResponse,
+  splitText2Chunks
 } from '@fastgpt/global/common/string/textSplitter';
 import { runWorker, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
+import { axios } from '../common/api/axios';
 
-export const text2Chunks = (props: SplitProps) => {
-  // Test env, not run worker
-  if (isTestEnv) {
-    return splitText2Chunks(props);
+export const text2Chunks = async (props: SplitProps): Promise<SplitResponse> => {
+  const { url: pdfParseUrl, key: token } = global.systemEnv?.customPdfParse ?? {};
+  const url = pdfParseUrl?.replace(/\/pdfparse$/, '/chunk');
+
+  if (!url) {
+    if (isTestEnv) {
+      return splitText2Chunks(props);
+    }
+    return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
   }
-  return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
+
+  try {
+    const res = await axios.post(url, {
+      markdown: props.text,
+      chunk_sizes: { text: props.chunkSize }
+    }, {
+      timeout: 60000,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+
+    const chunks: string[] = res.data.chunks.map((c: { text: string }) => c.text);
+    const chars: number = chunks.reduce((sum, c) => sum + c.length, 0);
+
+    return { chunks, chars };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Chunk API request failed: ${message}`);
+  }
 };
 
 export const readRawContentFromBuffer = (props: {
