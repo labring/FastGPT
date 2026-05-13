@@ -742,5 +742,14 @@
   "model_security_review": "模型安全审查",
   "api_security_review": "接口安全审查",
   "file_url_whitelist": "文件URL白名单",
-  "file_url_whitelist_desc": "未配置，则认为全部链接可用。已配置，则认为白名单内的链接可用。暂时仅对对话接口生效，每行填写一个。例如: \nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io"
+  "file_url_whitelist_desc": "未配置，则认为全部链接可用。已配置，则认为白名单内的链接可用。暂时仅对对话接口生效，每行填写一个。例如: \nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io",
+  "wecom_login": "企微登录",
+  "email_smtp_port": "邮箱服务SMTP端口",
+  "email_smtp_port_desc": "常用端口:\n465: SSL/TLS (secure: 开)\n587: STARTTLS (secure: 关)\n25: 明文 (不推荐)",
+  "email_enable_ssl": "启用 SSL/TLS (Secure)",
+  "email_enable_ssl_desc": "465端口通常开启，587端口通常关闭(使用STARTTLS)",
+  "points_thirty_percent_remain_notify": "积分不足30%通知",
+  "points_ten_percent_remain_notify": "积分不足10%通知",
+  "lack_of_points_notify": "积分不足通知",
+  "points_insufficient_notify": "积分不足通知"
 }
