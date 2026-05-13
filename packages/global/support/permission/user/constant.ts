@@ -73,10 +73,8 @@ export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
     name: i18nT('account_team:permission_evaluationCreate'),
     value: 0b1000000
   },
-  // TODO: 暂时隐藏 Skill 权限在弹窗"其他权限"中的显示，恢复时改回 'multiple'
   [TeamRoleKeyEnum.skillCreate]: {
-    // checkBoxType: 'multiple',
-    checkBoxType: 'hidden',
+    checkBoxType: 'multiple',
     description: '',
     name: i18nT('account_team:permission_skillCreate'),
     value: 0b10000000
