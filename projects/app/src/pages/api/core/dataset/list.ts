@@ -234,6 +234,60 @@ async function handler(req: ApiRequestProps) {
     }
   }
 
+  // Compute appCount for dataset folders (sum of all non-folder dataset descendants)
+  const folderDatasets = myDatasets.filter((d) => d.type === DatasetTypeEnum.folder);
+  const folderAppCountMap = new Map<string, number>();
+  if (folderDatasets.length > 0) {
+    const folderCounts = await Promise.all(
+      folderDatasets.map(async (folder) => {
+        const agg = await MongoDataset.aggregate<{
+          descendants: Array<{ _id: any; type: string }>;
+        }>([
+          { $match: { _id: new Types.ObjectId(String(folder._id)) } },
+          {
+            $graphLookup: {
+              from: 'datasets',
+              startWith: '$_id',
+              connectFromField: '_id',
+              connectToField: 'parentId',
+              as: 'descendants',
+              restrictSearchWithMatch: { deleteTime: null }
+            }
+          },
+          { $project: { _id: 0, descendants: { _id: 1, type: 1 } } }
+        ]);
+
+        const datasetDescendantIds = (agg[0]?.descendants ?? [])
+          .filter((d) => d.type !== DatasetTypeEnum.folder)
+          .map((d) => String(d._id));
+
+        if (datasetDescendantIds.length === 0) return 0;
+
+        const refApps = await MongoApp.find(
+          {
+            teamId,
+            modules: {
+              $elemMatch: {
+                inputs: {
+                  $elemMatch: {
+                    key: 'datasets',
+                    'value.datasetId': { $in: datasetDescendantIds }
+                  }
+                }
+              }
+            }
+          },
+          { _id: 1 }
+        ).lean();
+
+        return refApps.length;
+      })
+    );
+    folderDatasets.forEach((folder, i) => {
+      folderAppCountMap.set(String(folder._id), folderCounts[i]);
+    });
+  }
+
   const formatDatasets = myDatasets
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
@@ -296,6 +350,9 @@ async function handler(req: ApiRequestProps) {
         ...(dataset.type !== DatasetTypeEnum.folder && {
           appCount: appCountMap.get(String(dataset._id)) ?? 0,
           fileCount: fileCountMap.get(String(dataset._id)) ?? 0
+        }),
+        ...(dataset.type === DatasetTypeEnum.folder && {
+          appCount: folderAppCountMap.get(String(dataset._id)) ?? 0
         })
       };
     })

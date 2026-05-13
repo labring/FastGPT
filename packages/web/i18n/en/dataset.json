@@ -544,6 +544,7 @@
   "tag.existing_tags_tip": "Existing tags (check to edit, will apply to all selected files)",
   "tag.new_tags_tip": "New tags (will be added to each selected file)",
   "related_app": "Related App",
+  "folder_delete_disabled_tip": "Cannot delete: datasets inside have linked apps",
   "file": "File",
   "name_or_description": "Name/Description",
   "website_label": "Website",

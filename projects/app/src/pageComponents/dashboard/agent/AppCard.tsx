@@ -338,6 +338,15 @@ const AppCard = React.memo(function AppCard({
                   type: 'danger' as 'danger',
                   icon: 'delete',
                   label: t('common:Delete'),
+                  disabled:
+                    (isTool && !isFolder && (relatedAppCount ?? 0) > 0) ||
+                    (app.type === AppTypeEnum.toolFolder && (relatedAppCount ?? 0) > 0),
+                  disabledTip:
+                    app.type === AppTypeEnum.toolFolder && (relatedAppCount ?? 0) > 0
+                      ? t('app:folder_delete_disabled_tip')
+                      : isTool && !isFolder && (relatedAppCount ?? 0) > 0
+                        ? t('common:delete_disabled_by_related_apps')
+                        : undefined,
                   onClick: () =>
                     openConfirmDel({
                       onConfirm: () => onclickDelApp(app._id),

@@ -241,10 +241,12 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                   icon: 'delete',
                   type: 'danger' as const,
                   label: t('common:Delete'),
-                  disabled: !isFolder && (dataset.appCount ?? 0) > 0,
+                  disabled: (dataset.appCount ?? 0) > 0,
                   disabledTip:
-                    !isFolder && (dataset.appCount ?? 0) > 0
-                      ? t('common:delete_disabled_by_related_apps')
+                    (dataset.appCount ?? 0) > 0
+                      ? isFolder
+                        ? t('dataset:folder_delete_disabled_tip')
+                        : t('common:delete_disabled_by_related_apps')
                       : undefined,
                   onClick: () =>
                     openConfirmDel({

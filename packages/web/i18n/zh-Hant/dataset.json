@@ -543,6 +543,7 @@
   "tag.existing_tags_tip": "現有標籤（勾選需要編輯的標籤，編輯後對所選檔案都生效）",
   "tag.new_tags_tip": "新標籤（將新增至每個所選檔案中）",
   "related_app": "關聯應用",
+  "folder_delete_disabled_tip": "其中的知識庫存在關聯應用，無法刪除",
   "file": "檔案",
   "name_or_description": "名稱/描述",
   "website_label": "網站",
