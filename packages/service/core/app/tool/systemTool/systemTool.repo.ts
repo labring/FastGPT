@@ -88,10 +88,11 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
   }): Promise<SystemToolListItemType[]> => {
     // 1. get all tools from plugin by sources
+    const filteredTags = tags ? filterPluginTags(tags) : undefined;
     const tools = await pluginClient.listTools({
       op,
       sources,
-      tags: tags ? filterPluginTags(tags) : undefined
+      tags: filteredTags
     });
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
@@ -101,7 +102,9 @@ export class SystemToolRepo {
     const formattedTools = tools.map((tool) =>
       SystemToolCodec.attachToolConfig({
         tool,
-        config: DBPluginsMap.get(tool.pluginId),
+        config:
+          DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId)) ??
+          DBPluginsMap.get(tool.pluginId),
         lang
       })
     );
@@ -114,7 +117,7 @@ export class SystemToolRepo {
       ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
     ];
 
-    concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
+    concatTools.sort(createSystemToolSorter(tags));
 
     return concatTools;
   };
@@ -423,3 +426,19 @@ export class SystemToolRepo {
     };
   }
 }
+
+const getTagMatchedCount = (tool: SystemToolListItemType, tags?: string[]) => {
+  if (!tags?.length) return 0;
+
+  const targetTags = new Set(tags);
+  return [...new Set(tool.tags)].filter((tag) => targetTags.has(tag)).length;
+};
+
+const createSystemToolSorter =
+  (tags?: string[]) => (a: SystemToolListItemType, b: SystemToolListItemType) => {
+    const orderDiff = (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999);
+    if (!tags?.length) return orderDiff;
+
+    const matchedCountDiff = getTagMatchedCount(b, tags) - getTagMatchedCount(a, tags);
+    return matchedCountDiff || orderDiff;
+  };

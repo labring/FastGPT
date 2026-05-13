@@ -7,6 +7,6 @@ import { pluginTagList } from '../../sdk/fastgpt-plugin';
  * @returns 过滤后的静态的 tags
  */
 export const filterPluginTags = (tags: string[]): PluginTagType[] => {
-  const staticTags = Object.keys(pluginTagList);
+  const staticTags = pluginTagList.map((tag) => tag.id);
   return tags.filter((tag) => staticTags.includes(tag)) as PluginTagType[];
 };

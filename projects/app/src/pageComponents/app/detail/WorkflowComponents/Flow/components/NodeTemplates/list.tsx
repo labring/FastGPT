@@ -80,6 +80,8 @@ const NodeTemplateListItem = ({
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
+  const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const showExpandArrow = template.isFolder || isSystemToolSet;
 
   return (
     <MyTooltip
@@ -177,8 +179,7 @@ const NodeTemplateListItem = ({
             {t(template.name as any)}
           </Box>
         </Box>
-        {/* Folder right arrow */}
-        {template.isFolder && (
+        {showExpandArrow && (
           <Box
             color={'myGray.500'}
             _hover={{

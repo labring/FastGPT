@@ -73,9 +73,6 @@ export async function handler(
     .map<NodeTemplateListItemType>((tool) => ({
       ...tool,
       templateType: FlowNodeTemplateTypeEnum.tools,
-      // templateType: tool.isToolSet
-      //   ? FlowNodeTemplateTypeEnum.tools
-      //   : FlowNodeTemplateTypeEnum.other,
       flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
       name: tool.name,
       intro: tool.intro,
