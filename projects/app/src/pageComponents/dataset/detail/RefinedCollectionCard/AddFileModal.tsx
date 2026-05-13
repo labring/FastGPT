@@ -516,8 +516,60 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleContinueUpload = useCallback(async () => {
-    await handleReplaceFiles();
-  }, [handleReplaceFiles]);
+    const tags = tagsToCollectionTags(tagRows);
+    if (addMode === 'file') {
+      await Promise.all([
+        ...docSuccessFiles.map((f) =>
+          postCreateCustomFileIdCollection({
+            datasetId,
+            parentId,
+            fileId: f.dbFileId!,
+            name: f.sourceName,
+            overwriteDuplicate: false,
+            enableEnhance: true,
+            tags
+          })
+        ),
+        ...imageSuccessFiles
+          .filter((f) => !!f.file)
+          .map((f) =>
+            createImageDatasetCollection({
+              datasetId,
+              parentId,
+              collectionName: f.sourceName,
+              files: [f.file!],
+              overwriteDuplicate: false,
+              tags
+            })
+          )
+      ]);
+    } else {
+      for (const file of faqSelectFiles) {
+        await postImportFaqByTemplate({
+          datasetId,
+          parentId,
+          file: file.file,
+          overwriteDuplicate: false,
+          enableEnhance: true,
+          tags,
+          percentListen: () => {}
+        });
+      }
+    }
+    setShowDuplicateModal(false);
+    onFinish();
+    onClose();
+  }, [
+    addMode,
+    tagRows,
+    datasetId,
+    parentId,
+    docSuccessFiles,
+    imageSuccessFiles,
+    faqSelectFiles,
+    onFinish,
+    onClose
+  ]);
 
   // ── 标签操作 ──────────────────────────────
   const addTagRow = useCallback(() => {
