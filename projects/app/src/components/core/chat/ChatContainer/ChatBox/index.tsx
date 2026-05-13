@@ -59,7 +59,10 @@ import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  getChatTitleFromChatMessage,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -220,7 +223,12 @@ const ChatBox = ({
   const syncSidebarChatGenerateStatus = useMemoizedFn(
     (
       status: ChatGenerateStatusEnum,
-      options?: { hasBeenRead?: boolean; targetAppId?: string; targetChatId?: string }
+      options?: {
+        hasBeenRead?: boolean;
+        targetAppId?: string;
+        targetChatId?: string;
+        title?: string;
+      }
     ) => {
       const targetAppId = options?.targetAppId ?? appId;
       if (targetAppId !== appId) return;
@@ -235,7 +243,7 @@ const ChatBox = ({
             {
               chatId: targetChatId,
               appId: targetAppId,
-              title: chatBoxData.title || t('common:core.chat.New Chat'),
+              title: options?.title || chatBoxData.title || t('common:core.chat.New Chat'),
               customTitle: '',
               top: false,
               updateTime: new Date(),
@@ -899,6 +907,7 @@ const ChatBox = ({
               status: ChatStatusEnum.loading
             }
           ];
+          const temporaryHistoryTitle = getChatTitleFromChatMessage(currentHumanChat);
 
           resumedChatTargetRef.current = `${appId}:${chatId}`;
 
@@ -906,12 +915,16 @@ const ChatBox = ({
             state.chatId === chatId
               ? {
                   ...state,
+                  title: temporaryHistoryTitle,
                   chatGenerateStatus: ChatGenerateStatusEnum.generating,
                   hasBeenRead: false
                 }
               : state
           );
-          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, { hasBeenRead: false });
+          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
+            hasBeenRead: false,
+            title: temporaryHistoryTitle
+          });
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(

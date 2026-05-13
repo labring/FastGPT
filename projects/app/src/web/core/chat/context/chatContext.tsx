@@ -16,6 +16,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { upsertHistoryTitle } from './historyTitleUtils';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -204,22 +205,26 @@ const ChatContextProvider = ({
 
   const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
-      // Chat history exists
-      if (histories.find((item) => item.chatId === chatId)) {
-        setHistories((state) =>
-          state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
-        );
-      } else {
-        // Chat history not exists
-        loadHistories({ init: true });
-      }
+      setHistories((state) =>
+        upsertHistoryTitle({
+          histories: state,
+          appId,
+          chatId,
+          title: newTitle,
+          fallbackTitle: '新对话'
+        })
+      );
+      loadHistories({ init: true });
     },
-    [histories, loadHistories, setHistories]
+    [appId, loadHistories, setHistories]
   );
 
   const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
   const historiesRef = useRef(histories);
-  historiesRef.current = histories;
+
+  useEffect(() => {
+    historiesRef.current = histories;
+  }, [histories]);
 
   /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
   const hasGeneratingInSidebar = useMemo(
@@ -249,7 +254,7 @@ const ChatContextProvider = ({
               const nextRead =
                 nextGen === ChatGenerateStatusEnum.generating
                   ? false
-                  : s.hasBeenRead ?? item.hasBeenRead;
+                  : (s.hasBeenRead ?? item.hasBeenRead);
               return {
                 ...item,
                 chatGenerateStatus: nextGen,
