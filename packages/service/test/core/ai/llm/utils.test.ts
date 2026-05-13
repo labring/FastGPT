@@ -26,8 +26,8 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
-vi.mock('axios', () => ({
-  default: {
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  axios: {
     head: vi.fn()
   }
 }));
@@ -35,13 +35,12 @@ vi.mock('axios', () => ({
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 import { serviceEnv } from '@fastgpt/service/env';
-
-// @ts-ignore
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
+const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
@@ -292,6 +291,7 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -567,7 +567,6 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle invalid remote images gracefully', async () => {
-      const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
       serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
@@ -863,6 +862,8 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
