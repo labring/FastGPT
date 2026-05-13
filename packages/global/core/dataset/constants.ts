@@ -13,7 +13,7 @@ export enum DatasetTypeEnum {
   dingtalk = 'dingtalk'
 }
 
-// @ts-ignore
+// @ts-expect-error ignore incomplete api dataset map
 export const ApiDatasetTypeMap: Record<
   `${DatasetTypeEnum}`,
   {

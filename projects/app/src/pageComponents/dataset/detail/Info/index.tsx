@@ -176,7 +176,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               </Box>
             </MyTooltip>
           </Flex>
-          <Box pt={2}>
+          <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               w={'100%'}
               value={vectorModel.model}
@@ -210,7 +210,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.ai.model.Dataset Agent Model')}
           </FormLabel>
-          <Box pt={2}>
+          <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               w={'100%'}
               value={agentModel.model}
@@ -233,7 +233,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('dataset:vllm_model')}
           </FormLabel>
-          <Box pt={2}>
+          <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
               w={'100%'}
               value={vlmModel?.model}

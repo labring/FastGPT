@@ -215,6 +215,17 @@ export const DispatchNodeResponseSchema = z
     limit: z.number().optional().meta({ description: '限制' }),
     searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
+    filteredFileCount: z.number().optional().meta({ description: '过滤的非图片文件数量' }),
+    queryImages: z
+      .array(
+        z.object({
+          key: z.string().optional(),
+          url: z.string().optional(),
+          name: z.string().optional()
+        })
+      )
+      .optional()
+      .meta({ description: '参与知识库检索的图片' }),
     rerankModel: z.string().optional().meta({ description: '重排模型' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
@@ -359,7 +370,10 @@ export type DispatchNodeResponseType = Omit<
   toolDetail?: DispatchNodeResponseType[];
 };
 
-export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]?: string }> = {
+export type DispatchNodeResultType<
+  T = unknown,
+  ERR = { [NodeOutputKeyEnum.errorText]?: string }
+> = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id

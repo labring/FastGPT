@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Textarea, Button, Flex, useTheme, useDisclosure } from '@chakra-ui/react';
+import { Box, CircularProgress, Textarea, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import {
   useSearchTestStore,
   type SearchTestStoreItemType
@@ -12,15 +12,10 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { type SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
-import {
-  DatasetSearchModeEnum,
-  DatasetSearchModeMap
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { fileDownload } from '@/web/common/file/utils';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
@@ -29,6 +24,12 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { getUploadSearchTestImagePresignedUrl } from '@/web/core/dataset/api/file';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import ImagePreviewToken from '@/components/core/dataset/ImagePreviewToken';
+import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -53,19 +54,19 @@ type FormType = {
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { defaultModels } = useSystemStore();
+  const { defaultModels, feConfigs } = useSystemStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { pushDatasetTestItem } = useSearchTestStore();
-  const [inputType, setInputType] = useState<'text' | 'file'>('text');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
-  const [isFocus, setIsFocus] = useState(false);
-  const { File, onOpen } = useSelectFile({
-    fileType: '.csv',
-    multiple: false
+  const { File: ImageFileSelector, onOpen } = useSelectFile({
+    fileType: imageFileType,
+    multiple: true
   });
-  const [selectFile, setSelectFile] = useState<File>();
+  const [queryImageRefs, setQueryImageRefs] = useState<{ key: string; previewUrl: string }[]>([]);
+  const [uploadingImageCount, setUploadingImageCount] = useState(0);
 
-  const { getValues, setValue, register, handleSubmit } = useForm<FormType>({
+  const { getValues, setValue, register, handleSubmit, watch } = useForm<FormType>({
     defaultValues: {
       inputText: '',
       searchParams: {
@@ -83,8 +84,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     }
   });
 
-  const searchModeData = DatasetSearchModeMap[getValues(`searchParams.searchMode`)];
   const searchParams = getValues('searchParams');
+  const inputText = watch('inputText');
 
   const {
     isOpen: isOpenSelectMode,
@@ -94,7 +95,12 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
   const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: FormType) =>
-      postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
+      postSearchText({
+        datasetId,
+        text: inputText.trim(),
+        queryImageUrls: queryImageRefs.map((item) => item.key),
+        ...searchParams
+      }),
     {
       onSuccess(res: SearchDatasetTestResponse) {
         if (!res || res.list.length === 0) {
@@ -110,6 +116,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           text: getValues('inputText').trim(),
           time: new Date(),
           results: res.list,
+          queryImageRefs: queryImageRefs.map(({ key }) => ({ key })),
           duration: res.duration,
           searchMode: res.searchMode,
           usingReRank: res.usingReRank,
@@ -124,14 +131,94 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   );
 
   const onSelectFile = async (files: File[]) => {
-    const file = files[0];
-    if (!file) return;
-    setSelectFile(file);
+    const imageExtensionSet = new Set(
+      imageFileType
+        .split(',')
+        .map((item) => item.trim().replace('.', '').toLowerCase())
+        .filter(Boolean)
+    );
+    const imageFiles = files.filter((file) => {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      return !!extension && imageExtensionSet.has(extension);
+    });
+    if (imageFiles.length < files.length) {
+      toast({
+        status: 'warning',
+        title: t('chat:unsupported_file_type')
+      });
+    }
+    const planStatus =
+      teamPlanStatus ||
+      (await initTeamPlanStatus()
+        .then(() => useUserStore.getState().teamPlanStatus)
+        .catch(() => undefined));
+    const maxImageSize =
+      (planStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+      1024 *
+      1024;
+    const validImageFiles = imageFiles.filter((file) => file.size <= maxImageSize);
+    if (validImageFiles.length < imageFiles.length) {
+      toast({
+        status: 'warning',
+        title: t('file:some_file_size_exceeds_limit', {
+          maxSize: formatFileSize(maxImageSize)
+        })
+      });
+    }
+    if (queryImageRefs.length + validImageFiles.length > 10) {
+      toast({
+        status: 'warning',
+        title: t('common:core.dataset.test.max_images_tip')
+      });
+    }
+
+    const uploadFiles = validImageFiles.slice(0, Math.max(10 - queryImageRefs.length, 0));
+    if (uploadFiles.length === 0) return;
+
+    setUploadingImageCount(uploadFiles.length);
+    try {
+      const uploadedImages = await Promise.all(
+        uploadFiles.map(async (file) => {
+          const { url, key, headers, maxSize, previewUrl } =
+            await getUploadSearchTestImagePresignedUrl({
+              datasetId,
+              filename: file.name
+            });
+          await putFileToS3({
+            url,
+            headers,
+            file,
+            maxSize,
+            t
+          });
+          return { key, previewUrl };
+        })
+      );
+      setQueryImageRefs((state) => [...state, ...uploadedImages]);
+    } catch {
+      toast({
+        status: 'warning',
+        title: t('common:upload_file_error')
+      });
+    } finally {
+      setUploadingImageCount(0);
+    }
   };
+
+  const canSearchImage = !!datasetDetail.vectorModel?.vision || !!datasetDetail.vlmModel;
+  const canSubmit = !!inputText?.trim() || queryImageRefs.length > 0;
 
   useEffect(() => {
     setDatasetTestItem(undefined);
+    setQueryImageRefs([]);
+    setUploadingImageCount(0);
   }, [datasetId]);
+
+  useEffect(() => {
+    if (!canSearchImage && queryImageRefs.length > 0) {
+      setQueryImageRefs([]);
+    }
+  }, [canSearchImage, queryImageRefs.length]);
 
   return (
     <Box h={'100%'} display={['block', 'flex']}>
@@ -140,147 +227,197 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         h={['auto', '100%']}
         display={['block', 'flex']}
         flexDirection={'column'}
-        flex={1}
-        maxW={'500px'}
-        py={4}
+        flex={['unset', '0 0 468px']}
+        w={['100%', '468px']}
+        p={4}
+        gap={6}
+        borderRight={['none', '1px solid #E8EBF0']}
       >
         <Box
-          border={'2px solid'}
-          p={3}
-          mx={4}
-          borderRadius={'md'}
-          {...(isFocus
-            ? {
-                borderColor: 'primary.500',
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-              }
-            : {
-                borderColor: 'primary.300'
-              })}
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'flex-start'}
+          gap={3}
+          alignSelf={'stretch'}
         >
-          {/* header */}
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <MySelect<'text' | 'file'>
-              size={'sm'}
-              list={[
-                {
-                  label: (
-                    <Flex alignItems={'center'}>
-                      <MyIcon mr={2} name={'text'} w={'14px'} color={'primary.600'} />
-                      <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                        {t('common:core.dataset.test.Test Text')}
-                      </Box>
-                    </Flex>
-                  ),
-                  value: 'text'
-                }
-                // {
-                //   label: (
-                //     <Flex alignItems={'center'}>
-                //       <MyIcon mr={2} name={'file/csv'} w={'14px'} color={'primary.600'} />
-                //       <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                //         {t('common:core.dataset.test.Batch test')}
-                //       </Box>
-                //     </Flex>
-                //   ),
-                //   value: 'file'
-                // }
-              ]}
-              value={inputType}
-              onChange={(e) => setInputType(e)}
-            />
-
+          <Flex alignItems={'center'} alignSelf={'stretch'}>
+            <Box flex={1} fontWeight={500} color={'myGray.900'}>
+              {t('common:core.dataset.test.input_title')}
+            </Box>
             <Button
               variant={'whitePrimary'}
-              leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
+              leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
               size={'sm'}
+              fontWeight={500}
               onClick={onOpenSelectMode}
             >
-              {t(searchModeData.title as any)}
+              {t('common:core.dataset.test.search_config')}
             </Button>
           </Flex>
 
-          <Box h={'180px'}>
-            {inputType === 'text' && (
-              <Textarea
-                h={'100%'}
-                resize={'none'}
-                variant={'unstyled'}
-                maxLength={datasetDetail.vectorModel?.maxToken}
-                placeholder={t('common:core.dataset.test.Test Text Placeholder')}
-                onFocus={() => setIsFocus(true)}
-                {...register('inputText', {
-                  required: true,
-                  onBlur: () => {
-                    setIsFocus(false);
-                  }
-                })}
-              />
-            )}
-            {inputType === 'file' && (
-              <Box pt={5}>
-                <Flex
-                  p={3}
-                  borderRadius={'md'}
-                  borderWidth={'1px'}
-                  borderColor={'borderColor.base'}
-                  borderStyle={'dashed'}
-                  bg={'white'}
-                  cursor={'pointer'}
-                  justifyContent={'center'}
-                  _hover={{
-                    bg: 'primary.100',
-                    borderColor: 'primary.500',
-                    borderStyle: 'solid'
-                  }}
-                  onClick={onOpen}
-                >
-                  <MyIcon mr={2} name={'file/csv'} w={'24px'} />
-                  <Box>
-                    {selectFile
-                      ? selectFile.name
-                      : t('common:core.dataset.test.Batch test Placeholder')}
-                  </Box>
-                </Flex>
-                <Box mt={3} fontSize={'sm'}>
-                  {t('common:info.csv_message')}
+          <Box
+            border={'1px solid #E8EBF0'}
+            p={3}
+            borderRadius={'6px'}
+            minH={'220px'}
+            display={'flex'}
+            flexDirection={'column'}
+            bg={'white'}
+            alignSelf={'stretch'}
+            position={'relative'}
+          >
+            {(queryImageRefs.length > 0 || uploadingImageCount > 0) && (
+              <Flex mb={3} gap={2} flexWrap={'wrap'}>
+                {queryImageRefs.map((image) => (
                   <Box
-                    as={'span'}
-                    color={'primary.600'}
-                    cursor={'pointer'}
-                    onClick={() => {
-                      fileDownload({
-                        text: `"问题"\n"问题1"\n"问题2"\n"问题3"`,
-                        type: 'text/csv',
-                        filename: 'Test Template'
-                      });
-                    }}
+                    key={image.key}
+                    position={'relative'}
+                    w={'80px'}
+                    h={'80px'}
+                    bg={'white'}
+                    border={'1.07143px solid #E8EBF0'}
+                    borderRadius={'8px'}
+                    boxShadow={
+                      '0px 4.28571px 10.7143px rgba(19, 51, 107, 0.08), 0px 0px 1.07143px rgba(19, 51, 107, 0.08)'
+                    }
+                    overflow={'visible'}
                   >
-                    {t('common:info.csv_download')}
+                    <Box
+                      as={'img'}
+                      src={image.previewUrl}
+                      alt=""
+                      w={'80px'}
+                      h={'80px'}
+                      objectFit={'cover'}
+                      borderRadius={'6.66667px'}
+                    />
+                    <Box
+                      position={'absolute'}
+                      right={'-7.5px'}
+                      top={'-7.5px'}
+                      w={'16.67px'}
+                      h={'16.67px'}
+                      display={'flex'}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      bg={'#8A95A7'}
+                      borderRadius={'50%'}
+                      boxShadow={
+                        '0px 6.66667px 6.66667px rgba(19, 51, 107, 0.1), 0px 0px 1.66667px rgba(19, 51, 107, 0.08)'
+                      }
+                      cursor={'pointer'}
+                      onClick={() =>
+                        setQueryImageRefs((state) => state.filter((item) => item.key !== image.key))
+                      }
+                    >
+                      <MyIcon
+                        name={'common/closeLight'}
+                        w={'11.9px'}
+                        h={'11.9px'}
+                        color={'white'}
+                      />
+                    </Box>
                   </Box>
+                ))}
+                {Array.from({ length: uploadingImageCount }).map((_, index) => (
+                  <Flex
+                    key={index}
+                    w={'80px'}
+                    h={'80px'}
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    bg={'white'}
+                    border={'1.07143px solid #E8EBF0'}
+                    borderRadius={'8px'}
+                    boxShadow={
+                      '0px 4.28571px 10.7143px rgba(19, 51, 107, 0.08), 0px 0px 1.07143px rgba(19, 51, 107, 0.08)'
+                    }
+                  >
+                    <CircularProgress
+                      value={28}
+                      size={'46.67px'}
+                      thickness={'8px'}
+                      color={'#3370FF'}
+                      trackColor={'#D9D9D9'}
+                      capIsRound
+                    />
+                  </Flex>
+                ))}
+              </Flex>
+            )}
+
+            <Textarea
+              flex={1}
+              minH={'140px'}
+              resize={'none'}
+              variant={'unstyled'}
+              fontSize={'12px'}
+              lineHeight={'16px'}
+              fontWeight={'400'}
+              letterSpacing={'0.004em'}
+              color={'myGray.500'}
+              _placeholder={{
+                color: 'myGray.500'
+              }}
+              maxLength={datasetDetail.vectorModel?.maxToken}
+              placeholder={t('common:core.dataset.test.Test Text Placeholder')}
+              {...register('inputText')}
+            />
+
+            <MyTooltip
+              label={canSearchImage ? '' : t('common:core.dataset.test.image_search_disabled_tip')}
+            >
+              <Box position={'absolute'} left={'12px'} bottom={'8px'}>
+                <Box
+                  as={'button'}
+                  w={'24px'}
+                  h={'24px'}
+                  p={0}
+                  display={'flex'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  bg={'transparent'}
+                  border={'none'}
+                  boxShadow={'none'}
+                  _hover={{
+                    bg: 'transparent'
+                  }}
+                  _active={{
+                    bg: 'transparent'
+                  }}
+                  _disabled={{
+                    bg: 'transparent',
+                    opacity: 0.5,
+                    cursor: 'not-allowed'
+                  }}
+                  disabled={!canSearchImage}
+                  onClick={onOpen}
+                  aria-label={t('common:core.dataset.test.upload_image')}
+                >
+                  <MyIcon
+                    name={'image'}
+                    w={'20px'}
+                    h={'20px'}
+                    color={'myGray.500'}
+                    flexShrink={0}
+                  />
                 </Box>
               </Box>
-            )}
+            </MyTooltip>
           </Box>
 
-          <Flex justifyContent={'flex-end'}>
-            <Button
-              size={'sm'}
-              isLoading={textTestIsLoading}
-              isDisabled={inputType === 'file' && !selectFile}
-              onClick={() => {
-                if (inputType === 'text') {
-                  handleSubmit((data) => onTextTest(data))();
-                } else {
-                  // handleSubmit((data) => onFileTest(data))();
-                }
-              }}
-            >
-              {t('common:core.dataset.test.Test')}
-            </Button>
-          </Flex>
+          <Button
+            w={'100%'}
+            isLoading={textTestIsLoading}
+            isDisabled={!canSubmit || uploadingImageCount > 0}
+            onClick={() => {
+              handleSubmit((data) => onTextTest(data))();
+            }}
+          >
+            {t('common:core.dataset.test.Test')}
+          </Button>
         </Box>
-        <Box mt={5} px={4} overflow={'overlay'} display={['none', 'block']}>
+        <Box overflow={'overlay'} display={['none', 'block']}>
           <TestHistories
             datasetId={datasetId}
             datasetTestItem={datasetTestItem}
@@ -306,7 +443,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           }}
         />
       )}
-      <File onSelect={onSelectFile} />
+      <ImageFileSelector onSelect={onSelectFile} />
     </Box>
   );
 };
@@ -333,22 +470,21 @@ const TestHistories = React.memo(function TestHistories({
   return (
     <>
       <Flex alignItems={'center'} color={'myGray.900'}>
-        <MyIcon mr={2} name={'history'} w={'18px'} h={'18px'} color={'myGray.900'} />
-        <Box fontSize={'md'}>{t('common:core.dataset.test.test history')}</Box>
+        <Box fontSize={'md'} fontWeight={500}>
+          {t('common:core.dataset.test.test history')}
+        </Box>
       </Flex>
-      <Box mt={2}>
+      <Box mt={3} display={'flex'} flexDirection={'column'} gap={2}>
         {testHistories.map((item) => (
           <Flex
             key={item.id}
+            position={'relative'}
             py={2}
             px={3}
             alignItems={'center'}
             borderColor={'borderColor.low'}
             borderWidth={'1px'}
             borderRadius={'md'}
-            _notLast={{
-              mb: 2
-            }}
             _hover={{
               borderColor: 'primary.300',
               boxShadow: '1',
@@ -366,22 +502,33 @@ const TestHistories = React.memo(function TestHistories({
             })}
             onClick={() => setDatasetTestItem(item)}
           >
-            <Box flex={'0 0 auto'} mr={2}>
-              {DatasetSearchModeMap[item.searchMode] ? (
-                <Flex alignItems={'center'} fontWeight={'500'} color={'myGray.500'}>
-                  <MyIcon
-                    name={DatasetSearchModeMap[item.searchMode].icon as any}
-                    w={'12px'}
-                    mr={'1px'}
-                  />
-                  {t(DatasetSearchModeMap[item.searchMode].title as any)}
-                </Flex>
-              ) : (
-                '-'
-              )}
-            </Box>
-            <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
-              {item.text}
+            <Box
+              flex={1}
+              mr={2}
+              wordBreak={'break-all'}
+              fontWeight={'400'}
+              display={'flex'}
+              alignItems={'center'}
+              flexWrap={'wrap'}
+              gap={1}
+            >
+              {!!item.text && <Box as={'span'}>{item.text}</Box>}
+              <ImagePreviewToken
+                images={item.queryImageRefs || []}
+                datasetId={datasetId}
+                containerProps={{
+                  as: 'span',
+                  display: 'inline-flex',
+                  gap: 1
+                }}
+                tokenProps={{
+                  px: 0,
+                  py: 0,
+                  border: 'none',
+                  bg: 'transparent',
+                  color: 'inherit'
+                }}
+              />
             </Box>
             <Box className="time" flex={'0 0 auto'} fontSize={'xs'} color={'myGray.500'}>
               {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
@@ -395,7 +542,9 @@ const TestHistories = React.memo(function TestHistories({
                   onClick={(e) => {
                     e.stopPropagation();
                     delDatasetTestItemById(item.id);
-                    datasetTestItem?.id === item.id && setDatasetTestItem(undefined);
+                    if (datasetTestItem?.id === item.id) {
+                      setDatasetTestItem(undefined);
+                    }
                   }}
                 />
               </Box>
@@ -413,7 +562,6 @@ const TestResults = React.memo(function TestResults({
   datasetTestItem?: SearchTestStoreItemType;
 }) {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   return (
     <>
@@ -421,8 +569,7 @@ const TestResults = React.memo(function TestResults({
         <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
-          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-            <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
+          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'} fontWeight={500}>
             {t('common:core.dataset.test.Test params')}
           </Flex>
           <Box mt={3}>
@@ -437,15 +584,14 @@ const TestResults = React.memo(function TestResults({
           </Box>
 
           <Flex mt={5} mb={3} alignItems={'center'}>
-            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-              <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
+            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'} fontWeight={500}>
               {t('common:core.dataset.test.Test Result')}
             </Flex>
             <QuestionTip ml={1} label={t('common:core.dataset.test.test result tip')} />
             <Box ml={2}>({datasetTestItem.duration})</Box>
           </Flex>
           <Box mt={1} gap={4}>
-            {datasetTestItem?.results.map((item, index) => (
+            {datasetTestItem?.results.map((item) => (
               <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
                 <QuoteItem quoteItem={item} canDownloadSource canEditData />
               </Box>

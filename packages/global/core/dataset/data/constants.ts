@@ -1,11 +1,11 @@
 import { i18nT } from '../../../../web/i18n/utils';
 
 export enum DatasetDataIndexTypeEnum {
-  default = 'default',
-  custom = 'custom',
-  summary = 'summary',
-  question = 'question',
-  image = 'image'
+  default = 'default', // 默认的
+  summary = 'summary', // 摘要，系统生成
+  question = 'question', // 补全问题，系统生成
+  image = 'image', // 图片描述，系统生成
+  custom = 'custom'
 }
 
 export const DatasetDataIndexMap: Record<

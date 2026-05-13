@@ -81,7 +81,7 @@
   "view_chart": "圖表",
   "view_table": "表格",
   "vlm_model": "圖片理解模型",
-  "vlm_model_tip": "用於知識庫中對文件中的圖片進行額外的索引生成",
+  "vlm_model_tip": "自動標註文件裡的圖片並生成文字描述，輔助文字檢索",
   "volunme_of_failed_calls": "調用失敗量",
   "waiting_test": "等待測試"
 }

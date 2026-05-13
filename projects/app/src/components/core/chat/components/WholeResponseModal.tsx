@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -19,6 +20,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
+import ImagePreviewToken from '@/components/core/dataset/ImagePreviewToken';
 
 const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
   ssr: false
@@ -35,6 +37,36 @@ type sideTabItemType = {
   children: sideTabItemType[];
 };
 
+const QueryWithImages = React.memo(function QueryWithImages({
+  query,
+  queryImages,
+  datasetId
+}: {
+  query?: string;
+  queryImages: NonNullable<ChatHistoryItemResType['queryImages']>;
+  datasetId?: string;
+}) {
+  return (
+    <Box
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+      borderRadius={'6px'}
+      bg={'myGray.50'}
+      color={'myGray.900'}
+      minH={'32px'}
+      px={3}
+      py={2}
+    >
+      {!!query && (
+        <Box whiteSpace={'pre-wrap'} mb={queryImages.length > 0 ? 2 : 0}>
+          {query}
+        </Box>
+      )}
+      <ImagePreviewToken images={queryImages} datasetId={datasetId} />
+    </Box>
+  );
+});
+
 /* Per response value */
 export const WholeResponseContent = ({
   activeModule,
@@ -50,6 +82,7 @@ export const WholeResponseContent = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
+  const queryPreviewDatasetId = activeModule?.quoteList?.[0]?.datasetId;
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
@@ -285,7 +318,20 @@ export const WholeResponseContent = ({
           )}
         <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
-        <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+        {activeModule?.queryImages && activeModule.queryImages.length > 0 ? (
+          <Row
+            label={t('common:core.chat.response.module query')}
+            rawDom={
+              <QueryWithImages
+                query={activeModule?.query}
+                queryImages={activeModule.queryImages}
+                datasetId={queryPreviewDatasetId}
+              />
+            }
+          />
+        ) : (
+          <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+        )}
         <Row
           label={t('common:core.chat.response.context total length')}
           value={activeModule?.contextTotalLen}
@@ -333,10 +379,7 @@ export const WholeResponseContent = ({
             label={t('common:core.dataset.search.search mode')}
             rawDom={
               <Flex border={'base'} borderRadius={'md'} p={2}>
-                <Box>
-                  {/* @ts-ignore */}
-                  {t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
-                </Box>
+                <Box>{t(DatasetSearchModeMap[activeModule.searchMode]?.title as any)}</Box>
                 {activeModule.embeddingWeight && (
                   <>{`(${t('chat:response_hybrid_weight', {
                     emb: activeModule.embeddingWeight,
@@ -838,7 +881,7 @@ export const ResponseBox = React.memo(function ResponseBox({
     /* Format response data to slider data */
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
-        let children: sideTabItemType[] = [];
+        const children: sideTabItemType[] = [];
 
         if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
         if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));

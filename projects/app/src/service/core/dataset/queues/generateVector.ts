@@ -1,4 +1,4 @@
-import { insertData2Dataset } from '@/service/core/dataset/data/controller';
+import { createDatasetData } from '@/service/core/dataset/data/data';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
@@ -91,7 +91,7 @@ export async function generateVector(): Promise<any> {
           return {
             data
           };
-        } catch (error) {
+        } catch {
           return {
             error: true
           };
@@ -238,7 +238,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
         }
       })
     );
-  } catch (error) {}
+  } catch {}
 
   // update vector, update dataset_data rebuilding status, delete data from training
   // 1. Insert new vector to dataset_data
@@ -281,7 +281,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
     // insert new data to dataset
-    const { tokens } = await insertData2Dataset({
+    const { tokens } = await createDatasetData({
       teamId: trainingData.teamId,
       tmbId: trainingData.tmbId,
       datasetId: trainingData.datasetId,
