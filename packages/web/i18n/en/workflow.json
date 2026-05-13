@@ -323,5 +323,7 @@
   "tag_filter_op_not_empty": "Is not empty",
   "retrieval_filter": "Retrieval Filter",
   "tag_filter_label": "Tag Filter",
-  "tag_filter_label_tooltip": "Tag filtering helps pinpoint the right files, improving retrieval accuracy and efficiency.\nE.g., if a user asks \"How long is the validity period?\" and it's determined they're asking about Product A, tag filtering can narrow the search to Product A files, avoiding results from other files that also mention \"validity period\"."
+  "tag_filter_label_tooltip": "Tag filtering helps pinpoint the right files, improving retrieval accuracy and efficiency.\nE.g., if a user asks \"How long is the validity period?\" and it's determined they're asking about Product A, tag filtering can narrow the search to Product A files, avoiding results from other files that also mention \"validity period\".",
+  "permission_filter_label": "Permission Filter",
+  "permission_filter_tooltip": "When enabled, retrieval results are filtered based on whether the user has permission to the selected knowledge bases. Each user can only search within the knowledge bases they have access to.\n(Not recommended to publish without login after enabling, as all unauthenticated users will be unable to retrieve knowledge bases.)"
 }

@@ -37,11 +37,13 @@ type Props = {
   datasetIds: string[];
   value: string | undefined;
   onChange: (v: string | undefined) => void;
+  authTmbId?: boolean;
+  onAuthTmbIdChange?: (v: boolean) => void;
 };
 
 type FilterMode = 'closed' | 'manual';
 
-const TagFilterSection = ({ datasetIds, value, onChange }: Props) => {
+const TagFilterSection = ({ datasetIds, value, onChange, authTmbId = false, onAuthTmbIdChange }: Props) => {
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<FilterMode>(() => (value ? 'manual' : 'closed'));
@@ -150,6 +152,23 @@ const TagFilterSection = ({ datasetIds, value, onChange }: Props) => {
         </AccordionButton>
         <AccordionPanel pb={4} px={0}>
           <VStack spacing={3} align="stretch">
+            {/* 权限过滤行 */}
+            <Flex alignItems={'center'} w={'100%'}>
+              <FormLabel
+                display={'flex'}
+                alignItems={'center'}
+                fontSize={'12px'}
+                fontWeight={'500'}
+                minW={'120px'}
+              >
+                {t('workflow:permission_filter_label')}
+                <QuestionTip ml={1} label={t('workflow:permission_filter_tooltip')} />
+              </FormLabel>
+              <Switch
+                isChecked={authTmbId}
+                onChange={(e) => onAuthTmbIdChange?.(e.target.checked)}
+              />
+            </Flex>
             {/* 标签过滤行 */}
             <Flex alignItems={'center'} w={'100%'}>
               <FormLabel
