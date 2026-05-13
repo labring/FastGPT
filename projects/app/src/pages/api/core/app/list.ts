@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -289,6 +290,61 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
     );
     toolApps.forEach((app, i) => {
       relatedAppCountMap.set(String(app._id), counts[i]);
+    });
+  }
+
+  // Compute relatedAppCount for tool folders (sum of all non-folder tool descendants)
+  const toolFolderApps = formatList.filter((app) => app.type === AppTypeEnum.toolFolder);
+  if (toolFolderApps.length > 0) {
+    const folderCounts = await Promise.all(
+      toolFolderApps.map(async (folder) => {
+        const agg = await MongoApp.aggregate<{
+          descendants: Array<{ _id: any; type: string }>;
+        }>([
+          { $match: { _id: new Types.ObjectId(String(folder._id)) } },
+          {
+            $graphLookup: {
+              from: 'apps',
+              startWith: '$_id',
+              connectFromField: '_id',
+              connectToField: 'parentId',
+              as: 'descendants',
+              restrictSearchWithMatch: { deleteTime: null }
+            }
+          },
+          { $project: { _id: 0, descendants: { _id: 1, type: 1 } } }
+        ]);
+
+        const toolDescendantIds = (agg[0]?.descendants ?? [])
+          .filter((d) => ToolTypeList.includes(d.type as AppTypeEnum))
+          .map((d) => String(d._id));
+
+        if (toolDescendantIds.length === 0) return 0;
+
+        return MongoApp.countDocuments({
+          teamId,
+          deleteTime: null,
+          $or: [
+            { 'modules.pluginId': { $in: toolDescendantIds } },
+            {
+              modules: {
+                $elemMatch: {
+                  flowNodeType: FlowNodeTypeEnum.agent,
+                  inputs: {
+                    $elemMatch: {
+                      key: NodeInputKeyEnum.selectedTools,
+                      'value.id': { $in: toolDescendantIds }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        });
+      })
+    );
+    toolFolderApps.forEach((folder, i) => {
+      relatedAppCountMap.set(String(folder._id), folderCounts[i]);
     });
   }
 

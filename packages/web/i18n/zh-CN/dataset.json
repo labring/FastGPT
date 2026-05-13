@@ -543,6 +543,7 @@
   "tag.existing_tags_tip": "已有标签（勾选需要编辑的标签，编辑后对所选文件都生效，当前没有对应标签的文件也将添加）",
   "tag.new_tags_tip": "新标签（将添加在每个所选文件中）",
   "related_app": "关联应用",
+  "folder_delete_disabled_tip": "其中的知识库存在关联应用，无法删除",
   "file": "文件",
   "name_or_description": "名称/描述",
   "website_label": "网站",
