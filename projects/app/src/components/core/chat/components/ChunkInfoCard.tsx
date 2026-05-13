@@ -58,7 +58,7 @@ const ChunkInfoCard = ({
         <Flex
           alignItems={'center'}
           justifyContent={'space-between'}
-          h={'40px'}
+          minH={'40px'}
           px={3}
           cursor={'pointer'}
           onClick={handleToggle}
@@ -67,7 +67,7 @@ const ChunkInfoCard = ({
             bg: '#F4F6F8'
           }}
         >
-          <Flex alignItems={'center'} flex={1} gap={2}>
+          <Flex alignItems={'center'} flex={1} gap={2} minW={0}>
             {/* Toggle Button */}
             <Box
               className="toggle-icon"
@@ -99,7 +99,7 @@ const ChunkInfoCard = ({
 
             {/* Description List */}
             {descriptionList.length > 0 && (
-              <Flex alignItems={'center'} gap={4} flexWrap={'wrap'} ml={2}>
+              <Flex alignItems={'center'} gap={4} flexWrap={'nowrap'} ml={2} overflow={'hidden'}>
                 {descriptionList.map((desc, index) => (
                   <Box
                     key={index}
@@ -107,6 +107,7 @@ const ChunkInfoCard = ({
                     lineHeight={'16px'}
                     color={'myGray.500'}
                     flexShrink={0}
+                    whiteSpace={'nowrap'}
                   >
                     {desc}
                   </Box>
@@ -122,6 +123,7 @@ const ChunkInfoCard = ({
               onMouseEnter={() => setIsHoverOnButton(true)}
               onMouseLeave={() => setIsHoverOnButton(false)}
               flexShrink={0}
+              ml={2}
             >
               <MyTooltip label={linkText}>
                 <Link
@@ -138,7 +140,7 @@ const ChunkInfoCard = ({
                   color={'myGray.600'}
                   flexShrink={0}
                   cursor={'pointer'}
-                  maxW={'350px'}
+                  maxW={'200px'}
                   _hover={{
                     textDecoration: 'none',
                     bg: 'myGray.05'
