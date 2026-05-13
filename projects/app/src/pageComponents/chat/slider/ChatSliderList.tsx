@@ -12,6 +12,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -47,9 +48,9 @@ const ChatSliderList = () => {
         top: item.top,
         updateTime: item.updateTime,
         chatGenerateStatus: isActiveChat
-          ? chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus
+          ? (chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus)
           : item.chatGenerateStatus,
-        hasBeenRead: isActiveChat ? chatBoxData.hasBeenRead ?? item.hasBeenRead : item.hasBeenRead
+        hasBeenRead: isActiveChat ? (chatBoxData.hasBeenRead ?? item.hasBeenRead) : item.hasBeenRead
       };
     });
 
@@ -63,7 +64,10 @@ const ChatSliderList = () => {
       hasBeenRead?: boolean;
     } = {
       id: activeChatId,
-      title: t('common:core.chat.New Chat'),
+      title: getDisplayHistoryTitle({
+        title: chatBoxData.chatId === activeChatId ? chatBoxData.title : undefined,
+        fallbackTitle: t('common:core.chat.New Chat')
+      }),
       updateTime: new Date(),
       chatGenerateStatus:
         chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
@@ -77,6 +81,7 @@ const ChatSliderList = () => {
     histories,
     t,
     chatBoxData.chatId,
+    chatBoxData.title,
     chatBoxData.chatGenerateStatus,
     chatBoxData.hasBeenRead
   ]);
@@ -89,6 +94,7 @@ const ChatSliderList = () => {
 
   return (
     <>
+      {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
       <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {concatHistory.map((item, i) => (
           <Flex
