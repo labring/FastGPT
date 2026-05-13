@@ -99,10 +99,10 @@ describe('findMissingIndexType', () => {
 
   it('数据集存在目标 index type 时应返回 null', async () => {
     await createDatasetData(teamId, datasetId, collectionId, 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 'synthesis text', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 'question text', synId: 0 }
     ]);
 
-    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.synthesis);
+    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.question);
 
     expect(result).toBeNull();
   });
@@ -112,28 +112,28 @@ describe('findMissingIndexType', () => {
       { type: DatasetDataIndexTypeEnum.default, dataId: '1', text: 'default text' }
     ]);
 
-    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.synthesis);
+    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.question);
 
-    expect(result).toBe(DatasetDataIndexTypeEnum.synthesis);
+    expect(result).toBe(DatasetDataIndexTypeEnum.question);
   });
 
   it('空 indexes 数组时应返回目标类型', async () => {
     await createDatasetData(teamId, datasetId, collectionId, 'q1', []);
 
-    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.synthesis);
+    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.question);
 
-    expect(result).toBe(DatasetDataIndexTypeEnum.synthesis);
+    expect(result).toBe(DatasetDataIndexTypeEnum.question);
   });
 
   it('多个文档分别包含不同 index types 时，存在目标类型应返回 null', async () => {
     await createDatasetData(teamId, datasetId, collectionId, 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 'synthesis text', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 'question text', synId: 0 }
     ]);
     await createDatasetData(teamId, datasetId, collectionId, 'q2', [
       { type: DatasetDataIndexTypeEnum.default, dataId: '2', text: 'default text' }
     ]);
 
-    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.synthesis);
+    const result = await findMissingIndexType(datasetId, DatasetDataIndexTypeEnum.question);
 
     expect(result).toBeNull();
   });
@@ -157,26 +157,28 @@ describe('countValidChunksForDatasets', () => {
 
     // dataset1: 3 个有效文档
     await createDatasetData(teamId, String(dataset1._id), String(col1._id), 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 't1', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 't1', synId: 0 }
     ]);
     await createDatasetData(teamId, String(dataset1._id), String(col1._id), 'q2', [
       { type: DatasetDataIndexTypeEnum.default, dataId: '2', text: 't2' }
     ]);
     await createDatasetData(teamId, String(dataset1._id), String(col1._id), 'q3', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '3', text: 't3', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '3', text: 't3', synId: 0 }
     ]);
 
     // dataset2: 2 个有效文档
     await createDatasetData(teamId, String(dataset2._id), String(col2._id), 'q4', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '4', text: 't4', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '4', text: 't4', synId: 0 }
     ]);
     await createDatasetData(teamId, String(dataset2._id), String(col2._id), 'q5', [
       { type: DatasetDataIndexTypeEnum.default, dataId: '5', text: 't5' }
     ]);
 
-    const result = await countValidChunksForDatasets([String(dataset1._id), String(dataset2._id)]);
-
-    expect(result).toBe(5);
+    const result = await countValidChunksForDatasets(
+      [String(dataset1._id), String(dataset2._id)],
+      DatasetDataIndexTypeEnum.question
+    );
+    expect(result).toBe(3); // 3 question chunks (not counting default type chunks)
   });
 
   it('部分文档 indexes 为空时不应计入总数', async () => {
@@ -184,20 +186,23 @@ describe('countValidChunksForDatasets', () => {
     const col = await createCollection(teamId, String(dataset._id), 'col');
 
     await createDatasetData(teamId, String(dataset._id), String(col._id), 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 't1', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 't1', synId: 0 }
     ]);
     await createDatasetData(teamId, String(dataset._id), String(col._id), 'q2', []);
     await createDatasetData(teamId, String(dataset._id), String(col._id), 'q3', [
       { type: DatasetDataIndexTypeEnum.default, dataId: '3', text: 't3' }
     ]);
 
-    const result = await countValidChunksForDatasets([String(dataset._id)]);
+    const result = await countValidChunksForDatasets(
+      [String(dataset._id)],
+      DatasetDataIndexTypeEnum.question
+    );
 
-    expect(result).toBe(2);
+    expect(result).toBe(1);
   });
 
   it('空数据集列表时应返回 0', async () => {
-    const result = await countValidChunksForDatasets([]);
+    const result = await countValidChunksForDatasets([], DatasetDataIndexTypeEnum.question);
     expect(result).toBe(0);
   });
 
@@ -206,10 +211,13 @@ describe('countValidChunksForDatasets', () => {
     const col = await createCollection(teamId, String(dataset._id), 'col');
 
     await createDatasetData(teamId, String(dataset._id), String(col._id), 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 't1', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 't1', synId: 0 }
     ]);
 
-    const result = await countValidChunksForDatasets([String(dataset._id)]);
+    const result = await countValidChunksForDatasets(
+      [String(dataset._id)],
+      DatasetDataIndexTypeEnum.question
+    );
 
     expect(result).toBe(1);
   });
@@ -237,14 +245,14 @@ describe('validateDatasetReadiness', () => {
     // 创建 3 个有效文档，超过默认 threshold (500) 太远，使用自定义小 threshold
     for (let i = 0; i < 3; i++) {
       await createDatasetData(teamId, String(dataset._id), String(col._id), `q${i}`, [
-        { type: DatasetDataIndexTypeEnum.synthesis, dataId: String(i), text: 't', synId: 0 }
+        { type: DatasetDataIndexTypeEnum.question, dataId: String(i), text: 't', synId: 0 }
       ]);
     }
 
     await expect(
       validateDatasetReadiness(
         [String(dataset._id)],
-        DatasetDataIndexTypeEnum.synthesis,
+        DatasetDataIndexTypeEnum.question,
         embeddingErrorConfig,
         { minChunkThreshold: 2 }
       )
@@ -253,7 +261,7 @@ describe('validateDatasetReadiness', () => {
 
   it('datasetIds 为空时应 reject noDatasetConfigured', async () => {
     await expect(
-      validateDatasetReadiness([], DatasetDataIndexTypeEnum.synthesis, embeddingErrorConfig)
+      validateDatasetReadiness([], DatasetDataIndexTypeEnum.question, embeddingErrorConfig)
     ).rejects.toBe(EmbeddingTrainErrEnum.embeddingValidationNoDatasetConfigured);
   });
 
@@ -268,7 +276,7 @@ describe('validateDatasetReadiness', () => {
     await expect(
       validateDatasetReadiness(
         [String(dataset._id)],
-        DatasetDataIndexTypeEnum.synthesis,
+        DatasetDataIndexTypeEnum.question,
         embeddingErrorConfig
       )
     ).rejects.toBe(EmbeddingTrainErrEnum.embeddingValidationDatasetNoSynthesisIndex);
@@ -280,13 +288,13 @@ describe('validateDatasetReadiness', () => {
 
     // 只创建 1 个文档，threshold 设为 5
     await createDatasetData(teamId, String(dataset._id), String(col._id), 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 't1', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 't1', synId: 0 }
     ]);
 
     await expect(
       validateDatasetReadiness(
         [String(dataset._id)],
-        DatasetDataIndexTypeEnum.synthesis,
+        DatasetDataIndexTypeEnum.question,
         embeddingErrorConfig,
         { minChunkThreshold: 5 }
       )
@@ -300,14 +308,14 @@ describe('validateDatasetReadiness', () => {
     // 创建恰好 3 个文档，threshold = 3
     for (let i = 0; i < 3; i++) {
       await createDatasetData(teamId, String(dataset._id), String(col._id), `q${i}`, [
-        { type: DatasetDataIndexTypeEnum.synthesis, dataId: String(i), text: 't', synId: 0 }
+        { type: DatasetDataIndexTypeEnum.question, dataId: String(i), text: 't', synId: 0 }
       ]);
     }
 
     await expect(
       validateDatasetReadiness(
         [String(dataset._id)],
-        DatasetDataIndexTypeEnum.synthesis,
+        DatasetDataIndexTypeEnum.question,
         embeddingErrorConfig,
         { minChunkThreshold: 3 }
       )
@@ -320,12 +328,12 @@ describe('validateDatasetReadiness', () => {
     const dataset2 = await createDataset(teamId, 'ds2');
     const col2 = await createCollection(teamId, String(dataset2._id), 'col2');
 
-    // dataset1 有 synthesis
+    // dataset1 有 question
     await createDatasetData(teamId, String(dataset1._id), String(col1._id), 'q1', [
-      { type: DatasetDataIndexTypeEnum.synthesis, dataId: '1', text: 't1', synId: 0 }
+      { type: DatasetDataIndexTypeEnum.question, dataId: '1', text: 't1', synId: 0 }
     ]);
 
-    // dataset2 只有 default，缺少 synthesis
+    // dataset2 只有 default，缺少 question
     await createDatasetData(teamId, String(dataset2._id), String(col2._id), 'q2', [
       { type: DatasetDataIndexTypeEnum.default, dataId: '2', text: 't2' }
     ]);
@@ -333,7 +341,7 @@ describe('validateDatasetReadiness', () => {
     await expect(
       validateDatasetReadiness(
         [String(dataset1._id), String(dataset2._id)],
-        DatasetDataIndexTypeEnum.synthesis,
+        DatasetDataIndexTypeEnum.question,
         embeddingErrorConfig,
         { minChunkThreshold: 1 }
       )
@@ -348,7 +356,7 @@ describe('validateDatasetReadiness', () => {
     };
 
     await expect(
-      validateDatasetReadiness([], DatasetDataIndexTypeEnum.synthesis, rerankErrorConfig)
+      validateDatasetReadiness([], DatasetDataIndexTypeEnum.question, rerankErrorConfig)
     ).rejects.toBe(RerankTrainErrEnum.rerankValidationNoDatasetConfigured);
   });
 });
