@@ -738,6 +738,7 @@
   "dataset.data.Index Placeholder": "输入索引文本内容",
   "dataset.data.Input Success Tip": "导入数据成功",
   "dataset.data.Update Success Tip": "更新数据成功",
+  "dataset.data.Update Index Timeout Tip": "更新索引超时，请稍后刷新数据查看结果",
   "dataset.data.edit.Index": "数据索引({{amount}})",
   "dataset.dataset_name": "知识库名称",
   "dataset.deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",

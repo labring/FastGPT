@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   appendImageEmbeddingIndexes,
+  getRebuildBaseIndexes,
   getMarkdownImageUrlsFromTrainingData,
   matchMarkdownImageUrls
 } from '@/service/core/dataset/queues/generateVector';
@@ -227,5 +228,85 @@ describe('generateVector image embedding indexes', () => {
         includeDataImageId: false
       })
     ).toEqual([]);
+  });
+
+  it('keeps existing valid imageEmbedding indexes before appending missing ones', () => {
+    const baseIndexes = getRebuildBaseIndexes({
+      dataset: {
+        vectorModel: imageEmbeddingModel,
+        vlmModel: 'gpt-4.1'
+      },
+      collection: {
+        name: 'collection',
+        indexPrefixTitle: false,
+        imageIndex: true
+      },
+      q: 'new text ![](https://img/a.png) ![](https://img/b.png)',
+      data: {
+        _id: 'data-id',
+        q: 'old text ![](https://img/a.png)',
+        indexes: []
+      },
+      indexes: [
+        {
+          type: DatasetDataIndexTypeEnum.default,
+          text: 'text index',
+          dataId: 'text-vector-id'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'https://img/a.png',
+          dataId: 'image-vector-id'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'https://img/removed.png',
+          dataId: 'removed-vector-id'
+        }
+      ]
+    } as any);
+
+    expect(baseIndexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.default,
+        text: 'text index',
+        dataId: 'text-vector-id'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'https://img/a.png',
+        dataId: 'image-vector-id'
+      }
+    ]);
+
+    const indexes = appendImageEmbeddingIndexes({
+      indexes: baseIndexes,
+      trainingData: {
+        q: 'new text ![](https://img/a.png) ![](https://img/b.png)',
+        collection: {
+          imageIndex: true
+        }
+      } as any,
+      embModel: imageEmbeddingModel,
+      includeDataImageId: false
+    });
+
+    expect(indexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.default,
+        text: 'text index',
+        dataId: 'text-vector-id'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'https://img/a.png',
+        dataId: 'image-vector-id'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'https://img/b.png',
+        dataId: ''
+      }
+    ]);
   });
 });

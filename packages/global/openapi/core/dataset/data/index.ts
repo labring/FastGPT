@@ -9,7 +9,10 @@ import {
   InsertImagesBodySchema,
   PushDataBodySchema,
   GetDatasetDataListBodySchema,
-  GetDatasetDataListResponseSchema
+  GetDatasetDataListResponseSchema,
+  UpdateDatasetDataResponseSchema,
+  DeleteDatasetDataIndexBodySchema,
+  DeleteDatasetDataIndexResponseSchema
 } from './api';
 
 export const DatasetDataPath: OpenAPIPath = {
@@ -67,7 +70,37 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '更新成功'
+          description: '更新成功',
+          content: {
+            'application/json': {
+              schema: UpdateDatasetDataResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/dataset/data/deleteIndex': {
+    post: {
+      summary: '删除数据索引',
+      description: '删除指定数据下的单个索引，不触发整条数据重建',
+      tags: [TagsMap.datasetData],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: DeleteDatasetDataIndexBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '删除成功',
+          content: {
+            'application/json': {
+              schema: DeleteDatasetDataIndexResponseSchema
+            }
+          }
         }
       }
     }

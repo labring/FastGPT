@@ -6,7 +6,10 @@ import type {
   GetQuoteDataBody as GetQuoteDataProps,
   GetQuoteDataResponse,
   InsertDataBody,
-  UpdateDatasetDataBody
+  DeleteDatasetDataIndexBody,
+  DeleteDatasetDataIndexResponse,
+  UpdateDatasetDataBody,
+  UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
@@ -25,13 +28,16 @@ export const postInsertData2Dataset = (data: InsertDataBody) =>
  * update one datasetData by id
  */
 export const putDatasetDataById = (data: UpdateDatasetDataBody) =>
-  PUT('/core/dataset/data/update', data);
+  PUT<UpdateDatasetDataResponse>('/core/dataset/data/update', data);
 
 /**
  * 删除一条知识库数据
  */
 export const delOneDatasetDataById = (id: string) =>
   DELETE<string>(`/core/dataset/data/delete`, { id });
+
+export const deleteDatasetDataIndex = (data: DeleteDatasetDataIndexBody) =>
+  POST<DeleteDatasetDataIndexResponse>('/core/dataset/data/deleteIndex', data);
 
 // Get quote data
 export const getQuoteData = (data: GetQuoteDataProps) =>

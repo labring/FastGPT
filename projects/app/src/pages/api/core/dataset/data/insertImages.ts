@@ -27,6 +27,7 @@ import {
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { ensureDatasetVlmModel } from '@fastgpt/service/core/dataset/utils';
 
 async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   const filepaths: string[] = [];
@@ -47,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       authToken: true,
       authApiKey: true
     });
-    const dataset = collection.dataset;
+    const dataset = await ensureDatasetVlmModel(collection.dataset);
     if (!dataset.vlmModel && !isImageEmbeddingModel(dataset.vectorModel)) {
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
     }

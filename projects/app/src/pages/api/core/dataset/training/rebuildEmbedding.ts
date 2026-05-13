@@ -10,9 +10,13 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import {
   getLLMModel,
   getEmbeddingModel,
-  getVlmModel,
   isImageEmbeddingModel
 } from '@fastgpt/service/core/ai/model';
+import {
+  ensureDatasetVlmModel,
+  getAvailableDatasetVlmModel,
+  getDatasetImageTrainingMode
+} from '@fastgpt/service/core/dataset/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -40,8 +44,6 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     per: OwnerPermissionVal
   });
 
-  const supportImageIndex = !!dataset.vlmModel || isImageEmbeddingModel(vectorModel);
-
   // check vector model
   if (!vectorModel || dataset.vectorModel === vectorModel) {
     return Promise.reject('vectorModel 不合法');
@@ -57,14 +59,20 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
+  const ensuredDataset = await ensureDatasetVlmModel(dataset);
+  const availableVlmModel = getAvailableDatasetVlmModel(ensuredDataset.vlmModel);
+  const supportVlm = !!availableVlmModel;
+  const supportImageEmbedding = isImageEmbeddingModel(vectorModel);
+  const supportImageIndex = supportVlm || supportImageEmbedding;
+
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
     vectorModel: getEmbeddingModel(vectorModel)?.name,
-    agentModel: getLLMModel(dataset.agentModel)?.name,
-    vllmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel)?.name : undefined
+    agentModel: getLLMModel(ensuredDataset.agentModel)?.name,
+    vllmModel: availableVlmModel?.name
   });
 
   // update vector model and dataset.data rebuild field
@@ -146,11 +154,12 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
             .session(session);
           const hasMarkdownImages =
             !!collection?.imageIndex && matchMarkdownImageUrls(data.q).length > 0;
-          const mode = (() => {
-            if (dataset.vlmModel && data.imageId) return TrainingModeEnum.imageParse;
-            if (dataset.vlmModel && hasMarkdownImages) return TrainingModeEnum.image;
-            return TrainingModeEnum.chunk;
-          })();
+          const mode = getDatasetImageTrainingMode({
+            supportVlm,
+            supportImageIndex,
+            imageId: data.imageId,
+            hasMarkdownImages
+          });
 
           await MongoDatasetTraining.create(
             [
@@ -163,8 +172,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
                 mode,
                 model:
                   (mode === TrainingModeEnum.imageParse || mode === TrainingModeEnum.image) &&
-                  dataset.vlmModel
-                    ? dataset.vlmModel
+                  supportVlm &&
+                  availableVlmModel
+                    ? availableVlmModel.model
                     : vectorModel,
                 dataId: data._id,
                 ...(data.imageId && { imageId: data.imageId }),

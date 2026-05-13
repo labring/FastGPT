@@ -6,7 +6,8 @@ import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
-  getDatasetDataItemById
+  getDatasetDataItemById,
+  deleteDatasetDataIndex
 } from '@/web/core/dataset/api/data';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -43,6 +44,20 @@ enum TabEnum {
   image = 'image'
 }
 
+const updatePollingInterval = 2000;
+const updatePollingTimeout = 600000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getDatasetDataSignature = (data: Awaited<ReturnType<typeof getDatasetDataItemById>>) =>
+  [
+    data.q || '',
+    data.a || '',
+    data.indexes
+      .map((item) => `${item.dataId || ''}:${item.type || ''}:${item.text || ''}`)
+      .join('\n')
+  ].join('\n');
+
 const RequiredFieldLabel = ({ children, ...props }: FlexProps & { children: React.ReactNode }) => (
   <Flex
     alignItems={'center'}
@@ -66,7 +81,8 @@ const RequiredFieldLabel = ({ children, ...props }: FlexProps & { children: Reac
 const formatIndexesForRebuild = (indexes: InputDataType['indexes'] = []) =>
   indexes
     .filter((item) => !!item.text?.trim())
-    .map(({ text, type }) => ({
+    .map(({ dataId, text, type }) => ({
+      ...(dataId && { dataId }),
       text,
       ...(type && { type })
     }));
@@ -119,6 +135,24 @@ const InputDataModal = ({
       return refreshedData;
     },
     [reset]
+  );
+
+  const waitDataRebuildFinished = useCallback(
+    async (targetDataId: string, beforeSignature: string) => {
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < updatePollingTimeout) {
+        await sleep(updatePollingInterval);
+
+        const latestData = await getDatasetDataItemById(targetDataId);
+        if (getDatasetDataSignature(latestData) !== beforeSignature) {
+          return latestData;
+        }
+      }
+
+      return Promise.reject(t('common:dataset.data.Update Index Timeout Tip'));
+    },
+    [t]
   );
 
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
@@ -204,6 +238,8 @@ const InputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
+      const beforeData = await getDatasetDataItemById(dataId);
+      const beforeSignature = getDatasetDataSignature(beforeData);
       const updateData: any = {
         dataId,
         q: e.q,
@@ -211,11 +247,14 @@ const InputDataModal = ({
         indexes: formatIndexesForRebuild(e.indexes)
       };
 
-      await putDatasetDataById(updateData);
+      const updateResult = await putDatasetDataById(updateData);
+      if (updateResult.rebuilding) {
+        await waitDataRebuildFinished(dataId, beforeSignature);
+      }
       return refreshDataForm(dataId);
     },
     {
-      refreshDeps: [currentTab, refreshDataForm],
+      refreshDeps: [currentTab, refreshDataForm, waitDataRebuildFinished],
       successToast: t('common:dataset.data.Update Success Tip'),
       onSuccess(data) {
         onSuccess(data);
@@ -236,14 +275,9 @@ const InputDataModal = ({
         return;
       }
 
-      const latestData = await getDatasetDataItemById(dataId);
-      const nextIndexes = latestData.indexes.filter((item) => item.dataId !== targetIndex.dataId);
-
-      await putDatasetDataById({
+      await deleteDatasetDataIndex({
         dataId,
-        q: latestData.q,
-        a: latestData.a || '',
-        indexes: nextIndexes
+        indexDataId: targetIndex.dataId
       });
 
       const refreshedData = await refreshDataForm(dataId);
@@ -501,7 +535,7 @@ const InputDataModal = ({
                 rightIcon={<MyIcon name={'common/rightArrowLight'} w={'16px'} color={'#3370FF'} />}
                 isDisabled={!collection.permission.hasWritePer}
                 isLoading={isImporting || isUpdating}
-                // @ts-ignore
+                // @ts-expect-error react-hook-form submit handler accepts both import and update payloads here.
                 onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
               >
                 {t('dataset:generate_index')}

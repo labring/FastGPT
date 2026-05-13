@@ -733,6 +733,7 @@
   "dataset.data.Index Placeholder": "輸入索引文字內容",
   "dataset.data.Input Success Tip": "匯入資料成功",
   "dataset.data.Update Success Tip": "更新資料成功",
+  "dataset.data.Update Index Timeout Tip": "更新索引逾時，請稍後重新整理資料查看結果",
   "dataset.data.edit.Index": "資料索引（{{amount}}）",
   "dataset.dataset_name": "知識庫名稱",
   "dataset.deleteFolderTips": "確認刪除此資料夾及其包含的所有知識庫？刪除後資料無法復原，請確認！",

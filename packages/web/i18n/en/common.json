@@ -738,6 +738,7 @@
   "dataset.data.Index Placeholder": "Enter Index Text Content",
   "dataset.data.Input Success Tip": "Data Imported Successfully",
   "dataset.data.Update Success Tip": "Data Updated Successfully",
+  "dataset.data.Update Index Timeout Tip": "Updating indexes timed out. Please refresh the data later to check the result.",
   "dataset.data.edit.Index": "Data Index ({{amount}})",
   "dataset.dataset_name": "Dataset Name",
   "dataset.deleteFolderTips": "Confirm to Delete This Folder and All Its Contained Datasets? Data Cannot Be Recovered After Deletion, Please Confirm!",

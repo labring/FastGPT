@@ -627,3 +627,42 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     teamId: String(data.teamId)
   });
 };
+
+export const deleteDatasetDataIndex = async ({
+  data,
+  indexDataId
+}: {
+  data: DatasetDataItemType;
+  indexDataId: string;
+}) => {
+  const targetIndex = data.indexes.find((item) => item.dataId === indexDataId);
+  if (!targetIndex) return Promise.reject('Dataset data index not found');
+
+  await mongoSessionRun(async (session) => {
+    await MongoDatasetData.updateOne(
+      { _id: data.id },
+      {
+        $pull: {
+          indexes: {
+            dataId: indexDataId
+          }
+        },
+        $set: {
+          updateTime: new Date()
+        }
+      },
+      { session }
+    );
+
+    await deleteDatasetDataVector({
+      teamId: data.teamId,
+      idList: [indexDataId]
+    });
+  });
+
+  pushCollectionUpdateJob({
+    collectionId: String(data.collectionId),
+    datasetId: String(data.datasetId),
+    teamId: String(data.teamId)
+  });
+};

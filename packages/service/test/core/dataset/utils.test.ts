@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  buildDatasetDataIndexRebuildPlan,
+  ensureDatasetVlmModel,
+  filterDatasetDataIndexesByImageCapability,
+  getAvailableDatasetVlmModel,
+  getDatasetImageTrainingMode,
+  replaceS3KeyToPreviewUrl
+} from '@fastgpt/service/core/dataset/utils';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   jwtSignS3DownloadToken: vi.fn(
@@ -437,5 +447,443 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('https://google.com');
       expect(result).toContain('# 标题');
     });
+  });
+});
+
+describe('dataset VLM helpers', () => {
+  const visionModel = {
+    model: 'gpt-4.1',
+    name: 'GPT-4.1',
+    vision: true
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.llmModelMap = new Map<string, any>();
+  });
+
+  it('returns configured VLM only when it exists in the current system model list', () => {
+    global.llmModelMap.set(visionModel.model, visionModel);
+
+    expect(getAvailableDatasetVlmModel('gpt-4.1')?.model).toBe('gpt-4.1');
+    expect(getAvailableDatasetVlmModel('deleted-vlm')).toBeUndefined();
+    expect(getAvailableDatasetVlmModel()?.model).toBe('gpt-4.1');
+  });
+
+  it('fills missing dataset VLM from the current default vision model', async () => {
+    global.llmModelMap.set(visionModel.model, visionModel);
+    const updateSpy = vi.spyOn(MongoDataset, 'findByIdAndUpdate').mockResolvedValue(null as any);
+
+    const result = await ensureDatasetVlmModel({
+      _id: 'dataset-id',
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      vectorModel: 'text-embedding',
+      agentModel: 'gpt-5',
+      name: 'dataset'
+    } as any);
+
+    expect(updateSpy).toHaveBeenCalledWith('dataset-id', {
+      vlmModel: 'gpt-4.1'
+    });
+    expect(result.vlmModel).toBe('gpt-4.1');
+  });
+
+  it('unsets stale dataset VLM when the system has no available VLM model', async () => {
+    const updateSpy = vi.spyOn(MongoDataset, 'findByIdAndUpdate').mockResolvedValue(null as any);
+
+    const result = await ensureDatasetVlmModel({
+      _id: 'dataset-id',
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      vectorModel: 'text-embedding',
+      agentModel: 'gpt-5',
+      name: 'dataset',
+      vlmModel: 'deleted-vlm'
+    } as any);
+
+    expect(updateSpy).toHaveBeenCalledWith('dataset-id', {
+      $unset: { vlmModel: '' }
+    });
+    expect(result.vlmModel).toBeUndefined();
+  });
+
+  it('selects image training mode from VLM and image-index capabilities', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: true,
+        supportImageIndex: true,
+        imageId: 'dataset/image.png',
+        hasMarkdownImages: false
+      })
+    ).toBe(TrainingModeEnum.imageParse);
+
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: true,
+        imageId: 'dataset/image.png',
+        hasMarkdownImages: false
+      })
+    ).toBe(TrainingModeEnum.chunk);
+
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: true,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.image);
+
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: false,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.chunk);
+  });
+
+  it('filters image indexes from current VLM and multimodal embedding capabilities', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom' },
+      { type: DatasetDataIndexTypeEnum.image, text: 'vlm image text' },
+      { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'dataset/image.png' }
+    ];
+
+    expect(
+      filterDatasetDataIndexesByImageCapability({
+        indexes,
+        supportVlm: false,
+        supportImageEmbedding: true,
+        imageIndex: true
+      }).map((item) => item.type)
+    ).toEqual([DatasetDataIndexTypeEnum.custom, DatasetDataIndexTypeEnum.imageEmbedding]);
+
+    expect(
+      filterDatasetDataIndexesByImageCapability({
+        indexes,
+        supportVlm: true,
+        supportImageEmbedding: false,
+        imageIndex: true
+      }).map((item) => item.type)
+    ).toEqual([DatasetDataIndexTypeEnum.custom, DatasetDataIndexTypeEnum.image]);
+
+    expect(
+      filterDatasetDataIndexesByImageCapability({
+        indexes,
+        supportVlm: true,
+        supportImageEmbedding: true,
+        imageIndex: false,
+        isImageCollection: true
+      }).map((item) => item.type)
+    ).toEqual([DatasetDataIndexTypeEnum.custom, DatasetDataIndexTypeEnum.imageEmbedding]);
+  });
+
+  it('builds a differential plan that removes VLM image indexes when VLM is unavailable', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' },
+      { type: DatasetDataIndexTypeEnum.image, text: 'old vlm image', dataId: 'image-id' },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'image-embedding-id'
+      },
+      { type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'hello ![](dataset/a.png)',
+      nextQ: 'hello ![](dataset/a.png)',
+      supportVlm: false,
+      supportImageEmbedding: true,
+      imageIndex: true
+    });
+
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes.map((item) => item.type)).toEqual([
+      DatasetDataIndexTypeEnum.custom,
+      DatasetDataIndexTypeEnum.default,
+      DatasetDataIndexTypeEnum.imageEmbedding
+    ]);
+    expect(
+      plan.indexes.find((item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding)?.dataId
+    ).toBe('image-embedding-id');
+  });
+
+  it('keeps existing image embeddings when text changes but markdown image urls do not change', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' },
+      { type: DatasetDataIndexTypeEnum.image, text: 'old vlm image', dataId: 'image-id' },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'image-embedding-id'
+      }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'old text ![](dataset/a.png)',
+      nextQ: 'new text ![](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: true,
+      imageIndex: true
+    });
+
+    expect(plan.contentChanged).toBe(true);
+    expect(plan.imageUrlsChanged).toBe(false);
+    expect(plan.needRebuildVlmImageIndex).toBe(true);
+    expect(plan.indexes.some((item) => item.type === DatasetDataIndexTypeEnum.image)).toBe(false);
+    expect(
+      plan.indexes.find((item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding)?.dataId
+    ).toBe('image-embedding-id');
+  });
+
+  it('diffs markdown image embeddings by image url when content image urls change', () => {
+    const indexes = [
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'a-vector-id'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/removed.png',
+        dataId: 'removed-vector-id'
+      }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'old ![](dataset/a.png) ![](dataset/removed.png)',
+      nextQ: 'new ![](dataset/a.png) ![](dataset/b.png)',
+      supportVlm: false,
+      supportImageEmbedding: true,
+      imageIndex: true
+    });
+
+    const imageEmbeddingIndexes = plan.indexes.filter(
+      (item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding
+    );
+
+    expect(imageEmbeddingIndexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'a-vector-id'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/b.png'
+      }
+    ]);
+  });
+
+  it('keeps VLM image index when content is unchanged and the index already exists', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.image, text: 'vlm image', dataId: 'image-id' }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'hello ![](dataset/a.png)',
+      nextQ: 'hello ![](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: false,
+      imageIndex: true
+    });
+
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes).toEqual(indexes);
+  });
+
+  it('keeps existing VLM image index from database when frontend payload omits it', () => {
+    const existingIndexes = [
+      { type: DatasetDataIndexTypeEnum.image, text: 'vlm image', dataId: 'image-id' },
+      { type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes: [{ type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' }],
+      existingIndexes,
+      oldQ: 'hello ![](dataset/a.png)',
+      nextQ: 'hello ![](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: false,
+      imageIndex: true
+    });
+
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' },
+      { type: DatasetDataIndexTypeEnum.image, text: 'vlm image', dataId: 'image-id' }
+    ]);
+  });
+
+  it('recreates missing VLM image index from stored image descriptions when content is unchanged', () => {
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes: [{ type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' }],
+      existingIndexes: [
+        { type: DatasetDataIndexTypeEnum.default, text: 'hello', dataId: 'default-id' }
+      ],
+      oldQ: 'hello ![](dataset/a.png)',
+      nextQ: 'hello ![](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: false,
+      imageIndex: true,
+      imageDescMap: {
+        'dataset/a.png': 'a chart about food materials'
+      }
+    });
+
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes).toContainEqual({
+      type: DatasetDataIndexTypeEnum.image,
+      text: 'hello a chart about food materials'
+    });
+  });
+
+  it('recreates missing VLM image index from markdown alt text when no imageDescMap exists', () => {
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes: [],
+      existingIndexes: [],
+      oldQ: 'hello ![chart desc](dataset/a.png)',
+      nextQ: 'hello ![chart desc](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: false,
+      imageIndex: true
+    });
+
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.image,
+        text: 'hello chart desc'
+      }
+    ]);
+  });
+
+  it('rebuilds VLM image index from current text while preserving unchanged image embeddings', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.image, text: 'old text old image desc', dataId: 'image-id' },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'image-embedding-id'
+      }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'old text ![](dataset/a.png)',
+      nextQ: 'new text ![](dataset/a.png)',
+      supportVlm: true,
+      supportImageEmbedding: true,
+      imageIndex: true,
+      imageDescMap: {
+        'dataset/a.png': 'image desc'
+      }
+    });
+
+    expect(plan.contentChanged).toBe(true);
+    expect(plan.imageUrlsChanged).toBe(false);
+    expect(plan.needRebuildVlmImageIndex).toBe(false);
+    expect(plan.indexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.image,
+        text: 'new text image desc'
+      },
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/a.png',
+        dataId: 'image-embedding-id'
+      }
+    ]);
+  });
+
+  it('drops auto indexes when auto index config is disabled or content changed', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' },
+      { type: DatasetDataIndexTypeEnum.summary, text: 'summary', dataId: 'summary-id' },
+      { type: DatasetDataIndexTypeEnum.question, text: 'question', dataId: 'question-id' }
+    ];
+
+    const disabledPlan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'same',
+      nextQ: 'same',
+      supportVlm: false,
+      supportImageEmbedding: false,
+      imageIndex: false,
+      autoIndexes: false
+    });
+    expect(disabledPlan.needRebuildAutoIndex).toBe(false);
+    expect(disabledPlan.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' }
+    ]);
+
+    const changedPlan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'old',
+      nextQ: 'new',
+      supportVlm: false,
+      supportImageEmbedding: false,
+      imageIndex: false,
+      autoIndexes: true
+    });
+    expect(changedPlan.needRebuildAutoIndex).toBe(true);
+    expect(changedPlan.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' }
+    ]);
+  });
+
+  it('marks auto indexes for rebuild when auto index config is enabled and generated indexes are missing', () => {
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes: [{ type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' }],
+      existingIndexes: [
+        { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' }
+      ],
+      oldQ: 'same',
+      nextQ: 'same',
+      supportVlm: false,
+      supportImageEmbedding: false,
+      imageIndex: false,
+      autoIndexes: true
+    });
+
+    expect(plan.needRebuildAutoIndex).toBe(true);
+    expect(plan.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.custom, text: 'custom', dataId: 'custom-id' }
+    ]);
+  });
+
+  it('keeps auto indexes when auto index config is enabled and content is unchanged', () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.summary, text: 'summary', dataId: 'summary-id' },
+      { type: DatasetDataIndexTypeEnum.question, text: 'question', dataId: 'question-id' }
+    ];
+
+    const plan = buildDatasetDataIndexRebuildPlan({
+      indexes,
+      existingIndexes: indexes,
+      oldQ: 'same',
+      nextQ: 'same',
+      supportVlm: false,
+      supportImageEmbedding: false,
+      imageIndex: false,
+      autoIndexes: true
+    });
+
+    expect(plan.needRebuildAutoIndex).toBe(false);
+    expect(plan.indexes).toEqual(indexes);
   });
 });

@@ -29,6 +29,10 @@ import {
   isValidImageEmbeddingSource,
   normalizeImageInputsToBase64
 } from '@fastgpt/service/core/ai/image';
+import {
+  getAvailableDatasetVlmModel,
+  getDatasetImageTrainingMode
+} from '@fastgpt/service/core/dataset/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -70,16 +74,30 @@ export const getMarkdownImageUrlsFromTrainingData = (trainingData: {
   return Array.from(new Set(texts.flatMap(matchMarkdownImageUrls)));
 };
 
-const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
+export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
   const sourceIndexes = trainingData.indexes?.length
-    ? trainingData.indexes.map((index) => ({ ...index, dataId: '' }))
+    ? trainingData.indexes.map((index) => ({ ...index }))
     : trainingData.data?.indexes || [];
+  const supportVlm = !!getAvailableDatasetVlmModel(trainingData.dataset.vlmModel);
+  const supportImageEmbedding =
+    isImageEmbeddingModel(trainingData.dataset.vectorModel) ||
+    !!(trainingData.dataset.vectorModel as any)?.vision;
+  const validImageEmbeddingSources = new Set(
+    [
+      ...(trainingData.data?.imageId ? [trainingData.data.imageId] : []),
+      ...(trainingData.collection.imageIndex
+        ? getMarkdownImageUrlsFromTrainingData(trainingData)
+        : [])
+    ].filter(isValidImageEmbeddingSource)
+  );
 
   return sourceIndexes.filter((index) => {
-    if (index.type === DatasetDataIndexTypeEnum.imageEmbedding) return false;
+    if (index.type === DatasetDataIndexTypeEnum.imageEmbedding) {
+      return supportImageEmbedding && validImageEmbeddingSources.has(index.text);
+    }
     if (
       index.type === DatasetDataIndexTypeEnum.image &&
-      (!trainingData.dataset.vlmModel || !trainingData.collection.imageIndex)
+      (!supportVlm || !trainingData.collection.imageIndex)
     ) {
       return false;
     }
@@ -320,15 +338,16 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
             .session(session);
           const hasMarkdownImages =
             !!collection?.imageIndex && matchMarkdownImageUrls(newRebuildingData.q).length > 0;
-          const mode = (() => {
-            if (trainingData.dataset.vlmModel && newRebuildingData.imageId) {
-              return TrainingModeEnum.imageParse;
-            }
-            if (trainingData.dataset.vlmModel && hasMarkdownImages) {
-              return TrainingModeEnum.image;
-            }
-            return TrainingModeEnum.chunk;
-          })();
+          const availableVlmModel = getAvailableDatasetVlmModel(trainingData.dataset.vlmModel);
+          const supportVlm = !!availableVlmModel;
+          const supportImageEmbedding = isImageEmbeddingModel(trainingData.dataset.vectorModel);
+          const supportImageIndex = supportVlm || supportImageEmbedding;
+          const mode = getDatasetImageTrainingMode({
+            supportVlm,
+            supportImageIndex,
+            imageId: newRebuildingData.imageId,
+            hasMarkdownImages
+          });
 
           await MongoDatasetTraining.create(
             [
@@ -341,8 +360,9 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
                 mode,
                 model:
                   (mode === TrainingModeEnum.imageParse || mode === TrainingModeEnum.image) &&
-                  trainingData.dataset.vlmModel
-                    ? trainingData.dataset.vlmModel
+                  supportVlm &&
+                  availableVlmModel
+                    ? availableVlmModel.model
                     : trainingData.dataset.vectorModel,
                 dataId: newRebuildingData._id,
                 ...(newRebuildingData.imageId && { imageId: newRebuildingData.imageId }),
@@ -361,6 +381,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   } catch (error) {}
 
   const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
+  const availableVlmModel = getAvailableDatasetVlmModel(trainingData.dataset.vlmModel);
   const q = trainingData.q || datasetData.q;
   const a = trainingData.a ?? datasetData.a;
   const rebuildIndexes = appendImageEmbeddingIndexes({
@@ -473,7 +494,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
         $set: {
           indexes: finalIndexes
         },
-        ...((!trainingData.dataset.vlmModel || !trainingData.collection.imageIndex) && {
+        ...((!availableVlmModel || !trainingData.collection.imageIndex) && {
           $unset: {
             imageDescMap: ''
           }
