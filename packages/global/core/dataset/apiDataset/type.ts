@@ -1,6 +1,12 @@
 import { ParentIdSchema } from '../../../common/parentFolder/type';
 import z from 'zod';
 
+export const FilePermissionSchema = z.object({
+  username: z.string(),
+  permission: z.number()
+});
+export type FilePermissionType = z.infer<typeof FilePermissionSchema>;
+
 export const APIFileItemSchema = z.object({
   id: z.string(),
   rawId: z.string(),
@@ -9,7 +15,8 @@ export const APIFileItemSchema = z.object({
   type: z.enum(['file', 'folder']),
   updateTime: z.coerce.date(),
   createTime: z.coerce.date(),
-  hasChild: z.boolean().optional()
+  hasChild: z.boolean().optional(),
+  permissions: z.array(FilePermissionSchema).optional()
 });
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 
