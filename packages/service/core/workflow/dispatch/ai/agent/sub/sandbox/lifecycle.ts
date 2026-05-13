@@ -19,6 +19,8 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
+  EDIT_DEBUG_SANDBOX_CHAT_ID,
+  connectReadyProviderSandboxByInstance,
   disconnectFromProviderSandbox,
   buildSessionRuntimeCreateConfig
 } from '../../../../../../agentSkills/sandboxConfig';
@@ -51,6 +53,9 @@ const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type SkillDoc = HydratedDocument<AgentSkillSchemaType>;
 type VersionDoc = HydratedDocument<AgentSkillsVersionSchemaType>;
+
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
 /** Query skills and their active versions, returning a map keyed by skillId string. */
 async function fetchSkillsWithVersionMap(
   skillIds: string[],
@@ -96,7 +101,7 @@ async function discoverSkillsInSandbox(
 ): Promise<DeployedSkillInfo[]> {
   // Use `find` with -maxdepth 5 to avoid deep recursion performance issues.
   const findResult = await sandbox.execute(
-    `find "${workDirectory}" -name "SKILL.md" -maxdepth 5 2>/dev/null`
+    `find ${shellQuote(workDirectory)} -name "SKILL.md" -maxdepth 5 2>/dev/null`
   );
   if (findResult.exitCode !== 0 || !findResult.stdout.trim()) return [];
 
@@ -145,13 +150,16 @@ async function deploySkillsToSandbox(
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
 
       // Write raw ZIP to sandbox and extract directly into workDirectory.
-      const zipPath = `${workDirectory}/package_${skill.name}.zip`;
+      const zipFileName = `package_${String(skill._id)}.zip`;
+      const zipPath = `${workDirectory}/${zipFileName}`;
       onProgress?.({ sandboxId, phase: 'uploadingPackage', skillName: skill.name });
       await sandbox.writeFiles([{ path: zipPath, data: packageBuffer }]);
 
       onProgress?.({ sandboxId, phase: 'extractingPackage', skillName: skill.name });
       const extractResult = await sandbox.execute(
-        `cd ${workDirectory} && unzip -o package_${skill.name}.zip && rm package_${skill.name}.zip`
+        `cd ${shellQuote(workDirectory)} && unzip -o ${shellQuote(zipFileName)} && rm ${shellQuote(
+          zipFileName
+        )}`
       );
 
       if (extractResult.exitCode !== 0) {
@@ -196,29 +204,53 @@ export async function createAgentSandbox(
 
   // Step 1: Try to reuse an existing session-runtime sandbox
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
-  const existingInstance = await MongoSandboxInstance.findOne({
-    chatId: sessionId,
+  const sessionRuntimeQuery = {
+    sandboxId: sessionId,
     'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
-  });
+  };
+  const existingInstance = await MongoSandboxInstance.findOne(sessionRuntimeQuery);
 
-  if (existingInstance) {
+  const reuseSessionRuntimeSandbox = async (
+    instance: NonNullable<typeof existingInstance>
+  ): Promise<AgentSandboxContext | null> => {
     logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
       sessionId,
-      providerSandboxId: existingInstance.sandboxId
+      sandboxId: instance.sandboxId,
+      providerSandboxId: instance.metadata?.providerSandboxId
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
 
-    // getSandboxClient internally calls ensureAvailable():
-    //   - updates DB status=running, lastActiveAt
-    //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
-    const client = await getSandboxClient(
-      { sandboxId: existingInstance.sandboxId },
-      { createConfig }
-    );
+    let sandbox: ISandbox | null = null;
+    let providerSandboxId = instance.metadata?.providerSandboxId ?? instance.sandboxId;
 
-    const reusedSkillIds = existingInstance.metadata?.skillIds
-      ? existingInstance.metadata.skillIds.map(String)
+    try {
+      const connected = await connectReadyProviderSandboxByInstance(providerConfig, instance);
+      sandbox = connected.sandbox;
+      providerSandboxId = connected.sandboxInfo.id;
+      await MongoSandboxInstance.updateOne(
+        { _id: instance._id },
+        {
+          $set: {
+            status: SandboxStatusEnum.running,
+            lastActiveAt: new Date(),
+            'metadata.providerSandboxId': connected.sandboxInfo.id
+          }
+        }
+      );
+    } catch (error) {
+      logger.info('[Agent Sandbox] Existing session-runtime sandbox is unavailable, recreating', {
+        sessionId,
+        sandboxId: instance.sandboxId,
+        providerSandboxId: instance.metadata?.providerSandboxId,
+        error
+      });
+      await MongoSandboxInstance.deleteOne({ _id: instance._id });
+      return null;
+    }
+
+    const reusedSkillIds = instance.metadata?.skillIds
+      ? instance.metadata.skillIds.map(String)
       : skillIds;
     const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
 
@@ -226,16 +258,22 @@ export async function createAgentSandbox(
     const mergedSkills = skills.map((skill) =>
       mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id)))
     );
-    const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
+    const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
     return {
-      sandbox: client.provider,
-      providerSandboxId: existingInstance.sandboxId,
+      sandbox,
+      sandboxId: instance.sandboxId,
+      providerSandboxId,
       sessionId,
       skills: mergedSkills,
       deployedSkills,
       workDirectory: defaults.workDirectory,
       isReady: true
     };
+  };
+
+  if (existingInstance) {
+    const reusedSandbox = await reuseSessionRuntimeSandbox(existingInstance);
+    if (reusedSandbox) return reusedSandbox;
   }
 
   // Step 2: Fetch skills and filter deployable ones (skip when no skills configured)
@@ -326,7 +364,7 @@ export async function createAgentSandbox(
     // Step 5: Enrich the DB record created by getSandboxClient.ensureAvailable() with full metadata.
     // Use sessionId (the client-side key) because ensureAvailable() stores the record with
     // sandboxId=sessionId, not with the provider-assigned sandboxInfo.id.
-    await MongoSandboxInstance.findOneAndUpdate(
+    const savedInstance = await MongoSandboxInstance.findOneAndUpdate(
       { sandboxId: sessionId },
       {
         $set: {
@@ -338,7 +376,8 @@ export async function createAgentSandbox(
             teamId,
             tmbId,
             sessionId,
-            skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
+            skillIds: hasSkills ? deployableSkills.map((s) => String(s._id)) : [],
+            providerSandboxId: sandboxInfo.id,
             provider: providerConfig.provider,
             image: sandboxInfo.image,
             providerCreatedAt: sandboxInfo.createdAt
@@ -346,12 +385,16 @@ export async function createAgentSandbox(
         }
       }
     );
+    if (!savedInstance) {
+      throw new Error('Failed to find session-runtime sandbox document after creation');
+    }
 
     logger.info('[Agent Sandbox] Sandbox info saved to MongoDB', { sessionId });
 
     onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: false });
     return {
       sandbox: client.provider,
+      sandboxId: sessionId,
       providerSandboxId: sandboxInfo.id,
       sessionId,
       skills: hasSkills
@@ -390,6 +433,7 @@ export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<voi
     await disconnectFromProviderSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Released sandbox connection', {
       sessionId: ctx.sessionId,
+      sandboxId: ctx.sandboxId,
       providerSandboxId: ctx.providerSandboxId
     });
   } catch (error) {
@@ -411,12 +455,15 @@ export async function connectEditDebugSandbox(
 ): Promise<AgentSandboxContext> {
   const { skillId, teamId } = params;
   const defaults = getSandboxDefaults();
+  const providerConfig = getSandboxProviderConfig();
 
-  const instanceDoc = await MongoSandboxInstance.findOne({
+  const editDebugQuery = {
     appId: skillId,
-    chatId: 'edit-debug',
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     'metadata.sandboxType': SandboxTypeEnum.editDebug
-  });
+  };
+  const instanceDoc = await MongoSandboxInstance.findOne(editDebugQuery);
+
   if (!instanceDoc) {
     throw new Error('No active edit-debug sandbox found for this skill');
   }
@@ -430,22 +477,32 @@ export async function connectEditDebugSandbox(
     throw new Error('Skill not found');
   }
 
-  // getSandboxClient internally calls ensureAvailable():
-  //   - updates DB status=running, lastActiveAt
-  //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
-  const client = await getSandboxClient({ sandboxId: instanceDoc.sandboxId });
+  const connected = await connectReadyProviderSandboxByInstance(providerConfig, instanceDoc);
+  const { sandbox, sandboxInfo } = connected;
+  await MongoSandboxInstance.updateOne(
+    { _id: instanceDoc._id },
+    {
+      $set: {
+        status: SandboxStatusEnum.running,
+        lastActiveAt: new Date(),
+        'metadata.providerSandboxId': sandboxInfo.id
+      }
+    }
+  );
 
   logger.info('[Agent Sandbox] Connected to edit-debug sandbox', {
     skillId,
-    providerSandboxId: instanceDoc.sandboxId
+    sandboxId: instanceDoc.sandboxId,
+    providerSandboxId: sandboxInfo.id
   });
 
   // Dynamically discover deployed skills instead of reading from persisted metadata
-  const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
+  const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
 
   return {
-    sandbox: client.provider,
-    providerSandboxId: instanceDoc.sandboxId,
+    sandbox,
+    sandboxId: instanceDoc.sandboxId,
+    providerSandboxId: sandboxInfo.id,
     sessionId: String(instanceDoc._id), // editDebug sandbox uses its own _id as sessionId
     skills: [skill.toJSON()],
     deployedSkills,
@@ -461,6 +518,7 @@ export async function disconnectEditDebugSandbox(ctx: AgentSandboxContext): Prom
   try {
     await disconnectFromProviderSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Disconnected from edit-debug sandbox', {
+      sandboxId: ctx.sandboxId,
       providerSandboxId: ctx.providerSandboxId
     });
   } catch (error) {

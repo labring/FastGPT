@@ -28,6 +28,7 @@ import {
 } from '@/web/core/chat/feedback/api';
 import { delChatRecordById } from '@/web/core/chat/record/api';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
+import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
@@ -144,6 +145,8 @@ type Props = OutLinkChatAuthProps &
     onTriggerRefresh?: () => void;
     // 支持外部自定义删除消息；不传则使用默认的 delChatRecordById。
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
+    onStopChat?: () => Promise<unknown>;
+    onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
   };
 
 const ChatBox = ({
@@ -157,7 +160,9 @@ const ChatBox = ({
   onStartChat,
   chatType,
   onTriggerRefresh,
-  onDeleteChatItem
+  onDeleteChatItem,
+  onStopChat,
+  onMarkChatRead
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -269,6 +274,62 @@ const ChatBox = ({
             : h
         );
       });
+    }
+  );
+
+  const markChatRead = useMemoizedFn((data: MarkChatReadBodyType) => {
+    return onMarkChatRead?.(data) ?? postMarkChatRead(data);
+  });
+
+  const finishChatGenerateStatus = useMemoizedFn(
+    ({
+      status,
+      finishedInActiveChat,
+      targetAppId = appId,
+      targetChatId = chatId,
+      shouldUpdateChatBoxData
+    }: {
+      status: ChatGenerateStatusEnum;
+      finishedInActiveChat: boolean;
+      targetAppId?: string;
+      targetChatId?: string;
+      shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
+    }) => {
+      if (!targetAppId || !targetChatId) return;
+
+      setChatBoxData((state) =>
+        (shouldUpdateChatBoxData?.(state) ??
+        (state.appId === targetAppId && state.chatId === targetChatId))
+          ? {
+              ...state,
+              chatGenerateStatus: status,
+              hasBeenRead: finishedInActiveChat
+            }
+          : state
+      );
+
+      const syncStatus = (hasBeenRead: boolean) => {
+        syncSidebarChatGenerateStatus(status, {
+          targetAppId,
+          targetChatId,
+          hasBeenRead
+        });
+      };
+
+      if (!finishedInActiveChat) {
+        syncStatus(false);
+        return;
+      }
+
+      void markChatRead({
+        appId: targetAppId,
+        chatId: targetChatId,
+        ...outLinkAuthData
+      })
+        .catch(() => {})
+        .finally(() => {
+          syncStatus(true);
+        });
     }
   );
 
@@ -1055,29 +1116,11 @@ const ChatBox = ({
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
             const finishedInActiveChat = activeChatIdRef.current === chatId;
-            setChatBoxData((state) =>
-              state.chatId === chatId
-                ? {
-                    ...state,
-                    chatGenerateStatus: ChatGenerateStatusEnum.done,
-                    hasBeenRead: finishedInActiveChat
-                  }
-                : state
-            );
-
-            if (finishedInActiveChat) {
-              void postMarkChatRead({
-                appId,
-                chatId,
-                ...outLinkAuthData
-              })
-                .catch(() => {})
-                .finally(() => {
-                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: true });
-                });
-            } else {
-              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: false });
-            }
+            finishChatGenerateStatus({
+              status: ChatGenerateStatusEnum.done,
+              finishedInActiveChat,
+              shouldUpdateChatBoxData: (state) => state.chatId === chatId
+            });
           } catch (err: any) {
             if (isAbortByLeave(err)) {
               return;
@@ -1109,31 +1152,11 @@ const ChatBox = ({
             }
 
             const finishedInActiveChat = activeChatIdRef.current === chatId;
-            setChatBoxData((state) =>
-              state.chatId === chatId
-                ? {
-                    ...state,
-                    chatGenerateStatus: ChatGenerateStatusEnum.error,
-                    hasBeenRead: finishedInActiveChat
-                  }
-                : state
-            );
-
-            if (finishedInActiveChat) {
-              void postMarkChatRead({
-                appId,
-                chatId,
-                ...outLinkAuthData
-              })
-                .catch(() => {})
-                .finally(() => {
-                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, {
-                    hasBeenRead: true
-                  });
-                });
-            } else {
-              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, { hasBeenRead: false });
-            }
+            finishChatGenerateStatus({
+              status: ChatGenerateStatusEnum.error,
+              finishedInActiveChat,
+              shouldUpdateChatBoxData: (state) => state.chatId === chatId
+            });
           }
 
           autoTTSResponse && finishSegmentedAudio();
@@ -1595,7 +1618,6 @@ const ChatBox = ({
         );
 
         if (finishedInActiveChat) {
-          scrollToBottom('auto', 100);
           void postMarkChatRead({
             appId: resumeForAppId,
             chatId: resumeForChatId,
@@ -1637,6 +1659,7 @@ const ChatBox = ({
     scrollToBottom,
     setChatBoxData,
     setChatRecords,
+    finishChatGenerateStatus,
     syncSidebarChatGenerateStatus,
     upsertResumeAiPlaceholder,
     t,

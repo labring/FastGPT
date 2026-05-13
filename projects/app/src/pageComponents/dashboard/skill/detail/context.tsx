@@ -23,6 +23,7 @@ export type SandboxLogEntry = {
 };
 
 export type SandboxEndpoint = {
+  sandboxId: string;
   providerSandboxId: string;
   port: number;
 };
@@ -139,6 +140,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
         if (status.phase === 'ready' && status.providerSandboxId && status.endpoint?.port) {
           setSandboxEndpoint({
+            sandboxId: status.sandboxId,
             providerSandboxId: status.providerSandboxId,
             port: status.endpoint.port
           });

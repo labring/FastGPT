@@ -67,7 +67,7 @@ const SandboxIframe = () => {
   const proxyScheme = useSystemStore((s) => s.feConfigs?.sandbox_proxy_scheme) ?? 'http';
   const tokenTtl = useSystemStore((s) => s.feConfigs?.sandbox_proxy_token_ttl) ?? 3600;
   const tokenRefreshInterval = getTokenRefreshInterval(tokenTtl);
-  const sandboxId = sandboxEndpoint?.providerSandboxId;
+  const sandboxId = sandboxEndpoint?.sandboxId;
 
   const { data: tokenData } = useQuery({
     queryKey: ['sandboxProxyToken', sandboxId],

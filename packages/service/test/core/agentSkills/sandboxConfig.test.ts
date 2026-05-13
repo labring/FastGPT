@@ -249,4 +249,49 @@ describe('sandboxConfig provider helpers', () => {
       })
     ).toThrow('Sandbox provider token is required for sealosdevbox');
   });
+
+  it('builds edit-debug sandbox id from skill id and edit-debug chat id only', async () => {
+    const { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } = await loadSandboxConfigModule();
+
+    expect(EDIT_DEBUG_SANDBOX_CHAT_ID).toBe('edit-debug');
+    expect(getEditDebugSandboxId('skill-1')).toBe(getEditDebugSandboxId('skill-1'));
+    expect(getEditDebugSandboxId('skill-1')).not.toBe(getEditDebugSandboxId('skill-2'));
+  });
+
+  it('requires providerSandboxId when connecting to opensandbox instance', async () => {
+    const { getProviderSandboxConnectionTarget } = await loadSandboxConfigModule();
+
+    expect(() =>
+      getProviderSandboxConnectionTarget(
+        {
+          provider: 'opensandbox',
+          baseUrl: 'http://sandbox.local',
+          runtime: 'docker'
+        },
+        {
+          sandboxId: 'stable-session-id'
+        }
+      )
+    ).toThrow('Sandbox providerSandboxId missing');
+  });
+
+  it('uses providerSandboxId when connecting to opensandbox instance', async () => {
+    const { getProviderSandboxConnectionTarget } = await loadSandboxConfigModule();
+
+    const target = getProviderSandboxConnectionTarget(
+      {
+        provider: 'opensandbox',
+        baseUrl: 'http://sandbox.local',
+        runtime: 'docker'
+      },
+      {
+        sandboxId: 'stable-session-id',
+        metadata: {
+          providerSandboxId: 'provider-sandbox-id'
+        }
+      }
+    );
+
+    expect(target).toBe('provider-sandbox-id');
+  });
 });

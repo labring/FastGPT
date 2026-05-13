@@ -9,6 +9,9 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
 /**
  * Create an edit-debug sandbox for a skill.
@@ -69,6 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     };
 
+    logger.info('Creating edit-debug sandbox request', { skillId, teamId, tmbId });
+
     // Create sandbox; 'ready' phase in onProgress carries the endpoint result
     await createEditDebugSandbox({
       skillId,
@@ -79,7 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     res.end();
-  } catch {
+  } catch (error) {
+    logger.error('Failed to create edit-debug sandbox', { error });
     // Wrap to avoid leaking internal implementation details via SSE
     sseErrRes(res, new Error('Failed to create sandbox'));
     res.end();

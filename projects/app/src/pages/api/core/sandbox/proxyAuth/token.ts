@@ -1,8 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { signSandboxProxyToken } from '@fastgpt/service/core/sandbox/proxyToken';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   SandboxProxyTokenBodySchema,
@@ -15,15 +17,25 @@ async function handler(req: ApiRequestProps): Promise<SandboxProxyTokenResponse>
 
   const { sandboxId } = SandboxProxyTokenBodySchema.parse(req.body);
 
-  const { teamId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: ReadPermissionVal
-  });
-
   const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
   if (!sandbox) return Promise.reject('Sandbox not found');
+
+  const { teamId } =
+    sandbox.metadata?.sandboxType === SandboxTypeEnum.editDebug
+      ? await authSkill({
+          req,
+          authToken: true,
+          authApiKey: true,
+          skillId: sandbox.metadata?.skillId ?? sandbox.appId ?? '',
+          per: ReadPermissionVal
+        })
+      : await authUserPer({
+          req,
+          authToken: true,
+          authApiKey: true,
+          per: ReadPermissionVal
+        });
+
   if (String(sandbox.metadata?.teamId) !== teamId) return Promise.reject('Access denied');
 
   // NOTE: code-server password is intentionally NOT embedded here. It would be visible

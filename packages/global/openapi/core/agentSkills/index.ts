@@ -24,6 +24,8 @@ import {
   SaveDeploySkillBodySchema,
   SaveDeploySkillResponseSchema,
   SkillDebugChatBodySchema,
+  SkillDebugSessionControlBodySchema,
+  SkillDebugSessionStopResponseSchema,
   SkillDebugRecordsBodySchema,
   SkillDebugRecordsResponseSchema,
   SkillDebugSessionDeleteBodySchema,
@@ -357,6 +359,49 @@ export const AgentSkillsPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功删除调试会话'
+        }
+      }
+    }
+  },
+  '/core/agentSkills/debugSession/stop': {
+    post: {
+      summary: '停止技能调试对话',
+      description: '停止指定技能调试会话中正在运行的工作流',
+      tags: [TagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SkillDebugSessionControlBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功停止调试对话',
+          content: {
+            'application/json': {
+              schema: SkillDebugSessionStopResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/agentSkills/debugSession/markRead': {
+    post: {
+      summary: '标记技能调试会话已读',
+      description: '将指定技能调试会话标记为已读',
+      tags: [TagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SkillDebugSessionControlBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功标记调试会话已读'
         }
       }
     }

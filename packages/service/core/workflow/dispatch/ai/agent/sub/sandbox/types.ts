@@ -14,6 +14,7 @@ export type DeployedSkillInfo = {
 // Sandbox runtime context - shared across the entire agent lifecycle
 export type AgentSandboxContext = {
   sandbox: ISandbox;
+  sandboxId: string;
   providerSandboxId: string;
   sessionId: string;
   skills: AgentSkillSchemaType[];

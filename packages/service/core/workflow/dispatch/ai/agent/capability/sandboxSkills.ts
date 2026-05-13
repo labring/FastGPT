@@ -167,7 +167,7 @@ export async function createSandboxSkillsCapability(
         if (result !== null) {
           // Fire-and-forget: renew sandbox expiration after successful execution
           MongoSandboxInstance.updateOne(
-            { sandboxId: sandboxContext.providerSandboxId },
+            { sandboxId: sandboxContext.sandboxId },
             { lastActiveAt: new Date() }
           ).catch((err) =>
             logger.error('[Agent Sandbox] Failed to renew lastActiveAt', { error: err })
@@ -256,7 +256,7 @@ export async function createSandboxSkillsCapability(
 
     // Fire-and-forget: renew sandbox expiration after successful execution
     MongoSandboxInstance.updateOne(
-      { sandboxId: ctx.providerSandboxId },
+      { sandboxId: ctx.sandboxId },
       { lastActiveAt: new Date() }
     ).catch((err) => logger.error('[Agent Sandbox] Failed to renew lastActiveAt', { error: err }));
 

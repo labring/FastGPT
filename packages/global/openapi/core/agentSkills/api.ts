@@ -16,6 +16,7 @@ import {
 } from '../../../core/agentSkills/type';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
+const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
 const NullableParentIdSchema = z.string().nullable().optional().meta({
   description: '父级目录 ID'
 });
@@ -151,8 +152,8 @@ export const CreateEditDebugSandboxBodySchema = z.object({
 export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBodySchema>;
 
 export const CreateEditDebugSandboxResponseSchema = z.object({
-  sandboxId: z.string(),
-  providerSandboxId: z.string(),
+  sandboxId: z.string().describe('FastGPT sandbox instance key'),
+  providerSandboxId: z.string().describe('Provider sandbox instance ID'),
   endpoint: SkillSandboxEndpointSchema,
   status: SandboxProviderStatusSchema.pick({
     state: true,
@@ -162,15 +163,15 @@ export const CreateEditDebugSandboxResponseSchema = z.object({
 export type CreateEditDebugSandboxResponse = z.infer<typeof CreateEditDebugSandboxResponseSchema>;
 
 export const GetSandboxInfoQuerySchema = z.object({
-  sandboxId: IdSchema
+  sandboxId: SandboxInstanceKeySchema
 });
 export type GetSandboxInfoQuery = z.infer<typeof GetSandboxInfoQuerySchema>;
 
 export const GetSandboxInfoResponseSchema = z.object({
-  sandboxId: z.string(),
+  sandboxId: SandboxInstanceKeySchema,
   skillId: z.string(),
   sandboxType: z.string(),
-  providerSandboxId: z.string(),
+  providerSandboxId: z.string().describe('Provider sandbox instance ID'),
   endpoint: SkillSandboxEndpointSchema.optional(),
   status: SandboxProviderStatusSchema.pick({
     state: true,
@@ -181,7 +182,7 @@ export const GetSandboxInfoResponseSchema = z.object({
 export type GetSandboxInfoResponse = z.infer<typeof GetSandboxInfoResponseSchema>;
 
 export const DeleteSandboxBodySchema = z.object({
-  sandboxId: IdSchema
+  sandboxId: SandboxInstanceKeySchema
 });
 export type DeleteSandboxBody = z.infer<typeof DeleteSandboxBodySchema>;
 
@@ -245,6 +246,17 @@ export const SkillDebugSessionDeleteBodySchema = z.object({
   chatId: z.string()
 });
 export type SkillDebugSessionDeleteBody = z.infer<typeof SkillDebugSessionDeleteBodySchema>;
+
+export const SkillDebugSessionControlBodySchema = z.object({
+  skillId: IdSchema,
+  chatId: z.string().min(1)
+});
+export type SkillDebugSessionControlBody = z.infer<typeof SkillDebugSessionControlBodySchema>;
+
+export const SkillDebugSessionStopResponseSchema = z.object({
+  success: z.boolean()
+});
+export type SkillDebugSessionStopResponse = z.infer<typeof SkillDebugSessionStopResponseSchema>;
 
 export const ListAppsBySkillIdQuerySchema = z.object({
   skillId: IdSchema

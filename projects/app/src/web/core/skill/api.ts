@@ -21,6 +21,8 @@ import type {
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
+  SkillDebugSessionControlBody,
+  SkillDebugSessionStopResponse,
   ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
@@ -167,6 +169,14 @@ export const getAppsBySkillId = (skillId: string) =>
 /** 删除 Skill 调试会话中的单条对话消息（用于"重新生成"时清除旧记录） */
 export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
   POST('/core/agentSkills/debugSession/chatItem/delete', data);
+
+/** 停止 Skill 调试会话中正在运行的对话 */
+export const postStopSkillDebugChat = (data: SkillDebugSessionControlBody) =>
+  POST<SkillDebugSessionStopResponse>('/core/agentSkills/debugSession/stop', data);
+
+/** 将 Skill 调试会话标记为已读 */
+export const postMarkSkillDebugChatRead = (data: SkillDebugSessionControlBody) =>
+  POST<void>('/core/agentSkills/debugSession/markRead', data);
 
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>

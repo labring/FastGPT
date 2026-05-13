@@ -30,9 +30,6 @@ catalogs:
     '@emotion/styled':
       specifier: ^11
       version: 11.11.0
-    '@fastgpt-sdk/logger':
-      specifier: 0.1.2
-      version: 0.1.2
     '@modelcontextprotocol/sdk':
       specifier: ^1
       version: 1.26.0
@@ -447,8 +444,8 @@ importers:
         specifier: workspace:*
         version: link:../../sdk/otel
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.36
-        version: 0.0.36
+        specifier: ^0.0.39
+        version: 0.0.39
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1615,12 +1612,15 @@ importers:
 
   projects/sandbox-proxy:
     dependencies:
-      '@fastgpt-sdk/logger':
-        specifier: 'catalog:'
-        version: 0.1.2
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
+      cookie:
+        specifier: ^0.7.2
+        version: 0.7.2
       dotenv:
         specifier: ^17.3.1
         version: 17.4.2
@@ -1630,10 +1630,16 @@ importers:
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
+      lru-cache:
+        specifier: ^11.3.6
+        version: 11.3.6
       zod:
         specifier: 'catalog:'
         version: 4.1.12
     devDependencies:
+      '@types/cookie':
+        specifier: ^0.6.0
+        version: 0.6.0
       '@types/http-proxy':
         specifier: ^1.17.15
         version: 1.17.17
@@ -1654,7 +1660,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   scripts/icon:
     dependencies:
@@ -3545,8 +3551,8 @@ packages:
   '@fastgpt-sdk/plugin@0.6.1':
     resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.36':
-    resolution: {integrity: sha512-RPwK6kFmpv5U2tqPNj+HzDoZEQ06fgMsrOzXx/uT33rubikOLHmNV4kJ8Mra+EhzzYbNmFq2iFapaocy4ExbwQ==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.39':
+    resolution: {integrity: sha512-AFKoxaEgXe8HELAOnN7F7YEmIVccHue4Fj0LwcCSWKiAtaf5D4abngfLoXw3czbae3wM/8Os7YxYMLqmxjIcpw==}
     engines: {node: '>=18'}
 
   '@fidm/asn1@1.0.4':
@@ -6528,6 +6534,9 @@ packages:
 
   '@types/cookie@0.5.4':
     resolution: {integrity: sha512-7z/eR6O859gyWIAjuvBWFzNURmf2oPBmJlfVWkwehU5nzIyjwBsTh7WMmEEV4JFnHuQ3ex4oyTvfKzcyJVDBNA==}
+
+  '@types/cookie@0.6.0':
+    resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
   '@types/cors@2.8.19':
     resolution: {integrity: sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==}
@@ -10863,6 +10872,10 @@ packages:
     resolution: {integrity: sha512-aY/R+aEsRelme17KGQa/1ZSIpLpNYYrhcrepKTZgE+W3WM16YMCaPwOHLHsmopZHELU0Ojin1lPVxKR0MihncA==}
     engines: {node: 20 || >=22}
 
+  lru-cache@11.3.6:
+    resolution: {integrity: sha512-Gf/KoL3C/MlI7Bt0PGI9I+TeTC/I6r/csU58N4BSNc4lppLBeKsOdFYkK+dX0ABDUMJNfCHTyPpzwwO21Awd3A==}
+    engines: {node: 20 || >=22}
+
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
@@ -14725,7 +14738,7 @@ packages:
     engines: {node: '>=12'}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -17652,7 +17665,7 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.36':
+  '@fastgpt-sdk/sandbox-adapter@0.0.39':
     dependencies:
       '@alibaba-group/opensandbox': 0.1.6
       '@e2b/code-interpreter': 2.4.0
@@ -21065,6 +21078,8 @@ snapshots:
   '@types/content-type@1.1.9': {}
 
   '@types/cookie@0.5.4': {}
+
+  '@types/cookie@0.6.0': {}
 
   '@types/cors@2.8.19':
     dependencies:
@@ -26348,6 +26363,8 @@ snapshots:
 
   lru-cache@11.2.7: {}
 
+  lru-cache@11.3.6: {}
+
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -28051,7 +28068,7 @@ snapshots:
 
   path-scurry@2.0.2:
     dependencies:
-      lru-cache: 11.2.7
+      lru-cache: 11.3.6
       minipass: 7.1.2
 
   path-to-glob-pattern@1.0.2: {}

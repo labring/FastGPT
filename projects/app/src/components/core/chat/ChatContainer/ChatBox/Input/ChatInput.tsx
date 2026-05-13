@@ -373,7 +373,8 @@ const ChatInput = ({
               onClick={(e) => {
                 e.stopPropagation();
                 if (isChatting) {
-                  return handleStop();
+                  void handleStop();
+                  return;
                 }
                 return void handleSend(inputValue);
               }}

@@ -45,6 +45,7 @@ export const SandboxMetadataSchema = z.object({
   tmbId: z.string().optional(),
 
   volumeEnabled: z.boolean().optional(),
+  provider: SandboxProviderSchema.optional(),
 
   skillId: z.string().optional(),
   sessionId: z.string().optional(),

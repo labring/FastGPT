@@ -35,6 +35,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
   FlowNodeTypeEnum,
@@ -229,7 +230,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Verify edit-debug sandbox exists for this skill
     const sandboxInstance = await MongoSandboxInstance.findOne({
       appId: skillId,
-      chatId: 'edit-debug',
+      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       'metadata.sandboxType': SandboxTypeEnum.editDebug
     }).lean();
     if (!sandboxInstance) {

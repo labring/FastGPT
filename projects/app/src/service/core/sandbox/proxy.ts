@@ -3,7 +3,8 @@ import {
   getSandboxProviderConfig,
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
-  getProviderSandboxProxyTarget
+  getProviderSandboxProxyTarget,
+  getProviderSandboxConnectionTarget
 } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
@@ -40,12 +41,7 @@ export async function getSandboxProxyTarget(
   if (!sandbox) throw new Error('Sandbox not found');
 
   const providerConfig = getSandboxProviderConfig();
-  const providerSandboxId =
-    providerConfig.provider === 'opensandbox'
-      ? sandbox.metadata?.providerSandboxId
-      : sandbox.sandboxId;
-
-  if (!providerSandboxId) throw new Error('Sandbox providerSandboxId missing');
+  const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, sandbox);
 
   const adapter = await connectToProviderSandbox(providerConfig, providerSandboxId);
 

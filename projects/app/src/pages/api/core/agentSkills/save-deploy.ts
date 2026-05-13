@@ -4,6 +4,11 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controller';
 import { packageSkillInSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
 import {
+  EDIT_DEBUG_SANDBOX_CHAT_ID,
+  getProviderSandboxConnectionTarget,
+  getSandboxProviderConfig
+} from '@fastgpt/service/core/agentSkills/sandboxConfig';
+import {
   createVersion,
   getNextVersionNumber,
   setActiveVersion
@@ -58,7 +63,7 @@ async function handler(
   // Fetch the edit-debug sandbox
   const sandboxInfo = await MongoSandboxInstance.findOne({
     appId: skillId,
-    chatId: 'edit-debug',
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     status: SandboxStatusEnum.running,
     'metadata.sandboxType': SandboxTypeEnum.editDebug
   });
@@ -71,7 +76,7 @@ async function handler(
   let packageBuffer: Buffer;
   try {
     packageBuffer = await packageSkillInSandbox({
-      providerSandboxId: sandboxInfo.metadata?.providerSandboxId ?? sandboxInfo.sandboxId
+      providerSandboxId: getProviderSandboxConnectionTarget(getSandboxProviderConfig(), sandboxInfo)
     });
   } catch (error: any) {
     return Promise.reject(

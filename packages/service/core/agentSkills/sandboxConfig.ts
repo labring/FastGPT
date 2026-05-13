@@ -18,6 +18,7 @@ import type {
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { serviceEnv } from '../../env';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -40,6 +41,11 @@ export type SealosDevboxProviderConfig = BaseSandboxProviderConfig & {
 
 export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProviderConfig;
 
+export const EDIT_DEBUG_SANDBOX_CHAT_ID = 'edit-debug';
+
+export const getEditDebugSandboxId = (skillId: string) =>
+  generateSandboxId(skillId, '', EDIT_DEBUG_SANDBOX_CHAT_ID);
+
 /**
  * App-side sandbox create config.
  * Providers may support only a subset of these fields.
@@ -47,6 +53,7 @@ export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProv
 export type SandboxCreateConfig = SandboxCreateSpec;
 
 type ProviderSandboxProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
+type ProviderSandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
 
 export type SandboxDefaults = {
   defaultImage: SandboxImageConfigType;
@@ -229,6 +236,82 @@ export async function connectToProviderSandbox(
   }
 
   return sandbox;
+}
+
+export async function ensureExistingProviderSandboxRunning(sandbox: ISandbox): Promise<void> {
+  const info = await sandbox.getInfo();
+  if (!info) {
+    throw new Error('Provider sandbox not found');
+  }
+
+  switch (info.status.state) {
+    case 'Running':
+    case 'Creating':
+    case 'Starting':
+      await sandbox.waitUntilReady();
+      return;
+
+    case 'Stopped':
+    case 'Stopping':
+      await sandbox.start();
+      await sandbox.waitUntilReady();
+      return;
+
+    case 'Deleting':
+    case 'UnExist':
+    case 'Error':
+      throw new Error(`Provider sandbox ${sandbox.id ?? info.id} is ${info.status.state}`);
+
+    default:
+      throw new Error(`Provider sandbox ${sandbox.id ?? info.id} is in unknown state`);
+  }
+}
+
+export async function connectReadyProviderSandboxByInstance(
+  providerConfig: SandboxProviderConfig,
+  instance: {
+    sandboxId: string;
+    metadata?: { providerSandboxId?: string } | null;
+  }
+): Promise<{
+  sandbox: ISandbox;
+  sandboxInfo: ProviderSandboxInfo;
+}> {
+  const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, instance);
+  const sandbox = await connectToProviderSandbox(providerConfig, providerSandboxId);
+
+  try {
+    await ensureExistingProviderSandboxRunning(sandbox);
+    const sandboxInfo = await sandbox.getInfo();
+    if (!sandboxInfo) {
+      throw new Error('Provider sandbox not found');
+    }
+    return {
+      sandbox,
+      sandboxInfo
+    };
+  } catch (error) {
+    await disconnectFromProviderSandbox(sandbox).catch(() => undefined);
+    throw error;
+  }
+}
+
+export function getProviderSandboxConnectionTarget(
+  providerConfig: SandboxProviderConfig,
+  instance: {
+    sandboxId: string;
+    metadata?: { providerSandboxId?: string } | null;
+  }
+): string {
+  if (providerConfig.provider === 'opensandbox') {
+    const providerSandboxId = instance.metadata?.providerSandboxId;
+    if (!providerSandboxId) {
+      throw new Error('Sandbox providerSandboxId missing');
+    }
+    return providerSandboxId;
+  }
+
+  return instance.metadata?.providerSandboxId ?? instance.sandboxId;
 }
 
 /**

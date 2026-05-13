@@ -6,7 +6,7 @@
  */
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import mongoose from 'mongoose';
+import { isValidObjectId } from 'mongoose';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './version/schema';
@@ -16,8 +16,12 @@ import {
   getSandboxDefaults,
   validateSandboxConfig,
   getSkillSizeLimits,
+  EDIT_DEBUG_SANDBOX_CHAT_ID,
+  buildSandboxAdapter,
+  connectReadyProviderSandboxByInstance,
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
+  getEditDebugSandboxId,
   getProviderSandboxEndpoint,
   buildEditDebugCreateConfig,
   waitForEndpointReady
@@ -30,11 +34,24 @@ import type {
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../ai/sandbox/controller';
+import { deleteSessionVolume } from '../ai/sandbox/config';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
+
+const buildSandboxInstanceLookup = (sandboxId: string) => ({
+  $or: [{ sandboxId }, ...(isValidObjectId(sandboxId) ? [{ _id: sandboxId }] : [])]
+});
+
+type SandboxInstanceResourceDoc = {
+  _id: unknown;
+  sandboxId: string;
+  metadata?: {
+    providerSandboxId?: string;
+  } | null;
+};
 
 export type CreateEditDebugSandboxParams = {
   skillId: string;
@@ -119,38 +136,35 @@ export async function createEditDebugSandbox(
     throw new Error('No active version found for skill');
   }
 
-  // chat ID used for all edit-debug sandbox instances
-  const EDIT_DEBUG_CHAT_ID = 'edit-debug';
+  const sessionId = getEditDebugSandboxId(skillId);
 
   // Check for existing sandbox instance by skillId
-  const existingInstance = await MongoSandboxInstance.findOne({
+  const editDebugQuery = {
     appId: skillId,
-    chatId: EDIT_DEBUG_CHAT_ID,
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     'metadata.sandboxType': SandboxTypeEnum.editDebug
-  });
+  };
+  const existingInstance = await MongoSandboxInstance.findOne(editDebugQuery);
 
-  if (existingInstance) {
+  const reuseExistingEditDebugSandbox = async (
+    instance: NonNullable<typeof existingInstance>
+  ): Promise<CreateEditDebugSandboxResult | null> => {
     addLog.info('[Sandbox] Found existing sandbox instance, ensuring running', {
-      instanceId: existingInstance._id,
-      sandboxId: existingInstance.sandboxId,
-      providerSandboxId: existingInstance.metadata?.providerSandboxId
+      instanceId: instance._id,
+      sandboxId: instance.sandboxId,
+      providerSandboxId: instance.metadata?.providerSandboxId
     });
 
     let sandbox: ISandbox | null = null;
 
     try {
-      onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
+      onProgress?.({ sandboxId: instance.sandboxId, phase: 'creatingContainer' });
 
-      sandbox = await connectToProviderSandbox(providerConfig, existingInstance.sandboxId);
-      const existingProviderInfo = await sandbox.getInfo();
-      if (!existingProviderInfo) {
-        throw new Error('Provider sandbox not found');
-      }
-
-      await sandbox.ensureRunning();
+      const connected = await connectReadyProviderSandboxByInstance(providerConfig, instance);
+      sandbox = connected.sandbox;
 
       const endpointInfo = await getProviderSandboxEndpoint(sandbox);
-      const sandboxInfo = await sandbox.getInfo();
+      const sandboxInfo = connected.sandboxInfo;
 
       // Wait for the HTTP service inside the container to bind its port before
       // sending the ready SSE event — prevents ECONNREFUSED in the client iframe.
@@ -158,49 +172,48 @@ export async function createEditDebugSandbox(
 
       // Update endpoint and sandbox metadata in DB
       await MongoSandboxInstance.updateOne(
-        { _id: existingInstance._id },
+        { _id: instance._id },
         {
-          'metadata.endpoint': endpointInfo,
-          ...(sandboxInfo?.id && { 'metadata.providerSandboxId': sandboxInfo.id })
+          $set: {
+            'metadata.endpoint': endpointInfo,
+            'metadata.providerSandboxId': sandboxInfo.id
+          }
         }
       );
 
       onProgress?.({
-        sandboxId: skillId,
+        sandboxId: instance.sandboxId,
         phase: 'ready',
         endpoint: endpointInfo,
-        providerSandboxId: existingInstance.sandboxId
+        providerSandboxId: sandboxInfo.id
       });
 
       return {
-        sandboxId: existingInstance._id.toString(),
-        providerSandboxId: existingInstance.sandboxId,
+        sandboxId: instance.sandboxId,
+        providerSandboxId: sandboxInfo.id,
         endpoint: endpointInfo,
         status: { state: 'Running' }
       };
     } catch (error) {
       addLog.info('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
-        sandboxId: existingInstance.sandboxId,
-        providerSandboxId: existingInstance.metadata?.providerSandboxId,
+        sandboxId: instance.sandboxId,
+        providerSandboxId: instance.metadata?.providerSandboxId,
         error
       });
 
-      await MongoSandboxInstance.deleteOne({ _id: existingInstance._id });
+      await MongoSandboxInstance.deleteOne({ _id: instance._id });
+      return null;
     } finally {
       if (sandbox) {
         await disconnectFromProviderSandbox(sandbox);
       }
     }
+  };
+
+  if (existingInstance) {
+    const reusedSandbox = await reuseExistingEditDebugSandbox(existingInstance);
+    if (reusedSandbox) return reusedSandbox;
   }
-
-  // Download package.zip from MinIO and standardize it
-  onProgress?.({ sandboxId: skillId, phase: 'downloadingPackage' });
-  const packageBuffer = await downloadSkillPackage({
-    storageInfo: activeVersion.storage
-  });
-
-  // Package is already in ZIP format from import time.
-  const standardizedBuffer = packageBuffer;
 
   // Check active edit-debug sandbox count limit
   const maxEditDebug =
@@ -212,7 +225,7 @@ export async function createEditDebugSandbox(
     });
     if (activeCount >= maxEditDebug) {
       const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
-      onProgress?.({ sandboxId: skillId, phase: 'failed', message });
+      onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
       throw new Error(message);
     }
   }
@@ -222,8 +235,15 @@ export async function createEditDebugSandbox(
   let sandboxClient: SandboxClient | null = null;
 
   try {
-    onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
-    const sessionId = new mongoose.Types.ObjectId().toHexString();
+    onProgress?.({ sandboxId: sessionId, phase: 'downloadingPackage' });
+    const packageBuffer = await downloadSkillPackage({
+      storageInfo: activeVersion.storage
+    });
+
+    // Package is already in ZIP format from import time.
+    const standardizedBuffer = packageBuffer;
+
+    onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
 
     // getSandboxClient handles volumes internally (via getVolumeManagerConfig) and calls
     // provider.ensureRunning() which creates the container when it doesn't exist
@@ -250,7 +270,7 @@ export async function createEditDebugSandbox(
     // Upload package to sandbox and extract
     const zipPath = `${defaults.workDirectory}/package.zip`;
 
-    onProgress?.({ sandboxId: skillId, phase: 'uploadingPackage' });
+    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
     await client.provider.writeFiles([
       {
         path: zipPath,
@@ -258,7 +278,7 @@ export async function createEditDebugSandbox(
       }
     ]);
 
-    onProgress?.({ sandboxId: skillId, phase: 'extractingPackage' });
+    onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
     const extractResult = await client.provider.execute(
       `mkdir -p ${defaults.workDirectory} && cd ${defaults.workDirectory} && unzip -o package.zip && rm package.zip`
     );
@@ -283,7 +303,7 @@ export async function createEditDebugSandbox(
         $set: {
           appId: skillId,
           userId: tmbId,
-          chatId: EDIT_DEBUG_CHAT_ID,
+          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
           metadata: {
             sandboxType: SandboxTypeEnum.editDebug,
             teamId,
@@ -314,15 +334,15 @@ export async function createEditDebugSandbox(
     if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
 
     onProgress?.({
-      sandboxId: skillId,
+      sandboxId: sessionId,
       phase: 'ready',
       endpoint: endpointInfo,
-      providerSandboxId: sessionId
+      providerSandboxId: sandboxInfo.id
     });
 
     return {
-      sandboxId: newSandboxDoc._id.toString(),
-      providerSandboxId: sessionId,
+      sandboxId: sessionId,
+      providerSandboxId: sandboxInfo.id,
       endpoint: endpointInfo,
       status: {
         state: sandboxInfo.status.state,
@@ -359,7 +379,7 @@ export async function getSandboxInfo(
   const { sandboxId, teamId } = params;
 
   const sandbox = await MongoSandboxInstance.findOne({
-    _id: sandboxId,
+    ...buildSandboxInstanceLookup(sandboxId),
     'metadata.teamId': teamId
   });
 
@@ -377,7 +397,7 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
   const { sandboxId, teamId } = params;
 
   const instanceDoc = await MongoSandboxInstance.findOne({
-    _id: sandboxId,
+    ...buildSandboxInstanceLookup(sandboxId),
     'metadata.teamId': teamId
   });
 
@@ -387,13 +407,37 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
 
   addLog.info('[Sandbox] Deleting sandbox', { sandboxId });
 
-  const client = await getSandboxClient({ sandboxId: instanceDoc.sandboxId });
-  await client.delete().catch((err) => {
-    addLog.error('[Sandbox] Failed to delete sandbox', {
+  await deleteSandboxInstanceResources(instanceDoc);
+}
+
+export async function deleteSandboxInstanceResources(
+  instanceDoc: SandboxInstanceResourceDoc
+): Promise<void> {
+  const providerConfig = getSandboxProviderConfig();
+
+  const providerSandboxId = instanceDoc.metadata?.providerSandboxId ?? instanceDoc.sandboxId;
+  if (providerSandboxId) {
+    const sandbox = buildSandboxAdapter(providerConfig, { providerSandboxId });
+    try {
+      await sandbox.delete(providerSandboxId);
+    } catch (error) {
+      addLog.error('[Sandbox] Failed to delete provider sandbox', {
+        sandboxId: instanceDoc.sandboxId,
+        providerSandboxId: instanceDoc.metadata?.providerSandboxId,
+        error
+      });
+      throw error;
+    }
+  }
+
+  await deleteSessionVolume(instanceDoc.sandboxId).catch((error) => {
+    addLog.error('[Sandbox] Failed to delete sandbox volume', {
       sandboxId: instanceDoc.sandboxId,
-      error: err
+      error
     });
   });
+
+  await MongoSandboxInstance.deleteOne({ _id: instanceDoc._id });
 }
 
 /**
@@ -417,13 +461,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
 
   await Promise.allSettled(
     instances.map(async (doc) => {
-      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
-      await client.delete().catch((err) => {
-        addLog.error('[Sandbox] Failed to delete sandbox', {
-          sandboxId: doc.sandboxId,
-          error: err
-        });
-      });
+      await deleteSandboxInstanceResources(doc);
     })
   );
 }
