@@ -10,7 +10,8 @@ import type {
   InitChatQueryType,
   InitChatResponseType,
   InitTeamChatQueryType,
-  StopV2ChatParams
+  StopV2ChatParams,
+  StopV2ChatResponse
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
@@ -49,4 +50,5 @@ export const deleteFavouriteApp = (data: { id: string }) =>
   DELETE<null>('/proApi/core/chat/setting/favourite/delete', data);
 
 /* Chat controller */
-export const postStopV2Chat = (data: StopV2ChatParams) => POST('/v2/chat/stop', data);
+export const postStopV2Chat = (data: StopV2ChatParams) =>
+  POST<StopV2ChatResponse>('/v2/chat/stop', data);

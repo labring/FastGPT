@@ -112,6 +112,7 @@
   "resume_placeholder_generating": "Generating",
   "resume_unavailable": "The current streaming response cannot be restored right now. Please check back later for the final answer.",
   "resume_unavailable_memory_pressure": "The service is currently under resource pressure, so stream resume is temporarily unavailable. Please check back later for the final answer.",
+  "stopping_chat": "Stopping the previous chat turn. Please wait.",
   "sandbox_binary_file_no_preview": "The file cannot be previewed, please download and view it directly",
   "sandbox_entry_tooltip": "View Sandbox files",
   "sandbox_files": "Sandbox files",

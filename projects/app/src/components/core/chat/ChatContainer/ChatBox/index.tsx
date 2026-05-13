@@ -78,6 +78,7 @@ import {
   shouldFollowGeneratingScroll,
   shouldForceScrollAfterRecordsLoaded
 } from './scrollUtils';
+import { isChatRoundPending } from './chatStatus';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -204,6 +205,14 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const isRoundPending = isChatRoundPending({
+    isChatting,
+    chatGenerateStatus:
+      chatBoxData.appId === appId && chatBoxData.chatId === chatId
+        ? chatBoxData.chatGenerateStatus
+        : undefined,
+    lastChat: chatRecords[chatRecords.length - 1]
+  });
 
   const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
   const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
@@ -796,7 +805,7 @@ const ChatBox = ({
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
-          if (isChatting) {
+          if (isRoundPending) {
             !hideInUI &&
               toast({
                 title: t('chat:is_chatting'),
@@ -1089,6 +1098,26 @@ const ChatBox = ({
       )();
     }
   );
+
+  const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
+    const nextStatus = completed ? status : ChatGenerateStatusEnum.generating;
+    setChatBoxData((state) =>
+      state.chatId === chatId && state.appId === appId
+        ? {
+            ...state,
+            chatGenerateStatus: nextStatus,
+            hasBeenRead: false
+          }
+        : state
+    );
+    syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
+    if (!completed) {
+      toast({
+        title: t('chat:stopping_chat'),
+        status: 'warning'
+      });
+    }
+  });
 
   // retry input
   const onDelMessage = useCallback(
@@ -1567,7 +1596,8 @@ const ChatBox = ({
     toast
   ]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
+  const canRenderChatInput = onStartChat && chatStarted && active && canSendQuery;
+  const canSendPrompt = canRenderChatInput && !isRoundPending;
 
   // Add listener
   useEffect(() => {
@@ -1974,6 +2004,8 @@ const ChatBox = ({
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
+                onStopSettled={handleStopSettled}
+                disableSend={isRoundPending}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
@@ -1984,7 +2016,7 @@ const ChatBox = ({
       ) : (
         <>
           {AppChatRenderBox}
-          {canSendPrompt && (
+          {canRenderChatInput && (
             <Box
               px={[3, 5]}
               m={['0 auto 10px', '10px auto']}
@@ -1997,6 +2029,8 @@ const ChatBox = ({
                 onSendMessage={sendPrompt}
                 lastInteractive={lastInteractive}
                 onStop={() => abortRequest('stop')}
+                onStopSettled={handleStopSettled}
+                disableSend={isRoundPending}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
