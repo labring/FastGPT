@@ -236,6 +236,67 @@ describe('PiAgent workflow runtime', () => {
     ]);
   });
 
+  it('hides reasoning from stream and node response while preserving stored reasoning', () => {
+    const nodeResponses: any[] = [];
+    const workflowStreamResponse = vi.fn();
+    const saveLLMRequestRecordFn = vi.fn();
+    const runtime = createPiAgentWorkflowRuntime({
+      props: createProps({
+        params: {
+          model: 'gpt-4',
+          aiChatReasoning: false
+        }
+      }),
+      nodeResponses,
+      workflowStreamResponse,
+      usagePush: vi.fn(),
+      saveLLMRequestRecordFn
+    });
+
+    runtime.onPayload({ messages: [] }, { name: 'GPT-4' } as any);
+    runtime.handleAgentEvent({
+      type: 'message_update',
+      assistantMessageEvent: {
+        type: 'thinking_delta',
+        delta: 'hidden thought'
+      }
+    } as any);
+    runtime.handleAgentEvent({
+      type: 'message_end',
+      message: {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'hidden thought' },
+          { type: 'text', text: 'answer' }
+        ],
+        usage,
+        stopReason: 'stop'
+      }
+    } as any);
+
+    expect(runtime.getReasoningText()).toBe('hidden thought');
+    expect(workflowStreamResponse).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reasoning_content: expect.any(String)
+        })
+      })
+    );
+    expect(nodeResponses[0]).toEqual(
+      expect.objectContaining({
+        textOutput: 'answer'
+      })
+    );
+    expect(nodeResponses[0].reasoningText).toBeUndefined();
+    expect(saveLLMRequestRecordFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          reasoningText: 'hidden thought'
+        })
+      })
+    );
+  });
+
   it('normalizes restored pi messages before they are converted to LLM context', () => {
     const messages = [
       {

@@ -86,6 +86,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
 
 export type AgentLoopRuntime = {
   model: string;
+  reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;
   useVision?: boolean;

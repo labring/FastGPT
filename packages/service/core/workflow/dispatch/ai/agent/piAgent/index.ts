@@ -26,7 +26,7 @@ import {
   type PiAgentWorkflowRuntimeArtifacts
 } from './adapter/runtime';
 import { filterFailedAgentNodeResponses } from '../adapter/nodeResponses';
-import { buildPiModel, getModelApiKey } from './modelBridge';
+import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge';
 import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 
 type Response = DispatchNodeResultType<{
@@ -58,7 +58,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       useEditDebugSandbox,
       agent_datasetParams: datasetParams,
       useAgentSandbox = false,
-      aiChatVision
+      aiChatVision,
+      aiChatReasoning,
+      aiChatReasoningEffort
     }
   } = props;
 
@@ -76,12 +78,14 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   const appendFinalAssistantResponses = () => {
     const reasoningText = piRuntime?.getReasoningText() || '';
     const answerText = piRuntime?.getAnswerText() || '';
+    const showReasoning = aiChatReasoning !== false;
 
     if (reasoningText) {
       assistantResponses.push({
         reasoning: {
           content: reasoningText
-        }
+        },
+        ...(!showReasoning ? { hideInUI: true } : {})
       });
     }
 
@@ -202,6 +206,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     });
 
     const piModel = buildPiModel(model, aiChatVision, props.externalProvider.openaiAccount);
+    const thinkingLevel = getPiThinkingLevel(model, aiChatReasoningEffort);
     const apiKey = getModelApiKey(model, props.externalProvider.openaiAccount);
 
     const toolCtx: ToolDispatchContext = {
@@ -242,6 +247,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       initialState: {
         systemPrompt: formatedSystemPrompt,
         model: piModel,
+        thinkingLevel,
         tools: piTools,
         messages: normalizedRestoredMessages
       },

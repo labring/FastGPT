@@ -51,10 +51,26 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     expect(runtime.model).toBe('gpt-4');
+    expect(runtime.reasoningEffort).toBeUndefined();
     expect(runtime.userKey).toEqual({ key: 'user-key' });
     expect(runtime.useVision).toBe(true);
     expect(runtime.toolCatalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
     expect(runtime.toolCatalog.updatePlanTool?.function.name).toBe('update_plan');
+  });
+
+  it('passes workflow reasoning effort into the generic agent runtime', () => {
+    const { runtime } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        params: {
+          model: 'qwen3.6-flash',
+          aiChatReasoningEffort: 'none'
+        }
+      }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    expect(runtime.reasoningEffort).toBe('none');
   });
 
   it('wraps workflow tool execution and collects artifacts', async () => {

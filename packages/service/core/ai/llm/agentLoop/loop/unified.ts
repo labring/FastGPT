@@ -170,6 +170,7 @@ export const runUnifiedAgentLoop = async ({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
     body: {
       model: runtime.model,
+      reasoning_effort: runtime.reasoningEffort,
       stream: runtime.stream ?? true,
       useVision: runtime.useVision,
       messages,

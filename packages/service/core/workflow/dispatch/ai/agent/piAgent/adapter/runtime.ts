@@ -281,6 +281,7 @@ export const createPiAgentWorkflowRuntime = ({
   saveLLMRequestRecordFn?: typeof saveLLMRequestRecord;
 }): PiAgentWorkflowRuntimeArtifacts => {
   const modelData = getLLMModel(props.params.model);
+  const showReasoning = props.params.aiChatReasoning !== false;
   const pendingRequests: PendingRequest[] = [];
   let requestIndex = 0;
   let answerText = '';
@@ -371,7 +372,7 @@ export const createPiAgentWorkflowRuntime = ({
       totalPoints,
       finishReason,
       textOutput: answerText,
-      reasoningText,
+      ...(showReasoning && reasoningText ? { reasoningText } : {}),
       ...(errorText ? { errorText: getErrText(errorText) } : {})
     };
 
@@ -432,10 +433,12 @@ export const createPiAgentWorkflowRuntime = ({
         }
         if (assistantEvent.type === 'thinking_delta') {
           reasoningText += assistantEvent.delta;
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ reasoning_content: assistantEvent.delta })
-          });
+          if (showReasoning) {
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({ reasoning_content: assistantEvent.delta })
+            });
+          }
           return;
         }
         return;

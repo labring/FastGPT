@@ -118,6 +118,7 @@ export const createWorkflowAgentLoopRuntime = ({
     internalToolNames,
     updatePlanToolName: toolCatalog.updatePlanTool?.function.name,
     askToolName: toolCatalog.askTool?.function.name,
+    showReasoning: context.params.aiChatReasoning !== false,
     assistantResponses
   });
 
@@ -298,6 +299,7 @@ export const createWorkflowAgentLoopRuntime = ({
     artifacts,
     runtime: {
       model: context.params.model,
+      reasoningEffort: context.params.aiChatReasoningEffort,
       userKey: context.externalProvider.openaiAccount,
       stream: context.stream,
       useVision: context.params.aiChatVision,

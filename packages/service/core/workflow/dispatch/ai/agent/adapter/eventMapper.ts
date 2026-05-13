@@ -28,6 +28,7 @@ export const createWorkflowAgentLoopEventMapper = ({
   internalToolNames,
   updatePlanToolName,
   askToolName,
+  showReasoning = true,
   assistantResponses = []
 }: {
   workflowStreamResponse?: WorkflowResponseType;
@@ -35,6 +36,7 @@ export const createWorkflowAgentLoopEventMapper = ({
   internalToolNames: Set<string>;
   updatePlanToolName?: string;
   askToolName?: string;
+  showReasoning?: boolean;
   assistantResponses?: AIChatItemValueItemType[];
 }) => {
   const toolNameByCallId = new Map<string, string>();
@@ -296,6 +298,8 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'reasoning_delta': {
+        if (!showReasoning) return;
+
         workflowStreamResponse?.({
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({

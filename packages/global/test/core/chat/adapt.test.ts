@@ -142,6 +142,22 @@ describe('mergeAssistantFieldMessages', () => {
     ]);
   });
 
+  it('should not merge assistant messages with different hideInUI visibility', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning.',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer.'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual(messages);
+  });
+
   it('should keep DeepSeek reasoning on tool call message when there is no answer text', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -750,6 +766,41 @@ describe('chats2GPTMessages', () => {
     const result = chats2GPTMessages({ messages, reserveId: false });
 
     expect((result[0] as any).hideInUI).toBe(true);
+  });
+
+  it('should preserve AI value-level hideInUI property', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            reasoning: {
+              content: 'Hidden reasoning'
+            },
+            hideInUI: true
+          },
+          {
+            text: {
+              content: 'Visible answer'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer'
+      }
+    ]);
   });
 
   it('should handle interactive agentPlanAskQuery', () => {
@@ -1524,6 +1575,40 @@ describe('GPTMessages2Chats', () => {
     const result = GPTMessages2Chats({ messages });
 
     expect((result[0] as any).hideInUI).toBe(true);
+  });
+
+  it('should restore assistant hideInUI to value level without hiding the whole AI chat', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        dataId: 'assistant-data-id',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning',
+        hideInUI: true
+      },
+      {
+        dataId: 'assistant-data-id',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer'
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].hideInUI).toBeUndefined();
+    expect(result[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Hidden reasoning'
+        },
+        hideInUI: true
+      },
+      {
+        text: {
+          content: 'Visible answer'
+        }
+      }
+    ]);
   });
 
   it('should use getToolInfo callback when provided', () => {

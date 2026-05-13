@@ -20,6 +20,7 @@ import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/cons
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { formatFileInput } from './sub/file/utils';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import {
   normalizeSkillIds,
   type SelectedAgentSkillItemType
@@ -50,6 +51,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
@@ -124,7 +127,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       skills: skillIds = [],
       useEditDebugSandbox,
       agent_datasetParams: datasetParams,
-      useAgentSandbox = false
+      useAgentSandbox = false,
+      aiChatReasoning
     }
   } = props;
   let fileLinks = props.params.fileUrlList;
@@ -351,7 +355,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       assistantResponses.push({
         reasoning: {
           content: result.reasoningText
-        }
+        },
+        ...(aiChatReasoning === false ? { hideInUI: true } : {})
       });
     }
 

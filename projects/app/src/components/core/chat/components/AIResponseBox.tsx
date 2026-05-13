@@ -628,6 +628,8 @@ const AIResponseBox = ({
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
 
+  if (value.hideInUI) return null;
+
   const responseBlocks: React.ReactNode[] = [];
 
   if ('reasoning' in value && value.reasoning) {

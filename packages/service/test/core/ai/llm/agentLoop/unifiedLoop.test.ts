@@ -131,6 +131,31 @@ describe('runUnifiedAgentLoop', () => {
     );
   });
 
+  it('passes reasoning effort to the LLM request body', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_reasoning_effort',
+        content: 'direct answer'
+      })
+    ]);
+
+    await runUnifiedAgentLoop({
+      runtime: createRuntime({
+        reasoningEffort: 'high'
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      }
+    });
+
+    expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
+  });
+
   it('uses update_plan and stop gate feedback in one main loop', async () => {
     const events: unknown[] = [];
 

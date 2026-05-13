@@ -78,6 +78,11 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
     message?.role === ChatCompletionRequestMessageRoleEnum.Tool &&
     toolCallIds.has(message.tool_call_id || '');
 
+  const hasSameVisibility = (
+    message: ChatCompletionMessageParam | undefined,
+    assistantMessage: ChatCompletionMessageParam
+  ) => (message?.hideInUI ?? false) === (assistantMessage.hideInUI ?? false);
+
   const mergedMessages: ChatCompletionMessageParam[] = [];
 
   for (let index = 0; index < messages.length; index++) {
@@ -92,6 +97,8 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
 
     while (isAssistantFieldMessage(messages[cursor])) {
       const nextMessage = messages[cursor];
+      if (!hasSameVisibility(nextMessage, assistantMessage)) break;
+
       const nextReasoning =
         typeof nextMessage.reasoning_content === 'string' ? nextMessage.reasoning_content : '';
       const nextContent = typeof nextMessage.content === 'string' ? nextMessage.content : '';
@@ -124,6 +131,8 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
 
     let assistantToolMessage: ChatCompletionMessageParam | undefined = messages[cursor];
     while (isAssistantToolCallMessage(assistantToolMessage)) {
+      if (!hasSameVisibility(assistantToolMessage, assistantMessage)) break;
+
       const currentToolCalls = assistantToolMessage.tool_calls;
       const currentToolCallIds = new Set(currentToolCalls.map((toolCall) => toolCall.id));
       const currentToolResponses: ChatCompletionMessageParam[] = [];
@@ -290,13 +299,15 @@ export const chats2GPTMessages = ({
         functionName,
         params,
         assistantText,
-        reasoningText
+        reasoningText,
+        hideInUI
       }: {
         id: string;
         functionName: string;
         params: string;
         assistantText?: string;
         reasoningText?: string;
+        hideInUI?: boolean;
       }) => {
         const normalizedToolContext = normalizeChatToolContext({
           id,
@@ -305,8 +316,8 @@ export const chats2GPTMessages = ({
           response: ''
         });
 
-        if (reasoningText) appendAssistantReasoning(reasoningText);
-        if (assistantText) appendAssistantText(assistantText);
+        if (reasoningText) appendAssistantReasoning(reasoningText, hideInUI);
+        if (assistantText) appendAssistantText(assistantText, hideInUI);
         if (!normalizedToolContext) {
           return false;
         }
@@ -314,25 +325,28 @@ export const chats2GPTMessages = ({
         aiResults.push({
           dataId,
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
           tool_calls: [normalizedToolContext.toolCall]
         });
         return normalizedToolContext;
       };
 
-      const appendAssistantReasoning = (content: string) => {
+      const appendAssistantReasoning = (content: string, hideInUI?: boolean) => {
         aiResults.push({
           dataId,
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
           reasoning_content: content
         });
       };
 
-      const appendAssistantText = (content: string) => {
+      const appendAssistantText = (content: string, hideInUI?: boolean) => {
         if (!content && item.value.length > 1) return;
 
         aiResults.push({
           dataId,
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
           content
         });
       };
@@ -354,7 +368,8 @@ export const chats2GPTMessages = ({
             functionName: value.agentPlanUpdate.functionName,
             params: value.agentPlanUpdate.params,
             assistantText: value.agentPlanUpdate.assistantText,
-            reasoningText: value.agentPlanUpdate.reasoningText
+            reasoningText: value.agentPlanUpdate.reasoningText,
+            hideInUI: value.hideInUI
           });
           if (appendedToolCall && typeof value.agentPlanUpdate.response === 'string') {
             appendToolMessage({
@@ -371,7 +386,8 @@ export const chats2GPTMessages = ({
             functionName: value.agentAsk.functionName,
             params: value.agentAsk.params,
             assistantText: value.agentAsk.assistantText,
-            reasoningText: value.agentAsk.reasoningText
+            reasoningText: value.agentAsk.reasoningText,
+            hideInUI: value.hideInUI
           });
           const answer = value.agentAsk.planId
             ? agentAskAnswerMap.get(value.agentAsk.planId)
@@ -387,9 +403,9 @@ export const chats2GPTMessages = ({
         // Stop tool
         if (reserveTool && value.agentStopGate) {
           if (value.agentStopGate.reasoningText)
-            appendAssistantReasoning(value.agentStopGate.reasoningText);
+            appendAssistantReasoning(value.agentStopGate.reasoningText, value.hideInUI);
           if (value.agentStopGate.assistantText)
-            appendAssistantText(value.agentStopGate.assistantText);
+            appendAssistantText(value.agentStopGate.assistantText, value.hideInUI);
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.User,
@@ -398,11 +414,11 @@ export const chats2GPTMessages = ({
         }
 
         if (typeof value.reasoning?.content === 'string') {
-          appendAssistantReasoning(value.reasoning.content);
+          appendAssistantReasoning(value.reasoning.content, value.hideInUI);
         }
 
         if (typeof value.text?.content === 'string') {
-          appendAssistantText(value.text.content);
+          appendAssistantText(value.text.content, value.hideInUI);
         }
 
         const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
@@ -421,6 +437,7 @@ export const chats2GPTMessages = ({
             const assistantMessage: ChatCompletionMessageParam = {
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              ...(value.hideInUI ? { hideInUI: value.hideInUI } : {}),
               tool_calls
             };
 
@@ -535,12 +552,14 @@ export const GPTMessages2Chats = ({
         item.role === ChatCompletionRequestMessageRoleEnum.Assistant
       ) {
         const value: AIChatItemValueItemType[] = [];
+        const valueVisibility = item.hideInUI ? { hideInUI: item.hideInUI } : {};
 
         if (typeof item.reasoning_content === 'string' && item.reasoning_content && reserveReason) {
           value.push({
             reasoning: {
               content: item.reasoning_content
-            }
+            },
+            ...valueVisibility
           });
         }
         if (typeof item.content === 'string' && item.content) {
@@ -551,7 +570,8 @@ export const GPTMessages2Chats = ({
             value.push({
               text: {
                 content: item.content
-              }
+              },
+              ...valueVisibility
             });
           }
         }
@@ -583,7 +603,8 @@ export const GPTMessages2Chats = ({
             ];
           });
           value.push({
-            tools
+            tools,
+            ...valueVisibility
           });
         }
         if (item.function_call && reserveTool) {
@@ -603,20 +624,21 @@ export const GPTMessages2Chats = ({
                 functionName: functionCall.name,
                 params: functionCall.arguments,
                 response: functionResponse.content || ''
-              }
+              },
+              ...valueVisibility
             });
           }
         }
         if (item.interactive) {
           value.push({
-            interactive: item.interactive
+            interactive: item.interactive,
+            ...valueVisibility
           });
         }
 
         return {
           dataId: item.dataId,
           obj,
-          hideInUI: item.hideInUI,
           value
         };
       }

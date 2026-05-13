@@ -218,6 +218,9 @@ const ChatItem = (props: Props) => {
     if (chat.obj === ChatRoleEnum.AI) {
       // Remove empty text node
       const filterList = chat.value.filter((item, i) => {
+        if (item.hideInUI) {
+          return false;
+        }
         if (item.text && !item.text.content?.trim()) {
           return false;
         }

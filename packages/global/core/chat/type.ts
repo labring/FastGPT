@@ -219,7 +219,8 @@ export const AIChatItemValueSchema = z.object({
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
   agentStopGate: AgentLoopStopGateSchema.nullish(),
-  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true })
+  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
+  hideInUI: z.boolean().optional()
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

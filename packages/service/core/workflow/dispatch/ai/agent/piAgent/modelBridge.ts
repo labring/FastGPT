@@ -1,10 +1,35 @@
+import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import { getLLMModel } from '../../../../../ai/model';
 import { openaiBaseUrl, openaiBaseKey } from '../../../../../ai/config';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
 const normalizeBaseUrl = (url?: string) => (url ? url.replace(/\/chat\/completions$/, '') : '');
+const supportedThinkingLevels = new Set<ThinkingLevel>([
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh'
+]);
+
+export function getPiThinkingLevel(
+  modelNameOrId?: string,
+  reasoningEffort?: ReasoningEffort
+): ThinkingLevel {
+  const cfg = getLLMModel(modelNameOrId);
+  if (!cfg?.reasoning || !cfg.reasoningEffort || reasoningEffort === 'none') {
+    return 'off';
+  }
+
+  if (reasoningEffort && supportedThinkingLevels.has(reasoningEffort as ThinkingLevel)) {
+    return reasoningEffort as ThinkingLevel;
+  }
+
+  return 'medium';
+}
 
 export function buildPiModel(
   modelNameOrId?: string,
@@ -36,6 +61,7 @@ export function buildPiModel(
     compat: {
       supportsDeveloperRole: false,
       supportsStore: false,
+      supportsReasoningEffort: cfg?.reasoningEffort ?? false,
       maxTokensField: 'max_tokens'
     }
   };
