@@ -102,7 +102,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     () => [
       { label: t('app:type.All'), value: 'all' },
       { label: t('app:smart_qa'), value: AppTypeEnum.assistant },
-      { label: t('app:type.Chat_Agent_v2'), value: AppTypeEnum.chatAgent },
+      // { label: t('app:type.Chat_Agent_v2'), value: AppTypeEnum.chatAgent }, // TODO: 暂时隐藏 Agent 应用类型 Tab
       { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow }
     ],
     [t]
@@ -207,12 +207,13 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                             description: t('app:smart_qa_desc'),
                             onClick: () => setCreateAppType(AppTypeEnum.assistant)
                           },
-                          {
-                            icon: 'core/app/type/agentFill',
-                            label: t('app:type.Chat_Agent_v2'),
-                            description: t('app:chat_agent_description'),
-                            onClick: () => setCreateAppType(AppTypeEnum.chatAgent)
-                          },
+                          // TODO: 暂时隐藏新建 Agent 应用入口
+                          // {
+                          //   icon: 'core/app/type/agentFill',
+                          //   label: t('app:type.Chat_Agent_v2'),
+                          //   description: t('app:chat_agent_description'),
+                          //   onClick: () => setCreateAppType(AppTypeEnum.chatAgent)
+                          // },
                           {
                             icon: 'core/app/type/workflowFill',
                             label: t('app:type.Workflow bot'),

@@ -69,7 +69,9 @@ function PermissionManage({
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const showSkill = !!feConfigs?.show_skill;
+  // TODO: 暂时隐藏 Skill 权限列，恢复时改回 `!!feConfigs?.show_skill`
+  // const showSkill = !!feConfigs?.show_skill;
+  const showSkill = false;
 
   const collaboratorList = useContextSelector(
     CollaboratorContext,
