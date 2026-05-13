@@ -73,6 +73,11 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { cloneDeep } from 'lodash';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  getChatScrollTargetKey,
+  shouldFollowGeneratingScroll,
+  shouldForceScrollAfterRecordsLoaded
+} from './scrollUtils';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -156,6 +161,7 @@ const ChatBox = ({
   const pluginController = useRef(new AbortController());
   const resumeController = useRef<AbortController>();
   const resumedChatTargetRef = useRef<string>();
+  const lastRecordsLoadedScrollTargetRef = useRef<string>();
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -185,6 +191,10 @@ const ChatBox = ({
   activeAppIdRef.current = appId;
   const activeChatIdRef = useRef<string | undefined>(chatId);
   activeChatIdRef.current = chatId;
+  const chatScrollTargetKey = useMemo(
+    () => getChatScrollTargetKey({ appId, chatId }),
+    [appId, chatId]
+  );
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
@@ -325,11 +335,14 @@ const ChatBox = ({
   const { run: generatingScroll } = useThrottleFn(
     (force?: boolean) => {
       if (!ScrollContainerRef.current) return;
-      const isBottom =
-        ScrollContainerRef.current.scrollTop + ScrollContainerRef.current.clientHeight + 150 >=
-        ScrollContainerRef.current.scrollHeight;
+      const isBottom = shouldFollowGeneratingScroll({
+        scrollTop: ScrollContainerRef.current.scrollTop,
+        clientHeight: ScrollContainerRef.current.clientHeight,
+        scrollHeight: ScrollContainerRef.current.scrollHeight,
+        force
+      });
 
-      if (isBottom || force) {
+      if (isBottom) {
         scrollToBottom('auto');
       }
     },
@@ -1274,6 +1287,21 @@ const ChatBox = ({
 
   useEffect(() => {
     if (
+      !shouldForceScrollAfterRecordsLoaded({
+        isChatRecordsLoaded,
+        targetKey: chatScrollTargetKey,
+        lastScrolledTargetKey: lastRecordsLoadedScrollTargetRef.current
+      })
+    ) {
+      return;
+    }
+
+    lastRecordsLoadedScrollTargetRef.current = chatScrollTargetKey;
+    scrollToBottom('auto');
+  }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
+
+  useEffect(() => {
+    if (
       !enableAutoResume ||
       !isReady ||
       !isChatRecordsLoaded ||
@@ -1296,6 +1324,7 @@ const ChatBox = ({
     const controller = new AbortController();
     resumeController.current = controller;
     scrollToBottom('auto');
+    scrollToBottom('auto', 100);
     let resumeFinalStatus = ChatGenerateStatusEnum.done;
     let hasPreparedResumeAiRecord = false;
 
@@ -1337,6 +1366,8 @@ const ChatBox = ({
               status: ChatStatusEnum.finish
             }))
           );
+          scrollToBottom('auto');
+          scrollToBottom('auto', 100);
           return;
         }
 
@@ -1380,6 +1411,7 @@ const ChatBox = ({
 
           return next;
         });
+        scrollToBottom('auto');
       } catch (error) {
         if (controller.signal.aborted) return;
         if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
@@ -1417,6 +1449,7 @@ const ChatBox = ({
 
           return next;
         });
+        scrollToBottom('auto');
 
         if (isStreamError) {
           toast({
@@ -1452,6 +1485,7 @@ const ChatBox = ({
         );
 
         if (finishedInActiveChat) {
+          scrollToBottom('auto', 100);
           void postMarkChatRead({
             appId: resumeForAppId,
             chatId: resumeForChatId,
