@@ -20,6 +20,9 @@ import {
   mirrorChatStream,
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
+  getStreamResumeActiveState,
+  isStreamResumeActiveStale,
+  STREAM_RESUME_INACTIVE_MS,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
   STREAM_RESUME_TTL_SECONDS,
@@ -763,6 +766,7 @@ describe('stream resume helpers', () => {
 
       expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
       expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
+      expect(redis.del).toHaveBeenCalledWith(keys.keyOfActive);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
         'XADD',
@@ -782,12 +786,22 @@ describe('stream resume helpers', () => {
 
       expect(redis.expire).toHaveBeenCalledWith(keys.keyOfStream, STREAM_RESUME_TTL_SECONDS);
       expect(redis.expire).toHaveBeenCalledTimes(1);
+      expect(redis.set).toHaveBeenCalledWith(
+        keys.keyOfActive,
+        expect.stringMatching(/^\{"updatedAt":\d+\}$/),
+        'EX',
+        STREAM_RESUME_TTL_SECONDS
+      );
+      expect(await getStreamResumeActiveState({ teamId, appId, chatId })).toEqual({
+        updatedAt: expect.any(Number)
+      });
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
       await mirror.enqueueRaw('event: done\ndata: [DONE]\n\n');
       await mirror.flush();
 
       expect(redis.expire).toHaveBeenCalledTimes(2);
+      expect(redis.set).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
@@ -805,7 +819,11 @@ describe('stream resume helpers', () => {
       keys.keyOfStream,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
-    expect(redis.expire).toHaveBeenCalledTimes(1);
+    expect(redis.expire).toHaveBeenCalledWith(
+      keys.keyOfActive,
+      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+    );
+    expect(redis.expire).toHaveBeenCalledTimes(2);
   });
 
   it('should clear old redis mirror when mirror starts (before first chunk)', async () => {
@@ -828,6 +846,13 @@ describe('stream resume helpers', () => {
     await mirror.flush();
 
     expect(redis.del).toHaveBeenCalledWith(keyOfStream);
+    expect(redis.del).toHaveBeenCalledWith(
+      getStreamResumeRedisKeys({
+        teamId,
+        appId,
+        chatId
+      }).keyOfActive
+    );
     expect(await redis.get(keyOfStream)).toBeFalsy();
   });
 
@@ -851,6 +876,7 @@ describe('stream resume helpers', () => {
 
     expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
     expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
+    expect(redis.del).toHaveBeenCalledWith(keys.keyOfActive);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
@@ -905,5 +931,27 @@ describe('stream resume helpers', () => {
   it('should parse truthy stream resume request headers', () => {
     expect(isStreamResumeMirrorRequested('YES')).toBe(true);
     expect(isStreamResumeMirrorRequested('0')).toBe(false);
+  });
+
+  it('should detect stale stream resume activity states', () => {
+    const now = Date.now();
+
+    expect(isStreamResumeActiveStale(undefined, now)).toBe(true);
+    expect(
+      isStreamResumeActiveStale(
+        {
+          updatedAt: now - STREAM_RESUME_INACTIVE_MS + 1
+        },
+        now
+      )
+    ).toBe(false);
+    expect(
+      isStreamResumeActiveStale(
+        {
+          updatedAt: now - STREAM_RESUME_INACTIVE_MS - 1
+        },
+        now
+      )
+    ).toBe(true);
   });
 });
