@@ -734,7 +734,6 @@
   "hide_tags_desc": "擁有以下標籤的用戶將完全看不到此模板",
   "select_user_tag": "選擇用戶標籤",
   "toolkit_config_moved": "相關功能配置已移至前台，",
-  "toolkit_config_moved_desc": "您可在前台登陸root賬號，進行工具配置~",
   "model_sensitive_check": "模型敏感審查",
   "baidu_sensitive_check": "百度敏感校驗",
   "domain_security": "域名安全",
@@ -742,5 +741,15 @@
   "model_security_review": "模型安全審查",
   "api_security_review": "介面安全審查",
   "file_url_whitelist": "文件URL白名單",
-  "file_url_whitelist_desc": "未配置，則認為全部鏈接可用。已配置，則認為白名單內的鏈接可用。暫時僅對對話接口生效，每行填寫一個。例如:\nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io"
+  "file_url_whitelist_desc": "未配置，則認為全部鏈接可用。已配置，則認為白名單內的鏈接可用。暫時僅對對話接口生效，每行填寫一個。例如:\nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io",
+  "toolkit_config_moved_desc": "您可在前台登陸root賬號，進行工具配置~",
+  "wecom_login": "企微登入",
+  "email_smtp_port": "郵箱服務SMTP端口",
+  "email_smtp_port_desc": "常用端口:\n465: SSL/TLS (secure: 開)\n587: STARTTLS (secure: 關)\n25: 明文 (不推薦)",
+  "email_enable_ssl": "啟用 SSL/TLS (Secure)",
+  "email_enable_ssl_desc": "465端口通常開啟，587端口通常關閉(使用STARTTLS)",
+  "points_thirty_percent_remain_notify": "積分不足30%通知",
+  "points_ten_percent_remain_notify": "積分不足10%通知",
+  "lack_of_points_notify": "積分不足通知",
+  "points_insufficient_notify": "積分不足通知"
 }

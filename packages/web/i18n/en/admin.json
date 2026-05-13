@@ -734,7 +734,6 @@
   "hide_tags_desc": "Users with the following tags will not see this template at all",
   "select_user_tag": "Select user tag",
   "toolkit_config_moved": "The relevant configuration has been moved to the frontend.",
-  "toolkit_config_moved_desc": "You can log in to the frontend with the root account to configure tools.",
   "model_sensitive_check": "Model Sensitive Check",
   "baidu_sensitive_check": "Baidu Sensitive Check",
   "domain_security": "Domain Security",
@@ -742,5 +741,15 @@
   "model_security_review": "Model Security Review",
   "api_security_review": "API Security Review",
   "file_url_whitelist": "File URL Whitelist",
-  "file_url_whitelist_desc": "If not configured, all links are available. If configured, only whitelisted links are available. Currently only effective for conversation APIs. Fill in one per line. Example:\nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io"
+  "file_url_whitelist_desc": "If not configured, all links are available. If configured, only whitelisted links are available. Currently only effective for conversation APIs. Fill in one per line. Example:\nfastgpt.cn\ncloud.fastgpt.cn\ncloud.sealos.io",
+  "toolkit_config_moved_desc": "You can log in to the frontend with the root account to configure tools.",
+  "wecom_login": "WeCom Login",
+  "email_smtp_port": "SMTP Port",
+  "email_smtp_port_desc": "Common ports:\n465: SSL/TLS (secure: on)\n587: STARTTLS (secure: off)\n25: Plain text (not recommended)",
+  "email_enable_ssl": "Enable SSL/TLS (Secure)",
+  "email_enable_ssl_desc": "Port 465 is usually on, port 587 is usually off (using STARTTLS)",
+  "points_thirty_percent_remain_notify": "Points Below 30% Notification",
+  "points_ten_percent_remain_notify": "Points Below 10% Notification",
+  "lack_of_points_notify": "Points Insufficient Notification",
+  "points_insufficient_notify": "Points Insufficient Notification"
 }
