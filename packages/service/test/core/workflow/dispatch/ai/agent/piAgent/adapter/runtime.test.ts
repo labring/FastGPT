@@ -4,6 +4,7 @@ import {
   createPiAgentWorkflowRuntime,
   normalizePiAgentMessages
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent/adapter/runtime';
+import { filterFailedAgentNodeResponses } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/nodeResponses';
 
 const createProps = (overrides = {}) =>
   ({
@@ -284,5 +285,59 @@ describe('PiAgent workflow runtime', () => {
       }
     ]);
     expect(messages[0].content).toHaveLength(2);
+  });
+
+  it('keeps only the meaningful agent failure response after filtering failed runs', () => {
+    const nodeResponses: any[] = [];
+    const saveLLMRequestRecordFn = vi.fn();
+    const runtime = createPiAgentWorkflowRuntime({
+      props: createProps(),
+      nodeResponses,
+      usagePush: vi.fn(),
+      saveLLMRequestRecordFn
+    });
+
+    runtime.onPayload({ messages: ['empty start'] }, { name: 'GPT-4' } as any);
+    runtime.handleAgentEvent({
+      type: 'message_end',
+      message: {
+        role: 'assistant',
+        content: [],
+        usage,
+        stopReason: 'stop'
+      }
+    } as any);
+
+    runtime.onPayload({ messages: ['failed request'] }, { name: 'GPT-4' } as any);
+    runtime.appendPendingAgentError('provider failed');
+
+    runtime.onPayload({ messages: ['empty end'] }, { name: 'GPT-4' } as any);
+    runtime.handleAgentEvent({
+      type: 'message_end',
+      message: {
+        role: 'assistant',
+        content: [],
+        usage,
+        stopReason: 'aborted'
+      }
+    } as any);
+
+    expect(nodeResponses).toHaveLength(3);
+    expect(filterFailedAgentNodeResponses(nodeResponses)).toEqual([
+      expect.objectContaining({
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'error',
+        errorText: 'provider failed',
+        llmRequestIds: [expect.any(String)]
+      })
+    ]);
+    expect(saveLLMRequestRecordFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          finish_reason: 'error',
+          error: 'provider failed'
+        })
+      })
+    );
   });
 });

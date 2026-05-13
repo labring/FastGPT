@@ -23,7 +23,7 @@ flowchart TD
   F -- "no tool call" --> K{"local stop gate"}
   K -- "reject" --> L["append feedback"]
   L --> E
-  K -- "allow" --> M["stream final answer"]
+  K -- "allow" --> M["keep final answer"]
 ```
 
 ## 核心模块
@@ -128,6 +128,8 @@ Stop gate 是本地同步校验，不再额外请求 LLM verifier。
 
 拒绝时，stop gate 会把反馈作为新消息追加给模型，例如要求补充计划、更新 step 或记录工具证据，然后继续同一个 loop。
 
+模型的 answer/reasoning delta 始终实时透传给前端，包括之后被 stop gate 打回的草稿输出。stop gate 只影响最终保留到 `assistantMessages` 里的 answer，不做 `answer_delta` 缓存、撤回或最终统一推送。
+
 ## Prompt 设计
 
 Main Agent prompt 只保留一个角色，不再出现 Router、Plan Creator、Executor、Reviser 等多重角色。
@@ -165,7 +167,7 @@ Prompt 回归要求：
 | `plan_update` | upsert `assistantResponses[].plan` |
 | runtime `tool_call/tool_params/tool_response` | 写入 `assistantResponses[].tools` 并展示工具卡 |
 | thinking delta | 写入 thinking，刷新后可恢复 |
-| answer delta | 写入最终 answer，保持流式输出 |
+| answer delta | 实时写入前端过程流；stop gate 拒绝的草稿不进入最终持久化 answer |
 | `llm_request_end` | 写入 nodeResponse，包含 model、tokens、finishReason、requestId |
 | ask | 写入 interactive ask，并保存 pendingMainContext |
 

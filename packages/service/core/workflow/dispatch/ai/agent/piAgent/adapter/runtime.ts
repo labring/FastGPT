@@ -260,6 +260,7 @@ export type PiAgentWorkflowRuntimeArtifacts = {
   getAnswerText: () => string;
   getReasoningText: () => string;
   appendChildNodeResponse: (nodeResponse: ChatHistoryItemResType) => void;
+  appendPendingAgentError: (error: unknown) => void;
   onPayload: (payload: unknown, model: Model<any>) => undefined;
   handleAgentEvent: (event: AgentEvent) => void;
 };
@@ -326,7 +327,9 @@ export const createPiAgentWorkflowRuntime = ({
           outputTokens
         }).totalPoints;
     const finishReason = mapStopReason(message.stopReason);
-    const errorText = message.errorMessage;
+    const errorText =
+      message.errorMessage ||
+      (finishReason === 'error' ? i18nT('chat:completion_finish_error') : undefined);
     const seconds = +((Date.now() - request.startTime) / 1000).toFixed(2);
 
     const usage: ChatNodeUsageType = {
@@ -379,6 +382,23 @@ export const createPiAgentWorkflowRuntime = ({
     getAnswerText: () => answerText,
     getReasoningText: () => reasoningText,
     appendChildNodeResponse,
+    appendPendingAgentError: (error) => {
+      const request = pendingRequests.shift();
+      if (!request) return;
+
+      appendAgentNodeResponse({
+        request,
+        message: {
+          role: 'assistant',
+          content: [],
+          stopReason: 'error',
+          errorMessage: getErrText(error)
+        } as unknown as AssistantMessage,
+        answerText: '',
+        reasoningText: '',
+        toolCalls: []
+      });
+    },
     onPayload: (payload, model) => {
       const request: PendingRequest = {
         requestId: createLLMRequestId(),

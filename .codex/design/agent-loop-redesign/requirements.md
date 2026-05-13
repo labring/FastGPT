@@ -66,8 +66,9 @@ AgentV2 早期方案包含多层 agent、`stepCall`、`continue plan`、独立 s
 ### 流式输出
 
 - plan 生成期间不能让用户长时间无反馈。
-- stop gate 放行前，草稿 final 不应流给前端。
-- stop gate 放行后，最终 answer 需要按 chunk 流式输出，不能结束时一次性吐出。
+- 模型输出过程需要实时透传给前端，包括 stop gate 最终拒绝的草稿 answer。
+- stop gate 只影响最终可持久化的 answer，不负责缓存、撤回或延迟推送 `answer_delta`。
+- 前端看到的是模型执行过程流；刷新恢复时只恢复最终保留在 assistantMessages 中的 answer。
 
 ### 运行详情
 
@@ -93,7 +94,7 @@ AgentV2 早期方案包含多层 agent、`stepCall`、`continue plan`、独立 s
 | A11 | replace_plan | 保留当前 planId，不重复生成 plan 卡；保留已完成证据 | 已通过 |
 | A12 | runtime 工具冲突 | runtime tool 同名 `ask_agent/update_plan` 会被过滤 | 已通过 |
 | A13 | SSE plan loading | update_plan 开始前出现 plan skeleton，成功后替换为 plan card | 已通过 |
-| A14 | SSE answer 流式 | stop gate 放行前不流草稿，最终 answer 按 chunk 输出 | 已通过 |
+| A14 | SSE answer 流式 | stop gate 拒绝的草稿和最终 answer 都按过程实时透传，刷新后只恢复最终 answer | 已通过 |
 | A15 | responseNode | 主链路 LLM request 写入 nodeResponse，包含 tokens 和 requestId | 已通过 |
 | A16 | records 恢复 | plan、toolcall、thinking、answer 刷新后可恢复 | 已通过 |
 | A17 | 旧 stepCall | 新链路不写旧 stepCall 字段，前端不依赖旧 UI | 已通过 |

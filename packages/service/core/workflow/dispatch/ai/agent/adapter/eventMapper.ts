@@ -181,6 +181,43 @@ export const createWorkflowAgentLoopEventMapper = ({
     };
   };
 
+  const insertAssistantTextBeforeRuntimeTools = ({
+    toolCalls,
+    assistantText,
+    reasoningText
+  }: {
+    toolCalls: NonNullable<Extract<AgentLoopEvent, { type: 'llm_request_end' }>['toolCalls']>;
+    assistantText?: string;
+    reasoningText?: string;
+  }) => {
+    const runtimeToolCalls = toolCalls.filter((call) => {
+      const functionName = call.function.name;
+      return (
+        functionName &&
+        !isUpdatePlanTool(functionName) &&
+        !isAskTool(functionName) &&
+        !isInternalTool(functionName, internalToolNames)
+      );
+    });
+    if (!runtimeToolCalls.length || (!assistantText && !reasoningText)) return;
+
+    const runtimeToolCallIds = new Set(runtimeToolCalls.map((call) => call.id));
+    const existingIndexes = assistantResponses
+      .map((item, index) =>
+        item.tools?.some((tool) => runtimeToolCallIds.has(tool.id)) ? index : -1
+      )
+      .filter((index) => index >= 0);
+    const insertIndex = existingIndexes.length
+      ? Math.min(...existingIndexes)
+      : assistantResponses.length;
+
+    const assistantValue: AIChatItemValueItemType = {
+      ...(assistantText ? { text: { content: assistantText } } : {}),
+      ...(reasoningText ? { reasoning: { content: reasoningText } } : {})
+    };
+    assistantResponses.splice(insertIndex, 0, assistantValue);
+  };
+
   const applyToolParams = ({ callId, argsDelta }: { callId: string; argsDelta: string }) => {
     const functionName = toolNameByCallId.get(callId);
     if (isUpdatePlanTool(functionName)) {
@@ -294,6 +331,13 @@ export const createWorkflowAgentLoopEventMapper = ({
             }));
           }
         });
+        if (event.toolCalls?.length) {
+          insertAssistantTextBeforeRuntimeTools({
+            toolCalls: event.toolCalls,
+            assistantText: event.answerText,
+            reasoningText: event.reasoningText
+          });
+        }
         return;
       }
       case 'child_llm_request_end':

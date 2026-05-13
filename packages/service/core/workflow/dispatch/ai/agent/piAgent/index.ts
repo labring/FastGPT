@@ -25,6 +25,7 @@ import {
   normalizePiAgentMessages,
   type PiAgentWorkflowRuntimeArtifacts
 } from './adapter/runtime';
+import { filterFailedAgentNodeResponses } from '../adapter/nodeResponses';
 import { buildPiModel, getModelApiKey } from './modelBridge';
 import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 
@@ -297,6 +298,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     const answerText = appendFinalAssistantResponses();
     const errorText = getErrText(error);
+    piRuntime?.appendPendingAgentError(errorText);
     const memories = agent
       ? {
           [piMessagesKey]: agent.state.messages
@@ -319,7 +321,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           }
         : {}),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: filterFailedAgentNodeResponses(nodeResponses)
     };
   } finally {
     if (stopPoller) clearInterval(stopPoller);

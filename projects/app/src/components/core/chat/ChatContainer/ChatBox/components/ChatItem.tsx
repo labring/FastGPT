@@ -118,18 +118,9 @@ const AIContentCard = React.memo(function AIContentCard({
         return (
           <Box
             key={key}
-            _notFirst={
-              value.stepId
-                ? {
-                    pb: 2,
-                    pl: 4,
-                    borderLeft: '4px solid',
-                    borderLeftColor: 'myGray.200'
-                  }
-                : {
-                    mt: 2
-                  }
-            }
+            _notFirst={{
+              mt: 2
+            }}
           >
             <AIResponseBox
               chatItemDataId={dataId}

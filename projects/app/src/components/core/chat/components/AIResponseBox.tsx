@@ -628,9 +628,24 @@ const AIResponseBox = ({
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
 
+  const responseBlocks: React.ReactNode[] = [];
+
+  if ('reasoning' in value && value.reasoning) {
+    responseBlocks.push(
+      <RenderResoningContent
+        key="reasoning"
+        isChatting={isChatting}
+        isLastResponseValue={isLastResponseValue}
+        content={value.reasoning.content}
+        isDisabled={disableStreamingInteraction}
+      />
+    );
+  }
+
   if ('text' in value && value.text) {
-    return (
+    responseBlocks.push(
       <RenderText
+        key="text"
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
         text={value.text.content}
@@ -639,50 +654,77 @@ const AIResponseBox = ({
       />
     );
   }
-  if ('reasoning' in value && value.reasoning) {
-    return (
-      <RenderResoningContent
-        isChatting={isChatting}
-        isLastResponseValue={isLastResponseValue}
-        content={value.reasoning.content}
-        isDisabled={disableStreamingInteraction}
-      />
+
+  if (tools && showRunningStatus) {
+    responseBlocks.push(
+      <Box key="tools">
+        {tools.map((tool) => (
+          <Box key={tool.id} _notLast={{ mb: 2 }}>
+            <RenderTool showAnimation={isChatting} tool={tool} />
+          </Box>
+        ))}
+      </Box>
     );
   }
-  if (tools && showRunningStatus) {
-    return tools.map((tool) => (
-      <Box key={tool.id} _notLast={{ mb: 2 }}>
-        <RenderTool showAnimation={isChatting} tool={tool} />
-      </Box>
-    ));
-  }
   if (skills && showSkillReferences && showRunningStatus) {
-    return skills.map((skill) => (
-      <Box key={skill.id} _notLast={{ mb: 2 }}>
-        <RenderSkill skill={skill} />
+    responseBlocks.push(
+      <Box key="skills">
+        {skills.map((skill) => (
+          <Box key={skill.id} _notLast={{ mb: 2 }}>
+            <RenderSkill skill={skill} />
+          </Box>
+        ))}
       </Box>
-    ));
+    );
   }
   if ('interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);
     if (interactive.type === 'userSelect') {
-      return <RenderUserSelectInteractive interactive={interactive} />;
+      responseBlocks.push(
+        <RenderUserSelectInteractive key="interactive" interactive={interactive} />
+      );
     }
     if (interactive.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={interactive} isLastChild={isLastChild} />;
+      responseBlocks.push(
+        <RenderUserFormInteractive
+          key="interactive"
+          interactive={interactive}
+          isLastChild={isLastChild}
+        />
+      );
     }
     if (interactive.type === 'agentPlanAskQuery') {
-      return <RenderAgentPlanAskInteractive interactive={interactive} isLastChild={isLastChild} />;
+      responseBlocks.push(
+        <RenderAgentPlanAskInteractive
+          key="interactive"
+          interactive={interactive}
+          isLastChild={isLastChild}
+        />
+      );
     }
     if (interactive.type === 'paymentPause') {
-      return <RenderPaymentPauseInteractive interactive={interactive} />;
+      responseBlocks.push(
+        <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
+      );
     }
   }
   if ('plan' in value && value.plan) {
-    return <RenderPlan plan={value.plan} />;
+    responseBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
   }
   if ('planStatus' in value && value.planStatus) {
-    return <RenderPlanStatus planStatus={value.planStatus} />;
+    responseBlocks.push(<RenderPlanStatus key="planStatus" planStatus={value.planStatus} />);
+  }
+
+  if (responseBlocks.length === 1) {
+    return responseBlocks[0];
+  }
+
+  if (responseBlocks.length > 1) {
+    return (
+      <Flex flexDirection={'column'} gap={2}>
+        {responseBlocks}
+      </Flex>
+    );
   }
 
   return null;

@@ -33,6 +33,7 @@ import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { createLLMRequestId, saveLLMRequestRecord } from '../record/controller';
 import type { ToolCallEventType } from './toolCall/type';
+import { isDevEnv } from '@fastgpt/global/common/system/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -69,6 +70,20 @@ type LLMResponse = {
   requestMessages: ChatCompletionMessageParam[];
   assistantMessage?: ChatCompletionMessageParam;
   completeMessages: ChatCompletionMessageParam[];
+};
+
+const readUsageNumber = (usage: unknown, paths: string[][]) => {
+  if (!usage || typeof usage !== 'object') return 0;
+
+  return paths.reduce((sum, path) => {
+    let value: unknown = usage;
+    for (const key of path) {
+      if (!value || typeof value !== 'object') return sum;
+      value = (value as Record<string, unknown>)[key];
+    }
+
+    return sum + (typeof value === 'number' ? value : 0);
+  }, 0);
 };
 
 /*
@@ -113,7 +128,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   const accumulatedUsage = {
     prompt_tokens: 0,
     completion_tokens: 0,
-    total_tokens: 0
+    total_tokens: 0,
+    cached_tokens: 0,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0
   };
   let currentError: any = undefined;
   let currentMessages = [...requestBody.messages];
@@ -206,6 +224,22 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         accumulatedUsage.prompt_tokens += usage.prompt_tokens || 0;
         accumulatedUsage.completion_tokens += usage.completion_tokens || 0;
         accumulatedUsage.total_tokens += usage.total_tokens || 0;
+        if (isDevEnv) {
+          accumulatedUsage.cached_tokens += readUsageNumber(usage, [
+            ['prompt_tokens_details', 'cached_tokens'],
+            ['input_tokens_details', 'cached_tokens']
+          ]);
+          accumulatedUsage.cache_read_tokens += readUsageNumber(usage, [
+            ['cache_read_input_tokens'],
+            ['prompt_tokens_details', 'cache_read_tokens'],
+            ['input_tokens_details', 'cache_read_tokens']
+          ]);
+          accumulatedUsage.cache_write_tokens += readUsageNumber(usage, [
+            ['cache_creation_input_tokens'],
+            ['prompt_tokens_details', 'cache_creation_tokens'],
+            ['input_tokens_details', 'cache_creation_tokens']
+          ]);
+        }
       }
 
       // Check if we need to continue
@@ -292,7 +326,17 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         finish_reason,
         usage: {
           inputTokens,
-          outputTokens
+          outputTokens,
+          ...(isDevEnv
+            ? {
+                promptTokens: usage.prompt_tokens,
+                completionTokens: usage.completion_tokens,
+                totalTokens: usage.total_tokens,
+                cachedTokens: usage.cached_tokens,
+                cacheReadTokens: usage.cache_read_tokens,
+                cacheWriteTokens: usage.cache_write_tokens
+              }
+            : {})
         },
         error
       }

@@ -7,8 +7,9 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
-const { createLLMResponseMock } = vi.hoisted(() => ({
-  createLLMResponseMock: vi.fn()
+const { createLLMResponseMock, compressToolResponseMock } = vi.hoisted(() => ({
+  createLLMResponseMock: vi.fn(),
+  compressToolResponseMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
@@ -36,9 +37,7 @@ vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
   compressRequestMessages: vi.fn(async ({ messages }) => ({
     messages
   })),
-  compressToolResponse: vi.fn(async ({ response }) => ({
-    compressed: response
-  }))
+  compressToolResponse: compressToolResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -81,6 +80,9 @@ const searchTool: ChatCompletionTool = {
 describe('runAgentLoop with mocked createLLMResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    compressToolResponseMock.mockImplementation(async ({ response }) => ({
+      compressed: response
+    }));
   });
 
   it('returns after a direct text response', async () => {
@@ -258,6 +260,58 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(result.assistantMessages.at(-1)).toEqual({
       role: 'assistant',
       content: 'final answer'
+    });
+  });
+
+  it('feeds the compressed tool response into the next LLM request', async () => {
+    compressToolResponseMock.mockImplementation(async ({ response }) => ({
+      compressed: `compressed:${response}`
+    }));
+    const onRunTool = vi.fn(async () => ({
+      response: 'large search result',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'compressed:large search result'
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'compressed:large search result'
     });
   });
 

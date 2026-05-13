@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createWorkflowAgentLoopEventMapper } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/eventMapper';
 
@@ -165,6 +168,26 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       argsDelta: '"FastGPT"}'
     });
     mapper.emitEvent({
+      type: 'llm_request_end',
+      profile: 'main_agent',
+      requestIndex: 2,
+      modelName: 'GPT-4',
+      requestId: 'req_search',
+      finishReason: 'tool_calls',
+      answerText: 'I will search first.',
+      reasoningText: 'Need external data.',
+      toolCalls: [
+        {
+          id: 'call_search',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{"q":"FastGPT"}'
+          }
+        }
+      ]
+    });
+    mapper.emitEvent({
       type: 'tool_response',
       profile: 'main_agent',
       callId: 'call_search',
@@ -211,6 +234,14 @@ describe('createWorkflowAgentLoopEventMapper', () => {
           response: 'ok',
           assistantText: 'draft before plan',
           reasoningText: 'planning'
+        }
+      },
+      {
+        text: {
+          content: 'I will search first.'
+        },
+        reasoning: {
+          content: 'Need external data.'
         }
       },
       {
@@ -298,6 +329,225 @@ describe('createWorkflowAgentLoopEventMapper', () => {
             params: '{"city":"Beijing"}'
           }
         ]
+      }
+    ]);
+  });
+
+  it('keeps runtime tool calls as separate assistant response values', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent({
+      type: 'tool_call',
+      profile: 'main_agent',
+      call: {
+        id: 'call_weather',
+        type: 'function',
+        function: {
+          name: 'weather',
+          arguments: '{"city":"Beijing"}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'tool_call',
+      profile: 'main_agent',
+      call: {
+        id: 'call_time',
+        type: 'function',
+        function: {
+          name: 'time',
+          arguments: '{}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      profile: 'main_agent',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_parallel',
+      finishReason: 'tool_calls',
+      answerText: 'Checking both tools.',
+      reasoningText: 'Need weather and time.',
+      toolCalls: [
+        {
+          id: 'call_weather',
+          type: 'function',
+          function: {
+            name: 'weather',
+            arguments: '{"city":"Beijing"}'
+          }
+        },
+        {
+          id: 'call_time',
+          type: 'function',
+          function: {
+            name: 'time',
+            arguments: '{}'
+          }
+        }
+      ]
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        text: {
+          content: 'Checking both tools.'
+        },
+        reasoning: {
+          content: 'Need weather and time.'
+        }
+      },
+      {
+        id: 'call_weather',
+        tools: [
+          expect.objectContaining({
+            id: 'call_weather',
+            functionName: 'weather',
+            params: '{"city":"Beijing"}'
+          })
+        ]
+      },
+      {
+        id: 'call_time',
+        tools: [
+          expect.objectContaining({
+            id: 'call_time',
+            functionName: 'time',
+            params: '{}'
+          })
+        ]
+      }
+    ]);
+  });
+
+  it('restores agent assistant responses back to continuous GPT tool messages', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent({
+      type: 'tool_call',
+      profile: 'main_agent',
+      call: {
+        id: 'call_weather',
+        type: 'function',
+        function: {
+          name: 'weather',
+          arguments: '{"city":"Beijing"}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'tool_call',
+      profile: 'main_agent',
+      call: {
+        id: 'call_time',
+        type: 'function',
+        function: {
+          name: 'time',
+          arguments: '{}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      profile: 'main_agent',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_parallel',
+      finishReason: 'tool_calls',
+      answerText: 'Checking both tools.',
+      reasoningText: 'Need weather and time.',
+      toolCalls: [
+        {
+          id: 'call_weather',
+          type: 'function',
+          function: {
+            name: 'weather',
+            arguments: '{"city":"Beijing"}'
+          }
+        },
+        {
+          id: 'call_time',
+          type: 'function',
+          function: {
+            name: 'time',
+            arguments: '{}'
+          }
+        }
+      ]
+    });
+    mapper.emitEvent({
+      type: 'tool_response',
+      profile: 'main_agent',
+      callId: 'call_weather',
+      response: 'compressed weather'
+    });
+    mapper.emitEvent({
+      type: 'tool_response',
+      profile: 'main_agent',
+      callId: 'call_time',
+      response: 'compressed time'
+    });
+
+    const restoredMessages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: mapper.assistantResponses
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(restoredMessages).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Checking both tools.',
+        reasoning_content: 'Need weather and time.',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          },
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: 'compressed time'
       }
     ]);
   });

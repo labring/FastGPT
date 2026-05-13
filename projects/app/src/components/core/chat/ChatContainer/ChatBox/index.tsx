@@ -363,7 +363,6 @@ const ChatBox = ({
       interactive,
       plan,
       planStatus,
-      stepId,
       sandboxStatus,
       skill,
       variables,
@@ -387,9 +386,6 @@ const ChatBox = ({
             return item.value.length - 1;
           })();
           const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
-          if (stepId) {
-            updateValue.stepId = stepId;
-          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -433,17 +429,17 @@ const ChatBox = ({
             };
           }
           if (event === SseResponseEventEnum.skillCall && skill) {
-            // 去重检查：避免同一个 skill 在同一步骤中重复展示
+            // 去重检查：避免同一个 skill 在同一响应中重复展示
             const alreadyExists = item.value.some(
               (v) =>
-                v.stepId === stepId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
+                v.id === responseValueId &&
+                v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
             );
             if (alreadyExists) return item;
 
             const skillId = skill.id || responseValueId || getNanoid(10);
             const val: AIChatItemValueItemType = {
               id: responseValueId,
-              stepId,
               skills: [
                 {
                   id: skillId,
@@ -461,7 +457,7 @@ const ChatBox = ({
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
-              if (updateValue?.reasoning && updateValue.stepId === stepId) {
+              if (updateValue?.reasoning) {
                 updateValue.reasoning.content += reasoningText;
                 return {
                   ...item,
@@ -485,7 +481,7 @@ const ChatBox = ({
               }
             }
             if (text) {
-              if (updateValue?.text && updateValue.stepId === stepId) {
+              if (updateValue?.text) {
                 updateValue.text.content += text;
                 return {
                   ...item,

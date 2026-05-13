@@ -138,7 +138,8 @@ const buildAskPendingContext = ({
 /**
  * 单主 Agent Loop。
  * Main Agent 在同一条消息链中直接使用 runtime tools、ask_agent 和 update_plan；
- * plan 是否完成由本地 stop gate 在最终回答前兜底检查。
+ * plan 是否完成由本地 stop gate 在每轮无工具调用后兜底检查。
+ * answer/reasoning delta 始终实时透传给前端；stop gate 只影响最终可持久化的 assistantMessages。
  */
 export const runUnifiedAgentLoop = async ({
   runtime,
@@ -169,8 +170,8 @@ export const runUnifiedAgentLoop = async ({
   const requirePlan =
     input.pendingMainContext?.requirePlan ?? shouldRequirePlanFromMessages(input.messages);
 
-  // 判断是否需要强制结束本轮对话
-  const canStreamFinalAnswerNow = () => {
+  // 计划已满足 stop gate 后，本轮只允许模型输出答案，不再继续选择工具。
+  const canForceFinalAnswerOnly = () => {
     if (!activePlan) return false;
 
     return runStopGate({
@@ -212,10 +213,10 @@ export const runUnifiedAgentLoop = async ({
     usagePush: (usages) => runtime.usageSink?.(usages),
     isAborted: runtime.checkIsStopping,
     getRequestControl: () => {
-      const streamFinalAnswer = canStreamFinalAnswerNow();
+      const forceFinalAnswerOnly = canForceFinalAnswerOnly();
 
       return {
-        toolChoice: streamFinalAnswer ? 'none' : 'auto'
+        toolChoice: forceFinalAnswerOnly ? 'none' : 'auto'
       };
     },
     onReasoning: ({ text }) =>
@@ -339,13 +340,6 @@ export const runUnifiedAgentLoop = async ({
           });
         }
 
-        runtime.emitEvent?.({
-          type: 'tool_response',
-          profile: MAIN_PROFILE,
-          callId: call.id,
-          response: updateResult.message
-        });
-
         return createToolResponse(updateResult.message);
       }
 
@@ -356,14 +350,15 @@ export const runUnifiedAgentLoop = async ({
         messages
       });
 
+      return toolResult;
+    },
+    onAfterToolCall: ({ call, response }) => {
       runtime.emitEvent?.({
         type: 'tool_response',
         profile: MAIN_PROFILE,
         callId: call.id,
-        response: toolResult.response
+        response: response || ''
       });
-
-      return toolResult;
     },
     onRunInteractiveTool: async () =>
       createToolResponse('Interactive tool is not supported in unified agent loop yet.'),

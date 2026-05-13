@@ -40,6 +40,7 @@ import {
   getWorkflowAgentLoopMemoryKeys,
   readWorkflowAgentLoopMemory
 } from './adapter';
+import { filterFailedAgentNodeResponses } from './adapter/nodeResponses';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -373,6 +374,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       .filter((item) => item.text?.content)
       .map((item) => item.text!.content)
       .join('');
+    const finalNodeResponses = errorText
+      ? filterFailedAgentNodeResponses(childNodeResponses)
+      : childNodeResponses;
 
     return {
       data: {
@@ -388,7 +392,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: finalNodeResponses
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory，并把已有 assistantResponses/nodeResponses 返回给前端恢复。
@@ -408,7 +412,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]:
+        filterFailedAgentNodeResponses(childNodeResponses)
     };
   } finally {
     // capability 可能持有 sandbox/session 等外部资源，必须在 dispatch 结束时释放。

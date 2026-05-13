@@ -234,12 +234,15 @@ describe('AIChatItemValueSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should validate with stepId', () => {
+  it('should strip legacy stepId from AI chat value', () => {
     const result = AIChatItemValueSchema.safeParse({
       stepId: 'step-1',
       text: { content: 'Step result' }
     });
     expect(result.success).toBe(true);
+    expect(result.data).toEqual({
+      text: { content: 'Step result' }
+    });
   });
 });
 

@@ -65,6 +65,7 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
+import { hasErrorNodeResponse } from './ai/agent/adapter/nodeResponses';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -113,7 +114,9 @@ function shouldTraceWorkflowStep(nodeType: FlowNodeTypeEnum) {
 }
 
 function getWorkflowStepStatus(result: WorkflowObservedStepResult): 'ok' | 'error' {
-  return result.result[DispatchNodeResponseKeyEnum.nodeResponse]?.error ? 'error' : 'ok';
+  return result.result[DispatchNodeResponseKeyEnum.nodeResponse]?.error || result.result.error
+    ? 'error'
+    : 'ok';
 }
 
 function addWorkflowStepEvent({
@@ -922,13 +925,21 @@ export class WorkflowQueue {
                 // so runLoopRun / parallelRun failure detection and OTel span
                 // status see `.error` uniformly across both failure paths.
                 const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+                const existingNodeResponses = result[DispatchNodeResponseKeyEnum.nodeResponses];
                 const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
+                const shouldAppendFallbackNodeResponse =
+                  !!nodeResponseBase || !hasErrorNodeResponse(existingNodeResponses);
+
                 return {
                   ...result,
-                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                    ...nodeResponseBase,
-                    error: errText
-                  },
+                  ...(shouldAppendFallbackNodeResponse
+                    ? {
+                        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                          ...nodeResponseBase,
+                          error: errText
+                        }
+                      }
+                    : {}),
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -1652,7 +1663,7 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
     if (item.text) {
       const text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
+      if (lastItem && lastItem.text?.content) {
         lastItem.text.content += text;
         continue;
       }

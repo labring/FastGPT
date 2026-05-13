@@ -40,6 +40,125 @@ export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
   return content;
 };
 
+export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam[]) => {
+  type AssistantToolCallMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }> & {
+    tool_calls: ChatCompletionMessageToolCall[];
+  };
+
+  type ToolMessage = Extract<ChatCompletionMessageParam, { role: 'tool' }> & {
+    tool_call_id: string;
+  };
+
+  const isAssistantFieldMessage = (message?: ChatCompletionMessageParam) => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    return (
+      !message.tool_calls &&
+      (typeof message.content === 'string' || typeof message.reasoning_content === 'string')
+    );
+  };
+
+  const isAssistantToolCallMessage = (
+    message?: ChatCompletionMessageParam
+  ): message is AssistantToolCallMessage => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    return (
+      Array.isArray(message.tool_calls) &&
+      message.tool_calls.length > 0 &&
+      typeof message.content !== 'string' &&
+      typeof message.reasoning_content !== 'string'
+    );
+  };
+
+  const isToolResponseForToolCalls = (
+    message: ChatCompletionMessageParam | undefined,
+    toolCallIds: Set<string>
+  ): message is ToolMessage =>
+    message?.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+    toolCallIds.has(message.tool_call_id || '');
+
+  const mergedMessages: ChatCompletionMessageParam[] = [];
+
+  for (let index = 0; index < messages.length; index++) {
+    const currentMessage = messages[index];
+    if (!isAssistantFieldMessage(currentMessage)) {
+      mergedMessages.push(currentMessage);
+      continue;
+    }
+
+    const assistantMessage: ChatCompletionMessageParam = { ...currentMessage };
+    let cursor = index + 1;
+
+    while (isAssistantFieldMessage(messages[cursor])) {
+      const nextMessage = messages[cursor];
+      const nextReasoning =
+        typeof nextMessage.reasoning_content === 'string' ? nextMessage.reasoning_content : '';
+      const nextContent = typeof nextMessage.content === 'string' ? nextMessage.content : '';
+
+      if (
+        nextReasoning &&
+        (typeof assistantMessage.reasoning_content === 'string' ||
+          typeof assistantMessage.content === 'string')
+      ) {
+        break;
+      }
+
+      if (nextReasoning) {
+        assistantMessage.reasoning_content = nextReasoning;
+      }
+
+      if (typeof nextMessage.content === 'string') {
+        if (typeof assistantMessage.content === 'string') {
+          assistantMessage.content += nextContent;
+        } else {
+          assistantMessage.content = nextContent;
+        }
+      }
+
+      cursor++;
+    }
+
+    const toolCalls: ChatCompletionMessageToolCall[] = [];
+    const toolResponses: ChatCompletionMessageParam[] = [];
+
+    let assistantToolMessage: ChatCompletionMessageParam | undefined = messages[cursor];
+    while (isAssistantToolCallMessage(assistantToolMessage)) {
+      const currentToolCalls = assistantToolMessage.tool_calls;
+      const currentToolCallIds = new Set(currentToolCalls.map((toolCall) => toolCall.id));
+      const currentToolResponses: ChatCompletionMessageParam[] = [];
+      let responseCursor = cursor + 1;
+
+      while (isToolResponseForToolCalls(messages[responseCursor], currentToolCallIds)) {
+        currentToolResponses.push(messages[responseCursor]);
+        responseCursor++;
+      }
+
+      if (!currentToolResponses.length) break;
+
+      toolCalls.push(...currentToolCalls);
+      toolResponses.push(...currentToolResponses);
+      cursor = responseCursor;
+      assistantToolMessage = messages[cursor];
+    }
+
+    if (!toolCalls.length) {
+      mergedMessages.push(assistantMessage);
+      index = cursor - 1;
+      continue;
+    }
+
+    mergedMessages.push({
+      ...assistantMessage,
+      tool_calls: toolCalls
+    } as ChatCompletionMessageParam);
+    mergedMessages.push(...toolResponses);
+    index = cursor - 1;
+  }
+
+  return mergedMessages;
+};
+
 export const chats2GPTMessages = ({
   messages,
   reserveId,
@@ -51,7 +170,57 @@ export const chats2GPTMessages = ({
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
 
-  messages.forEach((item, index) => {
+  const isNonEmptyString = (value: unknown): value is string =>
+    typeof value === 'string' && value.trim().length > 0;
+
+  const normalizeToolArguments = (params: unknown) => {
+    if (typeof params === 'string') {
+      return params || '{}';
+    }
+
+    try {
+      return JSON.stringify(params ?? {});
+    } catch {
+      return '{}';
+    }
+  };
+
+  type NormalizedChatToolContext = {
+    toolCall: ChatCompletionMessageToolCall;
+    toolResponse: ChatCompletionToolMessageParam;
+  };
+  const isNormalizedChatToolContext = (
+    item: NormalizedChatToolContext | undefined
+  ): item is NormalizedChatToolContext => Boolean(item);
+
+  const normalizeChatToolContext = (
+    tool?: Partial<ToolModuleResponseItemType> | null
+  ): NormalizedChatToolContext | undefined => {
+    if (!tool || !isNonEmptyString(tool.id) || !isNonEmptyString(tool.functionName)) {
+      return;
+    }
+
+    const id = tool.id.trim();
+    const functionName = tool.functionName.trim();
+
+    return {
+      toolCall: {
+        id,
+        type: 'function' as const,
+        function: {
+          name: functionName,
+          arguments: normalizeToolArguments(tool.params)
+        }
+      },
+      toolResponse: {
+        tool_call_id: id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: typeof tool.response === 'string' ? tool.response : ''
+      }
+    };
+  };
+
+  messages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -129,21 +298,42 @@ export const chats2GPTMessages = ({
         assistantText?: string;
         reasoningText?: string;
       }) => {
+        const normalizedToolContext = normalizeChatToolContext({
+          id,
+          functionName,
+          params,
+          response: ''
+        });
+
+        if (reasoningText) appendAssistantReasoning(reasoningText);
+        if (assistantText) appendAssistantText(assistantText);
+        if (!normalizedToolContext) {
+          return false;
+        }
+
         aiResults.push({
           dataId,
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          ...(assistantText ? { content: assistantText } : {}),
-          ...(reasoningText ? { reasoning_content: reasoningText } : {}),
-          tool_calls: [
-            {
-              id,
-              type: 'function',
-              function: {
-                name: functionName,
-                arguments: params
-              }
-            }
-          ]
+          tool_calls: [normalizedToolContext.toolCall]
+        });
+        return normalizedToolContext;
+      };
+
+      const appendAssistantReasoning = (content: string) => {
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          reasoning_content: content
+        });
+      };
+
+      const appendAssistantText = (content: string) => {
+        if (!content && item.value.length > 1) return;
+
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content
         });
       };
 
@@ -157,25 +347,26 @@ export const chats2GPTMessages = ({
       };
 
       item.value.forEach((value) => {
+        // agent plan card
         if (reserveTool && value.agentPlanUpdate) {
-          appendAssistantToolCall({
+          const appendedToolCall = appendAssistantToolCall({
             id: value.agentPlanUpdate.id,
             functionName: value.agentPlanUpdate.functionName,
             params: value.agentPlanUpdate.params,
             assistantText: value.agentPlanUpdate.assistantText,
             reasoningText: value.agentPlanUpdate.reasoningText
           });
-          if (typeof value.agentPlanUpdate.response === 'string') {
+          if (appendedToolCall && typeof value.agentPlanUpdate.response === 'string') {
             appendToolMessage({
-              id: value.agentPlanUpdate.id,
+              id: appendedToolCall.toolCall.id,
               response: value.agentPlanUpdate.response
             });
           }
-          return;
         }
 
+        // Agent ask tool
         if (reserveTool && value.agentAsk) {
-          appendAssistantToolCall({
+          const appendedToolCall = appendAssistantToolCall({
             id: value.agentAsk.id,
             functionName: value.agentAsk.functionName,
             params: value.agentAsk.params,
@@ -185,113 +376,65 @@ export const chats2GPTMessages = ({
           const answer = value.agentAsk.planId
             ? agentAskAnswerMap.get(value.agentAsk.planId)
             : undefined;
-          if (typeof answer === 'string') {
+          if (appendedToolCall && typeof answer === 'string') {
             appendToolMessage({
-              id: value.agentAsk.id,
+              id: appendedToolCall.toolCall.id,
               response: answer
             });
           }
-          return;
         }
 
+        // Stop tool
         if (reserveTool && value.agentStopGate) {
-          if (value.agentStopGate.assistantText || value.agentStopGate.reasoningText) {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              ...(value.agentStopGate.assistantText
-                ? { content: value.agentStopGate.assistantText }
-                : {}),
-              ...(value.agentStopGate.reasoningText
-                ? { reasoning_content: value.agentStopGate.reasoningText }
-                : {})
-            });
-          }
+          if (value.agentStopGate.reasoningText)
+            appendAssistantReasoning(value.agentStopGate.reasoningText);
+          if (value.agentStopGate.assistantText)
+            appendAssistantText(value.agentStopGate.assistantText);
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.User,
             content: value.agentStopGate.feedback
           });
-          return;
         }
-
-        const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
 
         if (typeof value.reasoning?.content === 'string') {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            reasoning_content: value.reasoning.content
-          });
+          appendAssistantReasoning(value.reasoning.content);
         }
 
-        if (reserveTool && (hasTools || value.tool)) {
-          const tools = hasTools ? value.tools! : [value.tool!];
-          const tool_calls: ChatCompletionMessageToolCall[] = [];
-          const toolResponse: ChatCompletionToolMessageParam[] = [];
-          tools.forEach((tool) => {
-            tool_calls.push({
-              id: tool.id,
-              type: 'function',
-              function: {
-                name: tool.functionName,
-                arguments: tool.params
-              }
-            });
-            toolResponse.push({
-              tool_call_id: tool.id,
-              role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: tool.response || ''
-            });
-          });
+        if (typeof value.text?.content === 'string') {
+          appendAssistantText(value.text.content);
+        }
 
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult &&
-            lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            lastResult.reasoning_content
-          ) {
-            lastResult.tool_calls = tool_calls;
-          } else {
-            aiResults.push({
+        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
+        const hasTools = Array.isArray(tools) && tools.length > 0;
+
+        if (reserveTool && hasTools) {
+          const normalizedToolContexts = tools
+            .map((tool) => normalizeChatToolContext(tool))
+            .filter(isNormalizedChatToolContext);
+
+          // 清除无效 tool 后，还有 tool 才推送
+          if (normalizedToolContexts.length) {
+            const tool_calls = normalizedToolContexts.map((item) => item.toolCall);
+            const toolResponse = normalizedToolContexts.map((item) => item.toolResponse);
+
+            const assistantMessage: ChatCompletionMessageParam = {
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
               tool_calls
-            });
-          }
+            };
 
-          aiResults.push(...toolResponse);
-        }
-        if (typeof value.text?.content === 'string') {
-          if (!value.text.content && item.value.length > 1) {
-            return;
-          }
-          // Concat text
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult?.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            typeof lastResult?.content === 'string'
-          ) {
-            lastResult.content += value.text.content;
-          } else if (lastResult?.reasoning_content) {
-            lastResult.content = value.text.content;
-          } else {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: value.text.content
-            });
+            aiResults.push(assistantMessage);
+            aiResults.push(...toolResponse);
           }
         }
-        // Plan 卡片只是 UI 状态；update_plan/stop gate/ask_agent 会通过独立字段恢复上下文。
-        // 这里不把历史 plan 伪造成 tool_call 注入模型上下文。
+        // 暂不处理
         if (value.interactive) {
-          // 目前只有 plan 里会有交互，所以这里暂时不需要处理
         }
       });
 
       // Auto add empty assistant message
-      results = results.concat(aiResults);
+      results = results.concat(mergeAssistantFieldMessages(aiResults));
     }
   });
 
