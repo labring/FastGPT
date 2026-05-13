@@ -17,6 +17,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
@@ -110,6 +111,19 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
       myOrgSet.has(String(item.orgId))
   );
 
+  // Search by creator name: find matching team members first
+  const creatorMatchedTmbIds: string[] = searchKey
+    ? (
+        await MongoTeamMember.find(
+          {
+            teamId,
+            name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') }
+          },
+          '_id'
+        ).lean()
+      ).map((m) => String(m._id))
+    : [];
+
   const findAppsQuery = (() => {
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
@@ -127,7 +141,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
       ? {
           $or: [
             { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
-            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+            ...(creatorMatchedTmbIds.length > 0 ? [{ tmbId: { $in: creatorMatchedTmbIds } }] : [])
           ]
         }
       : {};
@@ -169,12 +184,13 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules isPinned',
     {
       limit: limit
     }
   )
     .sort({
+      isPinned: -1,
       updateTime: -1
     })
     .lean();

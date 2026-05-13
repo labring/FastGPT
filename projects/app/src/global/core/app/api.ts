@@ -13,6 +13,7 @@ export type AppUpdateParams = {
   chatConfig?: AppSchemaType['chatConfig'];
   teamTags?: AppSchemaType['teamTags'];
   inheritParentPermission?: boolean;
+  isPinned?: boolean;
 };
 
 export type PostPublishAppProps = {

@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, type UseToastOptions, Flex, Spacer } from '@chakra-ui/react';
+import {
+  Box,
+  Grid,
+  IconButton,
+  HStack,
+  type UseToastOptions,
+  Flex,
+  Spacer
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -160,7 +168,10 @@ const AppCard = React.memo(function AppCard({
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { folderDetail, setMoveAppId, setSearchKey } = useContextSelector(AppListContext, (v) => v);
+  const folderDetail = useContextSelector(AppListContext, (v) => v.folderDetail);
+  const setMoveAppId = useContextSelector(AppListContext, (v) => v.setMoveAppId);
+  const setSearchKey = useContextSelector(AppListContext, (v) => v.setSearchKey);
+  const onUpdateApp = useContextSelector(AppListContext, (v) => v.onUpdateApp);
 
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -228,6 +239,12 @@ const AppCard = React.memo(function AppCard({
         ? [
             {
               children: [
+                {
+                  icon: 'core/chat/setTopLight',
+                  type: 'grayBg' as MenuItemType,
+                  label: app.isPinned ? t('common:core.chat.Unpin') : t('common:core.chat.Pin'),
+                  onClick: () => onUpdateApp(app._id, { isPinned: !app.isPinned })
+                },
                 {
                   icon: 'edit',
                   type: 'grayBg' as MenuItemType,
@@ -406,9 +423,31 @@ const AppCard = React.memo(function AppCard({
       {/* 标题行：头像 + 名称 + 类型标签/菜单按钮 */}
       <Flex alignItems={'center'} gap={2}>
         <Avatar src={app.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
-        <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
-          {app.name}
-        </Box>
+        <Flex width="0" flex="1" alignItems="center" gap={1} overflow="hidden">
+          <Box
+            className="textEllipsis"
+            color={'myGray.900'}
+            fontWeight={'medium'}
+            flexShrink={1}
+            minW={0}
+          >
+            {app.name}
+          </Box>
+          {app.isPinned && (
+            <Box
+              flexShrink={0}
+              borderRadius={'355.67px'}
+              color="blue.600"
+              bg="blue.50"
+              height="16px"
+              fontSize="12px"
+              px={2}
+              lineHeight="16px"
+            >
+              {t('common:core.chat.Pin')}
+            </Box>
+          )}
+        </Flex>
         {/* 右侧：类型 tag 和菜单按钮叠加切换 */}
         <Box flexShrink={0} position={'relative'}>
           <Box className="type-tag">
@@ -488,9 +527,7 @@ const AppCard = React.memo(function AppCard({
           /* Agent 场景左侧：创建人 + 更新时间 */
           <HStack spacing={'12px'}>
             {app.sourceMember?.name && (
-              <MyTooltip
-                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
-              >
+              <MyTooltip label={t('common:creator_tooltip', { creator: app.sourceMember.name })}>
                 <HStack spacing={'4px'}>
                   <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                   <Box
@@ -522,9 +559,7 @@ const AppCard = React.memo(function AppCard({
         {isTool && !isFolder && (
           <HStack spacing={'12px'}>
             {app.sourceMember?.name && (
-              <MyTooltip
-                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
-              >
+              <MyTooltip label={t('common:creator_tooltip', { creator: app.sourceMember.name })}>
                 <HStack spacing={'4px'}>
                   <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                   <Box

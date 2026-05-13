@@ -111,6 +111,11 @@ const AppSchema = new Schema(
       default: true
     },
 
+    isPinned: {
+      type: Boolean,
+      default: false
+    },
+
     // Chat setting
     favourite: Boolean,
     quick: Boolean,
@@ -133,7 +138,7 @@ const AppSchema = new Schema(
   }
 );
 
-AppSchema.index({ teamId: 1, updateTime: -1 });
+AppSchema.index({ teamId: 1, isPinned: -1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
 
 // Schedule

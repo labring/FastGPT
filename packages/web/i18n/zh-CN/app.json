@@ -395,7 +395,7 @@
   "saved_success": "保存成功！如需在外部使用该版本，请点击“保存并发布”",
   "search_agent": "搜索 Agent",
   "search_app": "搜索应用",
-  "search_name_intro": "名称/介绍",
+  "search_name_intro": "名称/描述/创建人",
   "new_folder": "新建文件夹",
   "new_app": "新建应用",
   "new_tool": "新建工具",

@@ -346,7 +346,7 @@
   "saved_success": "儲存成功！\n如需在外部使用該版本，請點選“儲存並發布”",
   "search_agent": "搜索 Agent",
   "search_app": "搜尋應用程式",
-  "search_name_intro": "名稱/介紹",
+  "search_name_intro": "名稱/描述/創建人",
   "new_folder": "新建資料夾",
   "new_app": "新建應用",
   "new_tool": "新建工具",

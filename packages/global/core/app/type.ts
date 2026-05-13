@@ -133,6 +133,7 @@ export const AppSchemaTypeSchema = z.object({
   scheduledTriggerNextTime: z.coerce.date().optional(),
 
   inheritPermission: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
 
   // if access the app by favourite or quick
   favourite: z.boolean().optional(),
@@ -166,6 +167,7 @@ export type AppListItemType = {
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
   relatedAppCount?: number;
+  isPinned?: boolean;
 };
 
 export type AppDetailType = AppSchemaType & {

@@ -57,7 +57,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
     edges,
     chatConfig,
     teamTags,
-    inheritParentPermission = true
+    inheritParentPermission = true,
+    isPinned
   } = req.body;
 
   const { appId } = req.query;
@@ -147,6 +148,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         }),
         ...(chatConfig && { chatConfig }),
         ...(isMove && { inheritPermission: inheritParentPermission }),
+        ...(typeof isPinned === 'boolean' && { isPinned }),
         updateTime: new Date()
       },
       { session }
