@@ -98,6 +98,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     if (env.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
       const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
+      // sandbox_get_file_url is available whenever the agent runs against a session-runtime
+      // sandbox (chat / app-test / workflow-debug). It is NOT exposed in single-skill
+      // editDebug mode, where the sandbox lives elsewhere and chat-scoped S3 ownership
+      // does not apply.
+      const exposeGetFileUrl = !useEditDebugSandbox;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -107,7 +112,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         mode: sandboxMode,
         workflowStreamResponse,
         showSkillReferences: showSkillReferences === true,
-        allFilesMap
+        allFilesMap,
+        exposeGetFileUrl,
+        appId: runningAppInfo.id,
+        userId: props.uid,
+        chatId
       });
       capabilities.push(sandboxCap);
     }
@@ -121,7 +130,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
-    // Get sub apps — pi-agent-core manages reasoning, no plan tool needed
+    // Get sub apps — pi-agent-core manages reasoning, no plan tool needed.
+    // SHOW_SKILL replaces the generic agent sandbox: in skill mode the model uses skill
+    // tools (sandbox_write_file / sandbox_execute / ...) and must NEVER see sandbox_shell.
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
@@ -130,7 +141,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+        useAgentSandbox:
+          !env.SHOW_SKILL && useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
         extraTools: capabilityTools
       }
     );
@@ -166,8 +178,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       lang
     });
 
-    // Append sandbox system prompt when sandbox is enabled
-    if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    // Append sandbox system prompt when sandbox is enabled (skipped in SHOW_SKILL mode —
+    // the skill capability owns the sandbox prompt and the model never sees sandbox_shell)
+    if (!env.SHOW_SKILL && useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
       formatedSystemPrompt =
         `${formatedSystemPrompt}\n\n${SANDBOX_SYSTEM_PROMPT}\n\n<ToolPriority>\nWhen both sandbox_shell / sandbox_get_file_url and sandbox_execute_* tools can fulfill the same task, prefer sandbox_shell and sandbox_get_file_url — they have higher priority.\n</ToolPriority>`.trim();
     }

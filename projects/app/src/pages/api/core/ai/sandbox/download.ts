@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getSandboxClientByChat } from '@fastgpt/service/core/ai/sandbox/controller';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import {
@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     ...outLinkAuthData
   });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
+  const sandbox = await getSandboxClientByChat({ appId, userId: uid, chatId });
   await sandbox.ensureAvailable();
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);

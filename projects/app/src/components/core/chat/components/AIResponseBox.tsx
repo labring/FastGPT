@@ -44,6 +44,8 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { CiteSourceInfo } from '@/components/Markdown/A';
+import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import SandboxFilesPreview, { type SandboxFileItem } from './SandboxFilesPreview';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -202,6 +204,22 @@ const RenderTool = React.memo(
     }, []);
     const params = useMemo(() => formatJson(tool.params), [formatJson, tool.params]);
     const response = useMemo(() => formatJson(tool.response || ''), [formatJson, tool.response]);
+    const sandboxFiles = useMemo<SandboxFileItem[] | null>(() => {
+      if (tool.functionName !== SANDBOX_GET_FILE_URL_TOOL_NAME || !tool.response) return null;
+      try {
+        const parsed = JSON.parse(tool.response);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.every(
+            (f) => f && typeof f.fileUrl === 'string' && typeof f.filename === 'string' && f.fileUrl
+          )
+        ) {
+          return parsed as SandboxFileItem[];
+        }
+      } catch {}
+      return null;
+    }, [tool.functionName, tool.response]);
 
     return (
       <Accordion allowToggle>
@@ -233,11 +251,15 @@ ${params}`}
                 />
               </Box>
             )}
-            {response && (
-              <Markdown
-                source={`~~~json#Response
+            {sandboxFiles ? (
+              <SandboxFilesPreview files={sandboxFiles} />
+            ) : (
+              response && (
+                <Markdown
+                  source={`~~~json#Response
 ${response}`}
-              />
+                />
+              )
             )}
           </AccordionPanel>
         </AccordionItem>

@@ -9,7 +9,8 @@ import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useContextSelector } from 'use-context-selector';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 /**
  * useSandboxEditor —— UI Hook
@@ -91,8 +92,11 @@ export const useSandboxStatus = ({
   const hasSandboxInHistory = useMemo(() => {
     if (!isChatRecordsLoaded) return false;
     return chatRecords.some((record) => {
-      const enriched = addStatisticalDataToHistoryItem(record);
-      return enriched.useAgentSandbox === true;
+      if (!record.responseData) return false;
+      const flatRes = getFlatAppResponses(record.responseData);
+      return flatRes.some(
+        (item) => item.moduleType === FlowNodeTypeEnum.tool && item.toolId?.startsWith('sandbox_')
+      );
     });
   }, [chatRecords, isChatRecordsLoaded]);
 

@@ -11,6 +11,11 @@ import {
   SandboxFetchUserFileSchema
 } from '@fastgpt/global/core/workflow/node/agent/skillTools';
 import {
+  SANDBOX_GET_FILE_URL_TOOL,
+  SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SandboxGetFileUrlToolSchema
+} from '@fastgpt/global/core/ai/sandbox/constants';
+import {
   createAgentSandbox,
   releaseAgentSandbox,
   connectEditDebugSandbox,
@@ -26,6 +31,7 @@ import {
   dispatchSandboxSearch,
   dispatchSandboxFetchUserFile
 } from '../sub/sandbox/skill';
+import { uploadSandboxFileToS3 } from '../../../../../ai/sandbox/toolCall';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowResponseType } from '../../../type';
@@ -56,6 +62,13 @@ type SandboxSkillsCapabilityParams = {
   workflowStreamResponse?: WorkflowResponseType; // SSE stream for lifecycle and skill events
   showSkillReferences: boolean;
   allFilesMap: Record<string, { url: string; name: string; type: string }>;
+  // When true (chat-mode pi agent), expose `sandbox_get_file_url` so the model can
+  // hand sandbox files back to the user as previewable/downloadable links.
+  // Requires `appId`/`userId`/`chatId` to be set for S3 object keying.
+  exposeGetFileUrl?: boolean;
+  appId?: string;
+  userId?: string;
+  chatId?: string;
 };
 
 /** Fetch skill metadata from MongoDB and compute sandbox paths from the ZIP for prompt construction. */
@@ -200,9 +213,19 @@ export async function createSandboxSkillsCapability(
     mode,
     workflowStreamResponse,
     showSkillReferences,
-    allFilesMap
+    allFilesMap,
+    exposeGetFileUrl,
+    appId,
+    userId,
+    chatId
   } = params;
   const isEditDebug = mode === 'editDebug';
+  // Only chat-mode session-runtime can serve `sandbox_get_file_url` because the file
+  // upload S3 key requires appId/userId/chatId. editDebug mode is excluded by design.
+  const canExposeGetFileUrl = !!exposeGetFileUrl && !isEditDebug && !!appId && !!userId && !!chatId;
+  const sessionCompletionTools = canExposeGetFileUrl
+    ? [...allSandboxTools, SANDBOX_GET_FILE_URL_TOOL]
+    : allSandboxTools;
   const defaults = getSandboxDefaults();
   const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -261,7 +284,9 @@ export async function createSandboxSkillsCapability(
       ? await fetchSkillsMetaForPrompt(skillIds, teamId, defaults.workDirectory)
       : [];
 
-  const systemPrompt = buildSkillsContextPrompt(skillsMeta, defaults.workDirectory);
+  const systemPrompt = canExposeGetFileUrl
+    ? `${buildSkillsContextPrompt(skillsMeta, defaults.workDirectory)}\n\n${buildGetFileUrlPromptSection()}`
+    : buildSkillsContextPrompt(skillsMeta, defaults.workDirectory);
 
   // --- Lazy-init state ---
   let sandboxContext: AgentSandboxContext | null = null;
@@ -274,7 +299,15 @@ export async function createSandboxSkillsCapability(
 
   async function initializeSandbox(): Promise<AgentSandboxContext> {
     onProgress?.({ sandboxId: sessionId, phase: 'lazyInit' });
-    return createAgentSandbox({ skillIds, teamId, tmbId, sessionId, onProgress, skillsMeta });
+    return createAgentSandbox({
+      skillIds,
+      teamId,
+      tmbId,
+      sessionId,
+      chatId: chatId ?? sessionId,
+      onProgress,
+      skillsMeta
+    });
   }
 
   async function ensureSandbox(): Promise<AgentSandboxContext> {
@@ -338,8 +371,17 @@ export async function createSandboxSkillsCapability(
   return {
     id: 'sandbox-skills',
     systemPrompt,
-    completionTools: allSandboxTools,
+    completionTools: sessionCompletionTools,
     handleToolCall: async (toolId, args, toolCallId) => {
+      if (canExposeGetFileUrl && toolId === SANDBOX_GET_FILE_URL_TOOL_NAME) {
+        return executeWithRetry((ctx) =>
+          dispatchSandboxGetFileUrl(ctx, args, {
+            appId: appId!,
+            userId: userId!,
+            chatId: chatId!
+          })
+        );
+      }
       if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
 
       return executeWithRetry(async (ctx) => {
@@ -482,4 +524,55 @@ async function buildSessionHandler(
   const handler = handlers[toolId];
   if (!handler) return { response: 'Unknown sandbox tool', usages: [] };
   return handler();
+}
+
+async function dispatchSandboxGetFileUrl(
+  sandboxContext: AgentSandboxContext,
+  args: string,
+  ownership: { appId: string; userId: string; chatId: string }
+): Promise<SandboxToolResult> {
+  const parsed = SandboxGetFileUrlToolSchema.safeParse(parseJsonArgs(args));
+  if (!parsed.success) return { response: parsed.error.message, usages: [] };
+
+  try {
+    const result = await Promise.all(
+      parsed.data.paths.map((filePath) =>
+        uploadSandboxFileToS3({
+          sandboxProvider: sandboxContext.sandbox,
+          appId: ownership.appId,
+          userId: ownership.userId,
+          chatId: ownership.chatId,
+          filePath
+        })
+      )
+    );
+    return { response: JSON.stringify(result), usages: [] };
+  } catch (err) {
+    return { response: `sandbox_get_file_url failed: ${(err as Error).message}`, usages: [] };
+  }
+}
+
+function buildGetFileUrlPromptSection(): string {
+  return [
+    '<file_delivery>',
+    'Files produced inside the sandbox stay invisible to the user until you publish them with `sandbox_get_file_url`.',
+    'WHEN to call it:',
+    '  - After `sandbox_write_file` creates a deliverable for the user (report, CSV, JSON, markdown, code bundle, etc.).',
+    '  - After `sandbox_execute` produces a new file or modifies one the user should see (charts, PDFs, archives, generated assets, downloadable logs).',
+    '  - When the user asks for a file, a screenshot, a chart, an export, a download, or a "可下载/可预览" artifact.',
+    'WHEN NOT to call it:',
+    '  - For ephemeral scratch files, intermediate caches, or files used only by the next tool call.',
+    '  - For raw text answers that fit comfortably in chat — answer inline instead.',
+    'HOW to call it:',
+    '  - Pass relative sandbox paths in the same form you used to write them (e.g. `["output/report.pdf", "charts/loss.png"]`).',
+    '  - Batch multiple files into one call when they belong to the same deliverable.',
+    '  - Call it AFTER the file is fully written/closed by the producing tool.',
+    'AFTER the call:',
+    '  - The tool returns `[{ fileUrl, filename }, ...]`. The frontend automatically renders these as preview / download cards; you do NOT need to paste raw URLs in your reply.',
+    '  - Briefly mention the file by name (and what it contains) in natural language so the user knows what to look for.',
+    'IMPORTANT:',
+    '  - URLs are signed and expire after 2 hours; regenerate them if the user comes back later.',
+    '  - Never expose internal sandbox absolute paths to the user — only filenames.',
+    '</file_delivery>'
+  ].join('\n');
 }
