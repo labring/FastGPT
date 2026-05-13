@@ -65,13 +65,13 @@ const scheduleTriggerAppCron = () => {
   getScheduleTriggerApp();
 };
 
-/** 超过 30 分钟仍为 generating 的会话纠正为 done（与 cleanStaleGeneratingChats 阈值一致） */
+/** 基于 Redis stream activity 快速纠正异常中断的 generating 会话，保留 30 分钟兜底 */
 const cleanStaleGeneratingChatCron = () => {
-  setCron('*/5 * * * *', async () => {
+  setCron('*/1 * * * *', async () => {
     if (
       await checkTimerLock({
         timerId: TimerIdEnum.cleanStaleGeneratingChat,
-        lockMinuted: 4
+        lockMinuted: 1
       })
     ) {
       await cleanStaleGeneratingChats();
