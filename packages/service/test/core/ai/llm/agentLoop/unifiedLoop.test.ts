@@ -247,14 +247,12 @@ describe('runUnifiedAgentLoop', () => {
         expect.objectContaining({
           type: 'llm_request_end',
           requestIndex: 4,
-          agentName: 'Master Agent',
           requestId: 'req_final',
           finishReason: 'stop'
         }),
         expect.objectContaining({
           type: 'llm_request_end',
           requestIndex: 1,
-          agentName: 'Master Agent',
           requestId: 'req_call_set_plan',
           finishReason: 'tool_calls'
         }),

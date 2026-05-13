@@ -1,6 +1,6 @@
 import type { AgentPlanType, AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 
-export type MergeRevisedPlanResult = {
+type MergeRevisedPlanResult = {
   plan: AgentPlanType;
   warnings: string[];
 };
@@ -21,6 +21,35 @@ const mergeEvidence = (
   });
 };
 
+const createResetStep = (step: AgentStepItemType): AgentStepItemType => ({
+  id: step.id,
+  title: step.title,
+  description: step.description,
+  acceptanceCriteria: step.acceptanceCriteria,
+  status: 'pending',
+  evidence: []
+});
+
+const createStableDoneStep = ({
+  oldStep,
+  revisedStep
+}: {
+  oldStep: AgentStepItemType;
+  revisedStep: AgentStepItemType;
+}): AgentStepItemType => {
+  const outputSummary = revisedStep.outputSummary ?? oldStep.outputSummary;
+
+  return {
+    id: revisedStep.id,
+    title: revisedStep.title,
+    description: revisedStep.description,
+    acceptanceCriteria: revisedStep.acceptanceCriteria,
+    status: 'done',
+    evidence: mergeEvidence(oldStep.evidence, revisedStep.evidence),
+    ...(outputSummary !== undefined ? { outputSummary } : {})
+  };
+};
+
 /**
  * 合并重规划结果和当前计划。
  * 已完成步骤会保持 done 状态和历史证据；新出现的步骤会重置为 pending，避免继承模型幻觉出的执行状态。
@@ -39,28 +68,14 @@ export const mergeStableCompletedSteps = ({
   const mergedSteps = revisedPlan.steps.map((step) => {
     const oldStep = currentStepMap.get(step.id);
     if (!oldStep) {
-      const {
-        evidence: _evidence,
-        outputSummary: _outputSummary,
-        blocker: _blocker,
-        needsReplan: _needsReplan,
-        ...newStep
-      } = step;
-      return {
-        ...newStep,
-        status: 'pending' as const,
-        evidence: []
-      };
+      return createResetStep(step);
     }
 
     if (oldStep.status === 'done') {
-      const { blocker: _blocker, needsReplan: _needsReplan, ...stableStep } = step;
-      return {
-        ...stableStep,
-        status: 'done' as const,
-        evidence: mergeEvidence(oldStep.evidence, step.evidence),
-        outputSummary: step.outputSummary ?? oldStep.outputSummary
-      };
+      return createStableDoneStep({
+        oldStep,
+        revisedStep: step
+      });
     }
 
     return {

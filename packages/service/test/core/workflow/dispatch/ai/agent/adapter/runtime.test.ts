@@ -96,7 +96,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     const result = await runtime.executeTool({
-      profile: 'main_agent',
       messages: [],
       call: {
         id: 'call_search',
@@ -147,7 +146,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     ]);
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
-      profile: 'main_agent',
       usage: {
         moduleName: 'llm',
         model: 'gpt-4',
@@ -180,16 +178,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_start',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4'
     });
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_1',
       finishReason: 'stop',
       answerText: 'final answer',
@@ -203,10 +198,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4',
-      agentName: 'Plan Agent',
       requestId: 'req_2',
       finishReason: 'tool_calls',
       answerText: '',
@@ -217,12 +210,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
       },
       seconds: 0.2
     });
-    runtime.emitEvent?.({
-      type: 'profile_end',
-      profile: 'main_agent',
-      requestIds: ['req_1', 'req_2']
-    });
-
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_1',
@@ -274,10 +261,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_empty_start',
       finishReason: 'stop',
       answerText: '',
@@ -300,10 +285,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
     ]);
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_tool_round',
       finishReason: 'tool_calls',
       answerText: '',
@@ -325,10 +308,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
     ]);
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 3,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_empty_end',
       finishReason: 'close',
       answerText: '',
@@ -381,10 +362,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_master_tool_stop',
       finishReason: 'stop',
       answerText: '',
@@ -442,10 +421,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_master',
       finishReason: 'tool_calls',
       usage: {
@@ -457,7 +434,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     await runtime.executeTool({
-      profile: 'main_agent',
       messages: [],
       call: {
         id: 'call_search',
@@ -479,7 +455,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     ]);
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
-      profile: 'main_agent',
       usage: {
         moduleName: 'Compress Agent',
         model: 'GPT-4',
@@ -529,10 +504,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_call_tools',
       finishReason: 'tool_calls',
       toolCalls: [
@@ -562,7 +535,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     await runtime.executeTool({
-      profile: 'main_agent',
       messages: [],
       call: {
         id: 'call_search',
@@ -574,7 +546,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     });
     await runtime.executeTool({
-      profile: 'main_agent',
       messages: [],
       call: {
         id: 'call_time',
@@ -588,10 +559,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_after_tools',
       finishReason: 'stop',
       answerText: 'done',
@@ -637,10 +606,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
-      agentName: 'Master Agent',
       requestId: 'req_master',
       finishReason: 'tool_calls',
       usage: {
@@ -653,7 +620,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
-      profile: 'main_agent',
       usage: {
         moduleName: 'account_usage:compress_llm_messages',
         model: 'GPT-4',
@@ -665,7 +631,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
-      profile: 'main_agent',
       usage: {
         moduleName: 'account_usage:llm_compress_text',
         model: 'GPT-4',

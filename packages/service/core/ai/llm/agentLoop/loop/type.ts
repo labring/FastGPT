@@ -9,8 +9,6 @@ import type { CreateLLMResponseProps } from '../../request';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { PlanAskPayload } from '../plan/askTool';
 
-export type AgentLoopProfileName = 'main_agent';
-
 // agentLoop 位于 LLM 底层，不直接依赖 workflow 的交互 schema。
 // 调用方可通过泛型把 childrenResponse 收敛成自己的固定类型，例如 workflow 使用
 // WorkflowInteractiveResponseType。
@@ -34,20 +32,15 @@ export type AgentLoopToolChildrenInteractive<TChildrenResponse = unknown> = {
 };
 
 export type AgentLoopEvent =
-  | { type: 'profile_start'; profile: AgentLoopProfileName }
-  | { type: 'profile_end'; profile: AgentLoopProfileName; requestIds: string[] }
   | {
       type: 'llm_request_start';
-      profile: AgentLoopProfileName;
       requestIndex: number;
       modelName: string;
     }
   | {
       type: 'llm_request_end';
-      profile: AgentLoopProfileName;
       requestIndex: number;
       modelName: string;
-      agentName?: string;
       requestId: string;
       finishReason?: CompletionFinishReason;
       answerText?: string;
@@ -61,14 +54,13 @@ export type AgentLoopEvent =
       seconds?: number;
       error?: unknown;
     }
-  | { type: 'reasoning_delta'; profile: AgentLoopProfileName; text: string }
-  | { type: 'answer_delta'; profile: AgentLoopProfileName; text: string }
-  | { type: 'tool_call'; profile: AgentLoopProfileName; call: ChatCompletionMessageToolCall }
-  | { type: 'tool_params'; profile: AgentLoopProfileName; callId: string; argsDelta: string }
-  | { type: 'tool_response'; profile: AgentLoopProfileName; callId: string; response: string }
+  | { type: 'reasoning_delta'; text: string }
+  | { type: 'answer_delta'; text: string }
+  | { type: 'tool_call'; call: ChatCompletionMessageToolCall }
+  | { type: 'tool_params'; callId: string; argsDelta: string }
+  | { type: 'tool_response'; callId: string; response: string }
   | {
       type: 'stop_gate_feedback';
-      profile: AgentLoopProfileName;
       id: string;
       reason: string;
       feedback: string;
@@ -77,14 +69,12 @@ export type AgentLoopEvent =
     }
   | {
       type: 'child_llm_request_end';
-      profile: AgentLoopProfileName;
       usage?: ChatNodeUsageType;
       requestIds: string[];
       seconds?: number;
     }
   | { type: 'plan_status'; status: 'generating' | 'updating' }
-  | { type: 'plan_update'; plan: AgentPlanType }
-  | { type: 'warning'; message: string };
+  | { type: 'plan_update'; plan: AgentPlanType };
 
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
@@ -104,7 +94,6 @@ export type AgentLoopRuntime = {
   checkIsStopping?: () => boolean;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (e: {
-    profile: AgentLoopProfileName;
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
   }) => Promise<AgentLoopToolExecutionResult>;

@@ -43,10 +43,6 @@ describe('agent loop tool catalog', () => {
       runtimeTools: [tool('search'), tool('ask_agent'), tool('update_plan')]
     });
 
-    expect(normalized.catalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
-    expect(normalized.warnings).toEqual([
-      'Runtime tool "ask_agent" conflicts with internal agent tool.',
-      'Runtime tool "update_plan" conflicts with internal agent tool.'
-    ]);
+    expect(normalized.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
   });
 });

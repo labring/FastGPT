@@ -447,10 +447,6 @@ export const createWorkflowAgentLoopEventMapper = ({
         });
         return;
       }
-      case 'profile_start':
-      case 'profile_end':
-      case 'warning':
-        return;
     }
   };
 

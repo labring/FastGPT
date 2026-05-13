@@ -50,7 +50,7 @@ const FILE_COMPRESS_USAGE_NAMES: ReadonlySet<string> = new Set([
   i18nT('account_usage:llm_compress_text')
 ]);
 
-export type WorkflowAgentLoopRuntimeArtifacts = {
+type WorkflowAgentLoopRuntimeArtifacts = {
   assistantResponses: AIChatItemValueItemType[];
   nodeResponses: ChatHistoryItemResType[];
   capabilityAssistantResponses: AIChatItemValueItemType[];
@@ -221,7 +221,7 @@ export const createWorkflowAgentLoopRuntime = ({
 
     const agentResponse: ChatHistoryItemResType = {
       id: `${context.node.nodeId}-${event.requestIndex}-${event.requestId}`,
-      nodeId: `${context.node.nodeId}-${event.profile}-${event.requestIndex}`,
+      nodeId: `${context.node.nodeId}-main_agent-${event.requestIndex}`,
       moduleName: AGENT_DISPLAY.master.moduleName,
       moduleType: context.node.flowNodeType,
       moduleLogo: AGENT_DISPLAY.master.moduleLogo,

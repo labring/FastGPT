@@ -36,7 +36,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'answer_delta',
-      profile: 'main_agent',
       text: 'main answer'
     });
 
@@ -62,13 +61,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'llm_request_start',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4'
     });
     mapper.emitEvent({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4',
       requestId: 'req_2',
@@ -101,7 +98,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_update_plan',
         type: 'function',
@@ -113,13 +109,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_params',
-      profile: 'main_agent',
       callId: 'call_update_plan',
       argsDelta: '{"action":"create"}'
     });
     mapper.emitEvent({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
       requestId: 'req_update_plan',
@@ -139,13 +133,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_update_plan',
       response: 'ok'
     });
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_search',
         type: 'function',
@@ -157,19 +149,16 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_params',
-      profile: 'main_agent',
       callId: 'call_search',
       argsDelta: '{"q":'
     });
     mapper.emitEvent({
       type: 'tool_params',
-      profile: 'main_agent',
       callId: 'call_search',
       argsDelta: '"FastGPT"}'
     });
     mapper.emitEvent({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 2,
       modelName: 'GPT-4',
       requestId: 'req_search',
@@ -189,13 +178,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_search',
       response: 'Search '
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_search',
       response: 'result'
     });
@@ -274,7 +261,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_weather',
         type: 'function',
@@ -286,7 +272,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_params',
-      profile: 'main_agent',
       callId: 'call_weather',
       argsDelta: ':"Beijing"}'
     });
@@ -345,7 +330,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_weather',
         type: 'function',
@@ -357,7 +341,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_time',
         type: 'function',
@@ -369,7 +352,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
       requestId: 'req_parallel',
@@ -440,7 +422,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_weather',
         type: 'function',
@@ -452,7 +433,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_time',
         type: 'function',
@@ -464,7 +444,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'llm_request_end',
-      profile: 'main_agent',
       requestIndex: 1,
       modelName: 'GPT-4',
       requestId: 'req_parallel',
@@ -492,13 +471,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_weather',
       response: 'compressed weather'
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_time',
       response: 'compressed time'
     });
@@ -568,7 +545,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'tool_call',
-      profile: 'main_agent',
       call: {
         id: 'call_custom_plan',
         type: 'function',
@@ -580,13 +556,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     mapper.emitEvent({
       type: 'tool_params',
-      profile: 'main_agent',
       callId: 'call_custom_plan',
       argsDelta: ']}'
     });
     mapper.emitEvent({
       type: 'tool_response',
-      profile: 'main_agent',
       callId: 'call_custom_plan',
       response: 'ok'
     });
@@ -617,7 +591,6 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     mapper.emitEvent({
       type: 'stop_gate_feedback',
-      profile: 'main_agent',
       id: 'stop_gate_1',
       reason: 'Active plan is not complete.',
       feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>',

@@ -2,7 +2,7 @@ import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/
 import { parseJsonArgs } from '../../../utils';
 import { PlanAskPayloadSchema, type PlanAskPayload } from './askTool';
 
-export type ParsePlanAskToolCallResult =
+type ParsePlanAskToolCallResult =
   | {
       success: true;
       ask: PlanAskPayload;

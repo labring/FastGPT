@@ -2,7 +2,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type { AgentPlanType, AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 
-export type StopGateResult =
+type StopGateResult =
   | {
       allowStop: true;
       reason: string;

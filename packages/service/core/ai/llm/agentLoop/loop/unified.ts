@@ -20,8 +20,6 @@ import type {
 } from './type';
 import { shouldRequirePlanFromMessages } from '../plan/requirePlan';
 
-const MAIN_PROFILE = 'main_agent' as const;
-
 const getTextFromMessages = (messages: ChatCompletionMessageParam[]) =>
   messages
     .map((message) => {
@@ -66,32 +64,6 @@ const createSystemMessage = (content: string): ChatCompletionMessageParam => ({
 
 const stripSystemMessages = (messages: ChatCompletionMessageParam[]) =>
   messages.filter((message) => message.role !== ChatCompletionRequestMessageRoleEnum.System);
-
-/**
- * 运行详情里展示的 agent 名称。
- * 同一个单主 loop 内，第一轮请求负责理解用户输入和选择动作，始终记录为 Master Agent；
- * 后续如果请求只是在维护计划/追问，则展示为 Plan Agent，方便运行详情线性区分阶段。
- */
-const getDisplayAgentName = ({
-  requestIndex,
-  toolCalls,
-  askToolName,
-  updatePlanToolName
-}: {
-  requestIndex: number;
-  toolCalls?: ChatCompletionMessageToolCall[];
-  askToolName?: string;
-  updatePlanToolName?: string;
-}) => {
-  if (requestIndex === 1) return 'Master Agent';
-
-  const toolNames = new Set(toolCalls?.map((call) => call.function.name) ?? []);
-  const isPlanAction =
-    (!!updatePlanToolName && toolNames.has(updatePlanToolName)) ||
-    (!!askToolName && toolNames.has(askToolName));
-
-  return isPlanAction ? 'Plan Agent' : 'Master Agent';
-};
 
 const buildInitialMessages = ({
   runtime,
@@ -150,10 +122,9 @@ export const runUnifiedAgentLoop = async ({
 }): Promise<UnifiedAgentLoopResult> => {
   // 格式化 tools，会移除重复的
   const normalized = normalizeToolCatalog(runtime.toolCatalog);
-  normalized.warnings.forEach((message) => runtime.emitEvent?.({ type: 'warning', message }));
   runtime = {
     ...runtime,
-    toolCatalog: normalized.catalog
+    toolCatalog: normalized
   };
 
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
@@ -195,8 +166,6 @@ export const runUnifiedAgentLoop = async ({
         ]
       : buildInitialMessages({ runtime, input });
 
-  runtime.emitEvent?.({ type: 'profile_start', profile: MAIN_PROFILE });
-
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
     body: {
@@ -219,14 +188,11 @@ export const runUnifiedAgentLoop = async ({
         toolChoice: forceFinalAnswerOnly ? 'none' : 'auto'
       };
     },
-    onReasoning: ({ text }) =>
-      runtime.emitEvent?.({ type: 'reasoning_delta', profile: MAIN_PROFILE, text }),
-    onStreaming: ({ text }) =>
-      runtime.emitEvent?.({ type: 'answer_delta', profile: MAIN_PROFILE, text }),
+    onReasoning: ({ text }) => runtime.emitEvent?.({ type: 'reasoning_delta', text }),
+    onStreaming: ({ text }) => runtime.emitEvent?.({ type: 'answer_delta', text }),
     onAfterCompressContext: ({ usage, requestIds, seconds }) =>
       runtime.emitEvent?.({
         type: 'child_llm_request_end',
-        profile: MAIN_PROFILE,
         usage,
         requestIds,
         seconds
@@ -234,14 +200,12 @@ export const runUnifiedAgentLoop = async ({
     onAfterToolResponseCompress: ({ usage, requestIds }) =>
       runtime.emitEvent?.({
         type: 'child_llm_request_end',
-        profile: MAIN_PROFILE,
         usage,
         requestIds
       }),
     onLLMRequestStart: ({ requestIndex, modelName }) =>
       runtime.emitEvent?.({
         type: 'llm_request_start',
-        profile: MAIN_PROFILE,
         requestIndex,
         modelName
       }),
@@ -257,21 +221,10 @@ export const runUnifiedAgentLoop = async ({
       seconds,
       error
     }) => {
-      const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
-      const askToolName = runtime.toolCatalog.askTool?.function.name;
-      const agentName = getDisplayAgentName({
-        requestIndex,
-        toolCalls,
-        askToolName,
-        updatePlanToolName
-      });
-
       runtime.emitEvent?.({
         type: 'llm_request_end',
-        profile: MAIN_PROFILE,
         requestIndex,
         modelName,
-        agentName,
         requestId,
         finishReason,
         answerText,
@@ -291,12 +244,11 @@ export const runUnifiedAgentLoop = async ({
         });
       }
 
-      runtime.emitEvent?.({ type: 'tool_call', profile: MAIN_PROFILE, call });
+      runtime.emitEvent?.({ type: 'tool_call', call });
     },
     onToolParam: ({ call, argsDelta }) =>
       runtime.emitEvent?.({
         type: 'tool_params',
-        profile: MAIN_PROFILE,
         callId: call.id,
         argsDelta
       }),
@@ -345,7 +297,6 @@ export const runUnifiedAgentLoop = async ({
 
       runtimeToolCalledSinceLastPlanUpdate = true;
       const toolResult = await runtime.executeTool({
-        profile: MAIN_PROFILE,
         call,
         messages
       });
@@ -355,7 +306,6 @@ export const runUnifiedAgentLoop = async ({
     onAfterToolCall: ({ call, response }) => {
       runtime.emitEvent?.({
         type: 'tool_response',
-        profile: MAIN_PROFILE,
         callId: call.id,
         response: response || ''
       });
@@ -385,7 +335,6 @@ export const runUnifiedAgentLoop = async ({
       const stopGateId = `stop_gate_${requestIndex}_${requestId}`;
       runtime.emitEvent?.({
         type: 'stop_gate_feedback',
-        profile: MAIN_PROFILE,
         id: stopGateId,
         reason: gate.reason,
         feedback: getMessageText(gate.feedbackMessage),
@@ -402,12 +351,6 @@ export const runUnifiedAgentLoop = async ({
         feedbackMessage: gate.feedbackMessage
       };
     }
-  });
-
-  runtime.emitEvent?.({
-    type: 'profile_end',
-    profile: MAIN_PROFILE,
-    requestIds: result.requestIds
   });
 
   // 触发了 ask 模式

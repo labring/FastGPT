@@ -7,7 +7,7 @@ import {
 import z from 'zod';
 import { mergeStableCompletedSteps } from './reviser';
 
-export const UpdatePlanStatusArgsSchema = z.object({
+const UpdatePlanStatusArgsSchema = z.object({
   stepId: z.string(),
   status: AgentPlanStepStatusSchema,
   evidence: z.array(AgentPlanEvidenceSchema).optional(),
@@ -16,40 +16,39 @@ export const UpdatePlanStatusArgsSchema = z.object({
   needsReplan: z.boolean().optional(),
   reason: z.string().optional()
 });
-export type UpdatePlanStatusArgs = z.infer<typeof UpdatePlanStatusArgsSchema>;
+type UpdatePlanStatusArgs = z.infer<typeof UpdatePlanStatusArgsSchema>;
 
-export const SetPlanArgsSchema = z.object({
+const SetPlanArgsSchema = z.object({
   action: z.literal('set_plan'),
   plan: AgentPlanSchema,
   reason: z.string().optional()
 });
 
-export const UpdatePlanStepArgsSchema = UpdatePlanStatusArgsSchema.extend({
+const UpdatePlanStepArgsSchema = UpdatePlanStatusArgsSchema.extend({
   action: z.literal('update_step')
 });
 
-export const ReplacePlanArgsSchema = z.object({
+const ReplacePlanArgsSchema = z.object({
   action: z.literal('replace_plan'),
   plan: AgentPlanSchema,
   reason: z.string().optional()
 });
 
-export const UpdatePlanOperationSchema = z.discriminatedUnion('action', [
+const UpdatePlanOperationSchema = z.discriminatedUnion('action', [
   SetPlanArgsSchema,
   UpdatePlanStepArgsSchema,
   ReplacePlanArgsSchema
 ]);
-export type UpdatePlanOperation = z.infer<typeof UpdatePlanOperationSchema>;
+type UpdatePlanOperation = z.infer<typeof UpdatePlanOperationSchema>;
 
-export const BatchUpdatePlanArgsSchema = z.object({
+const BatchUpdatePlanArgsSchema = z.object({
   updates: z.array(UpdatePlanOperationSchema).min(1),
   reason: z.string().optional()
 });
 
-export const UpdatePlanArgsSchema = BatchUpdatePlanArgsSchema;
-export type UpdatePlanArgs = z.infer<typeof UpdatePlanArgsSchema>;
+const UpdatePlanArgsSchema = BatchUpdatePlanArgsSchema;
 
-export type UpdatePlanStateResult = {
+type UpdatePlanStateResult = {
   plan: AgentPlanType;
   changedStep?: AgentStepItemType;
   message: string;
@@ -60,7 +59,7 @@ export type UpdatePlanStateResult = {
 /**
  * 生成简短的 plan 进度摘要，作为 update_plan 的 tool response 返回给模型。
  */
-export const buildPlanProgressSummary = (plan: AgentPlanType) => {
+const buildPlanProgressSummary = (plan: AgentPlanType) => {
   const counts = plan.steps.reduce<Record<AgentStepItemType['status'], number>>(
     (acc, step) => {
       acc[step.status] += 1;
@@ -126,17 +125,19 @@ export const updatePlanState = ({
   }
 
   const currentStep = plan.steps[targetIndex];
-  const {
-    blocker: _oldBlocker,
-    needsReplan: _oldNeedsReplan,
-    ...currentStepWithoutTransientState
-  } = currentStep;
   const nextBlocker = args.status === 'blocked' ? args.blocker || args.reason : undefined;
   const changedStep: AgentStepItemType = {
-    ...currentStepWithoutTransientState,
+    id: currentStep.id,
+    title: currentStep.title,
+    description: currentStep.description,
+    acceptanceCriteria: currentStep.acceptanceCriteria,
     status: args.status,
     evidence: [...currentStep.evidence, ...(args.evidence ?? [])],
-    ...(args.outputSummary !== undefined && { outputSummary: args.outputSummary }),
+    ...(args.outputSummary !== undefined
+      ? { outputSummary: args.outputSummary }
+      : currentStep.outputSummary !== undefined
+        ? { outputSummary: currentStep.outputSummary }
+        : {}),
     ...(nextBlocker && { blocker: nextBlocker }),
     ...(args.needsReplan === true && { needsReplan: true })
   };
