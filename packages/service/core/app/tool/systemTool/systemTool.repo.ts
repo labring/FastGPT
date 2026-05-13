@@ -305,8 +305,7 @@ export class SystemToolRepo {
 
   getVersions = async ({
     pluginId,
-    source = 'system',
-    lang
+    source = 'system'
   }: {
     pluginId: string;
     source?: string;
@@ -323,7 +322,8 @@ export class SystemToolRepo {
       const { associatedPluginId } = tool.customConfig;
       const appVersions = await MongoAppVersion.find(
         {
-          appId: associatedPluginId
+          appId: associatedPluginId,
+          isAutoSave: false
         },
         {
           versionName: 1
@@ -341,8 +341,7 @@ export class SystemToolRepo {
     });
 
     return versions.map((item) => ({
-      version: item.version,
-      versionDescription: parseI18nString(item.versionDescription, lang)
+      version: item.version
     }));
   };
 

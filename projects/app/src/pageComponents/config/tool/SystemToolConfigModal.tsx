@@ -55,6 +55,9 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
+const FORM_LABEL_WIDTH = '160px';
+const SINGLE_TOOL_MODAL_WIDTH = '560px';
+const TOOL_SET_MODAL_WIDTH = '800px';
 
 const RUNTIME_CONFIG_FIELDS = [
   {
@@ -130,14 +133,14 @@ const ConfigCard = ({
   rightContent?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} px={4} py={4}>
-    <Flex alignItems={'center'} mb={5}>
-      <Box flex={1} color={'myGray.500'} fontSize={'xs'} fontWeight={'medium'}>
+  <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={4}>
+    <Flex alignItems={'flex-start'} justifyContent={'space-between'} gap={4} mb={4}>
+      <Box color={'myGray.400'} fontSize={'10px'} lineHeight={'14px'} fontWeight={'500'}>
         {title}
       </Box>
       {rightContent}
     </Flex>
-    <Flex flexDirection={'column'} gap={5}>
+    <Flex flexDirection={'column'} gap={4}>
       {children}
     </Flex>
   </Box>
@@ -152,8 +155,8 @@ const ConfigRow = ({
   children: React.ReactNode;
   align?: 'center' | 'flex-start';
 }) => (
-  <Flex alignItems={align} gap={6}>
-    <Box flex={'0 0 160px'} color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'}>
+  <Flex alignItems={align} gap={4} minH={9}>
+    <Box flex={`0 0 ${FORM_LABEL_WIDTH}`} color={'#24282C'} fontSize={'14px'} fontWeight={'500'}>
       {label}
     </Box>
     <Box flex={1} minW={0}>
@@ -172,18 +175,34 @@ const VerticalField = ({
   children: React.ReactNode;
 }) => (
   <Box>
-    <Flex alignItems={'center'} mb={2}>
-      <Box flex={1} color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'}>
+    <Flex alignItems={'center'} minH={9}>
+      <Box flex={`0 0 ${FORM_LABEL_WIDTH}`} color={'#24282C'} fontSize={'14px'} fontWeight={'500'}>
         {label}
       </Box>
       {tip && (
-        <Box color={'myGray.500'} fontSize={'xs'}>
+        <Box flex={1} color={'myGray.500'} fontSize={'12px'} textAlign={'right'}>
           {tip}
         </Box>
       )}
     </Flex>
     {children}
   </Box>
+);
+
+const ReadonlyTextArea = ({ value, minH }: { value?: string; minH: string }) => (
+  <Textarea
+    value={value || ''}
+    isReadOnly
+    resize={'none'}
+    minH={minH}
+    bg={'myGray.25'}
+    borderColor={'myGray.100'}
+    color={'myGray.400'}
+    fontSize={'14px'}
+    lineHeight={'20px'}
+    px={3}
+    py={2}
+  />
 );
 
 const SystemToolConfigModal = ({
@@ -270,6 +289,7 @@ const SystemToolConfigModal = ({
   // 从 tool 读取只读数据
   const inputList = tool?.secrets;
   const isFolder = tool?.isToolSet;
+  const modalWidth = isFolder ? TOOL_SET_MODAL_WIDTH : SINGLE_TOOL_MODAL_WIDTH;
 
   const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>(
     tool?.tags ?? [],
@@ -339,17 +359,11 @@ const SystemToolConfigModal = ({
     [i18n.language, toolTags]
   );
 
-  const selectedVersionInfo = useMemo(() => {
-    const version = selectedVersion || tool?.version;
-    return toolVersions.find((item) => item.version === version);
-  }, [selectedVersion, tool?.version, toolVersions]);
-
   const versionSelectList = useMemo(
     () =>
       toolVersions.map((item) => ({
         label: item.version,
-        value: item.version,
-        description: item.versionDescription
+        value: item.version
       })),
     [toolVersions]
   );
@@ -402,7 +416,7 @@ const SystemToolConfigModal = ({
   const renderInputField = (item: InputConfigType) => {
     const labelSection = (
       <HStack>
-        <Box position={'relative'} fontSize={'sm'} fontWeight={'medium'}>
+        <Box position={'relative'} fontSize={'14px'} fontWeight={'500'}>
           {item.required && (
             <Box position={'absolute'} color={'red.600'} left={'-2'} top={'-1'}>
               *
@@ -426,7 +440,7 @@ const SystemToolConfigModal = ({
       <ConfigRow key={item.key} label={labelSection}>
         <Input
           bg={'white'}
-          h={10}
+          h={9}
           borderColor={'myGray.200'}
           {...register(`secretsVal.${item.key}`, {
             required: item.required
@@ -483,12 +497,33 @@ const SystemToolConfigModal = ({
     </SimpleGrid>
   );
 
+  const toolIdContent = (
+    <Flex
+      alignItems={'center'}
+      color={'myGray.400'}
+      fontSize={'10px'}
+      lineHeight={'14px'}
+      fontWeight={'500'}
+      gap={2}
+      minW={0}
+      maxW={'55%'}
+    >
+      <Box>{t('app:toolkit_id')}:</Box>
+      <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+        {tool?.id || toolId}
+      </Box>
+      <CopyBox value={tool?.id || toolId} lineHeight={0}>
+        <MyIcon name={'copy'} w={'12px'} color={'myGray.400'} />
+      </CopyBox>
+    </Flex>
+  );
+
   const basicConfigSection = (
-    <ConfigCard title={t('app:toolkit_basic_config')}>
+    <ConfigCard title={t('app:toolkit_basic_config')} rightContent={toolIdContent}>
       <ConfigRow label={t('app:toolkit_plugin_status')}>
         <MySelect<PluginStatusType>
           width={'100%'}
-          h={10}
+          h={9}
           value={status}
           list={pluginStatusSelectList}
           onChange={(e) => setValue('status', e)}
@@ -511,7 +546,7 @@ const SystemToolConfigModal = ({
           }}
           placeholder={t('app:custom_plugin_tags_label')}
           w={'100%'}
-          h={10}
+          h={9}
           borderRadius={'sm'}
           bg={'white'}
         />
@@ -548,7 +583,7 @@ const SystemToolConfigModal = ({
               onSelect={(val) => setValue('promoteTags', val)}
               placeholder={t('app:toolkit_select_user_tags')}
               w={'100%'}
-              h={10}
+              h={9}
               borderRadius={'sm'}
               bg={'white'}
             />
@@ -561,84 +596,70 @@ const SystemToolConfigModal = ({
               onSelect={(val) => setValue('hideTags', val)}
               placeholder={t('app:toolkit_select_user_tags')}
               w={'100%'}
-              h={10}
+              h={9}
               borderRadius={'sm'}
               bg={'white'}
             />
           </VerticalField>
         </>
       )}
-
-      {isFolder && (
-        <Box>
-          <Box mb={3} fontWeight={'medium'} color={'myGray.900'} fontSize={'sm'}>
-            {t('app:toolkit_tool_list')}
-          </Box>
-          <TableContainer border={'1px solid'} borderColor={'myGray.200'} borderRadius={'md'}>
-            <Table size="sm">
-              <Thead bg={'myGray.50'}>
-                <Tr>
-                  <Th fontSize="xs" py={2} px={2}>
-                    {t('app:toolkit_tool_name')}
-                  </Th>
-                  <Th fontSize="xs" py={2} px={2} width="140px">
-                    {t('app:toolkit_key_price')}
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {tool?.children?.map((childTool: ChildToolConfigItem, index: number) => {
-                  return (
-                    <Tr key={childTool.id}>
-                      <Td fontSize="xs">
-                        <Text fontSize="xs" fontWeight="medium">
-                          {childTool.name}
-                        </Text>
-                      </Td>
-                      <Td fontSize="xs">
-                        <MyNumberInput
-                          width={'100px'}
-                          register={register}
-                          defaultValue={0}
-                          name={`children.${index}.systemKeyCost`}
-                          {...COST_LIMITS}
-                        />
-                        <Input
-                          type="hidden"
-                          {...register(`children.${index}.id`)}
-                          value={childTool.id}
-                        />
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </Box>
-      )}
     </ConfigCard>
   );
 
+  const toolListSection = isFolder && (
+    <VerticalField label={t('app:toolkit_tool_list')}>
+      <TableContainer border={'1px solid'} borderColor={'myGray.200'} borderRadius={'6px'}>
+        <Table size="sm">
+          <Thead bg={'myGray.25'}>
+            <Tr>
+              <Th fontSize="12px" py={2} px={3} color={'myGray.500'} textTransform={'none'}>
+                {t('app:toolkit_tool_name')}
+              </Th>
+              <Th
+                fontSize="12px"
+                py={2}
+                px={3}
+                width="50%"
+                color={'myGray.500'}
+                textTransform={'none'}
+              >
+                {t('app:toolkit_key_price')}
+              </Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {tool?.children?.map((childTool: ChildToolConfigItem, index: number) => {
+              return (
+                <Tr key={childTool.id}>
+                  <Td fontSize="12px" color={'myGray.500'} py={2} px={3}>
+                    <Text fontSize="12px">{childTool.name}</Text>
+                  </Td>
+                  <Td fontSize="12px" py={1} px={3}>
+                    <MyNumberInput
+                      width={'160px'}
+                      h={'28px'}
+                      register={register}
+                      defaultValue={0}
+                      name={`children.${index}.systemKeyCost`}
+                      {...COST_LIMITS}
+                    />
+                    <Input type="hidden" {...register(`children.${index}.id`)} value={childTool.id} />
+                  </Td>
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
+      </TableContainer>
+    </VerticalField>
+  );
+
   const versionInfoSection = (
-    <ConfigCard
-      title={t('app:toolkit_version_info')}
-      rightContent={
-        <Flex alignItems={'center'} color={'myGray.500'} fontSize={'xs'} gap={2} minW={0}>
-          <Box>{t('app:toolkit_id')}:</Box>
-          <Box maxW={'220px'} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-            {tool?.id || toolId}
-          </Box>
-          <CopyBox value={tool?.id || toolId} lineHeight={0}>
-            <MyIcon name={'copy'} w={'14px'} color={'myGray.500'} />
-          </CopyBox>
-        </Flex>
-      }
-    >
+    <ConfigCard title={t('app:toolkit_version_info')}>
       <ConfigRow label={t('app:toolkit_plugin_version')}>
         <MySelect<string>
           width={'100%'}
-          h={10}
+          h={9}
           value={selectedVersion || tool?.version}
           list={versionSelectList}
           isLoading={loadingVersions}
@@ -647,36 +668,15 @@ const SystemToolConfigModal = ({
       </ConfigRow>
 
       <ConfigRow label={t('app:toolkit_plugin_name')}>
-        <Box color={'myGray.900'} fontSize={'sm'} lineHeight={'40px'}>
+        <Box color={'#24282C'} fontSize={'14px'} lineHeight={'20px'}>
           {tool?.name || '-'}
         </Box>
       </ConfigRow>
 
-      <ConfigRow label={t('app:toolkit_plugin_intro')} align={'flex-start'}>
-        <Textarea
-          value={tool?.intro || ''}
-          isReadOnly
-          resize={'none'}
-          minH={'112px'}
-          bg={'myGray.50'}
-          borderColor={'myGray.200'}
-          color={'myGray.500'}
-          fontSize={'sm'}
-        />
-      </ConfigRow>
-
-      <ConfigRow label={t('app:toolkit_version_description')} align={'flex-start'}>
-        <Textarea
-          value={selectedVersionInfo?.versionDescription || ''}
-          isReadOnly
-          resize={'none'}
-          minH={'128px'}
-          bg={'myGray.50'}
-          borderColor={'myGray.200'}
-          color={'myGray.500'}
-          fontSize={'sm'}
-        />
-      </ConfigRow>
+      <VerticalField label={t('app:toolkit_plugin_intro')}>
+        <ReadonlyTextArea value={tool?.intro} minH={'92px'} />
+      </VerticalField>
+      {toolListSection}
     </ConfigCard>
   );
 
@@ -685,16 +685,26 @@ const SystemToolConfigModal = ({
       isOpen
       isLoading={loading || loadingTags || loadingVersions || loadingRuntimeConfig}
       onClose={onClose}
-      width={'560px'}
-      maxW={['92vw', '560px']}
+      width={modalWidth}
+      maxW={['92vw', modalWidth]}
       bg={'white'}
       borderRadius={'10px'}
+      overflow={'hidden'}
     >
-      <ModalBody px={8} pt={8} pb={0}>
-        <Box color={'black'} fontSize={'20px'} lineHeight={'26px'} fontWeight={'500'} mb={6}>
-          {t('app:toolkit_tool_config', { name: tool?.name })}
-        </Box>
-
+      <Box
+        flexShrink={0}
+        px={8}
+        pr={12}
+        pt={8}
+        pb={6}
+        color={'black'}
+        fontSize={'20px'}
+        lineHeight={'26px'}
+        fontWeight={'500'}
+      >
+        {t('app:toolkit_tool_config', { name: tool?.name })}
+      </Box>
+      <ModalBody flex={1} minH={0} overflowY={'auto'} px={8} pt={0} pb={0}>
         <Tabs variant={'unstyled'} index={tabIndex} onChange={setTabIndex}>
           <TabList borderBottom={'1px solid'} borderColor={'myGray.200'}>
             <Tab
@@ -737,7 +747,7 @@ const SystemToolConfigModal = ({
           </TabPanels>
         </Tabs>
       </ModalBody>
-      <ModalFooter justifyContent={'space-between'} px={8} py={6}>
+      <ModalFooter flexShrink={0} justifyContent={'space-between'} px={8} py={6}>
         <Box>
           {showRuntimeConfig && tabIndex === 1 && (
             <PopoverConfirm
@@ -745,7 +755,12 @@ const SystemToolConfigModal = ({
               content={t('app:toolkit_reset_runtime_config_confirm')}
               onConfirm={onResetRuntimeConfig}
               Trigger={
-                <Button variant={'whiteBase'} isLoading={resettingRuntimeConfig}>
+                <Button
+                  variant={'whiteBase'}
+                  h={'32px'}
+                  px={'14px'}
+                  isLoading={resettingRuntimeConfig}
+                >
                   {t('common:Reset')}
                 </Button>
               }
@@ -753,10 +768,10 @@ const SystemToolConfigModal = ({
           )}
         </Box>
         <Flex gap={3}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} w={'64px'} h={'32px'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={submitting} onClick={handleSubmit(onSubmit)}>
+          <Button w={'64px'} h={'32px'} isLoading={submitting} onClick={handleSubmit(onSubmit)}>
             {t('common:Confirm')}
           </Button>
         </Flex>
