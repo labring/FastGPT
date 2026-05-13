@@ -18,6 +18,12 @@ function getPageName(str: string): string {
 
 async function findFirstValidPage(dirRelPath: string): Promise<string | null> {
   const absDir = path.join(docsRoot, dirRelPath);
+
+  // Prevent path traversal
+  if (!path.resolve(absDir).startsWith(docsRoot + path.sep) && path.resolve(absDir) !== docsRoot) {
+    return null;
+  }
+
   const metaPath = path.join(absDir, 'meta.json');
 
   try {
@@ -33,6 +39,14 @@ async function findFirstValidPage(dirRelPath: string): Promise<string | null> {
 
       const candidateDir = path.join(docsRoot, pagePath);
       const candidateFile = candidateDir + '.mdx';
+
+      // Prevent path traversal via meta.json page entries
+      if (
+        !path.resolve(candidateDir).startsWith(docsRoot + path.sep) &&
+        path.resolve(candidateDir) !== docsRoot
+      ) {
+        continue;
+      }
 
       try {
         await fs.access(candidateFile);
@@ -68,6 +82,12 @@ export async function GET(req: NextRequest) {
   const relPath = rawPath
     .replace(/^\/docs\/?/, '')
     .replace(/^\/|\/$/g, '');
+
+  // Prevent path traversal — resolved path must stay within docsRoot
+  const resolved = path.resolve(docsRoot, relPath);
+  if (!resolved.startsWith(docsRoot + path.sep) && resolved !== docsRoot) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+  }
 
   try {
     const maybeFile = path.join(docsRoot, relPath + '.mdx');
