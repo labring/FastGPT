@@ -119,6 +119,12 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
         ...options?.extra
       };
 
+      // 添加 tools 和 tool_choice（agentic search function calling 依赖此参数）
+      if (options?.tools?.length) {
+        body.tools = options.tools;
+        body.tool_choice = options.toolChoice ?? 'auto';
+      }
+
       // 过滤 undefined/null
       const filteredBody = Object.fromEntries(
         Object.entries(body).filter(([_, v]) => v !== null && v !== undefined)
@@ -235,6 +241,12 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
         stream: true,
         ...options?.extra
       };
+
+      // 添加 tools 和 tool_choice（agentic search function calling 依赖此参数）
+      if (options?.tools?.length) {
+        body.tools = options.tools;
+        body.tool_choice = options.toolChoice ?? 'auto';
+      }
 
       const filteredBody = Object.fromEntries(
         Object.entries(body).filter(([_, v]) => v !== null && v !== undefined)

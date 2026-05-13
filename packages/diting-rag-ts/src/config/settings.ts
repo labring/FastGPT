@@ -113,8 +113,8 @@ export function getDefaultAgent() {
     MAX_TOOL_CALLS: parseInt(process.env.AGENTIC_MAX_TOOL_CALLS || '', 10) || 100,
     EMBEDDING_WEIGHT: parseFloat(process.env.AGENTIC_EMBEDDING_WEIGHT || '') || 0.6,
     SIMILARITY: parseFloat(process.env.AGENTIC_SIMILARITY || '') || 0.0,
-    RERANK_TOP_K: parseInt(process.env.AGENTIC_RERANK_TOP_K || '', 10) || 20,
-    RETRIEVE_LIMIT: parseInt(process.env.AGENTIC_RETRIEVE_LIMIT || '', 10) || 50
+    RERANK_TOP_K: parseInt(process.env.AGENTIC_RERANK_TOP_K || '', 10) || 12,
+    RETRIEVE_LIMIT: parseInt(process.env.AGENTIC_RETRIEVE_LIMIT || '', 10) || 30
   };
 }
 
