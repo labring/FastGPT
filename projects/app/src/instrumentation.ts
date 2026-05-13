@@ -8,6 +8,13 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       await import('@fastgpt/service/common/proxy');
 
+      // 代理模式下跳过后端初始化：API 请求全部转发到远程服务器，本地不需要数据库/缓存/向量库等基础设施
+      const isProxyMode = process.env.NODE_ENV === 'development' && !!process.env.PROXY_API_TARGET;
+      if (isProxyMode) {
+        console.log('[Dev Proxy] 代理模式已启用，跳过本地后端初始化');
+        return;
+      }
+
       // 基础系统初始化
       const [
         { connectMongo },
