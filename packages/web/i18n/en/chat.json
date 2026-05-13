@@ -66,6 +66,7 @@
   "invalid_share_url": "Invalid sharing link",
   "is_chatting": "Chatting in progress... please wait until it finishes",
   "resume_placeholder_generating": "Generating",
+  "stopping_chat": "Stopping the previous chat turn. Please wait.",
   "resume_unavailable": "The current streaming response cannot be restored right now. Please check back later for the final answer.",
   "resume_unavailable_memory_pressure": "The service is currently under resource pressure, so stream resume is temporarily unavailable. Please check back later for the final answer.",
   "llm_request_detail": "LLM Request Detail",

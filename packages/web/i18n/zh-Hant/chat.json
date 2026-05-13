@@ -66,6 +66,7 @@
   "invalid_share_url": "無效的分享鏈接",
   "is_chatting": "對話進行中...請稍候",
   "resume_placeholder_generating": "生成中",
+  "stopping_chat": "正在停止上一輪對話，請稍候",
   "resume_unavailable": "目前無法恢復正在產生的串流內容，請稍後再查看最終回答。",
   "resume_unavailable_memory_pressure": "目前服務資源緊張，暫時不提供串流恢復。請稍後再查看最終回答。",
   "llm_request_ids": "LLM 請求詳情",

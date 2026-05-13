@@ -76,11 +76,15 @@ export type StopV2ChatParams = z.infer<typeof StopV2ChatSchema>;
 
 export const StopV2ChatResponseSchema = z
   .object({
-    success: z.boolean().describe('是否成功停止')
+    success: z.boolean().describe('是否成功发送停止信号'),
+    completed: z.boolean().describe('工作流是否已在本次请求等待窗口内完成停止'),
+    chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional().describe('当前对话生成状态')
   })
   .meta({
     example: {
-      success: true
+      success: true,
+      completed: true,
+      chatGenerateStatus: ChatGenerateStatusEnum.done
     }
   });
 export type StopV2ChatResponse = z.infer<typeof StopV2ChatResponseSchema>;
