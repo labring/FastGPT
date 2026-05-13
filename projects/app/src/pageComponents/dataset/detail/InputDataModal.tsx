@@ -535,8 +535,9 @@ const InputDataModal = ({
                 rightIcon={<MyIcon name={'common/rightArrowLight'} w={'16px'} color={'#3370FF'} />}
                 isDisabled={!collection.permission.hasWritePer}
                 isLoading={isImporting || isUpdating}
-                // @ts-expect-error react-hook-form submit handler accepts both import and update payloads here.
-                onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
+                onClick={handleSubmit((data) =>
+                  dataId ? onUpdateData(data) : sureImportData(data)
+                )}
               >
                 {t('dataset:generate_index')}
               </Button>
