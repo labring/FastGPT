@@ -6,6 +6,7 @@
   "auto_index": "索引增強",
   "billing_module": "扣費模組",
   "llm_compress_text": "文件內容壓縮",
+  "tool_response_compress": "工具回應壓縮",
   "compress_llm_messages": "AI 歷史記錄壓縮",
   "context_pick": "上下文選取",
   "count": "運行次數",

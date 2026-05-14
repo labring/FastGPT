@@ -130,12 +130,12 @@ export const dispatchFileRead = async ({
     // Check if compression is needed
     const llmModel = getLLMModel(model);
     const thresholds = calculateCompressionThresholds(llmModel.maxContext);
-    const maxTokens = thresholds.fileReadResponse.threshold;
+    const compressedTokenLimit = thresholds.fileReadResponse.threshold;
 
     const result = await compressLargeContent({
       content: responseText,
       model: llmModel,
-      maxTokens,
+      compressedTokenLimit,
       userKey
     });
 

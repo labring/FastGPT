@@ -18,5 +18,6 @@ export type ToolCallEventType = {
     response: string;
     usage: ChatNodeUsageType;
     requestIds: string[];
+    seconds: number;
   }) => void;
 };

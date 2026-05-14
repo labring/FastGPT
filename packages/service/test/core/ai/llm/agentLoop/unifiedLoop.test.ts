@@ -7,8 +7,9 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
-const { createLLMResponseMock } = vi.hoisted(() => ({
-  createLLMResponseMock: vi.fn()
+const { createLLMResponseMock, compressRequestMessagesMock } = vi.hoisted(() => ({
+  createLLMResponseMock: vi.fn(),
+  compressRequestMessagesMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
@@ -33,9 +34,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
-  compressRequestMessages: vi.fn(async ({ messages }) => ({
-    messages
-  })),
+  compressRequestMessages: compressRequestMessagesMock,
   compressToolResponse: vi.fn(async ({ response }) => ({
     compressed: response
   }))
@@ -98,6 +97,9 @@ const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime 
 describe('runUnifiedAgentLoop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
+      messages
+    }));
   });
 
   it('returns done when main agent answers directly without plan', async () => {
@@ -129,6 +131,44 @@ describe('runUnifiedAgentLoop', () => {
     expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).toContain(
       'FastGPT Main Agent'
     );
+  });
+
+  it('passes context checkpoint from base loop to unified result', async () => {
+    const contextCheckpoint = '<context_checkpoint>compressed history</context_checkpoint>';
+
+    compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
+      messages,
+      usage: {
+        moduleName: 'account_usage:compress_llm_messages',
+        model: 'GPT-4',
+        totalPoints: 0,
+        inputTokens: 20,
+        outputTokens: 8
+      },
+      requestIds: ['req_compress'],
+      contextCheckpoint
+    }));
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_direct',
+        content: 'direct answer'
+      })
+    ]);
+
+    const result = await runUnifiedAgentLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(result.contextCheckpoint).toEqual(contextCheckpoint);
   });
 
   it('passes reasoning effort to the LLM request body', async () => {

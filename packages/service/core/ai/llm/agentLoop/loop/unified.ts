@@ -191,18 +191,20 @@ export const runUnifiedAgentLoop = async ({
     },
     onReasoning: ({ text }) => runtime.emitEvent?.({ type: 'reasoning_delta', text }),
     onStreaming: ({ text }) => runtime.emitEvent?.({ type: 'answer_delta', text }),
-    onAfterCompressContext: ({ usage, requestIds, seconds }) =>
+    onAfterCompressContext: ({ usage, requestIds, seconds, contextCheckpoint }) =>
+      runtime.emitEvent?.({
+        type: 'child_llm_request_end',
+        usage,
+        requestIds,
+        seconds,
+        contextCheckpoint
+      }),
+    onAfterToolResponseCompress: ({ usage, requestIds, seconds }) =>
       runtime.emitEvent?.({
         type: 'child_llm_request_end',
         usage,
         requestIds,
         seconds
-      }),
-    onAfterToolResponseCompress: ({ usage, requestIds }) =>
-      runtime.emitEvent?.({
-        type: 'child_llm_request_end',
-        usage,
-        requestIds
       }),
     onLLMRequestStart: ({ requestIndex, modelName }) =>
       runtime.emitEvent?.({
@@ -363,7 +365,8 @@ export const runUnifiedAgentLoop = async ({
       pendingMainContext: pendingAsk.context,
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,
-      requestIds: result.requestIds
+      requestIds: result.requestIds,
+      contextCheckpoint: result.contextCheckpoint
     };
   }
 
@@ -374,7 +377,8 @@ export const runUnifiedAgentLoop = async ({
       activePlan,
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,
-      requestIds: result.requestIds
+      requestIds: result.requestIds,
+      contextCheckpoint: result.contextCheckpoint
     };
   }
 
@@ -385,7 +389,8 @@ export const runUnifiedAgentLoop = async ({
       activePlan,
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,
-      requestIds: result.requestIds
+      requestIds: result.requestIds,
+      contextCheckpoint: result.contextCheckpoint
     };
   }
 
@@ -396,6 +401,7 @@ export const runUnifiedAgentLoop = async ({
     activePlan,
     completeMessages: result.completeMessages,
     assistantMessages: result.assistantMessages,
-    requestIds: result.requestIds
+    requestIds: result.requestIds,
+    contextCheckpoint: result.contextCheckpoint
   };
 };

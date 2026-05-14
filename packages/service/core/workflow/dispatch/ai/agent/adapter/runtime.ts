@@ -36,6 +36,10 @@ const AGENT_DISPLAY = {
     moduleName: i18nT('chat:compress_llm_messages'),
     moduleLogo: 'core/app/agent/child/contextCompress'
   },
+  toolResponseCompress: {
+    moduleName: i18nT('chat:tool_response_compress'),
+    moduleLogo: 'core/app/agent/child/contextCompress'
+  },
   fileCompress: {
     moduleLogo: 'core/app/agent/child/contextCompress'
   }
@@ -48,6 +52,9 @@ const CONTEXT_COMPRESS_USAGE_NAMES: ReadonlySet<string> = new Set([
 const AGENT_CALL_USAGE_NAMES: ReadonlySet<string> = new Set([i18nT('account_usage:agent_call')]);
 const FILE_COMPRESS_USAGE_NAMES: ReadonlySet<string> = new Set([
   i18nT('account_usage:llm_compress_text')
+]);
+const TOOL_RESPONSE_COMPRESS_USAGE_NAMES: ReadonlySet<string> = new Set([
+  i18nT('account_usage:tool_response_compress')
 ]);
 
 type WorkflowAgentLoopRuntimeArtifacts = {
@@ -135,7 +142,12 @@ export const createWorkflowAgentLoopRuntime = ({
       return AGENT_DISPLAY.contextCompress;
     }
 
-    // 工具响应压缩过去挂在工具节点的 compressTextAgent 上，这里作为独立 LLM 调用展示时复用压缩图标。
+    // 工具响应压缩是 Agent 内部子调用，需要单独展示，避免被误标为文件内容压缩。
+    if (TOOL_RESPONSE_COMPRESS_USAGE_NAMES.has(usage.moduleName)) {
+      return AGENT_DISPLAY.toolResponseCompress;
+    }
+
+    // 文件读取压缩也作为独立 LLM 调用展示，复用上下文压缩图标。
     if (FILE_COMPRESS_USAGE_NAMES.has(usage.moduleName)) {
       return {
         moduleName: usage.moduleName,

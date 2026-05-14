@@ -198,6 +198,10 @@ export const AdminFbkSchema = z.object({
 });
 export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 
+// Stores only the compacted context text; usage and request ids stay in runtime traces.
+export const ContextCheckpointValueSchema = z.string();
+export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSchema>;
+
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
   planId: z.string().nullish(),
@@ -219,6 +223,7 @@ export const AIChatItemValueSchema = z.object({
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
   agentStopGate: AgentLoopStopGateSchema.nullish(),
+  contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideInUI: z.boolean().optional()
 });

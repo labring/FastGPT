@@ -109,8 +109,9 @@ const Row = ({
         : {
             minH: '32px',
             px: 3,
+            py: 2,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             border: '1px solid',
             borderColor: 'myGray.200',
             color: 'myGray.900',

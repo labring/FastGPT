@@ -713,7 +713,7 @@ const AIResponseBox = ({
   if ('plan' in value && value.plan) {
     responseBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
   }
-  if ('planStatus' in value && value.planStatus) {
+  if ('planStatus' in value && value.planStatus?.status === 'generating') {
     responseBlocks.push(<RenderPlanStatus key="planStatus" planStatus={value.planStatus} />);
   }
 

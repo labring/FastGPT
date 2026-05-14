@@ -8,6 +8,7 @@
   "billing_module": "Deduction module",
   "check_left_points": "Check remaining credits",
   "llm_compress_text": "File content compression",
+  "tool_response_compress": "Tool response compression",
   "compress_llm_messages": "AI history compression",
   "context_pick": "Context pick",
   "count": "Number of runs",

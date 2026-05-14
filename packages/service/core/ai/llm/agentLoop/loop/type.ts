@@ -5,6 +5,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { ContextCheckpointValueType } from '@fastgpt/global/core/chat/type';
 import type { CreateLLMResponseProps } from '../../request';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { PlanAskPayload } from '../plan/askTool';
@@ -51,7 +52,7 @@ export type AgentLoopEvent =
         outputTokens: number;
         totalPoints: number;
       };
-      seconds?: number;
+      seconds: number;
       error?: unknown;
     }
   | { type: 'reasoning_delta'; text: string }
@@ -71,7 +72,8 @@ export type AgentLoopEvent =
       type: 'child_llm_request_end';
       usage?: ChatNodeUsageType;
       requestIds: string[];
-      seconds?: number;
+      seconds: number;
+      contextCheckpoint?: ContextCheckpointValueType;
     }
   | { type: 'plan_status'; status: 'generating' | 'updating' }
   | { type: 'plan_update'; plan: AgentPlanType };
@@ -128,5 +130,6 @@ export type UnifiedAgentLoopResult = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   requestIds: string[];
+  contextCheckpoint?: ContextCheckpointValueType;
   error?: unknown;
 };

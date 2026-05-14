@@ -329,9 +329,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           outputTokens,
           ...(isDevEnv
             ? {
-                promptTokens: usage.prompt_tokens,
-                completionTokens: usage.completion_tokens,
-                totalTokens: usage.total_tokens,
                 cachedTokens: usage.cached_tokens,
                 cacheReadTokens: usage.cache_read_tokens,
                 cacheWriteTokens: usage.cache_write_tokens

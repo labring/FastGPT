@@ -8,6 +8,7 @@
   "billing_module": "扣费模块",
   "check_left_points": "查看剩余积分",
   "llm_compress_text": "文件内容压缩",
+  "tool_response_compress": "工具响应压缩",
   "compress_llm_messages": "AI 历史记录压缩",
   "context_pick": "上下文选取",
   "count": "运行次数",

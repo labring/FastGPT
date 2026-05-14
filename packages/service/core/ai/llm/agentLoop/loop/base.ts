@@ -8,8 +8,8 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type { CreateLLMResponseProps, ResponseEvents } from '../../request';
 import { createLLMResponse } from '../../request';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { ContextCheckpointValueType } from '@fastgpt/global/core/chat/type';
 import { compressRequestMessages, compressToolResponse } from '../../compress';
-import { filterGPTMessageByMaxContext } from '../../utils';
 import { getLLMModel } from '../../../model';
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
@@ -38,6 +38,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     usage: ChatNodeUsageType;
     requestIds: string[];
     seconds: number;
+    contextCheckpoint?: ContextCheckpointValueType;
   }) => void;
   // 处理交互工具
   onRunInteractiveTool: (e: AgentLoopChildrenInteractiveParams<TChildrenResponse>) => Promise<{
@@ -97,7 +98,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
       outputTokens: number;
       totalPoints: number;
     };
-    seconds?: number;
+    seconds: number;
     error?: unknown;
   }) => void;
 } & ResponseEvents;
@@ -117,6 +118,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   compressInputTokens: number;
   compressOutputTokens: number;
   childrenUsages: ChatNodeUsageType[];
+  contextCheckpoint?: ContextCheckpointValueType;
 
   finish_reason: CompletionFinishReason | undefined;
 };
@@ -128,11 +130,13 @@ export const onCompressContext = async ({
   isAborted,
   requestMessages,
   modelData,
+  reasoningEffort,
   userKey
 }: {
   isAborted: RunAgentCallProps['isAborted'];
   requestMessages: ChatCompletionMessageParam[];
   modelData: LLMModelItemType;
+  reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey: RunAgentCallProps['userKey'];
 }) => {
   const compressStartTime = Date.now();
@@ -140,6 +144,7 @@ export const onCompressContext = async ({
     checkIsStopping: isAborted,
     messages: requestMessages,
     model: modelData,
+    reasoningEffort,
     userKey
   });
   if (result.usage) {
@@ -147,7 +152,8 @@ export const onCompressContext = async ({
       messages: result.messages,
       usage: result.usage,
       requestIds: result.requestIds ?? [],
-      seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+      seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2),
+      contextCheckpoint: result.contextCheckpoint
     };
   }
 };
@@ -194,12 +200,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   // 本轮产生的 assistantMessages，包括 tool 内产生的
   const assistantMessages: ChatCompletionMessageParam[] = [];
   // 多轮运行时候的请求 messages
-  let requestMessages = (
-    await filterGPTMessageByMaxContext({
-      messages,
-      maxContext: modelData.maxContext - 8000 // 始终预留 8000 个 token 响应空间。
-    })
-  ).map((item) => {
+  let requestMessages = messages.map((item) => {
     if (item.role === 'assistant' && item.tool_calls) {
       return {
         ...item,
@@ -221,6 +222,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   let finish_reason: CompletionFinishReason | undefined;
   let requestError: any;
   const childrenUsages: ChatNodeUsageType[] = [];
+  // Latest checkpoint text generated in this loop; caller persists it as hidden history.
+  let contextCheckpoint: ContextCheckpointValueType | undefined;
 
   // 处理 tool 里的交互
   if (childrenInteractiveParams) {
@@ -296,6 +299,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         isAborted,
         requestMessages,
         modelData,
+        reasoningEffort: body.reasoning_effort,
         userKey
       });
       if (compressResult) {
@@ -303,11 +307,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         compressInputTokens += compressResult.usage.inputTokens || 0;
         compressOutputTokens += compressResult.usage.outputTokens || 0;
         childrenUsages.push(compressResult.usage);
+        contextCheckpoint = compressResult.contextCheckpoint ?? contextCheckpoint;
         usagePush?.([compressResult.usage]);
         onAfterCompressContext?.({
           usage: compressResult.usage,
           requestIds: compressResult.requestIds,
-          seconds: compressResult.seconds
+          seconds: compressResult.seconds,
+          contextCheckpoint: compressResult.contextCheckpoint
         });
       }
     }
@@ -455,12 +461,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // Compress tool response
       const toolFinalResponse = await (async () => {
         const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+        const compressStartTime = Date.now();
         const compressionResult = await compressToolResponse({
           response,
           model: modelData,
           currentMessagesTokens,
           toolLength: toolCalls.length,
-          reservedTokens: 8000, // 预留 8k tokens 给输出
+          reasoningEffort: body.reasoning_effort,
           userKey
         });
         const { compressed: compressed_context, usage: compressionUsage } = compressionResult;
@@ -471,7 +478,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             call: tool,
             response: compressed_context,
             usage: compressionUsage,
-            requestIds: compressionResult.requestIds ?? []
+            requestIds: compressionResult.requestIds ?? [],
+            seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
           });
         }
 
@@ -548,6 +556,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     compressInputTokens,
     compressOutputTokens,
     childrenUsages,
+    contextCheckpoint,
     completeMessages: requestMessages,
     assistantMessages,
     interactiveResponse,

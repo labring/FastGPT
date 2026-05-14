@@ -487,6 +487,216 @@ describe('chats2GPTMessages', () => {
     expect(result[0].dataId).toBeUndefined();
   });
 
+  it('should keep all messages unchanged when there is no context checkpoint', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'system',
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        dataId: 'user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'hello' } }]
+      },
+      {
+        dataId: 'assistant',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'hi' } }]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: true })).toEqual([
+      {
+        dataId: 'system',
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        dataId: 'user',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'hello'
+      },
+      {
+        dataId: 'assistant',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'hi'
+      }
+    ]);
+  });
+
+  it('should start from the latest context checkpoint and ignore older history', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'system',
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'old-ai',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'old assistant answer' } }]
+      },
+      {
+        dataId: 'checkpoint-1',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            contextCheckpoint: '<context_checkpoint>first checkpoint</context_checkpoint>'
+          }
+        ]
+      },
+      {
+        dataId: 'after-first',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'after first checkpoint' } }]
+      },
+      {
+        dataId: 'checkpoint-2',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            contextCheckpoint: '<context_checkpoint>latest checkpoint</context_checkpoint>'
+          }
+        ]
+      },
+      {
+        dataId: 'current-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'current user request' } }]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: true });
+
+    expect(result).toEqual([
+      {
+        dataId: 'system',
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        dataId: 'checkpoint-2',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>latest checkpoint</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        dataId: 'current-user',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'current user request'
+      }
+    ]);
+  });
+
+  it('should ignore values before the checkpoint in the same AI history item', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'checkpoint-record',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            text: {
+              content: 'capability response before checkpoint should not leak'
+            }
+          },
+          {
+            contextCheckpoint: '<context_checkpoint>checkpoint summary</context_checkpoint>',
+            text: {
+              content: 'same value text should not be parsed'
+            }
+          },
+          {
+            text: {
+              content: 'assistant response after checkpoint'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>checkpoint summary</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'assistant response after checkpoint'
+      }
+    ]);
+  });
+
+  it('should parse only values after the checkpoint index in a long assistant response list', () => {
+    const values = [
+      {
+        text: {
+          content: 'assistant response 0 before checkpoint'
+        }
+      },
+      {
+        contextCheckpoint:
+          '<context_checkpoint>checkpoint after first response</context_checkpoint>',
+        hideInUI: true
+      },
+      ...Array.from({ length: 10 }, (_, index) => ({
+        text: {
+          content: `assistant response ${index + 1} after checkpoint`
+        }
+      }))
+    ];
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'assistant-record',
+        obj: ChatRoleEnum.AI,
+        value: values
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result[0]).toEqual({
+      dataId: undefined,
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: '<context_checkpoint>checkpoint after first response</context_checkpoint>',
+      hideInUI: true
+    });
+    expect(result).not.toContainEqual(
+      expect.objectContaining({
+        content: 'assistant response 0 before checkpoint'
+      })
+    );
+    const afterCheckpointContent = result
+      .slice(1)
+      .map((item) => item.content)
+      .join('');
+    Array.from(
+      { length: 10 },
+      (_, index) => `assistant response ${index + 1} after checkpoint`
+    ).forEach((content) => {
+      expect(afterCheckpointContent).toContain(content);
+    });
+  });
+
   it('should handle AI message with tool calls when reserveTool is true', () => {
     const messages: ChatItemMiniType[] = [
       {
@@ -1122,6 +1332,59 @@ describe('chats2GPTMessages', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'final answer'
+      }
+    ]);
+  });
+
+  it('should restore ask_agent tool response from the matching interactive answer', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentAsk: {
+              id: 'call_ask',
+              planId: 'plan_1',
+              functionName: 'ask_agent',
+              params: '{"question":"Need confirmation?"}',
+              assistantText: 'Need confirmation.',
+              reasoningText: 'The plan needs user input.'
+            }
+          },
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              planId: 'plan_1',
+              params: {
+                content: 'Need confirmation?',
+                answer: 'Confirmed.'
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'The plan needs user input.',
+        content: 'Need confirmation.',
+        tool_calls: [
+          {
+            id: 'call_ask',
+            type: 'function',
+            function: {
+              name: 'ask_agent',
+              arguments: '{"question":"Need confirmation?"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask',
+        content: 'Confirmed.'
       }
     ]);
   });

@@ -18,6 +18,17 @@ import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
+const isSystemLikeMessage = (message: ChatCompletionMessageParam) =>
+  message.role === ChatCompletionRequestMessageRoleEnum.System ||
+  message.role === ChatCompletionRequestMessageRoleEnum.Developer;
+
+const isContextCheckpointMessage = (message: ChatCompletionMessageParam) =>
+  message.role === ChatCompletionRequestMessageRoleEnum.User &&
+  message.hideInUI === true &&
+  typeof message.content === 'string' &&
+  message.content.trim().startsWith('<context_checkpoint>') &&
+  message.content.trim().endsWith('</context_checkpoint>');
+
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
   maxContext
@@ -29,10 +40,8 @@ export const filterGPTMessageByMaxContext = async ({
     return [];
   }
 
-  // filter startWith system prompt
-  const chatStartIndex = messages.findIndex(
-    (item) => item.role !== ChatCompletionRequestMessageRoleEnum.System
-  );
+  // Keep leading system/developer prompts out of the rolling chat window.
+  const chatStartIndex = messages.findIndex((item) => !isSystemLikeMessage(item));
 
   if (chatStartIndex === -1) {
     return messages;
@@ -40,13 +49,19 @@ export const filterGPTMessageByMaxContext = async ({
 
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
+  const leadingContextCheckpoints: ChatCompletionMessageParam[] = [];
+
+  // A checkpoint is the compacted prefix; treating it like normal chat would drop it first.
+  while (chatPrompts.length > 0 && isContextCheckpointMessage(chatPrompts[0])) {
+    leadingContextCheckpoints.push(chatPrompts.shift()!);
+  }
 
   if (chatPrompts.length === 0) {
-    return systemPrompts;
+    return [...systemPrompts, ...leadingContextCheckpoints];
   }
 
   // reduce token of systemPrompt
-  maxContext -= await countGptMessagesTokens(systemPrompts);
+  maxContext -= await countGptMessagesTokens([...systemPrompts, ...leadingContextCheckpoints]);
 
   /* 截取时候保证一轮内容的完整性
     1. user - assistant - user
@@ -82,7 +97,7 @@ export const filterGPTMessageByMaxContext = async ({
     }
   }
 
-  return [...systemPrompts, ...chats];
+  return [...systemPrompts, ...leadingContextCheckpoints, ...chats];
 };
 
 /*

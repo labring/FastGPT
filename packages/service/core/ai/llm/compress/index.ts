@@ -5,16 +5,49 @@ import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import { getCompressRequestMessagesPrompt } from './prompt';
+import {
+  getCompressLargeContentPrompt,
+  getCompressLargeContentUserPrompt,
+  getCompressRequestMessagesPrompt,
+  getCompressRequestMessagesUserPrompt
+} from './prompt';
+import type { ContextCheckpointValueType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { parseJsonArgs } from '../../utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
-const logger = getLogger(LogCategories.MODULE.AI.LLM);
+const logger = getLogger(LogCategories.MODULE.AI.LLM_COMPRESS);
+
+// Checkpoint 最终会作为纯字符串写入 chat history；固定标签用于后续 adapter 识别压缩边界。
+const CONTEXT_CHECKPOINT_START_TAG = '<context_checkpoint>';
+const CONTEXT_CHECKPOINT_END_TAG = '</context_checkpoint>';
+
+const isSystemLikeMessage = (message: ChatCompletionMessageParam) =>
+  message.role === ChatCompletionRequestMessageRoleEnum.System ||
+  message.role === ChatCompletionRequestMessageRoleEnum.Developer;
+
+// LLM 可能会输出 markdown 代码块，或忘记补外层标签；入库前统一规整为一个可识别的 tagged string。
+const normalizeContextCheckpointContent = (content: string) => {
+  const trimmed = content.trim();
+  if (!trimmed) return;
+
+  const withoutFence = trimmed
+    .replace(/^```(?:markdown|md|text)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const startIndex = withoutFence.indexOf(CONTEXT_CHECKPOINT_START_TAG);
+  const endIndex = withoutFence.indexOf(CONTEXT_CHECKPOINT_END_TAG);
+  if (startIndex >= 0 && endIndex > startIndex) {
+    // 如果模型已经返回标签，只保留第一段完整 checkpoint，避免前后解释文字进入历史。
+    return withoutFence.slice(startIndex, endIndex + CONTEXT_CHECKPOINT_END_TAG.length).trim();
+  }
+
+  return `${CONTEXT_CHECKPOINT_START_TAG}\n${withoutFence}\n${CONTEXT_CHECKPOINT_END_TAG}`;
+};
 
 /**
  * 压缩 对话历史
@@ -24,16 +57,19 @@ export const compressRequestMessages = async ({
   checkIsStopping,
   messages,
   model,
+  reasoningEffort,
   userKey
 }: {
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messages: ChatCompletionMessageParam[];
   model: LLMModelItemType;
+  reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
 }): Promise<{
   messages: ChatCompletionMessageParam[];
   usage?: ChatNodeUsageType;
   requestIds?: string[];
+  contextCheckpoint?: ContextCheckpointValueType;
 }> => {
   if (!messages || messages.length === 0) {
     return {
@@ -41,18 +77,24 @@ export const compressRequestMessages = async ({
     };
   }
 
-  // Save the system messages
+  // system/developer 是当前请求的稳定指令，不参与 checkpoint 压缩，只在最终 messages 前置保留。
   const [systemMessages, otherMessages]: [
     ChatCompletionMessageParam[],
     ChatCompletionMessageParam[]
   ] = [[], []];
   messages.forEach((message) => {
-    if (message.role === ChatCompletionRequestMessageRoleEnum.System) {
+    if (isSystemLikeMessage(message)) {
       systemMessages.push(message);
     } else {
       otherMessages.push(message);
     }
   });
+
+  if (otherMessages.length === 0) {
+    return {
+      messages
+    };
+  }
 
   const messageTokens = await countGptMessagesTokens(otherMessages);
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
@@ -63,19 +105,14 @@ export const compressRequestMessages = async ({
     };
   }
 
-  logger.info('Message compression started', {
-    tokens: messageTokens
-  });
+  logger.info('Message compression started');
 
   try {
-    const compressPrompt = await getCompressRequestMessagesPrompt({
-      messages: otherMessages,
-      rawTokens: messageTokens,
-      model
+    // 触发压缩后，全部非 system/developer 历史都写进 checkpoint，避免继续保留大量原始 history。
+    const compressPrompt = await getCompressRequestMessagesPrompt();
+    const userPrompt = await getCompressRequestMessagesUserPrompt({
+      messages: otherMessages
     });
-
-    const userPrompt = '请执行压缩操作，严格按照JSON格式返回结果。';
-
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       throwError: false,
       isAborted: checkIsStopping,
@@ -93,10 +130,12 @@ export const compressRequestMessages = async ({
             content: userPrompt
           }
         ],
-        temperature: 0.1
+        temperature: 0.1,
+        reasoning_effort: reasoningEffort
       }
     });
 
+    // userKey 表示调用方自带渠道，不在 FastGPT 侧重复计费。
     const totalPoints = userKey
       ? 0
       : formatModelChars2Points({
@@ -122,37 +161,33 @@ export const compressRequestMessages = async ({
       return { messages, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    const compressResult = parseJsonArgs<{
-      compressed_messages: ChatCompletionMessageParam[];
-      compression_summary: string;
-    }>(answerText);
+    const checkpointContent = normalizeContextCheckpointContent(answerText);
 
-    if (
-      !compressResult ||
-      !Array.isArray(compressResult.compressed_messages) ||
-      compressResult.compressed_messages.length === 0
-    ) {
-      logger.warn('Message compression failed: invalid JSON', {
-        messages: compressResult?.compressed_messages
-      });
+    if (!checkpointContent) {
+      logger.warn('Message compression failed: invalid checkpoint content');
       return { messages, usage: compressedUsage, requestIds: [requestId] };
     }
 
     const compressedTokens = usage.outputTokens;
     logger.info('Message compression succeeded', {
       originalTokens: messageTokens,
-      compressedTokens,
-      actualRatio: (compressedTokens / messageTokens).toFixed(2),
-      summary: compressResult.compression_summary
+      compressedTokens
     });
 
-    // 如果之前提取了 system 消息，现在插回去
-    const finalMessages = [...systemMessages, ...compressResult.compressed_messages];
+    const checkpointMessage: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: checkpointContent,
+      // checkpoint 是给下一轮模型看的历史上下文注入，不作为普通消息展示。
+      hideInUI: true
+    };
+
+    const finalMessages = [...systemMessages, checkpointMessage];
 
     return {
       messages: finalMessages,
       usage: compressedUsage,
-      requestIds: [requestId]
+      requestIds: [requestId],
+      contextCheckpoint: checkpointContent
     };
   } catch (error) {
     logger.error('Message compression failed', { error });
@@ -163,6 +198,7 @@ export const compressRequestMessages = async ({
 function splitIntoChunks(content: string, chunkSize: number): string[] {
   const chunks: string[] = [];
   const totalLength = content.length;
+  // 这里不追求精确切 token，只需要把超长文本切到单次 LLM 请求可接受的字符规模。
   const chunkCharSize = chunkSize * 3; // 粗略转换：1 token ≈ 3 chars
 
   for (let i = 0; i < totalLength; i += chunkCharSize) {
@@ -174,22 +210,22 @@ function splitIntoChunks(content: string, chunkSize: number): string[] {
 
 /**
  * 通用的大内容压缩函数
- * 先使用正则表达式压缩，如果还超过限制则进行 LLM 分块压缩
- *
- * @param content - 要压缩的内容
- * @param model - 模型信息
- * @param maxTokens - 最大 token 数
- * @returns 压缩后的内容和 usages
+ * 先使用规则清理压缩；如果清理后仍超过 compressedTokenLimit，再进行 LLM 分块压缩。
+ * compressedTokenLimit 表示“压缩结果允许占用的 token 上限”，不是 LLM 请求的 max_tokens。
  */
 export const compressLargeContent = async ({
   content,
   model,
-  maxTokens,
+  compressedTokenLimit,
+  moduleName = i18nT('account_usage:llm_compress_text'),
+  reasoningEffort,
   userKey
 }: {
   content: string;
   model: LLMModelItemType;
-  maxTokens: number;
+  compressedTokenLimit: number;
+  moduleName?: string;
+  reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
 }): Promise<{
   compressed: string;
@@ -203,42 +239,33 @@ export const compressLargeContent = async ({
     requestIds: string[];
   };
 
-  async function chunkAndCompress(params: {
+  const chunkAndCompress = async (params: {
     content: string;
-    maxTokens: number;
+    compressedTokenLimit: number;
     model: LLMModelItemType;
   }): Promise<{
     compressed: string;
     usage: CompressUsageType;
-  }> {
+  }> => {
     async function compressSingleChunk(params: {
       chunk: string;
-      targetTokens: number;
       model: LLMModelItemType;
       chunkIndex?: number;
     }): Promise<{
       compressed: string;
       usage: CompressUsageType;
     }> {
-      const { chunk, targetTokens, model, chunkIndex } = params;
+      const { chunk, model, chunkIndex } = params;
 
-      const compressPrompt = `你是一个文本压缩专家。请将以下文本压缩到约 ${targetTokens} tokens，同时保留关键信息。
-            ## 压缩原则
-            1. **只能删除信息，不能添加**
-            2. **保留关键内容**：数据、数字、名称、日期、核心结论、错误信息
-            3. **删除冗余**：重复描述、冗长修饰语、空泛过渡句
-            4. **精简表达**：用简练语言、列表、概括替代详细说明
-            ## 待压缩文本
-            \`\`\`
-            ${chunk}
-            \`\`\`
-            请直接输出压缩后的文本内容，不要包含任何解释或代码块标记。`;
+      const compressPrompt = await getCompressLargeContentPrompt();
+      const userPrompt = await getCompressLargeContentUserPrompt({
+        content: chunk
+      });
 
       logger.debug(
         `[Chunk compression] ${chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}` : 'Single chunk'}`,
         {
-          chunkLength: chunk.length,
-          targetTokens
+          chunkLength: chunk.length
         }
       );
 
@@ -254,11 +281,12 @@ export const compressLargeContent = async ({
             },
             {
               role: ChatCompletionRequestMessageRoleEnum.User,
-              content: '请执行压缩操作。'
+              content: userPrompt
             }
           ],
           temperature: 0.1,
-          stream: false
+          stream: false,
+          reasoning_effort: reasoningEffort
         }
       });
 
@@ -291,19 +319,17 @@ export const compressLargeContent = async ({
       };
     }
 
-    const { content, maxTokens, model } = params;
+    const { content, compressedTokenLimit, model } = params;
 
     const thresholds = calculateCompressionThresholds(model.maxContext);
     const chunkPerThresholds = thresholds.chunkSize;
 
     const chunks = splitIntoChunks(content, chunkPerThresholds);
     const chunkCount = chunks.length;
-    const targetPerChunk = Math.floor(maxTokens / chunkCount);
 
     logger.debug('LLM chunk compression Starting', {
       chunkCount,
       chunkPerThresholds,
-      targetPerChunk,
       originTotalLength: content.length
     });
 
@@ -317,7 +343,6 @@ export const compressLargeContent = async ({
     const compressedChunks = await batchRun(chunks, async (chunk, index) => {
       const result = await compressSingleChunk({
         chunk,
-        targetTokens: targetPerChunk,
         model,
         chunkIndex: index
       });
@@ -331,20 +356,21 @@ export const compressLargeContent = async ({
 
     let merged = compressedChunks.join('\n\n');
 
+    // LLM 输出长度不可控，合并后仍需做一次真实 token 校验。
     const finalTokens = await countGptMessagesTokens([{ role: 'user', content: merged }]);
 
     logger.info('LLM chunk compression Completed', {
       originalTokens: await countGptMessagesTokens([{ role: 'user', content: content }]),
       finalTokens,
-      maxTokens,
-      success: finalTokens <= maxTokens
+      compressedTokenLimit,
+      success: finalTokens <= compressedTokenLimit
     });
 
-    if (finalTokens > maxTokens) {
+    if (finalTokens > compressedTokenLimit) {
       logger.warn('LLM chunk compression Exceeded limit, truncating to half', {
         finalTokens,
-        maxTokens,
-        exceedRatio: (finalTokens / maxTokens).toFixed(2)
+        compressedTokenLimit,
+        exceedRatio: (finalTokens / compressedTokenLimit).toFixed(2)
       });
 
       // 截断为一半
@@ -356,18 +382,18 @@ export const compressLargeContent = async ({
       compressed: merged,
       usage
     };
-  }
+  };
 
-  // 使用准确的 token 统计
+  // 使用准确的 token 统计；已在结果预算内时，不需要压缩。
   let currentTokens = await countPromptTokens(content);
 
-  // 如果已经小于限制，直接返回
-  if (currentTokens <= maxTokens) {
+  if (currentTokens <= compressedTokenLimit) {
     return {
       compressed: content
     };
   }
 
+  // 先做无损或低损的规则清理，避免为 URL、Base64、长 ID 这类低语义内容消耗 LLM 压缩成本。
   // 1. 移除 HTTP/HTTPS URLs
   content = content.replace(/https?:\/\/[^\s"'(),}\]]+/gi, '');
 
@@ -375,7 +401,7 @@ export const compressLargeContent = async ({
   content = content.replace(/\b[a-zA-Z0-9+\/]{100,}={0,2}\b/g, '[BASE64_DATA]');
 
   currentTokens = await countPromptTokens(content);
-  if (currentTokens <= maxTokens) {
+  if (currentTokens <= compressedTokenLimit) {
     return {
       compressed: content.trim()
     };
@@ -408,7 +434,7 @@ export const compressLargeContent = async ({
   content = content.replace(/\n{3,}/g, '\n\n');
 
   currentTokens = await countPromptTokens(content);
-  if (currentTokens <= maxTokens) {
+  if (currentTokens <= compressedTokenLimit) {
     return {
       compressed: content.trim()
     };
@@ -416,15 +442,15 @@ export const compressLargeContent = async ({
 
   logger.debug('Compress large content Starting', {
     currentTokens,
-    maxTokens,
+    compressedTokenLimit,
     contentLength: content.length
   });
 
-  // 8. 分块 LLM 压缩
+  // 8. 规则清理仍超限时，再进入成本更高的分块 LLM 压缩。
   try {
     const result = await chunkAndCompress({
       content,
-      maxTokens,
+      compressedTokenLimit,
       model
     });
 
@@ -432,7 +458,7 @@ export const compressLargeContent = async ({
     return {
       compressed: result.compressed.trim(),
       usage: {
-        moduleName: i18nT('account_usage:llm_compress_text'),
+        moduleName,
         model: model.name,
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
@@ -453,14 +479,14 @@ export const compressToolResponse = async ({
   model,
   currentMessagesTokens = 0,
   toolLength = 1,
-  reservedTokens = 8000,
+  reasoningEffort,
   userKey
 }: {
   response: string;
   model: LLMModelItemType;
   currentMessagesTokens?: number;
   toolLength?: number;
-  reservedTokens?: number; // 预留给输出的 token 数
+  reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
 }): Promise<{
   compressed: string;
@@ -473,23 +499,26 @@ export const compressToolResponse = async ({
     };
   }
 
-  // 动态计算可用的最大 token 数
-  const staticMaxTokens = calculateCompressionThresholds(model.maxContext).singleTool.threshold;
+  // 单个 tool response 既受固定结果上限限制，也受当前请求剩余上下文窗口限制。
+  const staticCompressedTokenLimit = calculateCompressionThresholds(model.maxContext).singleTool
+    .threshold;
 
-  // 计算可用空间 = (maxContext - 当前已使用 - 预留) / toolLength, 预防多个 tool 同时返回的数据打爆上下文
-  const availableSpace = Math.max(
+  // 计算每个 tool response 的动态结果预算，预防多个 tool 同时返回的数据打爆上下文。
+  const availableCompressedTokenLimit = Math.max(
     0,
-    Math.floor((model.maxContext - currentMessagesTokens - reservedTokens) / toolLength)
+    Math.floor((model.maxContext - currentMessagesTokens) / toolLength)
   );
 
-  // 取静态阈值和动态可用空间的较小值
-  const maxTokens = Math.min(staticMaxTokens, availableSpace);
+  // 取静态结果上限和动态结果预算的较小值。
+  const compressedTokenLimit = Math.min(staticCompressedTokenLimit, availableCompressedTokenLimit);
 
   // 调用通用压缩函数
   return compressLargeContent({
     content: response,
     model,
-    maxTokens,
+    compressedTokenLimit,
+    moduleName: i18nT('account_usage:tool_response_compress'),
+    reasoningEffort,
     userKey
   });
 };

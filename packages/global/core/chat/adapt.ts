@@ -40,6 +40,49 @@ export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
   return content;
 };
 
+// 获取最后一个压缩的 messages
+const getLatestCheckpointPosition = (messages: ChatItemMiniType[]) => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const item = messages[index];
+    if (item.obj !== ChatRoleEnum.AI) continue;
+
+    for (let valueIndex = item.value.length - 1; valueIndex >= 0; valueIndex--) {
+      if (item.value[valueIndex].contextCheckpoint) {
+        return {
+          historyIndex: index,
+          valueIndex
+        };
+      }
+    }
+  }
+
+  return;
+};
+
+// 找到最后一个包含压缩的 messages，且只取 compressIndex 后面的 value
+const getCheckpointAwareMessages = (messages: ChatItemMiniType[]) => {
+  const checkpointPosition = getLatestCheckpointPosition(messages);
+  if (!checkpointPosition) return messages;
+
+  // Checkpoint resets chat history, but leading system histories still describe the runtime.
+  const systemMessages = messages
+    .slice(0, checkpointPosition.historyIndex)
+    .filter((item) => item.obj === ChatRoleEnum.System);
+
+  const checkpointAndRecentMessages = messages
+    .slice(checkpointPosition.historyIndex)
+    .map((item, index) => {
+      if (index !== 0 || item.obj !== ChatRoleEnum.AI) return item;
+
+      return {
+        ...item,
+        value: item.value.slice(checkpointPosition.valueIndex)
+      };
+    });
+
+  return [...systemMessages, ...checkpointAndRecentMessages];
+};
+
 export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam[]) => {
   type AssistantToolCallMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }> & {
     tool_calls: ChatCompletionMessageToolCall[];
@@ -178,6 +221,7 @@ export const chats2GPTMessages = ({
   reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
+  const sourceMessages = getCheckpointAwareMessages(messages);
 
   const isNonEmptyString = (value: unknown): value is string =>
     typeof value === 'string' && value.trim().length > 0;
@@ -229,7 +273,7 @@ export const chats2GPTMessages = ({
     };
   };
 
-  messages.forEach((item) => {
+  sourceMessages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -361,6 +405,19 @@ export const chats2GPTMessages = ({
       };
 
       item.value.forEach((value) => {
+        if (value.contextCheckpoint) {
+          // A checkpoint value replaces everything before it; fields on the same value are ignored.
+          results = results.concat(mergeAssistantFieldMessages(aiResults));
+          aiResults.length = 0;
+          results.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: value.contextCheckpoint,
+            hideInUI: true
+          });
+          return;
+        }
+
         // agent plan card
         if (reserveTool && value.agentPlanUpdate) {
           const appendedToolCall = appendAssistantToolCall({
@@ -444,9 +501,6 @@ export const chats2GPTMessages = ({
             aiResults.push(assistantMessage);
             aiResults.push(...toolResponse);
           }
-        }
-        // 暂不处理
-        if (value.interactive) {
         }
       });
 

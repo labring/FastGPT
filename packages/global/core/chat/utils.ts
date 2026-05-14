@@ -23,6 +23,10 @@ export const concatHistories = (histories1: ChatItemMiniType[], histories2: Chat
   });
 };
 
+export const hasContextCheckpoint = (history: ChatItemMiniType) =>
+  history.obj === ChatRoleEnum.AI &&
+  history.value.some((value) => Boolean(value.contextCheckpoint));
+
 export const getChatTitleFromChatMessage = (
   message?: ChatItemMiniType,
   defaultValue = '新对话'

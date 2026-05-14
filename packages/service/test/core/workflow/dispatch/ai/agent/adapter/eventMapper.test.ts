@@ -612,6 +612,157 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     ]);
   });
 
+  it('stores context checkpoint at the child LLM event position', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent({
+      type: 'child_llm_request_end',
+      requestIds: ['req_compress'],
+      seconds: 1,
+      contextCheckpoint: '<context_checkpoint>compressed first chunk</context_checkpoint>'
+    });
+    mapper.emitEvent({
+      type: 'tool_call',
+      call: {
+        id: 'call_search',
+        type: 'function',
+        function: {
+          name: 'search',
+          arguments: '{}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'tool_response',
+      callId: 'call_search',
+      response: 'search result'
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        contextCheckpoint: '<context_checkpoint>compressed first chunk</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        id: 'call_search',
+        tools: [
+          {
+            id: 'call_search',
+            toolName: 'search',
+            toolAvatar: '',
+            functionName: 'search',
+            params: '{}',
+            response: 'search result'
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('restores the next turn from persisted checkpoint and later assistant values only', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.assistantResponses.push({
+      text: {
+        content: 'answer before checkpoint'
+      }
+    });
+    mapper.emitEvent({
+      type: 'child_llm_request_end',
+      requestIds: ['req_compress'],
+      seconds: 1.2,
+      contextCheckpoint: '<context_checkpoint>compressed previous turn</context_checkpoint>'
+    });
+    mapper.assistantResponses.push({
+      text: {
+        content: 'answer after checkpoint'
+      }
+    });
+
+    const persistedHistories = [
+      {
+        dataId: 'system',
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        dataId: 'older-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'older user question' } }]
+      },
+      {
+        dataId: 'agent-response',
+        obj: ChatRoleEnum.AI,
+        value: mapper.assistantResponses
+      },
+      {
+        dataId: 'next-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'next user question' } }]
+      }
+    ];
+
+    const restoredMessages = chats2GPTMessages({
+      messages: persistedHistories,
+      reserveId: true,
+      reserveTool: true
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        text: {
+          content: 'answer before checkpoint'
+        }
+      },
+      {
+        contextCheckpoint: '<context_checkpoint>compressed previous turn</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        text: {
+          content: 'answer after checkpoint'
+        }
+      }
+    ]);
+    expect(restoredMessages).toEqual([
+      {
+        dataId: 'system',
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        dataId: 'agent-response',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>compressed previous turn</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        dataId: 'agent-response',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'answer after checkpoint'
+      },
+      {
+        dataId: 'next-user',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'next user question'
+      }
+    ]);
+  });
+
   it('pushes plan updates into assistant responses and plan SSE', () => {
     const workflowStreamResponse = vi.fn();
     const mapper = createWorkflowAgentLoopEventMapper({

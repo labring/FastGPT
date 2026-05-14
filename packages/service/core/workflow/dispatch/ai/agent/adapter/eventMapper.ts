@@ -344,8 +344,15 @@ export const createWorkflowAgentLoopEventMapper = ({
         }
         return;
       }
-      case 'child_llm_request_end':
+      case 'child_llm_request_end': {
+        if (event.contextCheckpoint) {
+          assistantResponses.push({
+            contextCheckpoint: event.contextCheckpoint,
+            hideInUI: true
+          });
+        }
         return;
+      }
       case 'tool_call': {
         const functionName = event.call.function.name;
         const params = event.call.function.arguments ?? '';

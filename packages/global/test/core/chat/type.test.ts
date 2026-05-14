@@ -8,6 +8,7 @@ import {
   SystemChatItemSchema,
   AdminFbkSchema,
   AIChatItemValueSchema,
+  ContextCheckpointValueSchema,
   ToolCiteLinksSchema,
   RuntimeUserPromptSchema
 } from '@fastgpt/global/core/chat/type';
@@ -232,6 +233,18 @@ describe('AIChatItemValueSchema', () => {
       }
     });
     expect(result.success).toBe(true);
+  });
+
+  it('should validate context checkpoint value', () => {
+    const result = AIChatItemValueSchema.safeParse({
+      contextCheckpoint: '<context_checkpoint>\n# Context Checkpoint\n</context_checkpoint>'
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject non-string context checkpoint value', () => {
+    expect(ContextCheckpointValueSchema.safeParse({ content: 'bad' }).success).toBe(false);
   });
 
   it('should strip legacy stepId from AI chat value', () => {

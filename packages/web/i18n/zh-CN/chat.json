@@ -31,6 +31,7 @@
   "completion_finish_stop": "正常完成",
   "completion_finish_tool_calls": "工具调用",
   "compress_llm_messages": "上下文压缩",
+  "tool_response_compress": "工具响应压缩",
   "compress_llm_usage": "文本压缩输入输出 tokens",
   "compress_llm_usage_point": "文本压缩积分消耗",
   "config_input_guide": "配置输入引导",
