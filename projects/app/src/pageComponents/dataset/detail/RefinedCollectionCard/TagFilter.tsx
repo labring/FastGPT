@@ -1,4 +1,14 @@
-import { Box, Checkbox, Flex, Popover, PopoverArrow, PopoverBody, PopoverContent, PopoverTrigger, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Checkbox,
+  Flex,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
+  useDisclosure
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -14,8 +24,10 @@ const TagFilter = () => {
 
   const { allDatasetTags } = useContextSelector(DatasetPageContext, (v) => v);
 
-  const { setFilterTags, filterTagValues, setFilterTagValues, collections } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const { setFilterTags, filterTagValues, setFilterTagValues, collections } = useContextSelector(
+    CollectionPageContext,
+    (v) => v
+  );
 
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
 

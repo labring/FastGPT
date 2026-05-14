@@ -3,6 +3,7 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { env } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -190,6 +191,28 @@ export const getSandboxClient = async (
   const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });
   await sandbox.ensureAvailable();
   return sandbox;
+};
+
+/** Like getSandboxClient but checks for a session-runtime sandbox (SHOW_SKILL mode) first. */
+export const getSandboxClientByChat = async (
+  props: UnionIdType,
+  opts: {
+    resourceLimits?: ResourceLimits;
+    createConfig?: OpenSandboxConfigType;
+  } = {}
+) => {
+  // Prefer sessionRuntime sandbox (SHOW_SKILL mode — skill sandbox)
+  const sessionSandbox = await MongoSandboxInstance.findOne({
+    chatId: props.chatId,
+    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+  }).lean();
+
+  if (sessionSandbox) {
+    return getSandboxClient({ sandboxId: sessionSandbox.sandboxId }, opts);
+  }
+
+  // Fallback: generic sandbox (useAgentSandbox mode)
+  return getSandboxClient(props, opts);
 };
 
 // ==== Delete Sandboxes ====

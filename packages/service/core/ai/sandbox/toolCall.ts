@@ -14,6 +14,41 @@ import { addHours } from 'date-fns';
 import { Readable } from 'stream';
 import { getLogger } from '@fastgpt-sdk/otel';
 import { LogCategories } from '../../../common/logger';
+import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+
+export type SandboxFileUrlResult = { fileUrl: string; filename: string };
+
+export async function uploadSandboxFileToS3({
+  sandboxProvider,
+  appId,
+  userId,
+  chatId,
+  filePath
+}: {
+  sandboxProvider: Pick<ISandbox, 'readFileStream'>;
+  appId: string;
+  userId: string;
+  chatId: string;
+  filePath: string;
+}): Promise<SandboxFileUrlResult> {
+  const filename = path.basename(filePath);
+  const stream = sandboxProvider.readFileStream(filePath);
+  const readable = Readable.from(stream);
+
+  const chatBucket = getS3ChatSource();
+  const expiredTime = addHours(new Date(), 2);
+  const { key } = await chatBucket.uploadChatFile({
+    appId,
+    chatId,
+    uId: userId,
+    filename,
+    body: readable,
+    expiredTime
+  });
+  const fileUrl = jwtSignS3ObjectKey(key, expiredTime);
+
+  return { fileUrl, filename };
+}
 
 type SandboxToolCallParams = {
   toolName: string;
@@ -85,28 +120,15 @@ export const callSandboxTool = async ({
       const instance = await getSandboxClient({ appId, userId, chatId });
 
       const result = await Promise.all(
-        paths.map(async (url) => {
-          const filename = path.basename(url);
-          const stream = instance.provider.readFileStream(url);
-          const readable = Readable.from(stream); // AsyncIterable<Uint8Array> → Readable
-
-          const chatBucket = getS3ChatSource();
-          const expiredTime = addHours(new Date(), 2);
-          const { key } = await chatBucket.uploadChatFile({
+        paths.map((filePath) =>
+          uploadSandboxFileToS3({
+            sandboxProvider: instance.provider,
             appId,
+            userId,
             chatId,
-            uId: userId,
-            filename,
-            body: readable,
-            expiredTime: expiredTime
-          });
-          const fileUrl = jwtSignS3ObjectKey(key, expiredTime);
-
-          return {
-            fileUrl,
-            filename
-          };
-        })
+            filePath
+          })
+        )
       );
 
       return {

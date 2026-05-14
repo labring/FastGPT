@@ -504,6 +504,7 @@ export const masterCall = async ({
             childrenResponses.push({
               nodeId: callId,
               id: callId,
+              toolId,
               moduleType: FlowNodeTypeEnum.tool,
               moduleName: subInfo.name,
               moduleLogo: subInfo.avatar,
