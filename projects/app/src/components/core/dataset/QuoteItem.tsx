@@ -12,7 +12,9 @@ import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/da
 import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import Markdown from '@/components/Markdown';
 
-const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
+const InputDataModal = dynamic(
+  () => import('@/pageComponents/dataset/detail/components/InputDataModal')
+);
 
 export type ScoreItemType = {
   type: SearchScoreTypeEnum;
