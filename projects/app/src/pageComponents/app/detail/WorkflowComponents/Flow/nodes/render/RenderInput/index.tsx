@@ -38,9 +38,6 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.selectDataset]: {
     Component: dynamic(() =>
       import('./templates/SelectDataset').then((mod) => mod.SelectDatasetRender)
-    ),
-    LableRightComponent: dynamic(() =>
-      import('./templates/SelectDataset').then((mod) => mod.SwitchAuthTmb)
     )
   },
   [FlowNodeInputTypeEnum.selectDatasetParamsModal]: {

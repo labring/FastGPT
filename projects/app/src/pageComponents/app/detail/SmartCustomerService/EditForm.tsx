@@ -412,6 +412,13 @@ const EditForm = ({
               dataset: { ...state.dataset, collectionFilterMatch: v }
             }))
           }
+          authTmbId={appForm.dataset.authTmbId ?? false}
+          onAuthTmbIdChange={(v) =>
+            setAppForm((state) => ({
+              ...state,
+              dataset: { ...state.dataset, authTmbId: v }
+            }))
+          }
         />
       </Box>
       {/* 检索配置 */}

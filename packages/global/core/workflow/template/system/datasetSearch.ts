@@ -135,15 +135,16 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     },
 
     {
-      key: NodeInputKeyEnum.authTmbId,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.boolean,
-      value: false
-    },
-    {
       ...Input_Template_UserChatInput,
       toolDescription: i18nT('workflow:content_to_search')
+    },
+    {
+      key: NodeInputKeyEnum.authTmbId,
+      renderTypeList: [FlowNodeInputTypeEnum.switch],
+      label: i18nT('workflow:permission_filter_label'),
+      description: i18nT('workflow:permission_filter_tooltip'),
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
     },
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
