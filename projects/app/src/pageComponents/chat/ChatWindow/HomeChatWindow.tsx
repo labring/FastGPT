@@ -438,13 +438,14 @@ const HomeChatWindow = () => {
         {isPc ? (
           chatBoxData?.title && (
             <Flex
-              py={3}
-              bg="white"
+              py={'14px'}
+              pl={'24px'}
+              bg="blue.25"
+              fontSize={'14px'}
+              lineHeight={'20px'}
               fontWeight={500}
               color="myGray.600"
               alignItems="center"
-              justifyContent="center"
-              borderBottom="sm"
             >
               {chatBoxData?.title}
             </Flex>
