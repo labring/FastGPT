@@ -385,6 +385,9 @@ export const SearchDatasetTestBodySchema = z.object({
     example: 1,
     description: '向量搜索权重'
   }),
+  embeddingModel: z.string().optional().meta({
+    description: '向量嵌入模型名称，不传则使用知识库默认向量模型'
+  }),
   usingReRank: z.boolean().optional().meta({
     description: '是否使用重排序'
   }),
