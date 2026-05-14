@@ -74,10 +74,12 @@ import {
   ChatGenerateStatusEnum,
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
+import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let {
+  const completionProps = CompletionsPropsSchema.parse(req.body);
+  const {
     chatId,
     appId,
     customUid,
@@ -89,14 +91,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamToken,
 
     stream,
-    detail,
-    retainDatasetCite,
     showSkillReferences,
     messages,
-    variables,
     responseChatItemId,
     metadata
-  } = CompletionsPropsSchema.parse(req.body);
+  } = completionProps;
+  let { detail, retainDatasetCite, variables } = completionProps;
 
   const originIp = getIpFromRequest(req);
 
@@ -258,6 +258,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const saveChatId = chatId || getNanoid(24);
+    await validateChatRoundDataIds({
+      appId: String(app._id),
+      chatId: saveChatId,
+      userContent: userQuestion,
+      responseChatItemId: finalResponseChatItemId
+    });
+
     const source = (() => {
       if (shareId) {
         return ChatSourceEnum.share;

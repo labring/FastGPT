@@ -64,6 +64,7 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -241,6 +242,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const saveChatId = chatId || getNanoid(24);
+    await validateChatRoundDataIds({
+      appId: String(app._id),
+      chatId: saveChatId,
+      userContent: userQuestion,
+      responseChatItemId
+    });
+
     const source = (() => {
       if (shareId) {
         return ChatSourceEnum.share;
