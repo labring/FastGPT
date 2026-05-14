@@ -121,6 +121,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     // Load system model from local
     systemModels.forEach((model) => {
       const mergeObject = (obj1: any, obj2: any) => {
+        if (obj2 === '') return {};
+        if (obj2 && typeof obj2 === 'object' && Object.keys(obj2).length === 0) return {};
         if (!obj1 && !obj2) return undefined;
         const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
         const formatObj2 = typeof obj2 === 'object' ? obj2 : {};

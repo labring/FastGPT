@@ -20,6 +20,7 @@ type LLMQueueItem = {
   reasoningText?: string;
   toolCalls?: ChatCompletionMessageToolCall[];
   finishReason?: 'stop' | 'tool_calls' | 'error' | 'length';
+  responseEmptyTip?: string;
   error?: unknown;
   inputTokens?: number;
   outputTokens?: number;
@@ -101,7 +102,7 @@ export const mockCreateLLMResponseQueue = (createLLMResponseMock: Mock, queue: L
       requestId: item.requestId || `req_${queue.length - items.length}`,
       error: item.error,
       isStreamResponse: false,
-      responseEmptyTip: undefined,
+      responseEmptyTip: item.responseEmptyTip,
       answerText: item.answerText || '',
       reasoningText: item.reasoningText || '',
       toolCalls: item.toolCalls,

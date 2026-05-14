@@ -315,34 +315,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const outputTokens =
       usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
 
-    // 异步保存 LLM 请求追踪记录（fire-and-forget）
-    void saveLLMRequestRecord({
-      requestId,
-      body: requestBody,
-      response: {
-        ...(answerText && { answerText }),
-        ...(reasoningText && { reasoningText }),
-        ...(toolCalls?.length && { toolCalls }),
-        finish_reason,
-        usage: {
-          inputTokens,
-          outputTokens,
-          ...(isDevEnv
-            ? {
-                cachedTokens: usage.cached_tokens,
-                cacheReadTokens: usage.cache_read_tokens,
-                cacheWriteTokens: usage.cache_write_tokens
-              }
-            : {})
-        },
-        error
-      }
-    });
-
-    if (error && throwError) {
-      throw error;
-    }
-
     const getEmptyResponseTip = () => {
       if (userKey?.baseUrl) {
         logger.warn(`User LLM response empty`, {
@@ -360,13 +332,43 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       }
       return i18nT('chat:LLM_model_response_empty');
     };
+    const isEmptyToolCallsFinish = finish_reason === 'tool_calls' && !toolCalls?.length;
     const isNotResponse =
       !answerText &&
       !reasoningText &&
       !toolCalls?.length &&
       !error &&
-      (finish_reason === 'stop' || !finish_reason);
+      (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
+
+    // 异步保存 LLM 请求追踪记录（fire-and-forget）
+    void saveLLMRequestRecord({
+      requestId,
+      body: requestBody,
+      response: {
+        ...(requestBody.reasoning_effort && { reasoning_effort: requestBody.reasoning_effort }),
+        ...(answerText && { answerText }),
+        ...(reasoningText && { reasoningText }),
+        ...(toolCalls?.length && { toolCalls }),
+        finish_reason,
+        usage: {
+          inputTokens,
+          outputTokens,
+          ...(isDevEnv
+            ? {
+                cachedTokens: usage.cached_tokens,
+                cacheReadTokens: usage.cache_read_tokens,
+                cacheWriteTokens: usage.cache_write_tokens
+              }
+            : {})
+        },
+        error: error ?? responseEmptyTip
+      }
+    });
+
+    if (error && throwError) {
+      throw error;
+    }
 
     return {
       error,
@@ -392,6 +394,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       requestId,
       body: requestBody,
       response: {
+        ...(requestBody.reasoning_effort && { reasoning_effort: requestBody.reasoning_effort }),
         error: getErrText(error)
       }
     });

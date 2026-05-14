@@ -427,6 +427,75 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(compressToolResponseMock.mock.calls[0][0].reasoningEffort).toBe('high');
   });
 
+  it('keeps requestId and usage when LLM returns empty tool_calls finish', async () => {
+    const usagePush = vi.fn();
+    const onLLMRequestEnd = vi.fn();
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        requestId: 'req_empty_tool_calls',
+        finishReason: 'tool_calls',
+        responseEmptyTip: 'chat:LLM_model_response_empty',
+        inputTokens: 5396,
+        outputTokens: 38
+      }
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'call a tool'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush,
+      isAborted: () => false,
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: vi.fn(),
+      onLLMRequestEnd
+    });
+
+    expect(result.error).toBe('chat:LLM_model_response_empty');
+    expect(result.finish_reason).toBe('tool_calls');
+    expect(result.requestIds).toEqual(['req_empty_tool_calls']);
+    expect(result.inputTokens).toBe(5396);
+    expect(result.outputTokens).toBe(38);
+    expect(result.assistantMessages).toEqual([]);
+    expect(result.completeMessages).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'call a tool'
+      }
+    ]);
+    expect(usagePush).toHaveBeenCalledWith([
+      {
+        moduleName: 'account_usage:agent_call',
+        model: 'GPT-4',
+        totalPoints: 1,
+        inputTokens: 5396,
+        outputTokens: 38
+      }
+    ]);
+    expect(onLLMRequestEnd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'req_empty_tool_calls',
+        finishReason: 'tool_calls',
+        error: 'chat:LLM_model_response_empty',
+        usage: {
+          inputTokens: 5396,
+          outputTokens: 38,
+          totalPoints: 1
+        }
+      })
+    );
+  });
+
   it('emits tool response compression request ids and running time', async () => {
     vi.useFakeTimers();
     const onAfterToolResponseCompress = vi.fn();

@@ -381,7 +381,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         totalPoints
       },
       seconds: +((Date.now() - requestStartTime) / 1000).toFixed(2),
-      error
+      error: error ?? responseEmptyTip
     });
     // 请求后赋值操作
     {
@@ -391,9 +391,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
       if (requestError) {
         break;
-      }
-      if (responseEmptyTip) {
-        return Promise.reject(responseEmptyTip);
       }
       if (toolCalls.length) {
         consecutiveRequestToolTimes++;
@@ -415,6 +412,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           outputTokens: usage.outputTokens
         }
       ]);
+
+      if (responseEmptyTip) {
+        requestError = responseEmptyTip;
+        break;
+      }
 
       // 推送 AI 生成后的 assistantMessages
       if (llmAssistantMessage) {
