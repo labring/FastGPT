@@ -1,13 +1,16 @@
-import {
-  CreateApiCollectionV2BodySchema,
-  type CreateApiCollectionV2BodyType
-} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
   createOneCollection
 } from '@fastgpt/service/core/dataset/collection/controller';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum,
+  ParagraphChunkAIModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -25,15 +28,64 @@ import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import {
+  adaptiveAdjustConfig,
+  logAdaptiveAdjustments
+} from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
+import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types';
+import { addLog } from '@fastgpt/service/common/system/log';
 
-async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
-  const body = CreateApiCollectionV2BodySchema.parse(req.body);
+// Minimal request body - only datasetId and apiFiles, all training config is hardcoded
+type CustomApiCollectionV2Body = {
+  datasetId: string;
+  apiFiles: APIFileItemType[];
+};
+
+/**
+ * Get import mode configuration (use default mode from config)
+ */
+function getImportMode(): CustomFileImportModeType {
+  const config = global.systemEnv?.customFileImport;
+  const targetMode = config?.defaultActivateMode || 'default';
+
+  addLog.debug('[ApiCollectionV2] Getting import mode configuration', {
+    targetMode,
+    availableModes: config?.modes?.map((m) => ({ name: m.name, enabled: m.enabled }))
+  });
+
+  const mode = config?.modes?.find((m) => m.name === targetMode && m.enabled !== false);
+
+  if (!mode) {
+    addLog.error('[ApiCollectionV2] Import mode not found or disabled', { targetMode });
+    throw new Error(`Import mode not found or disabled: ${targetMode}`);
+  }
+
+  addLog.debug('[ApiCollectionV2] Selected import mode configuration', {
+    modeName: mode.name,
+    chunkConfig: mode.chunkConfig,
+    enhanceConfig: mode.enhanceConfig,
+    parseConfig: mode.parseConfig,
+    promptConfig: mode.promptConfig
+  });
+
+  return mode;
+}
+
+async function handler(req: ApiRequestProps<CustomApiCollectionV2Body>) {
+  const { datasetId, apiFiles } = req.body;
+
+  if (!datasetId) {
+    return Promise.reject(new Error('datasetId is required'));
+  }
+  if (!apiFiles || !Array.isArray(apiFiles) || apiFiles.length === 0) {
+    return Promise.reject(new Error('apiFiles is required'));
+  }
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId: body.datasetId,
+    datasetId,
     per: WritePermissionVal
   });
 
@@ -44,7 +96,8 @@ async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   });
 
   return createApiDatasetCollection({
-    ...body,
+    datasetId,
+    apiFiles,
     teamId,
     tmbId,
     dataset
@@ -54,19 +107,75 @@ async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
 export default NextAPI(handler);
 
 export const createApiDatasetCollection = async ({
+  datasetId,
   apiFiles,
-  customPdfParse,
   teamId,
   tmbId,
-  dataset,
-  ...body
-}: CreateApiCollectionV2BodyType & {
+  dataset
+}: CustomApiCollectionV2Body & {
   teamId: string;
   tmbId: string;
   dataset: DatasetSchemaType & {
     permission: DatasetPermission;
   };
 }) => {
+  // 1. Get configuration mode (hardcoded from system config, not from request)
+  const importMode = getImportMode();
+
+  // 2. Adaptive adjust configuration based on model availability
+  const { adjustedEnhanceConfig, adjustedParseConfig, adjustments } = adaptiveAdjustConfig({
+    dataset,
+    modeConfig: importMode
+  });
+
+  // Log adjustments for debugging
+  logAdaptiveAdjustments(datasetId, adjustments);
+
+  // 3. Build all hardcoded createCollectionParams (not from request body)
+  const baseCreateParams = {
+    // Parse config (with adaptive adjustment)
+    customPdfParse:
+      adjustedParseConfig.customPdfParse ?? importMode.parseConfig?.customPdfParse ?? true,
+
+    // Chunk config - use enum values
+    trainingType:
+      importMode.chunkConfig?.trainingType === 'qa'
+        ? DatasetCollectionDataProcessModeEnum.qa
+        : DatasetCollectionDataProcessModeEnum.chunk,
+    chunkTriggerType:
+      (importMode.chunkConfig?.chunkTriggerType as ChunkTriggerConfigTypeEnum) ||
+      ChunkTriggerConfigTypeEnum.minSize,
+    chunkTriggerMinSize: importMode.chunkConfig?.chunkTriggerMinSize || 1000,
+    chunkSettingMode:
+      (importMode.chunkConfig?.chunkSettingMode as ChunkSettingModeEnum) ||
+      ChunkSettingModeEnum.auto,
+    chunkSplitMode:
+      (importMode.chunkConfig?.chunkSplitMode as DataChunkSplitModeEnum) ||
+      DataChunkSplitModeEnum.paragraph,
+    paragraphChunkAIMode:
+      (importMode.chunkConfig?.paragraphChunkAIMode as ParagraphChunkAIModeEnum) ||
+      ParagraphChunkAIModeEnum.forbid,
+    paragraphChunkDeep: importMode.chunkConfig?.paragraphChunkDeep || 5,
+    paragraphChunkMinSize: importMode.chunkConfig?.paragraphChunkMinSize || 100,
+    chunkSize: importMode.chunkConfig?.chunkSize || 1000,
+    chunkSplitter: importMode.chunkConfig?.chunkSplitter || '',
+    indexSize: importMode.chunkConfig?.indexSize || 1024,
+
+    // Enhance config (with adaptive adjustment)
+    dataEnhanceCollectionName: adjustedEnhanceConfig.dataEnhanceCollectionName ?? false,
+    imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
+    autoIndexes: adjustedEnhanceConfig.autoIndexes ?? false,
+    hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
+    indexPrefixTitle: adjustedEnhanceConfig.indexPrefixTitle ?? false,
+    small2bigIndexes: adjustedEnhanceConfig.small2bigIndexes ?? false,
+    small2bigConfig: adjustedEnhanceConfig.small2bigConfig,
+
+    // Prompt config
+    autoIndexesPrompt: importMode.promptConfig?.autoIndexesPrompt || '',
+    hypeIndexPrompt: importMode.promptConfig?.hypeIndexPrompt || '',
+    imageIndexPrompt: importMode.promptConfig?.imageIndexPrompt || '',
+    qaPrompt: importMode.promptConfig?.qaPrompt || ''
+  };
   // Get existing collections with apiFileId and parentId for tree building
   const existCollections = await MongoDatasetCollection.find(
     {
@@ -188,7 +297,8 @@ export const createApiDatasetCollection = async ({
             const result = await createCollectionAndInsertData({
               dataset,
               createCollectionParams: {
-                ...body,
+                ...baseCreateParams,
+                datasetId,
                 teamId,
                 tmbId,
                 type: DatasetCollectionTypeEnum.apiFile,
@@ -198,8 +308,7 @@ export const createApiDatasetCollection = async ({
                 ...(parentMongoId && { parentId: parentMongoId }),
                 metadata: {
                   relatedImgId: file.id
-                },
-                customPdfParse
+                }
               },
               session
             });

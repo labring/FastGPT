@@ -42,6 +42,7 @@ export type CustomFileIdImportBody = {
   tags?: CollectionTagValueType[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
+  fileMd5?: string; // Optional: File content MD5 (computed by frontend via SparkMD5) for dedup
 };
 
 // Response type
@@ -118,7 +119,16 @@ function validateFileExtension(extension: string): void {
 async function handler(
   req: ApiRequestProps<CustomFileIdImportBody>
 ): Promise<CustomFileIdImportResponse> {
-  const { datasetId, fileId, parentId, name, tags, overwriteDuplicate, enableEnhance } = req.body;
+  const {
+    datasetId,
+    fileId,
+    parentId,
+    name,
+    tags,
+    overwriteDuplicate,
+    enableEnhance,
+    fileMd5: frontendFileMd5
+  } = req.body;
 
   // 1. Auth
   const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
@@ -161,6 +171,23 @@ async function handler(
 
   // 3. Validate file type
   validateFileExtension(extension);
+
+  // 3.5 MD5 内容去重：使用前端计算的 MD5（SparkMD5），
+  // 与知识库中已有文件比对，内容完全一致的拒绝上传。
+  if (frontendFileMd5) {
+    const md5Duplicate = await MongoDatasetCollection.findOne(
+      {
+        datasetId,
+        type: DatasetCollectionTypeEnum.file,
+        fileMd5: frontendFileMd5
+      },
+      '_id'
+    ).lean();
+
+    if (md5Duplicate) {
+      return Promise.reject(DatasetErrEnum.fileContentDuplicate);
+    }
+  }
 
   // 4. Handle duplicate file name (within transaction to avoid TOCTOU)
   let deletedCollectionId: string | undefined;
@@ -304,6 +331,7 @@ async function handler(
       tags: tags as unknown as string[],
       type: DatasetCollectionTypeEnum.file,
       fileId,
+      fileMd5: frontendFileMd5,
       metadata: {
         relatedImgId: fileId
       },

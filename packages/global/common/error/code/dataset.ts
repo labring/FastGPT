@@ -32,7 +32,9 @@ export enum DatasetErrEnum {
   collectionNameMissingExtension = 'collectionNameMissingExtension',
   collectionNameExtensionMismatch = 'collectionNameExtensionMismatch',
   // Template import errors
-  templateImportModeNotFound = 'templateImportModeNotFound'
+  templateImportModeNotFound = 'templateImportModeNotFound',
+  // File upload errors
+  fileContentDuplicate = 'fileContentDuplicate'
 }
 const datasetErr = [
   {
@@ -134,6 +136,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.templateImportModeNotFound,
     message: i18nT('dataset:template_import_mode_not_found')
+  },
+  {
+    statusText: DatasetErrEnum.fileContentDuplicate,
+    message: i18nT('common:core.dataset.error.fileContentDuplicate')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

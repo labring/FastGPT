@@ -147,11 +147,6 @@ export const createCollectionAndInsertData = async ({
   const trainingType =
     formatCreateCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
 
-  // Apply syntheticIndex default value if not provided (matching MongoDB schema default)
-  if (formatCreateCollectionParams.syntheticIndex === undefined) {
-    formatCreateCollectionParams.syntheticIndex = true;
-  }
-
   const trainingMode = getTrainingModeByCollection({
     trainingType: trainingType,
     autoIndexes: formatCreateCollectionParams.autoIndexes,
@@ -387,6 +382,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   apiFileParentId?: string;
   rawTextLength?: number;
   hashRawText?: string;
+  fileMd5?: string;
   createTime?: Date;
   updateTime?: Date;
   tableSchema?: TableSchemaType;
