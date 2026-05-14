@@ -36,14 +36,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     return Promise.reject(error);
   }
 
-  let _systemModelList: SystemModelItemType[] = [];
-  let _systemActiveModelList: SystemModelItemType[] = [];
-  let _llmModelMap = new Map<string, LLMModelItemType>();
-  let _embeddingModelMap = new Map<string, EmbeddingModelItemType>();
-  let _ttsModelMap = new Map<string, TTSModelType>();
-  let _sttModelMap = new Map<string, STTModelType>();
-  let _reRankModelMap = new Map<string, RerankModelItemType>();
-  let _systemDefaultModel: SystemDefaultModelType = {};
+  const _systemModelList: SystemModelItemType[] = [];
+  const _systemActiveModelList: SystemModelItemType[] = [];
+  const _llmModelMap = new Map<string, LLMModelItemType>();
+  const _embeddingModelMap = new Map<string, EmbeddingModelItemType>();
+  const _ttsModelMap = new Map<string, TTSModelType>();
+  const _sttModelMap = new Map<string, STTModelType>();
+  const _reRankModelMap = new Map<string, RerankModelItemType>();
+  const _systemDefaultModel: SystemDefaultModelType = {};
 
   if (!global.systemModelList) {
     global.systemModelList = [];
@@ -149,8 +149,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
           ? {
               maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 8000,
-              defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
-              fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              defaultConfig:
+                typeof dbModel?.metadata?.defaultConfig === 'object'
+                  ? dbModel?.metadata?.defaultConfig
+                  : model.defaultConfig,
+              fieldMap:
+                typeof dbModel?.metadata?.fieldMap === 'object'
+                  ? dbModel?.metadata?.fieldMap
+                  : model.fieldMap,
               /** @deprecated */
               maxTokens: undefined
             }
