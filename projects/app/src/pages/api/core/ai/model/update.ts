@@ -6,22 +6,16 @@ import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
-export type updateQuery = {};
-
 export type updateBody = {
   model: string;
   metadata?: Record<string, any>;
 };
 
-export type updateResponse = {};
-
-async function handler(
-  req: ApiRequestProps<updateBody, updateQuery>,
-  res: ApiResponseType<any>
-): Promise<updateResponse> {
+async function handler(req: ApiRequestProps<updateBody>, res: ApiResponseType<any>) {
   await authSystemAdmin({ req });
 
-  let { model, metadata } = req.body;
+  const metadata = req.body.metadata;
+  let { model } = req.body;
   if (!model) return Promise.reject(new Error('model is required'));
   model = model.trim();
 
@@ -59,6 +53,11 @@ async function handler(
       delete metadataConcat[key];
     }
   });
+
+  // 强制更新 defaultConfig 数据类型
+  if ('defaultConfig' in metadataConcat && typeof metadataConcat.defaultConfig !== 'object') {
+    metadataConcat.defaultConfig = {};
+  }
 
   await MongoSystemModel.updateOne(
     { model },
