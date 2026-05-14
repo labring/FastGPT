@@ -888,7 +888,15 @@ const FaqFields: React.FC<{
             >
               {t('dataset:add_file_download_template')}
             </Button>
-            <QuestionTip label={<Trans i18nKey="dataset:faq_template_format_tip" components={{ bold: <strong /> }} />} maxW="400px" />
+            <QuestionTip
+              label={
+                <Trans
+                  i18nKey="dataset:faq_template_format_tip"
+                  components={{ bold: <strong /> }}
+                />
+              }
+              maxW="400px"
+            />
           </HStack>
         </Box>
       </Flex>

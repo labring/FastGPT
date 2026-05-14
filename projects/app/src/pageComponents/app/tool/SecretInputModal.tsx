@@ -154,7 +154,10 @@ const SecretInputModal = ({
                                   <Box fontSize={'sm'} pl={6} mt={2}>
                                     {childTools.map((tool) => (
                                       <Box key={tool.id} fontSize={'sm'} mb={1}>
-                                        {t(tool.name as any)}: {t('app:plugin_cost_per_times', { cost: tool.systemKeyCost || 0 })}
+                                        {t(tool.name as any)}:{' '}
+                                        {t('app:plugin_cost_per_times', {
+                                          cost: tool.systemKeyCost || 0
+                                        })}
                                       </Box>
                                     ))}
                                   </Box>

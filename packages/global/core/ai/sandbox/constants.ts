@@ -84,6 +84,12 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
 
 export const SANDBOX_TOOLS: ChatCompletionTool[] = [SANDBOX_SHELL_TOOL, SANDBOX_GET_FILE_URL_TOOL];
 
+export const SANDBOX_FILE_DISPLAY_TOOLS: Set<string> = new Set([
+  SANDBOX_TOOL_NAME,
+  'sandbox_write_file',
+  'sandbox_execute'
+]);
+
 export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
 - 预装：bash / python3 / node / bun / git / curl
 - 可自行安装软件包（apt / pip / npm）
