@@ -33,6 +33,7 @@ async function handler(
     similarity,
     searchMode,
     embeddingWeight,
+    embeddingModel,
 
     usingReRank,
     rerankModel,
@@ -72,7 +73,7 @@ async function handler(
     teamId,
     reRankQuery: text,
     queries: [text],
-    model: dataset.vectorModel,
+    model: embeddingModel || dataset.vectorModel,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -112,7 +113,7 @@ async function handler(
     tmbId,
     source,
     embUsage: {
-      model: dataset.vectorModel,
+      model: embeddingModel || dataset.vectorModel,
       inputTokens: embeddingTokens
     },
     rerankUsage: searchUsingReRank
@@ -127,7 +128,7 @@ async function handler(
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
-          embeddingModel: dataset.vectorModel
+          embeddingModel: embeddingModel || dataset.vectorModel
         }
       : undefined
   });
