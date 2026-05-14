@@ -62,22 +62,24 @@ import {
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
+import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: Awaited<ReturnType<typeof getStreamResumeMirror>>;
   let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
   let usePreparedRound = false;
-  let {
+  const chatTestProps = ChatTestPropsSchema.parse(req.body);
+  const {
     nodes = [],
     edges = [],
     messages = [],
     responseChatItemId: responseChatItemIdFromBody,
-    variables = {},
     appName,
     appId,
     chatConfig,
     chatId
-  } = ChatTestPropsSchema.parse(req.body);
+  } = chatTestProps;
+  let { variables = {} } = chatTestProps;
   const responseChatItemId = responseChatItemIdFromBody ?? getNanoid(24);
   const source = ChatSourceEnum.test;
   try {
@@ -158,6 +160,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
     usePreparedRound = !interactive;
+
+    await validateChatRoundDataIds({
+      appId: String(app._id),
+      chatId,
+      userContent: userQuestion,
+      responseChatItemId
+    });
+
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
