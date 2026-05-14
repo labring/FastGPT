@@ -1,6 +1,7 @@
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -278,6 +279,10 @@ export const createCollectionAndInsertData = async ({
 
   const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
     // 3. Create collection
+    const isPermissionSyncDataset =
+      dataset.type === DatasetTypeEnum.apiDataset &&
+      !!(dataset.apiDatasetServer as any)?.apiServer?.permissionSync;
+
     const { _id: collectionId } = await createOneCollection({
       ...formatCreateCollectionParams,
       trainingType,
@@ -286,6 +291,7 @@ export const createCollectionAndInsertData = async ({
 
       hashRawText: hashRawText || (rawText ? hashStr(rawText) : undefined),
       rawTextLength: rawTextLength ?? rawText?.length,
+      skipPermissionCreate: isPermissionSyncDataset,
       session
     });
 
@@ -386,6 +392,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   tableSchema?: TableSchemaType;
   forbid?: boolean;
   session?: ClientSession;
+  skipPermissionCreate?: boolean;
 };
 export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
   const {
@@ -464,54 +471,56 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     await removeS3TTL({ key: fileId, bucketName: 'private', session });
   }
 
-  if (inheritPermission && props.type === DatasetCollectionTypeEnum.folder) {
-    // folder 类型：继承父级协作者，并将创建者设为 owner
-    // 父级可能是另一个 collection（有 parentId）或 dataset（无 parentId）
-    const parentClbs = await getResourceOwnedClbs({
-      resourceId: parentId || datasetId,
-      resourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
-      teamId,
-      session
-    });
+  if (!props.skipPermissionCreate) {
+    if (inheritPermission && props.type === DatasetCollectionTypeEnum.folder) {
+      // folder 类型：继承父级协作者，并将创建者设为 owner
+      // 父级可能是另一个 collection（有 parentId）或 dataset（无 parentId）
+      const parentClbs = await getResourceOwnedClbs({
+        resourceId: parentId || datasetId,
+        resourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
+        teamId,
+        session
+      });
 
-    const collaborators = [
-      ...parentClbs
-        .filter((clb) => clb.tmbId !== props.tmbId)
-        .map((clb) => {
-          if (clb.permission === OwnerRoleVal) clb.permission = ManageRoleVal;
-          return clb;
-        }),
-      { tmbId: props.tmbId, permission: OwnerRoleVal }
-    ];
+      const collaborators = [
+        ...parentClbs
+          .filter((clb) => clb.tmbId !== props.tmbId)
+          .map((clb) => {
+            if (clb.permission === OwnerRoleVal) clb.permission = ManageRoleVal;
+            return clb;
+          }),
+        { tmbId: props.tmbId, permission: OwnerRoleVal }
+      ];
 
-    const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = collaborators.map((clb) => ({
-      updateOne: {
-        filter: {
-          ...pickCollaboratorIdFields(clb),
-          teamId,
-          resourceId: collection._id,
-          resourceType: PerResourceTypeEnum.collection
-        },
-        update: { $set: { permission: clb.permission } },
-        upsert: true
-      }
-    }));
-
-    await MongoResourcePermission.bulkWrite(ops, { session });
-  } else {
-    // 为创建者写入 owner 权限
-    await MongoResourcePermission.create(
-      [
-        {
-          teamId,
-          tmbId: props.tmbId,
-          resourceId: collection._id,
-          permission: OwnerRoleVal,
-          resourceType: PerResourceTypeEnum.collection
+      const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = collaborators.map((clb) => ({
+        updateOne: {
+          filter: {
+            ...pickCollaboratorIdFields(clb),
+            teamId,
+            resourceId: collection._id,
+            resourceType: PerResourceTypeEnum.collection
+          },
+          update: { $set: { permission: clb.permission } },
+          upsert: true
         }
-      ],
-      { session }
-    );
+      }));
+
+      await MongoResourcePermission.bulkWrite(ops, { session });
+    } else {
+      // 为创建者写入 owner 权限
+      await MongoResourcePermission.create(
+        [
+          {
+            teamId,
+            tmbId: props.tmbId,
+            resourceId: collection._id,
+            permission: OwnerRoleVal,
+            resourceType: PerResourceTypeEnum.collection
+          }
+        ],
+        { session }
+      );
+    }
   }
 
   return collection;

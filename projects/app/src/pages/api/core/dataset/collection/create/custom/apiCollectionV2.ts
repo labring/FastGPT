@@ -14,6 +14,11 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
+import {
+  buildTree,
+  syncCollectionPermissions
+} from '@fastgpt/service/core/dataset/apiDataset/buildTree';
+import type { TreeNode } from '@fastgpt/service/core/dataset/apiDataset/buildTree';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -84,6 +89,9 @@ export const createApiDatasetCollection = async ({
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
     dataset.apiDatasetServer?.feishuServer?.folderToken;
 
+  const apiDatasetRequest = await getApiDatasetRequest(dataset.apiDatasetServer);
+  const isPermissionSync = !!(dataset.apiDatasetServer as any)?.apiServer?.permissionSync;
+
   // Get all apiFileId with top level parent ID
   const getFilesRecursively = async (
     files: APIFileItemType[],
@@ -101,9 +109,9 @@ export const createApiDatasetCollection = async ({
       allFiles.push(fileWithParentId);
 
       if (file.hasChild) {
-        const folderFiles = await (
-          await getApiDatasetRequest(dataset.apiDatasetServer)
-        ).listFiles({ parentId: file.id === RootCollectionId ? startId : file.id });
+        const folderFiles = await apiDatasetRequest.listFiles({
+          parentId: file.id === RootCollectionId ? startId : file.id
+        });
         const subFiles = await getFilesRecursively(folderFiles, file.id);
         allFiles.push(...subFiles);
       }
@@ -121,44 +129,23 @@ export const createApiDatasetCollection = async ({
     (item, index, array) => array.findIndex((file) => file.id === item.id) === index
   );
 
-  // Build tree from flat file list using API parentId relationships
-  type TreeNode = {
+  // Collect items for permission sync after session completes
+  const permissionSyncItems: {
+    mongoId: string;
     file: APIFileItemType & { apiFileParentId?: string };
-    children: TreeNode[];
-  };
+  }[] = [];
 
-  const buildTree = (files: (APIFileItemType & { apiFileParentId?: string })[]): TreeNode[] => {
-    const nodeMap = new Map<string, TreeNode>();
-    const roots: TreeNode[] = [];
-
-    for (const file of files) {
-      nodeMap.set(file.id, { file, children: [] });
-    }
-
-    for (const file of files) {
-      const node = nodeMap.get(file.id)!;
-      if (file.apiFileParentId && nodeMap.has(file.apiFileParentId)) {
-        nodeMap.get(file.apiFileParentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-
-    return roots;
-  };
-
-  return mongoSessionRun(async (session) => {
+  await mongoSessionRun(async (session) => {
     const processTree = async (
-      nodes: TreeNode[],
+      nodes: TreeNode<APIFileItemType & { apiFileParentId?: string }>[],
       parentMongoId: string | undefined
     ): Promise<void> => {
       for (const { file, children } of nodes) {
         const existing = existCollectionMap.get(file.id);
         const expectedParentId = parentMongoId || null;
+        let mongoId: string | undefined;
 
         if (file.type === 'folder') {
-          let mongoId: string;
-
           if (existing) {
             mongoId = existing._id;
             if (existing.parentId !== expectedParentId) {
@@ -178,7 +165,8 @@ export const createApiDatasetCollection = async ({
               datasetId: dataset._id,
               apiFileId: file.id,
               apiFileParentId: file.apiFileParentId,
-              ...(parentMongoId && { parentId: parentMongoId })
+              ...(parentMongoId && { parentId: parentMongoId }),
+              skipPermissionCreate: isPermissionSync
             });
             mongoId = folderCollection._id.toString();
           }
@@ -188,6 +176,7 @@ export const createApiDatasetCollection = async ({
 
         if (file.type === 'file') {
           if (existing) {
+            mongoId = existing._id;
             if (existing.parentId !== expectedParentId) {
               await MongoDatasetCollection.updateOne(
                 { _id: existing._id },
@@ -196,7 +185,7 @@ export const createApiDatasetCollection = async ({
               );
             }
           } else {
-            await createCollectionAndInsertData({
+            const result = await createCollectionAndInsertData({
               dataset,
               createCollectionParams: {
                 ...body,
@@ -214,12 +203,32 @@ export const createApiDatasetCollection = async ({
               },
               session
             });
+            mongoId = result.collectionId;
           }
+        }
+
+        // Collect for permission sync after session completes
+        if (mongoId && isPermissionSync) {
+          permissionSyncItems.push({ mongoId, file });
         }
       }
     };
 
-    const tree = buildTree(uniqueFiles);
+    const tree = buildTree(uniqueFiles, (f) => f.apiFileParentId);
     await processTree(tree, undefined);
   });
+
+  // Sync external permissions after session commits (to avoid nested mongoSessionRun)
+  if (isPermissionSync && permissionSyncItems.length > 0) {
+    for (const item of permissionSyncItems) {
+      await syncCollectionPermissions({
+        mongoId: item.mongoId,
+        file: item.file,
+        apiDatasetRequest,
+        teamId,
+        isPermissionSync,
+        datasetId: dataset._id
+      });
+    }
+  }
 };

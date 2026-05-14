@@ -25,7 +25,8 @@ export const APIFileServerSchema = z
   .object({
     baseUrl: z.string(),
     authorization: z.string().optional(),
-    basePath: z.string().optional()
+    basePath: z.string().optional(),
+    permissionSync: z.boolean().optional().meta({ description: '是否同步权限' })
   })
   .meta({ description: 'API 服务器配置' });
 export type APIFileServerType = z.infer<typeof APIFileServerSchema>;
