@@ -1,11 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  createSkill,
-  checkSkillNameExists,
-  updateCurrentStorage
-} from '@fastgpt/service/core/agentSkills/controller';
+import { createSkill, updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controller';
 import { buildSkillMd, generateSkillMd } from '@fastgpt/service/core/agentSkills/skillMdBuilder';
 import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
@@ -89,12 +85,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     return Promise.reject(SkillErrEnum.invalidConfig);
   }
 
-  // Check if skill name already exists in the same parent folder
-  const nameExists = await checkSkillNameExists(name.trim(), teamId, parentId || null);
-  if (nameExists) {
-    return Promise.reject(SkillErrEnum.skillNameExists);
-  }
-
   // Generate SKILL.md content
   let skillMd: string;
 
@@ -156,7 +146,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   }
 
   // Create skill with full workflow (transaction)
-  // E11000 from concurrent duplicate creation propagates as-is (409-like conflict)
   const skillId = await mongoSessionRun(async (session) => {
     const zipBuffer = await createSkillPackage({ name: name.trim(), skillMd });
 

@@ -12,7 +12,6 @@ import { createVersion } from './version/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteSkillRelatedSandboxes } from './sandboxController';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -195,12 +194,6 @@ export async function importSkill(
 ): Promise<string> {
   const { skill } = packageData;
 
-  // Check for duplicate name before creating
-  const nameExists = await checkSkillNameExists(skill.name, teamId, parentId || null);
-  if (nameExists) {
-    throw SkillErrEnum.skillNameExists;
-  }
-
   // Create skill record first
   const newSkill = new MongoAgentSkills({
     parentId: parentId || null,
@@ -273,31 +266,6 @@ export async function canModifySkill(skillId: string, tmbId: string): Promise<bo
   return skill.tmbId?.toString() === tmbId;
 }
 
-/**
- * Check if skill/folder name already exists in the same parent folder
- */
-export async function checkSkillNameExists(
-  name: string,
-  teamId: string,
-  parentId: string | null,
-  excludeId?: string
-): Promise<boolean> {
-  const query: Record<string, any> = {
-    name,
-    teamId,
-    parentId: parentId || null,
-    deleteTime: null,
-    source: AgentSkillSourceEnum.personal
-  };
-
-  if (excludeId) {
-    query._id = { $ne: excludeId };
-  }
-
-  const count = await MongoAgentSkills.countDocuments(query);
-  return count > 0;
-}
-
 // ==================== Folder Management ====================
 
 /**
@@ -358,12 +326,6 @@ export async function createSkillFolder(
   session?: ClientSession
 ): Promise<AgentSkillSchemaType> {
   const { name, description, parentId, teamId, tmbId } = data;
-
-  // Check name uniqueness in the same parent folder
-  const nameExists = await checkSkillNameExists(name, teamId, parentId || null);
-  if (nameExists) {
-    throw new Error('Folder name already exists in this directory');
-  }
 
   const folder = new MongoAgentSkills({
     type: AgentSkillTypeEnum.folder,
