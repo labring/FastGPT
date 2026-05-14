@@ -4,7 +4,7 @@ import { authenticate, type AuthOk, stripBootstrapToken, verifyProxyToken } from
 import { PROXY_COOKIE } from '../src/cookie';
 
 const SECRET = 'a'.repeat(32);
-const DEFAULT_TTL_SECONDS = 3600;
+const DEFAULT_TTL_SECONDS = 1800;
 
 const sign = (payload: object, opts?: jwt.SignOptions) =>
   jwt.sign(payload, SECRET, { expiresIn: DEFAULT_TTL_SECONDS, ...opts });
@@ -17,10 +17,8 @@ const mkReq = (host: string | undefined, url: string, cookie?: string) => ({
 const isOk = (r: ReturnType<typeof authenticate>): r is AuthOk => !('error' in r);
 
 describe('authenticate', () => {
-  it('rejects requests with no Host or unmatched base', () => {
+  it('rejects requests with no Host or no sandbox subdomain', () => {
     expect(authenticate(mkReq(undefined, '/'))).toEqual({ error: 'Unknown host', status: 404 });
-    expect(authenticate(mkReq('evil.com', '/'))).toEqual({ error: 'Unknown host', status: 404 });
-    // bare base host (no subdomain) is also "not a sandbox request"
     expect(authenticate(mkReq('localhost:3006', '/'))).toEqual({
       error: 'Unknown host',
       status: 404
@@ -29,6 +27,10 @@ describe('authenticate', () => {
 
   it('returns 401 when no token is present', () => {
     expect(authenticate(mkReq('abc.localhost:3006', '/foo'))).toEqual({
+      error: 'Unauthorized',
+      status: 401
+    });
+    expect(authenticate(mkReq('evil.com', '/foo'))).toEqual({
       error: 'Unauthorized',
       status: 401
     });

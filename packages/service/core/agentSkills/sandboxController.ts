@@ -12,20 +12,21 @@ import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './version/schema';
 import { downloadSkillPackage } from './storage';
 import {
-  getSandboxProviderConfig,
   getSandboxDefaults,
-  validateSandboxConfig,
   getSkillSizeLimits,
   EDIT_DEBUG_SANDBOX_CHAT_ID,
-  buildSandboxAdapter,
+  getEditDebugSandboxId,
+  buildEditDebugCreateConfig
+} from './sandboxConfig';
+import {
   connectReadyProviderSandboxByInstance,
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
-  getEditDebugSandboxId,
   getProviderSandboxEndpoint,
-  buildEditDebugCreateConfig,
+  getSandboxProviderConfig,
+  validateSandboxConfig,
   waitForEndpointReady
-} from './sandboxConfig';
+} from '../ai/sandbox/provider';
 import type {
   SandboxInstanceSchemaType,
   SandboxImageConfigType,
@@ -33,8 +34,7 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getSandboxClient, type SandboxClient } from '../ai/sandbox/controller';
-import { deleteSessionVolume } from '../ai/sandbox/config';
+import { SandboxClient, getSandboxClient, type SandboxResourceDoc } from '../ai/sandbox/controller';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
@@ -44,14 +44,6 @@ const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 const buildSandboxInstanceLookup = (sandboxId: string) => ({
   $or: [{ sandboxId }, ...(isValidObjectId(sandboxId) ? [{ _id: sandboxId }] : [])]
 });
-
-type SandboxInstanceResourceDoc = {
-  _id: unknown;
-  sandboxId: string;
-  metadata?: {
-    providerSandboxId?: string;
-  } | null;
-};
 
 export type CreateEditDebugSandboxParams = {
   skillId: string;
@@ -399,7 +391,7 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
   const instanceDoc = await MongoSandboxInstance.findOne({
     ...buildSandboxInstanceLookup(sandboxId),
     'metadata.teamId': teamId
-  });
+  }).lean<SandboxResourceDoc | null>();
 
   if (!instanceDoc) {
     throw new Error('Sandbox not found or access denied');
@@ -407,37 +399,7 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
 
   addLog.info('[Sandbox] Deleting sandbox', { sandboxId });
 
-  await deleteSandboxInstanceResources(instanceDoc);
-}
-
-export async function deleteSandboxInstanceResources(
-  instanceDoc: SandboxInstanceResourceDoc
-): Promise<void> {
-  const providerConfig = getSandboxProviderConfig();
-
-  const providerSandboxId = instanceDoc.metadata?.providerSandboxId ?? instanceDoc.sandboxId;
-  if (providerSandboxId) {
-    const sandbox = buildSandboxAdapter(providerConfig, { providerSandboxId });
-    try {
-      await sandbox.delete(providerSandboxId);
-    } catch (error) {
-      addLog.error('[Sandbox] Failed to delete provider sandbox', {
-        sandboxId: instanceDoc.sandboxId,
-        providerSandboxId: instanceDoc.metadata?.providerSandboxId,
-        error
-      });
-      throw error;
-    }
-  }
-
-  await deleteSessionVolume(instanceDoc.sandboxId).catch((error) => {
-    addLog.error('[Sandbox] Failed to delete sandbox volume', {
-      sandboxId: instanceDoc.sandboxId,
-      error
-    });
-  });
-
-  await MongoSandboxInstance.deleteOne({ _id: instanceDoc._id });
+  await SandboxClient.deleteResource(instanceDoc);
 }
 
 /**
@@ -450,7 +412,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
   // Find all sandbox instances related to these skills
   const instances = await MongoSandboxInstance.find({
     $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
-  }).lean();
+  }).lean<SandboxResourceDoc[]>();
 
   if (instances.length === 0) return;
 
@@ -461,7 +423,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
 
   await Promise.allSettled(
     instances.map(async (doc) => {
-      await deleteSandboxInstanceResources(doc);
+      await SandboxClient.deleteResource(doc);
     })
   );
 }

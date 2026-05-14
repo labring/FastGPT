@@ -15,6 +15,8 @@ import {
   SandboxGetHtmlPreviewLinkResponseSchema,
   SandboxProxyTokenBodySchema,
   SandboxProxyTokenResponseSchema,
+  SandboxHeartbeatBodySchema,
+  SandboxHeartbeatResponseSchema,
   SandboxProxyTargetBodySchema,
   SandboxProxyTargetResponseSchema
 } from './api';
@@ -168,7 +170,7 @@ export const SandboxPath: OpenAPIPath = {
     }
   },
 
-  '/core/sandbox/proxyAuth/token': {
+  '/core/sandbox/proxy/token': {
     post: {
       summary: '签发 sandbox-proxy 访问 token',
       description: '为已授权用户签发访问 sandbox-proxy 指定 sandbox 服务的短期 JWT',
@@ -186,6 +188,31 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxProxyTokenResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/sandbox/internal/heartbeat': {
+    post: {
+      summary: '更新 sandbox 活跃时间',
+      description: 'sandbox-proxy 内部接口，在 code-server websocket 存活时刷新 sandbox 活跃时间',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxHeartbeatBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '刷新结果',
+          content: {
+            'application/json': {
+              schema: SandboxHeartbeatResponseSchema
             }
           }
         }

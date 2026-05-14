@@ -164,9 +164,11 @@ export async function initSystemConfig() {
       show_batch_eval: licenseData?.functions?.batchEval,
       show_agent_sandbox: !!serviceEnv.AGENT_SANDBOX_PROVIDER,
       show_skill: serviceEnv.SHOW_SKILL,
-      sandbox_proxy_base: serviceEnv.SANDBOX_PROXY_BASE,
-      sandbox_proxy_scheme: serviceEnv.SANDBOX_PROXY_HTTPS ? 'https' : 'http',
-      sandbox_proxy_token_ttl: serviceEnv.SANDBOX_PROXY_TOKEN_TTL,
+      sandboxProxy: {
+        base: serviceEnv.SANDBOX_PROXY_BASE,
+        scheme: serviceEnv.SANDBOX_PROXY_HTTPS ? 'https' : 'http',
+        tokenTtl: serviceEnv.SANDBOX_PROXY_TOKEN_TTL
+      },
       payFormUrl: appEnv.PAY_FORM_URL || '',
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP

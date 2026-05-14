@@ -7,46 +7,38 @@ describe('parseSandboxHost', () => {
     expect(parseSandboxHost('')).toBeNull();
   });
 
-  it('returns null for the bare base host (no subdomain)', () => {
+  it('returns null when the host has no sandbox subdomain', () => {
     expect(parseSandboxHost('localhost:3006')).toBeNull();
-    expect(parseSandboxHost('proxy.example.com')).toBeNull();
+    expect(parseSandboxHost('localhost')).toBeNull();
   });
 
-  it("returns null when host doesn't match any configured base", () => {
-    expect(parseSandboxHost('evil.com')).toBeNull();
-    expect(parseSandboxHost('evil.example.com')).toBeNull();
-    expect(parseSandboxHost('localhost:3000')).toBeNull();
+  it('parses the first host label as sandboxId', () => {
+    expect(parseSandboxHost('abc123.sandbox.example.com')).toEqual({
+      sandboxId: 'abc123'
+    });
   });
 
-  it('parses a single-label sandbox subdomain', () => {
+  it('parses localhost subdomains', () => {
     expect(parseSandboxHost('abc123.localhost:3006')).toEqual({
-      sandboxId: 'abc123',
-      baseHost: 'localhost:3006'
+      sandboxId: 'abc123'
     });
   });
 
   it('handles UUID-style sandboxIds', () => {
     expect(parseSandboxHost('94ca8d87-f521-44a9-95e2-54ec7d3fd0a6.localhost:3006')).toEqual({
-      sandboxId: '94ca8d87-f521-44a9-95e2-54ec7d3fd0a6',
-      baseHost: 'localhost:3006'
+      sandboxId: '94ca8d87-f521-44a9-95e2-54ec7d3fd0a6'
     });
   });
 
-  it('rejects nested subdomains', () => {
-    expect(parseSandboxHost('a.b.localhost:3006')).toBeNull();
+  it('ignores the remaining host labels', () => {
+    expect(parseSandboxHost('a.b.localhost:3006')).toEqual({
+      sandboxId: 'a'
+    });
   });
 
   it('is case-insensitive', () => {
     expect(parseSandboxHost('ABC.LOCALHOST:3006')).toEqual({
-      sandboxId: 'abc',
-      baseHost: 'localhost:3006'
-    });
-  });
-
-  it('matches the second configured base', () => {
-    expect(parseSandboxHost('xyz.proxy.example.com')).toEqual({
-      sandboxId: 'xyz',
-      baseHost: 'proxy.example.com'
+      sandboxId: 'abc'
     });
   });
 });

@@ -387,25 +387,6 @@ export const AgentSkillsPath: OpenAPIPath = {
       }
     }
   },
-  '/core/agentSkills/debugSession/markRead': {
-    post: {
-      summary: '标记技能调试会话已读',
-      description: '将指定技能调试会话标记为已读',
-      tags: [TagsMap.aiSkill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillDebugSessionControlBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功标记调试会话已读'
-        }
-      }
-    }
-  },
   '/core/agentSkills/debugSession/records': {
     post: {
       summary: '获取技能调试会话记录',

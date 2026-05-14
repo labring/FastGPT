@@ -5,7 +5,7 @@ import {
   disconnectFromProviderSandbox,
   getProviderSandboxProxyTarget,
   getProviderSandboxConnectionTarget
-} from '@fastgpt/service/core/agentSkills/sandboxConfig';
+} from '@fastgpt/service/core/ai/sandbox/provider';
 import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 /**

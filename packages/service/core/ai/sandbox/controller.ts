@@ -12,6 +12,7 @@ import {
   type ResourceLimits,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
+import type { SandboxInstanceSchemaType } from './type';
 import {
   getOpenSandboxConnectionConfig,
   getSealosConnectionConfig,
@@ -20,6 +21,11 @@ import {
   deleteSessionVolume,
   type VolumeManagerResult
 } from './config';
+import {
+  buildSandboxAdapter,
+  getProviderSandboxConnectionTarget,
+  getSandboxProviderConfig
+} from './provider';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
@@ -31,6 +37,13 @@ type UnionIdType = {
   appId: string;
   userId: string;
   chatId: string;
+};
+
+export type SandboxResourceDoc = Pick<SandboxInstanceSchemaType, 'provider' | 'sandboxId'> & {
+  _id: unknown;
+  metadata?: {
+    providerSandboxId?: string;
+  } | null;
 };
 
 export class SandboxClient {
@@ -139,7 +152,7 @@ export class SandboxClient {
       .execute(command, {
         timeoutMs: timeout ? timeout * 1000 : undefined
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         logger.error('Failed to execute sandbox', { sandboxId: this.sandboxId, error: err });
         return {
           stdout: '',
@@ -161,6 +174,48 @@ export class SandboxClient {
     await this.provider.stop();
     await MongoSandboxInstance.updateOne(
       { sandboxId: this.sandboxId },
+      { $set: { status: SandboxStatusEnum.stopped } }
+    );
+  }
+
+  private static getProviderSandboxId(doc: SandboxResourceDoc) {
+    return doc.metadata?.providerSandboxId ?? doc.sandboxId;
+  }
+
+  private static buildProviderSandboxForResource(doc: SandboxResourceDoc): ISandbox {
+    if (doc.provider === 'e2b') {
+      if (!serviceEnv.AGENT_SANDBOX_E2B_API_KEY) {
+        throw new Error('AGENT_SANDBOX_E2B_API_KEY required');
+      }
+      return createSandbox('e2b', {
+        apiKey: serviceEnv.AGENT_SANDBOX_E2B_API_KEY,
+        sandboxId: SandboxClient.getProviderSandboxId(doc)
+      });
+    }
+
+    const providerConfig = getSandboxProviderConfig(doc.provider);
+    const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, doc);
+
+    return buildSandboxAdapter(providerConfig, { providerSandboxId });
+  }
+
+  static async deleteResource(doc: SandboxResourceDoc) {
+    const providerSandboxId = SandboxClient.getProviderSandboxId(doc);
+    const sandbox = SandboxClient.buildProviderSandboxForResource(doc);
+
+    await sandbox.delete(providerSandboxId);
+    await deleteSessionVolume(doc.sandboxId).catch((err) => {
+      logger.error('Failed to delete sandbox volume', { sandboxId: doc.sandboxId, error: err });
+    });
+    await MongoSandboxInstance.deleteOne({ _id: doc._id });
+  }
+
+  static async stopResource(doc: SandboxResourceDoc) {
+    const sandbox = SandboxClient.buildProviderSandboxForResource(doc);
+
+    await sandbox.stop();
+    await MongoSandboxInstance.updateOne(
+      { _id: doc._id },
       { $set: { status: SandboxStatusEnum.stopped } }
     );
   }
@@ -204,8 +259,7 @@ export const deleteSandboxesByChatIds = async ({
 
   await Promise.allSettled(
     instances.map(async (doc) => {
-      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
-      await client.delete().catch((err) => {
+      await SandboxClient.deleteResource(doc).catch((err) => {
         logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
         return Promise.reject(err);
       });
@@ -218,8 +272,7 @@ export const deleteSandboxesByAppId = async (appId: string) => {
 
   await Promise.allSettled(
     instances.map(async (doc) => {
-      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
-      await client.delete().catch((err) => {
+      await SandboxClient.deleteResource(doc).catch((err) => {
         logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
       });
     })
@@ -238,8 +291,7 @@ export const cronJob = async () => {
     logger.info('Found running sandboxes inactive > 5 min', { count: instances.length });
 
     await batchRun(instances, async (doc) => {
-      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
-      await client.stop().catch((err) => {
+      await SandboxClient.stopResource(doc).catch((err) => {
         logger.error('Failed to stop sandbox', { sandboxId: doc.sandboxId, error: err });
       });
     });

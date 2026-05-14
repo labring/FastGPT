@@ -16,14 +16,16 @@ import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/version/s
 import { downloadSkillPackage } from '../../../../../../agentSkills/storage';
 import { parseSkillMarkdown } from '../../../../../../agentSkills/utils';
 import {
-  getSandboxProviderConfig,
   getSandboxDefaults,
-  validateSandboxConfig,
   EDIT_DEBUG_SANDBOX_CHAT_ID,
-  connectReadyProviderSandboxByInstance,
-  disconnectFromProviderSandbox,
   buildSessionRuntimeCreateConfig
 } from '../../../../../../agentSkills/sandboxConfig';
+import {
+  connectReadyProviderSandboxByInstance,
+  disconnectFromProviderSandbox,
+  getSandboxProviderConfig,
+  validateSandboxConfig
+} from '../../../../../../ai/sandbox/provider';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';

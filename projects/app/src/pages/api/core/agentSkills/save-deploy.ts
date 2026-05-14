@@ -3,11 +3,11 @@ import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controller';
 import { packageSkillInSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import {
-  EDIT_DEBUG_SANDBOX_CHAT_ID,
   getProviderSandboxConnectionTarget,
   getSandboxProviderConfig
-} from '@fastgpt/service/core/agentSkills/sandboxConfig';
+} from '@fastgpt/service/core/ai/sandbox/provider';
 import {
   createVersion,
   getNextVersionNumber,

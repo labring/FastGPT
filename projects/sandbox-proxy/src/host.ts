@@ -1,29 +1,24 @@
-import { env } from './env';
-
 /**
- * Parse a Host header into { sandboxId, baseHost } if it matches one of the configured
- * base hosts. Returns null when the host doesn't match any base or has no subdomain part.
+ * Parse the sandbox id from the first Host label.
+ * The ingress/gateway owns wildcard-domain routing; sandbox-proxy only needs the
+ * left-most label to bind the request to the JWT `sid`.
  *
- * Examples (base="localhost:3006"):
- *   "abc123.localhost:3006" → { sandboxId: "abc123", baseHost: "localhost:3006" }
- *   "localhost:3006"        → null  (no subdomain → not a sandbox request)
- *   "evil.com"              → null  (host not in base list)
+ * Examples:
+ *   "abc123.sandbox.example.com" → { sandboxId: "abc123" }
+ *   "abc123.localhost:3006"      → { sandboxId: "abc123" }
+ *   "localhost:3006"             → null  (no sandbox subdomain)
  */
-export function parseSandboxHost(
-  host: string | undefined
-): { sandboxId: string; baseHost: string } | null {
+export function parseSandboxHost(host: string | undefined): { sandboxId: string } | null {
   if (!host) return null;
-  const lower = host.toLowerCase();
+  const lower = host.toLowerCase().trim();
+  if (!lower) return null;
 
-  for (const base of env.baseHosts) {
-    if (lower === base) return null; // exact match: bare base host, not a sandbox subdomain
-    const suffix = `.${base}`;
-    if (lower.endsWith(suffix)) {
-      const sandboxId = lower.slice(0, lower.length - suffix.length);
-      // sandboxId must be non-empty and not contain dots (no nested subdomains)
-      if (sandboxId.length === 0 || sandboxId.includes('.')) return null;
-      return { sandboxId, baseHost: base };
-    }
-  }
-  return null;
+  const withoutPort = lower.startsWith('[') ? lower : lower.split(':')[0];
+  const firstDot = withoutPort.indexOf('.');
+  if (firstDot <= 0) return null;
+
+  const sandboxId = withoutPort.slice(0, firstDot);
+  if (!sandboxId) return null;
+
+  return { sandboxId };
 }

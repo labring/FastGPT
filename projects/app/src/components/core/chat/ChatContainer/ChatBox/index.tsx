@@ -136,6 +136,7 @@ type Props = OutLinkChatAuthProps &
     active?: boolean; // can use
     showWorkorder?: boolean;
     enableAutoResume?: boolean;
+    enableMarkChatRead?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -157,6 +158,7 @@ const ChatBox = ({
   active = true,
   showWorkorder,
   enableAutoResume = false,
+  enableMarkChatRead = true,
   onStartChat,
   chatType,
   onTriggerRefresh,
@@ -277,7 +279,9 @@ const ChatBox = ({
     }
   );
 
-  const markChatRead = useMemoizedFn((data: MarkChatReadBodyType) => {
+  const markChatRead = useMemoizedFn(async (data: MarkChatReadBodyType) => {
+    if (!enableMarkChatRead) return;
+
     return onMarkChatRead?.(data) ?? postMarkChatRead(data);
   });
 

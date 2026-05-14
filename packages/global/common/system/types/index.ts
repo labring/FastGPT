@@ -147,12 +147,14 @@ export type FastGPTFeConfigsType = {
   agentSandboxFree?: boolean;
   // Beta features
   show_skill?: boolean;
-  /** host[:port] under which sandbox subdomains live, e.g. `localhost:3006`. */
-  sandbox_proxy_base?: string;
-  /** http | https — scheme to build the iframe URL with. */
-  sandbox_proxy_scheme?: 'http' | 'https';
-  /** Sandbox proxy token TTL in seconds; used to avoid reusing expired iframe tokens. */
-  sandbox_proxy_token_ttl?: number;
+  sandboxProxy?: {
+    /** host[:port] under which sandbox subdomains live, e.g. `localhost:3006`. */
+    base?: string;
+    /** http | https, used to build the iframe URL. */
+    scheme?: 'http' | 'https';
+    /** Sandbox proxy token TTL in seconds; used to avoid reusing expired iframe tokens. */
+    tokenTtl?: number;
+  };
 };
 
 export type SystemEnvType = {

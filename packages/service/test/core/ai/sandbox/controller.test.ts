@@ -5,11 +5,42 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sandbox.local',
-    AGENT_SANDBOX_SEALOS_TOKEN: 'mock-token-12345'
+    AGENT_SANDBOX_SEALOS_TOKEN: 'mock-token-12345',
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
+    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false,
+    AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
+    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token',
+    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: false,
+    AGENT_SANDBOX_ENABLE_VOLUME: false
   }
 }));
 
 // Mock the SealosDevboxAdapter to avoid real API calls
+const sandboxAdapterMocks = vi.hoisted(() => {
+  const deleteMock = vi.fn(async () => undefined);
+  const stopMock = vi.fn(async () => undefined);
+  const ensureRunningMock = vi.fn(async () => undefined);
+  const createSandboxMock = vi.fn((provider: string, connectionConfig: any) => ({
+    provider,
+    connectionConfig,
+    create: vi.fn(async () => undefined),
+    start: vi.fn(async () => undefined),
+    stop: stopMock,
+    delete: deleteMock,
+    getInfo: vi.fn(async () => null),
+    execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 })),
+    waitUntilReady: vi.fn(async () => undefined),
+    ensureRunning: ensureRunningMock
+  }));
+
+  return {
+    createSandboxMock,
+    deleteMock,
+    ensureRunningMock,
+    stopMock
+  };
+});
+
 vi.mock('@fastgpt-sdk/sandbox-adapter', () => {
   class MockSealosDevboxAdapter {
     async create() {
@@ -39,7 +70,8 @@ vi.mock('@fastgpt-sdk/sandbox-adapter', () => {
   }
 
   return {
-    SealosDevboxAdapter: MockSealosDevboxAdapter
+    SealosDevboxAdapter: MockSealosDevboxAdapter,
+    createSandbox: sandboxAdapterMocks.createSandboxMock
   };
 });
 
@@ -64,6 +96,8 @@ const appId2 = oid();
 
 describe('deleteSandboxesByChatIds', () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
+    await MongoSandboxInstance.deleteMany({});
     await MongoSandboxInstance.create([
       {
         provider: 'sealosdevbox',
@@ -108,6 +142,34 @@ describe('deleteSandboxesByChatIds', () => {
     expect(await MongoSandboxInstance.countDocuments({ appId: appId2 })).toBe(1);
   });
 
+  it('should delete provider resource by metadata.providerSandboxId when present', async () => {
+    await MongoSandboxInstance.deleteMany({});
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: 'stable-session-id',
+      appId: appId1,
+      userId: 'u1',
+      chatId: 'c-provider',
+      status: 'running',
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        providerSandboxId: 'provider-sandbox-id'
+      }
+    });
+
+    await deleteSandboxesByChatIds({ appId: appId1, chatIds: ['c-provider'] });
+
+    expect(sandboxAdapterMocks.createSandboxMock).toHaveBeenCalledWith(
+      'opensandbox',
+      expect.objectContaining({ sessionId: 'provider-sandbox-id' }),
+      undefined
+    );
+    expect(sandboxAdapterMocks.deleteMock).toHaveBeenCalledWith('provider-sandbox-id');
+    expect(sandboxAdapterMocks.ensureRunningMock).not.toHaveBeenCalled();
+    expect(await MongoSandboxInstance.countDocuments({ sandboxId: 'stable-session-id' })).toBe(0);
+  });
+
   it('should not error when chatId does not exist', async () => {
     await expect(
       deleteSandboxesByChatIds({ appId: appId1, chatIds: ['nonexistent'] })
@@ -121,6 +183,8 @@ describe('deleteSandboxesByChatIds', () => {
 
 describe('deleteSandboxesByAppId', () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
+    await MongoSandboxInstance.deleteMany({});
     await MongoSandboxInstance.create([
       {
         provider: 'sealosdevbox',
@@ -172,6 +236,11 @@ describe('deleteSandboxesByAppId', () => {
 });
 
 describe('cronJob - suspendInactiveSandboxes', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await MongoSandboxInstance.deleteMany({});
+  });
+
   it('should identify running sandboxes inactive > 5 min', async () => {
     const old = new Date(Date.now() - 10 * 60 * 1000);
     const recent = new Date();

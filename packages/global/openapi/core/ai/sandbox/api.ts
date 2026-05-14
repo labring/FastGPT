@@ -91,7 +91,7 @@ export type SandboxGetHtmlPreviewLinkResponse = z.infer<
 
 /* ============================================================================
  * API: 签发 sandbox-proxy 访问 token
- * Route: POST /api/core/sandbox/proxyAuth/token
+ * Route: POST /api/core/sandbox/proxy/token
  * Method: POST
  * Description: 为已授权用户签发访问 sandbox-proxy 指定 sandbox 服务的短期 JWT
  * Tags: ['Sandbox', 'Read']
@@ -162,3 +162,26 @@ export const SandboxProxyTargetResponseSchema = z.object({
   })
 });
 export type SandboxProxyTargetResponse = z.infer<typeof SandboxProxyTargetResponseSchema>;
+
+/* ============================================================================
+ * API: 更新 sandbox 活跃时间
+ * Route: POST /api/core/sandbox/internal/heartbeat
+ * Method: POST
+ * Description: sandbox-proxy 内部调用，在 code-server websocket 存活时刷新 sandbox 活跃时间
+ * Tags: ['Sandbox', 'Internal']
+ * ============================================================================ */
+export const SandboxHeartbeatBodySchema = z.object({
+  sandboxId: z.string().min(1).meta({
+    example: '69fc643d541df57f5c556d9c',
+    description: 'FastGPT sandbox 实例 ID'
+  })
+});
+export type SandboxHeartbeatBody = z.infer<typeof SandboxHeartbeatBodySchema>;
+
+export const SandboxHeartbeatResponseSchema = z.object({
+  success: z.boolean().meta({
+    example: true,
+    description: '是否刷新成功'
+  })
+});
+export type SandboxHeartbeatResponse = z.infer<typeof SandboxHeartbeatResponseSchema>;

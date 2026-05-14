@@ -249,29 +249,24 @@ export const serviceEnv = createEnv({
       description: '评估任务 worker 并发数'
     }),
 
-    // Sandbox proxy (separate process). Each sandbox is reached at <sid>.<base>.
-    // BASE is the host[:port] portion (no scheme, no leading dot). Subdomains are derived
-    // from this on the frontend; the secret is shared HMAC for JWT signing.
-    SANDBOX_PROXY_BASE: z.string().optional(),
-    SANDBOX_PROXY_SECRET: z.string().min(16).optional(),
-    /**
-     * JWT (and cookie Max-Age) lifetime in seconds. Default 3600 (1h) — still short enough to
-     * minimise revocation latency on team-membership changes. Active code-server
-     * WebSocket connections established within the window stay alive past TTL
-     * (TCP-pipe is opaque to JWT), so users editing continuously aren't interrupted
-     * at the boundary; only sporadic HTTP fetches and WS reconnects need a fresh
-     * token, at which point the iframe will reload the Skill page.
-     */
-    SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(3600),
-    /** Whether the proxy serves over https (controls iframe scheme on the frontend). */
-    SANDBOX_PROXY_HTTPS: BoolSchema.default(false),
-    /**
-     * 这里改写发生在 app 进程，但改写结果（host:port）会塞进 JWT.t 由 sandbox-proxy 进程消费——
-     * 所以判定标准是 "sandbox-proxy 跑在哪儿"：
-     *   - sandbox-proxy 在容器/k8s 跑：false（默认；容器内 host.docker.internal 是宿主别名，保留即可）
-     *   - sandbox-proxy 在宿主进程跑（如本地 dev 直接 tsx 起 proxy）：手动设 true，宿主进程无 host.docker.internal 解析。
-     */
-    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false),
+    SANDBOX_PROXY_BASE: z.string().optional().meta({
+      description:
+        'Sandbox proxy 访问域名 host[:port]（不含 scheme 和前导点），每个 sandbox 通过 <sid>.<base> 访问'
+    }),
+    SANDBOX_PROXY_SECRET: z.string().min(16).optional().meta({
+      description: 'App 与 sandbox-proxy 共享的 JWT 签名密钥，至少 16 个字符'
+    }),
+    SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(1800).meta({
+      description:
+        'Sandbox proxy JWT 与 Cookie Max-Age 生命周期（秒），默认 1800；活跃 WebSocket 不会因 token 到期被中断，后续 HTTP 请求或重连需要刷新 token'
+    }),
+    SANDBOX_PROXY_HTTPS: BoolSchema.default(true).meta({
+      description: 'sandbox-proxy 是否通过 HTTPS 服务，用于控制前端 iframe scheme'
+    }),
+    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
+      description:
+        '是否把 endpoint 中的 host.docker.internal 改写为 localhost；当 sandbox-proxy 直接运行在宿主机进程时开启，容器或 k8s 内运行时保持关闭'
+    }),
 
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({

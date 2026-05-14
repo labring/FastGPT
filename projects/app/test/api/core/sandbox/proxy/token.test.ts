@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import handler from '@/pages/api/core/sandbox/proxyAuth/token';
+import handler from '@/pages/api/core/sandbox/proxy/token';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
@@ -12,11 +12,11 @@ vi.mock('@fastgpt/service/core/sandbox/proxyToken', () => ({
   signSandboxProxyToken: vi.fn(() => ({
     token: 'signed-proxy-token',
     exp: 1778294762,
-    ttl: 3600
+    ttl: 1800
   }))
 }));
 
-describe('sandbox proxyAuth/token', () => {
+describe('sandbox proxy/token', () => {
   let owner: Awaited<ReturnType<typeof getUser>>;
   let skillId: string;
   let sandboxId: string;
@@ -65,7 +65,7 @@ describe('sandbox proxyAuth/token', () => {
     expect(res.data).toEqual({
       token: 'signed-proxy-token',
       exp: 1778294762,
-      ttl: 3600
+      ttl: 1800
     });
   });
 

@@ -11,7 +11,7 @@ import {
   isProxyMappedRequestUrl,
   rewriteProxyRequestUrl
 } from './csSession';
-import { authenticate, getSandboxId, type VerifiedProxyTokenPayload } from './auth';
+import { authenticate, getSandboxId, type AuthErr, type VerifiedProxyTokenPayload } from './auth';
 import { startSandboxHeartbeat } from './heartbeat';
 import { evictProxyTarget, resolveProxyTarget } from './proxyTarget';
 import {

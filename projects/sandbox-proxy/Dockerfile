@@ -22,9 +22,10 @@ RUN if [ -z "$proxy" ]; then \
         pnpm install --frozen-lockfile --ignore-scripts --registry=https://registry.npmmirror.com; \
     fi
 
-# Bundle the proxy entry — tsdown noExternal:[/.*/] inlines all npm deps, so the
-# runner stage doesn't need a node_modules tree.
-RUN cd /app/projects/sandbox-proxy && pnpm build
+# Build workspace packages referenced through package exports, then bundle the
+# proxy entry so the runner stage doesn't need a node_modules tree.
+RUN pnpm --filter @fastgpt-sdk/otel build && \
+    cd /app/projects/sandbox-proxy && pnpm build
 
 # ===== Runner Stage =====
 FROM node:24-alpine AS runner

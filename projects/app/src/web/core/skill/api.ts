@@ -147,9 +147,9 @@ export const SKILL_DEBUG_CHAT_URL = '/api/core/agentSkills/debugChat';
 export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
   POST('/core/agentSkills/folder/create', data);
 
-/** 签发 sandbox-proxy 的 JWT（默认 1h TTL，react-query 会提前刷新） */
+/** 签发 sandbox-proxy 的 JWT（默认 30min TTL，react-query 会提前刷新） */
 export const postSandboxProxyToken = (data: SandboxProxyTokenBody) =>
-  POST<SandboxProxyTokenResponse>('/core/sandbox/proxyAuth/token', data);
+  POST<SandboxProxyTokenResponse>('/core/sandbox/proxy/token', data);
 
 /** 获取 Skill 文件夹路径 */
 export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>
@@ -173,10 +173,6 @@ export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
 /** 停止 Skill 调试会话中正在运行的对话 */
 export const postStopSkillDebugChat = (data: SkillDebugSessionControlBody) =>
   POST<SkillDebugSessionStopResponse>('/core/agentSkills/debugSession/stop', data);
-
-/** 将 Skill 调试会话标记为已读 */
-export const postMarkSkillDebugChatRead = (data: SkillDebugSessionControlBody) =>
-  POST<void>('/core/agentSkills/debugSession/markRead', data);
 
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>

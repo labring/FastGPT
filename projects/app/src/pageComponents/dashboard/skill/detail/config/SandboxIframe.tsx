@@ -63,9 +63,9 @@ function SandboxFrame({
 
 const SandboxIframe = () => {
   const sandboxEndpoint = useContextSelector(SkillDetailContext, (v) => v.sandboxEndpoint);
-  const proxyBase = useSystemStore((s) => s.feConfigs?.sandbox_proxy_base);
-  const proxyScheme = useSystemStore((s) => s.feConfigs?.sandbox_proxy_scheme) ?? 'http';
-  const tokenTtl = useSystemStore((s) => s.feConfigs?.sandbox_proxy_token_ttl) ?? 3600;
+  const proxyBase = useSystemStore((s) => s.feConfigs?.sandboxProxy?.base);
+  const proxyScheme = useSystemStore((s) => s.feConfigs?.sandboxProxy?.scheme) ?? 'http';
+  const tokenTtl = useSystemStore((s) => s.feConfigs?.sandboxProxy?.tokenTtl) ?? 1800;
   const tokenRefreshInterval = getTokenRefreshInterval(tokenTtl);
   const sandboxId = sandboxEndpoint?.sandboxId;
 
@@ -92,7 +92,7 @@ const SandboxIframe = () => {
         justifyContent="center"
         color="red.500"
       >
-        sandbox_proxy_base is not configured
+        sandboxProxy.base is not configured
       </Box>
     );
   }
