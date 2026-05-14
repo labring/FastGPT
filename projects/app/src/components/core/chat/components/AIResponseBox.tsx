@@ -217,7 +217,9 @@ const RenderTool = React.memo(
         ) {
           return parsed as SandboxFileItem[];
         }
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to parse sandbox file response', error);
+      }
       return null;
     }, [tool.functionName, tool.response]);
 

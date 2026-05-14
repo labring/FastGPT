@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, type UseToastOptions, Flex, Spacer } from '@chakra-ui/react';
+import {
+  Box,
+  Grid,
+  IconButton,
+  HStack,
+  type UseToastOptions,
+  Flex,
+  Spacer
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -488,9 +496,7 @@ const AppCard = React.memo(function AppCard({
           /* Agent 场景左侧：创建人 + 更新时间 */
           <HStack spacing={'12px'}>
             {app.sourceMember?.name && (
-              <MyTooltip
-                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
-              >
+              <MyTooltip label={t('common:creator_tooltip', { creator: app.sourceMember.name })}>
                 <HStack spacing={'4px'}>
                   <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                   <Box
@@ -522,9 +528,7 @@ const AppCard = React.memo(function AppCard({
         {isTool && !isFolder && (
           <HStack spacing={'12px'}>
             {app.sourceMember?.name && (
-              <MyTooltip
-                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
-              >
+              <MyTooltip label={t('common:creator_tooltip', { creator: app.sourceMember.name })}>
                 <HStack spacing={'4px'}>
                   <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                   <Box
