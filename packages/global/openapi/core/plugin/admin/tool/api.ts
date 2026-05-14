@@ -74,6 +74,7 @@ const UpdateChildToolSchema = AdminSystemToolDetailSchema.shape.children.unwrap(
   id: true,
   systemKeyCost: true
 });
+const UpdateToolSecretsValSchema = z.record(z.string(), z.any()).nullable().optional();
 
 export const UpdateSystemToolBodySchema = AdminSystemToolDetailSchema.pick({
   id: true,
@@ -90,6 +91,7 @@ export const UpdateSystemToolBodySchema = AdminSystemToolDetailSchema.pick({
   .partial()
   .extend({
     id: z.string(),
+    secretsVal: UpdateToolSecretsValSchema,
     children: z.array(UpdateChildToolSchema).optional()
   });
 export type UpdateSystemToolBodyType = z.infer<typeof UpdateSystemToolBodySchema>;
@@ -115,6 +117,7 @@ export const UpdateWorkflowToolBodySchema = AdminSystemToolDetailSchema.pick({
   .partial()
   .extend({
     id: z.string(),
+    secretsVal: UpdateToolSecretsValSchema,
     associatedPluginId: z.string().optional()
   });
 export type UpdateWorkflowToolBodyType = z.infer<typeof UpdateWorkflowToolBodySchema>;

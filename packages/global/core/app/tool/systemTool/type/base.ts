@@ -88,7 +88,7 @@ export const SystemToolDetailSchema = z.object({
   inputs: z.array(FlowNodeInputItemTypeSchema).optional(),
   outputs: z.array(FlowNodeOutputItemTypeSchema).optional(),
   secrets: z.array(InputConfigTypeSchema).optional(),
-  secretsVal: z.record(z.string(), z.any()).optional(),
+  secretsVal: z.record(z.string(), z.any()).nullish(),
   isLatestVersion: z.boolean().optional(),
   associatedPluginId: z.string().optional(),
   permissions: z.array(PluginPermissionEnumSchema).optional()

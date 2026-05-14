@@ -30,7 +30,7 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
       author: z.string().optional()
     })
     .optional(),
-  secretsVal: z.record(z.string(), z.any()).optional(),
+  secretsVal: z.record(z.string(), z.any()).nullish(),
 
   /** @deprecated */
   inputListVal: z.record(z.string(), z.any()).optional(),

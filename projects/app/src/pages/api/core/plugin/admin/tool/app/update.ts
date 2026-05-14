@@ -3,7 +3,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { UpdateWorkflowToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  UpdateWorkflowToolBodySchema,
+  type UpdateWorkflowToolBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 export type updateWorkflowToolQuery = {};
 
@@ -17,7 +20,7 @@ async function handler(
 ): Promise<updateWorkflowToolResponse> {
   await authSystemAdmin({ req });
 
-  const { id: pluginId, ...updateFields } = req.body;
+  const { id: pluginId, ...updateFields } = UpdateWorkflowToolBodySchema.parse(req.body);
 
   const plugin = await MongoSystemTool.findOne({ pluginId });
   if (!plugin?.customConfig?.associatedPluginId) {

@@ -243,14 +243,15 @@ export class SystemToolRepo {
       : undefined;
 
     const secrets = jsonSchema2SecretInput({ jsonSchema: tool.secretSchema });
+    const configuredSecretsVal = SystemToolCodec.getConfiguredSecretsVal(dbTool);
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: childPluginId ? child?.icon ?? tool.icon : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
-      hasSystemSecret: !!(dbTool?.secretsVal ?? dbTool?.inputListVal),
-      secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
+      hasSystemSecret: !!configuredSecretsVal,
+      secretsVal: configuredSecretsVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
       intro:
         dbTool?.customConfig?.intro ??
@@ -372,7 +373,7 @@ export class SystemToolRepo {
         version: tool.version,
         currentCost: dbTool?.currentCost ?? 0,
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
-        secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
+        secretsVal: SystemToolCodec.getConfiguredSecretsVal(dbTool),
         permissions: tool.permission
       };
     }
@@ -382,7 +383,7 @@ export class SystemToolRepo {
       version,
       currentCost: dbTool.currentCost ?? 0,
       systemKeyCost: dbTool.systemKeyCost ?? 0,
-      secretsVal: dbTool.secretsVal ?? dbTool.inputListVal
+      secretsVal: SystemToolCodec.getConfiguredSecretsVal(dbTool)
     };
   };
 

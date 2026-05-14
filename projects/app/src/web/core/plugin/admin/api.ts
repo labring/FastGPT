@@ -1,14 +1,13 @@
-import { POST, DELETE } from '@/web/common/api/request';
+import { POST } from '@/web/common/api/request';
 import type {
   ConfirmUploadPkgPluginBodyType,
-  InstallPluginFromUrlBodyType
+  InstallPluginFromUrlBodyType,
+  UploadPkgPluginResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/api';
-
-import type { PluginSummaryType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 // Pkg plugin
 export const uploadPkgPlugin = (formData: FormData) =>
-  POST<PluginSummaryType>(`/core/plugin/admin/pkg/upload`, formData);
+  POST<UploadPkgPluginResponseType>(`/core/plugin/admin/pkg/upload`, formData);
 
 export const confirmPkgPluginUpload = (data: ConfirmUploadPkgPluginBodyType) =>
   POST(`/core/plugin/admin/pkg/confirm`, data);

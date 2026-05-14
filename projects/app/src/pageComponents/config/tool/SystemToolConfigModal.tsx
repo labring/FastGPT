@@ -562,7 +562,7 @@ const SystemToolConfigModal = ({
                 if (val) {
                   setValue('secretsVal', {});
                 } else {
-                  setValue('secretsVal', undefined);
+                  setValue('secretsVal', null);
                 }
               }}
             />
@@ -643,7 +643,11 @@ const SystemToolConfigModal = ({
                       name={`children.${index}.systemKeyCost`}
                       {...COST_LIMITS}
                     />
-                    <Input type="hidden" {...register(`children.${index}.id`)} value={childTool.id} />
+                    <Input
+                      type="hidden"
+                      {...register(`children.${index}.id`)}
+                      value={childTool.id}
+                    />
                   </Td>
                 </Tr>
               );

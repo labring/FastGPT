@@ -3,7 +3,10 @@ import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSch
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { UpdateSystemToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  UpdateSystemToolBodySchema,
+  type UpdateSystemToolBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 export type updateToolQuery = {};
 
@@ -16,7 +19,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
   await authSystemAdmin({ req });
-  const { id: pluginId, ...updateFields } = req.body;
+  const { id: pluginId, ...updateFields } = UpdateSystemToolBodySchema.parse(req.body);
 
   const plugin = await MongoSystemTool.findOne({ pluginId });
 

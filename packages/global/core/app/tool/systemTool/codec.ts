@@ -5,9 +5,27 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import type { SystemToolListItemType } from './type';
 
+type SystemToolConfigLike = SystemPluginToolCollectionType & {
+  toObject?: () => SystemPluginToolCollectionType;
+};
+
 export const SystemToolCodec = {
   getDBPluginId: (pluginId: string) => `systemTool-${pluginId}`,
   getPluginIdFromDB: (dbPluginId: string) => dbPluginId.replace(/^systemTool-/, ''),
+
+  getConfiguredSecretsVal(config?: SystemToolConfigLike | null) {
+    if (!config) return undefined;
+    const configData = typeof config.toObject === 'function' ? config.toObject() : config;
+
+    if (
+      Object.prototype.hasOwnProperty.call(configData, 'secretsVal') &&
+      configData.secretsVal !== undefined
+    ) {
+      return configData.secretsVal ?? undefined;
+    }
+
+    return configData.inputListVal;
+  },
 
   fromDBTypeToListItemType(item: SystemPluginToolCollectionType): SystemToolListItemType {
     const {
@@ -60,13 +78,15 @@ export const SystemToolCodec = {
     config?: SystemPluginToolCollectionType;
     lang?: `${LangEnum}`;
   }): SystemToolListItemType {
+    const configuredSecretsVal = this.getConfiguredSecretsVal(config);
+
     return {
       id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,
-      hasSystemSecret: !!(config?.secretsVal ?? config?.inputListVal),
+      hasSystemSecret: !!configuredSecretsVal,
       hasTokenFee: config?.hasTokenFee ?? false,
       intro: parseI18nString(tool.description, lang),
       isToolSet: !!tool.children && tool.children.length > 0,

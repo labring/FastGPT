@@ -383,11 +383,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: 0.0.1-alpha.3
-        version: 0.0.1-alpha.3(zod@4.1.12)
-      '@fastgpt-sdk/plugin':
-        specifier: 0.6.1
-        version: 0.6.1
+        specifier: 0.0.1-alpha.5
+        version: 0.0.1-alpha.5(zod@4.1.12)
       axios:
         specifier: 'catalog:'
         version: 1.16.0
@@ -3596,13 +3593,16 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.3':
-    resolution: {integrity: sha512-BQZNRDt8TkidneKRkUnFXr7kcQN9qZHS8MaxAvke7RdMSFGzoA2P85bp1+F88d11A5qdi0IkaysSnePhxU9ceQ==}
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.5':
+    resolution: {integrity: sha512-X0BdTiVvd1ZwOL1+T7wYXKlkGlDcNcYyb+qTh9V0dkaop3WmXgzt8kQhKd/E7d+IGdCJRzaobM3VMm5hS7vxbw==}
     peerDependencies:
       zod: ^4
 
   '@fastgpt-sdk/plugin@0.6.1':
     resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.36':
+    resolution: {integrity: sha512-RPwK6kFmpv5U2tqPNj+HzDoZEQ06fgMsrOzXx/uT33rubikOLHmNV4kJ8Mra+EhzzYbNmFq2iFapaocy4ExbwQ==}
+    engines: {node: '>=18'}
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17516,7 +17516,7 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.3(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.5(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
@@ -17524,6 +17524,10 @@ snapshots:
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
+  '@fastgpt-sdk/sandbox-adapter@0.0.36':
+    dependencies:
+      '@alibaba-group/opensandbox': 0.1.6
+      '@e2b/code-interpreter': 2.4.0
 
   '@fidm/asn1@1.0.4': {}
 
@@ -23619,7 +23623,6 @@ snapshots:
       '@next/eslint-plugin-next': 16.2.6
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-<<<<<<< HEAD
       eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.7.0))
@@ -23629,10 +23632,6 @@ snapshots:
       typescript-eslint: 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
       eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
-=======
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
->>>>>>> 83b459d89 (chore(marketplace): use manifest)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.57.1)
@@ -23676,11 +23675,7 @@ snapshots:
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
-<<<<<<< HEAD
-      eslint: 9.39.4(jiti@1.21.7)
-=======
       eslint: 8.57.1
->>>>>>> 83b459d89 (chore(marketplace): use manifest)
       get-tsconfig: 4.14.0
       is-bun-module: 1.3.0
       oxc-resolver: 5.0.0
