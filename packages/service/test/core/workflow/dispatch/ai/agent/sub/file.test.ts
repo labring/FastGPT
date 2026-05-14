@@ -64,7 +64,7 @@ describe('dispatchFileRead', () => {
     const result = await dispatchFileRead({
       files: [
         {
-          index: '0',
+          id: 'file_0',
           url: 'file_raw_text_id'
         }
       ],

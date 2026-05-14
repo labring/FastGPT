@@ -6,7 +6,7 @@ import { parseI18nString } from '../../../../common/i18n/utils';
 export enum SubAppIds {
   ask = 'ask_agent',
   model = 'model_agent',
-  fileRead = 'file_read',
+  readFiles = 'read_files',
   datasetSearch = 'dataset_search'
 }
 
@@ -14,7 +14,7 @@ export const systemSubInfo: Record<
   string,
   { name: I18nStringType; avatar: string; toolDescription: string }
 > = {
-  [SubAppIds.fileRead]: {
+  [SubAppIds.readFiles]: {
     name: {
       'zh-CN': '文件解析',
       'zh-Hant': '文件解析',

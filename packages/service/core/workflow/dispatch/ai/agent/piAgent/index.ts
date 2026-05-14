@@ -5,6 +5,7 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -15,10 +16,9 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
+import { buildAgentUserContextInput } from '../adapter/userContext';
 import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
 import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
-import { formatFileInput } from '../sub/file/utils';
-import { getHistories } from '../../../utils';
 import { getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
@@ -39,13 +39,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     node: { nodeId, inputs },
     lang,
     histories,
+    query,
     requestOrigin,
     chatConfig,
     runningAppInfo,
+    runningUserInfo,
     workflowStreamResponse,
     usagePush,
     mode,
     chatId,
+    responseChatItemId,
+    timezone,
     showSkillReferences,
     params: {
       model,
@@ -65,7 +69,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   } = props;
 
   const piMessagesKey = `piMessages-${nodeId}`;
-  const chatHistories = getHistories(history, histories);
   const normalizedSkillIds = normalizeSkillIds(skillIds);
 
   const assistantResponses: AIChatItemValueItemType[] = [];
@@ -108,21 +111,21 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         ? fileLinksInput
         : undefined;
 
-    const {
-      filesMap,
-      allFilesMap,
-      prompt: fileInputPrompt
-    } = formatFileInput({
-      fileUrls: fileLinks,
-      requestOrigin,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      histories: chatHistories,
-      useSkill: skillIds.length > 0
-    });
-
-    const formatUserChatInput = fileInputPrompt
-      ? `${fileInputPrompt}\n\n${userChatInput}`
-      : userChatInput;
+    const { chatHistories, currentUserMessage, filesMap, allFilesMap } =
+      await buildAgentUserContextInput({
+        history,
+        histories,
+        currentFiles: fileLinks,
+        currentUserInput: userChatInput,
+        currentQuery: query,
+        currentDataId: responseChatItemId,
+        selectedDataset: datasetParams?.datasets,
+        tmbId: runningUserInfo.tmbId,
+        timezone,
+        requestOrigin,
+        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
+      });
+    const { text: formatUserChatInput } = chatValue2RuntimePrompt(currentUserMessage.value);
 
     // 2. 初始化独立能力。技能能力只贡献 system prompt / tools / assistantResponses，不直接参与 PiAgent loop 状态。
     if (serviceEnv.SHOW_SKILL) {
@@ -136,7 +139,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         sessionId: sandboxSessionId,
         mode: sandboxMode,
         workflowStreamResponse,
-        showSkillReferences: showSkillReferences === true,
         allFilesMap
       });
       capabilities.push(sandboxCap);
@@ -192,8 +194,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: [systemPrompt || '', capabilitySystemPrompt, sandboxSystemPrompt]
         .filter(Boolean)
-        .join('\n\n'),
-      selectedDataset: datasetParams?.datasets
+        .join('\n\n')
     });
 
     // 5. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。

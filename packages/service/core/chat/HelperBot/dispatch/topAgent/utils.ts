@@ -111,7 +111,7 @@ ${dataset}
     })
   ]);
 
-  const builtinTools = [SubAppIds.fileRead, SANDBOX_TOOL_NAME].map((id) => {
+  const builtinTools = [SubAppIds.readFiles, SANDBOX_TOOL_NAME].map((id) => {
     const info = systemSubInfo[id];
     return `- **${id}** [工具]: ${parseI18nString(info.name, lang)} - ${info.toolDescription}`;
   });

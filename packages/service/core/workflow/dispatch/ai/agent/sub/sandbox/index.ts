@@ -50,7 +50,6 @@ export {
   disconnectEditDebugSandbox
 } from './lifecycle';
 export {
-  dispatchSandboxReadFile,
   dispatchSandboxWriteFile,
   dispatchSandboxEditFile,
   dispatchSandboxExecute,

@@ -4,21 +4,14 @@ import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { getHistories } from '../../utils';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  chats2GPTMessages,
-  chatValue2RuntimePrompt,
-  runtimePrompt2ChatsValue
-} from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { formatFileInput } from './sub/file/utils';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import {
@@ -30,6 +23,7 @@ import type { AgentCapability } from './capability/type';
 import { createCapabilityToolCallHandler } from './capability/type';
 import { createSandboxSkillsCapability } from './capability/sandboxSkills';
 import { parseUserSystemPrompt } from './adapter/prompt';
+import { buildAgentUserContextInput } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
@@ -114,10 +108,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     chatConfig,
     lastInteractive,
     runningAppInfo,
+    runningUserInfo,
     workflowStreamResponse,
     usagePush,
     mode,
     chatId,
+    responseChatItemId,
+    timezone,
     showSkillReferences,
     params: {
       systemPrompt,
@@ -131,54 +128,44 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       aiChatReasoning
     }
   } = props;
-  let fileLinks = props.params.fileUrlList;
 
   try {
     // 1. 将 workflow 历史与本轮用户输入转成 LLM messages。
     // reserveTool=true 是为了保留历史工具上下文；system prompt 会在 unified loop 内重新组装。
-    const chatHistories = getHistories(history, histories);
-    const historiesMessages = chats2GPTMessages({
-      messages: chatHistories,
-      reserveId: false,
-      reserveTool: true
-    });
     const normalizedSkillIds = normalizeSkillIds(skillIds);
 
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
-      fileLinks = undefined;
-    }
+    const fileLinks =
+      fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
+        ? props.params.fileUrlList
+        : undefined;
 
     const {
+      chatHistories,
+      rewrittenHistories,
+      currentUserMessage,
+      queryInput,
       filesMap,
-      allFilesMap,
-      prompt: fileInputPrompt
-    } = formatFileInput({
-      fileUrls: fileLinks,
+      allFilesMap
+    } = await buildAgentUserContextInput({
+      history,
+      histories,
+      currentFiles: fileLinks,
+      currentUserInput: userChatInput,
+      currentQuery: query,
+      currentDataId: responseChatItemId,
+      selectedDataset: datasetParams?.datasets,
+      tmbId: runningUserInfo.tmbId,
+      timezone,
       requestOrigin,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      histories: chatHistories,
-      useSkill: skillIds.length > 0
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
-
-    // query 是前端原始输入，userChatInput 是 workflow 节点入参。
-    // 如果本轮有上传文件，需要把文件提示拼进当前 user message，供主 loop 直接看到。
-    const { text: queryInput, files: queryFiles } = chatValue2RuntimePrompt(query);
-    const formatUserChatInput = fileInputPrompt
-      ? `${fileInputPrompt}\n\n${userChatInput}`
-      : userChatInput;
-    const currentUserMessage = chats2GPTMessages({
-      messages: [
-        {
-          obj: ChatRoleEnum.Human,
-          value: runtimePrompt2ChatsValue({
-            text: formatUserChatInput,
-            files: queryFiles
-          })
-        }
-      ],
-      reserveId: false
-    })[0];
+    const requestMessages = [...rewrittenHistories, currentUserMessage];
+    const historiesMessages = chats2GPTMessages({
+      messages: requestMessages,
+      reserveId: false,
+      reserveTool: true
+    });
 
     // ask_agent 追问会把 pendingMainContext 写入 memory。
     // 用户回答后从这里恢复同一条 messages，而不是重新生成一份独立 plan 上下文。
@@ -188,9 +175,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
-    const loopMessages = historiesMessages
-      .concat(currentUserMessage ? [currentUserMessage] : [])
-      .filter((message) => message.role !== 'system');
+    const loopMessages = historiesMessages.filter((message) => message.role !== 'system');
 
     // Skill/Sandbox 是可插拔能力：它们可以追加 system prompt、completion tools 和 tool handler，
     // 但不会改变 agent loop 本身的上下文协议。
@@ -205,7 +190,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         sessionId: sandboxSessionId,
         mode: sandboxMode,
         workflowStreamResponse,
-        showSkillReferences: showSkillReferences === true,
         allFilesMap
       });
       capabilities.push(sandboxCap);
@@ -263,10 +247,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const sandboxSystemPrompt =
       useAgentSandbox && !!global.feConfigs?.show_agent_sandbox ? SANDBOX_SYSTEM_PROMPT : '';
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: [systemPrompt || '', capabilitySystemPrompt, sandboxSystemPrompt]
+      userSystemPrompt: [systemPrompt, capabilitySystemPrompt, sandboxSystemPrompt]
         .filter(Boolean)
-        .join('\n\n'),
-      selectedDataset: datasetParams?.datasets
+        .join('\n\n')
     });
 
     // 2. 创建 workflow adapter。

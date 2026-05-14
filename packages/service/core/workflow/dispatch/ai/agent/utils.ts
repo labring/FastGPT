@@ -192,19 +192,20 @@ export const getExecuteTool = ({
           };
         }
 
-        if (toolId === SubAppIds.fileRead) {
-          const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(args));
+        if (toolId === SubAppIds.readFiles) {
+          const rawArgs = parseJsonArgs(args);
+          const toolParams = ReadFileToolSchema.safeParse(rawArgs);
           if (!toolParams.success) {
             return {
               response: toolParams.error.message,
               usages: []
             };
           }
-          const params = toolParams.data;
+          const ids = toolParams.data.ids;
 
-          const files = params.file_indexes.map((index) => ({
-            index,
-            url: filesMap[index]
+          const files = ids.map((id) => ({
+            id,
+            url: filesMap[id]
           }));
           const result = await dispatchFileRead({
             files,

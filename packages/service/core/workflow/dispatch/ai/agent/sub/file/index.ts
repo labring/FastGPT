@@ -20,7 +20,7 @@ import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import type { DispatchSubAppResponse } from '../../type';
 
 type FileReadParams = {
-  files: { index: string; url: string }[];
+  files: { id: string; url: string }[];
 
   teamId: string;
   tmbId: string;
@@ -40,7 +40,7 @@ export const dispatchFileRead = async ({
   try {
     const usages: ChatNodeUsageType[] = [];
     const readFilesResult = await Promise.all(
-      files.map(async ({ index, url }) => {
+      files.map(async ({ id, url }) => {
         // Get from buffer
         const fileBuffer = await getS3RawTextSource().getRawTextBuffer({
           sourceId: url,
@@ -48,7 +48,7 @@ export const dispatchFileRead = async ({
         });
         if (fileBuffer) {
           return {
-            index,
+            id,
             name: fileBuffer.filename,
             content: fileBuffer.text
           };
@@ -57,9 +57,9 @@ export const dispatchFileRead = async ({
         try {
           if (await isInternalAddress(url)) {
             return {
-              index,
+              id,
               name: '',
-              content: Promise.reject(PRIVATE_URL_TEXT)
+              content: PRIVATE_URL_TEXT
             };
           }
           const response = await pickOutboundAxios(url).get(url, {
@@ -110,13 +110,13 @@ export const dispatchFileRead = async ({
           });
 
           return {
-            index,
+            id,
             name: filename,
             content: rawText
           };
         } catch (error) {
           return {
-            index,
+            id,
             name: '',
             content: getErrText(error, 'Load file error')
           };

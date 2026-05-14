@@ -3,7 +3,6 @@ import type { AgentCapability } from './type';
 import {
   allSandboxTools,
   SandboxToolIds,
-  SandboxReadFileSchema,
   SandboxWriteFileSchema,
   SandboxEditFileSchema,
   SandboxExecuteSchema,
@@ -19,7 +18,6 @@ import {
 import { buildSkillsContextPrompt } from '../sub/sandbox/prompt';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import {
-  dispatchSandboxReadFile,
   dispatchSandboxWriteFile,
   dispatchSandboxEditFile,
   dispatchSandboxExecute,
@@ -29,10 +27,7 @@ import {
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowResponseType } from '../../../type';
-import type {
-  AIChatItemValueItemType,
-  SandboxStatusItemType
-} from '@fastgpt/global/core/chat/type';
+import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type { AgentSandboxContext, DeployedSkillInfo } from '../sub/sandbox/types';
 import { MongoAgentSkills } from '../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../ai/sandbox/schema';
@@ -44,7 +39,6 @@ import { parseSkillMarkdown } from '../../../../../agentSkills/utils';
 type SandboxToolResult = {
   response: string;
   usages: any[];
-  assistantResponses?: AIChatItemValueItemType[];
 };
 
 type SandboxSkillsCapabilityParams = {
@@ -54,7 +48,6 @@ type SandboxSkillsCapabilityParams = {
   sessionId: string;
   mode: 'sessionRuntime' | 'editDebug';
   workflowStreamResponse?: WorkflowResponseType; // SSE stream for lifecycle and skill events
-  showSkillReferences: boolean;
   allFilesMap: Record<string, { url: string; name: string; type: string }>;
 };
 
@@ -135,73 +128,10 @@ export function isSandboxExpiredError(err: unknown): boolean {
   return false;
 }
 
-export function collectSkillReferenceResponses({
-  paths,
-  sandboxContext,
-  workflowStreamResponse,
-  showSkillReferences,
-  toolCallId
-}: {
-  paths: string[];
-  sandboxContext: AgentSandboxContext;
-  workflowStreamResponse?: WorkflowResponseType;
-  showSkillReferences: boolean;
-  toolCallId: string;
-}): AIChatItemValueItemType[] {
-  if (!showSkillReferences) return [];
-
-  const skillResponses: AIChatItemValueItemType[] = [];
-  for (const filePath of paths) {
-    if (!filePath.endsWith('/SKILL.md')) continue;
-
-    const skill = sandboxContext.deployedSkills.find(
-      (s) => s.skillMdPath === filePath || filePath.startsWith(s.directory + '/')
-    );
-    if (!skill) continue;
-
-    // Use toolCallId from the triggering tool call for correlation
-    workflowStreamResponse?.({
-      id: toolCallId,
-      event: SseResponseEventEnum.skillCall,
-      data: {
-        skill: {
-          id: toolCallId,
-          skillName: skill.name,
-          skillAvatar: skill.avatar || '',
-          description: skill.description,
-          skillMdPath: filePath
-        }
-      }
-    });
-
-    skillResponses.push({
-      skills: [
-        {
-          id: toolCallId,
-          skillName: skill.name,
-          skillAvatar: skill.avatar || '',
-          description: skill.description,
-          skillMdPath: filePath
-        }
-      ]
-    });
-  }
-  return skillResponses;
-}
-
 export async function createSandboxSkillsCapability(
   params: SandboxSkillsCapabilityParams
 ): Promise<AgentCapability> {
-  const {
-    skillIds,
-    teamId,
-    tmbId,
-    sessionId,
-    mode,
-    workflowStreamResponse,
-    showSkillReferences,
-    allFilesMap
-  } = params;
+  const { skillIds, teamId, tmbId, sessionId, mode, workflowStreamResponse, allFilesMap } = params;
   const isEditDebug = mode === 'editDebug';
   const defaults = getSandboxDefaults();
   const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -225,16 +155,14 @@ export async function createSandboxSkillsCapability(
       id: 'sandbox-skills',
       systemPrompt,
       completionTools: allSandboxTools,
-      handleToolCall: async (toolId, args, toolCallId) => {
+      handleToolCall: async (toolId, args) => {
         if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
         const result = await buildEditDebugHandler(
           toolId,
           args,
           sandboxContext,
           allFilesMap,
-          workflowStreamResponse,
-          showSkillReferences,
-          toolCallId
+          workflowStreamResponse
         );
         if (result !== null) {
           // Fire-and-forget: renew sandbox expiration after successful execution
@@ -339,19 +267,11 @@ export async function createSandboxSkillsCapability(
     id: 'sandbox-skills',
     systemPrompt,
     completionTools: allSandboxTools,
-    handleToolCall: async (toolId, args, toolCallId) => {
+    handleToolCall: async (toolId, args) => {
       if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
 
       return executeWithRetry(async (ctx) => {
-        return buildSessionHandler(
-          toolId,
-          args,
-          ctx,
-          allFilesMap,
-          workflowStreamResponse,
-          showSkillReferences,
-          toolCallId
-        );
+        return buildSessionHandler(toolId, args, ctx, allFilesMap, workflowStreamResponse);
       });
     },
     dispose: async () => {
@@ -371,28 +291,9 @@ async function buildEditDebugHandler(
   args: string,
   sandboxContext: AgentSandboxContext,
   allFilesMap: Record<string, { url: string; name: string; type: string }>,
-  workflowStreamResponse?: WorkflowResponseType,
-  showSkillReferences = false,
-  toolCallId = ''
+  workflowStreamResponse?: WorkflowResponseType
 ): Promise<SandboxToolResult | null> {
   const handlers: Record<string, () => Promise<SandboxToolResult>> = {
-    [SandboxToolIds.readFile]: async () => {
-      const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-
-      const assistantResponses = collectSkillReferenceResponses({
-        paths: parsed.data.paths,
-        sandboxContext,
-        workflowStreamResponse,
-        showSkillReferences,
-        toolCallId
-      });
-
-      return {
-        ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
-        ...(assistantResponses.length > 0 && { assistantResponses })
-      };
-    },
     [SandboxToolIds.writeFile]: async () => {
       const parsed = SandboxWriteFileSchema.safeParse(parseJsonArgs(args));
       if (!parsed.success) return { response: parsed.error.message, usages: [] };
@@ -430,28 +331,9 @@ async function buildSessionHandler(
   args: string,
   sandboxContext: AgentSandboxContext,
   allFilesMap: Record<string, { url: string; name: string; type: string }>,
-  workflowStreamResponse?: WorkflowResponseType,
-  showSkillReferences = false,
-  toolCallId = ''
+  workflowStreamResponse?: WorkflowResponseType
 ): Promise<SandboxToolResult> {
   const handlers: Record<string, () => Promise<SandboxToolResult>> = {
-    [SandboxToolIds.readFile]: async () => {
-      const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-
-      const assistantResponses = collectSkillReferenceResponses({
-        paths: parsed.data.paths,
-        sandboxContext,
-        workflowStreamResponse,
-        showSkillReferences,
-        toolCallId
-      });
-
-      return {
-        ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
-        ...(assistantResponses.length > 0 && { assistantResponses })
-      };
-    },
     [SandboxToolIds.writeFile]: async () => {
       const parsed = SandboxWriteFileSchema.safeParse(parseJsonArgs(args));
       if (!parsed.success) return { response: parsed.error.message, usages: [] };

@@ -1,31 +1,13 @@
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-
 /**
  * workflow 适配层负责把用户配置和已选知识库整理成主 loop 可读的背景信息。
  * 这里不包含任何 agent 角色或路由规则，避免把规划/路由 prompt 混入主上下文。
  */
-export const parseUserSystemPrompt = ({
-  userSystemPrompt,
-  selectedDataset = []
-}: {
-  userSystemPrompt?: string;
-  selectedDataset?: SelectedDatasetType[];
-}) => {
-  const presetDatasetPrompt =
-    selectedDataset.length > 0
-      ? `<preset_resources>
-已选知识库:
-${selectedDataset.map((item) => `- ${item.name} (ID: ${item.datasetId})`).join('\n')}
-</preset_resources>`
-      : '';
-
-  if (!userSystemPrompt && !presetDatasetPrompt) {
+export const parseUserSystemPrompt = ({ userSystemPrompt }: { userSystemPrompt?: string }) => {
+  if (!userSystemPrompt) {
     return '';
   }
 
-  const list = [userSystemPrompt, presetDatasetPrompt];
-
-  return `${list.filter(Boolean).join('\n\n')}
+  return `${userSystemPrompt}
 
 请参考用户的任务信息来匹配是否和当前的 <user_background></user_background> 一致，如果一致请优先遵循参考的步骤安排和偏好
 如果和 <user_background></user_background> 没有任何关系则忽略参考信息。
