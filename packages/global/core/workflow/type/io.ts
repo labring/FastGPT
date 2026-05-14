@@ -3,6 +3,7 @@ import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '..
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
 
 /* Dataset node */
 export const SelectedDatasetSchema = z.object({
@@ -19,8 +20,9 @@ export type SelectedDatasetType = z.infer<typeof SelectedDatasetSchema>;
 export const CustomFieldConfigTypeSchema = z.object({
   // reference
   selectValueTypeList: z.array(z.enum(WorkflowIOValueTypeEnum)).optional(), // 可以选哪个数据类型, 只有1个的话,则默认选择
-  showDefaultValue: z.boolean().optional(),
-  showDescription: z.boolean().optional()
+  showDefaultValue: BoolSchema.optional(),
+  showDescription: BoolSchema.optional(),
+  hideBottomDivider: BoolSchema.optional()
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
 
@@ -29,31 +31,40 @@ export const InputComponentPropsTypeSchema = z.object({
   label: z.string(),
 
   valueType: z.enum(WorkflowIOValueTypeEnum).optional(),
-  required: z.boolean().optional(),
+  required: BoolSchema.optional(),
   defaultValue: z.any().optional(),
 
   // 不同组件的配置嘻嘻
   referencePlaceholder: z.string().optional(),
-  isRichText: z.boolean().optional(), // Prompt editor
+  isRichText: BoolSchema.optional(), // Prompt editor
   placeholder: z.string().optional(), // input,textarea
-  maxLength: z.number().optional(), // input,textarea
-  minLength: z.number().optional(), // password
-  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
-  markList: z.array(z.object({ label: z.string(), value: z.number() })).optional(), // slider
-  step: z.number().optional(), // slider
-  max: z.number().optional(), // slider, number input
-  min: z.number().optional(), // slider, number input
-  precision: z.number().optional(), // number input
+  maxLength: IntSchema.optional(), // input,textarea
+  minLength: IntSchema.optional(), // password
+  list: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        icon: z.string().optional(),
+        description: z.string().optional()
+      })
+    )
+    .optional(), // select
+  markList: z.array(z.object({ label: z.string(), value: NumSchema })).optional(), // slider
+  step: NumSchema.optional(), // slider
+  max: NumSchema.optional(), // slider, number input
+  min: NumSchema.optional(), // slider, number input
+  precision: NumSchema.optional(), // number input
 
-  canSelectFile: z.boolean().optional(), // file select
-  canSelectImg: z.boolean().optional(), // file select
-  canSelectVideo: z.boolean().optional(), // file select
-  canSelectAudio: z.boolean().optional(), // file select
-  canSelectCustomFileExtension: z.boolean().optional(), // file select
+  canSelectFile: BoolSchema.optional(), // file select
+  canSelectImg: BoolSchema.optional(), // file select
+  canSelectVideo: BoolSchema.optional(), // file select
+  canSelectAudio: BoolSchema.optional(), // file select
+  canSelectCustomFileExtension: BoolSchema.optional(), // file select
   customFileExtensionList: z.array(z.string()).optional(), // file select
-  canLocalUpload: z.boolean().optional(), // file select
-  canUrlUpload: z.boolean().optional(), // file select
-  maxFiles: z.number().optional(), // file select
+  canLocalUpload: BoolSchema.optional(), // file select
+  canUrlUpload: BoolSchema.optional(), // file select
+  maxFiles: IntSchema.optional(), // file select
 
   // Time
   timeGranularity: z.enum(['day', 'hour', 'minute', 'second']).optional(), // time point select, time range select
@@ -76,7 +87,7 @@ export const InputConfigTypeSchema = z.object({
   key: z.string(),
   label: z.string(),
   description: z.string().optional(),
-  required: z.boolean().optional(),
+  required: BoolSchema.optional(),
   inputType: z.enum(['input', 'numberInput', 'secret', 'switch', 'select']),
   value: SecretValueTypeSchema.optional(),
 
@@ -87,7 +98,7 @@ export type InputConfigType = z.infer<typeof InputConfigTypeSchema>;
 
 // Workflow node input
 export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend({
-  selectedTypeIndex: z.number().optional(),
+  selectedTypeIndex: IntSchema.optional(),
   renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)), // Node Type. Decide on a render style
   valueDesc: z.string().optional(), // data desc
   value: z.any().optional(),
@@ -101,11 +112,11 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   inputList: z.array(InputConfigTypeSchema).optional(), // when key === 'system_input_config', this field is used
 
   // render components params
-  canEdit: z.boolean().optional(), // dynamic inputs
-  isPro: z.boolean().optional(), // Pro version field
-  isToolOutput: z.boolean().optional(),
+  canEdit: BoolSchema.optional(), // dynamic inputs
+  isPro: BoolSchema.optional(), // Pro version field
+  isToolOutput: BoolSchema.optional(),
 
-  deprecated: z.boolean().optional() // node deprecated
+  deprecated: BoolSchema.optional() // node deprecated
 });
 export type FlowNodeInputItemType = z.infer<typeof FlowNodeInputItemTypeSchema>;
 
@@ -121,18 +132,18 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   label: z.string().optional(),
   description: z.string().optional(),
   defaultValue: z.any().optional(),
-  required: z.boolean().optional(),
+  required: BoolSchema.optional(),
 
-  invalid: z.boolean().optional(),
+  invalid: BoolSchema.optional(),
   invalidCondition: z
     .function({
       input: z.tuple([
         z.object({
-          inputs: z.array(FlowNodeInputItemTypeSchema),
+          inputs: z.custom<FlowNodeInputItemType[]>(),
           llmModelMap: z.record(z.string(), LLMModelItemSchema)
         })
       ]),
-      output: z.boolean()
+      output: BoolSchema
     })
     .optional()
     .meta({
@@ -143,7 +154,7 @@ export const FlowNodeOutputItemTypeSchema = z.object({
     }),
 
   customFieldConfig: CustomFieldConfigTypeSchema.optional(),
-  deprecated: z.boolean().optional()
+  deprecated: BoolSchema.optional()
 });
 export type FlowNodeOutputItemType = z.infer<typeof FlowNodeOutputItemTypeSchema>;
 
