@@ -95,6 +95,12 @@ export enum RerankTrainErrEnum {
   rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
   rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
 
+  // === LLM Judge Stage Errors ===
+  rerankLLMJudgeNoEvalData = 'rerankLLMJudgeNoEvalData',
+  rerankLLMJudgeNoRankingResults = 'rerankLLMJudgeNoRankingResults',
+  rerankLLMJudgeDiTingFailed = 'rerankLLMJudgeDiTingFailed',
+  rerankLLMJudgeEmptyResult = 'rerankLLMJudgeEmptyResult',
+
   // === General Errors ===
   rerankUnknownError = 'rerankUnknownError'
 }
@@ -192,6 +198,12 @@ export enum EmbeddingTrainErrEnum {
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
   embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
   embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  embeddingLLMJudgeNoEvalData = 'embeddingLLMJudgeNoEvalData',
+  embeddingLLMJudgeNoRankingResults = 'embeddingLLMJudgeNoRankingResults',
+  embeddingLLMJudgeDiTingFailed = 'embeddingLLMJudgeDiTingFailed',
+  embeddingLLMJudgeEmptyResult = 'embeddingLLMJudgeEmptyResult',
 
   // === General Errors ===
   embeddingUnknownError = 'embeddingUnknownError'
@@ -293,6 +305,12 @@ export enum RerankTrainSuggestionEnum {
   rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
   rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
 
+  // === LLM Judge Stage Errors ===
+  rerankLLMJudgeNoEvalData = 'rerankLLMJudgeNoEvalData',
+  rerankLLMJudgeNoRankingResults = 'rerankLLMJudgeNoRankingResults',
+  rerankLLMJudgeDiTingFailed = 'rerankLLMJudgeDiTingFailed',
+  rerankLLMJudgeEmptyResult = 'rerankLLMJudgeEmptyResult',
+
   // === General Errors ===
   rerankUnknownError = 'rerankUnknownError'
 }
@@ -392,6 +410,12 @@ export enum EmbeddingTrainSuggestionEnum {
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
   embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
   embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  embeddingLLMJudgeNoEvalData = 'embeddingLLMJudgeNoEvalData',
+  embeddingLLMJudgeNoRankingResults = 'embeddingLLMJudgeNoRankingResults',
+  embeddingLLMJudgeDiTingFailed = 'embeddingLLMJudgeDiTingFailed',
+  embeddingLLMJudgeEmptyResult = 'embeddingLLMJudgeEmptyResult',
 
   // === General Errors ===
   embeddingUnknownError = 'embeddingUnknownError'

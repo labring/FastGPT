@@ -181,7 +181,8 @@ export async function updateEmbeddingCheckpointData(
     | 'eval_basemodel'
     | 'finetuning'
     | 'registering'
-    | 'eval_tunedmodel',
+    | 'eval_tunedmodel'
+    | 'llm_judge',
   data: Record<string, unknown>,
   merge: boolean = false
 ): Promise<void> {

@@ -26,6 +26,7 @@ import { evaluateEmbeddingModelHelper } from '../helpers/evaluate-model';
  */
 export async function runEvalBaseModelStage(task: EmbeddingTrainTaskSchemaType): Promise<{
   baseModelEvalResult: EmbeddingEvalResult;
+  rankingResults: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
 }> {
   addLog.info('Run eval base model stage (embedding)', { taskId: String(task._id) });
 
@@ -39,7 +40,7 @@ export async function runEvalBaseModelStage(task: EmbeddingTrainTaskSchemaType):
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const baseModelEvalResult = await evaluateEmbeddingModelHelper(
+  const { evalResult: baseModelEvalResult, rankingResults } = await evaluateEmbeddingModelHelper(
     String(task._id),
     evalDatasetId,
     task.baseModelId,
@@ -49,5 +50,5 @@ export async function runEvalBaseModelStage(task: EmbeddingTrainTaskSchemaType):
     task.datasetIds
   );
 
-  return { baseModelEvalResult };
+  return { baseModelEvalResult, rankingResults };
 }
