@@ -68,7 +68,7 @@ const ResponseTags = ({
     llmModuleAccount = 0,
     historyPreviewLength = 0,
     toolCiteLinks = [],
-    useAgentSandbox
+    useSandboxFileDisplay
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -302,7 +302,7 @@ const ResponseTags = ({
             </MyTooltip>
           )}
 
-          {useAgentSandbox && (
+          {useSandboxFileDisplay && (
             <>
               <MyTag
                 colorSchema="green"

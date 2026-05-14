@@ -40,6 +40,8 @@ type CreateAgentSandboxParams = {
   teamId: string;
   tmbId: string;
   sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key
+  /** 真实 chatId，用于前端 sandbox API 查找匹配。始终为实际会话 ID，不随 mode 变化。 */
+  chatId: string;
   entrypoint?: string; // override default entrypoint for this request
   image?: SandboxImageConfigType; // override default image for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
@@ -179,7 +181,8 @@ async function deploySkillsToSandbox(
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
 ): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId, sessionId, entrypoint, image, onProgress, skillsMeta } = params;
+  const { skillIds, teamId, tmbId, sessionId, chatId, entrypoint, image, onProgress, skillsMeta } =
+    params;
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
@@ -188,7 +191,7 @@ export async function createAgentSandbox(
   // Step 1: Try to reuse an existing session-runtime sandbox
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const existingInstance = await MongoSandboxInstance.findOne({
-    chatId: sessionId,
+    chatId,
     'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
   });
 
@@ -422,12 +425,12 @@ export async function createAgentSandbox(
         $set: {
           appId: teamId, // session-runtime uses teamId as appId
           userId: tmbId,
-          chatId: sessionId,
+          chatId,
           metadata: {
             sandboxType: SandboxTypeEnum.sessionRuntime,
+            sessionId,
             teamId,
             tmbId,
-            sessionId,
             skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
             provider: providerConfig.provider,
             image: sandboxInfo.image,

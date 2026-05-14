@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
   SandboxCheckExistBodySchema,
   type SandboxCheckExistResponse
@@ -32,12 +33,13 @@ async function handler(
     ...outLinkAuthData
   });
 
-  // 检查沙盒是否存在
+  // Check for both generic sandbox (by appId/userId/chatId) and sessionRuntime sandbox (by chatId)
   const sandboxInstance = await MongoSandboxInstance.findOne(
     {
-      appId,
-      userId: uid,
-      chatId
+      $or: [
+        { appId, userId: uid, chatId },
+        { chatId, 'metadata.sandboxType': SandboxTypeEnum.sessionRuntime }
+      ]
     },
     '_id'
   ).lean();

@@ -161,6 +161,27 @@ export async function buildAgentTools({
             return { response: result.response, usages: result.usages };
           }
 
+          // Capability tools (e.g. sandbox skills) get first chance — when SHOW_SKILL is on,
+          // the skills capability owns the sandbox session and must intercept tools like
+          // `sandbox_get_file_url` so the file lookup runs against the capability's sandbox
+          // (sandboxId = sessionId), not the hashed sandboxId from getSandboxClient.
+          const capResult = await capabilityToolCallHandler?.(toolId, argStr, callId);
+          if (capResult != null) {
+            const subInfo = getSubAppInfo(toolId);
+            nodeResponses.push({
+              nodeId: callId,
+              id: callId,
+              toolId,
+              moduleType: FlowNodeTypeEnum.tool,
+              moduleName: subInfo.name,
+              moduleLogo: subInfo.avatar,
+              toolInput: parseJsonArgs(argStr),
+              toolRes: capResult.response
+            });
+            if (capResult.usages?.length) usagePush(capResult.usages);
+            return { response: capResult.response, usages: capResult.usages };
+          }
+
           // Sandbox shell
           if (toolId === SANDBOX_TOOL_NAME) {
             const toolParams = SandboxShellToolSchema.safeParse(args);
@@ -190,23 +211,6 @@ export async function buildAgentTools({
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
             return { response: result.response, usages: result.usages };
-          }
-
-          // Capability tools (e.g. sandbox skills)
-          const capResult = await capabilityToolCallHandler?.(toolId, argStr, callId);
-          if (capResult != null) {
-            const subInfo = getSubAppInfo(toolId);
-            nodeResponses.push({
-              nodeId: callId,
-              id: callId,
-              moduleType: FlowNodeTypeEnum.tool,
-              moduleName: subInfo.name,
-              moduleLogo: subInfo.avatar,
-              toolInput: parseJsonArgs(argStr),
-              toolRes: capResult.response
-            });
-            if (capResult.usages?.length) usagePush(capResult.usages);
-            return { response: capResult.response, usages: capResult.usages };
           }
 
           // User sub-apps

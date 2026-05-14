@@ -8,7 +8,7 @@ import type {
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_FILE_DISPLAY_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
@@ -58,7 +58,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
 
   // get llm module account and history preview length and total quote list and external link list and error text
   const {
-    useAgentSandbox,
+    useSandboxFileDisplay,
     llmModuleAccount,
     historyPreviewLength,
     quoteList,
@@ -92,8 +92,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
               }
             }
           });
-        } else if (item.toolId === SANDBOX_TOOL_NAME) {
-          acc.useAgentSandbox = true;
+        } else if (item.toolId && SANDBOX_FILE_DISPLAY_TOOLS.has(item.toolId)) {
+          acc.useSandboxFileDisplay = true;
         }
       }
 
@@ -107,7 +107,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       return acc;
     },
     {
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined,
       quoteList: [] as SearchDataResponseItemType[],
@@ -124,7 +124,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
 
   return {
     ...historyItem,
-    useAgentSandbox,
+    useSandboxFileDisplay,
     quoteList, // 原始未过滤的引用列表，用于判断是否有知识库搜索结果
     totalQuoteList: filteredQuoteList, // 过滤后的引用列表，只包含实际被引用的
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),

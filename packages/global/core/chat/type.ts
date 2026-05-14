@@ -314,7 +314,7 @@ export const ToolCiteLinksSchema = z.object({
 export type ToolCiteLinksType = z.infer<typeof ToolCiteLinksSchema>;
 
 export const ResponseTagItemSchema = z.object({
-  useAgentSandbox: z.boolean().optional(),
+  useSandboxFileDisplay: z.boolean().optional(),
   quoteList: z.array(SearchDataResponseItemSchema).optional(),
   totalQuoteList: z.array(SearchDataResponseItemSchema).optional(),
   toolCiteLinks: z.array(ToolCiteLinksSchema).optional(),

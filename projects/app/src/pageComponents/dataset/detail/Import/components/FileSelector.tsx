@@ -92,7 +92,9 @@ const FileSelector = ({
     (files: File[]): File[] => {
       const unsupported = files.filter((f) => !filterTypeReg.test(f.name));
       if (unsupported.length > 0) {
-        const exts = [...new Set(unsupported.map((f) => f.name.match(/(\.[^.]+)$/)?.[1] ?? ''))].filter(Boolean);
+        const exts = [
+          ...new Set(unsupported.map((f) => f.name.match(/(\.[^.]+)$/)?.[1] ?? ''))
+        ].filter(Boolean);
         toast({
           title: t('dataset:unsupported_file_format', { ext: exts.join(', ') }),
           status: 'error'

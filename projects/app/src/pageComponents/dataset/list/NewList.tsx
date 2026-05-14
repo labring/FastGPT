@@ -449,9 +449,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
         {/* 右侧：创建人 + 更新时间 */}
         <HStack spacing={'12px'}>
           {dataset.sourceMember?.name && (
-            <MyTooltip
-              label={t('dataset:creator_tooltip', { creator: dataset.sourceMember.name })}
-            >
+            <MyTooltip label={t('dataset:creator_tooltip', { creator: dataset.sourceMember.name })}>
               <HStack spacing={'4px'}>
                 <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                 <Box
