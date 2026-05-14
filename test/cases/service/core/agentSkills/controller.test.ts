@@ -7,7 +7,6 @@ import {
   deleteSkill,
   getSkillById,
   canModifySkill,
-  checkSkillNameExists,
   importSkill
 } from '@fastgpt/service/core/agentSkills/controller';
 import {
@@ -321,48 +320,6 @@ describe('AgentSkill Controller', () => {
     });
   });
 
-  // ==================== Check Name Exists ====================
-  describe('checkSkillNameExists', () => {
-    it('should return true for existing name', async () => {
-      const skillData = {
-        name: 'Existing Name',
-        description: 'A test skill',
-        author: testUserId,
-        category: [],
-        config: {},
-        teamId: testTeamId,
-        tmbId: testTmbId
-      };
-
-      await createSkill(skillData);
-      const exists = await checkSkillNameExists('Existing Name', testTeamId, null);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return false for non-existing name', async () => {
-      const exists = await checkSkillNameExists('Non-Existing Name', testTeamId, null);
-      expect(exists).toBe(false);
-    });
-
-    it('should return false when excluding current skill', async () => {
-      const skillData = {
-        name: 'Unique Name',
-        description: 'A test skill',
-        author: testUserId,
-        category: [],
-        config: {},
-        teamId: testTeamId,
-        tmbId: testTmbId
-      };
-
-      const skillId = await createSkill(skillData);
-      const exists = await checkSkillNameExists('Unique Name', testTeamId, skillId);
-
-      expect(exists).toBe(false);
-    });
-  });
-
   // ==================== Import Skill ====================
   describe('importSkill', () => {
     it('should import skill from package', async () => {
@@ -392,27 +349,6 @@ describe('AgentSkill Controller', () => {
       expect(skill?.name).toBe(packageData.skill.name);
       expect(skill?.description).toBe(packageData.skill.description);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
-    });
-
-    it('should throw error when importing duplicate name', async () => {
-      const packageData = {
-        skill: {
-          name: 'Duplicate Import',
-          description: 'A skill',
-          category: [],
-          config: {}
-        }
-      };
-
-      const mockZipBuffer = Buffer.from('mock zip content');
-
-      // First import
-      await importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer);
-
-      // Second import should fail
-      await expect(
-        importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer)
-      ).rejects.toThrow('skillNameExists');
     });
   });
 

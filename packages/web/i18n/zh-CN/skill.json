@@ -19,6 +19,7 @@
   "deploy_success": "发布成功",
   "detail_tab_config": "Skill 配置",
   "detail_tab_preview": "运行预览",
+  "duplicate_skill_name": "已存在同名 Skill",
   "edit_failed": "编辑失败",
   "edit_success": "编辑成功",
   "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",

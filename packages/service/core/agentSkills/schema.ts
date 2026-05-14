@@ -101,14 +101,6 @@ try {
   AgentSkillsSchema.index({ category: 1 });
   // Folder hierarchy index
   AgentSkillsSchema.index({ parentId: 1, teamId: 1, deleteTime: 1 });
-  // Unique constraint: same parent folder cannot have two live skills/folders with the same name (personal only)
-  AgentSkillsSchema.index(
-    { parentId: 1, name: 1, teamId: 1, deleteTime: 1 },
-    {
-      unique: true,
-      partialFilterExpression: { deleteTime: null, source: AgentSkillSourceEnum.personal }
-    }
-  );
 } catch (error) {
   console.log('AgentSkill index error:', error);
 }

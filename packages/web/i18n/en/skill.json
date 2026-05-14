@@ -70,6 +70,7 @@
   "copy_skill_confirm": "The system will create a skill with the same configuration for you, but the permissions will not be copied. Please confirm!",
   "detail_tab_config": "Skill Config",
   "detail_tab_preview": "Run Preview",
+  "duplicate_skill_name": "A skill with the same name already exists",
   "generating": "Generating Skill...",
   "history_versions": "History Versions",
   "exit_tips": "Your changes have not been saved. \"Exit directly\" will not save your edits.",
