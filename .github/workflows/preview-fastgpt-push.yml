@@ -26,7 +26,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
-        image: [fastgpt, code-sandbox, mcp_server, sandbox-proxy]
+        image: [fastgpt, code-sandbox, mcp_server]
       fail-fast: false
 
     steps:
@@ -39,8 +39,6 @@ jobs:
             echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
             echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "sandbox-proxy" ]]; then
-            echo "IMAGE_NAME=fastgpt-sandbox-proxy" >> $GITHUB_OUTPUT
           fi
 
       - name: Download build artifact

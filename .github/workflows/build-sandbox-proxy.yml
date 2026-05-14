@@ -1,0 +1,159 @@
+name: Build fastgpt-sandbox-proxy images
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-sandbox-proxy.yml'
+      - 'projects/sandbox-proxy/**'
+    tags:
+      - 'v*'
+
+jobs:
+  detect_sandbox_proxy:
+    runs-on: ubuntu-24.04
+    outputs:
+      has_dockerfile: ${{ steps.detect.outputs.has_dockerfile }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Detect sandbox-proxy Dockerfile
+        id: detect
+        run: |
+          if [[ -f projects/sandbox-proxy/Dockerfile ]]; then
+            echo "has_dockerfile=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_dockerfile=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-fastgpt-sandbox-proxy-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs: detect_sandbox_proxy
+    if: ${{ needs.detect_sandbox_proxy.outputs.has_dockerfile == 'true' }}
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-sandbox-proxy-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-sandbox-proxy-buildx-
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/sandbox-proxy/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=fastgpt-sandbox-proxy image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-sandbox-proxy-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs:
+      - detect_sandbox_proxy
+      - build-fastgpt-sandbox-proxy-images
+    if: ${{ needs.detect_sandbox_proxy.outputs.has_dockerfile == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-sandbox-proxy-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image name and tag
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+          else
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy:${{ github.ref_name }}" >> "$GITHUB_ENV"
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox-proxy:${{ github.ref_name }}" >> "$GITHUB_ENV"
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox-proxy:latest" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t "$TAG" \
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox-proxy@sha256:%s ' *)
+            sleep 5
+          done

@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        image: [fastgpt, code-sandbox, mcp_server, sandbox-proxy]
+        image: [fastgpt, code-sandbox, mcp_server]
       fail-fast: false
 
     steps:
@@ -43,10 +43,6 @@ jobs:
             echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
             echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "sandbox-proxy" ]]; then
-            echo "DOCKERFILE=projects/sandbox-proxy/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-sandbox-proxy-pr image" >> $GITHUB_OUTPUT
-            echo "IMAGE_NAME=fastgpt-sandbox-proxy" >> $GITHUB_OUTPUT
           fi
 
       - name: Set up Docker Buildx
