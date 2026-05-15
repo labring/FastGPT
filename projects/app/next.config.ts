@@ -87,7 +87,10 @@ const nextConfig: NextConfig = {
     // 按页面拆分 CSS chunk，减少首屏 CSS 体积
     cssChunking: 'strict',
     // 减少内存占用
-    memoryBasedWorkersCount: true
+    memoryBasedWorkersCount: true,
+
+    turbopackFileSystemCacheForBuild: false,
+    turbopackFileSystemCacheForDev: false
   },
   outputFileTracingRoot: path.join(__dirname, '../../'),
   // Exclude build-time-only packages from standalone output file tracing
