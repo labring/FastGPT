@@ -28,6 +28,8 @@ const IndexInputPanel = ({
   onDeleteIndex,
   onSaveIndex,
   onAutoFocusIndex,
+  onIndexFocus,
+  onIndexBlur,
   onDeleteIntent,
   updateIndexFold
 }: {
@@ -43,6 +45,8 @@ const IndexInputPanel = ({
   onDeleteIndex: (clientId: string) => void;
   onSaveIndex: (clientId: string) => void;
   onAutoFocusIndex: (clientId: string) => void;
+  onIndexFocus: (clientId: string) => void;
+  onIndexBlur: (clientId: string) => void;
   onDeleteIntent: (clientId: string) => void;
   updateIndexFold: (clientId: string, fold: boolean) => void;
 }) => {
@@ -94,7 +98,7 @@ const IndexInputPanel = ({
 
             return (
               <MyBox
-                key={field.id}
+                key={field.clientId}
                 isLoading={isDeletingCurrentIndex}
                 p={'16px'}
                 borderRadius={'8px'}
@@ -157,12 +161,14 @@ const IndexInputPanel = ({
                   maxToken={maxToken}
                   register={register}
                   onFocus={() => {
+                    onIndexFocus(index.clientId);
                     updateIndexFold(index.clientId, false);
                   }}
                   onAutoFocus={() => {
                     onAutoFocusIndex(index.clientId);
                   }}
                   onBlur={() => {
+                    onIndexBlur(index.clientId);
                     if (!canWrite) return;
                     onSaveIndex(index.clientId);
                   }}

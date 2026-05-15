@@ -3,7 +3,6 @@ import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
-  DatasetDataIndexItemType,
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
@@ -302,14 +301,14 @@ export class DatasetDataOperation {
       indexPrefix
     });
     // 默认索引文本没变化时复用旧 dataId，避免无意义的向量重建。
-    const nextDefaultIndexes = this.indexOperation.mergeExistingDefaultIndexIds({
+    const nextDefaultIndexDrafts = this.indexOperation.mergeExistingDefaultIndexIds({
       currentIndexes: mongoData.indexes,
       nextDefaultIndexes: defaultIndexes
     });
 
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
-      nextIndexes: nextDefaultIndexes,
+      nextIndexes: nextDefaultIndexDrafts,
       currentIndexFilter: (index) => index.type === DatasetDataIndexTypeEnum.default,
       isSameIndex: (current, next) => current.text === next.text && current.type === next.type
     });
@@ -323,35 +322,60 @@ export class DatasetDataOperation {
       collectionId: mongoData.collectionId
     });
 
-    const nextIndexes = [
-      ...mongoData.indexes.filter((index) => index.type !== DatasetDataIndexTypeEnum.default),
-      ...this.indexOperation.getWritablePatchIndexes(patchResult)
-    ] as DatasetDataIndexItemType[];
+    const nextDefaultIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
 
     const updateTime = mongoData.updateTime;
+    const nextQ = q || mongoData.q;
+    const nextA = a ?? mongoData.a;
+    const isDataChanged = nextQ !== mongoData.q || nextA !== mongoData.a;
+    const updateFields = {
+      ...(isDataChanged
+        ? {
+            history: {
+              $literal: [
+                {
+                  q: mongoData.q,
+                  a: mongoData.a,
+                  updateTime
+                },
+                ...(mongoData.history?.slice(0, 9) || [])
+              ]
+            }
+          }
+        : {}),
+      q: { $literal: nextQ },
+      a: { $literal: nextA },
+      indexes: {
+        $concatArrays: [
+          {
+            $filter: {
+              input: '$indexes',
+              as: 'index',
+              cond: { $ne: ['$$index.type', DatasetDataIndexTypeEnum.default] }
+            }
+          },
+          { $literal: nextDefaultIndexes }
+        ]
+      },
+      updateTime: { $literal: new Date() }
+    };
+
     await mongoSessionRun(async (session) => {
-      // Q/A 变化时记录旧版本，便于回溯最近的内容修改。
-      mongoData.history =
-        q !== mongoData.q || a !== mongoData.a
-          ? [
-              {
-                q: mongoData.q,
-                a: mongoData.a,
-                updateTime
-              },
-              ...(mongoData.history?.slice(0, 9) || [])
-            ]
-          : mongoData.history;
-      mongoData.q = q || mongoData.q;
-      mongoData.a = a ?? mongoData.a;
-      mongoData.indexes = nextIndexes;
-      mongoData.updateTime = new Date();
-      await mongoData.save({ session });
+      // Only replace default indexes at write time. Custom indexes may be created concurrently.
+      await MongoDatasetData.updateOne(
+        { _id: mongoData._id },
+        [
+          {
+            $set: updateFields
+          }
+        ],
+        { session }
+      );
 
       // 默认索引来自 Q/A，全文检索 token 也必须和 Q/A 同步。
       await MongoDatasetDataText.updateOne(
         { dataId: mongoData._id },
-        { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
+        { fullTextToken: await jiebaSplit({ text: `${nextQ}\n${nextA}`.trim() }) },
         { session }
       );
 

@@ -49,6 +49,7 @@ const DataInputPanel = ({
   imagePreivewUrl,
   isImporting,
   isUpdating,
+  isIndexEditing,
   register,
   submitData
 }: {
@@ -57,12 +58,15 @@ const DataInputPanel = ({
   imagePreivewUrl?: string;
   isImporting: boolean;
   isUpdating: boolean;
+  isIndexEditing: boolean;
   register: UseFormRegister<InputDataType>;
   submitData: () => void;
 }) => {
   const { t } = useTranslation();
   const textareaProps = getDataTextareaProps(canWrite);
   const isSubmitting = isImporting || isUpdating;
+  const isSubmitDisabled = !canWrite || isIndexEditing;
+  const iconColor = isSubmitDisabled ? 'myGray.400' : 'primary.600';
 
   return (
     <Flex
@@ -157,17 +161,26 @@ const DataInputPanel = ({
         fontWeight={'500'}
         letterSpacing={'0.5px'}
         _hover={{ bg: 'myGray.200' }}
+        _disabled={{
+          bg: 'myGray.100',
+          color: 'myGray.400',
+          cursor: 'not-allowed',
+          opacity: 1,
+          _hover: {
+            bg: 'myGray.100'
+          }
+        }}
         rightIcon={
           isSubmitting ? (
-            <Spinner w={'16px'} h={'16px'} color={'primary.600'} />
+            <Spinner w={'16px'} h={'16px'} color={iconColor} />
           ) : (
-            <MyIcon name={'common/rightArrowLight'} w={'16px'} color={'primary.600'} />
+            <MyIcon name={'common/rightArrowLight'} w={'16px'} color={iconColor} />
           )
         }
-        isDisabled={!canWrite}
+        isDisabled={isSubmitDisabled}
         aria-busy={isSubmitting}
         onClick={() => {
-          if (isSubmitting) return;
+          if (isSubmitting || isSubmitDisabled) return;
           submitData();
         }}
       >

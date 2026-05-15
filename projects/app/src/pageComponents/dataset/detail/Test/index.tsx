@@ -67,8 +67,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         w={['100%', '468px']}
         p={4}
         gap={6}
-        borderRight={['none', '1px solid']}
-        borderColor={'borderColor.low'}
+        borderRightWidth={['0', '1px']}
+        borderRightStyle={'solid'}
+        borderRightColor={'borderColor.low'}
       >
         <TestInputPanel
           canSubmit={canSubmit}

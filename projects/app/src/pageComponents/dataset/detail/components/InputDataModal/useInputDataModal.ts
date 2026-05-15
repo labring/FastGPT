@@ -41,6 +41,7 @@ export enum TabEnum {
 
 let indexClientId = 0;
 const getIndexClientId = () => `dataset-index-${Date.now()}-${indexClientId++}`;
+const clearEditingIndexDelay = 600;
 
 const sortIndexesForDisplay = (indexes: InputDataIndexType[] = []) => {
   const getOrder = (index: InputDataIndexType) => {
@@ -52,14 +53,32 @@ const sortIndexesForDisplay = (indexes: InputDataIndexType[] = []) => {
   return [...indexes].sort((a, b) => getOrder(a) - getOrder(b));
 };
 
-const formatIndexesForForm = (indexes: DatasetDataIndexItemType[] = []) =>
-  sortIndexesForDisplay(
-    indexes.map((item) => ({
-      ...item,
-      clientId: item.dataId || getIndexClientId(),
-      fold: true
-    }))
+const formatIndexesForForm = (
+  indexes: DatasetDataIndexItemType[] = [],
+  previousIndexes: InputDataIndexType[] = []
+) => {
+  const previousIndexMap = previousIndexes.reduce<Record<string, InputDataIndexType>>(
+    (acc, index) => {
+      if (index.dataId) {
+        acc[index.dataId] = index;
+      }
+      return acc;
+    },
+    {}
   );
+
+  return sortIndexesForDisplay(
+    indexes.map((item) => {
+      const previousIndex = item.dataId ? previousIndexMap[item.dataId] : undefined;
+
+      return {
+        ...item,
+        clientId: previousIndex?.clientId || item.dataId || getIndexClientId(),
+        fold: previousIndex?.fold ?? true
+      };
+    })
+  );
+};
 
 const formatIndexesForRequest = (indexes: InputDataType['indexes'] = []) =>
   indexes
@@ -74,13 +93,14 @@ const formatDataForForm = (
   data: Partial<Pick<InputDataType, 'q' | 'a' | 'imagePreivewUrl'>> & {
     indexes?: DatasetDataIndexItemType[];
   } = {},
-  dataId?: string
+  dataId?: string,
+  previousIndexes?: InputDataIndexType[]
 ): InputDataType & { dataId?: string } => ({
   ...(dataId ? { dataId } : {}),
   q: data.q || '',
   a: data.a || '',
   imagePreivewUrl: data.imagePreivewUrl,
-  indexes: formatIndexesForForm(data.indexes)
+  indexes: formatIndexesForForm(data.indexes, previousIndexes)
 });
 
 const getInitialTab = ({
@@ -112,6 +132,7 @@ export const useInputDataModal = ({
   const [currentTab, setCurrentTab] = useState<TabEnum>();
   const [deletingIndexClientId, setDeletingIndexClientId] = useState<string>();
   const [focusIndexClientId, setFocusIndexClientId] = useState<string>();
+  const [editingIndexClientId, setEditingIndexClientId] = useState<string>();
 
   const { register, handleSubmit, reset, control, getValues, setValue } = useForm<InputDataType>({
     shouldFocusError: false,
@@ -145,6 +166,7 @@ export const useInputDataModal = ({
   const queuedSaveIndexClientIdsRef = useRef(new Set<string>());
   const saveIndexRunnerRef = useRef<(clientId: string) => Promise<unknown>>();
   const deleteIndexRunnerRef = useRef<(clientId: string) => Promise<unknown>>();
+  const clearEditingIndexTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const resetSavedIndexes = useCallback((indexes: InputDataIndexType[] = []) => {
     savedIndexMapRef.current = indexes.reduce<Record<string, InputDataIndexType>>((acc, index) => {
@@ -207,10 +229,39 @@ export const useInputDataModal = ({
     setFocusIndexClientId((state) => (state === clientId ? undefined : state));
   }, []);
 
+  const markEditingIndex = useCallback((clientId: string) => {
+    if (clearEditingIndexTimerRef.current) {
+      clearTimeout(clearEditingIndexTimerRef.current);
+    }
+    setEditingIndexClientId(clientId);
+  }, []);
+
+  const clearEditingIndex = useCallback((clientId: string) => {
+    if (clearEditingIndexTimerRef.current) {
+      clearTimeout(clearEditingIndexTimerRef.current);
+    }
+    clearEditingIndexTimerRef.current = setTimeout(() => {
+      setEditingIndexClientId((state) => (state === clientId ? undefined : state));
+    }, clearEditingIndexDelay);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (clearEditingIndexTimerRef.current) {
+        clearTimeout(clearEditingIndexTimerRef.current);
+      }
+    };
+  }, []);
+
   const refreshDataForm = useCallback(
     async (targetDataId: string) => {
+      const currentIndexes = getValues().indexes || [];
       const latestData = await getDatasetDataItemById(targetDataId);
-      const refreshedData = formatDataForForm(latestData, targetDataId) as InputDataType & {
+      const refreshedData = formatDataForForm(
+        latestData,
+        targetDataId,
+        currentIndexes
+      ) as InputDataType & {
         dataId: string;
       };
 
@@ -218,7 +269,7 @@ export const useInputDataModal = ({
       reset(refreshedData);
       return refreshedData;
     },
-    [reset, resetSavedIndexes]
+    [getValues, reset, resetSavedIndexes]
   );
 
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
@@ -234,6 +285,7 @@ export const useInputDataModal = ({
       queuedSaveIndexClientIdsRef.current.clear();
       setDeletingIndexClientId(undefined);
       setFocusIndexClientId(undefined);
+      setEditingIndexClientId(undefined);
 
       const initialData = dataItem || defaultValue;
       setCurrentTab(
@@ -441,12 +493,14 @@ export const useInputDataModal = ({
       const currentIndex = findIndexByClientId(clientId);
       if (currentIndex < 0) {
         deletingIntentClientIdsRef.current.delete(clientId);
+        setEditingIndexClientId((state) => (state === clientId ? undefined : state));
         return;
       }
 
       if (!dataId) {
         removeIndexes(currentIndex);
         deletingIntentClientIdsRef.current.delete(clientId);
+        setEditingIndexClientId((state) => (state === clientId ? undefined : state));
         return;
       }
 
@@ -456,6 +510,7 @@ export const useInputDataModal = ({
         // Draft rows are not persisted, so deleting them is only a field-array operation.
         removeIndexes(currentIndex);
         deletingIntentClientIdsRef.current.delete(clientId);
+        setEditingIndexClientId((state) => (state === clientId ? undefined : state));
         return;
       }
 
@@ -488,6 +543,7 @@ export const useInputDataModal = ({
         }
       } finally {
         setDeletingIndexClientId((state) => (state === clientId ? undefined : state));
+        setEditingIndexClientId((state) => (state === clientId ? undefined : state));
         pendingIndexClientIdsRef.current.delete(clientId);
         deletingIntentClientIdsRef.current.delete(clientId);
       }
@@ -516,6 +572,7 @@ export const useInputDataModal = ({
     collection,
     currentTab,
     deletingIndexClientId,
+    editingIndexClientId,
     focusIndexClientId,
     imagePreivewUrl,
     indexes,
@@ -533,6 +590,8 @@ export const useInputDataModal = ({
     prependCustomIndex,
     setCurrentTab,
     clearFocusIndexClientId,
+    markEditingIndex,
+    clearEditingIndex,
     markDeletingIndex,
     updateIndexFold
   };

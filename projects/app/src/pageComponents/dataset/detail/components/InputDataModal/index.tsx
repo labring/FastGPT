@@ -25,6 +25,7 @@ const InputDataModal = ({
     collection,
     currentTab,
     deletingIndexClientId,
+    editingIndexClientId,
     focusIndexClientId,
     imagePreivewUrl,
     indexes,
@@ -42,6 +43,8 @@ const InputDataModal = ({
     prependCustomIndex,
     setCurrentTab,
     clearFocusIndexClientId,
+    markEditingIndex,
+    clearEditingIndex,
     markDeletingIndex,
     updateIndexFold
   } = useInputDataModal({
@@ -151,6 +154,7 @@ const InputDataModal = ({
                 imagePreivewUrl={imagePreivewUrl}
                 isImporting={isImporting}
                 isUpdating={isUpdating}
+                isIndexEditing={!!editingIndexClientId}
                 register={register}
                 submitData={submitData}
               />
@@ -167,6 +171,8 @@ const InputDataModal = ({
                 onDeleteIndex={onDeleteIndex}
                 onSaveIndex={onSaveIndex}
                 onAutoFocusIndex={clearFocusIndexClientId}
+                onIndexFocus={markEditingIndex}
+                onIndexBlur={clearEditingIndex}
                 onDeleteIntent={markDeletingIndex}
                 updateIndexFold={updateIndexFold}
               />
