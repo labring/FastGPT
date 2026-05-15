@@ -337,6 +337,7 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   isOwner: z.boolean().meta({ description: '是否为 owner' })
 });
 export type DatasetDataItemType = z.infer<typeof DatasetDataItemSchema>;

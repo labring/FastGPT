@@ -4,7 +4,7 @@
 */
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
-import { insertData2Dataset } from '@/service/core/dataset/data/controller';
+import { createDatasetData } from '@/service/core/dataset/data/data';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
 
   const [
     {
-      dataset: { _id: datasetId, vectorModel, agentModel },
+      dataset: { _id: datasetId, vectorModel },
       indexPrefixTitle,
       name
     }
@@ -64,7 +64,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     a: formatA
   });
 
-  const { insertId, tokens } = await insertData2Dataset({
+  const { insertId, tokens } = await createDatasetData({
     teamId,
     tmbId,
     datasetId,

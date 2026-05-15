@@ -5,7 +5,7 @@ import {
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getWebLLMModel } from '@/web/common/system/utils';
 
@@ -45,6 +45,15 @@ const SearchParamsTip = ({
       borderWidth={'1px'}
       borderColor={'primary.1'}
       sx={{
+        '& thead > tr': {
+          borderBottom: 'none !important'
+        },
+        '& thead > tr > th': {
+          borderBottom: 'none !important'
+        },
+        '& tbody > tr:first-of-type > td, & tbody > tr:first-of-type > th': {
+          borderTop: 'none !important'
+        },
         '&::-webkit-scrollbar': {
           height: '6px',
           borderRadius: '4px'

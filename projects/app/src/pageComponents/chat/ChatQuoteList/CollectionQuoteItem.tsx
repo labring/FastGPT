@@ -5,7 +5,7 @@ import { type Dispatch, type MutableRefObject, type SetStateAction, useState } f
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import InputDataModal from '@/pageComponents/dataset/detail/InputDataModal';
+import InputDataModal from '@/pageComponents/dataset/detail/components/InputDataModal';
 
 const CollectionQuoteItem = ({
   quoteRefs,

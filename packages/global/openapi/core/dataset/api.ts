@@ -315,62 +315,76 @@ export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySche
  * API: 搜索测试
  * Route: POST /api/core/dataset/searchTest
  * ============================================================================ */
-export const SearchDatasetTestBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
-  text: z.string().meta({
-    example: 'FastGPT 是什么',
-    description: '搜索文本'
-  }),
-  similarity: z.number().optional().meta({
-    example: 0.3,
-    description: '最低相似度阈值'
-  }),
-  limit: z.number().optional().meta({
-    example: 5000,
-    description: '最大返回 token 数'
-  }),
-  searchMode: z.enum(DatasetSearchModeEnum).optional().meta({
-    example: DatasetSearchModeEnum.mixedRecall,
-    description: '搜索模式'
-  }),
-  embeddingWeight: z.number().optional().meta({
-    example: 1,
-    description: '向量搜索权重'
-  }),
-  usingReRank: z.boolean().optional().meta({
-    description: '是否使用重排序'
-  }),
-  rerankModel: z.string().optional().meta({
-    description: '重排序模型名称'
-  }),
-  rerankWeight: z.number().optional().meta({
-    description: '重排序权重'
-  }),
-  datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
-    description: '是否使用问题扩展'
-  }),
-  datasetSearchExtensionModel: z.string().optional().meta({
-    description: '问题扩展模型'
-  }),
-  datasetSearchExtensionBg: z.string().optional().meta({
-    description: '问题扩展背景描述'
-  }),
-  datasetDeepSearch: z.boolean().optional().meta({
-    description: '是否启用深度搜索'
-  }),
-  datasetDeepSearchModel: z.string().optional().meta({
-    description: '深度搜索模型'
-  }),
-  datasetDeepSearchMaxTimes: z.number().optional().meta({
-    description: '深度搜索最大轮次'
-  }),
-  datasetDeepSearchBg: z.string().optional().meta({
-    description: '深度搜索背景描述'
+export const SearchDatasetTestBodySchema = z
+  .object({
+    datasetId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '知识库 ID'
+    }),
+    text: z.string().optional().default('').meta({
+      example: 'FastGPT 是什么',
+      description: '搜索文本'
+    }),
+    queryImageUrls: z
+      .array(z.string().min(1))
+      .max(10, '最多支持上传10张图片')
+      .optional()
+      .default([])
+      .meta({
+        example: ['temp/teamId/search-image.png'],
+        description:
+          '搜索测试图片临时 key，最多 10 张。需先调用 /api/core/dataset/file/presignSearchTestImage 获取预签名上传 URL 和 temp/${teamId}/... key，不支持直接传公网 URL、dataset key 或 chat key'
+      }),
+    similarity: z.number().optional().meta({
+      example: 0.3,
+      description: '最低相似度阈值'
+    }),
+    limit: z.number().optional().meta({
+      example: 5000,
+      description: '最大返回 token 数'
+    }),
+    searchMode: z.enum(DatasetSearchModeEnum).optional().meta({
+      example: DatasetSearchModeEnum.mixedRecall,
+      description: '搜索模式'
+    }),
+    embeddingWeight: z.number().optional().meta({
+      example: 1,
+      description: '向量搜索权重'
+    }),
+    usingReRank: z.boolean().optional().meta({
+      description: '是否使用重排序'
+    }),
+    rerankModel: z.string().optional().meta({
+      description: '重排序模型名称'
+    }),
+    rerankWeight: z.number().optional().meta({
+      description: '重排序权重'
+    }),
+    datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
+      description: '是否使用问题扩展'
+    }),
+    datasetSearchExtensionModel: z.string().optional().meta({
+      description: '问题扩展模型'
+    }),
+    datasetSearchExtensionBg: z.string().optional().meta({
+      description: '问题扩展背景描述'
+    }),
+    datasetDeepSearch: z.boolean().optional().meta({
+      description: '是否启用深度搜索'
+    }),
+    datasetDeepSearchModel: z.string().optional().meta({
+      description: '深度搜索模型'
+    }),
+    datasetDeepSearchMaxTimes: z.number().optional().meta({
+      description: '深度搜索最大轮次'
+    }),
+    datasetDeepSearchBg: z.string().optional().meta({
+      description: '深度搜索背景描述'
+    })
   })
-});
+  .refine((data) => !!data.text.trim() || data.queryImageUrls.length > 0, {
+    message: 'text or queryImageUrls is required'
+  });
 export type SearchDatasetTestBody = z.infer<typeof SearchDatasetTestBodySchema>;
 
 export const SearchDatasetTestResponseSchema = z.object({

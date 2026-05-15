@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Button } from '@chakra-ui/react';
 import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { getDatasetDataList, delOneDatasetDataById } from '@/web/core/dataset/api/data';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import InputDataModal from './InputDataModal';
+import InputDataModal from './components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -175,7 +175,8 @@ const DataCard = () => {
             isDisabled={!collection}
             isLoading={isExportChunksLoading}
             onClick={() => {
-              onExportAllChunks(collection?._id!);
+              if (!collection?._id) return;
+              onExportAllChunks(collection._id);
             }}
           >
             {t('dataset:collection.export_all_chunks')}

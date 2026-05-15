@@ -40,7 +40,7 @@ export function getSourceNameIcon({
     if (strIsLink(sourceId)) {
       return 'common/linkBlue';
     }
-  } catch (error) {}
+  } catch {}
 
   return 'file/fill/file';
 }
@@ -51,3 +51,5 @@ export const predictDataLimitLength = (mode: TrainingModeEnum, data: any[]) => {
   if (mode === TrainingModeEnum.image) return data.length * 2;
   return data.length;
 };
+
+export const isDatasetFileObjectKey = (url: string) => /^(temp|chat|dataset)\//i.test(url);

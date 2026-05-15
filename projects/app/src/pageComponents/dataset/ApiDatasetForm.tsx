@@ -17,24 +17,32 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
-import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 const ApiDatasetForm = ({
   type,
   datasetId,
-  form
+  form,
+  controlWidth
 }: {
   type: `${DatasetTypeEnum}`;
   datasetId?: string;
-  form: UseFormReturn<
-    {
-      apiDatasetServer?: ApiDatasetServerType;
-    },
-    any
-  >;
+  controlWidth?: string | string[];
+  form: UseFormReturn<any>;
 }) => {
   const { t } = useTranslation();
   const { register, setValue, watch } = form;
+  const inputLayoutProps = controlWidth
+    ? {
+        w: controlWidth,
+        flex: '0 0 auto' as const
+      }
+    : {};
+  const rowLayoutProps = controlWidth
+    ? {
+        justifyContent: 'space-between' as const
+      }
+    : {};
+  const rowTopMargin = controlWidth ? 4 : 6;
 
   const apiDatasetServer = watch('apiDatasetServer');
   const yuqueServer = apiDatasetServer?.yuqueServer;
@@ -114,25 +122,39 @@ const ApiDatasetForm = ({
     closeBaseurlSelectModal();
   };
 
-  const renderBaseUrlSelector = () => (
-    <Flex mt={6} alignItems={'center'}>
-      <FormLabel flex={['', '0 0 110px']} fontSize={'sm'}>
-        Base URL
-      </FormLabel>
-      <MyBox py={1} fontSize={'sm'} flex={'1 0 0'} overflow="auto" isLoading={isFetching}>
-        {pathNames}
-      </MyBox>
+  const renderBaseUrlSelector = () => {
+    const selectorContent = (
+      <>
+        <MyBox py={1} fontSize={'sm'} flex={'1 0 0'} overflow="auto" isLoading={isFetching}>
+          {pathNames}
+        </MyBox>
 
-      <Button
-        ml={2}
-        variant={'whiteBase'}
-        onClick={openBaseurlSeletModal}
-        isDisabled={!canSelectBaseUrl}
-      >
-        {t('dataset:selectDirectory')}
-      </Button>
-    </Flex>
-  );
+        <Button
+          ml={2}
+          variant={'whiteBase'}
+          onClick={openBaseurlSeletModal}
+          isDisabled={!canSelectBaseUrl}
+        >
+          {t('dataset:selectDirectory')}
+        </Button>
+      </>
+    );
+
+    return (
+      <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+        <FormLabel flex={['', '0 0 110px']} fontSize={'sm'}>
+          Base URL
+        </FormLabel>
+        {controlWidth ? (
+          <Flex alignItems={'center'} w={controlWidth}>
+            {selectorContent}
+          </Flex>
+        ) : (
+          selectorContent
+        )}
+      </Flex>
+    );
+  };
 
   // Render the directory selection modal
   const renderDirectoryModal = () =>
@@ -156,22 +178,24 @@ const ApiDatasetForm = ({
     <>
       {type === DatasetTypeEnum.apiDataset && (
         <>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               {t('dataset:api_url')}
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={t('dataset:api_url')}
               maxLength={200}
               {...register('apiDatasetServer.apiServer.baseUrl', { required: true })}
             />
           </Flex>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               Authorization
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={t('dataset:request_headers')}
               maxLength={2000}
@@ -184,51 +208,36 @@ const ApiDatasetForm = ({
       )}
       {type === DatasetTypeEnum.feishu && (
         <>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={rowTopMargin} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               App ID
-            </Flex>
+            </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'App ID'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.appId', { required: true })}
             />
           </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={rowTopMargin} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               App Secret
-            </Flex>
+            </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'App Secret'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.appSecret', { required: true })}
             />
           </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={rowTopMargin} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               Folder Token
-            </Flex>
+            </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'Folder Token'}
               maxLength={200}
@@ -241,22 +250,24 @@ const ApiDatasetForm = ({
       )}
       {type === DatasetTypeEnum.yuque && (
         <>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               User ID
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'User ID'}
               maxLength={200}
               {...register('apiDatasetServer.yuqueServer.userId', { required: true })}
             />
           </Flex>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               Token
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'Token'}
               maxLength={200}
@@ -269,33 +280,36 @@ const ApiDatasetForm = ({
       )}
       {type === DatasetTypeEnum.dingtalk && (
         <>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               App Key
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'App Key'}
               maxLength={200}
               {...register('apiDatasetServer.dingtalkServer.appKey', { required: true })}
             />
           </Flex>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               App Secret
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'App Secret'}
               maxLength={200}
               {...register('apiDatasetServer.dingtalkServer.appSecret', { required: true })}
             />
           </Flex>
-          <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+          <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
+            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
               User ID
             </FormLabel>
             <Input
+              {...inputLayoutProps}
               bg={'myWhite.600'}
               placeholder={'User ID'}
               maxLength={200}

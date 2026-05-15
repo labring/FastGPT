@@ -100,6 +100,7 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   maxToken: z.number(), // model max token
   weight: z.number(), // training weight
   hidden: z.boolean().optional(), // Disallow creation
+  vision: z.boolean().optional(), // Support image embedding
   normalization: z.boolean().optional(), // normalization processing
   batchSize: z.number().optional(), // batch request size
   defaultConfig: z.record(z.string(), z.any()).optional(), // post request config
