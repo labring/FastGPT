@@ -1,4 +1,5 @@
 import type {
+  AIChatItemValueItemType,
   ChatHistoryItemResType,
   ChatItemValueItemType,
   UserChatItemValueItemType
@@ -122,6 +123,46 @@ export const mergeResumeCompletedChatRecords = ({
 
 const areSameChatResponseDataItem = (a: ChatHistoryItemResType, b: ChatHistoryItemResType) =>
   a.id === b.id && a.nodeId === b.nodeId;
+
+export const shouldAppendResumeInteractive = ({
+  existingValues,
+  incomingInteractive
+}: {
+  existingValues: AIChatItemValueItemType[];
+  incomingInteractive: WorkflowInteractiveResponseType;
+}) => {
+  const incomingFinalInteractive = extractDeepestInteractive(incomingInteractive);
+
+  return !existingValues.some((value) => {
+    if (!value.interactive) return false;
+
+    const existingFinalInteractive = extractDeepestInteractive(value.interactive);
+    const isSameInteractive =
+      existingFinalInteractive.type === incomingFinalInteractive.type &&
+      (existingFinalInteractive.usageId === incomingFinalInteractive.usageId ||
+        isSameArray(existingFinalInteractive.entryNodeIds, incomingFinalInteractive.entryNodeIds));
+
+    if (!isSameInteractive) return false;
+
+    if (
+      (existingFinalInteractive.type === 'userInput' ||
+        existingFinalInteractive.type === 'agentPlanAskUserForm') &&
+      existingFinalInteractive.params.submitted &&
+      (incomingFinalInteractive.type === 'userInput' ||
+        incomingFinalInteractive.type === 'agentPlanAskUserForm') &&
+      !incomingFinalInteractive.params.submitted
+    ) {
+      return true;
+    }
+
+    return false;
+  });
+};
+
+const isSameArray = (a?: string[], b?: string[]) => {
+  if (!a?.length || !b?.length || a.length !== b.length) return false;
+  return a.every((item, index) => item === b[index]);
+};
 
 // 用于判断当前对话框状态。所以，如果是 child 的 interactive，需要递归去找到最后一个。
 export const getInteractiveByHistories = (
