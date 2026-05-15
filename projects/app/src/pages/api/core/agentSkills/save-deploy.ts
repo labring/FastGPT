@@ -5,10 +5,6 @@ import { updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controll
 import { packageSkillInSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import {
-  getProviderSandboxConnectionTarget,
-  getSandboxProviderConfig
-} from '@fastgpt/service/core/ai/sandbox/provider';
-import {
   createVersion,
   getNextVersionNumber,
   setActiveVersion
@@ -20,7 +16,7 @@ import {
   standardizeSkillPackage
 } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -61,11 +57,11 @@ async function handler(
   });
 
   // Fetch the edit-debug sandbox
-  const sandboxInfo = await MongoSandboxInstance.findOne({
+  const sandboxInfo = await findSandboxInstanceByAppChatType({
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     status: SandboxStatusEnum.running,
-    'metadata.sandboxType': SandboxTypeEnum.editDebug
+    sandboxType: SandboxTypeEnum.editDebug
   });
 
   if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
@@ -76,7 +72,7 @@ async function handler(
   let packageBuffer: Buffer;
   try {
     packageBuffer = await packageSkillInSandbox({
-      providerSandboxId: getProviderSandboxConnectionTarget(getSandboxProviderConfig(), sandboxInfo)
+      sandboxId: sandboxInfo.sandboxId
     });
   } catch (error: any) {
     return Promise.reject(

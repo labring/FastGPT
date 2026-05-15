@@ -21,8 +21,8 @@ import {
   buildSessionRuntimeCreateConfig
 } from '../../../../../../agentSkills/sandboxConfig';
 import {
-  connectReadyProviderSandboxByInstance,
-  disconnectFromProviderSandbox,
+  connectReadySandboxByInstance,
+  disconnectSandbox,
   getSandboxProviderConfig,
   validateSandboxConfig
 } from '../../../../../../ai/sandbox/provider';
@@ -217,26 +217,22 @@ export async function createAgentSandbox(
   ): Promise<AgentSandboxContext | null> => {
     logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
       sessionId,
-      sandboxId: instance.sandboxId,
-      providerSandboxId: instance.metadata?.providerSandboxId
+      sandboxId: instance.sandboxId
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
 
     let sandbox: ISandbox | null = null;
-    let providerSandboxId = instance.metadata?.providerSandboxId ?? instance.sandboxId;
 
     try {
-      const connected = await connectReadyProviderSandboxByInstance(providerConfig, instance);
+      const connected = await connectReadySandboxByInstance(providerConfig, instance);
       sandbox = connected.sandbox;
-      providerSandboxId = connected.sandboxInfo.id;
       await MongoSandboxInstance.updateOne(
         { _id: instance._id },
         {
           $set: {
             status: SandboxStatusEnum.running,
-            lastActiveAt: new Date(),
-            'metadata.providerSandboxId': connected.sandboxInfo.id
+            lastActiveAt: new Date()
           }
         }
       );
@@ -244,7 +240,6 @@ export async function createAgentSandbox(
       logger.info('[Agent Sandbox] Existing session-runtime sandbox is unavailable, recreating', {
         sessionId,
         sandboxId: instance.sandboxId,
-        providerSandboxId: instance.metadata?.providerSandboxId,
         error
       });
       await MongoSandboxInstance.deleteOne({ _id: instance._id });
@@ -264,7 +259,6 @@ export async function createAgentSandbox(
     return {
       sandbox,
       sandboxId: instance.sandboxId,
-      providerSandboxId,
       sessionId,
       skills: mergedSkills,
       deployedSkills,
@@ -344,7 +338,7 @@ export async function createAgentSandbox(
     if (!sandboxInfo) throw new Error('Failed to get sandbox info after creation');
 
     logger.info('[Agent Sandbox] Sandbox created', {
-      providerSandboxId: sandboxInfo.id,
+      sandboxId: sessionId,
       sessionId
     });
 
@@ -379,7 +373,6 @@ export async function createAgentSandbox(
             tmbId,
             sessionId,
             skillIds: hasSkills ? deployableSkills.map((s) => String(s._id)) : [],
-            providerSandboxId: sandboxInfo.id,
             provider: providerConfig.provider,
             image: sandboxInfo.image,
             providerCreatedAt: sandboxInfo.createdAt
@@ -397,7 +390,6 @@ export async function createAgentSandbox(
     return {
       sandbox: client.provider,
       sandboxId: sessionId,
-      providerSandboxId: sandboxInfo.id,
       sessionId,
       skills: hasSkills
         ? deployableSkills.map((skill) =>
@@ -432,11 +424,10 @@ export async function createAgentSandbox(
  */
 export async function releaseAgentSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
-    await disconnectFromProviderSandbox(ctx.sandbox);
+    await disconnectSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Released sandbox connection', {
       sessionId: ctx.sessionId,
-      sandboxId: ctx.sandboxId,
-      providerSandboxId: ctx.providerSandboxId
+      sandboxId: ctx.sandboxId
     });
   } catch (error) {
     logger.error('[Agent Sandbox] Failed to close sandbox connection', { error });
@@ -479,23 +470,21 @@ export async function connectEditDebugSandbox(
     throw new Error('Skill not found');
   }
 
-  const connected = await connectReadyProviderSandboxByInstance(providerConfig, instanceDoc);
-  const { sandbox, sandboxInfo } = connected;
+  const connected = await connectReadySandboxByInstance(providerConfig, instanceDoc);
+  const { sandbox } = connected;
   await MongoSandboxInstance.updateOne(
     { _id: instanceDoc._id },
     {
       $set: {
         status: SandboxStatusEnum.running,
-        lastActiveAt: new Date(),
-        'metadata.providerSandboxId': sandboxInfo.id
+        lastActiveAt: new Date()
       }
     }
   );
 
   logger.info('[Agent Sandbox] Connected to edit-debug sandbox', {
     skillId,
-    sandboxId: instanceDoc.sandboxId,
-    providerSandboxId: sandboxInfo.id
+    sandboxId: instanceDoc.sandboxId
   });
 
   // Dynamically discover deployed skills instead of reading from persisted metadata
@@ -504,7 +493,6 @@ export async function connectEditDebugSandbox(
   return {
     sandbox,
     sandboxId: instanceDoc.sandboxId,
-    providerSandboxId: sandboxInfo.id,
     sessionId: String(instanceDoc._id), // editDebug sandbox uses its own _id as sessionId
     skills: [skill.toJSON()],
     deployedSkills,
@@ -518,10 +506,9 @@ export async function connectEditDebugSandbox(
  */
 export async function disconnectEditDebugSandbox(ctx: AgentSandboxContext): Promise<void> {
   try {
-    await disconnectFromProviderSandbox(ctx.sandbox);
+    await disconnectSandbox(ctx.sandbox);
     logger.info('[Agent Sandbox] Disconnected from edit-debug sandbox', {
-      sandboxId: ctx.sandboxId,
-      providerSandboxId: ctx.providerSandboxId
+      sandboxId: ctx.sandboxId
     });
   } catch (error) {
     logger.error('[Agent Sandbox] Failed to disconnect from edit-debug sandbox', { error });

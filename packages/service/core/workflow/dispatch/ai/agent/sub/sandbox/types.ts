@@ -15,7 +15,6 @@ export type DeployedSkillInfo = {
 export type AgentSandboxContext = {
   sandbox: ISandbox;
   sandboxId: string;
-  providerSandboxId: string;
   sessionId: string;
   skills: AgentSkillSchemaType[];
   deployedSkills: DeployedSkillInfo[];

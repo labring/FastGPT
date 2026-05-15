@@ -153,7 +153,6 @@ export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBo
 
 export const CreateEditDebugSandboxResponseSchema = z.object({
   sandboxId: z.string().describe('FastGPT sandbox instance key'),
-  providerSandboxId: z.string().describe('Provider sandbox instance ID'),
   endpoint: SkillSandboxEndpointSchema,
   status: SandboxProviderStatusSchema.pick({
     state: true,
@@ -171,7 +170,6 @@ export const GetSandboxInfoResponseSchema = z.object({
   sandboxId: SandboxInstanceKeySchema,
   skillId: z.string(),
   sandboxType: z.string(),
-  providerSandboxId: z.string().describe('Provider sandbox instance ID'),
   endpoint: SkillSandboxEndpointSchema.optional(),
   status: SandboxProviderStatusSchema.pick({
     state: true,

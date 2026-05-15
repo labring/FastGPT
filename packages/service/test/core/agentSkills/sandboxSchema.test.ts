@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxMetadataSchema } from '@fastgpt/service/core/ai/sandbox/type';
 
 describe('SandboxInstance Schema', () => {

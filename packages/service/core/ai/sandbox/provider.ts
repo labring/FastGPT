@@ -33,8 +33,8 @@ export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProv
 
 export type SandboxCreateConfig = SandboxCreateSpec;
 
-type ProviderSandboxProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
-type ProviderSandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
+type CodeServerProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
+type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
 
 function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
@@ -100,37 +100,39 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
 export function buildSandboxAdapter(
   providerConfig: SandboxProviderConfig,
   props: {
-    providerSandboxId: string;
-    connectionSessionId?: string;
+    sandboxId: string;
     createConfig?: SandboxCreateConfig;
   }
 ): ISandbox {
   switch (providerConfig.provider) {
-    case 'opensandbox':
+    case 'opensandbox': {
+      const connectionConfig = {
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+        runtime: providerConfig.runtime,
+        useServerProxy: providerConfig.useServerProxy,
+        replaceDockerInternalWithLocalhost:
+          serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
+        sessionId: props.sandboxId
+      };
+
       return createSandbox(
         'opensandbox',
-        {
-          apiKey: providerConfig.apiKey,
-          baseUrl: providerConfig.baseUrl,
-          runtime: providerConfig.runtime,
-          useServerProxy: providerConfig.useServerProxy,
-          replaceDockerInternalWithLocalhost:
-            serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
-          sessionId: props.connectionSessionId ?? props.providerSandboxId
-        },
+        connectionConfig,
         toOpenSandboxCreateConfig(props.createConfig)
       );
+    }
 
     case 'sealosdevbox': {
-      if (!props.providerSandboxId) {
+      if (!props.sandboxId) {
         throw new Error(
-          'Sandbox provider "sealosdevbox" requires providerSandboxId when initializing the adapter'
+          'Sandbox provider "sealosdevbox" requires sandboxId when initializing the adapter'
         );
       }
       const connection = {
         baseUrl: providerConfig.baseUrl,
         token: providerConfig.token,
-        sandboxId: props.providerSandboxId
+        sandboxId: props.sandboxId
       };
 
       return createSandbox('sealosdevbox', connection, props.createConfig);
@@ -141,29 +143,35 @@ export function buildSandboxAdapter(
   }
 }
 
-export async function connectToProviderSandbox(
+export function buildSandboxAdapterForResource(
   providerConfig: SandboxProviderConfig,
-  providerSandboxId: string,
-  options?: {
-    connectionSessionId?: string;
+  instance: {
+    sandboxId: string;
   }
+): ISandbox {
+  return buildSandboxAdapter(providerConfig, {
+    sandboxId: instance.sandboxId
+  });
+}
+
+export async function connectToSandbox(
+  providerConfig: SandboxProviderConfig,
+  sandboxId: string
 ): Promise<ISandbox> {
   const sandbox = buildSandboxAdapter(providerConfig, {
-    providerSandboxId,
-    connectionSessionId: options?.connectionSessionId
+    sandboxId
   });
 
-  if (sandbox.provider === 'opensandbox') {
-    await (sandbox as OpenSandboxAdapter).connect(providerSandboxId);
-  }
+  await sandbox.ensureRunning();
 
   return sandbox;
 }
 
-export async function ensureConnectedProviderSandboxRunning(sandbox: ISandbox): Promise<void> {
+export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<void> {
   const info = await sandbox.getInfo();
   if (!info) {
-    throw new Error('Provider sandbox not found');
+    await sandbox.ensureRunning();
+    return;
   }
 
   if (info.status.state === 'Stopped' || info.status.state === 'Stopping') {
@@ -178,62 +186,40 @@ export async function ensureConnectedProviderSandboxRunning(sandbox: ISandbox): 
   await sandbox.waitUntilReady();
 }
 
-export async function connectReadyProviderSandboxByInstance(
+export async function connectReadySandboxByInstance(
   providerConfig: SandboxProviderConfig,
   instance: {
     sandboxId: string;
-    metadata?: { providerSandboxId?: string } | null;
   }
 ): Promise<{
   sandbox: ISandbox;
-  sandboxInfo: ProviderSandboxInfo;
+  sandboxInfo: SandboxInfo;
 }> {
-  const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, instance);
-  const sandbox = await connectToProviderSandbox(providerConfig, providerSandboxId);
+  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
 
   try {
-    await ensureConnectedProviderSandboxRunning(sandbox);
+    await ensureConnectedSandboxRunning(sandbox);
     const sandboxInfo = await sandbox.getInfo();
     if (!sandboxInfo) {
-      throw new Error('Provider sandbox not found');
+      throw new Error('Sandbox not found');
     }
     return {
       sandbox,
       sandboxInfo
     };
   } catch (error) {
-    await disconnectFromProviderSandbox(sandbox).catch(() => undefined);
+    await disconnectSandbox(sandbox).catch(() => undefined);
     throw error;
   }
 }
 
-export function getProviderSandboxConnectionTarget(
-  providerConfig: SandboxProviderConfig,
-  instance: {
-    sandboxId: string;
-    metadata?: { providerSandboxId?: string } | null;
-  }
-): string {
-  if (providerConfig.provider === 'opensandbox') {
-    const providerSandboxId = instance.metadata?.providerSandboxId;
-    if (!providerSandboxId) {
-      throw new Error('Sandbox providerSandboxId missing');
-    }
-    return providerSandboxId;
-  }
-
-  return instance.metadata?.providerSandboxId ?? instance.sandboxId;
-}
-
-export async function disconnectFromProviderSandbox(sandbox: ISandbox): Promise<void> {
+export async function disconnectSandbox(sandbox: ISandbox): Promise<void> {
   if (sandbox.provider === 'opensandbox') {
     await (sandbox as OpenSandboxAdapter).close();
   }
 }
 
-export async function getProviderSandboxEndpoint(
-  sandbox: ISandbox
-): Promise<SkillSandboxEndpointType> {
+export async function getSandboxEndpoint(sandbox: ISandbox): Promise<SkillSandboxEndpointType> {
   const endpointResolver = sandbox as unknown as {
     getEndpoint?: (selector: 'code-server') => Promise<SkillSandboxEndpointType>;
   };
@@ -253,11 +239,11 @@ export async function getProviderSandboxEndpoint(
   };
 }
 
-export async function getProviderSandboxProxyTarget(
+export async function getSandboxCodeServerProxyTarget(
   sandbox: ISandbox
-): Promise<ProviderSandboxProxyTarget> {
+): Promise<CodeServerProxyTarget> {
   const proxyResolver = sandbox as unknown as {
-    getProxyTarget?: (service: 'code-server') => Promise<ProviderSandboxProxyTarget>;
+    getProxyTarget?: (service: 'code-server') => Promise<CodeServerProxyTarget>;
   };
 
   if (!proxyResolver.getProxyTarget) {

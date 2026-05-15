@@ -1,10 +1,9 @@
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import {
   getSandboxProviderConfig,
-  connectToProviderSandbox,
-  disconnectFromProviderSandbox,
-  getProviderSandboxProxyTarget,
-  getProviderSandboxConnectionTarget
+  connectToSandbox,
+  disconnectSandbox,
+  getSandboxCodeServerProxyTarget
 } from '@fastgpt/service/core/ai/sandbox/provider';
 import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
@@ -16,7 +15,7 @@ import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai
  *   - password cannot be resolved from config
  */
 async function readCodeServerPasswordFromSandbox(
-  adapter: Awaited<ReturnType<typeof connectToProviderSandbox>>
+  adapter: Awaited<ReturnType<typeof connectToSandbox>>
 ): Promise<string | null> {
   const result = await adapter.execute(
     'for f in /root/.config/code-server/config.yaml ~/.config/code-server/config.yaml; do ' +
@@ -41,12 +40,10 @@ export async function getSandboxProxyTarget(
   if (!sandbox) throw new Error('Sandbox not found');
 
   const providerConfig = getSandboxProviderConfig();
-  const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, sandbox);
-
-  const adapter = await connectToProviderSandbox(providerConfig, providerSandboxId);
+  const adapter = await connectToSandbox(providerConfig, sandbox.sandboxId);
 
   try {
-    const target = await getProviderSandboxProxyTarget(adapter);
+    const target = await getSandboxCodeServerProxyTarget(adapter);
     const password =
       target.password ??
       (providerConfig.provider === 'opensandbox'
@@ -61,6 +58,6 @@ export async function getSandboxProxyTarget(
       ...(password ? { password } : {})
     };
   } finally {
-    await disconnectFromProviderSandbox(adapter);
+    await disconnectSandbox(adapter);
   }
 }

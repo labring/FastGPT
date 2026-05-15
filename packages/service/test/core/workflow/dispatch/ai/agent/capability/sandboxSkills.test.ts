@@ -67,8 +67,7 @@ describe('collectSkillReferenceResponses', () => {
     ({
       deployedSkills,
       workDirectory: '/work',
-      sandboxId: 'sandbox-123',
-      providerSandboxId: 'sandbox-123'
+      sandboxId: 'sandbox-123'
     }) as AgentSandboxContext;
 
   it('should return empty array when showSkillReferences is false', () => {

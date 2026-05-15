@@ -5,8 +5,8 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/agentSkills/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { findSandboxResourcesByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
@@ -71,18 +71,17 @@ async function handler(
     }
   });
 
-  const editSandboxes = await MongoSandboxInstance.find({
+  const editSandboxes = await findSandboxResourcesByAppChatType({
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    'metadata.sandboxType': SandboxTypeEnum.editDebug
-  }).lean();
+    sandboxType: SandboxTypeEnum.editDebug
+  });
 
   await Promise.allSettled(
     editSandboxes.map(async (sandbox) => {
       await SandboxClient.deleteResource(sandbox).catch((err) => {
         logger.error('Failed to delete edit-debug sandbox on version switch', {
           sandboxId: sandbox.sandboxId,
-          providerSandboxId: sandbox.metadata?.providerSandboxId,
           error: err
         });
       });

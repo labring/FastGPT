@@ -12,7 +12,6 @@ import {
   type ResourceLimits,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
-import type { SandboxInstanceSchemaType } from './type';
 import {
   getOpenSandboxConnectionConfig,
   getSealosConnectionConfig,
@@ -21,29 +20,19 @@ import {
   deleteSessionVolume,
   type VolumeManagerResult
 } from './config';
-import {
-  buildSandboxAdapter,
-  getProviderSandboxConnectionTarget,
-  getSandboxProviderConfig
-} from './provider';
+import { buildSandboxAdapterForResource, getSandboxProviderConfig } from './provider';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { SandboxResourceDoc } from './instance';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
   appId: string;
   userId: string;
   chatId: string;
-};
-
-export type SandboxResourceDoc = Pick<SandboxInstanceSchemaType, 'provider' | 'sandboxId'> & {
-  _id: unknown;
-  metadata?: {
-    providerSandboxId?: string;
-  } | null;
 };
 
 export class SandboxClient {
@@ -178,32 +167,25 @@ export class SandboxClient {
     );
   }
 
-  private static getProviderSandboxId(doc: SandboxResourceDoc) {
-    return doc.metadata?.providerSandboxId ?? doc.sandboxId;
-  }
-
-  private static buildProviderSandboxForResource(doc: SandboxResourceDoc): ISandbox {
+  private static buildSandboxForResource(doc: SandboxResourceDoc): ISandbox {
     if (doc.provider === 'e2b') {
       if (!serviceEnv.AGENT_SANDBOX_E2B_API_KEY) {
         throw new Error('AGENT_SANDBOX_E2B_API_KEY required');
       }
       return createSandbox('e2b', {
         apiKey: serviceEnv.AGENT_SANDBOX_E2B_API_KEY,
-        sandboxId: SandboxClient.getProviderSandboxId(doc)
+        sandboxId: doc.sandboxId
       });
     }
 
     const providerConfig = getSandboxProviderConfig(doc.provider);
-    const providerSandboxId = getProviderSandboxConnectionTarget(providerConfig, doc);
-
-    return buildSandboxAdapter(providerConfig, { providerSandboxId });
+    return buildSandboxAdapterForResource(providerConfig, doc);
   }
 
   static async deleteResource(doc: SandboxResourceDoc) {
-    const providerSandboxId = SandboxClient.getProviderSandboxId(doc);
-    const sandbox = SandboxClient.buildProviderSandboxForResource(doc);
+    const sandbox = SandboxClient.buildSandboxForResource(doc);
 
-    await sandbox.delete(providerSandboxId);
+    await sandbox.delete();
     await deleteSessionVolume(doc.sandboxId).catch((err) => {
       logger.error('Failed to delete sandbox volume', { sandboxId: doc.sandboxId, error: err });
     });
@@ -211,7 +193,7 @@ export class SandboxClient {
   }
 
   static async stopResource(doc: SandboxResourceDoc) {
-    const sandbox = SandboxClient.buildProviderSandboxForResource(doc);
+    const sandbox = SandboxClient.buildSandboxForResource(doc);
 
     await sandbox.stop();
     await MongoSandboxInstance.updateOne(

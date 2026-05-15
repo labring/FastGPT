@@ -6,8 +6,6 @@
  */
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { isValidObjectId } from 'mongoose';
-import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './version/schema';
 import { downloadSkillPackage } from './storage';
@@ -19,10 +17,10 @@ import {
   buildEditDebugCreateConfig
 } from './sandboxConfig';
 import {
-  connectReadyProviderSandboxByInstance,
-  connectToProviderSandbox,
-  disconnectFromProviderSandbox,
-  getProviderSandboxEndpoint,
+  connectReadySandboxByInstance,
+  connectToSandbox,
+  disconnectSandbox,
+  getSandboxEndpoint,
   getSandboxProviderConfig,
   validateSandboxConfig,
   waitForEndpointReady
@@ -33,17 +31,22 @@ import type {
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxClient, getSandboxClient, type SandboxResourceDoc } from '../ai/sandbox/controller';
+import { SandboxClient, getSandboxClient } from '../ai/sandbox/controller';
+import {
+  countRunningSandboxInstancesByType,
+  deleteSandboxInstanceRecord,
+  findSandboxInstanceByAppChatType,
+  findSandboxInstanceBySandboxIdAndTeam,
+  findSandboxResourceBySandboxIdAndTeam,
+  findSkillRelatedSandboxResources,
+  updateSandboxInstanceEndpoint,
+  updateSandboxInstanceRecordBySandboxId
+} from '../ai/sandbox/instance';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
-
-const buildSandboxInstanceLookup = (sandboxId: string) => ({
-  $or: [{ sandboxId }, ...(isValidObjectId(sandboxId) ? [{ _id: sandboxId }] : [])]
-});
 
 export type CreateEditDebugSandboxParams = {
   skillId: string;
@@ -56,7 +59,6 @@ export type CreateEditDebugSandboxParams = {
 
 export type CreateEditDebugSandboxResult = {
   sandboxId: string;
-  providerSandboxId: string;
   endpoint: SkillSandboxEndpointType;
   status: {
     state: string;
@@ -131,20 +133,18 @@ export async function createEditDebugSandbox(
   const sessionId = getEditDebugSandboxId(skillId);
 
   // Check for existing sandbox instance by skillId
-  const editDebugQuery = {
+  const existingInstance = await findSandboxInstanceByAppChatType({
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    'metadata.sandboxType': SandboxTypeEnum.editDebug
-  };
-  const existingInstance = await MongoSandboxInstance.findOne(editDebugQuery);
+    sandboxType: SandboxTypeEnum.editDebug
+  });
 
   const reuseExistingEditDebugSandbox = async (
     instance: NonNullable<typeof existingInstance>
   ): Promise<CreateEditDebugSandboxResult | null> => {
     addLog.info('[Sandbox] Found existing sandbox instance, ensuring running', {
       instanceId: instance._id,
-      sandboxId: instance.sandboxId,
-      providerSandboxId: instance.metadata?.providerSandboxId
+      sandboxId: instance.sandboxId
     });
 
     let sandbox: ISandbox | null = null;
@@ -152,10 +152,10 @@ export async function createEditDebugSandbox(
     try {
       onProgress?.({ sandboxId: instance.sandboxId, phase: 'creatingContainer' });
 
-      const connected = await connectReadyProviderSandboxByInstance(providerConfig, instance);
+      const connected = await connectReadySandboxByInstance(providerConfig, instance);
       sandbox = connected.sandbox;
 
-      const endpointInfo = await getProviderSandboxEndpoint(sandbox);
+      const endpointInfo = await getSandboxEndpoint(sandbox);
       const sandboxInfo = connected.sandboxInfo;
 
       // Wait for the HTTP service inside the container to bind its port before
@@ -163,41 +163,30 @@ export async function createEditDebugSandbox(
       await waitForEndpointReady(endpointInfo);
 
       // Update endpoint and sandbox metadata in DB
-      await MongoSandboxInstance.updateOne(
-        { _id: instance._id },
-        {
-          $set: {
-            'metadata.endpoint': endpointInfo,
-            'metadata.providerSandboxId': sandboxInfo.id
-          }
-        }
-      );
+      await updateSandboxInstanceEndpoint({ instanceId: instance._id, endpoint: endpointInfo });
 
       onProgress?.({
         sandboxId: instance.sandboxId,
         phase: 'ready',
-        endpoint: endpointInfo,
-        providerSandboxId: sandboxInfo.id
+        endpoint: endpointInfo
       });
 
       return {
         sandboxId: instance.sandboxId,
-        providerSandboxId: sandboxInfo.id,
         endpoint: endpointInfo,
         status: { state: 'Running' }
       };
     } catch (error) {
       addLog.info('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
         sandboxId: instance.sandboxId,
-        providerSandboxId: instance.metadata?.providerSandboxId,
         error
       });
 
-      await MongoSandboxInstance.deleteOne({ _id: instance._id });
+      await deleteSandboxInstanceRecord(instance._id);
       return null;
     } finally {
       if (sandbox) {
-        await disconnectFromProviderSandbox(sandbox);
+        await disconnectSandbox(sandbox);
       }
     }
   };
@@ -211,10 +200,7 @@ export async function createEditDebugSandbox(
   const maxEditDebug =
     global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
   if (maxEditDebug !== undefined) {
-    const activeCount = await MongoSandboxInstance.countDocuments({
-      status: SandboxStatusEnum.running,
-      'metadata.sandboxType': SandboxTypeEnum.editDebug
-    });
+    const activeCount = await countRunningSandboxInstancesByType(SandboxTypeEnum.editDebug);
     if (activeCount >= maxEditDebug) {
       const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
       onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
@@ -280,7 +266,7 @@ export async function createEditDebugSandbox(
     }
 
     // Get code-server endpoint
-    const endpointInfo = await getProviderSandboxEndpoint(client.provider);
+    const endpointInfo = await getSandboxEndpoint(client.provider);
 
     // Wait for the HTTP service to accept connections before persisting and emitting ready.
     // The container may still be initializing even after package extraction completes.
@@ -289,52 +275,44 @@ export async function createEditDebugSandbox(
     // Enrich the DB record created by getSandboxClient.ensureAvailable() with full skill metadata.
     // Use sessionId (the client-side key) because ensureAvailable() stores the record with
     // sandboxId=sessionId, not with the provider-assigned sandboxInfo.id.
-    const newSandboxDoc = await MongoSandboxInstance.findOneAndUpdate(
-      { sandboxId: sessionId },
-      {
-        $set: {
-          appId: skillId,
-          userId: tmbId,
-          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-          metadata: {
-            sandboxType: SandboxTypeEnum.editDebug,
-            teamId,
-            tmbId,
-            skillId,
-            sessionId,
-            providerSandboxId: sandboxInfo.id, // real sandbox ID for save-deploy connection
-            provider: providerConfig.provider,
-            image: sandboxInfo.image,
-            providerCreatedAt: sandboxInfo.createdAt,
-            endpoint: endpointInfo,
-            storage: {
-              bucket: activeVersion.storage.bucket,
-              key: activeVersion.storage.key,
-              size: standardizedBuffer.length,
-              uploadedAt: new Date()
-            },
-            metadata: new Map([
-              ['skillName', skill.name],
-              ['version', activeVersion.version.toString()]
-            ])
-          }
-        }
-      },
-      { new: true }
-    );
+    const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
+      sandboxId: sessionId,
+      appId: skillId,
+      userId: tmbId,
+      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      metadata: {
+        sandboxType: SandboxTypeEnum.editDebug,
+        teamId,
+        tmbId,
+        skillId,
+        sessionId,
+        provider: providerConfig.provider,
+        image: sandboxInfo.image,
+        providerCreatedAt: sandboxInfo.createdAt,
+        endpoint: endpointInfo,
+        storage: {
+          bucket: activeVersion.storage.bucket,
+          key: activeVersion.storage.key,
+          size: standardizedBuffer.length,
+          uploadedAt: new Date()
+        },
+        metadata: new Map([
+          ['skillName', skill.name],
+          ['version', activeVersion.version.toString()]
+        ])
+      }
+    });
 
     if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
 
     onProgress?.({
       sandboxId: sessionId,
       phase: 'ready',
-      endpoint: endpointInfo,
-      providerSandboxId: sandboxInfo.id
+      endpoint: endpointInfo
     });
 
     return {
       sandboxId: sessionId,
-      providerSandboxId: sandboxInfo.id,
       endpoint: endpointInfo,
       status: {
         state: sandboxInfo.status.state,
@@ -361,7 +339,7 @@ export async function createEditDebugSandbox(
     throw error;
   } finally {
     if (sandbox) {
-      await disconnectFromProviderSandbox(sandbox);
+      await disconnectSandbox(sandbox);
     }
   }
 }
@@ -370,10 +348,7 @@ export async function getSandboxInfo(
 ): Promise<SandboxInstanceSchemaType> {
   const { sandboxId, teamId } = params;
 
-  const sandbox = await MongoSandboxInstance.findOne({
-    ...buildSandboxInstanceLookup(sandboxId),
-    'metadata.teamId': teamId
-  });
+  const sandbox = await findSandboxInstanceBySandboxIdAndTeam({ sandboxId, teamId });
 
   if (!sandbox) {
     throw new Error('Sandbox not found or access denied');
@@ -388,10 +363,7 @@ export async function getSandboxInfo(
 export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> {
   const { sandboxId, teamId } = params;
 
-  const instanceDoc = await MongoSandboxInstance.findOne({
-    ...buildSandboxInstanceLookup(sandboxId),
-    'metadata.teamId': teamId
-  }).lean<SandboxResourceDoc | null>();
+  const instanceDoc = await findSandboxResourceBySandboxIdAndTeam({ sandboxId, teamId });
 
   if (!instanceDoc) {
     throw new Error('Sandbox not found or access denied');
@@ -410,9 +382,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
   if (skillIds.length === 0) return;
 
   // Find all sandbox instances related to these skills
-  const instances = await MongoSandboxInstance.find({
-    $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
-  }).lean<SandboxResourceDoc[]>();
+  const instances = await findSkillRelatedSandboxResources(skillIds);
 
   if (instances.length === 0) return;
 
@@ -434,17 +404,17 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
  * Creates a package.zip file containing all files in the sandbox working directory
  *
  * @param params - Parameters for packaging
- * @param params.providerSandboxId - Provider sandbox ID
+ * @param params.sandboxId - FastGPT sandbox ID
  * @param params.workDirectory - Working directory
  * @returns Buffer containing the package.zip file
  *
  * @throws Error if packaging fails, file cannot be read, or directory exceeds size limit
  */
 export async function packageSkillInSandbox(params: {
-  providerSandboxId: string;
+  sandboxId: string;
   workDirectory?: string;
 }): Promise<Buffer> {
-  const { providerSandboxId, workDirectory } = params;
+  const { sandboxId, workDirectory } = params;
   const { maxSandboxPackageBytes: maxBytes } = getSkillSizeLimits();
 
   const providerConfig = getSandboxProviderConfig();
@@ -454,7 +424,7 @@ export async function packageSkillInSandbox(params: {
   let sandbox: ISandbox | null = null;
 
   try {
-    const newSandbox = await connectToProviderSandbox(providerConfig, providerSandboxId);
+    const newSandbox = await connectToSandbox(providerConfig, sandboxId);
     sandbox = newSandbox;
 
     // Fast path: check directory size before expensive zip operation
@@ -500,13 +470,13 @@ export async function packageSkillInSandbox(params: {
     return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
   } catch (error) {
     addLog.error('[Sandbox] Failed to package skill', {
-      providerSandboxId,
+      sandboxId,
       error
     });
     throw error;
   } finally {
     if (sandbox) {
-      await disconnectFromProviderSandbox(sandbox);
+      await disconnectSandbox(sandbox);
     }
   }
 }

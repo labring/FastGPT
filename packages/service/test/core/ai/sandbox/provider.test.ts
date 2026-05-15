@@ -64,7 +64,7 @@ describe('sandbox provider helpers', () => {
             tag: 'latest'
           }
         },
-        providerSandboxId: ''
+        sandboxId: 'session-1'
       }
     );
 
@@ -75,7 +75,7 @@ describe('sandbox provider helpers', () => {
       replaceDockerInternalWithLocalhost: false,
       runtime: 'kubernetes',
       useServerProxy: undefined,
-      sessionId: ''
+      sessionId: 'session-1'
     });
     expect((result as any).createConfig).toEqual({
       image: {
@@ -96,7 +96,7 @@ describe('sandbox provider helpers', () => {
         runtime: 'docker'
       },
       {
-        providerSandboxId: 'devbox-1',
+        sandboxId: 'devbox-1',
         createConfig: {
           env: {
             CODE_SERVER_ENABLED: 'true'
@@ -173,10 +173,10 @@ describe('sandbox provider helpers', () => {
     expect(result.entrypoint).toBeUndefined();
   });
 
-  it('connects opensandbox via provider-specific connect hook', async () => {
-    const { buildSandboxAdapter, connectToProviderSandbox } = await loadSandboxProviderModule();
+  it('connects sandbox by stable sandbox id through ensureRunning', async () => {
+    const { buildSandboxAdapter, connectToSandbox } = await loadSandboxProviderModule();
 
-    const connectMock = vi
+    const ensureRunningMock = vi
       .spyOn(
         Object.getPrototypeOf(
           buildSandboxAdapter(
@@ -187,7 +187,7 @@ describe('sandbox provider helpers', () => {
               runtime: 'docker'
             },
             {
-              providerSandboxId: 'sandbox-1',
+              sandboxId: 'sandbox-1',
               createConfig: {
                 image: {
                   repository: 'fastgpt-agent-sandbox',
@@ -197,11 +197,11 @@ describe('sandbox provider helpers', () => {
             }
           )
         ),
-        'connect'
+        'ensureRunning'
       )
       .mockResolvedValue(undefined);
 
-    const result = await connectToProviderSandbox(
+    const result = await connectToSandbox(
       {
         provider: 'opensandbox',
         baseUrl: 'http://sandbox.local',
@@ -212,31 +212,32 @@ describe('sandbox provider helpers', () => {
     );
 
     expect(result.provider).toBe('opensandbox');
-    expect(connectMock).toHaveBeenCalledWith('sandbox-1');
+    expect(ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect((result as any).connectionConfig.sessionId).toBe('sandbox-1');
   });
 
   it('disconnects opensandbox and keeps other providers as no-op', async () => {
-    const { disconnectFromProviderSandbox } = await loadSandboxProviderModule();
+    const { disconnectSandbox } = await loadSandboxProviderModule();
 
     const closeMock = vi.fn().mockResolvedValue(undefined);
-    await disconnectFromProviderSandbox({
+    await disconnectSandbox({
       provider: 'opensandbox',
       close: closeMock
     } as any);
     expect(closeMock).toHaveBeenCalledTimes(1);
 
     await expect(
-      disconnectFromProviderSandbox({
+      disconnectSandbox({
         provider: 'sealosdevbox'
       } as any)
     ).resolves.toBeUndefined();
   });
 
   it('throws when endpoint capability is unavailable on current provider', async () => {
-    const { getProviderSandboxEndpoint } = await loadSandboxProviderModule();
+    const { getSandboxEndpoint } = await loadSandboxProviderModule();
 
     await expect(
-      getProviderSandboxEndpoint({
+      getSandboxEndpoint({
         provider: 'sealosdevbox'
       } as any)
     ).rejects.toThrow('does not expose endpoint capability');
@@ -264,40 +265,39 @@ describe('sandbox provider helpers', () => {
     expect(getEditDebugSandboxId('skill-1')).not.toBe(getEditDebugSandboxId('skill-2'));
   });
 
-  it('requires providerSandboxId when connecting to opensandbox instance', async () => {
-    const { getProviderSandboxConnectionTarget } = await loadSandboxProviderModule();
+  it('builds opensandbox resource adapter by stable sandbox id', async () => {
+    const { buildSandboxAdapterForResource } = await loadSandboxProviderModule();
 
-    expect(() =>
-      getProviderSandboxConnectionTarget(
-        {
-          provider: 'opensandbox',
-          baseUrl: 'http://sandbox.local',
-          runtime: 'docker'
-        },
-        {
-          sandboxId: 'stable-session-id'
-        }
-      )
-    ).toThrow('Sandbox providerSandboxId missing');
-  });
-
-  it('uses providerSandboxId when connecting to opensandbox instance', async () => {
-    const { getProviderSandboxConnectionTarget } = await loadSandboxProviderModule();
-
-    const target = getProviderSandboxConnectionTarget(
+    const result = buildSandboxAdapterForResource(
       {
         provider: 'opensandbox',
         baseUrl: 'http://sandbox.local',
         runtime: 'docker'
       },
       {
-        sandboxId: 'stable-session-id',
-        metadata: {
-          providerSandboxId: 'provider-sandbox-id'
-        }
+        sandboxId: 'stable-session-id'
       }
     );
 
-    expect(target).toBe('provider-sandbox-id');
+    expect(result.provider).toBe('opensandbox');
+    expect((result as any).connectionConfig.sessionId).toBe('stable-session-id');
+  });
+
+  it('builds resource adapter without provider id input', async () => {
+    const { buildSandboxAdapterForResource } = await loadSandboxProviderModule();
+
+    const result = buildSandboxAdapterForResource(
+      {
+        provider: 'opensandbox',
+        baseUrl: 'http://sandbox.local',
+        runtime: 'docker'
+      },
+      {
+        sandboxId: 'stable-session-id'
+      }
+    );
+
+    expect(result.provider).toBe('opensandbox');
+    expect((result as any).connectionConfig.sessionId).toBe('stable-session-id');
   });
 });

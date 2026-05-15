@@ -34,9 +34,9 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -228,17 +228,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Verify edit-debug sandbox exists for this skill
-    const sandboxInstance = await MongoSandboxInstance.findOne({
+    const sandboxInstance = await findSandboxInstanceByAppChatType({
       appId: skillId,
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-      'metadata.sandboxType': SandboxTypeEnum.editDebug
-    }).lean();
+      sandboxType: SandboxTypeEnum.editDebug
+    });
     if (!sandboxInstance) {
       throw new UserError(
         'Edit debug sandbox not found. Please create it via /api/core/agentSkills/edit first.'
       );
     }
-    logger.debug('Edit debug sandbox found', { skillId, sandboxId: String(sandboxInstance._id) });
+    logger.debug('Edit debug sandbox found', { skillId, sandboxId: sandboxInstance.sandboxId });
 
     // Parse messages: pop the last human message as userQuestion
     const chatMessages = GPTMessages2Chats({ messages });

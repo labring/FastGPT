@@ -79,6 +79,7 @@ import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
+  SandboxClient,
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId
 } from '@fastgpt/service/core/ai/sandbox/controller';
@@ -142,7 +143,7 @@ describe('deleteSandboxesByChatIds', () => {
     expect(await MongoSandboxInstance.countDocuments({ appId: appId2 })).toBe(1);
   });
 
-  it('should delete provider resource by metadata.providerSandboxId when present', async () => {
+  it('should delete opensandbox resource by stable sandbox id', async () => {
     await MongoSandboxInstance.deleteMany({});
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
@@ -152,22 +153,49 @@ describe('deleteSandboxesByChatIds', () => {
       chatId: 'c-provider',
       status: 'running',
       lastActiveAt: new Date(),
-      createdAt: new Date(),
-      metadata: {
-        providerSandboxId: 'provider-sandbox-id'
-      }
+      createdAt: new Date()
     });
 
     await deleteSandboxesByChatIds({ appId: appId1, chatIds: ['c-provider'] });
 
     expect(sandboxAdapterMocks.createSandboxMock).toHaveBeenCalledWith(
       'opensandbox',
-      expect.objectContaining({ sessionId: 'provider-sandbox-id' }),
+      expect.objectContaining({
+        sessionId: 'stable-session-id'
+      }),
       undefined
     );
-    expect(sandboxAdapterMocks.deleteMock).toHaveBeenCalledWith('provider-sandbox-id');
+    expect(sandboxAdapterMocks.deleteMock).toHaveBeenCalledWith();
     expect(sandboxAdapterMocks.ensureRunningMock).not.toHaveBeenCalled();
     expect(await MongoSandboxInstance.countDocuments({ sandboxId: 'stable-session-id' })).toBe(0);
+  });
+
+  it('should stop opensandbox resource by stable sandbox id', async () => {
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: 'stable-session-id',
+      appId: appId1,
+      userId: 'u1',
+      chatId: 'c-provider',
+      status: 'running',
+      lastActiveAt: new Date(),
+      createdAt: new Date()
+    });
+
+    await SandboxClient.stopResource(doc.toObject());
+
+    expect(sandboxAdapterMocks.createSandboxMock).toHaveBeenCalledWith(
+      'opensandbox',
+      expect.objectContaining({
+        sessionId: 'stable-session-id'
+      }),
+      undefined
+    );
+    expect(sandboxAdapterMocks.stopMock).toHaveBeenCalledWith();
+    expect(sandboxAdapterMocks.ensureRunningMock).not.toHaveBeenCalled();
+    expect(
+      await MongoSandboxInstance.findOne({ sandboxId: 'stable-session-id' }).lean()
+    ).toMatchObject({ status: 'stopped' });
   });
 
   it('should not error when chatId does not exist', async () => {

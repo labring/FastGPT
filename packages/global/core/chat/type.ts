@@ -74,7 +74,6 @@ export type SandboxStatusItemType = {
     protocol: 'http' | 'https';
     url: string;
   };
-  providerSandboxId?: string; // present on 'ready' for edit-debug, provider instance id
 };
 
 /* Skill module response */
