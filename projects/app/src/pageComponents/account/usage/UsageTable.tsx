@@ -152,6 +152,9 @@ const UsageTableList = ({
               <Th>{t('account_usage:user_type')}</Th>
               <Th>{t('account_usage:project_name')}</Th>
               <Th>{t('account_usage:total_points')}</Th>
+              <Th>{t('account_usage:total_tokens')}</Th>
+              <Th>{t('account_usage:input_tokens')}</Th>
+              <Th>{t('account_usage:output_tokens')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -170,6 +173,9 @@ const UsageTableList = ({
                   {t(item.appName as any) || '-'}
                 </Td>
                 <Td>{formatNumber(item.totalPoints) || 0}</Td>
+                <Td>{(item.inputTokens || 0) + (item.outputTokens || 0)}</Td>
+                <Td>{item.inputTokens || 0}</Td>
+                <Td>{item.outputTokens || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
                     {t('account_usage:details')}

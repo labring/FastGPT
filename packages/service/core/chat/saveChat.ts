@@ -232,11 +232,17 @@ const getChatDataLog = async ({
   const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
   const totalPoints =
     nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+  const inputTokens =
+    nodeResponses?.reduce((sum: number, item: any) => sum + (item.inputTokens || 0), 0) || 0;
+  const outputTokens =
+    nodeResponses?.reduce((sum: number, item: any) => sum + (item.outputTokens || 0), 0) || 0;
 
   return {
     fifteenMinutesAgo,
     errorCount,
     totalPoints,
+    inputTokens,
+    outputTokens,
     now
   };
 };
@@ -570,7 +576,7 @@ export const finalizeChatRound = async (props: Props) => {
   });
 
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
       nodeResponses
     });
     const userId = String(outLinkUid || tmbId);
@@ -594,6 +600,8 @@ export const finalizeChatRound = async (props: Props) => {
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          inputTokens,
+          outputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {
@@ -800,7 +808,7 @@ export const pushChatRecords = async (props: Props) => {
 
     // Create chat data log
     try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+      const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
         nodeResponses
       });
       const userId = String(outLinkUid || tmbId);
@@ -824,6 +832,8 @@ export const pushChatRecords = async (props: Props) => {
             chatItemCount: 1,
             errorCount,
             totalPoints,
+            inputTokens,
+            outputTokens,
             totalResponseTime: durationSeconds
           },
           $set: {
@@ -1086,7 +1096,7 @@ export const updateInteractiveChat = async ({
 
   // Push chat data logs
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
       nodeResponses
     });
 
@@ -1102,6 +1112,8 @@ export const updateInteractiveChat = async ({
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          inputTokens,
+          outputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {

@@ -224,6 +224,8 @@ export const UserStatsDataPointSchema = z.object({
     newUserCount: z.number().meta({ example: 30, description: '新用户数' }),
     retentionUserCount: z.number().meta({ example: 70, description: '留存用户数' }),
     points: z.number().meta({ example: 1500, description: '积分消耗' }),
+    inputTokens: z.number().meta({ example: 50000, description: '输入 Token 消耗' }),
+    outputTokens: z.number().meta({ example: 20000, description: '输出 Token 消耗' }),
     sourceCountMap: z.record(z.string(), z.number()).meta({
       example: { api: 50, web: 30, mobile: 20 },
       description: '各来源用户数量'
@@ -239,7 +241,9 @@ export const ChatStatsDataPointSchema = z.object({
     chatItemCount: z.number().meta({ example: 500, description: '对话项目总数' }),
     chatCount: z.number().meta({ example: 100, description: '对话会话总数' }),
     errorCount: z.number().meta({ example: 5, description: '错误次数' }),
-    points: z.number().meta({ example: 800, description: '积分消耗' })
+    points: z.number().meta({ example: 800, description: '积分消耗' }),
+    inputTokens: z.number().meta({ example: 30000, description: '输入 Token 消耗' }),
+    outputTokens: z.number().meta({ example: 10000, description: '输出 Token 消耗' })
   })
 });
 export type chatStatsDataPoint = z.infer<typeof ChatStatsDataPointSchema>;
@@ -286,6 +290,14 @@ export const GetTotalDataResponseSchema = z.object({
   totalPoints: z.number().meta({
     example: 15000,
     description: '总积分消耗'
+  }),
+  totalInputTokens: z.number().meta({
+    example: 500000,
+    description: '总输入 Token 消耗'
+  }),
+  totalOutputTokens: z.number().meta({
+    example: 200000,
+    description: '总输出 Token 消耗'
   })
 });
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;

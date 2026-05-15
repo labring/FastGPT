@@ -50,6 +50,14 @@ const ChatLogSchema = new Schema({
     type: Number,
     default: 0
   },
+  inputTokens: {
+    type: Number,
+    default: 0
+  },
+  outputTokens: {
+    type: Number,
+    default: 0
+  },
   goodFeedbackCount: {
     type: Number,
     default: 0
