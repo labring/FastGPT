@@ -1,4 +1,5 @@
 import type {
+  ChatHistoryItemResType,
   ChatItemValueItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
@@ -11,7 +12,10 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
+import {
+  checkInteractiveResponseStatus,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -71,6 +75,43 @@ export const shouldResetResumeAiPlaceholder = ({
   hasPreparedResumeAiRecord: boolean;
   hasReceivedResumeOutput: boolean;
 }) => !hasPreparedResumeAiRecord && !hasReceivedResumeOutput;
+
+export const mergeResumeCompletedChatRecords = ({
+  currentRecords,
+  completedRecords,
+  responseChatId
+}: {
+  currentRecords: ChatSiteItemType[];
+  completedRecords: ChatSiteItemType[];
+  responseChatId: string;
+}) => {
+  const resumedResponseData = currentRecords.find(
+    (item) => item.dataId === responseChatId
+  )?.responseData;
+  if (!resumedResponseData?.length) return completedRecords;
+
+  return completedRecords.map((item) => {
+    if (item.dataId !== responseChatId) return item;
+
+    const mergedResponseData = mergeChatResponseData([
+      ...(item.responseData || []),
+      ...(resumedResponseData.filter(
+        (resumedItem) =>
+          !item.responseData?.some((completedItem) =>
+            areSameChatResponseDataItem(completedItem, resumedItem)
+          )
+      ) || [])
+    ]);
+
+    return {
+      ...item,
+      responseData: mergedResponseData
+    };
+  });
+};
+
+const areSameChatResponseDataItem = (a: ChatHistoryItemResType, b: ChatHistoryItemResType) =>
+  a.id === b.id && a.nodeId === b.nodeId;
 
 // 用于判断当前对话框状态。所以，如果是 child 的 interactive，需要递归去找到最后一个。
 export const getInteractiveByHistories = (

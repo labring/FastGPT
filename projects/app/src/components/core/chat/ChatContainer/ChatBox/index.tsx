@@ -41,6 +41,7 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import {
   getInteractiveByHistories,
   formatChatValue2InputType,
+  mergeResumeCompletedChatRecords,
   rewriteHistoriesByInteractiveResponse,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
@@ -1395,11 +1396,15 @@ const ChatBox = ({
 
         if (completedChat) {
           resumeFinalStatus = completedChat.chatGenerateStatus;
-          setChatRecords(
-            completedChat.records.list.map((item) => ({
-              ...item,
-              status: ChatStatusEnum.finish
-            }))
+          setChatRecords((state) =>
+            mergeResumeCompletedChatRecords({
+              currentRecords: state,
+              completedRecords: completedChat.records.list.map((item) => ({
+                ...item,
+                status: ChatStatusEnum.finish
+              })),
+              responseChatId
+            })
           );
           scrollToBottom('auto');
           scrollToBottom('auto', 100);
