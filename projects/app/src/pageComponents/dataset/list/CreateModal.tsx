@@ -23,7 +23,8 @@ import {
   postCreateDataset,
   putDatasetById,
   getDatasetById,
-  getDatasetTrainingQueue
+  getDatasetTrainingQueue,
+  postDatasetSync
 } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
@@ -33,6 +34,10 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import oneLight from 'react-syntax-highlighter/dist/esm/styles/prism/one-light';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { getDocPath } from '@/web/common/system/doc';
 import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
@@ -48,7 +53,8 @@ export type CreateDatasetType =
   | DatasetTypeEnum.database
   | DatasetTypeEnum.structureDocument;
 
-const LABEL_WIDTH = '120px';
+const LABEL_WIDTH = '114px';
+const LABEL_STYLE = { color: 'myWhite.1000', fontSize: '12px', fontWeight: 'normal' } as const;
 
 const CreateModal = ({
   onClose,
@@ -71,6 +77,8 @@ const CreateModal = ({
   const isEditMode = !!editId;
 
   const [isTraining, setIsTraining] = useState(false);
+  const [syncApiModalOpen, setSyncApiModalOpen] = useState(false);
+  const [syncTab, setSyncTab] = useState<'request' | 'params' | 'response'>('request');
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
@@ -100,6 +108,7 @@ const CreateModal = ({
   const agentModel = watch('agentModel');
   const vlmModel = watch('vlmModel');
   const autoSync = watch('autoSync');
+  const permissionSync = watch('apiDatasetServer.apiServer.permissionSync');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -146,6 +155,7 @@ const CreateModal = ({
 
   const isStructureDocument = type === DatasetTypeEnum.structureDocument;
   const isWebsite = type === DatasetTypeEnum.websiteDataset;
+  const isApiDataset = type === DatasetTypeEnum.apiDataset;
   const hasAutoSync =
     type === DatasetTypeEnum.websiteDataset ||
     type === DatasetTypeEnum.apiDataset ||
@@ -206,6 +216,22 @@ const CreateModal = ({
     }
   );
 
+  const { copyData } = useCopyData();
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const syncCurl = `curl --location --request POST '${origin}/api/proApi/core/dataset/datasetSync' \\
+  --header 'Authorization: Bearer {{apikey}}' \\
+  --header 'Content-Type: application/json' \\
+  --data-raw '{
+      "datasetId": "${editId || '实际ID'}"
+  }'`;
+
+  const syncResponse = JSON.stringify(
+    { code: 200, statusText: '', message: '', data: null },
+    null,
+    2
+  );
+
   return (
     <MyModal
       title={(() => {
@@ -236,13 +262,13 @@ const CreateModal = ({
       isOpen
       onClose={onClose}
       isCentered={!isPc}
-      w={'490px'}
+      w={'600px'}
     >
       <MyBox isLoading={loadingDataset} flex={1} display={'flex'} flexDirection={'column'}>
-        <ModalBody py={6} px={9}>
+        <ModalBody py={6} px={8}>
           {/* 图标 & 名称 */}
           <Flex alignItems={'center'}>
-            <FormLabel flex={`0 0 ${LABEL_WIDTH}`} required>
+            <FormLabel flex={`0 0 ${LABEL_WIDTH}`} required {...LABEL_STYLE}>
               {t('dataset:icon_and_name')}
             </FormLabel>
             <Flex flex={1} alignItems={'center'}>
@@ -262,6 +288,7 @@ const CreateModal = ({
                 flex={1}
                 autoFocus
                 maxLength={30}
+                fontSize={'12px'}
                 {...register('name', { required: true })}
               />
             </Flex>
@@ -269,7 +296,7 @@ const CreateModal = ({
 
           {/* 描述 */}
           <Flex mt={6} alignItems={'flex-start'}>
-            <FormLabel flex={`0 0 ${LABEL_WIDTH}`} pt={'6px'}>
+            <FormLabel flex={`0 0 ${LABEL_WIDTH}`} pt={'6px'} {...LABEL_STYLE}>
               {t('dataset:description')}
             </FormLabel>
             <Textarea
@@ -277,6 +304,7 @@ const CreateModal = ({
               resize={'vertical'}
               minH={'50px'}
               h={'50px'}
+              fontSize={'12px'}
               {...register('intro')}
             />
           </Flex>
@@ -285,21 +313,23 @@ const CreateModal = ({
           {isWebsite && (
             <>
               <Flex mt={6} alignItems={'center'}>
-                <FormLabel flex={`0 0 ${LABEL_WIDTH}`} required>
+                <FormLabel flex={`0 0 ${LABEL_WIDTH}`} required {...LABEL_STYLE}>
                   {t('dataset:website_url')}
                 </FormLabel>
                 <Input
                   flex={1}
+                  fontSize={'12px'}
                   placeholder={t('dataset:website_url_placeholder')}
                   {...register('websiteConfig.url', { required: true })}
                 />
               </Flex>
               <Flex mt={6} alignItems={'center'}>
-                <FormLabel flex={`0 0 ${LABEL_WIDTH}`}>
+                <FormLabel flex={`0 0 ${LABEL_WIDTH}`} {...LABEL_STYLE}>
                   {t('dataset:website_selector_label')}
                 </FormLabel>
                 <Input
                   flex={1}
+                  fontSize={'12px'}
                   placeholder={t('dataset:website_selector_placeholder')}
                   {...register('websiteConfig.selector')}
                 />
@@ -314,16 +344,62 @@ const CreateModal = ({
           {/* 自动同步（websiteDataset / apiDataset / feishu / yuque） */}
           {hasAutoSync && (
             <Flex mt={6} alignItems={'center'}>
-              <FormLabel flex={`0 0 ${LABEL_WIDTH}`}>
+              <FormLabel flex={`0 0 ${LABEL_WIDTH}`} {...LABEL_STYLE}>
                 <HStack spacing={1}>
                   <Box>{t('dataset:sync_schedule')}</Box>
                   <QuestionTip label={t('dataset:sync_schedule_tip')} />
                 </HStack>
               </FormLabel>
-              <Switch
-                isChecked={autoSync}
-                onChange={(e) => setValue('autoSync', e.target.checked)}
-              />
+              <HStack spacing={2} flex={1}>
+                <Switch
+                  isChecked={autoSync}
+                  onChange={(e) => setValue('autoSync', e.target.checked)}
+                />
+                {isApiDataset && (
+                  <Box
+                    as={'span'}
+                    fontSize={'12px'}
+                    color={'blue.650'}
+                    cursor={'pointer'}
+                    ml="auto"
+                    onClick={() => setSyncApiModalOpen(true)}
+                  >
+                    {t('dataset:sync_api_tip')}
+                  </Box>
+                )}
+              </HStack>
+            </Flex>
+          )}
+
+          {/* 权限同步（仅 apiDataset） */}
+          {isApiDataset && (
+            <Flex mt={6} alignItems={'flex-start'}>
+              <FormLabel flex={`0 0 ${LABEL_WIDTH}`} {...LABEL_STYLE}>
+                <HStack spacing={1}>
+                  <Box>{t('dataset:permission_sync')}</Box>
+                  <QuestionTip
+                    label={
+                      <Box>
+                        <Box>{t('dataset:permission_sync_tip')}</Box>
+                        <Box>{t('dataset:permission_sync_tip_2')}</Box>
+                      </Box>
+                    }
+                  />
+                </HStack>
+              </FormLabel>
+              <Box flex={1}>
+                <HStack spacing={2}>
+                  <Switch
+                    isChecked={permissionSync}
+                    onChange={(e) =>
+                      setValue('apiDatasetServer.apiServer.permissionSync', e.target.checked)
+                    }
+                  />
+                  {/* <Box fontSize={'12px'} color={'myWhite.900'}>
+                    {t('dataset:permission_sync_desc')}
+                  </Box> */}
+                </HStack>
+              </Box>
             </Flex>
           )}
 
@@ -331,7 +407,9 @@ const CreateModal = ({
           {!vectorModelShowConfig?.isHidden && (
             <Flex mt={6} alignItems={'center'}>
               <HStack spacing={1} flex={`0 0 ${LABEL_WIDTH}`}>
-                <FormLabel required>{t('common:core.ai.model.Vector Model')}</FormLabel>
+                <FormLabel required {...LABEL_STYLE}>
+                  {t('common:core.ai.model.Vector Model')}
+                </FormLabel>
                 <QuestionTip label={t('dataset:vector_model_tip')} />
               </HStack>
               <Box flex={1}>
@@ -357,7 +435,9 @@ const CreateModal = ({
           {!agentModelShowConfig?.isHidden && (
             <Flex mt={6} alignItems={'center'}>
               <HStack spacing={1} flex={`0 0 ${LABEL_WIDTH}`}>
-                <FormLabel required>{t('dataset:agent_model_label')}</FormLabel>
+                <FormLabel required {...LABEL_STYLE}>
+                  {t('dataset:agent_model_label')}
+                </FormLabel>
                 <QuestionTip label={t('dataset:agent_model_tip')} />
               </HStack>
               <Box flex={1}>
@@ -378,7 +458,7 @@ const CreateModal = ({
           {!vlmModelShowConfig?.isHidden && (
             <Flex mt={6} alignItems={'center'}>
               <HStack spacing={1} flex={`0 0 ${LABEL_WIDTH}`}>
-                <FormLabel>{t('dataset:vlm_model_label')}</FormLabel>
+                <FormLabel {...LABEL_STYLE}>{t('dataset:vlm_model_label')}</FormLabel>
                 <QuestionTip label={t('dataset:vlm_model_tip')} />
               </HStack>
               <Box flex={1}>
@@ -427,6 +507,123 @@ const CreateModal = ({
       </MyBox>
 
       <AvatarUploader />
+
+      {/* 同步API调用弹窗 */}
+      {syncApiModalOpen && (
+        <MyModal
+          title={t('dataset:sync_api')}
+          isOpen
+          onClose={() => {
+            setSyncApiModalOpen(false);
+            setSyncTab('request');
+          }}
+          w={'700px'}
+        >
+          <ModalBody py={6} px={9}>
+            <Box fontSize={'12px'} fontWeight={'normal'} mb={'16px'} color={'myWhite.900'}>
+              {t('dataset:sync_api_real_time_tip')}
+            </Box>
+            <FillRowTabs
+              mb={2}
+              list={[
+                { label: t('dataset:api_request_example'), value: 'request' },
+                { label: t('dataset:api_params_desc'), value: 'params' },
+                { label: t('dataset:api_response_example'), value: 'response' }
+              ]}
+              height="36px"
+              value={syncTab}
+              onChange={(e) => setSyncTab(e as 'request' | 'params' | 'response')}
+            />
+            {syncTab === 'params' ? (
+              <Box
+                borderRadius={'md'}
+                overflow={'hidden'}
+                border={'1px solid'}
+                borderColor={'myGray.150'}
+                bg={'#f5f7fa'}
+                p={'16px'}
+                fontSize={'13px'}
+                lineHeight={'1.6'}
+              >
+                <Flex
+                  borderBottom={'1px solid'}
+                  borderColor={'myGray.150'}
+                  pb={'8px'}
+                  mb={'8px'}
+                  fontWeight={'bold'}
+                >
+                  <Box flex={'0 0 140px'}>{t('common:Params')}</Box>
+                  <Box flex={1}>{t('dataset:description')}</Box>
+                </Flex>
+                <Flex
+                  py={'6px'}
+                  borderBottom={'1px solid'}
+                  borderColor={'myGray.50'}
+                  color={'myGray.700'}
+                >
+                  <Box flex={'0 0 140px'} fontFamily={'monospace'}>
+                    datasetId
+                  </Box>
+                  <Box flex={1}>{t('dataset:api_params_datasetId')}</Box>
+                </Flex>
+                <Flex py={'6px'} color={'myGray.700'}>
+                  <Box flex={'0 0 140px'} fontFamily={'monospace'}>
+                    apiKey
+                  </Box>
+                  <Box flex={1}>{t('dataset:api_params_apiKey')}</Box>
+                </Flex>
+              </Box>
+            ) : (
+              (() => {
+                const codeContent = syncTab === 'request' ? syncCurl : syncResponse;
+                const codeLang = syncTab === 'request' ? 'bash' : 'json';
+                return (
+                  <Box
+                    position={'relative'}
+                    borderRadius={'md'}
+                    overflow={'hidden'}
+                    border={'1px solid'}
+                    borderColor={'myGray.150'}
+                  >
+                    <Box
+                      position={'absolute'}
+                      top={2}
+                      right={3}
+                      cursor={'pointer'}
+                      onClick={() => copyData(codeContent)}
+                      color={'myGray.500'}
+                      _hover={{ color: 'myGray.900' }}
+                      zIndex={1}
+                    >
+                      <MyIcon name={'copy'} w={'16px'} />
+                    </Box>
+                    <SyntaxHighlighter
+                      style={oneLight as any}
+                      language={codeLang}
+                      PreTag="pre"
+                      customStyle={{
+                        margin: 0,
+                        padding: '16px',
+                        paddingTop: '24px',
+                        background: '#f5f7fa',
+                        fontSize: '13px',
+                        lineHeight: '1.6'
+                      }}
+                    >
+                      {codeContent}
+                    </SyntaxHighlighter>
+                  </Box>
+                );
+              })()
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant={'whiteBase'} onClick={() => setSyncApiModalOpen(false)}>
+              {t('common:Close')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
+      )}
     </MyModal>
   );
 };

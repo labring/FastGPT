@@ -185,6 +185,7 @@ export class MilvusCtrl implements VectorControllerType {
     });
 
     const insertTimeoutMs = MILVUS_INSERT_TIMEOUT;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const result = await Promise.race([
       client.insert({
         collection_name: tableName,
@@ -193,14 +194,16 @@ export class MilvusCtrl implements VectorControllerType {
         // 避免 SDK 12h LRU 缓存中的旧 schemaTs 与服务端不一致导致 insert 被拒绝卡死
         skip_check_schema: true
       } as any),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => {
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
           // 超时后清理僵尸连接，下次操作强制重连
           global.milvusClient = undefined as any;
           reject(new Error(`[Milvus] insert timeout after ${insertTimeoutMs}ms`));
-        }, insertTimeoutMs)
-      )
+        }, insertTimeoutMs);
+      })
     ]);
+    // 主动清除定时器，防止 insert 成功后超时回调仍在后台清理 global.milvusClient
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
 
     if (result.IDs === null) {
       logger.error(

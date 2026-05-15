@@ -19,6 +19,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
+const LABEL_STYLE = { color: 'myWhite.1000', fontSize: '12px', fontWeight: 'normal' } as const;
+
 const ApiDatasetForm = ({
   type,
   datasetId,
@@ -116,7 +118,7 @@ const ApiDatasetForm = ({
 
   const renderBaseUrlSelector = () => (
     <Flex mt={6} alignItems={'center'}>
-      <FormLabel flex={'0 0 120px'} fontSize={'sm'}>
+      <FormLabel flex={'0 0 114px'} {...LABEL_STYLE}>
         Base URL
       </FormLabel>
       <MyBox py={1} fontSize={'sm'} flex={'1 0 0'} overflow="auto" isLoading={isFetching}>
@@ -157,7 +159,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.apiDataset && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} required {...LABEL_STYLE}>
               {t('dataset:api_url')}
             </FormLabel>
             <Input
@@ -166,7 +168,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} required {...LABEL_STYLE}>
               Authorization
             </FormLabel>
             <Input
@@ -182,7 +184,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.feishu && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} required {...LABEL_STYLE}>
               App ID
             </FormLabel>
             <Input
@@ -192,7 +194,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} required {...LABEL_STYLE}>
               App secret
             </FormLabel>
             <Input
@@ -202,7 +204,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} {...LABEL_STYLE} required>
               Folder token
             </FormLabel>
             <Input
@@ -218,7 +220,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.yuque && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} {...LABEL_STYLE} required>
               User ID
             </FormLabel>
             <Input
@@ -227,7 +229,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 114px'} {...LABEL_STYLE} required>
               Token
             </FormLabel>
             <Input
