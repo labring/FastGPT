@@ -382,6 +382,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
           value: formData.dataset.collectionFilterMatch
+        },
+        {
+          key: NodeInputKeyEnum.authTmbId,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.dataset.authTmbId ?? false
         }
       ],
       outputs: DatasetSearchModule.outputs
