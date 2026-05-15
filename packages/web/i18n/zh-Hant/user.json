@@ -46,5 +46,7 @@
   "team.group.set_as_admin": "設為管理員",
   "team.group.toast.can_not_delete_owner": "無法刪除擁有者，請先轉移擁有權",
   "team.manage_collaborators": "管理協作者",
-  "team.org.org": "組織"
+  "team.org.org": "組織",
+  "promotion.register": "註冊獎勵",
+  "promotion.pay": "支付返傭"
 }

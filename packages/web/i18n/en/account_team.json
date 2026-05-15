@@ -404,5 +404,7 @@
   "update_skill_collaborator": "Update skill collaborator",
   "delete_skill_collaborator": "Delete skill collaborator",
   "transfer_skill_ownership": "Transfer skill ownership",
-  "update_skill": "Update skill"
+  "update_skill": "Update skill",
+  "export_app_as_skill": "Export App as Skill",
+  "log_export_app_as_skill": "[{{name}}] exported [{{appType}}] app \"{{appName}}\" as Skill \"{{skillName}}\", API Key: {{apiKeyName}}"
 }

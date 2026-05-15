@@ -404,5 +404,7 @@
   "user_team_invite_member": "邀請成員",
   "user_team_leave_team": "離開團隊",
   "user_team_leave_team_failed": "離開團隊失敗",
-  "waiting": "待接受"
+  "waiting": "待接受",
+  "export_app_as_skill": "導出應用為 Skill",
+  "log_export_app_as_skill": "【{{name}}】將名為【{{appName}}】的【{{appType}}】導出為 Skill【{{skillName}}】，API Key: 【{{apiKeyName}}】"
 }

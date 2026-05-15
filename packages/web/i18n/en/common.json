@@ -43,7 +43,6 @@
   "FAQ.year_day_a": "A month is calculated as 30 days and a year is calculated as 360 days.",
   "FAQ.year_day_q": "How long is a month or a year exactly?",
   "File": "Files",
-  "FAQ.year_day_q": "How long is a month or a year exactly?",
   "Finish": "Finish",
   "Folder": "Folder",
   "FullScreen": "Full screen",
@@ -1665,5 +1664,12 @@
   "promotion_records": "Promotion records",
   "api_key": "API keys",
   "notifications": "Notifications",
-  "language": "Language and time zone"
+  "language": "Language and time zone",
+  "Username": "Username",
+  "copy_link": "Copy Link",
+  "database_search_results": "Database Search Results",
+  "core.workflow.inputType.jsonEditor": "JSON Editor",
+  "core.workflow.inputType.datasetSelect": "Dataset Select",
+  "core.module.template.empty_agent": "Empty Agent",
+  "other_knowledge_base_search_results": "Other Knowledge Base Search Results"
 }

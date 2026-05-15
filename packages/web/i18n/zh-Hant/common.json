@@ -1629,6 +1629,17 @@
   "api_key": "API 金鑰",
   "notifications": "通知",
   "language": "語言與時區",
-  "model.output_price": "輸出價格",
-  "model.input_price": "輸入價格"
+  "FAQ.year_day_q": "一個月，一年具體是多長時間？",
+  "FAQ.dataset_index_q": "知識庫超出最大條目數後，多餘的條目會被刪除嗎？",
+  "copy_link": "複製鏈接",
+  "contact_business": "聯繫商務",
+  "month_text": "個月",
+  "n_app_registration_amount": "{{amount}} 個應用備案",
+  "navbar.Config": "管理員",
+  "one_year": "1 年",
+  "refresh": "刷新",
+  "core.workflow.inputType.datasetSelect": "知識庫選擇",
+  "core.module.template.empty_agent": "空白 Agent",
+  "core.app.share.Show full text": "查看引用全文",
+  "support.user.login.Wecom": "企業微信登錄"
 }

@@ -283,5 +283,9 @@
   "retrieval_results": "檢索結果",
   "view_all_knowledge": "查看全部 {{count}} 個知識",
   "tag_faq_direct": "匹配到可直接回答的 FAQ",
-  "tag_no_recall": "未召回知識"
+  "tag_no_recall": "未召回知識",
+  "request_body": "請求體",
+  "llm_request_detail": "LLM 請求詳情",
+  "response_content": "響應內容",
+  "setting.favourite.all_apps": "所有應用"
 }

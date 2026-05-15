@@ -756,5 +756,9 @@
   "simple_tool_tips": "该插件含有特殊输入，暂不支持被简易应用调用",
   "export_failed": "导出失败",
   "app_not_found": "未找到应用",
-  "related_agent": "关联应用"
+  "related_agent": "关联应用",
+  "logs_timespan_1": "T+1",
+  "logs_timespan_3": "T+3",
+  "logs_timespan_7": "T+7",
+  "logs_timespan_14": "T+14"
 }

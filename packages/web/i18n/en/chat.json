@@ -286,5 +286,6 @@
   "retrieval_results": "Retrieval Results",
   "view_all_knowledge": "View all {{count}} knowledge",
   "tag_faq_direct": "Matched to a directly answerable FAQ",
-  "tag_no_recall": "No knowledge retrieved"
+  "tag_no_recall": "No knowledge retrieved",
+  "setting.favourite.all_apps": "All Apps"
 }
