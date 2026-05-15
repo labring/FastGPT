@@ -43,6 +43,7 @@ import {
   formatChatValue2InputType,
   mergeResumeCompletedChatRecords,
   rewriteHistoriesByInteractiveResponse,
+  shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
 } from './utils';
@@ -734,7 +735,13 @@ const ChatBox = ({
       setChatRecords((state) => {
         const lastItem = state[state.length - 1];
         if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-          if (!text && !options?.resetExistingValue) {
+          const shouldReplaceValue = shouldReplaceResumeAiValue({
+            hasExistingAiOutput: hasMeaningfulAiOutput(lastItem),
+            text,
+            resetExistingValue: options?.resetExistingValue
+          });
+
+          if (!shouldReplaceValue && lastItem.status === status) {
             return state;
           }
 
@@ -743,14 +750,18 @@ const ChatBox = ({
               ? item
               : {
                   ...item,
-                  value: [
-                    {
-                      text: {
-                        content: text
+                  ...(shouldReplaceValue
+                    ? {
+                        value: [
+                          {
+                            text: {
+                              content: text
+                            }
+                          }
+                        ],
+                        responseData: options?.resetExistingValue ? [] : item.responseData
                       }
-                    }
-                  ],
-                  responseData: options?.resetExistingValue ? [] : item.responseData,
+                    : {}),
                   status,
                   ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
                 }
