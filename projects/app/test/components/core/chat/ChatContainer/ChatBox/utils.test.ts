@@ -5,6 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   mergeResumeCompletedChatRecords,
+  refreshSubmittedFormInteractiveValues,
   shouldAppendResumeInteractive,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
@@ -284,5 +285,112 @@ describe('mergeResumeCompletedChatRecords', () => {
     });
 
     expect(result[0].responseData).toHaveLength(1);
+  });
+});
+
+describe('refreshSubmittedFormInteractiveValues', () => {
+  it('writes resumed form input files back into the submitted interactive node', () => {
+    const signedUrl =
+      'http://localhost:3000/api/system/file/download/token?filename=H6%E4%BA%A7%E5%93%81%E6%A6%82%E8%BF%B0V1.5_tBF8kj.docx';
+    const histories = [
+      {
+        id: 'ai-data-id',
+        dataId: 'ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              entryNodeIds: ['form-node-id'],
+              memoryEdges: [],
+              nodeOutputs: [],
+              usageId: 'usage-id',
+              params: {
+                description: '',
+                submitted: true,
+                inputForm: [
+                  {
+                    type: 'fileSelect',
+                    key: 'File',
+                    label: 'File',
+                    valueType: 'arrayString',
+                    description: '',
+                    required: false,
+                    defaultValue: '',
+                    canLocalUpload: true,
+                    canSelectFile: true,
+                    maxFiles: 5,
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = refreshSubmittedFormInteractiveValues({
+      histories,
+      nodeResponse: {
+        id: 'node-response-id',
+        nodeId: 'form-node-id',
+        moduleName: '表单输入',
+        moduleType: FlowNodeTypeEnum.formInput,
+        formInputResult: {
+          File: [signedUrl]
+        }
+      }
+    });
+
+    expect(result).not.toBe(histories);
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        name: 'H6产品概述V1.5_tBF8kj.docx',
+        url: signedUrl
+      }
+    ]);
+  });
+
+  it('does not update unrelated interactive nodes', () => {
+    const histories = [
+      {
+        id: 'ai-data-id',
+        dataId: 'ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              entryNodeIds: ['other-form-node-id'],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: {
+                description: '',
+                submitted: true,
+                inputForm: []
+              }
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = refreshSubmittedFormInteractiveValues({
+      histories,
+      nodeResponse: {
+        id: 'node-response-id',
+        nodeId: 'form-node-id',
+        moduleName: '表单输入',
+        moduleType: FlowNodeTypeEnum.formInput,
+        formInputResult: {
+          File: ['https://example.com/file.docx']
+        }
+      }
+    });
+
+    expect(result).toBe(histories);
   });
 });
