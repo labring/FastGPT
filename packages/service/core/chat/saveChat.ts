@@ -262,6 +262,7 @@ type PrepareChatRoundParams = Pick<
 > & {
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;
+  newTitle: string;
 };
 
 type FailChatRoundParams = {
@@ -321,7 +322,8 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
     sourceName,
     shareId,
     outLinkUid,
-    responseChatItemId
+    responseChatItemId,
+    newTitle
   } = params;
 
   if (isSkipSaveChatId(chatId)) return;
@@ -357,6 +359,7 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
           tmbId,
           appId,
           chatId,
+          title: newTitle,
           source,
           sourceName,
           shareId,
@@ -543,7 +546,7 @@ export const finalizeChatRound = async (props: Props) => {
           welcomeText,
           variables: variables || {},
           pluginInputs,
-          title: newTitle,
+          // title: newTitle,  // 改为创建时更新
           source,
           sourceName,
           shareId,
