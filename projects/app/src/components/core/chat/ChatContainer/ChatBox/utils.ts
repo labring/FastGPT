@@ -64,6 +64,14 @@ export const stripChatValueFileUrls = (value: UserChatItemValueItemType[] = []) 
     return item;
   });
 
+export const shouldResetResumeAiPlaceholder = ({
+  hasPreparedResumeAiRecord,
+  hasReceivedResumeOutput
+}: {
+  hasPreparedResumeAiRecord: boolean;
+  hasReceivedResumeOutput: boolean;
+}) => !hasPreparedResumeAiRecord && !hasReceivedResumeOutput;
+
 // 用于判断当前对话框状态。所以，如果是 child 的 interactive，需要递归去找到最后一个。
 export const getInteractiveByHistories = (
   chatHistories: ChatSiteItemType[]

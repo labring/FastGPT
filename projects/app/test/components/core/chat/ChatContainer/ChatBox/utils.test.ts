@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { stripChatValueFileUrls } from '@/components/core/chat/ChatContainer/ChatBox/utils';
+import {
+  shouldResetResumeAiPlaceholder,
+  stripChatValueFileUrls
+} from '@/components/core/chat/ChatContainer/ChatBox/utils';
 
 describe('stripChatValueFileUrls', () => {
   it('removes signed urls from keyed files before sending messages', () => {
@@ -51,5 +54,30 @@ describe('stripChatValueFileUrls', () => {
       }
     ]);
     expect(value[0].file.url).toBe('https://preview.example.com/image.png');
+  });
+});
+
+describe('shouldResetResumeAiPlaceholder', () => {
+  it('should reset only before any resume output has been applied', () => {
+    expect(
+      shouldResetResumeAiPlaceholder({
+        hasPreparedResumeAiRecord: false,
+        hasReceivedResumeOutput: false
+      })
+    ).toBe(true);
+
+    expect(
+      shouldResetResumeAiPlaceholder({
+        hasPreparedResumeAiRecord: false,
+        hasReceivedResumeOutput: true
+      })
+    ).toBe(false);
+
+    expect(
+      shouldResetResumeAiPlaceholder({
+        hasPreparedResumeAiRecord: true,
+        hasReceivedResumeOutput: false
+      })
+    ).toBe(false);
   });
 });
