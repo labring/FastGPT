@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
+import { Box, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -92,12 +92,16 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 }) {
   const { t } = useTranslation();
 
-  const { handleSubmit, control, watch } = useForm({
+  const { handleSubmit, control, watch, reset } = useForm({
     defaultValues
   });
 
   const runtimeFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const formValues = watch();
+
+  React.useEffect(() => {
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
   const isFileUploading = React.useMemo(() => {
     if (runtimeFileUploading) return true;
