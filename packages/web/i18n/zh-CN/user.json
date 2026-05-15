@@ -46,5 +46,7 @@
   "team.group.set_as_admin": "设为管理员",
   "team.group.toast.can_not_delete_owner": "不能删除所有者, 请先转让",
   "team.manage_collaborators": "管理协作者",
-  "team.org.org": "部门"
+  "team.org.org": "部门",
+  "promotion.register": "注册奖励",
+  "promotion.pay": "支付返佣"
 }

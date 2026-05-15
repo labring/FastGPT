@@ -1639,6 +1639,7 @@
   "api_key": "API 密钥",
   "notifications": "通知",
   "language": "语言与时区",
-  "model.output_price": "输出价格",
-  "model.input_price": "输入价格"
+  "FAQ.dataset_index_q": "知识库超出最大条目数后，多余的条目会被删除吗？",
+  "database_search_results": "数据库检索结果",
+  "other_knowledge_base_search_results": "其他知识库检索结果"
 }

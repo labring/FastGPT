@@ -75,5 +75,6 @@
   "you_can_convert": "您可以兌換",
   "yuan": "元",
   "password_min_length": "密碼至少 8 位",
-  "password_requirement": "至少包含兩種組合：數字、字母、特殊字符"
+  "password_requirement": "至少包含兩種組合：數字、字母、特殊字符",
+  "use": "去使用"
 }
