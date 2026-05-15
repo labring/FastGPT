@@ -76,6 +76,16 @@ export const shouldResetResumeAiPlaceholder = ({
   hasReceivedResumeOutput: boolean;
 }) => !hasPreparedResumeAiRecord && !hasReceivedResumeOutput;
 
+export const shouldReplaceResumeAiValue = ({
+  hasExistingAiOutput,
+  text,
+  resetExistingValue
+}: {
+  hasExistingAiOutput: boolean;
+  text: string;
+  resetExistingValue?: boolean;
+}) => !hasExistingAiOutput && (!!text || !!resetExistingValue);
+
 export const mergeResumeCompletedChatRecords = ({
   currentRecords,
   completedRecords,

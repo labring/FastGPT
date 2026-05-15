@@ -5,6 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   mergeResumeCompletedChatRecords,
+  shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
 } from '@/components/core/chat/ChatContainer/ChatBox/utils';
@@ -82,6 +83,38 @@ describe('shouldResetResumeAiPlaceholder', () => {
         hasReceivedResumeOutput: false
       })
     ).toBe(false);
+  });
+});
+
+describe('shouldReplaceResumeAiValue', () => {
+  it('does not replace loaded AI output with a resume placeholder', () => {
+    expect(
+      shouldReplaceResumeAiValue({
+        hasExistingAiOutput: true,
+        text: '',
+        resetExistingValue: true
+      })
+    ).toBe(false);
+  });
+
+  it('can initialize an empty AI record as a resume placeholder', () => {
+    expect(
+      shouldReplaceResumeAiValue({
+        hasExistingAiOutput: false,
+        text: '',
+        resetExistingValue: true
+      })
+    ).toBe(true);
+  });
+
+  it('can show resume unavailable text on an empty AI record', () => {
+    expect(
+      shouldReplaceResumeAiValue({
+        hasExistingAiOutput: false,
+        text: '停止中',
+        resetExistingValue: false
+      })
+    ).toBe(true);
   });
 });
 
