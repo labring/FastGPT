@@ -219,7 +219,7 @@ const LogsInner = () => {
                     setLogKeys(typeof value === 'function' ? value(logKeys) : value)
                   }
                 />
-                <PopoverConfirm
+                {/* <PopoverConfirm
                   Trigger={
                     <Button h={'36px'} rounded="4px" variant={'whiteBase'}>
                       {t('common:Export')}
@@ -228,7 +228,7 @@ const LogsInner = () => {
                   showCancel
                   content={t('app:logs_export_confirm_tip', { total })}
                   onConfirm={onExport ?? (() => {})}
-                />
+                /> */}
               </>
             )}
           </HStack>
