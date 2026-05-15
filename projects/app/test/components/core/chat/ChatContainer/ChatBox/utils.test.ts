@@ -5,6 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   mergeResumeCompletedChatRecords,
+  shouldAppendResumeInteractive,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
@@ -113,6 +114,86 @@ describe('shouldReplaceResumeAiValue', () => {
         hasExistingAiOutput: false,
         text: '停止中',
         resetExistingValue: false
+      })
+    ).toBe(true);
+  });
+});
+
+describe('shouldAppendResumeInteractive', () => {
+  it('does not append an unsubmitted resume interactive over a submitted one', () => {
+    const baseInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'usage-id',
+      params: {
+        description: '',
+        inputForm: [
+          {
+            type: 'fileSelect',
+            key: 'File',
+            label: 'File',
+            valueType: 'arrayString',
+            description: '',
+            required: false,
+            defaultValue: '',
+            canLocalUpload: true,
+            canSelectFile: true,
+            maxFiles: 5,
+            value: []
+          }
+        ]
+      }
+    } as const;
+
+    expect(
+      shouldAppendResumeInteractive({
+        existingValues: [
+          {
+            interactive: {
+              ...baseInteractive,
+              params: {
+                ...baseInteractive.params,
+                submitted: true,
+                inputForm: [
+                  {
+                    ...baseInteractive.params.inputForm[0],
+                    value: [
+                      {
+                        key: 'chat/file.docx',
+                        name: 'file.docx',
+                        type: 'file',
+                        url: 'http://localhost:3000/api/system/file/download/file.docx'
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        incomingInteractive: baseInteractive
+      })
+    ).toBe(false);
+  });
+
+  it('appends a new interactive when there is no submitted matching interactive', () => {
+    expect(
+      shouldAppendResumeInteractive({
+        existingValues: [],
+        incomingInteractive: {
+          type: 'userInput',
+          entryNodeIds: ['form-node-id'],
+          memoryEdges: [],
+          nodeOutputs: [],
+          usageId: 'usage-id',
+          params: {
+            description: '',
+            inputForm: [],
+            submitted: false
+          }
+        }
       })
     ).toBe(true);
   });

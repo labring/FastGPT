@@ -43,6 +43,7 @@ import {
   formatChatValue2InputType,
   mergeResumeCompletedChatRecords,
   rewriteHistoriesByInteractiveResponse,
+  shouldAppendResumeInteractive,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
@@ -623,6 +624,15 @@ const ChatBox = ({
             resetVariables({ variables });
           }
           if (event === SseResponseEventEnum.interactive && interactive) {
+            if (
+              !shouldAppendResumeInteractive({
+                existingValues: item.value,
+                incomingInteractive: interactive
+              })
+            ) {
+              return item;
+            }
+
             const val: AIChatItemValueItemType = {
               interactive
             };
