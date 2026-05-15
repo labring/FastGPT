@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
+  mergeResumeCompletedChatRecords,
   shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
 } from '@/components/core/chat/ChatContainer/ChatBox/utils';
@@ -79,5 +82,93 @@ describe('shouldResetResumeAiPlaceholder', () => {
         hasReceivedResumeOutput: false
       })
     ).toBe(false);
+  });
+});
+
+describe('mergeResumeCompletedChatRecords', () => {
+  it('preserves responseData replayed during resume when completed records overwrite the chat', () => {
+    const responseChatId = 'ai-data-id';
+    const currentRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'loading',
+        value: [{ text: { content: 'streaming' } }],
+        responseData: [
+          {
+            id: 'node-response-id',
+            nodeId: 'form-node-id',
+            moduleName: '表单输入',
+            moduleType: FlowNodeTypeEnum.formInput,
+            formInputResult: {
+              File: ['http://localhost:3000/api/system/file/download/file.docx']
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+    const completedRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ text: { content: 'done' } }],
+        responseData: []
+      }
+    ] as ChatSiteItemType[];
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords,
+      completedRecords,
+      responseChatId
+    });
+
+    expect(result[0].value).toEqual([{ text: { content: 'done' } }]);
+    expect(result[0].responseData).toEqual(currentRecords[0].responseData);
+  });
+
+  it('does not duplicate responseData already present in completed records', () => {
+    const responseChatId = 'ai-data-id';
+    const responseData = [
+      {
+        id: 'node-response-id',
+        nodeId: 'form-node-id',
+        moduleName: '表单输入',
+        moduleType: FlowNodeTypeEnum.formInput,
+        formInputResult: {
+          File: ['http://localhost:3000/api/system/file/download/file.docx']
+        }
+      }
+    ];
+    const currentRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'loading',
+        value: [{ text: { content: 'streaming' } }],
+        responseData
+      }
+    ] as ChatSiteItemType[];
+    const completedRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ text: { content: 'done' } }],
+        responseData
+      }
+    ] as ChatSiteItemType[];
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords,
+      completedRecords,
+      responseChatId
+    });
+
+    expect(result[0].responseData).toHaveLength(1);
   });
 });
