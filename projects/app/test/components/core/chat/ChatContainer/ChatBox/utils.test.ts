@@ -286,6 +286,184 @@ describe('mergeResumeCompletedChatRecords', () => {
 
     expect(result[0].responseData).toHaveLength(1);
   });
+
+  it('preserves hydrated submitted interactive values when completed records overwrite the chat', () => {
+    const responseChatId = 'ai-data-id';
+    const hydratedInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'usage-id',
+      params: {
+        description: '',
+        submitted: true,
+        inputForm: [
+          {
+            type: 'fileSelect',
+            key: 'File',
+            label: 'File',
+            valueType: 'arrayString',
+            description: '',
+            required: false,
+            defaultValue: '',
+            canLocalUpload: true,
+            canSelectFile: true,
+            maxFiles: 5,
+            value: [
+              {
+                name: 'file.docx',
+                url: 'https://example.com/file.docx'
+              }
+            ]
+          }
+        ]
+      }
+    };
+    const currentRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'loading',
+        value: [{ interactive: hydratedInteractive }]
+      }
+    ] as ChatSiteItemType[];
+    const completedRecords = [
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              ...hydratedInteractive,
+              params: {
+                ...hydratedInteractive.params,
+                inputForm: [
+                  {
+                    ...hydratedInteractive.params.inputForm[0],
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords,
+      completedRecords,
+      responseChatId
+    });
+
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        name: 'file.docx',
+        url: 'https://example.com/file.docx'
+      }
+    ]);
+  });
+
+  it('preserves hydrated submitted interactive values outside of the streaming response record', () => {
+    const responseChatId = 'streaming-ai-data-id';
+    const interactiveChatId = 'interactive-ai-data-id';
+    const hydratedInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'usage-id',
+      params: {
+        description: '',
+        submitted: true,
+        inputForm: [
+          {
+            type: 'fileSelect',
+            key: 'File',
+            label: 'File',
+            valueType: 'arrayString',
+            description: '',
+            required: false,
+            defaultValue: '',
+            canLocalUpload: true,
+            canSelectFile: true,
+            maxFiles: 5,
+            value: [
+              {
+                name: 'file.docx',
+                url: 'https://example.com/file.docx'
+              }
+            ]
+          }
+        ]
+      }
+    };
+    const currentRecords = [
+      {
+        id: interactiveChatId,
+        dataId: interactiveChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ interactive: hydratedInteractive }]
+      },
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'loading',
+        value: [{ text: { content: 'streaming' } }]
+      }
+    ] as ChatSiteItemType[];
+    const completedRecords = [
+      {
+        id: interactiveChatId,
+        dataId: interactiveChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              ...hydratedInteractive,
+              params: {
+                ...hydratedInteractive.params,
+                inputForm: [
+                  {
+                    ...hydratedInteractive.params.inputForm[0],
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ text: { content: 'done' } }]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords,
+      completedRecords,
+      responseChatId
+    });
+
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        name: 'file.docx',
+        url: 'https://example.com/file.docx'
+      }
+    ]);
+    expect(result[1].value).toEqual([{ text: { content: 'done' } }]);
+  });
 });
 
 describe('refreshSubmittedFormInteractiveValues', () => {
@@ -392,5 +570,67 @@ describe('refreshSubmittedFormInteractiveValues', () => {
     });
 
     expect(result).toBe(histories);
+  });
+
+  it('falls back to the only submitted form interactive when node ids do not match', () => {
+    const signedUrl =
+      'http://localhost:3000/api/system/file/download/token?filename=%E6%96%87%E4%BB%B6.docx';
+    const histories = [
+      {
+        id: 'ai-data-id',
+        dataId: 'ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              entryNodeIds: ['different-node-id'],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: {
+                description: '',
+                submitted: true,
+                inputForm: [
+                  {
+                    type: 'fileSelect',
+                    key: 'File',
+                    label: 'File',
+                    valueType: 'arrayString',
+                    description: '',
+                    required: false,
+                    defaultValue: '',
+                    canLocalUpload: true,
+                    canSelectFile: true,
+                    maxFiles: 5,
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = refreshSubmittedFormInteractiveValues({
+      histories,
+      nodeResponse: {
+        id: 'node-response-id',
+        nodeId: 'form-node-id',
+        moduleName: '表单输入',
+        moduleType: FlowNodeTypeEnum.formInput,
+        formInputResult: {
+          File: [signedUrl]
+        }
+      }
+    });
+
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        name: '文件.docx',
+        url: signedUrl
+      }
+    ]);
   });
 });
