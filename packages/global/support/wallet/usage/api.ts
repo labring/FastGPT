@@ -20,6 +20,8 @@ export type GetUsageDashboardProps = GetUsageProps & {
 export type GetUsageDashboardResponseItem = {
   date: Date;
   totalPoints: number;
+  inputTokens: number;
+  outputTokens: number;
 };
 
 export type CreateUsageProps = Omit<UsageSchemaType, '_id' | 'time'>;
