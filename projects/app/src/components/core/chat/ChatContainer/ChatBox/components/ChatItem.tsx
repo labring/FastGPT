@@ -8,6 +8,7 @@ import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
 import markdownStyles from '@/components/Markdown/index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
@@ -17,7 +18,10 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  ChatHistoryItemResType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
@@ -33,8 +37,19 @@ import dynamic from 'next/dynamic';
 import { useMemoizedFn, useSize } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import FormInputResult from '../../../components/FormInputResult';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
+
+const getFormInputResponseDataList = (responseData?: ChatHistoryItemResType[]) =>
+  responseData
+    ?.filter(
+      (item) =>
+        item.moduleType === FlowNodeTypeEnum.formInput &&
+        item.formInputResult &&
+        typeof item.formInputResult === 'object'
+    )
+    .map((item) => item.formInputResult as Record<string, unknown>) || [];
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -114,6 +129,12 @@ const AIContentCard = React.memo(function AIContentCard({
       {chatValue.map((value, i) => {
         const isLastResponse = isLastChild && i === chatValue.length - 1;
         const key = `${dataId}-ai-${i}`;
+        const folded = value.stepId
+          ? (chatValue.find((item) => item.stepTitle?.stepId === value.stepId)?.stepTitle?.folded ??
+            true)
+          : false;
+
+        if (folded) return null;
 
         return (
           <Box
@@ -198,6 +219,10 @@ const ChatItem = (props: Props) => {
     () => addStatisticalDataToHistoryItem(chat),
     [chat]
   );
+  const formInputResults = useMemoEnhance(
+    () => (chat.obj === ChatRoleEnum.AI ? getFormInputResponseDataList(chat.responseData) : []),
+    [chat]
+  );
 
   const isChatLog = chatType === 'log';
 
@@ -217,10 +242,7 @@ const ChatItem = (props: Props) => {
 
     if (chat.obj === ChatRoleEnum.AI) {
       // Remove empty text node
-      const filterList = chat.value.filter((item, i) => {
-        if (item.hideInUI) {
-          return false;
-        }
+      const filterList = chat.value.filter((item) => {
         if (item.text && !item.text.content?.trim()) {
           return false;
         }
@@ -456,9 +478,16 @@ const ChatItem = (props: Props) => {
                     questionGuides={questionGuides}
                     onOpenCiteModal={onOpenCiteModal}
                   />
+                  {isChatting &&
+                    i === splitAiResponseResults.length - 1 &&
+                    formInputResults.map((formInputResult, index) => (
+                      <Box key={index} mt={3}>
+                        <FormInputResult value={formInputResult} />
+                      </Box>
+                    ))}
                   {i === splitAiResponseResults.length - 1 && (
                     <ResponseTags
-                      showTags={!isLastChild || !isChatting}
+                      showTags={!isLastChild || !isChatting || !!chat.responseData?.length}
                       historyItem={chat}
                       onOpenCiteModal={onOpenCiteModal}
                     />
