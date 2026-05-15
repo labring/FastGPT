@@ -1,6 +1,7 @@
 {
   "aipoint_usage": "积分消耗",
   "all": "全部",
+  "model_status_all": "全部状态",
   "api_key": "API 密钥",
   "avg_response_time": "平均调用时长（秒）",
   "avg_ttfb": "平均首字时长（秒）",
@@ -97,7 +98,7 @@
   "train_select_base_model_first": "请先选择基座模型",
   "please_select": "请选择",
   "last_train_time": "最近训练时间",
-  "train_task_count": "训练任务数",
+  "train_task_count": "训练记录",
   "train_status_training": "训练中",
   "train_status_completed": "已完成",
   "train_status_error": "异常",
@@ -117,6 +118,7 @@
   "train_detail_result_worse_tip": "当前评估指标未优于上一版本，为避免效果波动，本次未更新模型。",
   "train_detail_download_data": "下载数据",
   "train_detail_confirm_delete": "确认删除该任务记录？",
+  "train_detail_confirm_delete_with_model": "同时删除生成的模型",
   "all_datasets": "全部知识库",
   "base_model_tab": "基础模型",
   "custom_model_tab": "已训练模型"

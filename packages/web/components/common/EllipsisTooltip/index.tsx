@@ -30,6 +30,8 @@ function isOverflow(el: HTMLElement): boolean {
 
 type EllipsisTooltipProps = {
   label: string;
+  /** 强制显示 tooltip，忽略溢出检测 */
+  forceShow?: boolean;
   /** Tooltip 展示内容，不传则默认使用 label */
   tooltipLabel?: React.ReactNode;
   /** 省略行数：1=单行（默认），n>1=多行 */
@@ -43,6 +45,7 @@ const EllipsisTooltip = ({
   tooltipLabel,
   lineClamp = 1,
   tooltipProps,
+  forceShow,
   ...boxProps
 }: EllipsisTooltipProps) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,7 +72,12 @@ const EllipsisTooltip = ({
         };
 
   return (
-    <MyTooltip label={tooltipLabel ?? label} isDisabled={!isOverflowed} hasArrow {...tooltipProps}>
+    <MyTooltip
+      label={tooltipLabel ?? label}
+      isDisabled={!forceShow && !isOverflowed}
+      hasArrow
+      {...tooltipProps}
+    >
       <Box ref={ref} onMouseEnter={handleMouseEnter} {...multiLineStyle} {...boxProps}>
         {label}
       </Box>

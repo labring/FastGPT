@@ -111,7 +111,6 @@ const BaseModelTrainModal = ({
   const [selectedEmptyFolderIds, setSelectedEmptyFolderIds] = useState<Set<string>>(new Set());
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
   const [searchKey, setSearchKey] = useState('');
-  const hasInitializedSelectionRef = useRef(false);
 
   const { data: datasetTree = [], loading: isFetching } = useRequest(
     async () => {
@@ -191,14 +190,6 @@ const BaseModelTrainModal = ({
     () => new Set(selectedDatasets.map((item) => item.datasetId)),
     [selectedDatasets]
   );
-
-  useEffect(() => {
-    if (hasInitializedSelectionRef.current || datasetTree.length === 0) return;
-
-    setSelectedDatasets(treeState.allLeafItems.map(toSelectedDataset));
-    setSelectedEmptyFolderIds(new Set(treeState.emptyFolderIds));
-    hasInitializedSelectionRef.current = true;
-  }, [datasetTree, treeState]);
 
   const matchedState = useMemo(() => {
     const keyword = searchKey.trim().toLowerCase();

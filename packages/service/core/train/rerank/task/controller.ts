@@ -230,6 +230,7 @@ export async function getRerankTrainTask(
  */
 export async function deleteRerankTrainTask(
   taskId: string,
+  options?: { deleteModel?: boolean },
   session?: ClientSession
 ): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId, null, { session }).lean();
@@ -244,7 +245,7 @@ export async function deleteRerankTrainTask(
 
   // 2. Clean up FastGPT model config + AI Proxy channel (registering stage artifact)
   const tunedModelId = task.checkpoint?.data?.registering?.tunedModelId;
-  if (tunedModelId) {
+  if (tunedModelId && options?.deleteModel !== false) {
     addLog.info('Deleting tuned model config associated with task', {
       taskId,
       tunedModelId
