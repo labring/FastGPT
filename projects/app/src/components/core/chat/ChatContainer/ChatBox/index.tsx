@@ -42,6 +42,7 @@ import {
   getInteractiveByHistories,
   formatChatValue2InputType,
   rewriteHistoriesByInteractiveResponse,
+  shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
@@ -1403,6 +1404,7 @@ const ChatBox = ({
     scrollToBottom('auto', 100);
     let resumeFinalStatus = ChatGenerateStatusEnum.done;
     let hasPreparedResumeAiRecord = false;
+    let hasReceivedResumeOutput = false;
 
     (async () => {
       try {
@@ -1424,11 +1426,15 @@ const ChatBox = ({
             if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
               upsertResumeAiPlaceholder(responseChatId, '', ChatStatusEnum.loading, {
-                resetExistingValue: !hasPreparedResumeAiRecord
+                resetExistingValue: shouldResetResumeAiPlaceholder({
+                  hasPreparedResumeAiRecord,
+                  hasReceivedResumeOutput
+                })
               });
               hasPreparedResumeAiRecord = true;
             }
             generatingMessage(message);
+            hasReceivedResumeOutput = true;
           }
         });
 
