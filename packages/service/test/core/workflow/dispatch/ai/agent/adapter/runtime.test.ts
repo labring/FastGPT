@@ -648,7 +648,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'child_llm_request_end',
       usage: {
-        moduleName: 'account_usage:tool_response_compress',
+        moduleName: 'account_usage:llm_compress_text',
         model: 'GPT-4',
         totalPoints: 0.2,
         inputTokens: 4,
@@ -656,6 +656,18 @@ describe('createWorkflowAgentLoopRuntime', () => {
       },
       requestIds: ['req_file_compress_1', 'req_file_compress_2'],
       seconds: 1.23
+    });
+    runtime.emitEvent?.({
+      type: 'child_llm_request_end',
+      usage: {
+        moduleName: 'account_usage:tool_response_compress',
+        model: 'GPT-4',
+        totalPoints: 0.3,
+        inputTokens: 5,
+        outputTokens: 3
+      },
+      requestIds: ['req_tool_response_compress'],
+      seconds: 1.5
     });
 
     expect(artifacts.nodeResponses).toEqual([
@@ -671,10 +683,17 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }),
       expect.objectContaining({
         id: 'agent_node-usage-req_file_compress_1',
-        moduleName: 'chat:tool_response_compress',
+        moduleName: 'chat:file_compress_text',
         moduleLogo: 'core/app/agent/child/contextCompress',
         runningTime: 1.23,
         llmRequestIds: ['req_file_compress_1', 'req_file_compress_2']
+      }),
+      expect.objectContaining({
+        id: 'agent_node-usage-req_tool_response_compress',
+        moduleName: 'chat:tool_response_compress',
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        runningTime: 1.5,
+        llmRequestIds: ['req_tool_response_compress']
       })
     ]);
   });

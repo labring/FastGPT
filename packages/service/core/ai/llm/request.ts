@@ -72,20 +72,6 @@ type LLMResponse = {
   completeMessages: ChatCompletionMessageParam[];
 };
 
-const readUsageNumber = (usage: unknown, paths: string[][]) => {
-  if (!usage || typeof usage !== 'object') return 0;
-
-  return paths.reduce((sum, path) => {
-    let value: unknown = usage;
-    for (const key of path) {
-      if (!value || typeof value !== 'object') return sum;
-      value = (value as Record<string, unknown>)[key];
-    }
-
-    return sum + (typeof value === 'number' ? value : 0);
-  }, 0);
-};
-
 /*
   底层封装 LLM 调用 帮助上层屏蔽 stream 和非 stream，以及 toolChoice 和 promptTool 模式。
   工具调用无论哪种模式，都存 toolChoice 的格式，promptTool 通过修改 toolChoice 的结构，形成特定的 messages 进行调用。
@@ -225,20 +211,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         accumulatedUsage.completion_tokens += usage.completion_tokens || 0;
         accumulatedUsage.total_tokens += usage.total_tokens || 0;
         if (isDevEnv) {
-          accumulatedUsage.cached_tokens += readUsageNumber(usage, [
-            ['prompt_tokens_details', 'cached_tokens'],
-            ['input_tokens_details', 'cached_tokens']
-          ]);
-          accumulatedUsage.cache_read_tokens += readUsageNumber(usage, [
-            ['cache_read_input_tokens'],
-            ['prompt_tokens_details', 'cache_read_tokens'],
-            ['input_tokens_details', 'cache_read_tokens']
-          ]);
-          accumulatedUsage.cache_write_tokens += readUsageNumber(usage, [
-            ['cache_creation_input_tokens'],
-            ['prompt_tokens_details', 'cache_creation_tokens'],
-            ['input_tokens_details', 'cache_creation_tokens']
-          ]);
+          const cachedTokens = usage.prompt_tokens_details?.cached_tokens || 0;
+          accumulatedUsage.cached_tokens += cachedTokens;
+          accumulatedUsage.cache_read_tokens += cachedTokens;
         }
       }
 

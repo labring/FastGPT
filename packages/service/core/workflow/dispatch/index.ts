@@ -65,7 +65,6 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
-import { hasErrorNodeResponse } from './ai/agent/adapter/nodeResponses';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -82,6 +81,7 @@ type Props = Omit<
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
 }>;
+
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
 };
@@ -925,21 +925,14 @@ export class WorkflowQueue {
                 // so runLoopRun / parallelRun failure detection and OTel span
                 // status see `.error` uniformly across both failure paths.
                 const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-                const existingNodeResponses = result[DispatchNodeResponseKeyEnum.nodeResponses];
                 const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
-                const shouldAppendFallbackNodeResponse =
-                  !!nodeResponseBase || !hasErrorNodeResponse(existingNodeResponses);
 
                 return {
                   ...result,
-                  ...(shouldAppendFallbackNodeResponse
-                    ? {
-                        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                          ...nodeResponseBase,
-                          error: errText
-                        }
-                      }
-                    : {}),
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...nodeResponseBase,
+                    error: errText
+                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )

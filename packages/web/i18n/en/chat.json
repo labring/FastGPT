@@ -31,6 +31,7 @@
   "completion_finish_stop": "Completed normally",
   "completion_finish_tool_calls": "Tool calls",
   "compress_llm_messages": "Context compression",
+  "file_compress_text": "File content compression",
   "tool_response_compress": "Tool response compression",
   "compress_llm_usage": "Text compression input and output tokens",
   "compress_llm_usage_point": "Text compression points consumption",

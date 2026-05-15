@@ -4,7 +4,6 @@ import {
   createPiAgentWorkflowRuntime,
   normalizePiAgentMessages
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent/adapter/runtime';
-import { filterFailedAgentNodeResponses } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/nodeResponses';
 
 const createProps = (overrides = {}) =>
   ({
@@ -348,7 +347,7 @@ describe('PiAgent workflow runtime', () => {
     expect(messages[0].content).toHaveLength(2);
   });
 
-  it('keeps only the meaningful agent failure response after filtering failed runs', () => {
+  it('keeps every master agent request response, including empty and failed runs', () => {
     const nodeResponses: any[] = [];
     const saveLLMRequestRecordFn = vi.fn();
     const runtime = createPiAgentWorkflowRuntime({
@@ -384,11 +383,23 @@ describe('PiAgent workflow runtime', () => {
     } as any);
 
     expect(nodeResponses).toHaveLength(3);
-    expect(filterFailedAgentNodeResponses(nodeResponses)).toEqual([
+    expect(nodeResponses).toEqual([
+      expect.objectContaining({
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'stop',
+        textOutput: '',
+        llmRequestIds: [expect.any(String)]
+      }),
       expect.objectContaining({
         moduleName: 'chat:master_agent_call',
         finishReason: 'error',
         errorText: 'provider failed',
+        llmRequestIds: [expect.any(String)]
+      }),
+      expect.objectContaining({
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'close',
+        textOutput: '',
         llmRequestIds: [expect.any(String)]
       })
     ]);
