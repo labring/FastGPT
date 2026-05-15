@@ -233,6 +233,7 @@ export async function getEmbeddingTrainTask(
  */
 export async function deleteEmbeddingTrainTask(
   taskId: string,
+  options?: { deleteModel?: boolean },
   session?: ClientSession
 ): Promise<void> {
   const task = await MongoEmbeddingTrainTask.findById(taskId, null, { session }).lean();
@@ -247,7 +248,7 @@ export async function deleteEmbeddingTrainTask(
 
   // 2. Clean up FastGPT model config + AI Proxy channel (registering stage artifact)
   const tunedModelId = task.checkpoint?.data?.registering?.tunedModelId;
-  if (tunedModelId) {
+  if (tunedModelId && options?.deleteModel !== false) {
     addLog.info('Deleting tuned model config associated with task', {
       taskId,
       tunedModelId

@@ -38,6 +38,7 @@ export const iconPaths = {
   'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
   'common/confirm/info': () => import('./icons/common/confirm/info.svg'),
   'common/confirm/deleteTip': () => import('./icons/common/confirm/deleteTip.svg'),
+  'common/confirm/newInfo': () => import('./icons/common/confirm/newInfo.svg'),
   'common/confirm/restoreTip': () => import('./icons/common/confirm/restoreTip.svg'),
   'common/confirm/rightTip': () => import('./icons/common/confirm/rightTip.svg'),
   'common/courseLight': () => import('./icons/common/courseLight.svg'),

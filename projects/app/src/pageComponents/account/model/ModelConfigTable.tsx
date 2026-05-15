@@ -59,7 +59,7 @@ const ModelTable = () => {
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: React.ReactNode; value: string | '' }[]>([
-    { label: t('common:All'), value: '' },
+    { label: t('common:model.all_provider'), value: '' },
     ...getModelProviders(i18n.language).map((item) => ({
       label: (
         <HStack>
@@ -73,12 +73,17 @@ const ModelTable = () => {
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
-    { label: t('common:All'), value: '' },
+    { label: t('common:model.all_type'), value: '' },
     ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
   ]);
 
   const [search, setSearch] = useState('');
-  const [showActive, setShowActive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const statusFilterList = useRef<{ label: string; value: string }[]>([
+    { label: t('account_model:model_status_all'), value: '' },
+    { label: t('account_model:enable_channel'), value: 'active' },
+    { label: t('account_model:forbid_channel'), value: 'inactive' }
+  ]);
 
   const {
     data: systemModelList = [],
@@ -205,7 +210,11 @@ const ModelTable = () => {
       const regx = new RegExp(search, 'i');
       const nameFilter = search ? regx.test(item.name) : true;
 
-      const activeFilter = showActive ? item.isActive : true;
+      const activeFilter = statusFilter
+        ? statusFilter === 'active'
+          ? item.isActive
+          : !item.isActive
+        : true;
 
       return providerFilter && nameFilter && activeFilter;
     });
@@ -219,7 +228,7 @@ const ModelTable = () => {
     i18n.language,
     provider,
     search,
-    showActive
+    statusFilter
   ]);
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
@@ -286,7 +295,7 @@ const ModelTable = () => {
 
   const isLoading = loadingModels || loadingData || updatingModel || testingModel;
 
-  const [showModelId, setShowModelId] = useState(true);
+  const [showModelId, setShowModelId] = useState(false);
 
   return (
     <>
@@ -294,7 +303,7 @@ const ModelTable = () => {
         <HStack flexShrink={0}>
           <MySelect
             h={'36px'}
-            w={'200px'}
+            w={'150px'}
             bg={'white'}
             value={provider}
             onChange={setProvider}
@@ -309,6 +318,16 @@ const ModelTable = () => {
             value={modelType}
             onChange={setModelType}
             list={selectModelTypeList.current}
+          />
+        </HStack>
+        <HStack flexShrink={0}>
+          <MySelect
+            h={'36px'}
+            w={'150px'}
+            bg={'white'}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            list={statusFilterList.current}
           />
         </HStack>
         <Box flex={1} />
@@ -348,13 +367,7 @@ const ModelTable = () => {
                 <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
                 {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
                 <Th fontSize={'xs'}>
-                  <Box
-                    cursor={'pointer'}
-                    onClick={() => setShowActive(!showActive)}
-                    color={showActive ? 'primary.600' : 'myGray.600'}
-                  >
-                    {t('account:model.active')}({activeModelLength})
-                  </Box>
+                  {t('account:model.active')}({activeModelLength})
                 </Th>
                 <Th fontSize={'xs'}></Th>
               </Tr>

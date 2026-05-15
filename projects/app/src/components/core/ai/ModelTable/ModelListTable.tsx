@@ -16,17 +16,25 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import { getDatasetsWithChildren } from '@/web/core/dataset/api';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { Dispatch, SetStateAction } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import type {
   ModelTabType,
   I18nT,
   ModelRow,
   OpenTrainModelHandler,
   TeamPermission,
-  TrainDetailModel
+  TrainDetailModel,
+  TrainTaskItem
 } from './types';
 import { modelTableTabValues } from './types';
 import { hasErrorTrainTask, hasRunningTrainTask } from './helpers/trainStatus';
@@ -49,6 +57,11 @@ export type ModelListTableProps = {
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
 };
 
+type DatasetInfo = {
+  datasetNameMap: Record<string, string>;
+  allDatasetIds: string[];
+};
+
 type ModelTableRowProps = {
   item: ModelRow;
   tabType: ModelTabType;
@@ -60,6 +73,7 @@ type ModelTableRowProps = {
   isSelected: (item: ModelRow) => boolean;
   handleOpenTrainDrawer: OpenTrainModelHandler;
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
+  datasetInfo: DatasetInfo;
 };
 
 type TableActionCellProps = {
@@ -88,14 +102,67 @@ const ModelListTable = ({
   handleOpenTrainDrawer,
   setTrainDetailDrawer
 }: ModelListTableProps) => {
+  const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
+
+  const [datasetInfo, setDatasetInfo] = useState<DatasetInfo>({
+    datasetNameMap: {},
+    allDatasetIds: []
+  });
+
+  const { runAsync: loadDatasets } = useRequest(
+    async () => {
+      const datasets = await getDatasetsWithChildren({ parentId: null });
+
+      type DatasetTreeItem = DatasetListItemType & {
+        children?: DatasetTreeItem[];
+      };
+
+      const reduceDatasets = (items: DatasetTreeItem[], acc: DatasetInfo): DatasetInfo => {
+        items.forEach((dataset) => {
+          if (dataset.type === DatasetTypeEnum.folder) {
+            if (dataset.children?.length) {
+              reduceDatasets(dataset.children as DatasetTreeItem[], acc);
+            }
+            return;
+          }
+
+          acc.allDatasetIds.push(dataset._id);
+          acc.datasetNameMap[dataset._id] = dataset.name;
+
+          if (dataset.children?.length) {
+            reduceDatasets(dataset.children as DatasetTreeItem[], acc);
+          }
+        });
+
+        return acc;
+      };
+
+      return reduceDatasets(datasets as DatasetTreeItem[], {
+        datasetNameMap: {},
+        allDatasetIds: []
+      });
+    },
+    {
+      errorToast: '',
+      onSuccess: (res) => {
+        setDatasetInfo(res);
+      }
+    }
+  );
+
+  useEffect(() => {
+    if (showTrainedModelColumns) {
+      loadDatasets();
+    }
+  }, [showTrainedModelColumns, loadDatasets]);
 
   return (
     <TableContainer mt={4} flex={'1 0 0'} h={0} overflowY={'auto'}>
       <Table>
         <Thead>
           <Tr color={'myGray.600'}>
-            <Th fontSize={'xs'}>
+            <Th fontSize={'xs'} w={showTrainedModelColumns ? '180px' : undefined}>
               <HStack>
                 {permissionConfig && hasManagePer && (
                   <Checkbox mr={1} isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
@@ -103,8 +170,24 @@ const ModelListTable = ({
                 <Box>{t('common:model.name')}</Box>
               </HStack>
             </Th>
-            <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-            <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+            <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
+              {t('common:model.model_type')}
+            </Th>
+            {showTrainedModelColumns ? (
+              <>
+                <Th fontSize={'xs'} w={'250px'}>
+                  {t('account_model:train_detail_train_time')}
+                </Th>
+                <Th fontSize={'xs'} w={'150px'}>
+                  {t('account_model:train_detail_trainer')}
+                </Th>
+                <Th fontSize={'xs'} w={'80px'}>
+                  {t('account_model:train_data')}
+                </Th>
+              </>
+            ) : (
+              <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+            )}
             {showTrainTaskColumn && (
               <Th
                 fontSize={'xs'}
@@ -135,7 +218,9 @@ const ModelListTable = ({
                 </HStack>
               </Th>
             )}
-            <Th fontSize={'xs'}>{t('account_model:action')}</Th>
+            <Th fontSize={'xs'} w={showTrainedModelColumns ? '240px' : undefined}>
+              {t('account_model:action')}
+            </Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -152,6 +237,7 @@ const ModelListTable = ({
               isSelected={isSelected}
               handleOpenTrainDrawer={handleOpenTrainDrawer}
               setTrainDetailDrawer={setTrainDetailDrawer}
+              datasetInfo={datasetInfo}
             />
           ))}
         </Tbody>
@@ -170,8 +256,10 @@ const ModelTableRow = ({
   toggleSelect,
   isSelected,
   handleOpenTrainDrawer,
-  setTrainDetailDrawer
+  setTrainDetailDrawer,
+  datasetInfo
 }: ModelTableRowProps) => {
+  const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
   const trainTaskCount = item.trainTaskList?.length || 0;
   const showRunningTask = hasRunningTrainTask(item.trainTaskList);
@@ -185,6 +273,38 @@ const ModelTableRow = ({
       baseModelType: item.trainableModelType
     });
   };
+
+  const latestTask = useMemo(() => {
+    if (!showTrainedModelColumns || !item.trainTaskList?.length) return undefined;
+    return [...item.trainTaskList].sort(
+      (a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+    )[0];
+  }, [showTrainedModelColumns, item.trainTaskList]);
+
+  const trainDatasetDisplay = useMemo(() => {
+    if (!showTrainedModelColumns || !latestTask) return '-';
+
+    const currentDatasetIds = Array.from(new Set((latestTask.datasetIds || []).filter(Boolean)));
+    const { allDatasetIds, datasetNameMap } = datasetInfo;
+
+    if (
+      allDatasetIds.length > 0 &&
+      currentDatasetIds.length === allDatasetIds.length &&
+      allDatasetIds.every((datasetId) => currentDatasetIds.includes(datasetId))
+    ) {
+      return t('account_model:all_datasets');
+    }
+
+    const names = currentDatasetIds
+      .map((datasetId) => datasetNameMap[datasetId])
+      .filter((name): name is string => Boolean(name));
+
+    if (names.length > 0) {
+      return names.join('、');
+    }
+
+    return '-';
+  }, [showTrainedModelColumns, latestTask, datasetInfo, t]);
 
   return (
     <Tr _hover={{ bg: 'myGray.50' }}>
@@ -206,7 +326,21 @@ const ModelTableRow = ({
       <Td>
         <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
       </Td>
-      <Td fontSize={'sm'}>{item.priceLabel}</Td>
+      {showTrainedModelColumns ? (
+        <>
+          <Td fontSize={'sm'} color={'myGray.700'}>
+            {latestTask?.createTime ? formatTime2YMDHMS(latestTask.createTime) : '-'}
+          </Td>
+          <Td fontSize={'sm'} color={'myGray.700'}>
+            {latestTask?.creatorName || '-'}
+          </Td>
+          <Td fontSize={'sm'}>
+            <EllipsisTooltip label={trainDatasetDisplay} color={'myGray.700'} />
+          </Td>
+        </>
+      ) : (
+        <Td fontSize={'sm'}>{item.priceLabel}</Td>
+      )}
       {showTrainTaskColumn && (
         <Td
           fontSize={'sm'}
@@ -251,7 +385,12 @@ const ModelTableRow = ({
                       animation: 'modelTrainTaskSpin 1s linear infinite'
                     }}
                   >
-                    <MyIcon name={'common/running'} w={'16px'} h={'16px'} transform={'scaleX(-1)'} />
+                    <MyIcon
+                      name={'common/running'}
+                      w={'16px'}
+                      h={'16px'}
+                      transform={'scaleX(-1)'}
+                    />
                   </Box>
                 </MyTooltip>
               )}

@@ -11,7 +11,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> {
-  const { taskId, force } = req.query as DeleteEmbeddingTrainTaskRequest;
+  const { taskId, force, deleteModel } = req.query as DeleteEmbeddingTrainTaskRequest;
 
   if (!taskId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskCannotDelete);
   }
 
-  await deleteEmbeddingTrainTask(taskId);
+  await deleteEmbeddingTrainTask(taskId, { deleteModel: deleteModel !== 'false' });
 
   // Audit log
   (async () => {

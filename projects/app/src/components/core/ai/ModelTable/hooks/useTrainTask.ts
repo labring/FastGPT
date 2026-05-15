@@ -1,5 +1,7 @@
-import { useCallback, useState } from 'react';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useMemoizedFn } from 'ahooks';
+import { useDisclosure, Button, Checkbox, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import {
@@ -23,11 +25,13 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
   const [deletingTaskIds, setDeletingTaskIds] = useState<Set<string>>(new Set());
   const [downloadingTaskIds, setDownloadingTaskIds] = useState<Set<string>>(new Set());
 
-  const { openConfirm: openDeleteConfirm, ConfirmModal: DeleteConfirmModal } = useConfirm({
-    type: 'delete',
-    title: t('common:Delete'),
-    content: t('account_model:train_detail_confirm_delete')
-  });
+  const {
+    isOpen: isDeleteModalOpen,
+    onOpen: onDeleteModalOpen,
+    onClose: onDeleteModalClose
+  } = useDisclosure();
+  const [deleteTaskId, setDeleteTaskId] = useState('');
+  const [showModelOption, setShowModelOption] = useState(false);
 
   const { runAsync: onRetryTask } = useRequest(
     async (taskId: string) => {
@@ -58,15 +62,16 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
   );
 
   const { runAsync: onDeleteTask } = useRequest(
-    async (taskId: string) => {
+    async (taskId: string, deleteModel: boolean) => {
       if (deletingTaskIds.has(taskId)) return;
 
       setDeletingTaskIds((prev) => new Set(prev).add(taskId));
       try {
+        const params = { taskId, force: 'true', deleteModel: deleteModel ? 'true' : 'false' };
         if (isRerank) {
-          return await deleteRerankTrainTask({ taskId, force: 'true' });
+          return await deleteRerankTrainTask(params);
         }
-        return await deleteEmbeddingTrainTask({ taskId, force: 'true' });
+        return await deleteEmbeddingTrainTask(params);
       } finally {
         setDeletingTaskIds((prev) => {
           const newSet = new Set(prev);
@@ -86,16 +91,13 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
   );
 
   const handleDeleteTask = useCallback(
-    (taskId: string) => {
+    (taskId: string, withModelOption = false) => {
       if (deletingTaskIds.has(taskId)) return;
-
-      return openDeleteConfirm({
-        onConfirm: async () => {
-          await onDeleteTask(taskId);
-        }
-      })();
+      setDeleteTaskId(taskId);
+      setShowModelOption(withModelOption);
+      onDeleteModalOpen();
     },
-    [deletingTaskIds, onDeleteTask, openDeleteConfirm]
+    [deletingTaskIds, onDeleteModalOpen]
   );
 
   const handleDownloadData = useCallback(
@@ -183,6 +185,74 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
 
   const { runAsync: onDownloadData } = useRequest(handleDownloadData, {
     errorToast: t('app:download_failed')
+  });
+
+  // useMemoizedFn ensures a stable component reference so React doesn't remount the modal
+  const DeleteConfirmModal = useMemoizedFn(() => {
+    const [deleteModel, setDeleteModel] = useState(false);
+    const isDeleting = deletingTaskIds.has(deleteTaskId);
+
+    // Reset checkbox each time the modal opens
+    useEffect(() => {
+      if (isDeleteModalOpen) {
+        setDeleteModel(false);
+      }
+    }, [isDeleteModalOpen]);
+
+    return React.createElement(
+      MyModal,
+      {
+        isOpen: isDeleteModalOpen,
+        onClose: onDeleteModalClose,
+        iconSrc: 'common/confirm/newInfo',
+        title: t('common:delete_warning'),
+        maxW: ['90vw', '400px']
+      },
+      React.createElement(
+        ModalBody,
+        { pt: 5, fontSize: 'sm' as const },
+        React.createElement(
+          Text,
+          { mb: showModelOption ? 3 : 0 },
+          t('account_model:train_detail_confirm_delete')
+        ),
+        showModelOption
+          ? React.createElement(
+              Checkbox,
+              {
+                isChecked: deleteModel,
+                onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                  setDeleteModel(e.target.checked)
+              },
+              t('account_model:train_detail_confirm_delete_with_model')
+            )
+          : null
+      ),
+      React.createElement(
+        ModalFooter,
+        null,
+        React.createElement(
+          Button,
+          { size: 'sm' as const, variant: 'whiteBase', onClick: onDeleteModalClose, px: 5 },
+          t('common:Cancel')
+        ),
+        React.createElement(
+          Button,
+          {
+            size: 'sm' as const,
+            variant: 'dangerFill',
+            ml: 3,
+            px: 5,
+            isLoading: isDeleting,
+            onClick: async () => {
+              await onDeleteTask(deleteTaskId, deleteModel);
+              onDeleteModalClose();
+            }
+          },
+          t('common:Delete')
+        )
+      )
+    );
   });
 
   return {
