@@ -7,7 +7,7 @@ import type {
 import type { ChatSiteItemType } from './type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   extractDeepestInteractive,
   getLastInteractiveValue
@@ -17,6 +17,8 @@ import {
   checkInteractiveResponseStatus,
   mergeChatResponseData
 } from '@fastgpt/global/core/chat/utils';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { normalizeFormInputResultFile } from '../../components/FormInputResult';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -147,16 +149,89 @@ export const shouldAppendResumeInteractive = ({
     if (
       (existingFinalInteractive.type === 'userInput' ||
         existingFinalInteractive.type === 'agentPlanAskUserForm') &&
-      existingFinalInteractive.params.submitted &&
-      (incomingFinalInteractive.type === 'userInput' ||
-        incomingFinalInteractive.type === 'agentPlanAskUserForm') &&
-      !incomingFinalInteractive.params.submitted
+      existingFinalInteractive.params.submitted
     ) {
       return true;
     }
 
     return false;
   });
+};
+
+export const refreshSubmittedFormInteractiveValues = ({
+  histories,
+  nodeResponse
+}: {
+  histories: ChatSiteItemType[];
+  nodeResponse: ChatHistoryItemResType;
+}): ChatSiteItemType[] => {
+  const formInputResult = nodeResponse.formInputResult;
+  if (!formInputResult || typeof formInputResult !== 'object' || Array.isArray(formInputResult)) {
+    return histories;
+  }
+
+  const formInputValueMap = formInputResult as Record<string, unknown>;
+  let hasUpdated = false;
+
+  const nextHistories = histories.map((history) => {
+    if (history.obj !== ChatRoleEnum.AI) return history;
+
+    const nextValues = history.value.map((value) => {
+      if (!value.interactive) return value;
+
+      const finalInteractive = extractDeepestInteractive(value.interactive);
+      if (
+        finalInteractive.type !== 'userInput' &&
+        finalInteractive.type !== 'agentPlanAskUserForm'
+      ) {
+        return value;
+      }
+      if (!finalInteractive.params.submitted) return value;
+      if (!finalInteractive.entryNodeIds?.includes(nodeResponse.nodeId)) return value;
+
+      const nextInputForm = finalInteractive.params.inputForm.map((input) => {
+        if (!(input.key in formInputValueMap)) return input;
+
+        const nextValue = (() => {
+          const responseValue = formInputValueMap[input.key];
+          if (input.type !== FlowNodeInputTypeEnum.fileSelect || !Array.isArray(responseValue)) {
+            return responseValue;
+          }
+
+          return responseValue
+            .map(normalizeFormInputResultFile)
+            .filter((file): file is NonNullable<ReturnType<typeof normalizeFormInputResultFile>> =>
+              Boolean(file)
+            );
+        })();
+
+        hasUpdated = true;
+        return {
+          ...input,
+          value: nextValue
+        };
+      });
+
+      return {
+        ...value,
+        interactive: {
+          ...finalInteractive,
+          params: {
+            ...finalInteractive.params,
+            inputForm: nextInputForm,
+            submitted: true
+          }
+        }
+      };
+    });
+
+    return {
+      ...history,
+      value: nextValues
+    };
+  });
+
+  return hasUpdated ? nextHistories : histories;
 };
 
 const isSameArray = (a?: string[], b?: string[]) => {

@@ -42,6 +42,7 @@ import {
   getInteractiveByHistories,
   formatChatValue2InputType,
   mergeResumeCompletedChatRecords,
+  refreshSubmittedFormInteractiveValues,
   rewriteHistoriesByInteractiveResponse,
   shouldAppendResumeInteractive,
   shouldReplaceResumeAiValue,
@@ -391,9 +392,16 @@ const ChatBox = ({
       durationSeconds,
       autoTTSResponse
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      setChatRecords((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
+      setChatRecords((state) => {
+        const histories = nodeResponse?.formInputResult
+          ? refreshSubmittedFormInteractiveValues({
+              histories: state,
+              nodeResponse
+            })
+          : state;
+
+        return histories.map((item, index) => {
+          if (index !== histories.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
 
           if (autoTTSResponse) {
@@ -675,8 +683,8 @@ const ChatBox = ({
           }
 
           return item;
-        })
-      );
+        });
+      });
 
       const forceScroll = event === SseResponseEventEnum.interactive;
       generatingScroll(forceScroll);
