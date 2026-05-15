@@ -98,26 +98,48 @@ export const mergeResumeCompletedChatRecords = ({
   completedRecords: ChatSiteItemType[];
   responseChatId: string;
 }) => {
-  const resumedResponseData = currentRecords.find(
-    (item) => item.dataId === responseChatId
-  )?.responseData;
-  if (!resumedResponseData?.length) return completedRecords;
+  const currentAiRecordMap = new Map(
+    currentRecords
+      .filter(
+        (item): item is Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }> =>
+          item.obj === ChatRoleEnum.AI && !!item.dataId
+      )
+      .map((item) => [item.dataId as string, item])
+  );
+  const currentAiRecord = currentAiRecordMap.get(responseChatId);
+  const resumedResponseData = currentAiRecord?.responseData;
+  const hasCurrentInteractive = Array.from(currentAiRecordMap.values()).some((record) =>
+    record.value.some((value) => value.interactive)
+  );
+  if (!resumedResponseData?.length && !hasCurrentInteractive) {
+    return completedRecords;
+  }
 
   return completedRecords.map((item) => {
-    if (item.dataId !== responseChatId) return item;
+    if (item.obj !== ChatRoleEnum.AI) return item;
+    const matchedCurrentAiRecord = item.dataId ? currentAiRecordMap.get(item.dataId) : undefined;
+    const shouldMergeResponseData = item.dataId === responseChatId;
 
-    const mergedResponseData = mergeChatResponseData([
-      ...(item.responseData || []),
-      ...(resumedResponseData.filter(
-        (resumedItem) =>
-          !item.responseData?.some((completedItem) =>
-            areSameChatResponseDataItem(completedItem, resumedItem)
-          )
-      ) || [])
-    ]);
+    if (!matchedCurrentAiRecord && !shouldMergeResponseData) return item;
+
+    const mergedResponseData = shouldMergeResponseData && resumedResponseData?.length
+      ? mergeChatResponseData([
+          ...(item.responseData || []),
+          ...(resumedResponseData.filter(
+            (resumedItem) =>
+              !item.responseData?.some((completedItem) =>
+                areSameChatResponseDataItem(completedItem, resumedItem)
+              )
+          ) || [])
+        ])
+      : item.responseData;
 
     return {
       ...item,
+      value: mergeSubmittedInteractiveValues({
+        completedValues: item.value,
+        currentValues: matchedCurrentAiRecord?.value || []
+      }),
       responseData: mergedResponseData
     };
   });
@@ -125,6 +147,65 @@ export const mergeResumeCompletedChatRecords = ({
 
 const areSameChatResponseDataItem = (a: ChatHistoryItemResType, b: ChatHistoryItemResType) =>
   a.id === b.id && a.nodeId === b.nodeId;
+
+const areSameInteractive = (
+  a: WorkflowInteractiveResponseType,
+  b: WorkflowInteractiveResponseType
+) => {
+  const finalA = extractDeepestInteractive(a);
+  const finalB = extractDeepestInteractive(b);
+
+  return (
+    finalA.type === finalB.type &&
+    (finalA.usageId === finalB.usageId || isSameArray(finalA.entryNodeIds, finalB.entryNodeIds))
+  );
+};
+
+const mergeSubmittedInteractiveValues = ({
+  completedValues,
+  currentValues
+}: {
+  completedValues: AIChatItemValueItemType[];
+  currentValues: AIChatItemValueItemType[];
+}) => {
+  const currentSubmittedInteractives = currentValues
+    .map((value) => value.interactive)
+    .filter((interactive): interactive is WorkflowInteractiveResponseType => {
+      if (!interactive) return false;
+
+      const finalInteractive = extractDeepestInteractive(interactive);
+      return (
+        (finalInteractive.type === 'userInput' ||
+          finalInteractive.type === 'agentPlanAskUserForm') &&
+        !!finalInteractive.params.submitted
+      );
+    });
+
+  if (!currentSubmittedInteractives.length) return completedValues;
+
+  let hasUpdated = false;
+  const nextValues = completedValues.map((value) => {
+    if (!value.interactive) return value;
+
+    const finalInteractive = extractDeepestInteractive(value.interactive);
+    if (finalInteractive.type !== 'userInput' && finalInteractive.type !== 'agentPlanAskUserForm') {
+      return value;
+    }
+
+    const currentInteractive = currentSubmittedInteractives.find((interactive) =>
+      areSameInteractive(interactive, value.interactive!)
+    );
+    if (!currentInteractive) return value;
+
+    hasUpdated = true;
+    return {
+      ...value,
+      interactive: currentInteractive
+    };
+  });
+
+  return hasUpdated ? nextValues : completedValues;
+};
 
 export const shouldAppendResumeInteractive = ({
   existingValues,
@@ -171,6 +252,23 @@ export const refreshSubmittedFormInteractiveValues = ({
   }
 
   const formInputValueMap = formInputResult as Record<string, unknown>;
+  const formInputKeys = Object.keys(formInputValueMap);
+  const submittedFormInteractiveCount = histories.reduce((count, history) => {
+    if (history.obj !== ChatRoleEnum.AI) return count;
+
+    return (
+      count +
+      history.value.filter((value) => {
+        if (!value.interactive) return false;
+        const finalInteractive = extractDeepestInteractive(value.interactive);
+        return (
+          (finalInteractive.type === 'userInput' ||
+            finalInteractive.type === 'agentPlanAskUserForm') &&
+          !!finalInteractive.params.submitted
+        );
+      }).length
+    );
+  }, 0);
   let hasUpdated = false;
 
   const nextHistories = histories.map((history) => {
@@ -187,7 +285,12 @@ export const refreshSubmittedFormInteractiveValues = ({
         return value;
       }
       if (!finalInteractive.params.submitted) return value;
-      if (!finalInteractive.entryNodeIds?.includes(nodeResponse.nodeId)) return value;
+
+      const matchedByNodeId = finalInteractive.entryNodeIds?.includes(nodeResponse.nodeId);
+      const matchedByOnlySubmittedForm =
+        submittedFormInteractiveCount === 1 &&
+        finalInteractive.params.inputForm.some((input) => formInputKeys.includes(input.key));
+      if (!matchedByNodeId && !matchedByOnlySubmittedForm) return value;
 
       const nextInputForm = finalInteractive.params.inputForm.map((input) => {
         if (!(input.key in formInputValueMap)) return input;
