@@ -492,7 +492,8 @@ describe('pushChatRecords', () => {
         shareId: props.shareId,
         outLinkUid: props.outLinkUid,
         userContent: props.userContent,
-        responseChatItemId
+        responseChatItemId,
+        newTitle: props.newTitle
       });
 
       expect(props.userContent.dataId).toBeDefined();
@@ -553,7 +554,8 @@ describe('pushChatRecords', () => {
         shareId: props.shareId,
         outLinkUid: props.outLinkUid,
         userContent: props.userContent,
-        responseChatItemId
+        responseChatItemId,
+        newTitle: props.newTitle
       });
 
       await finalizeChatRound(props);
@@ -592,7 +594,8 @@ describe('pushChatRecords', () => {
         shareId: props.shareId,
         outLinkUid: props.outLinkUid,
         userContent: props.userContent,
-        responseChatItemId
+        responseChatItemId,
+        newTitle: props.newTitle
       });
 
       await failChatRound({
