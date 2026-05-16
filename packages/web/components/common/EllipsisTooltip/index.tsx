@@ -8,24 +8,24 @@ import MyTooltip from '../MyTooltip/index';
 
 function isOverflow(el: HTMLElement): boolean {
   if (!el) return false;
-  if (el.clientWidth < el.scrollWidth) return true;
 
-  if (el.clientWidth === el.scrollWidth) {
-    const clientWidth = el.getBoundingClientRect().width;
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const rangeWidth = range.getBoundingClientRect().width;
-    const style = window.getComputedStyle(el);
-    const padding =
-      (parseInt(style.paddingLeft, 10) || 0) + (parseInt(style.paddingRight, 10) || 0);
-    const scrollWidth = rangeWidth + padding;
-    if (clientWidth < scrollWidth && Math.abs(el.scrollWidth - scrollWidth) < 1) return true;
-  }
+  // 单行水平溢出（white-space: nowrap + text-overflow: ellipsis）
+  if (el.scrollWidth > el.clientWidth) return true;
 
-  const lineClamp = Number(window.getComputedStyle(el).getPropertyValue('-webkit-line-clamp'));
-  if (lineClamp > 1 && el.clientHeight < el.scrollHeight) return true;
+  // 多行 / 单行 line-clamp：临时移除截断约束，对比自然高度与截断高度
+  // 直接修改原元素 inline style（优先级高于 class），避免克隆带来的继承样式丢失问题
+  const clampedHeight = el.getBoundingClientRect().height;
+  el.style.webkitLineClamp = 'unset';
+  el.style.overflow = 'visible';
+  el.style.maxHeight = 'none';
+  const naturalHeight = el.getBoundingClientRect().height;
+  // 置空 inline style，让 class 样式重新生效
+  el.style.webkitLineClamp = '';
+  el.style.overflow = '';
+  el.style.maxHeight = '';
 
-  return false;
+  // 1px 容差防止行高计算的浮点误差
+  return naturalHeight > clampedHeight + 1;
 }
 
 type EllipsisTooltipProps = {
@@ -59,26 +59,15 @@ const EllipsisTooltip = ({
     if (ref.current) setIsOverflowed(isOverflow(ref.current));
   };
 
-  const multiLineStyle =
-    lineClamp > 1
-      ? {
-          overflow: 'hidden' as const,
-          sx: { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: lineClamp }
-        }
-      : {
-          whiteSpace: 'nowrap' as const,
-          overflow: 'hidden' as const,
-          textOverflow: 'ellipsis' as const
-        };
-
   return (
     <MyTooltip
       label={tooltipLabel ?? label}
       isDisabled={!forceShow && !isOverflowed}
       hasArrow
+      shouldWrapChildren={false}
       {...tooltipProps}
     >
-      <Box ref={ref} onMouseEnter={handleMouseEnter} {...multiLineStyle} {...boxProps}>
+      <Box ref={ref} onMouseEnter={handleMouseEnter} noOfLines={lineClamp} {...boxProps}>
         {label}
       </Box>
     </MyTooltip>

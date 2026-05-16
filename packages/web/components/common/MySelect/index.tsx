@@ -178,7 +178,7 @@ const MySelect = <T = any,>(
                 display={'block'}
                 mb={0.5}
               >
-                <Flex alignItems={'center'}>
+                <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
                   {item.icon && (
                     <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
                   )}
@@ -244,7 +244,7 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
-            <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
+            <Flex alignItems={'center'} flex="1" minW={0} overflow={'hidden'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
                 <>{valueLabel}</>

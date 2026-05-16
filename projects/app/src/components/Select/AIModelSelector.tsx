@@ -11,6 +11,7 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
+import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -41,9 +42,13 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
 }) {
   return (
     <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
-      <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
-        {name}
-      </Box>
+      <EllipsisTooltip
+        label={name}
+        noOfLines={noOfLines ?? 1}
+        flex={'1 1 0'}
+        minW={0}
+        overflow={'hidden'}
+      />
       {showTestModeTip && (
         <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
           <TestModeBetaTag />
