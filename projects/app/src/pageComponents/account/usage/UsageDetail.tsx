@@ -103,7 +103,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
           <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('account_usage:app_name')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:project_name')}:</FormLabel>
           <Box>{t(usage.appName as any) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>

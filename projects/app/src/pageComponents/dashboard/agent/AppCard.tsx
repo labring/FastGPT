@@ -542,6 +542,7 @@ const AppCard = React.memo(function AppCard({
                   <Box
                     color={'#999'}
                     maxW={'60px'}
+                    lineHeight={'16px'}
                     overflow={'hidden'}
                     textOverflow={'ellipsis'}
                     whiteSpace={'nowrap'}
@@ -574,6 +575,7 @@ const AppCard = React.memo(function AppCard({
                   <Box
                     color={'#999'}
                     maxW={'60px'}
+                    lineHeight={'16px'}
                     overflow={'hidden'}
                     textOverflow={'ellipsis'}
                     whiteSpace={'nowrap'}

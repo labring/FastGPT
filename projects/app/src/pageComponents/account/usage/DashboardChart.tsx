@@ -95,17 +95,19 @@ const DashboardChart = ({
     };
   }, []);
 
+  const tokenChartData = useMemo(
+    () => totalPoints.map((d) => ({ ...d, totalTokens: (d.inputTokens || 0) + (d.outputTokens || 0) })),
+    [totalPoints]
+  );
+
   // 加载状态
   if (isLoading) {
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-          <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+          <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
-          </Box>
-          <Box color={'myGray.500'} ml={2} fontSize={'16px'} alignSelf={'flex-end'} mb={'2px'}>
-            {`${totalInputTokens + totalOutputTokens} Tokens`}
+            {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
           </Box>
         </Flex>
         <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -121,12 +123,9 @@ const DashboardChart = ({
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-          <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+          <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
-          </Box>
-          <Box color={'myGray.500'} ml={2} fontSize={'16px'} alignSelf={'flex-end'} mb={'2px'}>
-            {`${totalInputTokens + totalOutputTokens} Tokens`}
+            {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
           </Box>
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
@@ -140,20 +139,12 @@ const DashboardChart = ({
 
   const { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } = recharts;
 
-  const tokenChartData = useMemo(
-    () => totalPoints.map((d) => ({ ...d, totalTokens: (d.inputTokens || 0) + (d.outputTokens || 0) })),
-    [totalPoints]
-  );
-
   return (
     <>
       <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-        <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+        <Box color={'black'}>{t('account_usage:total_usage')}</Box>
         <Box color={'primary.600'} ml={2}>
-          {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
-        </Box>
-        <Box color={'myGray.500'} ml={2} fontSize={'16px'} alignSelf={'flex-end'} mb={'2px'}>
-          {`${totalInputTokens + totalOutputTokens} Tokens`}
+          {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
         </Box>
       </Flex>
       <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -220,9 +211,9 @@ const DashboardChart = ({
                     boxShadow={'0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'}
                   >
                     <Box fontSize={'mini'} color={'myGray.600'} mb={3}>{data.date}</Box>
-                    <Box fontSize={'14px'} color={'myGray.900'} fontWeight={'medium'}>{`总 Token: ${input + output}`}</Box>
-                    <Box fontSize={'12px'} color={'myGray.600'}>{`输入: ${input}`}</Box>
-                    <Box fontSize={'12px'} color={'myGray.600'}>{`输出: ${output}`}</Box>
+                    <Box fontSize={'14px'} color={'myGray.900'} fontWeight={'medium'}>{`${t('account_usage:total_token_label')}${input + output}`}</Box>
+                    <Box fontSize={'12px'} color={'myGray.600'}>{`${t('account_usage:input_token_label')}${input}`}</Box>
+                    <Box fontSize={'12px'} color={'myGray.600'}>{`${t('account_usage:output_token_label')}${output}`}</Box>
                   </Box>
                 );
               }

@@ -632,6 +632,7 @@ export const iconPaths = {
   'support/bill/payRecordLight': () => import('./icons/support/bill/payRecordLight.svg'),
   'support/bill/priceLight': () => import('./icons/support/bill/priceLight.svg'),
   'support/bill/shoppingCart': () => import('./icons/support/bill/shoppingCart.svg'),
+  'support/bill/tokens': () => import('./icons/support/bill/tokens.svg'),
   'support/bill/wallet': () => import('./icons/support/bill/wallet.svg'),
   'support/config/configFill': () => import('./icons/support/config/configFill.svg'),
   'support/config/configLight': () => import('./icons/support/config/configLight.svg'),
