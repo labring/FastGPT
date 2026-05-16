@@ -263,7 +263,10 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
                     <MyTooltip
                       label={noTagSelected ? t('workflow:tag_filter_select_tag_first') : undefined}
                     >
-                      <Box opacity={noTagSelected ? 0.5 : 1} pointerEvents={noTagSelected ? 'none' : 'auto'}>
+                      <Box
+                        opacity={noTagSelected ? 0.5 : 1}
+                        pointerEvents={noTagSelected ? 'none' : 'auto'}
+                      >
                         <ReferSelector
                           placeholder={t('common:select_reference_variable')}
                           list={filteredReferenceList}

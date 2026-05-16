@@ -43,7 +43,13 @@ type Props = {
 
 type FilterMode = 'closed' | 'manual';
 
-const TagFilterSection = ({ datasetIds, value, onChange, authTmbId = false, onAuthTmbIdChange }: Props) => {
+const TagFilterSection = ({
+  datasetIds,
+  value,
+  onChange,
+  authTmbId = false,
+  onAuthTmbIdChange
+}: Props) => {
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<FilterMode>(() => (value ? 'manual' : 'closed'));
