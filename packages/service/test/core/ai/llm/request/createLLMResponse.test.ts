@@ -1440,7 +1440,7 @@ describe('createLLMResponse', () => {
       ).rejects.toThrow();
     });
 
-    it('should handle API error with throwError=false', async () => {
+    it('should keep usage from API error response with throwError=false', async () => {
       const mockResponse = {
         choices: [
           {
@@ -1454,8 +1454,8 @@ describe('createLLMResponse', () => {
         error: new Error('Some error'),
         usage: {
           prompt_tokens: 10,
-          completion_tokens: 0,
-          total_tokens: 10
+          completion_tokens: 2,
+          total_tokens: 12
         }
       };
 
@@ -1483,11 +1483,11 @@ describe('createLLMResponse', () => {
 
       expect(result.error).toBeDefined();
       expect(result.finish_reason).toBe('error');
-      expect(result.usage.inputTokens).toBe(0);
-      expect(result.usage.outputTokens).toBe(0);
+      expect(result.usage.inputTokens).toBe(10);
+      expect(result.usage.outputTokens).toBe(2);
     });
 
-    it('should handle stream error gracefully', async () => {
+    it('should keep usage when stream is interrupted with partial response', async () => {
       const errorChunks = [
         {
           choices: [{ delta: { content: 'Hello' }, finish_reason: null }]
@@ -1551,7 +1551,19 @@ describe('createLLMResponse', () => {
       });
 
       expect(result.answerText).toBe('Hello');
+      expect(result.finish_reason).toBe('error');
       expect(result.error).toBeDefined();
+      expect(result.usage.inputTokens).toBe(5);
+      expect(result.usage.outputTokens).toBe(1);
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            answerText: 'Hello',
+            finish_reason: 'error',
+            error: expect.any(Error)
+          })
+        })
+      );
     });
   });
 

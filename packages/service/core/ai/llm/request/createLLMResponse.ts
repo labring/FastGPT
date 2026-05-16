@@ -222,8 +222,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       toolCalls,
       finish_reason,
       usage: {
-        inputTokens: error ? 0 : inputTokens,
-        outputTokens: error ? 0 : outputTokens,
+        inputTokens,
+        outputTokens,
         usedUserOpenAIKey: aiRequestMeta.usedUserOpenAIKey
       },
       requestId,
