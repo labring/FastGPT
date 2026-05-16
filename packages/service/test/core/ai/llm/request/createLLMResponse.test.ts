@@ -35,10 +35,6 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
   parsePromptToolCall: vi.fn((content: string) => ({
     answer: content,

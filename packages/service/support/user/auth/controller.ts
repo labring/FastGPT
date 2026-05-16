@@ -1,6 +1,6 @@
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { MongoUserAuth } from './schema';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { z } from 'zod';

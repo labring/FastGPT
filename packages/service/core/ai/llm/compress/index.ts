@@ -14,7 +14,7 @@ import {
 import type { ContextCheckpointValueType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';

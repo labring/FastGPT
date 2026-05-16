@@ -1,7 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoTeamAudit } from './schema';
 import type {
   AdminAuditEventEnum,

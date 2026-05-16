@@ -7,7 +7,7 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { formatModelChars2Points } from './utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';

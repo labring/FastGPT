@@ -25,7 +25,7 @@ import {
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';

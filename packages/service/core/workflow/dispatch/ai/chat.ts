@@ -32,7 +32,7 @@ import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template
 import { parseFileContentFromUrls } from '../../utils/file';
 import { parseUrlToFileType } from '../../utils/context';
 import { formatUserQueryWithFiles } from '../../utils/file';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';

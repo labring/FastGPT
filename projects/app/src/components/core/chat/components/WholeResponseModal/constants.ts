@@ -1,5 +1,5 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const agentPlanStatusMap: Record<
   NonNullable<ChatHistoryItemResType['agentPlanStatus']>,

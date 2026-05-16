@@ -35,7 +35,7 @@ import {
   getWorkflowAgentLoopMemoryKeys,
   readWorkflowAgentLoopMemory
 } from './adapter';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 

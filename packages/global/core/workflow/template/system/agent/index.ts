@@ -17,7 +17,7 @@ import {
   Input_Template_UserChatInput
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 import { Input_Template_File_Link } from '../../input';
 import { Output_Template_Error_Message } from '../../output';
 import { DatasetSearchModeEnum } from '../../../../dataset/constants';

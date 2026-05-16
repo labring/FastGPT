@@ -9,7 +9,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { i18nT } from '../../../../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import type { DispatchSubAppResponse } from '../../type';
 

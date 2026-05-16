@@ -56,7 +56,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';

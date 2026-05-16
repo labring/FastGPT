@@ -8,7 +8,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 

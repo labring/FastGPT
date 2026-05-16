@@ -1,7 +1,7 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 
 export const PluginConfigNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginConfig,

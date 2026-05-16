@@ -36,10 +36,6 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 import {
   compressLargeContent,
   compressRequestMessages,

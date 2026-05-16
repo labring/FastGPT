@@ -27,10 +27,6 @@ vi.mock('../../../../src/web/common/system/useSystemStore', () => ({
   }
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn().mockReturnValue('Unauthorized token')
-}));
-
 // Mock window.location
 const mockLocation = {
   pathname: '/test',

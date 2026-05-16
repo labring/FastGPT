@@ -1,4 +1,4 @@
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
 import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
 

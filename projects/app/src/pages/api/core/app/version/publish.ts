@@ -12,7 +12,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {

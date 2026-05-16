@@ -9,7 +9,7 @@ import type {
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { getErrText } from '@fastgpt/global/common/error/utils';

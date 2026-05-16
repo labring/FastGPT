@@ -55,10 +55,6 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop';
 
 const searchTool: ChatCompletionTool = {

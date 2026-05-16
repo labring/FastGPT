@@ -2,7 +2,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const datasetSearchModuleLogo = 'core/workflow/template/datasetSearch';
 

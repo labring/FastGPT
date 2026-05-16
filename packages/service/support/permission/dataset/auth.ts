@@ -19,7 +19,7 @@ import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';

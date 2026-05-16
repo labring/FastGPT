@@ -1,5 +1,11 @@
 import type { I18nStringType, localeType } from './type';
 
+/**
+ * i18n key 标记函数。
+ * 只返回原 key，用于在 global/service 层声明可翻译字段并保留字面量类型；真正翻译仍由前端 i18next 处理。
+ */
+export const i18nT = <T extends string>(key: T): T => key;
+
 export const parseI18nString = (str: I18nStringType | string = '', lang = 'en') => {
   if (!str || typeof str === 'string') return str;
 

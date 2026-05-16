@@ -12,10 +12,6 @@ vi.mock('@fastgpt/service/common/s3/sources/rawText/index', () => ({
   })
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 import { dispatchFileRead } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file';
 
 describe('dispatchFileRead', () => {

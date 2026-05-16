@@ -15,10 +15,6 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: vi.fn()
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 vi.mock('@fastgpt/service/common/system/log', () => ({
   addLog: {
     info: vi.fn(),

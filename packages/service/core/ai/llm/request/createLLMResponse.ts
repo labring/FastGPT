@@ -6,7 +6,7 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMModel } from '../../model';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';

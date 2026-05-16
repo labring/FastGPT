@@ -10,7 +10,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';

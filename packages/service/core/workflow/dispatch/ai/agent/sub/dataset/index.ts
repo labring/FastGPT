@@ -6,7 +6,7 @@ import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import { i18nT } from '../../../../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
 import {
