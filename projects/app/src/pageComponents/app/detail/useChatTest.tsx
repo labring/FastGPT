@@ -82,28 +82,37 @@ export const useChatTest = ({
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
-  // Set chat box data（函数式更新，避免覆盖 getInitChatInfo 同步的 chatGenerateStatus 等）
+  /**
+   * 同步测试对话的基础上下文。
+   * ChatBox 的刷新恢复依赖 chatBoxData.appId/chatId 与当前 props 完全一致，否则不会触发 enableAutoResume。
+   */
   useEffect(() => {
-    setChatBoxData((prev) => ({
-      ...prev,
-      userAvatar: userInfo?.avatar,
-      appId: appId,
-      app: {
-        chatConfig,
-        name: appDetail.name,
-        avatar: appDetail.avatar,
-        type: appDetail.type,
-        pluginInputs
-      }
-    }));
+    setChatBoxData((prev) => {
+      const isSameChat = prev.appId === appId && prev.chatId === chatId;
+
+      return {
+        ...prev,
+        userAvatar: userInfo?.avatar,
+        appId,
+        chatId,
+        chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
+        hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
+        app: {
+          chatConfig,
+          name: appDetail.name,
+          avatar: appDetail.avatar,
+          type: appDetail.type,
+          pluginInputs
+        }
+      };
+    });
   }, [
     appDetail.avatar,
     appDetail.name,
     appDetail.type,
     appId,
+    chatId,
     chatConfig,
-    // 避免仅深层变更时 chatConfig 引用未换导致预览区仍用旧的 fileSelectConfig
-    JSON.stringify(chatConfig?.fileSelectConfig ?? null),
     pluginInputs,
     setChatBoxData,
     userInfo?.avatar
@@ -118,9 +127,14 @@ export const useChatTest = ({
         variables: res.variables,
         variableList: variableList ?? res.app?.chatConfig?.variables
       });
-      // 与线上一致：同步会话生成状态，供 ChatBox enableAutoResume + streamResumeFetch 恢复未结束的流
+      /**
+       * 与线上一致：同步会话生成状态。
+       * 这里也写回 appId/chatId，避免 init 返回后覆盖链路缺字段导致刷新恢复条件不成立。
+       */
       setChatBoxData((prev) => ({
         ...prev,
+        appId: res.appId || appId,
+        chatId: res.chatId || chatId,
         title: res.title,
         chatGenerateStatus: res.chatGenerateStatus,
         hasBeenRead: res.hasBeenRead
