@@ -36,7 +36,10 @@ export async function evaluateRerankModelHelper(
   evalDatasetId: string,
   modelId: string,
   stage: RerankTaskCheckpointStageEnum
-): Promise<RerankEvalResult> {
+): Promise<{
+  evalResult: RerankEvalResult;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
+}> {
   addLog.info('Evaluate rerank model', { taskId, modelId, stage });
 
   const evalDataItems = await MongoEvalDatasetData.find({
@@ -71,7 +74,10 @@ export async function evaluateRerankModelHelper(
       taskId,
       totalItems: evalDataItems.length
     });
-    return computeRankingMetrics([], K_VALUES, 'rerank') as RerankEvalResult;
+    return {
+      evalResult: computeRankingMetrics([], K_VALUES, 'rerank') as RerankEvalResult,
+      rankingResults: []
+    };
   }
 
   // Run reranker for each query with bounded concurrency to avoid overwhelming the rerank API
@@ -110,6 +116,11 @@ export async function evaluateRerankModelHelper(
 
   const metrics = computeRankingMetrics(cases, K_VALUES, 'rerank');
 
+  const rankingResults = validItems.map((item, idx) => ({
+    itemId: item._id.toString(),
+    rankedIds: cases[idx].rankedIds
+  }));
+
   addLog.info('Rerank model evaluated', {
     taskId,
     modelId,
@@ -120,5 +131,8 @@ export async function evaluateRerankModelHelper(
     hasRetrievalRanks: !!metrics.retrieval_ranks
   });
 
-  return metrics as RerankEvalResult;
+  return {
+    evalResult: metrics as RerankEvalResult,
+    rankingResults
+  };
 }

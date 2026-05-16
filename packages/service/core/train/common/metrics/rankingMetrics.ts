@@ -84,7 +84,7 @@ export function computeRankingMetrics(
       mrrPerCase[k].push(calcMRR(topK, expectedSet));
       ndcgPerCase[k].push(calcNDCG(topK, expectedSet));
       mapPerCase[k].push(calcAP(topK, expectedSet, c.expectedIds.length));
-      precisionPerCase[k].push(calcPrecision(topK, expectedSet));
+      precisionPerCase[k].push(calcPrecision(topK, expectedSet, c.expectedIds.length));
     }
   }
 
@@ -169,10 +169,11 @@ function calcAP(topK: string[], expectedSet: Set<string>, totalExpected: number)
   return hitCount === 0 ? 0 : sumPrecision / totalExpected;
 }
 
-/** Precision (hit rate) */
-function calcPrecision(topK: string[], expectedSet: Set<string>): number {
-  const hit = topK.some((id) => expectedSet.has(id));
-  return hit ? 1 : 0;
+/** Precision: fraction of expectedIds found in topK */
+function calcPrecision(topK: string[], expectedSet: Set<string>, totalExpected: number): number {
+  if (totalExpected === 0) return 0;
+  const hits = topK.filter((id) => expectedSet.has(id)).length;
+  return hits / totalExpected;
 }
 
 function mean(arr: number[]): number {

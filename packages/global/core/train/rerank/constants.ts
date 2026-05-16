@@ -35,5 +35,6 @@ export enum RerankTaskCheckpointStageEnum {
   eval_basemodel = 'eval_basemodel', // Evaluate base model to establish baseline
   finetuning = 'finetuning', // Model fine-tuning (sft bridge executes fine-tuning and auto-deploys)
   registering = 'registering', // Model registration (register configuration in FastGPT)
-  eval_tunedmodel = 'eval_tunedmodel' // Evaluate fine-tuned model, compare with baseline
+  eval_tunedmodel = 'eval_tunedmodel', // Evaluate fine-tuned model, compare with baseline
+  llm_judge = 'llm_judge' // LLM-based relevance judgment, re-compute metrics with judged expectedContextIds
 }

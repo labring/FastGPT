@@ -211,6 +211,8 @@ export type RerankTrainTaskSchemaType = {
 
       eval_basemodel?: {
         baseModelEvalResult: RerankEvalResult;
+        /** Per-query ranked document IDs from rerank evaluation (indexed by eval data item _id) */
+        rankingResults?: Array<{ itemId: string; rankedIds: string[] }>;
       };
 
       finetuning?: {
@@ -228,6 +230,17 @@ export type RerankTrainTaskSchemaType = {
 
       eval_tunedmodel?: {
         tunedModelEvalResult: RerankEvalResult;
+        /** Per-query ranked document IDs from rerank evaluation (indexed by eval data item _id) */
+        rankingResults?: Array<{ itemId: string; rankedIds: string[] }>;
+      };
+
+      llm_judge?: {
+        /** LLM-judged relevant chunk IDs per query (replaces original expectedContextIds) */
+        judgedExpectedIds: Array<{ itemId: string; expectedIds: string[] }>;
+        /** Baseline metrics recomputed with judged expectedContextIds */
+        baseModelRejudgedResult: RerankEvalResult;
+        /** Tuned metrics recomputed with judged expectedContextIds */
+        tunedModelRejudgedResult: RerankEvalResult;
       };
     };
     stageEndTime?: {
@@ -247,6 +260,9 @@ export type RerankTrainTaskSchemaType = {
     evalDatasetId: string;
     baseModelEvalResult: RerankEvalResult;
     tunedModelEvalResult: RerankEvalResult;
+    /** Re-judged metrics (from llm_judge stage, if available) */
+    baseModelRejudgedResult?: RerankEvalResult;
+    tunedModelRejudgedResult?: RerankEvalResult;
   };
 
   errorMsg?: EnhancedErrorMessage;

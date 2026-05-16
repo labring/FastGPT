@@ -201,6 +201,8 @@ export type EmbeddingTrainTaskSchemaType = {
 
       eval_basemodel?: {
         baseModelEvalResult: EmbeddingEvalResult;
+        /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
+        rankingResults?: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
       };
 
       finetuning?: {
@@ -218,6 +220,17 @@ export type EmbeddingTrainTaskSchemaType = {
 
       eval_tunedmodel?: {
         tunedModelEvalResult: EmbeddingEvalResult;
+        /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
+        rankingResults?: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
+      };
+
+      llm_judge?: {
+        /** LLM-judged relevant chunk IDs per query (replaces original expectedContextIds) */
+        judgedExpectedIds: Array<{ itemId: string; expectedIds: string[] }>;
+        /** Baseline metrics recomputed with judged expectedContextIds */
+        baseModelRejudgedResult: EmbeddingEvalResult;
+        /** Tuned metrics recomputed with judged expectedContextIds */
+        tunedModelRejudgedResult: EmbeddingEvalResult;
       };
     };
     stageEndTime?: {
@@ -237,6 +250,9 @@ export type EmbeddingTrainTaskSchemaType = {
     evalDatasetId: string;
     baseModelEvalResult: EmbeddingEvalResult;
     tunedModelEvalResult: EmbeddingEvalResult;
+    /** Re-judged metrics (from llm_judge stage, if available) */
+    baseModelRejudgedResult?: EmbeddingEvalResult;
+    tunedModelRejudgedResult?: EmbeddingEvalResult;
   };
 
   errorMsg?: EnhancedErrorMessage;

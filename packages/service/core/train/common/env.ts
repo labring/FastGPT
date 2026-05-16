@@ -24,6 +24,10 @@ export const trainEnv = createEnv({
     // ===== Training Task Threshold =====
     TRAIN_MIN_TASK_CHUNK_THRESHOLD: PositiveIntSchema.default(500),
 
+    // ===== LLM Judge Configuration =====
+    LLM_JUDGE_TOP_K: PositiveIntSchema.default(10),
+    LLM_JUDGE_MOCK_ENABLE: BoolSchema.default(false),
+
     // ===== DiTing Service Configuration =====
     DITING_BASE_URL: z.string().default('http://diting:3000'),
     DITING_TIMEOUT: PositiveIntSchema.default(1800000),
