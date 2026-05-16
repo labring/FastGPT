@@ -29,7 +29,13 @@ const SelectAppModal = ({
     async ({ parentId }: GetResourceFolderListProps) => {
       return getMyApps({
         parentId,
-        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant]
+        type: [
+          AppTypeEnum.folder,
+          AppTypeEnum.simple,
+          AppTypeEnum.workflow,
+          AppTypeEnum.chatAgent,
+          AppTypeEnum.assistant
+        ]
       }).then((res) =>
         res
           .filter((item) => !filterAppIds.includes(item._id))

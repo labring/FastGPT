@@ -102,7 +102,13 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         return getTeamAppTemplates({
           parentId,
           searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.chatAgent,
+            AppTypeEnum.assistant
+          ]
         }).then((res) => res.filter((app) => app.id !== appDetail._id));
       }
     },
