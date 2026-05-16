@@ -83,6 +83,28 @@ describe('PiAgent model bridge', () => {
     });
   });
 
+  it('ignores user baseUrl when user key is missing', () => {
+    const model = buildPiModel('plain-model', false, {
+      baseUrl: 'https://proxy.example.com/v1'
+    } as any);
+
+    expect(model.baseUrl).toBe('https://api.example.com/v1');
+    expect(model.headers).toEqual({
+      Authorization: 'Bearer model-key'
+    });
+  });
+
+  it('uses default OpenAI baseUrl when user key has no baseUrl', () => {
+    const model = buildPiModel('plain-model', false, {
+      key: 'user-key'
+    } as any);
+
+    expect(model.baseUrl).toBe('https://api.openai.com/v1');
+    expect(model.headers).toEqual({
+      Authorization: 'Bearer user-key'
+    });
+  });
+
   it('does not advertise reasoning effort for models that only expose reasoning output', () => {
     const model = buildPiModel('reasoning-without-effort');
 

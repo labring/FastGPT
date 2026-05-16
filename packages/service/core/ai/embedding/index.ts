@@ -22,7 +22,7 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
       message: 'input is empty'
     });
   }
-  const ai = getAIApi();
+  const { ai } = getAIApi();
 
   const formatInput = Array.isArray(input) ? input : [input];
 

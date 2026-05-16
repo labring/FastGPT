@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-const { getRawTextBufferMock, compressLargeContentMock } = vi.hoisted(() => ({
-  getRawTextBufferMock: vi.fn(),
-  compressLargeContentMock: vi.fn()
+const { getRawTextBufferMock } = vi.hoisted(() => ({
+  getRawTextBufferMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/rawText/index', () => ({
@@ -11,26 +10,6 @@ vi.mock('@fastgpt/service/common/s3/sources/rawText/index', () => ({
     getRawTextBuffer: getRawTextBufferMock,
     addRawTextBuffer: vi.fn()
   })
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn(() => ({
-    model: 'gpt-4',
-    name: 'GPT-4',
-    maxContext: 128000
-  }))
-}));
-
-vi.mock('@fastgpt/service/core/ai/llm/compress/constants', () => ({
-  calculateCompressionThresholds: vi.fn(() => ({
-    fileReadResponse: {
-      threshold: 4000
-    }
-  }))
-}));
-
-vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
-  compressLargeContent: compressLargeContentMock
 }));
 
 vi.mock('@fastgpt/web/i18n/utils', () => ({
@@ -44,21 +23,10 @@ describe('dispatchFileRead', () => {
     vi.clearAllMocks();
   });
 
-  it('records compression LLM request ids on node response', async () => {
+  it('returns raw file content and leaves compression to tool response compression', async () => {
     getRawTextBufferMock.mockResolvedValue({
       filename: 'doc.txt',
       text: 'large file content'
-    });
-    compressLargeContentMock.mockResolvedValue({
-      compressed: 'compressed file content',
-      usage: {
-        moduleName: 'account_usage:llm_compress_text',
-        model: 'GPT-4',
-        totalPoints: 0.2,
-        inputTokens: 20,
-        outputTokens: 5
-      },
-      requestIds: ['req_file_compress']
     });
 
     const result = await dispatchFileRead({
@@ -69,29 +37,22 @@ describe('dispatchFileRead', () => {
         }
       ],
       teamId: 'team_1',
-      tmbId: 'tmb_1',
-      model: 'gpt-4'
+      tmbId: 'tmb_1'
     });
 
-    expect(result.response).toBe('compressed file content');
-    expect(result.usages).toEqual([
-      {
-        moduleName: 'account_usage:llm_compress_text',
-        model: 'GPT-4',
-        totalPoints: 0.2,
-        inputTokens: 20,
-        outputTokens: 5
-      }
-    ]);
+    expect(result.response).toBe(
+      JSON.stringify([
+        {
+          id: 'file_0',
+          name: 'doc.txt',
+          content: 'large file content'
+        }
+      ])
+    );
+    expect(result.usages).toEqual([]);
     expect(result.nodeResponse).toEqual({
       moduleType: FlowNodeTypeEnum.readFiles,
-      moduleName: 'chat:read_file',
-      llmRequestIds: ['req_file_compress'],
-      compressTextAgent: {
-        inputTokens: 20,
-        outputTokens: 5,
-        totalPoints: 0.2
-      }
+      moduleName: 'chat:read_file'
     });
   });
 });

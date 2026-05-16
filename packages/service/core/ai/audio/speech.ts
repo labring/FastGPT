@@ -20,7 +20,7 @@ export async function text2Speech({
   speed?: number;
 }) {
   const modelData = getTTSModel(model)!;
-  const ai = getAIApi();
+  const { ai } = getAIApi();
   const response = await ai.audio.speech.create(
     {
       model,

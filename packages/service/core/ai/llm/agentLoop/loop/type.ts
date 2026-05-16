@@ -59,7 +59,18 @@ export type AgentLoopEvent =
   | { type: 'answer_delta'; text: string }
   | { type: 'tool_call'; call: ChatCompletionMessageToolCall }
   | { type: 'tool_params'; callId: string; argsDelta: string }
-  | { type: 'tool_response'; callId: string; response: string }
+  | {
+      type: 'tool_response';
+      call: ChatCompletionMessageToolCall;
+      response: string;
+      seconds: number;
+      toolResponseCompress?: {
+        response: string;
+        usage: ChatNodeUsageType;
+        requestIds: string[];
+        seconds: number;
+      };
+    }
   | {
       type: 'stop_gate_feedback';
       id: string;
@@ -69,7 +80,7 @@ export type AgentLoopEvent =
       reasoningText?: string;
     }
   | {
-      type: 'child_llm_request_end';
+      type: 'after_message_compress';
       usage?: ChatNodeUsageType;
       requestIds: string[];
       seconds: number;
@@ -93,6 +104,7 @@ export type AgentLoopRuntime = {
   stream?: boolean;
   useVision?: boolean;
   maxRunAgentTimes?: number;
+  batchToolSize?: number;
   maxStopGateRejections?: number;
   checkIsStopping?: () => boolean;
   toolCatalog: AgentLoopToolCatalog;

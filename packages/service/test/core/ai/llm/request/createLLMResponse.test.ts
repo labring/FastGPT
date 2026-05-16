@@ -10,7 +10,8 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/ai/config', () => ({
-  getAIApi: vi.fn()
+  getAIApi: vi.fn(),
+  defaultUserOpenAIBaseUrl: 'https://api.openai.com/v1'
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -82,12 +83,7 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
 
-// Import the function to test
-import {
-  createLLMResponse,
-  createStreamResponse,
-  createCompleteResponse
-} from '@fastgpt/service/core/ai/llm/request';
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request/createLLMResponse';
 
 const mockGetAIApi = vi.mocked(getAIApi);
 const mockGetLLMModel = vi.mocked(getLLMModel);
@@ -98,6 +94,18 @@ const mockParseReasoningContent = vi.mocked(parseReasoningContent);
 const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
 const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
 const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
+
+const createMockAIApiResult = (
+  ai: any,
+  requestMeta = {
+    usedUserOpenAIKey: false,
+    baseUrl: 'https://system.example.com/v1'
+  }
+) =>
+  ({
+    ai,
+    requestMeta
+  }) as any;
 
 const defaultSupportParams = {
   vision: false,
@@ -148,10 +156,187 @@ describe('createLLMResponse', () => {
     mockGetLLMModel.mockReturnValue(createMockModelData());
     mockLoadRequestMessages.mockImplementation(async ({ messages }: any) => messages as any);
     mockCountGptMessagesTokens.mockResolvedValue(100);
+    mockParseReasoningContent.mockImplementation((content: string) => ['', content]);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('User key routing', () => {
+    const mockTextResponse = {
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: 'ok'
+          },
+          finish_reason: 'stop'
+        }
+      ],
+      usage: {
+        prompt_tokens: 1,
+        completion_tokens: 1,
+        total_tokens: 2
+      }
+    };
+
+    it('should ignore user baseUrl when user key is missing', async () => {
+      const modelData = createMockModelData({
+        requestUrl: 'https://model.example.com/v1/chat/completions',
+        requestAuth: 'model-key'
+      });
+      mockGetLLMModel.mockReturnValue(modelData);
+      const createMock = vi.fn().mockResolvedValue(mockTextResponse);
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(
+          {
+            chat: {
+              completions: {
+                create: createMock
+              }
+            }
+          },
+          {
+            usedUserOpenAIKey: false,
+            baseUrl: 'https://model.example.com/v1'
+          }
+        )
+      );
+
+      const result = await createLLMResponse({
+        userKey: {
+          baseUrl: 'https://user.example.com/v1'
+        } as any,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          stream: false
+        }
+      });
+
+      expect(result.usage.usedUserOpenAIKey).toBe(false);
+      expect(mockGetAIApi).toHaveBeenCalledWith({
+        userKey: {
+          baseUrl: 'https://user.example.com/v1'
+        },
+        timeout: 600000
+      });
+      expect(createMock.mock.calls[0][1]).toMatchObject({
+        path: 'https://model.example.com/v1/chat/completions',
+        headers: {
+          Authorization: 'Bearer model-key'
+        }
+      });
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            usage: expect.not.objectContaining({
+              usedUserOpenAIKey: expect.anything()
+            })
+          })
+        })
+      );
+    });
+
+    it('should use user key and default OpenAI baseUrl when only user key is provided', async () => {
+      const modelData = createMockModelData({
+        requestUrl: 'https://model.example.com/v1/chat/completions',
+        requestAuth: 'model-key'
+      });
+      mockGetLLMModel.mockReturnValue(modelData);
+      const createMock = vi.fn().mockResolvedValue(mockTextResponse);
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(
+          {
+            chat: {
+              completions: {
+                create: createMock
+              }
+            }
+          },
+          {
+            usedUserOpenAIKey: true,
+            baseUrl: 'https://api.openai.com/v1'
+          }
+        )
+      );
+
+      const result = await createLLMResponse({
+        userKey: {
+          key: 'user-key'
+        } as any,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          stream: false
+        }
+      });
+
+      expect(result.usage.usedUserOpenAIKey).toBe(true);
+      expect(mockGetAIApi).toHaveBeenCalledWith({
+        userKey: {
+          key: 'user-key'
+        },
+        timeout: 600000
+      });
+      expect(createMock.mock.calls[0][1]).not.toHaveProperty('path');
+      expect(createMock.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            usage: expect.not.objectContaining({
+              usedUserOpenAIKey: expect.anything()
+            })
+          })
+        })
+      );
+    });
+
+    it('should not save usage when user request fails', async () => {
+      const createMock = vi.fn().mockRejectedValue(new Error('upstream failed'));
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(
+          {
+            chat: {
+              completions: {
+                create: createMock
+              }
+            }
+          },
+          {
+            usedUserOpenAIKey: true,
+            baseUrl: 'https://api.openai.com/v1'
+          }
+        )
+      );
+
+      const result = await createLLMResponse({
+        throwError: false,
+        userKey: {
+          key: 'user-key'
+        } as any,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          stream: false
+        }
+      });
+
+      expect(result.usage).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        usedUserOpenAIKey: false
+      });
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            error: expect.stringContaining('您的 OpenAI key 出错了')
+          })
+        })
+      );
+      expect(mockSaveLLMRequestRecord.mock.calls[0][0].response).not.toHaveProperty('usage');
+    });
   });
 
   describe('Non-stream text output', () => {
@@ -180,7 +365,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -204,6 +389,59 @@ describe('createLLMResponse', () => {
       expect(result.finish_reason).toBe('stop');
       expect(result.toolCalls).toBeUndefined();
       expect(streamedText).toBe('Hello! How can I help you?');
+    });
+
+    it('should fill stop finish reason for non-stream response when finish reason is missing', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Hello without finish reason'
+            },
+            finish_reason: null
+          }
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 4,
+          total_tokens: 14
+        }
+      };
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
+      ];
+
+      const result = await createLLMResponse({
+        body: {
+          model: 'gpt-4',
+          messages,
+          stream: false
+        }
+      });
+
+      expect(result.answerText).toBe('Hello without finish reason');
+      expect(result.finish_reason).toBe('stop');
+      expect(result.error).toBeUndefined();
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            answerText: 'Hello without finish reason',
+            finish_reason: 'stop',
+            error: undefined
+          })
+        })
+      );
     });
 
     it('should handle non-stream response with null content', async () => {
@@ -231,7 +469,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -273,7 +511,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       // Mock parseLLMStreamResponse
       let contentBuffer = '';
@@ -321,6 +559,81 @@ describe('createLLMResponse', () => {
       expect(streamedText).toBe('Hello World!');
     });
 
+    it('should fill abnormal close finish reason for partial stream response when finish reason is missing', async () => {
+      const chunks = [
+        {
+          choices: [
+            { delta: { role: 'assistant', content: 'Partial answer' }, finish_reason: null }
+          ]
+        }
+      ];
+
+      const mockStreamResponse = createMockStreamResponse(chunks);
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockStreamResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      let contentBuffer = '';
+      mockParseLLMStreamResponse.mockReturnValue({
+        parsePart: ({ part }: { part: any }) => {
+          const content = part.choices?.[0]?.delta?.content || '';
+          contentBuffer += content;
+          return {
+            reasoningContent: '',
+            content,
+            responseContent: content,
+            finishReason: part.choices?.[0]?.finish_reason || null
+          };
+        },
+        getResponseData: () => ({
+          error: undefined,
+          reasoningContent: '',
+          content: contentBuffer,
+          finish_reason: null,
+          usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 }
+        }),
+        updateFinishReason: vi.fn(),
+        updateError: vi.fn()
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hi' }
+      ];
+
+      let streamedText = '';
+      const result = await createLLMResponse({
+        throwError: false,
+        body: {
+          model: 'gpt-4',
+          messages,
+          stream: true
+        },
+        onStreaming: ({ text }) => {
+          streamedText += text;
+        }
+      });
+
+      expect(result.answerText).toBe('Partial answer');
+      expect(result.finish_reason).toBe('abnormal_close');
+      expect(result.error).toBeUndefined();
+      expect(result.responseEmptyTip).toBeUndefined();
+      expect(streamedText).toBe('Partial answer');
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            answerText: 'Partial answer',
+            finish_reason: 'abnormal_close',
+            error: undefined
+          })
+        })
+      );
+    });
+
     it('should handle stream response abort', async () => {
       const chunks = [
         {
@@ -339,7 +652,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       let contentBuffer = '';
       let currentFinishReason: any = null;
@@ -417,7 +730,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'What is 2 + 2?' }
@@ -473,7 +786,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Think about this' }
@@ -520,7 +833,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       let contentBuffer = '';
       let reasoningBuffer = '';
@@ -613,7 +926,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const tools = [
         {
@@ -684,7 +997,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const tools = [
         {
@@ -726,10 +1039,10 @@ describe('createLLMResponse', () => {
         expect.objectContaining({
           response: expect.objectContaining({
             finish_reason: 'tool_calls',
-            usage: {
+            usage: expect.objectContaining({
               inputTokens: 20,
               outputTokens: 5
-            },
+            }),
             error: 'chat:LLM_model_response_empty'
           })
         })
@@ -790,7 +1103,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       mockParseLLMStreamResponse.mockReturnValue({
         parsePart: ({ part }: { part: any }) => {
@@ -874,7 +1187,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       mockParseLLMStreamResponse.mockReturnValue({
         parsePart: ({ part }: { part: any }) => {
@@ -936,10 +1249,10 @@ describe('createLLMResponse', () => {
         expect.objectContaining({
           response: expect.objectContaining({
             finish_reason: 'tool_calls',
-            usage: {
+            usage: expect.objectContaining({
               inputTokens: 20,
               outputTokens: 5
-            },
+            }),
             error: 'chat:LLM_model_response_empty'
           })
         })
@@ -991,7 +1304,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const tools = [
         {
@@ -1072,7 +1385,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const tools = [
         {
@@ -1113,7 +1426,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -1157,7 +1470,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -1203,7 +1516,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       let capturedError: any = null;
       mockParseLLMStreamResponse.mockReturnValue({
@@ -1272,7 +1585,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -1315,7 +1628,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
@@ -1374,7 +1687,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Write a long story' }
@@ -1419,7 +1732,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Write forever' }
@@ -1459,9 +1772,11 @@ describe('createLLMResponse', () => {
       });
 
       const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());
-      mockGetAIApi.mockReturnValue({
-        chat: { completions: { create: mockCreate } }
-      } as any);
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({
+          chat: { completions: { create: mockCreate } }
+        })
+      );
 
       await createLLMResponse({
         body: {
@@ -1481,7 +1796,6 @@ describe('createLLMResponse', () => {
             reasoning_effort: 'high'
           }),
           response: expect.objectContaining({
-            reasoning_effort: 'high',
             finish_reason: 'stop'
           })
         })
@@ -1495,9 +1809,11 @@ describe('createLLMResponse', () => {
       });
 
       const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());
-      mockGetAIApi.mockReturnValue({
-        chat: { completions: { create: mockCreate } }
-      } as any);
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({
+          chat: { completions: { create: mockCreate } }
+        })
+      );
 
       await createLLMResponse({
         body: {
@@ -1544,7 +1860,7 @@ describe('createLLMResponse', () => {
           }
         }
       };
-      mockGetAIApi.mockReturnValue(mockAI as any);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const result = await createLLMResponse({
         throwError: false,
@@ -1570,263 +1886,5 @@ describe('createLLMResponse', () => {
       expect(result.requestMessages).toEqual(rewritten);
       expect(result.completeMessages).toEqual(rewritten);
     });
-  });
-});
-
-describe('createCompleteResponse', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetLLMModel.mockReturnValue(createMockModelData());
-  });
-
-  it('should parse non-stream response correctly', async () => {
-    const response = {
-      choices: [
-        {
-          message: {
-            role: 'assistant',
-            content: 'Hello world'
-          },
-          finish_reason: 'stop'
-        }
-      ],
-      usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-    };
-
-    let streamedText = '';
-    const result = await createCompleteResponse({
-      body: {
-        model: 'gpt-4',
-        messages: [],
-        stream: false
-      },
-      response: response as any,
-      onStreaming: ({ text }) => {
-        streamedText += text;
-      }
-    });
-
-    expect(result.answerText).toBe('Hello world');
-    expect(result.reasoningText).toBe('');
-    expect(result.finish_reason).toBe('stop');
-    expect(streamedText).toBe('Hello world');
-  });
-
-  it('should handle tool calls in complete response', async () => {
-    const response = {
-      choices: [
-        {
-          message: {
-            role: 'assistant',
-            content: null,
-            tool_calls: [
-              {
-                id: 'call_1',
-                type: 'function',
-                function: { name: 'test_tool', arguments: '{}' }
-              }
-            ]
-          },
-          finish_reason: 'tool_calls'
-        }
-      ],
-      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
-    };
-
-    const tools = [
-      {
-        type: 'function' as const,
-        function: {
-          name: 'test_tool',
-          description: 'Test',
-          parameters: { type: 'object', properties: {} }
-        }
-      }
-    ];
-
-    const toolCalls: any[] = [];
-    const result = await createCompleteResponse({
-      body: {
-        model: 'gpt-4',
-        messages: [],
-        tools,
-        stream: false
-      },
-      response: response as any,
-      onToolCall: ({ call }) => {
-        toolCalls.push(call);
-      }
-    });
-
-    expect(result.toolCalls).toHaveLength(1);
-    expect(result.toolCalls![0].function.name).toBe('test_tool');
-    expect(toolCalls).toHaveLength(1);
-  });
-
-  it('should drop non-function tool_calls (e.g. custom type) in toolChoice mode', async () => {
-    const response = {
-      choices: [
-        {
-          message: {
-            role: 'assistant',
-            content: null,
-            tool_calls: [
-              {
-                id: 'call_fn',
-                type: 'function',
-                function: { name: 'test_tool', arguments: '{}' }
-              },
-              {
-                id: 'call_custom',
-                type: 'custom',
-                custom: { name: 'shell', input: 'ls' }
-              }
-            ]
-          },
-          finish_reason: 'tool_calls'
-        }
-      ],
-      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
-    };
-
-    const tools = [
-      {
-        type: 'function' as const,
-        function: {
-          name: 'test_tool',
-          description: 'Test',
-          parameters: { type: 'object', properties: {} }
-        }
-      }
-    ];
-
-    const result = await createCompleteResponse({
-      body: {
-        model: 'gpt-4',
-        messages: [],
-        tools,
-        stream: false
-      },
-      response: response as any
-    });
-
-    expect(result.toolCalls).toHaveLength(1);
-    expect(result.toolCalls![0].id).toBe('call_fn');
-    expect(result.toolCalls![0].type).toBe('function');
-  });
-});
-
-describe('createStreamResponse', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetLLMModel.mockReturnValue(createMockModelData());
-  });
-
-  it('should parse stream response correctly', async () => {
-    const chunks = [
-      { choices: [{ delta: { content: 'Hello' }, finish_reason: null }] },
-      { choices: [{ delta: { content: ' world' }, finish_reason: 'stop' }] }
-    ];
-
-    const mockStream = createMockStreamResponse(chunks);
-
-    let contentBuffer = '';
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        contentBuffer += content;
-        return {
-          reasoningContent: '',
-          content,
-          responseContent: content,
-          finishReason: part.choices?.[0]?.finish_reason || null
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: '',
-        content: contentBuffer,
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-
-    let streamedText = '';
-    const result = await createStreamResponse({
-      body: {
-        model: 'gpt-4',
-        messages: [],
-        stream: true
-      },
-      response: mockStream,
-      onStreaming: ({ text }) => {
-        streamedText += text;
-      }
-    });
-
-    expect(result.answerText).toBe('Hello world');
-    expect(result.finish_reason).toBe('stop');
-    expect(streamedText).toBe('Hello world');
-  });
-
-  it('should handle stream with reasoning content', async () => {
-    mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
-
-    const chunks = [
-      { choices: [{ delta: { reasoning_content: 'Thinking...' }, finish_reason: null }] },
-      { choices: [{ delta: { content: 'Answer' }, finish_reason: 'stop' }] }
-    ];
-
-    const mockStream = createMockStreamResponse(chunks);
-
-    let contentBuffer = '';
-    let reasoningBuffer = '';
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        const reasoning = part.choices?.[0]?.delta?.reasoning_content || '';
-        contentBuffer += content;
-        reasoningBuffer += reasoning;
-        return {
-          reasoningContent: reasoning,
-          content,
-          responseContent: content,
-          finishReason: part.choices?.[0]?.finish_reason || null
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: reasoningBuffer,
-        content: contentBuffer,
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-
-    let reasoningText = '';
-    let answerText = '';
-    const result = await createStreamResponse({
-      body: {
-        model: 'gpt-4',
-        messages: [],
-        stream: true
-      },
-      response: mockStream,
-      onReasoning: ({ text }) => {
-        reasoningText += text;
-      },
-      onStreaming: ({ text }) => {
-        answerText += text;
-      }
-    });
-
-    expect(result.reasoningText).toBe('Thinking...');
-    expect(result.answerText).toBe('Answer');
-    expect(reasoningText).toBe('Thinking...');
-    expect(answerText).toBe('Answer');
   });
 });

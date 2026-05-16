@@ -15,6 +15,8 @@ import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { createQueryExtensionChildNodeResponse } from './nodeResponse';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -52,6 +54,7 @@ export async function dispatchDatasetSearch(
   const {
     runningAppInfo: { teamId },
     runningUserInfo: { tmbId },
+    externalProvider,
     histories,
     node,
     params: {
@@ -158,11 +161,13 @@ export async function dispatchDatasetSearch(
           ...searchData,
           datasetSearchUsingExtensionQuery,
           datasetSearchExtensionModel,
-          datasetSearchExtensionBg
+          datasetSearchExtensionBg,
+          userKey: externalProvider.openaiAccount
         });
 
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
+    const childrenResponses: ChatHistoryItemResType[] = [];
     {
       // 1. Search vector
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
@@ -192,18 +197,28 @@ export async function dispatchDatasetSearch(
       }
       // 3. Query extension
       if (queryExtensionResult) {
-        const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
+        const { totalPoints, modelName: llmModelName } = formatModelChars2Points({
           model: queryExtensionResult.llmModel,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
         });
-        nodeUsages.push({
+        const llmPoints = queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints;
+        const queryExtensionUsage: ChatNodeUsageType = {
           totalPoints: llmPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
           model: llmModelName,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
-        });
+        };
+        nodeUsages.push(queryExtensionUsage);
+        childrenResponses.push(
+          createQueryExtensionChildNodeResponse({
+            requestId: queryExtensionResult.requestId,
+            usage: queryExtensionUsage,
+            seconds: queryExtensionResult.seconds,
+            query: queryExtensionResult.query
+          })
+        );
 
         const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
           formatModelChars2Points({
@@ -235,6 +250,10 @@ export async function dispatchDatasetSearch(
       }
     }
     const totalPoints = nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    const childTotalPoints = childrenResponses.reduce(
+      (sum, item) => sum + (item.totalPoints || 0),
+      0
+    );
     props.usagePush(nodeUsages);
 
     return {
@@ -258,15 +277,9 @@ export async function dispatchDatasetSearch(
           reRankInputTokens
         }),
         searchUsingReRank,
-        queryExtensionResult: queryExtensionResult
-          ? {
-              model: queryExtensionResult.llmModel,
-              inputTokens: queryExtensionResult.inputTokens,
-              outputTokens: queryExtensionResult.outputTokens,
-              query: queryExtensionResult.query
-            }
-          : undefined,
         deepSearchResult,
+        ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
+        ...(childTotalPoints > 0 ? { childTotalPoints } : {}),
         // Results
         quoteList: searchRes
       },

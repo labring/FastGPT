@@ -135,8 +135,8 @@ export const compressRequestMessages = async ({
       }
     });
 
-    // userKey 表示调用方自带渠道，不在 FastGPT 侧重复计费。
-    const totalPoints = userKey
+    // 只有携带有效 key 的外部账号才视为调用方自带渠道，不在 FastGPT 侧重复计费。
+    const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
           model: model.model,
@@ -290,7 +290,7 @@ export const compressLargeContent = async ({
         }
       });
 
-      const totalPoints = userKey
+      const totalPoints = usage.usedUserOpenAIKey
         ? 0
         : formatModelChars2Points({
             model: model.model,

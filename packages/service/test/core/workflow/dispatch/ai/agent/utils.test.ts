@@ -3,7 +3,8 @@ import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 
-const { dispatchFileReadMock } = vi.hoisted(() => ({
+const { dispatchAgentDatasetSearchMock, dispatchFileReadMock } = vi.hoisted(() => ({
+  dispatchAgentDatasetSearchMock: vi.fn(),
   dispatchFileReadMock: vi.fn()
 }));
 
@@ -16,7 +17,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
-  dispatchAgentDatasetSearch: vi.fn()
+  dispatchAgentDatasetSearch: dispatchAgentDatasetSearchMock
 }));
 
 describe('Agent read_files tool protocol', () => {
@@ -102,6 +103,72 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchFileReadMock).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [{ id: 'current-0', url: '/current.pdf' }]
+      })
+    );
+  });
+
+  it('passes external OpenAI account to dataset search tool', async () => {
+    const userKey = {
+      key: 'user-key',
+      baseUrl: 'https://llm.example.com/v1'
+    };
+    dispatchAgentDatasetSearchMock.mockResolvedValue({
+      response: 'dataset content',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Dataset Search'
+      }
+    });
+
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: userKey
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 0,
+      params: {
+        model: 'gpt-4',
+        agent_datasetParams: {
+          datasets: [{ datasetId: 'dataset_1' }]
+        }
+      },
+      stream: false,
+      getSubAppInfo: () => ({
+        name: 'Dataset Search',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => undefined,
+      completionTools: [],
+      filesMap: {}
+    } as any);
+
+    await executeTool({
+      callId: 'call_dataset_search',
+      toolId: SubAppIds.datasetSearch,
+      args: '{"query":"FastGPT"}'
+    });
+
+    expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userKey
       })
     );
   });

@@ -37,6 +37,7 @@ import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../../common/logger';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -87,8 +88,11 @@ export type SearchDatasetDataResponse = {
   queryExtensionResult?: {
     llmModel: string;
     embeddingModel: string;
+    requestId: string;
+    seconds: number;
     inputTokens: number;
     outputTokens: number;
+    usedUserOpenAIKey: boolean;
     embeddingTokens: number;
     query: string;
   };
@@ -174,21 +178,23 @@ export const filterDatasetDataByMaxTokens = async (
 export async function searchDatasetData(
   props: SearchDatasetDataProps
 ): Promise<SearchDatasetDataResponse> {
-  let {
+  const {
     teamId,
     reRankQuery,
     queries,
     model,
     similarity = 0,
     limit: maxTokens,
-    searchMode = DatasetSearchModeEnum.embedding,
+    searchMode: inputSearchMode = DatasetSearchModeEnum.embedding,
     embeddingWeight = 0.5,
-    usingReRank = false,
+    usingReRank: inputUsingReRank = false,
     rerankModel,
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
   } = props;
+  let searchMode = inputSearchMode;
+  let usingReRank = inputUsingReRank;
 
   // Constants data
   const datasetDataSelectField =
@@ -351,7 +357,7 @@ export async function searchDatasetData(
           });
 
           const validDatasetIds = Array.from(datasetTagMap.entries())
-            .filter(([_, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
+            .filter(([, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
             .map(([datasetId]) => datasetId);
 
           if (validDatasetIds.length === 0) return [];
@@ -454,7 +460,7 @@ export async function searchDatasetData(
       return await getAllCollectionIds({
         parentCollectionIds: collectionIds
       });
-    } catch (error) {}
+    } catch {}
   };
   const embeddingRecall = async ({
     queries,
@@ -867,7 +873,7 @@ export async function searchDatasetData(
         query: reRankQuery,
         data: filterSameDataResults
       });
-    } catch (error) {
+    } catch {
       usingReRank = false;
       return {
         results: [],
@@ -950,11 +956,13 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  userKey?: OpenaiAccountType;
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
+  userKey,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
@@ -966,6 +974,7 @@ export const defaultSearchDatasetData = async ({
       ? getLLMModel(datasetSearchExtensionModel).model
       : undefined,
     embeddingModel: props.model,
+    userKey,
     extensionBg: datasetSearchExtensionBg,
     histories
   });
@@ -981,8 +990,11 @@ export const defaultSearchDatasetData = async ({
     queryExtensionResult: aiExtensionResult
       ? {
           llmModel: aiExtensionResult.llmModel,
+          requestId: aiExtensionResult.requestId,
+          seconds: aiExtensionResult.seconds,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
+          usedUserOpenAIKey: aiExtensionResult.usedUserOpenAIKey,
           embeddingModel: aiExtensionResult.embeddingModel,
           embeddingTokens: aiExtensionResult.embeddingTokens,
           query: searchQueries.join('\n')

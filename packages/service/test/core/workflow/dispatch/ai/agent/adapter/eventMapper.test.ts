@@ -21,6 +21,21 @@ const createPlan = () => ({
   ]
 });
 
+const toolResponse = ({ id, name, response }: { id: string; name: string; response: string }) =>
+  ({
+    type: 'tool_response',
+    call: {
+      id,
+      type: 'function',
+      function: {
+        name,
+        arguments: ''
+      }
+    },
+    response,
+    seconds: 0.1
+  }) as const;
+
 describe('createWorkflowAgentLoopEventMapper', () => {
   it('streams main answer deltas', () => {
     const workflowStreamResponse = vi.fn();
@@ -132,9 +147,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       ]
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_update_plan',
-      response: 'ok'
+      ...toolResponse({
+        id: 'call_update_plan',
+        name: 'update_plan',
+        response: 'ok'
+      })
     });
     mapper.emitEvent({
       type: 'tool_call',
@@ -177,14 +194,18 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       ]
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_search',
-      response: 'Search '
+      ...toolResponse({
+        id: 'call_search',
+        name: 'search',
+        response: 'Search '
+      })
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_search',
-      response: 'result'
+      ...toolResponse({
+        id: 'call_search',
+        name: 'search',
+        response: 'result'
+      })
     });
 
     expect(workflowStreamResponse).toHaveBeenCalledTimes(5);
@@ -470,14 +491,18 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       ]
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_weather',
-      response: 'compressed weather'
+      ...toolResponse({
+        id: 'call_weather',
+        name: 'weather',
+        response: 'compressed weather'
+      })
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_time',
-      response: 'compressed time'
+      ...toolResponse({
+        id: 'call_time',
+        name: 'time',
+        response: 'compressed time'
+      })
     });
 
     const restoredMessages = chats2GPTMessages({
@@ -560,9 +585,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       argsDelta: ']}'
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_custom_plan',
-      response: 'ok'
+      ...toolResponse({
+        id: 'call_custom_plan',
+        name: 'agent_update_plan',
+        response: 'ok'
+      })
     });
 
     expect(workflowStreamResponse).not.toHaveBeenCalled();
@@ -623,7 +650,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
 
     mapper.emitEvent({
-      type: 'child_llm_request_end',
+      type: 'after_message_compress',
       requestIds: ['req_compress'],
       seconds: 1,
       contextCheckpoint: '<context_checkpoint>compressed first chunk</context_checkpoint>'
@@ -640,9 +667,11 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       }
     });
     mapper.emitEvent({
-      type: 'tool_response',
-      callId: 'call_search',
-      response: 'search result'
+      ...toolResponse({
+        id: 'call_search',
+        name: 'search',
+        response: 'search result'
+      })
     });
 
     expect(mapper.assistantResponses).toEqual([
@@ -682,7 +711,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       }
     });
     mapper.emitEvent({
-      type: 'child_llm_request_end',
+      type: 'after_message_compress',
       requestIds: ['req_compress'],
       seconds: 1.2,
       contextCheckpoint: '<context_checkpoint>compressed previous turn</context_checkpoint>'

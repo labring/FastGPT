@@ -24,6 +24,7 @@ type LLMQueueItem = {
   error?: unknown;
   inputTokens?: number;
   outputTokens?: number;
+  usedUserOpenAIKey?: boolean;
 };
 
 const stringifyArgs = (args: string | Record<string, unknown>) =>
@@ -109,7 +110,8 @@ export const mockCreateLLMResponseQueue = (createLLMResponseMock: Mock, queue: L
       finish_reason: item.finishReason || 'stop',
       usage: {
         inputTokens: item.inputTokens ?? 0,
-        outputTokens: item.outputTokens ?? 0
+        outputTokens: item.outputTokens ?? 0,
+        usedUserOpenAIKey: item.usedUserOpenAIKey ?? false
       },
       requestMessages: args.body.messages,
       assistantMessage,

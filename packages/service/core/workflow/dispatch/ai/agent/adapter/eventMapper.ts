@@ -344,7 +344,7 @@ export const createWorkflowAgentLoopEventMapper = ({
         }
         return;
       }
-      case 'child_llm_request_end': {
+      case 'after_message_compress': {
         if (event.contextCheckpoint) {
           assistantResponses.push({
             contextCheckpoint: event.contextCheckpoint,
@@ -403,7 +403,7 @@ export const createWorkflowAgentLoopEventMapper = ({
       }
       case 'tool_response': {
         applyToolResponse({
-          callId: event.callId,
+          callId: event.call.id,
           response: event.response
         });
         return;

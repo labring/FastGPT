@@ -101,7 +101,10 @@ describe('PiAgent workflow runtime', () => {
     expect(saveLLMRequestRecordFn).toHaveBeenCalledWith(
       expect.objectContaining({
         response: expect.objectContaining({
-          providerResponseId: 'provider_resp_1'
+          providerResponseId: 'provider_resp_1',
+          usage: expect.not.objectContaining({
+            usedUserOpenAIKey: expect.anything()
+          })
         })
       })
     );

@@ -211,9 +211,7 @@ export const getExecuteTool = ({
             files,
             teamId: runningUserInfo.teamId,
             tmbId: runningUserInfo.tmbId,
-            customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-            model,
-            userKey: externalProvider.openaiAccount
+            customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse
           });
 
           return {
@@ -228,7 +226,8 @@ export const getExecuteTool = ({
             datasetParams,
             teamId: runningUserInfo.teamId,
             tmbId: runningUserInfo.tmbId,
-            llmModel: model
+            llmModel: model,
+            userKey: externalProvider.openaiAccount
           });
 
           return {
@@ -379,6 +378,10 @@ export const getExecuteTool = ({
       if (!nodeResponse) return undefined;
 
       const subInfo = getSubAppInfo(toolId);
+      const childTotalPoints = (nodeResponse.childrenResponses || []).reduce(
+        (sum, item) => sum + (item.totalPoints || 0),
+        0
+      );
       return {
         ...nodeResponse,
         moduleType: nodeResponse.moduleType || FlowNodeTypeEnum.tool,
@@ -387,7 +390,8 @@ export const getExecuteTool = ({
         nodeId: callId,
         id: callId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-        totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+        totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0),
+        ...(childTotalPoints > 0 ? { childTotalPoints } : {})
       };
     })();
 

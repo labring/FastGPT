@@ -163,7 +163,7 @@ export async function updateTeam({
     const baseUrl = openaiAccount?.baseUrl || 'https://api.openai.com/v1';
     openaiAccount.baseUrl = baseUrl;
 
-    const ai = getAIApi({
+    const { ai } = getAIApi({
       userKey: openaiAccount
     });
 

@@ -2,7 +2,7 @@ import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import { getLLMModel } from '../../../../../ai/model';
-import { openaiBaseUrl, openaiBaseKey } from '../../../../../ai/config';
+import { defaultUserOpenAIBaseUrl, openaiBaseUrl, openaiBaseKey } from '../../../../../ai/config';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
@@ -40,8 +40,12 @@ export function buildPiModel(
   // requestUrl is the full endpoint (e.g. https://api.deepseek.com/chat/completions).
   // pi-ai's openai-completions provider appends /chat/completions automatically,
   // so we strip it to get baseUrl.
-  const baseUrl = normalizeBaseUrl(userKey?.baseUrl || cfg?.requestUrl) || openaiBaseUrl;
-  const apiKey = userKey?.key || cfg?.requestAuth || openaiBaseKey;
+  const hasUserOpenAIKey = !!userKey?.key;
+  const baseUrl =
+    normalizeBaseUrl(
+      hasUserOpenAIKey ? userKey?.baseUrl || defaultUserOpenAIBaseUrl : cfg?.requestUrl
+    ) || openaiBaseUrl;
+  const apiKey = hasUserOpenAIKey ? userKey.key : cfg?.requestAuth || openaiBaseKey;
 
   return {
     id: cfg?.model ?? 'gpt-4o',

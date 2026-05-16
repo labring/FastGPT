@@ -10,7 +10,6 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   chats2GPTMessages,
-  chatValue2RuntimePrompt,
   getSystemPrompt_ChatItemType,
   GPTMessages2Chats,
   runtimePrompt2ChatsValue
@@ -58,8 +57,7 @@ export type ChatResponse = DispatchNodeResultType<
 
 /* request openai chat */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
-  let {
-    res,
+  const {
     checkIsStopping,
     requestOrigin,
     stream = false,
@@ -67,7 +65,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     externalProvider,
     histories,
     node: { name, version, inputs },
-    query,
     runningUserInfo,
     workflowStreamResponse,
     chatConfig,
@@ -77,14 +74,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       maxToken,
       history = 6,
-      quoteQA,
-      userChatInput = '',
+      userChatInput: rawUserChatInput = '',
       isResponseAnswerText = true,
       systemPrompt = '',
       aiChatQuoteRole = 'system',
       quoteTemplate,
       quotePrompt,
-      aiChatVision,
       aiChatReasoning = true,
       aiChatReasoningEffort,
       aiChatTopP,
@@ -92,9 +87,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       aiChatResponseFormat,
       aiChatJsonSchema,
 
-      fileUrlList: fileLinks // node quote file links
+      quoteQA: rawQuoteQA,
+      aiChatVision: rawAiChatVision,
+      fileUrlList: rawFileLinks // node quote file links
     }
   } = props;
+  let quoteQA = rawQuoteQA;
+  let aiChatVision = rawAiChatVision;
+  let fileLinks = rawFileLinks;
+  let userChatInput = rawUserChatInput;
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
@@ -228,7 +229,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
-    const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
+    const points = usage.usedUserOpenAIKey ? 0 : totalPoints;
     props.usagePush([
       {
         moduleName: name,
@@ -416,7 +417,7 @@ const getChatMessages = async ({
   ];
 
   const messages = await Promise.all(
-    rawUserMessages.map(async (message, index): Promise<ChatItemMiniType> => {
+    rawUserMessages.map(async (message): Promise<ChatItemMiniType> => {
       if (message.obj !== ChatRoleEnum.Human) {
         return message;
       }

@@ -41,6 +41,15 @@ const createContext = (overrides = {}) =>
     ...overrides
   }) as any;
 
+const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) => ({
+  id,
+  type: 'function' as const,
+  function: {
+    name,
+    arguments: args
+  }
+});
+
 describe('createWorkflowAgentLoopRuntime', () => {
   it('creates a generic agent loop runtime from workflow context', () => {
     const usagePush = vi.fn();
@@ -51,6 +60,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     expect(runtime.model).toBe('gpt-4');
+    expect(runtime.batchToolSize).toBe(5);
     expect(runtime.reasoningEffort).toBeUndefined();
     expect(runtime.userKey).toEqual({ key: 'user-key' });
     expect(runtime.useVision).toBe(true);
@@ -138,9 +148,21 @@ describe('createWorkflowAgentLoopRuntime', () => {
         }
       ]
     });
+    expect(artifacts.nodeResponses).toEqual([]);
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: '{"q":"FastGPT"}'
+      }),
+      response: 'tool response',
+      seconds: 0.45
+    });
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'call_search',
+        runningTime: 0.45,
         llmRequestIds: ['req_tool_node']
       })
     ]);
@@ -161,13 +183,14 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     ]);
     runtime.emitEvent?.({
-      type: 'child_llm_request_end',
+      type: 'after_message_compress',
       usage: {
         moduleName: 'llm',
         model: 'gpt-4',
         totalPoints: 1
       },
-      requestIds: ['req_compress']
+      requestIds: ['req_compress'],
+      seconds: 0.12
     });
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
@@ -175,8 +198,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
         llmRequestIds: ['req_tool_node']
       }),
       expect.objectContaining({
-        id: 'agent_node-usage-req_compress',
-        moduleName: 'llm',
+        id: 'req_compress',
+        moduleName: 'chat:compress_llm_messages',
+        runningTime: 0.12,
         llmRequestIds: ['req_compress']
       })
     ]);
@@ -265,6 +289,39 @@ describe('createWorkflowAgentLoopRuntime', () => {
         name: 'GPT-4'
       }
     });
+  });
+
+  it('records abnormal close finish reason from llm request', () => {
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    runtime.emitEvent?.({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_interrupted',
+      finishReason: 'abnormal_close',
+      answerText: 'partial answer',
+      usage: {
+        inputTokens: 8,
+        outputTokens: 3,
+        totalPoints: 0.4
+      },
+      seconds: 0.2
+    });
+
+    expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'agent_node-1-req_interrupted',
+        moduleName: 'chat:master_agent_call',
+        finishReason: 'abnormal_close',
+        textOutput: 'partial answer'
+      })
+    ]);
+    expect(artifacts.nodeResponses[0]).not.toHaveProperty('errorText');
   });
 
   it('records empty agent node responses with request ids', () => {
@@ -401,6 +458,16 @@ describe('createWorkflowAgentLoopRuntime', () => {
       seconds: 0.2
     });
 
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_update_plan',
+        name: 'update_plan'
+      }),
+      response: 'plan updated',
+      seconds: 0.05
+    });
+
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_master_tool_stop',
@@ -411,8 +478,56 @@ describe('createWorkflowAgentLoopRuntime', () => {
       expect.objectContaining({
         id: 'agent_node-plan-call_update_plan',
         moduleName: 'chat:plan_agent',
+        runningTime: 0.05,
         agentPlanStatus: 'update_plan',
-        runningTime: 0.2
+        textOutput: 'plan updated'
+      })
+    ]);
+  });
+
+  it('attaches tool response compression child to plan tool node responses', () => {
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_update_plan',
+        name: 'update_plan'
+      }),
+      response: 'plan updated',
+      seconds: 0.08,
+      toolResponseCompress: {
+        response: 'compressed plan response',
+        usage: {
+          moduleName: 'account_usage:tool_response_compress',
+          model: 'GPT-4',
+          totalPoints: 0.2,
+          inputTokens: 4,
+          outputTokens: 2
+        },
+        requestIds: ['req_plan_compress'],
+        seconds: 0.7
+      }
+    });
+
+    expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'agent_node-plan-call_update_plan',
+        moduleName: 'chat:plan_agent',
+        runningTime: 0.08,
+        agentPlanStatus: 'update_plan',
+        childTotalPoints: 0.2,
+        childrenResponses: [
+          expect.objectContaining({
+            moduleName: 'chat:tool_response_compress',
+            textOutput: 'compressed plan response',
+            llmRequestIds: ['req_plan_compress']
+          })
+        ]
       })
     ]);
   });
@@ -451,14 +566,11 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     await runtime.executeTool({
       messages: [],
-      call: {
+      call: toolCall({
         id: 'call_search',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{"q":"FastGPT"}'
-        }
-      }
+        name: 'search',
+        args: '{"q":"FastGPT"}'
+      })
     });
     runtime.usageSink?.([
       {
@@ -470,7 +582,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     ]);
     runtime.emitEvent?.({
-      type: 'child_llm_request_end',
+      type: 'after_message_compress',
       usage: {
         moduleName: 'Compress Agent',
         model: 'GPT-4',
@@ -478,7 +590,18 @@ describe('createWorkflowAgentLoopRuntime', () => {
         inputTokens: 3,
         outputTokens: 1
       },
-      requestIds: ['req_compress']
+      requestIds: ['req_compress'],
+      seconds: 0.11
+    });
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: '{"q":"FastGPT"}'
+      }),
+      response: 'search result',
+      seconds: 0.33
     });
 
     expect(artifacts.nodeResponses).toEqual([
@@ -488,15 +611,17 @@ describe('createWorkflowAgentLoopRuntime', () => {
         totalPoints: 1
       }),
       expect.objectContaining({
-        id: 'call_search',
-        moduleName: 'Search',
-        totalPoints: 2
-      }),
-      expect.objectContaining({
-        id: 'agent_node-usage-req_compress',
-        moduleName: 'Compress Agent',
+        id: 'req_compress',
+        moduleName: 'chat:compress_llm_messages',
+        runningTime: 0.11,
         totalPoints: 0.1,
         llmRequestIds: ['req_compress']
+      }),
+      expect.objectContaining({
+        id: 'call_search',
+        moduleName: 'Search',
+        runningTime: 0.33,
+        totalPoints: 2
       })
     ]);
   });
@@ -552,25 +677,37 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     await runtime.executeTool({
       messages: [],
-      call: {
+      call: toolCall({
         id: 'call_search',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{"q":"FastGPT"}'
-        }
-      }
+        name: 'search',
+        args: '{"q":"FastGPT"}'
+      })
+    });
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: '{"q":"FastGPT"}'
+      }),
+      response: 'call_search response',
+      seconds: 0.41
     });
     await runtime.executeTool({
       messages: [],
-      call: {
+      call: toolCall({
         id: 'call_time',
-        type: 'function',
-        function: {
-          name: 'time',
-          arguments: '{}'
-        }
-      }
+        name: 'time'
+      })
+    });
+    runtime.emitEvent?.({
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_time',
+        name: 'time'
+      }),
+      response: 'call_time response',
+      seconds: 0.42
     });
 
     runtime.emitEvent?.({
@@ -597,11 +734,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }),
       expect.objectContaining({
         id: 'call_search',
-        moduleName: 'Search'
+        moduleName: 'Search',
+        runningTime: 0.41
       }),
       expect.objectContaining({
         id: 'call_time',
-        moduleName: 'Time'
+        moduleName: 'Time',
+        runningTime: 0.42
       }),
       expect.objectContaining({
         id: 'agent_node-2-req_after_tools',
@@ -635,7 +774,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     runtime.emitEvent?.({
-      type: 'child_llm_request_end',
+      type: 'after_message_compress',
       usage: {
         moduleName: 'account_usage:compress_llm_messages',
         model: 'GPT-4',
@@ -643,31 +782,29 @@ describe('createWorkflowAgentLoopRuntime', () => {
         inputTokens: 3,
         outputTokens: 1
       },
-      requestIds: ['req_compress']
+      requestIds: ['req_compress'],
+      seconds: 0.09
     });
     runtime.emitEvent?.({
-      type: 'child_llm_request_end',
-      usage: {
-        moduleName: 'account_usage:llm_compress_text',
-        model: 'GPT-4',
-        totalPoints: 0.2,
-        inputTokens: 4,
-        outputTokens: 2
-      },
-      requestIds: ['req_file_compress_1', 'req_file_compress_2'],
-      seconds: 1.23
-    });
-    runtime.emitEvent?.({
-      type: 'child_llm_request_end',
-      usage: {
-        moduleName: 'account_usage:tool_response_compress',
-        model: 'GPT-4',
-        totalPoints: 0.3,
-        inputTokens: 5,
-        outputTokens: 3
-      },
-      requestIds: ['req_tool_response_compress'],
-      seconds: 1.5
+      type: 'tool_response',
+      call: toolCall({
+        id: 'call_search',
+        name: 'search'
+      }),
+      response: 'compressed tool response',
+      seconds: 0.77,
+      toolResponseCompress: {
+        response: 'compressed tool response',
+        usage: {
+          moduleName: 'account_usage:tool_response_compress',
+          model: 'GPT-4',
+          totalPoints: 0.3,
+          inputTokens: 5,
+          outputTokens: 3
+        },
+        requestIds: ['req_tool_response_compress'],
+        seconds: 1.5
+      }
     });
 
     expect(artifacts.nodeResponses).toEqual([
@@ -676,24 +813,24 @@ describe('createWorkflowAgentLoopRuntime', () => {
         moduleName: 'chat:master_agent_call'
       }),
       expect.objectContaining({
-        id: 'agent_node-usage-req_compress',
+        id: 'req_compress',
         moduleName: 'chat:compress_llm_messages',
         moduleLogo: 'core/app/agent/child/contextCompress',
+        runningTime: 0.09,
         llmRequestIds: ['req_compress']
       }),
       expect.objectContaining({
-        id: 'agent_node-usage-req_file_compress_1',
-        moduleName: 'chat:file_compress_text',
-        moduleLogo: 'core/app/agent/child/contextCompress',
-        runningTime: 1.23,
-        llmRequestIds: ['req_file_compress_1', 'req_file_compress_2']
-      }),
-      expect.objectContaining({
-        id: 'agent_node-usage-req_tool_response_compress',
-        moduleName: 'chat:tool_response_compress',
-        moduleLogo: 'core/app/agent/child/contextCompress',
-        runningTime: 1.5,
-        llmRequestIds: ['req_tool_response_compress']
+        id: 'call_search',
+        runningTime: 0.77,
+        childTotalPoints: 0.3,
+        childrenResponses: [
+          expect.objectContaining({
+            moduleName: 'chat:tool_response_compress',
+            moduleLogo: 'core/app/agent/child/contextCompress',
+            runningTime: 1.5,
+            llmRequestIds: ['req_tool_response_compress']
+          })
+        ]
       })
     ]);
   });

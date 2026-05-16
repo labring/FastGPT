@@ -235,15 +235,6 @@ export const DispatchNodeResponseSchema = z
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
-    queryExtensionResult: z
-      .object({
-        model: z.string().meta({ description: '模型' }),
-        inputTokens: z.number().meta({ description: '输入 token' }),
-        outputTokens: z.number().meta({ description: '输出 token' }),
-        query: z.string().meta({ description: '查询内容' })
-      })
-      .optional()
-      .meta({ description: '查询扩展结果' }),
     deepSearchResult: z
       .object({
         model: z.string().meta({ description: '模型' }),

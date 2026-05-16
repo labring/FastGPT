@@ -16,9 +16,11 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { WorkflowResponseType } from '../../../../type';
 import type { DispatchAgentModuleProps } from '../..';
-import { i18nT } from '../../../../../../../../web/i18n/utils';
-
-const AGENT_CALL_USAGE_MODULE_NAME = 'account_usage:agent_call';
+import {
+  AgentNodeResponseDisplay,
+  AgentUsageModuleName
+} from '../../../../../../ai/llm/agentLoop/constants';
+import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 
 const createFallbackRequestId = () =>
   `pi_${customNanoid('abcdefghijklmnopqrstuvwxyz1234567890', 12)}`;
@@ -286,6 +288,7 @@ export const createPiAgentWorkflowRuntime = ({
   let requestIndex = 0;
   let answerText = '';
   let reasoningText = '';
+  const usedUserOpenAIKey = !!props.externalProvider.openaiAccount?.key;
 
   const appendChildNodeResponse = (nodeResponse: ChatHistoryItemResType) => {
     nodeResponses.push(nodeResponse);
@@ -320,7 +323,7 @@ export const createPiAgentWorkflowRuntime = ({
   }) => {
     const inputTokens = message.usage?.input || 0;
     const outputTokens = message.usage?.output || 0;
-    const totalPoints = props.externalProvider.openaiAccount
+    const totalPoints = usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
           model: modelData,
@@ -330,11 +333,11 @@ export const createPiAgentWorkflowRuntime = ({
     const finishReason = mapStopReason(message.stopReason);
     const errorText =
       message.errorMessage ||
-      (finishReason === 'error' ? i18nT('chat:completion_finish_error') : undefined);
+      (finishReason === 'error' ? completionFinishReasonMap.error : undefined);
     const seconds = +((Date.now() - request.startTime) / 1000).toFixed(2);
 
     const usage: ChatNodeUsageType = {
-      moduleName: AGENT_CALL_USAGE_MODULE_NAME,
+      moduleName: AgentUsageModuleName.agentCall,
       model: modelData.name,
       totalPoints,
       inputTokens,
@@ -361,9 +364,9 @@ export const createPiAgentWorkflowRuntime = ({
     const agentResponse: ChatHistoryItemResType = {
       id: `${props.node.nodeId}-${request.requestIndex}-${request.requestId}`,
       nodeId: `${props.node.nodeId}-pi-${request.requestIndex}`,
-      moduleName: i18nT('chat:master_agent_call'),
+      moduleName: AgentNodeResponseDisplay.piMaster.moduleName,
       moduleType: props.node.flowNodeType,
-      moduleLogo: 'core/app/type/agentFill',
+      moduleLogo: AgentNodeResponseDisplay.piMaster.moduleLogo,
       runningTime: seconds,
       model: request.modelName || modelData.name,
       llmRequestIds: [request.requestId],

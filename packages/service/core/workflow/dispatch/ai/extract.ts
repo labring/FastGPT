@@ -20,11 +20,7 @@ import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
-import {
-  type ChatCompletionMessageParam,
-  type ChatCompletionTool
-} from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { type ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getExtractJsonPrompt,
@@ -52,7 +48,6 @@ const agentFunName = 'request_function';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
-    externalProvider,
     runningAppInfo,
     node: { nodeId, name },
     histories,
@@ -74,7 +69,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   >;
 
   try {
-    const { arg, inputTokens, outputTokens } = await (async () => {
+    const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await (async () => {
       if (extractModel.toolChoice) {
         return toolChoice({
           ...props,
@@ -92,7 +87,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     })();
 
     // remove invalid key
-    for (let key in arg) {
+    for (const key in arg) {
       const item = extractKeys.find((item) => item.key === key);
       if (!item) {
         delete arg[key];
@@ -130,7 +125,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     props.usagePush([
       {
         moduleName: name,
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
         model: modelName,
         inputTokens,
         outputTokens
@@ -147,7 +142,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         [memoryKey]: arg
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
         model: modelName,
         query: content,
         inputTokens,
@@ -250,7 +245,7 @@ const toolChoice = async (props: ActionProps) => {
   const {
     answerText: text,
     toolCalls,
-    usage: { inputTokens, outputTokens }
+    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     body,
     userKey: externalProvider.openaiAccount
@@ -270,16 +265,10 @@ const toolChoice = async (props: ActionProps) => {
     }
   })();
 
-  const AIMessages: ChatCompletionMessageParam[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: toolCalls
-    }
-  ];
-
   return {
     inputTokens,
     outputTokens,
+    usedUserOpenAIKey,
     arg
   };
 };
@@ -323,7 +312,7 @@ const completions = async (props: ActionProps) => {
 
   const {
     answerText: answer,
-    usage: { inputTokens, outputTokens }
+    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     body: {
       model: extractModel.model,
@@ -342,6 +331,7 @@ const completions = async (props: ActionProps) => {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      usedUserOpenAIKey,
       arg: {}
     };
   }
@@ -351,6 +341,7 @@ const completions = async (props: ActionProps) => {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      usedUserOpenAIKey,
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
@@ -359,6 +350,7 @@ const completions = async (props: ActionProps) => {
       rawResponse: answer,
       inputTokens,
       outputTokens,
+      usedUserOpenAIKey,
       arg: {}
     };
   }

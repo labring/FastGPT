@@ -498,7 +498,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
   it('emits tool response compression request ids and running time', async () => {
     vi.useFakeTimers();
-    const onAfterToolResponseCompress = vi.fn();
+    const onAfterToolCall = vi.fn();
     compressToolResponseMock.mockImplementation(async ({ response }) => {
       await vi.advanceTimersByTimeAsync(1234);
       return {
@@ -548,16 +548,20 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         isAborted: () => false,
         onRunTool,
         onRunInteractiveTool: vi.fn(),
-        onAfterToolResponseCompress
+        onAfterToolCall
       });
     } finally {
       vi.useRealTimers();
     }
 
-    expect(onAfterToolResponseCompress).toHaveBeenCalledWith(
+    expect(onAfterToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
-        requestIds: ['req_tool_chunk_1', 'req_tool_chunk_2'],
-        seconds: 1.23
+        response: 'compressed:large search result',
+        seconds: 1.23,
+        toolResponseCompress: expect.objectContaining({
+          requestIds: ['req_tool_chunk_1', 'req_tool_chunk_2'],
+          seconds: 1.23
+        })
       })
     );
   });
@@ -621,6 +625,77 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(onToolCall).toHaveBeenNthCalledWith(2, { call: timeCall });
   });
 
+  it('runs tools in batches and appends tool messages in model tool call order', async () => {
+    const slowCall = {
+      id: 'call_slow',
+      type: 'function' as const,
+      function: {
+        name: 'search',
+        arguments: '{"q":"slow"}'
+      }
+    };
+    const fastCall = {
+      id: 'call_fast',
+      type: 'function' as const,
+      function: {
+        name: 'search',
+        arguments: '{"q":"fast"}'
+      }
+    };
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        requestId: 'req_parallel_tools',
+        finishReason: 'tool_calls',
+        toolCalls: [slowCall, fastCall],
+        inputTokens: 100,
+        outputTokens: 20
+      },
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      batchToolSize: 2,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'call tools'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool: vi.fn(async ({ call }) => {
+        await new Promise((resolve) => setTimeout(resolve, call.id === 'call_slow' ? 20 : 0));
+
+        return {
+          response: `${call.id} result`,
+          assistantMessages: [],
+          usages: []
+        };
+      }),
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(result.completeMessages.filter((message) => message.role === 'tool')).toEqual([
+      {
+        role: 'tool',
+        tool_call_id: 'call_slow',
+        content: 'call_slow result'
+      },
+      {
+        role: 'tool',
+        tool_call_id: 'call_fast',
+        content: 'call_fast result'
+      }
+    ]);
+  });
+
   it('stops the loop when a tool handler returns stop=true', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'handled and stop',
@@ -665,6 +740,62 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       role: 'tool',
       tool_call_id: 'call_search',
       content: 'handled and stop'
+    });
+  });
+
+  it('treats tool handler exceptions as tool responses and continues', async () => {
+    const onAfterToolCall = vi.fn();
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool: vi.fn(async () => {
+        throw new Error('network failed');
+      }),
+      onRunInteractiveTool: vi.fn(),
+      onAfterToolCall
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+    expect(onAfterToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({ id: 'call_search' }),
+        response: 'Tool error: network failed',
+        errorMessage: 'Tool error: network failed'
+      })
+    );
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'Tool error: network failed'
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'Tool error: network failed'
     });
   });
 

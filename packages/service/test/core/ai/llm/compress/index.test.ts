@@ -300,7 +300,8 @@ describe('compressRequestMessages', () => {
       answerText: '<context_checkpoint>\nsummary\n</context_checkpoint>',
       usage: {
         inputTokens: 50,
-        outputTokens: 10
+        outputTokens: 10,
+        usedUserOpenAIKey: false
       },
       requestId: 'req_abort',
       finish_reason: 'close'
@@ -322,12 +323,13 @@ describe('compressRequestMessages', () => {
     });
   });
 
-  it('should skip billing points when userKey is provided', async () => {
+  it('should skip billing points when valid userKey is provided', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: '<context_checkpoint>\nsummary\n</context_checkpoint>',
       usage: {
         inputTokens: 50,
-        outputTokens: 10
+        outputTokens: 10,
+        usedUserOpenAIKey: true
       },
       requestId: 'req_user_key',
       finish_reason: 'stop'
@@ -336,11 +338,37 @@ describe('compressRequestMessages', () => {
     const result = await compressRequestMessages({
       messages: createMessages(),
       model,
-      userKey: {} as any
+      userKey: {
+        key: 'user-key',
+        baseUrl: 'https://user.example.com/v1'
+      }
     });
 
     expect(result.usage?.totalPoints).toBe(0);
     expect(formatModelChars2PointsMock).not.toHaveBeenCalled();
+  });
+
+  it('should not skip billing points when userKey has no key', async () => {
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\nsummary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_user_base_url_only',
+      finish_reason: 'stop'
+    });
+
+    const result = await compressRequestMessages({
+      messages: createMessages(),
+      model,
+      userKey: {
+        baseUrl: 'https://user.example.com/v1'
+      } as any
+    });
+
+    expect(result.usage?.totalPoints).toBe(3);
+    expect(formatModelChars2PointsMock).toHaveBeenCalled();
   });
 
   it('should return original messages when compressor throws', async () => {
@@ -413,7 +441,8 @@ describe('compressLargeContent', () => {
       answerText: ' compressed chunk ',
       usage: {
         inputTokens: 20,
-        outputTokens: 5
+        outputTokens: 5,
+        usedUserOpenAIKey: false
       },
       requestId: 'req_chunk'
     });
@@ -461,7 +490,8 @@ describe('compressLargeContent', () => {
       answerText: 'compressed',
       usage: {
         inputTokens: 20,
-        outputTokens: 5
+        outputTokens: 5,
+        usedUserOpenAIKey: true
       },
       requestId: 'req_large_reasoning'
     });
@@ -535,14 +565,15 @@ describe('compressLargeContent', () => {
     });
   });
 
-  it('should skip billing points for chunk compression when userKey is provided', async () => {
+  it('should skip billing points for chunk compression when valid userKey is provided', async () => {
     countPromptTokensMock.mockResolvedValue(1000);
     countGptMessagesTokensMock.mockResolvedValue(50);
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed',
       usage: {
         inputTokens: 20,
-        outputTokens: 5
+        outputTokens: 5,
+        usedUserOpenAIKey: true
       },
       requestId: 'req_user_key_chunk'
     });
@@ -551,7 +582,10 @@ describe('compressLargeContent', () => {
       content: 'large content',
       model,
       compressedTokenLimit: 100,
-      userKey: {} as any
+      userKey: {
+        key: 'user-key',
+        baseUrl: 'https://user.example.com/v1'
+      }
     });
 
     expect(result.usage?.totalPoints).toBe(0);

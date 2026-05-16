@@ -165,9 +165,13 @@ export const runUnifiedAgentLoop = async ({
           } as ChatCompletionMessageParam
         ]
       : buildInitialMessages({ runtime, input });
+  const askToolName = runtime.toolCatalog.askTool?.function.name;
+  const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
+  const internalToolNames = new Set([askToolName, updatePlanToolName].filter(Boolean));
 
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    batchToolSize: runtime.batchToolSize ?? 5,
     body: {
       model: runtime.model,
       reasoning_effort: runtime.reasoningEffort,
@@ -189,22 +193,16 @@ export const runUnifiedAgentLoop = async ({
         toolChoice: forceFinalAnswerOnly ? 'none' : 'auto'
       };
     },
+    canBatchTool: (call) => !internalToolNames.has(call.function.name),
     onReasoning: ({ text }) => runtime.emitEvent?.({ type: 'reasoning_delta', text }),
     onStreaming: ({ text }) => runtime.emitEvent?.({ type: 'answer_delta', text }),
     onAfterCompressContext: ({ usage, requestIds, seconds, contextCheckpoint }) =>
       runtime.emitEvent?.({
-        type: 'child_llm_request_end',
+        type: 'after_message_compress',
         usage,
         requestIds,
         seconds,
         contextCheckpoint
-      }),
-    onAfterToolResponseCompress: ({ usage, requestIds, seconds }) =>
-      runtime.emitEvent?.({
-        type: 'child_llm_request_end',
-        usage,
-        requestIds,
-        seconds
       }),
     onLLMRequestStart: ({ requestIndex, modelName }) =>
       runtime.emitEvent?.({
@@ -239,7 +237,6 @@ export const runUnifiedAgentLoop = async ({
       });
     },
     onToolCall: ({ call }) => {
-      const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
       if (call.function.name === updatePlanToolName) {
         runtime.emitEvent?.({
           type: 'plan_status',
@@ -256,9 +253,6 @@ export const runUnifiedAgentLoop = async ({
         argsDelta
       }),
     onRunTool: async ({ call, messages }) => {
-      const askToolName = runtime.toolCatalog.askTool?.function.name;
-      const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
-
       if (call.function.name === askToolName) {
         const parsed = parsePlanAskToolCall(call);
         if (!parsed.success) {
@@ -306,11 +300,13 @@ export const runUnifiedAgentLoop = async ({
 
       return toolResult;
     },
-    onAfterToolCall: ({ call, response }) => {
+    onAfterToolCall: ({ call, response, seconds, toolResponseCompress }) => {
       runtime.emitEvent?.({
         type: 'tool_response',
-        callId: call.id,
-        response: response || ''
+        call,
+        response: response || '',
+        seconds,
+        toolResponseCompress
       });
     },
     onRunInteractiveTool: async () =>
