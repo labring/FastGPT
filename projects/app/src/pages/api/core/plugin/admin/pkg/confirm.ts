@@ -3,6 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import type { ConfirmUploadPkgPluginBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import { refreshVersionKey } from '@fastgpt/service/common/cache';
+import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 export type ConfirmUploadBody = ConfirmUploadPkgPluginBodyType;
 
@@ -20,7 +22,9 @@ async function handler(
     return Promise.reject('Tool IDs are required');
   }
 
-  return await pluginClient.confirmToolUpload(toolIds);
+  const result = await pluginClient.confirmToolUpload(toolIds);
+  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
+  return result;
 }
 
 export default NextAPI(handler);
