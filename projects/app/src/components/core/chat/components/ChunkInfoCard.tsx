@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Link } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
@@ -26,9 +25,7 @@ const ChunkInfoCard = ({
   a = '',
   imagePreviewUrl
 }: ChunkInfoCardProps) => {
-  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isHoverOnButton, setIsHoverOnButton] = useState(false);
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
@@ -48,26 +45,18 @@ const ChunkInfoCard = ({
       border={'1px solid'}
       borderColor={'borderColor.low'}
       bg={'white'}
+      cursor={'pointer'}
+      onClick={handleToggle}
     >
       {/* Header */}
-      <MyTooltip
-        label={isExpanded ? t('common:Collapse') : t('common:Expand')}
-        shouldWrapChildren={false}
-        isDisabled={isHoverOnButton}
+      <Flex
+        alignItems={'center'}
+        justifyContent={'space-between'}
+        minH={'40px'}
+        px={3}
+        w={'100%'}
       >
-        <Flex
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          minH={'40px'}
-          px={3}
-          cursor={'pointer'}
-          onClick={handleToggle}
-          w={'100%'}
-          _hover={{
-            bg: '#F4F6F8'
-          }}
-        >
-          <Flex alignItems={'center'} flex={1} gap={2} minW={0}>
+        <Flex alignItems={'center'} flex={1} gap={2} minW={0}>
             {/* Toggle Button */}
             <Box
               className="toggle-icon"
@@ -120,8 +109,6 @@ const ChunkInfoCard = ({
           {linkText && linkUrl && (
             <Box
               onClick={(e) => e.stopPropagation()}
-              onMouseEnter={() => setIsHoverOnButton(true)}
-              onMouseLeave={() => setIsHoverOnButton(false)}
               flexShrink={0}
               ml={2}
             >
@@ -155,7 +142,6 @@ const ChunkInfoCard = ({
             </Box>
           )}
         </Flex>
-      </MyTooltip>
 
       {/* Content */}
       {(q || imagePreviewUrl) && (

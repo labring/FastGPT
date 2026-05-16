@@ -25,7 +25,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 // 兜底回复切换节点 ID（用于判断是否走了 LLM 回复分支）
 const FALLBACK_REPLY_SWITCH_NODE_ID = 'ekVOtsUJMYWg4col';
 
-const maxCount = 5;
+const maxCount = 10;
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {

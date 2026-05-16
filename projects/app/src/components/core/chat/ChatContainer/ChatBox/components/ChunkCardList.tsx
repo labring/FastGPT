@@ -145,7 +145,7 @@ const ChunkCardList = React.memo(function QuoteList({
       });
   }, [rawSearch, quoteList, chatItemDataId, t, isAgenticMode]);
 
-  const maxCount = 5;
+  const maxCount = 10;
   const [isShowAll, toggleStatus] = useState(formatedDataList.length <= maxCount);
   const displayList = useMemo(
     () => (isShowAll ? formatedDataList : formatedDataList.slice(0, maxCount)),
