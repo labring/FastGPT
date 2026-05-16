@@ -29,7 +29,13 @@ const AppSelectWithAll = ({ value, onSelect, showAllOption = false }: AppSelectW
     async ({ parentId }: GetResourceFolderListProps) => {
       const apps = await getMyApps({
         parentId,
-        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+        type: [
+          AppTypeEnum.folder,
+          AppTypeEnum.simple,
+          AppTypeEnum.workflow,
+          AppTypeEnum.chatAgent,
+          AppTypeEnum.assistant
+        ]
       }).then((res) =>
         res
           .filter((item) => !item.hasInteractiveNode)

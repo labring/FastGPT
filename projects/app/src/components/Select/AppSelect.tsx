@@ -31,7 +31,13 @@ const AppSelect = ({
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
       parentId,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+      type: [
+        AppTypeEnum.folder,
+        AppTypeEnum.simple,
+        AppTypeEnum.workflow,
+        AppTypeEnum.chatAgent,
+        AppTypeEnum.assistant
+      ]
     }).then((res) =>
       res
         .filter((item) => !item.hasInteractiveNode)

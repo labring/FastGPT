@@ -284,7 +284,12 @@ describe('checkTeamAppTypeLimit', () => {
       expect(countSpy).toHaveBeenCalledWith({
         teamId: mockTeamId,
         type: {
-          $in: [AppTypeEnum.chatAgent, AppTypeEnum.simple, AppTypeEnum.workflow]
+          $in: [
+            AppTypeEnum.chatAgent,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.assistant
+          ]
         }
       });
     });
