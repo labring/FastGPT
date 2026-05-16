@@ -794,10 +794,14 @@ export async function dispatchDatasetSearch(
             );
 
             if (groupSearchResults.length > 0) {
-              // Merge searchRes from all groups, sorted by score descending
+              // Merge searchRes from all groups, sorted by RRF score descending
               const mergedSearchRes = groupSearchResults
                 .flatMap((g) => g.result.searchRes)
-                .sort((a, b) => (b.score[0]?.value ?? 0) - (a.score[0]?.value ?? 0));
+                .sort((a, b) => {
+                  const aRrf = a.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
+                  const bRrf = b.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
+                  return bRrf - aRrf;
+                });
 
               // Use first group's result as base for metadata fields
               const baseResult = groupSearchResults[0].result as SearchDatasetDataResponse;
