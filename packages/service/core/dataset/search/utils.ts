@@ -3,6 +3,9 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { getImageBase64 } from '../../../common/file/image/utils';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -16,6 +19,23 @@ export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
     const set = new Set(list);
     return acc.filter((id) => set.has(id));
   });
+};
+
+export const normalizeImageToBase64 = async (imageUrl: string) => {
+  if (imageUrl.startsWith('data:image/')) {
+    return imageUrl;
+  }
+
+  if (
+    isS3ObjectKey(imageUrl, 'dataset') ||
+    isS3ObjectKey(imageUrl, 'temp') ||
+    isS3ObjectKey(imageUrl, 'chat')
+  ) {
+    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  }
+
+  const { completeBase64 } = await getImageBase64(imageUrl);
+  return completeBase64;
 };
 
 export const datasetSearchQueryExtension = async ({

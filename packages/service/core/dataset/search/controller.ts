@@ -4,8 +4,13 @@ import {
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { recallFromVectorStore } from '../../../common/vectorDB/controller';
-import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
+import { getVectors } from '../../ai/embedding';
+import {
+  getEmbeddingModel,
+  getDefaultRerankModel,
+  getLLMModel,
+  isImageEmbeddingModel
+} from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import type {
   DatasetCollectionSchemaType,
@@ -25,12 +30,15 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
-import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { datasetSearchQueryExtension } from './utils';
+import {
+  computeFilterIntersection,
+  datasetSearchQueryExtension,
+  normalizeImageToBase64
+} from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
@@ -38,6 +46,7 @@ import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { createLLMResponse } from '../../ai/llm/request';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -47,9 +56,11 @@ export type SearchDatasetDataProps = {
   uid?: string;
   tmbId?: string;
   model: string;
+  vlmModel?: string;
   datasetIds: string[];
   reRankQuery: string;
   queries: string[];
+  queryImageUrls?: string[];
 
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
@@ -97,6 +108,12 @@ export type SearchDatasetDataResponse = {
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+  imageCaptionResult?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    queries: string[];
+  };
 };
 
 export const datasetDataReRank = async ({
@@ -183,6 +200,7 @@ export async function searchDatasetData(
     reRankQuery,
     queries,
     model,
+    vlmModel,
     similarity = 0,
     limit: maxTokens,
     searchMode: inputSearchMode = DatasetSearchModeEnum.embedding,
@@ -205,6 +223,7 @@ export async function searchDatasetData(
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
   usingReRank = usingReRank && !!getDefaultRerankModel();
+  let imageCaptionResult: SearchDatasetDataResponse['imageCaptionResult'];
 
   // Compatible with topk limit
   let set = new Set<string>();
@@ -462,35 +481,222 @@ export async function searchDatasetData(
       });
     } catch {}
   };
-  const embeddingRecall = async ({
-    queries,
-    limit,
-    forbidCollectionIdList,
-    filterCollectionIdList
-  }: {
+  type EmbeddingRecallSource = 'text' | 'imageCaption' | 'image';
+  type FullTextRecallSource = 'text' | 'imageCaption';
+  type VectorRecallTask = {
+    source: EmbeddingRecallSource;
+    vector: number[];
+  };
+
+  const emptyEmbeddingRecallResult = () => ({
+    textEmbeddingRecallResults: [] as SearchDataResponseItemType[],
+    imageCaptionEmbeddingRecallResults: [] as SearchDataResponseItemType[],
+    imageVectorRecallResults: [] as SearchDataResponseItemType[]
+  });
+
+  const concatRecallLists = (lists: SearchDataResponseItemType[][], limit: number) => {
+    return datasetSearchResultConcat(lists.map((list) => ({ weight: 1, list }))).slice(0, limit);
+  };
+
+  const getImageCaptionQueries = async (): Promise<{
     queries: string[];
-    limit: number;
-    forbidCollectionIdList: string[];
-    filterCollectionIdList?: string[];
+    inputTokens: number;
+    outputTokens: number;
+  }> => {
+    if (!vlmModel || queryImageUrls.length === 0) {
+      return {
+        queries: [],
+        inputTokens: 0,
+        outputTokens: 0
+      };
+    }
+
+    const vlmModelData = getLLMModel(vlmModel);
+    if (!vlmModelData?.vision) {
+      return {
+        queries: [],
+        inputTokens: 0,
+        outputTokens: 0
+      };
+    }
+
+    const results = await Promise.all(
+      queryImageUrls.map(async (url, index) => {
+        try {
+          const {
+            answerText,
+            usage: { inputTokens, outputTokens }
+          } = await createLLMResponse({
+            body: {
+              model: vlmModelData.model,
+              temperature: 0.1,
+              stream: true,
+              useVision: true,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: await normalizeImageToBase64(url)
+                      }
+                    },
+                    {
+                      type: 'text',
+                      text: '请用一句话描述这张图片的主体、场景、颜色、文字和关键视觉特征。只输出描述，不要解释。'
+                    }
+                  ]
+                }
+              ] as any
+            }
+          });
+
+          return {
+            query: answerText.trim(),
+            inputTokens,
+            outputTokens
+          };
+        } catch (error) {
+          logger.warn('Image caption generation failed during dataset search', {
+            model: vlmModelData.model,
+            imageIndex: index,
+            error
+          });
+
+          return {
+            query: '',
+            inputTokens: 0,
+            outputTokens: 0
+          };
+        }
+      })
+    );
+
+    return {
+      queries: results.map((item) => item.query).filter(Boolean),
+      inputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),
+      outputTokens: results.reduce((sum, item) => sum + item.outputTokens, 0)
+    };
+  };
+
+  const buildVectorRecallTasks = async ({
+    textQueries,
+    imageCaptionQueries
+  }: {
+    textQueries: string[];
+    imageCaptionQueries: string[];
   }): Promise<{
-    embeddingRecallResults: SearchDataResponseItemType[][];
+    tasks: VectorRecallTask[];
     tokens: number;
   }> => {
-    if (limit === 0) {
+    const embeddingModel = getEmbeddingModel(model);
+    const textTasks = [
+      ...textQueries.map((query) => ({ source: 'text' as const, query })),
+      ...imageCaptionQueries.map((query) => ({ source: 'imageCaption' as const, query }))
+    ];
+
+    const vectorInputs: {
+      source: EmbeddingRecallSource;
+      input: Parameters<typeof getVectors>[0]['inputs'][number];
+    }[] = textTasks.map((item) => ({
+      source: item.source,
+      input: {
+        type: 'text',
+        input: item.query
+      }
+    }));
+
+    if (queryImageUrls.length > 0 && isImageEmbeddingModel(embeddingModel)) {
+      const imageInputs = (
+        await Promise.all(
+          queryImageUrls.map(async (url, index) => {
+            try {
+              return await normalizeImageToBase64(url);
+            } catch (error) {
+              // Image search is additive. A stale or unreadable image should not break text recall
+              // or other valid images in the same request.
+              logger.warn('Image embedding normalization failed during dataset search', {
+                imageIndex: index,
+                error
+              });
+            }
+          })
+        )
+      )
+        .filter((imageUrl): imageUrl is string => !!imageUrl)
+        .map((imageUrl) => ({
+          source: 'image',
+          input: {
+            type: 'image' as const,
+            input: imageUrl
+          }
+        }));
+
+      vectorInputs.push(...imageInputs);
+    }
+
+    if (vectorInputs.length === 0) {
       return {
-        embeddingRecallResults: [],
+        tasks: [],
         tokens: 0
       };
     }
 
-    const { vectors, tokens } = await getVectorsByText({
-      model: getEmbeddingModel(model),
-      input: queries,
+    const { tokens, vectors } = await getVectors({
+      model: embeddingModel,
+      inputs: vectorInputs.map((item) => item.input),
       type: 'query'
     });
+    const tasks = vectors.map((vector, index) => ({
+      source: vectorInputs[index].source,
+      vector
+    }));
+
+    return {
+      tasks,
+      tokens
+    };
+  };
+
+  const embeddingRecall = async ({
+    textQueries,
+    imageCaptionQueries,
+    limit,
+    forbidCollectionIdList,
+    filterCollectionIdList
+  }: {
+    textQueries: string[];
+    imageCaptionQueries: string[];
+    limit: number;
+    forbidCollectionIdList: string[];
+    filterCollectionIdList?: string[];
+  }): Promise<
+    ReturnType<typeof emptyEmbeddingRecallResult> & {
+      tokens: number;
+    }
+  > => {
+    if (limit === 0) {
+      return {
+        ...emptyEmbeddingRecallResult(),
+        tokens: 0
+      };
+    }
+
+    const { tasks, tokens } = await buildVectorRecallTasks({
+      textQueries,
+      imageCaptionQueries
+    });
+
+    if (tasks.length === 0) {
+      return {
+        ...emptyEmbeddingRecallResult(),
+        tokens
+      };
+    }
 
     const recallResults = await Promise.all(
-      vectors.map(async (vector) => {
+      tasks.map(async ({ vector }) => {
         return await recallFromVectorStore({
           teamId,
           datasetIds,
@@ -502,7 +708,6 @@ export async function searchDatasetData(
       })
     );
 
-    // Get data and collections
     const collectionIdList = Array.from(
       new Set(recallResults.map((item) => item.results.map((item) => item.collectionId)).flat())
     );
@@ -552,89 +757,113 @@ export async function searchDatasetData(
         })
     ]);
 
-    const embeddingRecallResults = recallResults.map((item) => {
+    const groupedRecallLists: Record<EmbeddingRecallSource, SearchDataResponseItemType[][]> = {
+      text: [],
+      imageCaption: [],
+      image: []
+    };
+
+    recallResults.forEach((recallResult, taskIndex) => {
+      const task = tasks[taskIndex];
       const set = new Set<string>();
-      return (
-        item.results
-          .map((item, index) => {
-            const collection = collectionMaps.get(String(item.collectionId));
-            if (!collection) {
-              logger.warn('Dataset collection not found during recall', {
-                collectionId: item.collectionId,
-                dataId: item.id
-              });
-              return;
-            }
 
-            const data = dataMaps.get(String(item.id));
-            if (!data) {
-              logger.warn('Dataset data not found during recall', {
-                dataId: item.id,
-                collectionId: item.collectionId
-              });
-              return;
-            }
+      const list = recallResult.results
+        .map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            logger.warn('Dataset collection not found during recall', {
+              collectionId: item.collectionId,
+              dataId: item.id
+            });
+            return;
+          }
 
-            const result: SearchDataResponseItemType = {
-              id: String(data._id),
-              updateTime: data.updateTime,
-              ...formatDatasetDataValue({
-                q: data.q,
-                a: data.a,
-                imageId: data.imageId,
-                imageDescMap: data.imageDescMap
-              }),
-              chunkIndex: data.chunkIndex,
-              datasetId: String(data.datasetId),
-              collectionId: String(data.collectionId),
-              ...getCollectionSourceData(collection),
-              score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
-            };
+          const data = dataMaps.get(String(item.id?.trim()));
+          if (!data) {
+            logger.warn('Dataset data not found during recall', {
+              dataId: item.id,
+              collectionId: item.collectionId
+            });
+            return;
+          }
 
-            return result;
-          })
-          // 多个向量对应一个数据，每一路召回，保障数据只有一份，并且取最高排名
-          .filter((item) => {
-            if (!item) return false;
-            if (set.has(item.id)) return false;
-            set.add(item.id);
-            return true;
-          })
-          .map((item, index) => {
-            return {
-              ...item!,
-              score: item!.score.map((item) => ({ ...item, index }))
-            };
-          }) as SearchDataResponseItemType[]
-      );
+          const result: SearchDataResponseItemType = {
+            id: String(data._id),
+            updateTime: data.updateTime,
+            ...formatDatasetDataValue({
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
+            chunkIndex: data.chunkIndex,
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            ...getCollectionSourceData(collection),
+            score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
+          };
+
+          return result;
+        })
+        .filter((item) => {
+          if (!item) return false;
+          if (set.has(item.id)) return false;
+          set.add(item.id);
+          return true;
+        })
+        .map((item, index) => {
+          return {
+            ...item!,
+            score: item!.score.map((item) => ({ ...item, index }))
+          };
+        }) as SearchDataResponseItemType[];
+
+      groupedRecallLists[task.source].push(list);
     });
 
     return {
-      embeddingRecallResults,
+      textEmbeddingRecallResults: concatRecallLists(groupedRecallLists.text, limit),
+      imageCaptionEmbeddingRecallResults: concatRecallLists(groupedRecallLists.imageCaption, limit),
+      imageVectorRecallResults: concatRecallLists(groupedRecallLists.image, limit),
       tokens
     };
   };
   const fullTextRecall = async ({
-    queries,
+    queryGroups,
     limit,
     filterCollectionIdList,
     forbidCollectionIdList
   }: {
-    queries: string[];
+    queryGroups: {
+      source: FullTextRecallSource;
+      queries: string[];
+    }[];
     limit: number;
     filterCollectionIdList?: string[];
     forbidCollectionIdList: string[];
   }): Promise<{
-    fullTextRecallResults: SearchDataResponseItemType[][];
+    textFullTextRecallResults: SearchDataResponseItemType[];
+    imageCaptionFullTextRecallResults: SearchDataResponseItemType[];
   }> => {
+    const queryTasks = queryGroups
+      .map((group) => group.queries.map((query) => ({ source: group.source, query })))
+      .flat();
+
     if (limit === 0) {
       return {
-        fullTextRecallResults: []
+        textFullTextRecallResults: [],
+        imageCaptionFullTextRecallResults: []
+      };
+    }
+    if (queryTasks.length === 0) {
+      return {
+        textFullTextRecallResults: [],
+        imageCaptionFullTextRecallResults: []
       };
     }
 
     const recallResults = await Promise.all(
-      queries.map(async (query) => {
+      queryTasks.map(async ({ query }) => {
         return (await MongoDatasetDataText.aggregate(
           [
             {
@@ -728,8 +957,14 @@ export async function searchDatasetData(
         })
     ]);
 
-    const fullTextRecallResults = recallResults.map((item) => {
-      return item
+    const groupedRecallLists: Record<FullTextRecallSource, SearchDataResponseItemType[][]> = {
+      text: [],
+      imageCaption: []
+    };
+
+    recallResults.forEach((recallResult, taskIndex) => {
+      const task = queryTasks[taskIndex];
+      const list = recallResult
         .map((item, index) => {
           const collection = collectionMaps.get(String(item.collectionId));
           if (!collection) {
@@ -782,85 +1017,128 @@ export async function searchDatasetData(
             score: item!.score.map((item) => ({ ...item, index }))
           };
         }) as SearchDataResponseItemType[];
+
+      groupedRecallLists[task.source].push(list);
     });
 
     return {
-      fullTextRecallResults
+      textFullTextRecallResults: concatRecallLists(groupedRecallLists.text, limit),
+      imageCaptionFullTextRecallResults: concatRecallLists(groupedRecallLists.imageCaption, limit)
     };
   };
   const multiQueryRecall = async ({
     embeddingLimit,
-    fullTextLimit
+    fullTextLimit,
+    textQueries,
+    imageCaptionQueries
   }: {
     embeddingLimit: number;
     fullTextLimit: number;
+    textQueries: string[];
+    imageCaptionQueries: string[];
   }) => {
     const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
       getForbidData(),
       filterCollectionByMetadata()
     ]);
 
-    const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
+    const [
+      {
+        tokens,
+        textEmbeddingRecallResults,
+        imageCaptionEmbeddingRecallResults,
+        imageVectorRecallResults
+      },
+      { textFullTextRecallResults, imageCaptionFullTextRecallResults }
+    ] = await Promise.all([
       embeddingRecall({
-        queries,
+        textQueries,
+        imageCaptionQueries,
         limit: embeddingLimit,
         forbidCollectionIdList,
         filterCollectionIdList
       }),
       fullTextRecall({
-        queries,
+        queryGroups: [
+          { source: 'text', queries: textQueries },
+          { source: 'imageCaption', queries: imageCaptionQueries }
+        ],
         limit: fullTextLimit,
         filterCollectionIdList,
         forbidCollectionIdList
       })
     ]);
 
-    // rrf concat
-    const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResults.map((list) => ({ weight: 1, list }))
-    ).slice(0, embeddingLimit);
-    const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResults.map((list) => ({ weight: 1, list }))
-    ).slice(0, fullTextLimit);
-
     return {
       tokens,
-      embeddingRecallResults: rrfEmbRecall,
-      fullTextRecallResults: rrfFTRecall
+      textEmbeddingRecallResults,
+      imageCaptionEmbeddingRecallResults,
+      imageVectorRecallResults,
+      textFullTextRecallResults,
+      imageCaptionFullTextRecallResults
     };
   };
 
+  const concatWeightedRecallLists = (
+    lists: { weight: number; list: SearchDataResponseItemType[] }[]
+  ) => {
+    return datasetSearchResultConcat(
+      lists.filter((item) => item.weight > 0 && item.list.length > 0)
+    );
+  };
+
   /* main step */
+  const imageCaptionQueries = await getImageCaptionQueries();
+  if (imageCaptionQueries.queries.length > 0 && vlmModel) {
+    imageCaptionResult = {
+      model: getLLMModel(vlmModel).model,
+      inputTokens: imageCaptionQueries.inputTokens,
+      outputTokens: imageCaptionQueries.outputTokens,
+      queries: imageCaptionQueries.queries
+    };
+  }
+  const activeReRankQuery = reRankQuery;
+  usingReRank = usingReRank && !!activeReRankQuery && !!getDefaultRerankModel();
+
   // count limit
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
   const {
-    embeddingRecallResults,
-    fullTextRecallResults,
+    textEmbeddingRecallResults,
+    imageCaptionEmbeddingRecallResults,
+    imageVectorRecallResults,
+    textFullTextRecallResults,
+    imageCaptionFullTextRecallResults,
     tokens: embeddingTokens
   } = await multiQueryRecall({
     embeddingLimit,
-    fullTextLimit
+    fullTextLimit,
+    textQueries: queries,
+    imageCaptionQueries: imageCaptionQueries.queries
   });
+  const textRecallResults = concatWeightedRecallLists([
+    { weight: embeddingWeight, list: textEmbeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: textFullTextRecallResults }
+  ]);
+  const imageCaptionRecallResults = concatWeightedRecallLists([
+    { weight: embeddingWeight, list: imageCaptionEmbeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
+  ]);
 
   // ReRank results
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
-    if (!usingReRank) {
+    if (!usingReRank || textRecallResults.length === 0) {
+      usingReRank = false;
       return {
         results: [],
         inputTokens: 0
       };
     }
 
-    set = new Set<string>(embeddingRecallResults.map((item) => item.id));
-    const concatRecallResults = embeddingRecallResults.concat(
-      fullTextRecallResults.filter((item) => !set.has(item.id))
-    );
-
     // remove same q and a data
     set = new Set<string>();
-    const filterSameDataResults = concatRecallResults.filter((item) => {
+    const filterSameDataResults = textRecallResults.filter((item) => {
       // 删除所有的标点符号与空格等，只对文本进行比较
       const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
       if (set.has(str)) return false;
@@ -882,19 +1160,38 @@ export async function searchDatasetData(
     }
   })();
 
-  const rrfSearchResult = datasetSearchResultConcat([
-    { weight: embeddingWeight, list: embeddingRecallResults },
-    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
-  ]);
-  const rrfConcatResults = (() => {
-    if (reRankResults.length === 0) return rrfSearchResult;
+  const textRerankRecallResults = (() => {
+    if (reRankResults.length === 0) return textRecallResults;
     if (rerankWeight === 1) return reRankResults;
 
-    return datasetSearchResultConcat([
-      { weight: 1 - rerankWeight, list: rrfSearchResult },
+    return concatWeightedRecallLists([
+      { weight: 1 - rerankWeight, list: textRecallResults },
       { weight: rerankWeight, list: reRankResults }
     ]);
   })();
+  const hasTextQuery = queries.some((item) => item.trim());
+  const finalTextRecallWeight = 1;
+  const finalImageRecallWeight = hasTextQuery ? 0.7 : 1;
+  const imageRecallResults = concatWeightedRecallLists([
+    {
+      weight: imageCaptionRecallResults.length > 0 ? 0.3 : 0,
+      list: imageCaptionRecallResults
+    },
+    {
+      weight: imageVectorRecallResults.length > 0 ? 0.7 : 0,
+      list: imageVectorRecallResults
+    }
+  ]);
+  const rrfConcatResults = concatWeightedRecallLists([
+    {
+      weight: textRerankRecallResults.length > 0 ? finalTextRecallWeight : 0,
+      list: textRerankRecallResults
+    },
+    {
+      weight: imageRecallResults.length > 0 ? finalImageRecallWeight : 0,
+      list: imageRecallResults
+    }
+  ]);
 
   // remove same q and a data
   set = new Set<string>();
@@ -948,7 +1245,8 @@ export async function searchDatasetData(
     limit: maxTokens,
     similarity,
     usingReRank,
-    usingSimilarityFilter
+    usingSimilarityFilter,
+    imageCaptionResult
   };
 }
 
@@ -965,19 +1263,25 @@ export const defaultSearchDatasetData = async ({
   userKey,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
-  const query = props.queries[0];
+  const query = props.queries[0] || '';
   const histories = props.histories;
 
-  const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
-    query,
-    llmModel: datasetSearchUsingExtensionQuery
-      ? getLLMModel(datasetSearchExtensionModel).model
-      : undefined,
-    embeddingModel: props.model,
-    userKey,
-    extensionBg: datasetSearchExtensionBg,
-    histories
-  });
+  const { searchQueries, reRankQuery, aiExtensionResult } = query
+    ? await datasetSearchQueryExtension({
+        query,
+        llmModel: datasetSearchUsingExtensionQuery
+          ? getLLMModel(datasetSearchExtensionModel)?.model
+          : undefined,
+        embeddingModel: props.model,
+        extensionBg: datasetSearchExtensionBg,
+        histories,
+        userKey
+      })
+    : {
+        searchQueries: [],
+        reRankQuery: '',
+        aiExtensionResult: undefined
+      };
 
   const result = await searchDatasetData({
     ...props,

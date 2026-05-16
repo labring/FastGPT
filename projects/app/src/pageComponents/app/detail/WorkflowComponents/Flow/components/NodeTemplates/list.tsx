@@ -264,6 +264,7 @@ const NodeTemplateList = ({
 
         const defaultValueMap: Record<string, any> = {
           [NodeInputKeyEnum.userChatInput]: undefined,
+          [NodeInputKeyEnum.datasetSearchInput]: undefined,
           [NodeInputKeyEnum.fileUrlList]: undefined
         };
 
@@ -274,6 +275,10 @@ const NodeTemplateList = ({
               NodeOutputKeyEnum.userChatInput
             ];
             defaultValueMap[NodeInputKeyEnum.fileUrlList] = [
+              [node.nodeId, NodeOutputKeyEnum.userFiles]
+            ];
+            defaultValueMap[NodeInputKeyEnum.datasetSearchInput] = [
+              [node.nodeId, NodeOutputKeyEnum.userChatInput],
               [node.nodeId, NodeOutputKeyEnum.userFiles]
             ];
           }
@@ -413,7 +418,7 @@ const NodeTemplateList = ({
     [
       computedNewNodeName,
       getNodeById,
-      handleParams?.nodeId,
+      handleParams,
       getNodeList,
       getIntersectingNodes,
       onAddNode,
@@ -488,7 +493,7 @@ const NodeTemplateList = ({
     return data.filter(({ list }) => list.length > 0);
   }, [templateType, templates, t, i18n.language]);
 
-  const NodeListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+  const renderNodeList = useMemoizedFn((list: NodeTemplateListType = []) => {
     return (
       <>
         {list.map((item) => {
@@ -559,14 +564,12 @@ const NodeTemplateList = ({
                   {t(label as any)}
                   <AccordionIcon />
                 </AccordionButton>
-                <AccordionPanel py={0}>
-                  <NodeListRender list={list} />
-                </AccordionPanel>
+                <AccordionPanel py={0}>{renderNodeList(list)}</AccordionPanel>
               </AccordionItem>
             ))}
           </>
         ) : (
-          <NodeListRender list={formatTemplatesArrayData?.[0]?.list} />
+          <>{renderNodeList(formatTemplatesArrayData?.[0]?.list)}</>
         )}
       </Accordion>
     </Box>

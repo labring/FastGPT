@@ -36,6 +36,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     childrenInteractiveParams,
     allFiles,
     currentInputFiles,
+    fileUrls = [],
 
     ...workflowProps
   } = props;

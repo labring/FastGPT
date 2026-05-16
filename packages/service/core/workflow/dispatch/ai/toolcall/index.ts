@@ -52,15 +52,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
-      fileLinks = undefined;
-    }
+    const fileLinks =
+      !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0
+        ? undefined
+        : fileUrlList;
 
     const toolNodes = useToolNodeList({
       nodeId,
       runtimeNodes,
       runtimeEdges
     });
+    const fileUrls = userFiles.map((file) => file.url);
 
     // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
     props.node.isEntry = false;
@@ -116,6 +118,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         messages: adaptMessages,
+        fileUrls,
         childrenInteractiveParams:
           lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
       });

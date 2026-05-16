@@ -266,7 +266,16 @@ describe('VectorDB Controller', () => {
 
       expect(mockGetVectorsByText).toHaveBeenCalledWith({
         model: mockModel,
-        input: ['hello world', 'test text'],
+        inputs: [
+          {
+            type: 'text',
+            input: 'hello world'
+          },
+          {
+            type: 'text',
+            input: 'test text'
+          }
+        ],
         type: 'db'
       });
       expect(mockVectorInsert).toHaveBeenCalledWith({

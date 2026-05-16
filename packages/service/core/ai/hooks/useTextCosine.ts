@@ -3,7 +3,7 @@
   Reference: https://github.com/jina-ai/submodular-optimization
 */
 
-import { getVectorsByText } from '../embedding';
+import { getVectors } from '../embedding';
 import { getEmbeddingModel } from '../model';
 
 class PriorityQueue<T> {
@@ -83,9 +83,12 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
     k: number;
     alpha?: number;
   }) => {
-    const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectorsByText({
+    const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectors({
       model: vectorModel,
-      input: [originalText, ...candidates],
+      inputs: [originalText, ...candidates].map((text) => ({
+        type: 'text',
+        input: text
+      })),
       type: 'query'
     });
 

@@ -3,7 +3,7 @@ import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
 import { OpenGaussVectorCtrl } from './opengauss';
-import { getVectorsByText } from '../../core/ai/embedding';
+import { getVectors } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
@@ -111,9 +111,12 @@ export const insertDatasetDataVector = async ({
   inputs: string[];
   model: EmbeddingModelItemType;
 }) => {
-  const { vectors, tokens } = await getVectorsByText({
+  const { vectors, tokens } = await getVectors({
     model,
-    input: inputs,
+    inputs: inputs.map((text) => ({
+      type: 'text',
+      input: text
+    })),
     type: 'db'
   });
   const { insertIds } = await retryFn(() =>

@@ -190,6 +190,7 @@ export enum NodeInputKeyEnum {
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
+  datasetSearchInput = 'datasetSearchInput',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
   datasetDeepSearch = 'datasetDeepSearch',

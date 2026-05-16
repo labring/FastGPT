@@ -1,8 +1,11 @@
 import { cloneDeep } from 'lodash';
 import { type SystemModelItemType } from './type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  EmbeddingModelItemType,
+  LLMModelItemType
+} from '@fastgpt/global/core/ai/model.schema';
 
-export const getDefaultLLMModel = () => global?.systemDefaultModel.llm!;
+export const getDefaultLLMModel = () => global.systemDefaultModel.llm;
 export const getLLMModel = (model?: string | LLMModelItemType) => {
   if (!model) return getDefaultLLMModel();
 
@@ -29,25 +32,31 @@ export const getVlmModel = (model?: string) => {
 export const getDefaultHelperBotModel = (): LLMModelItemType =>
   global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
 
-export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
-export const getEmbeddingModel = (model?: string) => {
+export const getDefaultEmbeddingModel = () => global.systemDefaultModel.embedding;
+export const getEmbeddingModel = (model?: string | EmbeddingModelItemType) => {
   if (!model) return getDefaultEmbeddingModel();
-  return global.embeddingModelMap.get(model) || getDefaultEmbeddingModel();
+  return typeof model === 'string'
+    ? global.embeddingModelMap.get(model) || getDefaultEmbeddingModel()
+    : model;
 };
 
-export const getDefaultTTSModel = () => global?.systemDefaultModel.tts!;
+export const isImageEmbeddingModel = (model?: string | EmbeddingModelItemType) => {
+  return !!getEmbeddingModel(model)?.vision;
+};
+
+export const getDefaultTTSModel = () => global.systemDefaultModel.tts;
 export function getTTSModel(model?: string) {
   if (!model) return getDefaultTTSModel();
   return global.ttsModelMap.get(model) || getDefaultTTSModel();
 }
 
-export const getDefaultSTTModel = () => global?.systemDefaultModel.stt!;
+export const getDefaultSTTModel = () => global.systemDefaultModel.stt;
 export function getSTTModel(model?: string) {
   if (!model) return getDefaultSTTModel();
   return global.sttModelMap.get(model) || getDefaultSTTModel();
 }
 
-export const getDefaultRerankModel = () => global?.systemDefaultModel.rerank!;
+export const getDefaultRerankModel = () => global.systemDefaultModel.rerank;
 export function getRerankModel(model?: string) {
   if (!model) return getDefaultRerankModel();
   return global.reRankModelMap.get(model) || getDefaultRerankModel();

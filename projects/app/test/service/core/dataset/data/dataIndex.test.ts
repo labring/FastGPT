@@ -105,8 +105,8 @@ describe('DatasetDataIndexOperation', () => {
     mockGetVectorsByText.mockClear();
     mockCountPromptTokens.mockClear();
     vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
-    mockGetVectorsByText.mockImplementation(async ({ input }) =>
-      createMockVectorsResponse(Array.isArray(input) ? input : [input])
+    mockGetVectorsByText.mockImplementation(async ({ inputs }) =>
+      createMockVectorsResponse(inputs.map((input) => input.input))
     );
     mockVectorInsert.mockResolvedValue({
       insertIds: ['id_1', 'id_2', 'id_3', 'id_4', 'id_5']

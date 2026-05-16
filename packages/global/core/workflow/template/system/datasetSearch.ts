@@ -126,6 +126,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     },
     {
       ...Input_Template_UserChatInput,
+      toolDescription: i18nT('workflow:content_to_search'),
+      deprecated: true
+    },
+    {
+      ...Input_Template_UserChatInput,
+      key: NodeInputKeyEnum.datasetSearchInput,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
       toolDescription: i18nT('workflow:content_to_search')
     },
     {

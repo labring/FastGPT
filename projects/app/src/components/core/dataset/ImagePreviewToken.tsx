@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Flex, Portal, type BoxProps, type FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  CircularProgress,
+  Flex,
+  Portal,
+  type BoxProps,
+  type FlexProps
+} from '@chakra-ui/react';
 import { isDatasetFileObjectKey } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -28,11 +35,13 @@ const ImagePreview = React.memo(function ImagePreview({
   const [previewUrl, setPreviewUrl] = useState(() => getDirectPreviewUrl(image));
   const [loadFailed, setLoadFailed] = useState(false);
   const [hasRefreshed, setHasRefreshed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setPreviewUrl(getDirectPreviewUrl(image));
     setLoadFailed(false);
     setHasRefreshed(false);
+    setIsRefreshing(false);
   }, [image]);
 
   useEffect(() => {
@@ -40,6 +49,7 @@ const ImagePreview = React.memo(function ImagePreview({
 
     let canceled = false;
     setHasRefreshed(true);
+    setIsRefreshing(true);
 
     postGetSearchTestImagePreviewUrls({
       datasetId,
@@ -52,7 +62,12 @@ const ImagePreview = React.memo(function ImagePreview({
           setLoadFailed(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!canceled) {
+          setIsRefreshing(false);
+        }
+      });
 
     return () => {
       canceled = true;
@@ -71,6 +86,23 @@ const ImagePreview = React.memo(function ImagePreview({
         borderRadius={'sm'}
         onError={() => setLoadFailed(true)}
       />
+    );
+  }
+
+  if (image.key && datasetId && (!hasRefreshed || isRefreshing)) {
+    return (
+      <Flex
+        w={'80px'}
+        h={'80px'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        bg={'myGray.50'}
+        border={'1px dashed'}
+        borderColor={'myGray.300'}
+        borderRadius={'sm'}
+      >
+        <CircularProgress isIndeterminate size={'24px'} color={'primary.600'} />
+      </Flex>
     );
   }
 

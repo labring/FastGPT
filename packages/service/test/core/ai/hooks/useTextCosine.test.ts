@@ -110,7 +110,7 @@ describe('useTextCosine', () => {
       expect(result.selectedData).toContain('c3');
     });
 
-    it('should call getVectorsByText with correct parameters', async () => {
+    it('should call getVectors with correct parameters', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
       await lazyGreedyQuerySelection({
         originalText: 'test query',
@@ -120,7 +120,16 @@ describe('useTextCosine', () => {
 
       expect(mockGetVectorsByText).toHaveBeenCalledWith({
         model: expect.anything(),
-        input: ['test query', 'candidate'],
+        inputs: [
+          {
+            type: 'text',
+            input: 'test query'
+          },
+          {
+            type: 'text',
+            input: 'candidate'
+          }
+        ],
         type: 'query'
       });
     });

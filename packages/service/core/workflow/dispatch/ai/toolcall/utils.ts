@@ -3,6 +3,8 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export const updateToolInputValue = ({
   params,
@@ -82,4 +84,41 @@ export const initToolNodes = (
       }
     }
   });
+};
+
+export const mergeDatasetToolFileUrls = ({
+  flowNodeType,
+  startParams,
+  fileUrls = []
+}: {
+  flowNodeType: RuntimeNodeItemType['flowNodeType'];
+  startParams: Record<string, any>;
+  fileUrls?: string[];
+}) => {
+  if (flowNodeType !== FlowNodeTypeEnum.datasetSearchNode || fileUrls.length === 0) {
+    return startParams;
+  }
+
+  const inputKey =
+    startParams[NodeInputKeyEnum.datasetSearchInput] !== undefined
+      ? NodeInputKeyEnum.datasetSearchInput
+      : NodeInputKeyEnum.userChatInput;
+  const queryInput = startParams[inputKey];
+  const queryList = Array.isArray(queryInput)
+    ? queryInput
+    : queryInput === undefined
+      ? []
+      : [queryInput];
+  const userChatInput = Array.from(
+    new Set(
+      [...queryList, ...fileUrls].filter(
+        (item): item is string => typeof item === 'string' && item.trim() !== ''
+      )
+    )
+  );
+
+  return {
+    ...startParams,
+    [inputKey]: userChatInput
+  };
 };

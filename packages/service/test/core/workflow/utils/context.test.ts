@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  isLikelyUserFileUrl,
   parseUrlToFileType,
   runWithContext,
   getWorkflowContext,
-  updateWorkflowContextVal,
-  WorkflowContext
+  updateWorkflowContextVal
 } from '@fastgpt/service/core/workflow/utils/context';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -115,6 +115,28 @@ describe('WorkflowContext', () => {
         expect(result?.type).toBe(ChatFileTypeEnum.image);
       });
     });
+  });
+});
+
+describe('isLikelyUserFileUrl', () => {
+  it('should identify object keys and data urls as user file urls', () => {
+    expect(isLikelyUserFileUrl('temp/team-1/image.png')).toBe(true);
+    expect(isLikelyUserFileUrl('chat/team-1/file.pdf')).toBe(true);
+    expect(isLikelyUserFileUrl('dataset/team-1/file.pdf')).toBe(true);
+    expect(isLikelyUserFileUrl('data:image/png;base64,abc')).toBe(true);
+  });
+
+  it('should identify known file api urls with filename extensions', () => {
+    expect(isLikelyUserFileUrl('/api/file/read?filename=manual.pdf')).toBe(true);
+  });
+
+  it('should keep normal text as non-file input', () => {
+    expect(isLikelyUserFileUrl('black high heels')).toBe(false);
+    expect(isLikelyUserFileUrl('https://example.com/search?q=black high heels')).toBe(false);
+    expect(isLikelyUserFileUrl('https://example.com/current.png')).toBe(false);
+    expect(isLikelyUserFileUrl('https://cdn.example.com/download?filename=current.png')).toBe(
+      false
+    );
   });
 });
 
@@ -339,21 +361,21 @@ describe('parseUrlToFileType', () => {
 
   describe('edge cases', () => {
     it('should return undefined for non-string input', () => {
-      // @ts-ignore - testing runtime behavior
+      // @ts-expect-error testing runtime behavior
       const result = parseUrlToFileType(123);
 
       expect(result).toBeUndefined();
     });
 
     it('should return undefined for null', () => {
-      // @ts-ignore - testing runtime behavior
+      // @ts-expect-error testing runtime behavior
       const result = parseUrlToFileType(null);
 
       expect(result).toBeUndefined();
     });
 
     it('should return undefined for undefined', () => {
-      // @ts-ignore - testing runtime behavior
+      // @ts-expect-error testing runtime behavior
       const result = parseUrlToFileType(undefined);
 
       expect(result).toBeUndefined();

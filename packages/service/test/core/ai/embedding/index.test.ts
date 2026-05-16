@@ -356,16 +356,16 @@ describe('formatVectors function test', () => {
   });
 });
 
-describe('getVectorsByText function test', () => {
-  // The global mock in test/mocks/core/ai/embedding.ts replaces getVectorsByText.
+describe('getVectors function test', () => {
+  // The global mock in test/mocks/core/ai/embedding.ts replaces getVectors.
   // Bypass it by importing the actual module implementation.
-  let getVectorsByText: (typeof import('@fastgpt/service/core/ai/embedding/index'))['getVectorsByText'];
+  let getVectors: (typeof import('@fastgpt/service/core/ai/embedding/index'))['getVectors'];
 
   beforeAll(async () => {
     const actual = await vi.importActual<typeof import('@fastgpt/service/core/ai/embedding/index')>(
       '@fastgpt/service/core/ai/embedding/index'
     );
-    getVectorsByText = actual.getVectorsByText;
+    getVectors = actual.getVectors;
   });
 
   beforeEach(() => {
@@ -390,22 +390,25 @@ describe('getVectorsByText function test', () => {
     data: embeddings.map((embedding) => ({ embedding })),
     usage: opts.usage
   });
+  const textInput = (input: string) => ({ type: 'text' as const, input });
+  const imageInput = (input: string) => ({ type: 'image' as const, input });
 
   describe('input validation', () => {
     it('should reject with "input is empty" when input is an empty string', async () => {
-      await expect(getVectorsByText({ model: buildModel(), input: '' })).rejects.toMatchObject({
+      await expect(
+        getVectors({ model: buildModel(), inputs: [textInput('')] })
+      ).rejects.toMatchObject({
         code: 500,
         message: 'input is empty'
       });
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it('should reject when input is an empty array (falsy via [].length check indirectly)', async () => {
-      // Empty array is truthy, so it passes the `!input` guard and proceeds.
-      // With zero chunks, no API call is made and we get 0 tokens / 0 vectors.
-      mockCreate.mockResolvedValue(makeResponse([[0.1, 0.2, 0.3, 0.4]]));
-      const result = await getVectorsByText({ model: buildModel(), input: [] });
-      expect(result).toEqual({ tokens: 0, vectors: [] });
+    it('should reject when inputs is empty', async () => {
+      await expect(getVectors({ model: buildModel(), inputs: [] })).rejects.toMatchObject({
+        code: 500,
+        message: 'input is empty'
+      });
       expect(mockCreate).not.toHaveBeenCalled();
     });
   });
@@ -416,7 +419,7 @@ describe('getVectorsByText function test', () => {
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 7 } })
       );
 
-      const result = await getVectorsByText({ model: buildModel(), input: 'hello' });
+      const result = await getVectors({ model: buildModel(), inputs: [textInput('hello')] });
 
       expect(mockCreate).toHaveBeenCalledTimes(1);
       expect(mockCreate).toHaveBeenCalledWith(
@@ -458,9 +461,9 @@ describe('getVectorsByText function test', () => {
           makeResponse([[2.1, 2.2, 2.3, 2.4]], { usage: { total_tokens: 2 } })
         );
 
-      const result = await getVectorsByText({
+      const result = await getVectors({
         model: buildModel({ batchSize: 2 }),
-        input: ['a', 'b', 'c', 'd', 'e']
+        inputs: ['a', 'b', 'c', 'd', 'e'].map(textInput)
       });
 
       expect(mockCreate).toHaveBeenCalledTimes(3);
@@ -476,9 +479,9 @@ describe('getVectorsByText function test', () => {
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
       );
       // Pass undefined to exercise `Number(undefined) → NaN` branch
-      const result = await getVectorsByText({
+      const result = await getVectors({
         model: buildModel({ batchSize: undefined }),
-        input: ['x', 'y']
+        inputs: ['x', 'y'].map(textInput)
       });
 
       expect(mockCreate).toHaveBeenCalledTimes(2);
@@ -493,9 +496,73 @@ describe('getVectorsByText function test', () => {
       );
       mockCreate.mockResolvedValue(makeResponse([base64], { usage: { total_tokens: 2 } }));
 
-      const result = await getVectorsByText({ model: buildModel(), input: 'hi' });
+      const result = await getVectors({ model: buildModel(), inputs: [textInput('hi')] });
 
       expect(result.vectors[0].slice(0, 4)).toEqual(raw);
+    });
+
+    it('should build image_url input parts for image embeddings', async () => {
+      mockCreate.mockResolvedValue(
+        makeResponse(
+          [
+            [0.1, 0.2, 0.3, 0.4],
+            [0.5, 0.6, 0.7, 0.8]
+          ],
+          { usage: { total_tokens: 6 } }
+        )
+      );
+
+      const result = await getVectors({
+        model: buildModel(),
+        inputs: [imageInput('data:image/png;base64,aaa'), imageInput('data:image/png;base64,bbb')]
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate.mock.calls[0][0].input).toEqual([
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,aaa'
+          }
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,bbb'
+          }
+        }
+      ]);
+      expect(result.tokens).toBe(6);
+      expect(result.vectors).toHaveLength(2);
+    });
+
+    it('should build mixed text and image input parts in order', async () => {
+      mockCreate.mockResolvedValue(
+        makeResponse(
+          [
+            [0.1, 0.2, 0.3, 0.4],
+            [0.5, 0.6, 0.7, 0.8]
+          ],
+          { usage: { total_tokens: 8 } }
+        )
+      );
+
+      const result = await getVectors({
+        model: buildModel(),
+        inputs: [textInput('hello'), imageInput('data:image/png;base64,aaa')]
+      });
+
+      expect(mockCreate.mock.calls[0][0].input).toEqual([
+        'hello',
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,aaa'
+          }
+        }
+      ]);
+      expect(result.tokens).toBe(8);
+      expect(result.vectors).toHaveLength(2);
     });
   });
 
@@ -504,12 +571,27 @@ describe('getVectorsByText function test', () => {
       // No usage → the function computes tokens from chunk strings.
       mockCreate.mockResolvedValue(makeResponse([[0.1, 0.2, 0.3, 0.4]]));
 
-      const result = await getVectorsByText({ model: buildModel(), input: 'hello world' });
+      const result = await getVectors({
+        model: buildModel(),
+        inputs: [textInput('hello world')]
+      });
 
       expect(result.vectors).toHaveLength(1);
       // countPromptTokens should produce a non-negative integer for a real string
       expect(typeof result.tokens).toBe('number');
       expect(result.tokens).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should fall back to image count when image embedding response lacks usage', async () => {
+      mockCreate.mockResolvedValue(makeResponse([[0.1, 0.2, 0.3, 0.4]]));
+
+      const result = await getVectors({
+        model: buildModel(),
+        inputs: [imageInput('data:image/png;base64,aaa')]
+      });
+
+      expect(result.tokens).toBe(1);
+      expect(result.vectors).toHaveLength(1);
     });
   });
 
@@ -520,7 +602,7 @@ describe('getVectorsByText function test', () => {
       );
       const model = buildModel({ defaultConfig: { dimensions: 512 } as any });
 
-      await getVectorsByText({ model, input: 'x' });
+      await getVectors({ model, inputs: [textInput('x')] });
 
       expect(mockCreate.mock.calls[0][0]).toMatchObject({ dimensions: 512 });
     });
@@ -531,7 +613,7 @@ describe('getVectorsByText function test', () => {
       );
       const model = buildModel({ dbConfig: { input_type: 'passage' } as any });
 
-      await getVectorsByText({ model, input: 'x', type: EmbeddingTypeEnm.db });
+      await getVectors({ model, inputs: [textInput('x')], type: EmbeddingTypeEnm.db });
 
       expect(mockCreate.mock.calls[0][0]).toMatchObject({ input_type: 'passage' });
     });
@@ -542,7 +624,7 @@ describe('getVectorsByText function test', () => {
       );
       const model = buildModel({ queryConfig: { input_type: 'query' } as any });
 
-      await getVectorsByText({ model, input: 'x', type: EmbeddingTypeEnm.query });
+      await getVectors({ model, inputs: [textInput('x')], type: EmbeddingTypeEnm.query });
 
       expect(mockCreate.mock.calls[0][0]).toMatchObject({ input_type: 'query' });
     });
@@ -556,7 +638,7 @@ describe('getVectorsByText function test', () => {
         queryConfig: { input_type: 'query' } as any
       });
 
-      await getVectorsByText({ model, input: 'x' });
+      await getVectors({ model, inputs: [textInput('x')] });
 
       expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('input_type');
     });
@@ -572,9 +654,9 @@ describe('getVectorsByText function test', () => {
         requestAuth: 'secret-token'
       });
 
-      await getVectorsByText({
+      await getVectors({
         model,
-        input: 'x',
+        inputs: [textInput('x')],
         headers: { 'X-Custom': 'yes' }
       });
 
@@ -593,7 +675,7 @@ describe('getVectorsByText function test', () => {
       );
       const model = buildModel({ requestUrl: 'https://custom.example/v1/embeddings' });
 
-      await getVectorsByText({ model, input: 'x' });
+      await getVectors({ model, inputs: [textInput('x')] });
 
       expect(mockCreate.mock.calls[0][1]).toEqual({
         path: 'https://custom.example/v1/embeddings',
@@ -606,9 +688,9 @@ describe('getVectorsByText function test', () => {
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
       );
 
-      await getVectorsByText({
+      await getVectors({
         model: buildModel(),
-        input: 'x',
+        inputs: [textInput('x')],
         headers: { 'X-Trace': 't1' }
       });
 
@@ -621,7 +703,7 @@ describe('getVectorsByText function test', () => {
       mockCreate.mockResolvedValue(makeResponse([[3, 4, 0, 0]], { usage: { total_tokens: 1 } }));
       const model = buildModel({ normalization: true });
 
-      const result = await getVectorsByText({ model, input: 'x' });
+      const result = await getVectors({ model, inputs: [textInput('x')] });
 
       const norm = Math.sqrt(result.vectors[0].reduce((sum, v) => sum + v * v, 0));
       expect(norm).toBeCloseTo(1, 10);
@@ -632,7 +714,7 @@ describe('getVectorsByText function test', () => {
     it('should reject when API response has no data', async () => {
       mockCreate.mockResolvedValue({ data: null });
 
-      await expect(getVectorsByText({ model: buildModel(), input: 'x' })).rejects.toBe(
+      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
         'Embedding API is not responding'
       );
     });
@@ -640,7 +722,7 @@ describe('getVectorsByText function test', () => {
     it('should reject when API response data exists but has no embedding', async () => {
       mockCreate.mockResolvedValue({ data: [{}] });
 
-      await expect(getVectorsByText({ model: buildModel(), input: 'x' })).rejects.toBe(
+      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
         'Embedding API is not responding'
       );
     });
@@ -649,7 +731,9 @@ describe('getVectorsByText function test', () => {
       const apiErr = new Error('network boom');
       mockCreate.mockRejectedValue(apiErr);
 
-      await expect(getVectorsByText({ model: buildModel(), input: 'x' })).rejects.toBe(apiErr);
+      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
+        apiErr
+      );
     });
   });
 });

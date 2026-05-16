@@ -1,7 +1,7 @@
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 
 // Keep the disabled upload path in place so the search test flow can enable images by flag only.
-export const SEARCH_TEST_IMAGE_UPLOAD_ENABLED = false;
+export const SEARCH_TEST_IMAGE_UPLOAD_ENABLED = true;
 export const MAX_SEARCH_TEST_IMAGE_COUNT = 10;
 
 // Derive accepted extensions from the shared upload accept string to avoid frontend/backend drift.
