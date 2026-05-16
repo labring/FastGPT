@@ -171,7 +171,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;
 
-  const hasMenuPer = isFolder ? dataset.permission.hasManagePer : dataset.permission.hasWritePer;
+  const hasMenuPer = dataset.permission.hasManagePer;
 
   const menuList = useMemo(
     () => [
@@ -298,14 +298,18 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
       _hover={{
         boxShadow: '0 0 0 2px #91BBF2',
         zIndex: 1,
-        '& .more': {
-          visibility: 'visible',
-          opacity: 1
-        },
-        '& .type-tag': {
-          visibility: 'hidden',
-          opacity: 0
-        }
+        ...(hasMenuPer
+          ? {
+              '& .more': {
+                visibility: 'visible',
+                opacity: 1
+              },
+              '& .type-tag': {
+                visibility: 'hidden',
+                opacity: 0
+              }
+            }
+          : {})
       }}
       {...getBoxProps({ dataId: dataset._id, isFolder })}
       onClick={() => {

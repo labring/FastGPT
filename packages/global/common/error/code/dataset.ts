@@ -53,35 +53,35 @@ const datasetErr = [
   },
   {
     statusText: DatasetErrEnum.unAuthDataset,
-    message: 'core.dataset.error.unAuthDataset'
+    message: i18nT('common:core.dataset.error.unAuthDataset')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetCollection,
-    message: 'core.dataset.error.unAuthDatasetCollection'
+    message: i18nT('common:core.dataset.error.unAuthDatasetCollection')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetData,
-    message: 'core.dataset.error.unAuthDatasetData'
+    message: i18nT('common:core.dataset.error.unAuthDatasetData')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetFile,
-    message: 'core.dataset.error.unAuthDatasetFile'
+    message: i18nT('common:core.dataset.error.unAuthDatasetFile')
   },
   {
     statusText: DatasetErrEnum.unCreateCollection,
-    message: 'core.dataset.error.unCreateCollection'
+    message: i18nT('common:core.dataset.error.unCreateCollection')
   },
   {
     statusText: DatasetErrEnum.unLinkCollection,
-    message: 'core.dataset.error.unLinkCollection'
+    message: i18nT('common:core.dataset.error.unLinkCollection')
   },
   {
     statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
-    message: 'core.dataset.error.invalidVectorModelOrQAModel'
+    message: i18nT('common:core.dataset.error.invalidVectorModelOrQAModel')
   },
   {
     statusText: DatasetErrEnum.canNotEditAdminPermission,
-    message: 'core.dataset.error.canNotEditAdminPermission'
+    message: i18nT('common:core.dataset.error.canNotEditAdminPermission')
   },
   {
     statusText: DatasetErrEnum.datasetIdMismatch,

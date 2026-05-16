@@ -40,7 +40,8 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  ApiDatasetTypeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -279,20 +280,31 @@ const CollectionCard = () => {
     [sortBy, sortOrder]
   );
 
+  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
+  const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
+
   // Handler for reading/downloading collection source
   const handleReadSource = useCallback(
     async (collectionId: string) => {
       try {
-        const { value: url } = await getCollectionSource({ collectionId });
+        const { value } = await getCollectionSource({ collectionId });
 
-        if (!url) {
+        if (!value) {
           throw new Error('No file found');
         }
 
-        if (url.startsWith('/')) {
-          window.open(`${location.origin}${url}`, '_blank');
+        if (isApiDataset) {
+          const baseUrl = datasetDetail?.apiDatasetServer?.apiServer?.baseUrl || '';
+          const fullUrl = `${baseUrl.replace(/\/+$/, '')}${value}`;
+          window.open(fullUrl, '_blank');
+          return;
+        }
+
+        if (value.startsWith('/')) {
+          window.open(`${location.origin}${value}`, '_blank');
         } else {
-          window.open(url, '_blank');
+          window.open(value, '_blank');
         }
       } catch (error) {
         toast({
@@ -301,7 +313,7 @@ const CollectionCard = () => {
         });
       }
     },
-    [t, toast]
+    [t, toast, isApiDataset, datasetDetail?.apiDatasetServer?.apiServer?.baseUrl]
   );
 
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
@@ -313,9 +325,6 @@ const CollectionCard = () => {
       successToast: t('common:update_success')
     }
   );
-
-  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
-  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
@@ -805,23 +814,43 @@ const CollectionCard = () => {
                             const isFolder = collection.type === DatasetCollectionTypeEnum.folder;
                             const isLink = collection.type === DatasetCollectionTypeEnum.link;
 
-                            const permissionItem = {
-                              label: (
-                                <Flex
-                                  alignItems={'center'}
-                                  opacity={collection.permission.hasManagePer ? 1 : 0.4}
-                                >
-                                  <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                  {t('common:Permission')}
-                                </Flex>
-                              ),
-                              onClick: collection.permission.hasManagePer
-                                ? () => setEditPerCollection(collection)
-                                : undefined,
-                              menuItemStyles: collection.permission.hasManagePer
-                                ? undefined
-                                : { cursor: 'not-allowed' }
-                            };
+                            const permissionItem = (() => {
+                              const isPermissionSyncDisabled =
+                                datasetDetail?.apiDatasetServer?.apiServer?.permissionSync === true;
+
+                              if (isPermissionSyncDisabled) {
+                                return {
+                                  label: (
+                                    <MyTooltip label={t('dataset:permission_sync_disabled_tip')}>
+                                      <Flex alignItems={'center'} opacity={0.4}>
+                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                        {t('common:Permission')}
+                                      </Flex>
+                                    </MyTooltip>
+                                  ),
+                                  onClick: undefined,
+                                  menuItemStyles: { cursor: 'not-allowed' }
+                                };
+                              }
+
+                              return {
+                                label: (
+                                  <Flex
+                                    alignItems={'center'}
+                                    opacity={collection.permission.hasManagePer ? 1 : 0.4}
+                                  >
+                                    <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                    {t('common:Permission')}
+                                  </Flex>
+                                ),
+                                onClick: collection.permission.hasManagePer
+                                  ? () => setEditPerCollection(collection)
+                                  : undefined,
+                                menuItemStyles: collection.permission.hasManagePer
+                                  ? undefined
+                                  : { cursor: 'not-allowed' }
+                              };
+                            })();
 
                             const tagItem = feConfigs?.isPlus
                               ? {
@@ -897,11 +926,13 @@ const CollectionCard = () => {
                                     w={'0.9rem'}
                                     mr={2}
                                   />
-                                  {isLink || collection.name.toLowerCase().endsWith('.txt')
+                                  {isApiDataset
                                     ? t('dataset:view_original')
-                                    : collection.type === DatasetCollectionTypeEnum.images
-                                      ? t('dataset:view_image')
-                                      : t('dataset:download_file')}
+                                    : isLink || collection.name.toLowerCase().endsWith('.txt')
+                                      ? t('dataset:view_original')
+                                      : collection.type === DatasetCollectionTypeEnum.images
+                                        ? t('dataset:view_image')
+                                        : t('dataset:download_file')}
                                 </Flex>
                               ),
                               onClick: () => handleReadSource(collection._id)

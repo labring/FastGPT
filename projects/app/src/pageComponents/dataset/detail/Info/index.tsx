@@ -146,6 +146,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               </Box>
             </MyTooltip>
           </Box>
+          {datasetDetail.permission.hasManagePer && (
           <MyIcon
             pl={1.5}
             name={'edit'}
@@ -161,6 +162,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               })
             }
           />
+          )}
         </Flex>
         {DatasetTypeMap[datasetDetail.type] && (
           <Flex alignItems={'center'} justifyContent={'space-between'}>
