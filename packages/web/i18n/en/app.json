@@ -119,7 +119,7 @@
   "custom_plugin": "Custom Tool",
   "custom_plugin_associated_plugin_label": "Associated Tool",
   "custom_plugin_associated_plugin_placeholder": "Enter tool name or appId to search",
-  "custom_plugin_associated_plugin_required": "Associated applications cannot be empty",
+  "custom_plugin_associated_plugin_required": "Associated tool cannot be empty",
   "custom_plugin_author_label": "Author Name",
   "custom_plugin_author_placeholder": "Default to system name",
   "custom_plugin_call_price_label": "Call Price (n points/time)",
