@@ -59,7 +59,6 @@ export const ChunkSettingsSchema = z.object({
   indexSize: z.number().optional().meta({ description: '索引大小' }),
   hypeIndexes: z.boolean().optional().meta({ description: '超级索引' }),
   small2bigIndexes: z.boolean().optional().meta({ description: '小到大索引' }),
-  syntheticIndex: z.boolean().optional().meta({ description: '合成索引' }),
   hypeIndexPrompt: z.string().optional().meta({ description: '超级索引提示词' }),
   small2bigConfig: z
     .object({
@@ -185,6 +184,7 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
 
   rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),
   hashRawText: z.string().optional().meta({ description: '文本哈希' }),
+  fileMd5: z.string().optional().meta({ description: '文件内容 MD5' }),
 
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '其他元数据' }),
 

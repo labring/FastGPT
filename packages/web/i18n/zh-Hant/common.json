@@ -1311,6 +1311,7 @@
   "core.dataset.error.Rerank unauthorized": "重排模型「{{modelName}}」服務未授權，未執行知識重排",
   "core.dataset.error.canNotEditAdminPermission": "無法修改管理員權限",
   "core.dataset.error.collectionNameDuplicate": "該資料集中已存在同名檔案",
+  "core.dataset.error.fileContentDuplicate": "該資料集中已存在內容完全相同的檔案",
   "core.dataset.error.collectionNameExtensionMismatch": "檔案副檔名與原檔案不一致，不能修改副檔名",
   "core.dataset.error.collectionNameMissingExtension": "不能去除檔案副檔名，請保留原檔案副檔名",
   "core.dataset.error.datasetIdMismatch": "資料集ID不匹配",

@@ -70,7 +70,8 @@ async function handler(
             return { hasGoodFeedback: { $ne: true }, hasBadFeedback: { $ne: true } };
           }
           // Two selected — exclude the missing one
-          if (hasGood && hasBad) return { $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }] };
+          if (hasGood && hasBad)
+            return { $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }] };
           if (hasGood && hasNo) return { hasBadFeedback: { $ne: true } };
           return { hasGoodFeedback: { $ne: true } };
         })()

@@ -68,6 +68,10 @@ import type {
   CheckDuplicateFileNamesBody,
   CheckDuplicateFileNamesResponse
 } from '@/pages/api/core/dataset/collection/check/duplicate';
+import type {
+  CheckMd5DuplicateBody,
+  CheckMd5DuplicateResponse
+} from '@/pages/api/core/dataset/collection/check/md5Duplicate';
 import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 import type {
   PostDatasetSyncParams,
@@ -230,7 +234,8 @@ export const postImportFaqByTemplate = ({
   parentId,
   overwriteDuplicate,
   enableEnhance,
-  tags
+  tags,
+  fileMd5
 }: {
   file: File;
   percentListen: (percent: number) => void;
@@ -239,12 +244,13 @@ export const postImportFaqByTemplate = ({
   overwriteDuplicate?: boolean;
   enableEnhance?: boolean;
   tags?: import('@fastgpt/global/core/dataset/type').CollectionTagValueType[];
+  fileMd5?: string;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
   formData.append(
     'data',
-    JSON.stringify({ datasetId, parentId, overwriteDuplicate, enableEnhance, tags })
+    JSON.stringify({ datasetId, parentId, overwriteDuplicate, enableEnhance, tags, fileMd5 })
   );
 
   return POST<{ collectionId: string }>(
@@ -353,6 +359,12 @@ export const postLinkCollectionSync = (collectionId: string) =>
  */
 export const postCheckDuplicateCollection = (data: CheckDuplicateFileNamesBody) =>
   POST<CheckDuplicateFileNamesResponse>(`/core/dataset/collection/check/duplicate`, data);
+
+/**
+ * 检查文件内容 MD5 是否重复
+ */
+export const postCheckMd5Duplicate = (data: CheckMd5DuplicateBody) =>
+  POST<CheckMd5DuplicateResponse>(`/core/dataset/collection/check/md5Duplicate`, data);
 
 /* =============================== tag ==================================== */
 

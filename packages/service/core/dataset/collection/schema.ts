@@ -129,6 +129,7 @@ const DatasetCollectionSchema = new Schema({
 
   rawTextLength: Number,
   hashRawText: String,
+  fileMd5: String,
 
   metadata: {
     type: Object,
@@ -212,6 +213,9 @@ try {
       }
     }
   );
+
+  // MD5 duplicate check
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, fileMd5: 1 });
 
   // Clear invalid image
   DatasetCollectionSchema.index({

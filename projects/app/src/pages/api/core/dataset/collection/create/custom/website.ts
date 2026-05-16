@@ -152,7 +152,6 @@ async function handler(
             autoIndexes: adjustedEnhanceConfig.autoIndexes ?? false,
             hypeIndexes: adjustedEnhanceConfig.hypeIndexes ?? false,
             imageIndex: adjustedEnhanceConfig.imageIndex ?? false,
-            syntheticIndex: adjustedEnhanceConfig.syntheticIndex,
             autoIndexesPrompt: importMode.promptConfig?.autoIndexesPrompt || '',
             hypeIndexPrompt: importMode.promptConfig?.hypeIndexPrompt || ''
           }

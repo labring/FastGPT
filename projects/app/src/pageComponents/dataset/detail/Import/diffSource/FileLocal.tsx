@@ -18,6 +18,7 @@ import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SparkMD5 from 'spark-md5';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
@@ -86,6 +87,18 @@ const SelectFile = React.memo(function SelectFile() {
     goToNext();
   }, [goToNext]);
 
+  // 流式计算单个文件的 SparkMD5
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const spark = new SparkMD5.ArrayBuffer();
+    const reader = file.stream().getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value!.buffer as ArrayBuffer);
+    }
+    return spark.end();
+  };
+
   const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
       const imageFiles = files.filter(({ file }) => isImageFile(file.name));
@@ -101,11 +114,18 @@ const SelectFile = React.memo(function SelectFile() {
           })
         );
         try {
+          const imgFiles = imageFiles.map((f) => f.file);
+
+          // 为每张图片分别计算 SparkMD5，排序后拼接作为集合的 fileMd5
+          const md5s = await Promise.all(imgFiles.map((f) => computeFileMd5(f)));
+          const fileMd5 = md5s.sort().join(',');
+
           await createImageDatasetCollection({
             parentId,
             datasetId,
             collectionName: imageFiles.map((f) => f.file.name).join(', '),
-            files: imageFiles.map((f) => f.file),
+            files: imgFiles,
+            fileMd5,
             onUploadProgress: (percent) => {
               setSelectFiles((state) =>
                 state.map((item) => {

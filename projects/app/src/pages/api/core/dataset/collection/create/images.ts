@@ -37,9 +37,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { parentId, datasetId, collectionName } = CreateImageCollectionFormSchema.parse(
-      result.data
-    );
+    const {
+      parentId,
+      datasetId,
+      collectionName,
+      fileMd5: frontendFileMd5
+    } = CreateImageCollectionFormSchema.parse(result.data);
 
     const { dataset, teamId, tmbId } = parentId
       ? await authDatasetCollection({
@@ -84,6 +87,15 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
     }
 
+    // 使用前端计算的 MD5（SparkMD5），避免前后端计算不一致。
+    // 单张图片上传时，fileMd5 为该图片的 MD5；
+    // 多张图片上传时，前端对每张图片分别计算 MD5，按字典序排序后以逗号拼接作为集合指纹，
+    // 用于后续同一组图片的去重判断。
+    let fileMd5: string | undefined;
+    if (result.fileMetadata.length >= 1) {
+      fileMd5 = frontendFileMd5;
+    }
+
     const imageIds = await Promise.all(
       result.fileMetadata.map(async (file) => {
         const filename = path.basename(file.filename);
@@ -108,6 +120,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         datasetId,
         type: DatasetCollectionTypeEnum.images,
         name: collectionName,
+        fileMd5,
         trainingType: DatasetCollectionDataProcessModeEnum.imageParse
       }
     });

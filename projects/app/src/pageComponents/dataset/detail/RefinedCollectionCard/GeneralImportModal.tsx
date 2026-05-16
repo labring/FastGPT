@@ -27,13 +27,16 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import {
   postCheckDuplicateCollection,
+  postCheckMd5Duplicate,
   postCreateCustomFileIdCollection,
   postCreateCustomLinkCollection
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
+import Md5DuplicateModal, { type Md5DuplicateItem } from './Md5DuplicateModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
+import SparkMD5 from 'spark-md5';
 
 const MAX_LINKS_COUNT = 10;
 const fileType = documentAndImageFileType;
@@ -67,6 +70,10 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   const [uploadingLinks, setUploadingLinks] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [enableEnhance, setEnableEnhance] = useState(true);
+
+  // ── MD5 去重弹窗 ────────────────────────────
+  const [md5DuplicateFiles, setMd5DuplicateFiles] = useState<Md5DuplicateItem[]>([]);
+  const [showMd5DuplicateModal, setShowMd5DuplicateModal] = useState(false);
 
   const successFiles = selectFiles.filter((item) => !item.errorMsg && !item.isUploading);
   // 图片在上传阶段已通过 /images API 创建 collection，confirm 阶段只处理文档文件
@@ -239,12 +246,14 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
           .filter((item) => !!item.file)
           .map(async (item) => {
             try {
+              const fileMd5 = await computeFileMd5(item.file!);
               await createImageDatasetCollection({
                 datasetId,
                 parentId,
                 collectionName: item.sourceName,
                 files: [item.file!],
-                overwriteDuplicate
+                overwriteDuplicate,
+                fileMd5
               });
             } catch (error) {
               toast({
@@ -289,6 +298,36 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
     }
   }, [datasetId, parentId, linkValidation.validLinks, toast, enableEnhance]);
 
+  /** 流式计算单个文件的 MD5，避免全量加载到内存 */
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk
+    const spark = new SparkMD5.ArrayBuffer();
+    const stream = file.stream();
+    const reader = stream.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value.buffer as ArrayBuffer);
+    }
+
+    return spark.end();
+  };
+
+  /** 批量计算文件 MD5 */
+  const computeFilesMd5 = async (
+    files: { name: string; file: File }[]
+  ): Promise<Map<string, string>> => {
+    const map = new Map<string, string>();
+    await Promise.all(
+      files.map(async (f) => {
+        const md5 = await computeFileMd5(f.file);
+        map.set(f.name, md5);
+      })
+    );
+    return map;
+  };
+
   const handleConfirm = useCallback(async () => {
     // 验证链接数量和格式
     if (parsedLinks.length > MAX_LINKS_COUNT) {
@@ -307,14 +346,53 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       return;
     }
 
-    // 对文档和图片文件进行重名校验
+    // 对文档和图片文件进行 MD5 去重和重名校验
     const allSuccessFiles = [...docSuccessFiles, ...imageSuccessFiles];
     if (allSuccessFiles.length > 0) {
-      const fileNames = allSuccessFiles.map((file) => file.sourceName);
+      const filesWithRef = allSuccessFiles.filter((f) => !!f.file);
+      const fileNames = allSuccessFiles.map((f) => f.sourceName);
+
+      // 1. 计算所有文件 MD5
+      const md5Map = await computeFilesMd5(
+        filesWithRef.map((f) => ({ name: f.sourceName, file: f.file! }))
+      );
+
+      // 2. 统一调用 md5Duplicate API 检测同批次内重复 + 与知识库已有文件重复
+      const md5Record: Record<string, string> = {};
+      for (const name of fileNames) {
+        const md5 = md5Map.get(name);
+        if (md5) md5Record[name] = md5;
+      }
+
+      if (Object.keys(md5Record).length > 0) {
+        const md5CheckResult = await postCheckMd5Duplicate({ datasetId, md5Map: md5Record });
+
+        if (md5CheckResult.duplicates?.length > 0) {
+          // 弹出 MD5 重复确认弹窗
+          setMd5DuplicateFiles(md5CheckResult.duplicates);
+          setShowMd5DuplicateModal(true);
+          return;
+        }
+      }
+
+      // 3. 文件名重复检查
+      if (fileNames.length === 0) {
+        // 所有文件都被去重过滤了，直接上传链接
+        setConfirmLoading(true);
+        try {
+          await uploadLinkCollections();
+        } finally {
+          setConfirmLoading(false);
+        }
+        onFinish?.();
+        onClose();
+        return;
+      }
+
       const checkResult = await postCheckDuplicateCollection({
         datasetId,
         parentId: parentId || undefined,
-        fileNames
+        fileNames: fileNames
       });
 
       if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
@@ -322,15 +400,27 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
         setShowDuplicateModal(true);
         return;
       }
+
+      // 过滤出未被去重的文件
+      const finalDoc = docSuccessFiles.filter((f) => fileNames.includes(f.sourceName));
+      const finalImg = imageSuccessFiles.filter((f) => fileNames.includes(f.sourceName));
+
+      setConfirmLoading(true);
+      try {
+        await uploadFileCollections(finalDoc);
+        await uploadImageCollections(finalImg);
+        await uploadLinkCollections();
+      } finally {
+        setConfirmLoading(false);
+      }
+
+      onFinish?.();
+      onClose();
+      return;
     }
 
     setConfirmLoading(true);
     try {
-      // 创建文档 collection
-      await uploadFileCollections(docSuccessFiles);
-      // 创建图片 collection
-      await uploadImageCollections(imageSuccessFiles);
-      // 上传链接
       await uploadLinkCollections();
     } finally {
       setConfirmLoading(false);
@@ -350,7 +440,66 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
     onFinish,
     toast,
     t,
-    datasetId
+    datasetId,
+    parentId
+  ]);
+
+  // MD5 去重弹窗确认：过滤掉重复文件后继续上传
+  const handleMd5Confirm = useCallback(async () => {
+    const md5DupNewNames = new Set(md5DuplicateFiles.map((d) => d.newFileName));
+
+    // 过滤掉 MD5 重复的文件
+    const finalDoc = docSuccessFiles.filter((f) => !md5DupNewNames.has(f.sourceName));
+    const finalImg = imageSuccessFiles.filter((f) => !md5DupNewNames.has(f.sourceName));
+
+    if (finalDoc.length === 0 && finalImg.length === 0) {
+      toast({ title: t('dataset:upload_other_files'), status: 'warning' });
+      setSelectFiles([]);
+      setShowMd5DuplicateModal(false);
+      return;
+    }
+
+    setShowMd5DuplicateModal(false);
+
+    // 文件名重复检查
+    const allFinal = [...finalDoc, ...finalImg];
+    const fileNames = allFinal.map((f) => f.sourceName);
+    const checkResult = await postCheckDuplicateCollection({
+      datasetId,
+      parentId: parentId || undefined,
+      fileNames
+    });
+
+    if (checkResult.duplicateFileNames?.length > 0) {
+      setDuplicateFiles(checkResult.duplicateFileNames);
+      setShowDuplicateModal(true);
+      return;
+    }
+
+    setConfirmLoading(true);
+    try {
+      await uploadFileCollections(finalDoc);
+      await uploadImageCollections(finalImg);
+      await uploadLinkCollections();
+    } finally {
+      setConfirmLoading(false);
+    }
+
+    onFinish?.();
+    onClose();
+  }, [
+    md5DuplicateFiles,
+    docSuccessFiles,
+    imageSuccessFiles,
+    datasetId,
+    parentId,
+    uploadFileCollections,
+    uploadImageCollections,
+    uploadLinkCollections,
+    onClose,
+    onFinish,
+    t,
+    toast
   ]);
 
   const handleCancel = useCallback(() => {
@@ -519,7 +668,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
                       <HStack key={item.id} w="100%" spacing={2} justifyContent="space-between">
                         <HStack spacing={2} flex={1} overflow="hidden">
                           <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
-                          <MyTooltip label={item.sourceName}>
+                          <MyTooltip label={item.sourceName} maxW="500px">
                             <Box
                               fontSize="sm"
                               color="myGray.900"
@@ -602,6 +751,13 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
         onSkipDuplicates={handleSkipDuplicates}
         onContinueUpload={handleContinueUpload}
         onReplaceFiles={handleReplaceFiles}
+      />
+      {/* MD5 内容重复确认弹窗 */}
+      <Md5DuplicateModal
+        isOpen={showMd5DuplicateModal}
+        onClose={() => setShowMd5DuplicateModal(false)}
+        md5DuplicateFiles={md5DuplicateFiles}
+        onConfirm={handleMd5Confirm}
       />
     </>
   );

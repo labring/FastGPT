@@ -29,10 +29,11 @@ import fs from 'fs';
 export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
-  parentId?: string; // Optional: Parent directory ID
-  tags?: CollectionTagValueType[]; // Optional: Tags
-  overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
-  enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
+  parentId?: string;
+  tags?: CollectionTagValueType[];
+  overwriteDuplicate?: boolean;
+  enableEnhance?: boolean;
+  fileMd5?: string;
 };
 export type CustomTemplateImportResponse = {
   overwritten?: boolean; // Whether overwrite operation was performed
@@ -248,7 +249,26 @@ async function handler(
       }
     });
 
-    // 4. 上传文件到 S3（使用处理后的文件名）
+    // 4. 使用前端计算的文件内容 MD5（SparkMD5），避免前后端计算不一致
+    const fileMd5 = data.fileMd5;
+
+    // 4.5 MD5 内容去重检查：与知识库中已有文件比对，内容完全一致的拒绝上传
+    if (fileMd5) {
+      const md5Duplicate = await MongoDatasetCollection.findOne(
+        {
+          datasetId: dataset._id,
+          type: DatasetCollectionTypeEnum.file,
+          fileMd5
+        },
+        '_id'
+      ).lean();
+
+      if (md5Duplicate) {
+        return Promise.reject(DatasetErrEnum.fileContentDuplicate);
+      }
+    }
+
+    // 5. 上传文件到 S3（使用处理后的文件名）
     const fileId = await getS3DatasetSource().upload({
       datasetId: data.datasetId,
       filename: fileName,
@@ -318,7 +338,8 @@ async function handler(
         hypeIndexPrompt: finalEnhanceConfig.hypeIndexPrompt || '',
         small2bigConfig: finalEnhanceConfig.small2bigConfig,
         autoIndexesPrompt: finalEnhanceConfig.autoIndexesPrompt,
-        imageIndexPrompt: finalEnhanceConfig.imageIndexPrompt
+        imageIndexPrompt: finalEnhanceConfig.imageIndexPrompt,
+        fileMd5 // 文件内容 MD5，用于去重
       }
     });
 
