@@ -245,10 +245,10 @@ export const buildAgentUserReminderInput = ({
 
   if (!reminder) return query || '';
 
-  return `<system-reminder>
-${reminder}
+  const reminderWithQuery = [reminder, query].filter(Boolean).join('\n\n');
 
-${query || ''}
+  return `<system-reminder>
+${reminderWithQuery}
 </system-reminder>`.trim();
 };
 

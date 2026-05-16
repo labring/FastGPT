@@ -201,7 +201,6 @@ describe('buildAgentUserReminderInput', () => {
     ).toBe(`<system-reminder>
 # Current time
 2026-05-14 10:00:00 Thursday
-
 </system-reminder>`);
 
     const datasetOnly = buildAgentUserReminderInput({
