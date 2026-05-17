@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
@@ -21,14 +21,11 @@ const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 export type testQuery = { model: string; channelId?: number };
 
-export type testBody = {};
+export type testBody = Record<string, never>;
 
 export type testResponse = any;
 
-async function handler(
-  req: ApiRequestProps<testBody, testQuery>,
-  res: ApiResponseType<any>
-): Promise<testResponse> {
+async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
   await authSystemAdmin({ req });
 
   const { model, channelId } = req.query;
@@ -98,7 +95,7 @@ const testEmbeddingModel = async (
 };
 
 const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
-  const ai = getAIApi({
+  const { ai } = getAIApi({
     timeout: 10000
   });
   await ai.audio.speech.create(

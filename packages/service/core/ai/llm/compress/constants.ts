@@ -10,7 +10,7 @@
  *
  * 2. **压缩策略**
  *    - 触发阈值：接近空间上限时触发
- *    - 压缩目标：激进压缩，预留增长空间
+ *    - 压缩目标：保留可续跑上下文，具体摘要粒度交给模型判断
  *    - 约束机制：单个 tool 有绝对大小限制
  *
  * 3. **协调关系**
@@ -28,24 +28,22 @@ export const COMPRESSION_CONFIG = {
    *
    * 示例（maxContext=100k）：
    * - 依赖 3 个步骤，每个 4k → 12k (12%) ✅ 不触发
-   * - 依赖 5 个步骤，每个 4k → 20k (20%) ⚠️ 触发压缩 → 12k
+   * - 依赖 5 个步骤，每个 4k → 20k (20%) ⚠️ 触发压缩
    */
   DEPENDS_ON_THRESHOLD: 0.15, // 15% 触发压缩
-  DEPENDS_ON_TARGET: 0.12, // 压缩到 12%（预留 3% 缓冲）
 
   /**
    * === 对话历史 ===
    *
    * 触发场景：对话历史（含所有 user/assistant/tool 消息）超过阈值
-   * 内容特点：动态累积，包含所有 tool responses
+   * 内容特点：动态累积，触发后会整体压成 checkpoint string
    *
    * 示例（maxContext=100k）：
    * - 初始 20k + 6 轮对话(34k) = 54k (54%) ✅ 不触发
-   * - 再 1 轮 = 60k (60%) ⚠️ 触发压缩 → 30k
-   * - 预留：55k - 30k = 25k（还能跑 4 轮）
+   * - 再 1 轮 = 60k (60%) ⚠️ 触发压缩 → checkpoint
+   * - checkpoint 保存长程上下文、当前任务和未完成工具上下文
    */
   MESSAGE_THRESHOLD: 0.8,
-  MESSAGE_TARGET_RATIO: 0.5,
 
   /**
    * === 单个 tool response ===
@@ -55,10 +53,9 @@ export const COMPRESSION_CONFIG = {
    *
    * 示例（maxContext=100k）：
    * - tool response = 8k (8%) ✅ 不触发
-   * - tool response = 15k (15%) ⚠️ 触发压缩 → 7k
+   * - tool response = 15k (15%) ⚠️ 触发压缩
    */
   SINGLE_TOOL_MAX: 0.5,
-  SINGLE_TOOL_TARGET: 0.25,
 
   /**
    * === 文件读取结果压缩 ===
@@ -68,10 +65,9 @@ export const COMPRESSION_CONFIG = {
    *
    * 示例（maxContext=100k）：
    * - 文件内容 = 40k (40%) ✅ 不触发
-   * - 文件内容 = 60k (60%) ⚠️ 触发压缩 → 25k
+   * - 文件内容 = 60k (60%) ⚠️ 触发压缩
    */
   FILE_READ_RESPONSE_MAX: 0.5, // 50% 触发压缩
-  FILE_READ_RESPONSE_TARGET: 0.25, // 压缩到 25%
 
   /**
    * === 分块压缩 ===
@@ -94,28 +90,24 @@ export const calculateCompressionThresholds = (maxContext: number) => {
   return {
     // Depends on 压缩阈值
     dependsOn: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.DEPENDS_ON_THRESHOLD),
-      target: Math.floor(maxContext * COMPRESSION_CONFIG.DEPENDS_ON_TARGET)
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.DEPENDS_ON_THRESHOLD)
     },
     // 对话历史压缩阈值
     messages: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.MESSAGE_THRESHOLD),
-      targetRatio: COMPRESSION_CONFIG.MESSAGE_TARGET_RATIO
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.MESSAGE_THRESHOLD)
     },
 
     // 单个 tool response 压缩阈值
     singleTool: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_MAX),
-      target: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_TARGET)
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_MAX)
     },
 
     // 文件读取结果压缩阈值
     fileReadResponse: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_MAX),
-      target: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_TARGET)
+      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_MAX)
     },
 
-    // 分块压缩中每个分块的分割大小，用来划分原始大块的内容，压缩的目标是根据实际的 maxtoken / 分块数量 来决定的
+    // 分块压缩中每个分块的分割大小，用来划分原始大块的内容。
     chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO),
 
     // 知识库检索工具阈值，到达阈值会触发选择最相关的一半分块内容（筛选）

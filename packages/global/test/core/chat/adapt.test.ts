@@ -7,7 +7,8 @@ import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
   runtimePrompt2ChatsValue,
-  getSystemPrompt_ChatItemType
+  getSystemPrompt_ChatItemType,
+  mergeAssistantFieldMessages
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -66,6 +67,256 @@ describe('simpleUserContentPart', () => {
   });
 });
 
+describe('mergeAssistantFieldMessages', () => {
+  it('should merge assistant reasoning, text and following tool calls', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need external data.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'I will search first.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{"query":"FastGPT"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need external data.',
+        content: 'I will search first.',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{"query":"FastGPT"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      }
+    ]);
+  });
+
+  it('should merge consecutive assistant text fields', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Part 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: ' Part 2'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Part 1 Part 2'
+      }
+    ]);
+  });
+
+  it('should not merge assistant messages with different hideInUI visibility', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning.',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer.'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual(messages);
+  });
+
+  it('should keep DeepSeek reasoning on tool call message when there is no answer text', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to call the search tool.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{"query":"DeepSeek thinking tool call"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed search result'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to call the search tool.',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{"query":"DeepSeek thinking tool call"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed search result'
+      }
+    ]);
+  });
+
+  it('should merge consecutive tool call groups into one assistant message', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need weather and time.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Checking both tools.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: 'compressed time'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need weather and time.',
+        content: 'Checking both tools.',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          },
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: 'compressed time'
+      }
+    ]);
+  });
+
+  it('should keep tool call message separate when tool response is missing', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need a tool.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual(messages);
+  });
+});
+
 describe('chats2GPTMessages', () => {
   it('should convert system message', () => {
     const messages: ChatItemMiniType[] = [
@@ -108,6 +359,23 @@ describe('chats2GPTMessages', () => {
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.User);
     expect(result[0].content).toBe('Hello');
+  });
+
+  it('should skip agent ask answers marked with planId', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          { text: { content: 'public follow-up' } },
+          { text: { content: 'private ask answer' }, planId: 'agentLoopMemory-node_1' }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].content).toBe('public follow-up');
   });
 
   it('should convert human message with image', () => {
@@ -219,7 +487,246 @@ describe('chats2GPTMessages', () => {
     expect(result[0].dataId).toBeUndefined();
   });
 
+  it('should keep all messages unchanged when there is no context checkpoint', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'system',
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        dataId: 'user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'hello' } }]
+      },
+      {
+        dataId: 'assistant',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'hi' } }]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: true })).toEqual([
+      {
+        dataId: 'system',
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        dataId: 'user',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'hello'
+      },
+      {
+        dataId: 'assistant',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'hi'
+      }
+    ]);
+  });
+
+  it('should start from the latest context checkpoint and ignore older history', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'system',
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'old-ai',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'old assistant answer' } }]
+      },
+      {
+        dataId: 'checkpoint-1',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            contextCheckpoint: '<context_checkpoint>first checkpoint</context_checkpoint>'
+          }
+        ]
+      },
+      {
+        dataId: 'after-first',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'after first checkpoint' } }]
+      },
+      {
+        dataId: 'checkpoint-2',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            contextCheckpoint: '<context_checkpoint>latest checkpoint</context_checkpoint>'
+          }
+        ]
+      },
+      {
+        dataId: 'current-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'current user request' } }]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: true });
+
+    expect(result).toEqual([
+      {
+        dataId: 'system',
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        dataId: 'checkpoint-2',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>latest checkpoint</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        dataId: 'current-user',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'current user request'
+      }
+    ]);
+  });
+
+  it('should ignore values before the checkpoint in the same AI history item', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'checkpoint-record',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            text: {
+              content: 'capability response before checkpoint should not leak'
+            }
+          },
+          {
+            contextCheckpoint: '<context_checkpoint>checkpoint summary</context_checkpoint>',
+            text: {
+              content: 'same value text should not be parsed'
+            }
+          },
+          {
+            text: {
+              content: 'assistant response after checkpoint'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>checkpoint summary</context_checkpoint>',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'assistant response after checkpoint'
+      }
+    ]);
+  });
+
+  it('should parse only values after the checkpoint index in a long assistant response list', () => {
+    const values = [
+      {
+        text: {
+          content: 'assistant response 0 before checkpoint'
+        }
+      },
+      {
+        contextCheckpoint:
+          '<context_checkpoint>checkpoint after first response</context_checkpoint>',
+        hideInUI: true
+      },
+      ...Array.from({ length: 10 }, (_, index) => ({
+        text: {
+          content: `assistant response ${index + 1} after checkpoint`
+        }
+      }))
+    ];
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'old-user',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old user request' } }]
+      },
+      {
+        dataId: 'assistant-record',
+        obj: ChatRoleEnum.AI,
+        value: values
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result[0]).toEqual({
+      dataId: undefined,
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: '<context_checkpoint>checkpoint after first response</context_checkpoint>',
+      hideInUI: true
+    });
+    expect(result).not.toContainEqual(
+      expect.objectContaining({
+        content: 'assistant response 0 before checkpoint'
+      })
+    );
+    const afterCheckpointContent = result
+      .slice(1)
+      .map((item) => item.content)
+      .join('');
+    Array.from(
+      { length: 10 },
+      (_, index) => `assistant response ${index + 1} after checkpoint`
+    ).forEach((content) => {
+      expect(afterCheckpointContent).toContain(content);
+    });
+  });
+
   it('should handle AI message with tool calls when reserveTool is true', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'tool-1',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"query": "test"}',
+                response: '{"results": []}'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result).toHaveLength(2);
+    expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
+    expect((result[0] as any).tool_calls).toBeDefined();
+    expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+  });
+
+  it('should handle deprecated single tool when reserveTool is true', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -242,8 +749,179 @@ describe('chats2GPTMessages', () => {
 
     expect(result).toHaveLength(2);
     expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
-    expect((result[0] as any).tool_calls).toBeDefined();
+    expect((result[0] as any).tool_calls?.[0].function.name).toBe('search_web');
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+  });
+
+  it('should filter invalid historical tool records when reserveTool is true', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_valid',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"query":"valid"}',
+                response: '{"results":[]}'
+              },
+              {
+                id: 'call_empty_name',
+                toolName: 'Broken',
+                toolAvatar: '',
+                functionName: '',
+                params: '{"query":"should not leak"}',
+                response: 'broken'
+              },
+              {
+                id: '',
+                toolName: 'Broken',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"query":"missing id"}',
+                response: 'broken'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result).toHaveLength(2);
+    expect((result[0] as any).tool_calls).toEqual([
+      {
+        id: 'call_valid',
+        type: 'function',
+        function: {
+          name: 'search_web',
+          arguments: '{"query":"valid"}'
+        }
+      }
+    ]);
+    expect(result[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_valid',
+      content: '{"results":[]}'
+    });
+  });
+
+  it('should not create empty tool_calls when all historical tools are invalid', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          { reasoning: { content: 'Need a tool' } },
+          {
+            tools: [
+              {
+                id: 'call_empty_name',
+                toolName: 'Broken',
+                toolAvatar: '',
+                functionName: '',
+                params: '{"query":"broken"}',
+                response: 'broken'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      reasoning_content: 'Need a tool'
+    });
+    expect((result[0] as any).tool_calls).toBeUndefined();
+  });
+
+  it('should normalize non-string historical tool params before restoring tool_calls', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tool: {
+              id: 'call_object_params',
+              toolName: 'Search',
+              toolAvatar: '',
+              functionName: 'search_web',
+              params: { query: 'object params' },
+              response: 'ok'
+            } as any
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect((result[0] as any).tool_calls?.[0].function).toEqual({
+      name: 'search_web',
+      arguments: '{"query":"object params"}'
+    });
+    expect(result[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_object_params',
+      content: 'ok'
+    });
+  });
+
+  it('should attach assistant text and reasoning to following tool_calls', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            text: { content: 'I will search first.' },
+            reasoning: { content: 'Need external data.' },
+            tools: [
+              {
+                id: 'call_search',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"query":"FastGPT"}',
+                response: 'compressed result'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'I will search first.',
+        reasoning_content: 'Need external data.',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{"query":"FastGPT"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      }
+    ]);
   });
 
   it('should skip empty AI text values when there are multiple values', () => {
@@ -300,6 +978,41 @@ describe('chats2GPTMessages', () => {
     expect((result[0] as any).hideInUI).toBe(true);
   });
 
+  it('should preserve AI value-level hideInUI property', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            reasoning: {
+              content: 'Hidden reasoning'
+            },
+            hideInUI: true
+          },
+          {
+            text: {
+              content: 'Visible answer'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false });
+
+    expect(result).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer'
+      }
+    ]);
+  });
+
   it('should handle interactive agentPlanAskQuery', () => {
     const messages: ChatItemMiniType[] = [
       {
@@ -322,33 +1035,7 @@ describe('chats2GPTMessages', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('should handle interactive agentPlanAskUserForm', () => {
-    const messages: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            interactive: {
-              type: 'agentPlanAskUserForm',
-              params: {
-                description: 'Please fill in the form',
-                inputForm: [
-                  { label: 'Name', value: 'John' },
-                  { label: 'Age', value: '25' }
-                ]
-              }
-            }
-          } as any
-        ]
-      }
-    ];
-
-    const result = chats2GPTMessages({ messages, reserveId: false });
-
-    expect(result).toHaveLength(0);
-  });
-
-  it('should handle plan with reserveTool true', () => {
+  it('should skip plan card when building GPT messages', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -366,13 +1053,11 @@ describe('chats2GPTMessages', () => {
             }
           } as any,
           {
-            planId: 'plan-1',
-            stepId: 'step-1',
+            id: 'step-1',
             text: { content: 'Search results here' }
           } as any,
           {
-            planId: 'plan-1',
-            stepId: 'step-2',
+            id: 'step-2',
             text: { content: 'Analysis complete' }
           } as any
         ]
@@ -381,14 +1066,12 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(1);
     expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
-    expect((result[0] as any).tool_calls).toBeDefined();
-    expect((result[0] as any).tool_calls[0].function.name).toBe('plan_agent');
-    expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+    expect(result[0].content).toBe('Search results hereAnalysis complete');
   });
 
-  it('should skip duplicate plan with same planId', () => {
+  it('should not convert multiple plan cards into GPT tool calls', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -417,32 +1100,7 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
-    // Should only have 2 messages (1 assistant + 1 tool) for the first plan
-    expect(result).toHaveLength(4);
-  });
-
-  it('should not process plan when reserveTool is false', () => {
-    const messages: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            plan: {
-              planId: 'plan-1',
-              task: 'Search for information',
-              description: 'Search the web',
-              background: 'User needs info',
-              steps: []
-            }
-          } as any
-        ]
-      }
-    ];
-
-    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: false });
-
-    // Plan should be skipped when reserveTool is false
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(0);
   });
 
   it('should convert AI message with reasoning only', () => {
@@ -480,21 +1138,23 @@ describe('chats2GPTMessages', () => {
     expect((result[0] as any).content).toBe('Final answer');
   });
 
-  it('should merge reasoning + tool_calls into a single assistant message', () => {
+  it('should attach preceding reasoning to following tool_calls', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
           { reasoning: { content: 'Need to call a tool' } },
           {
-            tool: {
-              id: 'tool-1',
-              toolName: 'Search',
-              toolAvatar: '',
-              functionName: 'search_web',
-              params: '{"q":"x"}',
-              response: '{}'
-            }
+            tools: [
+              {
+                id: 'tool-1',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"q":"x"}',
+                response: '{}'
+              }
+            ]
           }
         ]
       }
@@ -502,7 +1162,6 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
-    // 1 merged assistant (reasoning + tool_calls) + 1 tool response
     expect(result).toHaveLength(2);
     expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
     expect((result[0] as any).reasoning_content).toBe('Need to call a tool');
@@ -511,20 +1170,52 @@ describe('chats2GPTMessages', () => {
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
   });
 
-  it('should keep tool_calls separate when no reasoning precedes them', () => {
+  it('should attach preceding text to following tool_calls', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
           { text: { content: 'Calling tool' } },
           {
-            tool: {
-              id: 'tool-1',
-              toolName: 'Search',
-              toolAvatar: '',
-              functionName: 'search_web',
-              params: '{}',
-              response: '{}'
+            tools: [
+              {
+                id: 'tool-1',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{}',
+                response: '{}'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result).toHaveLength(2);
+    expect((result[0] as any).content).toBe('Calling tool');
+    expect((result[0] as any).tool_calls).toHaveLength(1);
+    expect((result[0] as any).tool_calls[0].function.name).toBe('search_web');
+    expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+  });
+
+  it('should not drop later fields when a control field shares the same chat value', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentPlanUpdate: {
+              id: 'call_plan',
+              functionName: 'update_plan',
+              params: '{"updates":[]}',
+              response: 'Plan updated.',
+              assistantText: 'updating plan'
+            },
+            text: {
+              content: 'continuing after plan'
             }
           }
         ]
@@ -533,12 +1224,169 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
-    // text assistant + tool_calls assistant + tool response
-    expect(result).toHaveLength(3);
-    expect((result[0] as any).content).toBe('Calling tool');
-    expect((result[0] as any).tool_calls).toBeUndefined();
-    expect((result[1] as any).tool_calls).toHaveLength(1);
-    expect(result[2].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+    expect(result).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'updating plan',
+        tool_calls: [
+          {
+            id: 'call_plan',
+            type: 'function',
+            function: {
+              name: 'update_plan',
+              arguments: '{"updates":[]}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_plan',
+        content: 'Plan updated.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'continuing after plan'
+      }
+    ]);
+  });
+
+  it('should restore agent loop control fields from chat value when reserving tools', () => {
+    const expectedMessages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'draft before plan',
+        reasoning_content: 'planning',
+        tool_calls: [
+          {
+            id: 'call_plan',
+            type: 'function',
+            function: {
+              name: 'update_plan',
+              arguments: '{"updates":[]}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_plan',
+        content: 'Plan updated.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'too early',
+        reasoning_content: 'checking'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'final answer'
+      }
+    ];
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            plan: {
+              planId: 'plan_1',
+              task: 'Task',
+              description: 'Task description',
+              steps: []
+            }
+          },
+          {
+            agentPlanUpdate: {
+              id: 'call_plan',
+              functionName: 'update_plan',
+              params: '{"updates":[]}',
+              response: 'Plan updated.',
+              assistantText: 'draft before plan',
+              reasoningText: 'planning'
+            }
+          },
+          {
+            agentStopGate: {
+              id: 'stop_gate_1',
+              reason: 'Active plan is not complete.',
+              feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>',
+              assistantText: 'too early',
+              reasoningText: 'checking'
+            }
+          },
+          {
+            text: { content: 'final answer' }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual(
+      expectedMessages
+    );
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: false })).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'final answer'
+      }
+    ]);
+  });
+
+  it('should restore ask_agent tool response from the matching interactive answer', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentAsk: {
+              id: 'call_ask',
+              planId: 'plan_1',
+              functionName: 'ask_agent',
+              params: '{"question":"Need confirmation?"}',
+              assistantText: 'Need confirmation.',
+              reasoningText: 'The plan needs user input.'
+            }
+          },
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              planId: 'plan_1',
+              params: {
+                content: 'Need confirmation?',
+                answer: 'Confirmed.'
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'The plan needs user input.',
+        content: 'Need confirmation.',
+        tool_calls: [
+          {
+            id: 'call_ask',
+            type: 'function',
+            function: {
+              name: 'ask_agent',
+              arguments: '{"question":"Need confirmation?"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask',
+        content: 'Confirmed.'
+      }
+    ]);
   });
 
   it('should handle multiple reasoning values producing separate assistant entries', () => {
@@ -781,6 +1629,121 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools[0].response).toBe('{"results": []}');
   });
 
+  it('should keep assistant content, reasoning and parallel tools continuous after chat roundtrip', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Checking both tools.',
+        reasoning_content: 'Need weather and time.',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          },
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: 'compressed time'
+      }
+    ];
+
+    const chats = GPTMessages2Chats({ messages, reserveTool: true, reserveReason: true });
+    const restoredMessages = chats2GPTMessages({
+      messages: chats,
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(chats).toHaveLength(1);
+    expect(chats[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Need weather and time.'
+        }
+      },
+      {
+        text: {
+          content: 'Checking both tools.'
+        }
+      },
+      {
+        tools: [
+          {
+            id: 'call_weather',
+            toolName: '',
+            toolAvatar: '',
+            functionName: 'weather',
+            params: '{"city":"Beijing"}',
+            response: 'compressed weather'
+          },
+          {
+            id: 'call_time',
+            toolName: '',
+            toolAvatar: '',
+            functionName: 'time',
+            params: '{}',
+            response: 'compressed time'
+          }
+        ]
+      }
+    ]);
+    expect(restoredMessages).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Checking both tools.',
+        reasoning_content: 'Need weather and time.',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          },
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: 'compressed time'
+      }
+    ]);
+  });
+
   it('should skip tool_calls when reserveTool is false', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -803,8 +1766,42 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const value = result[0].value[0] as any;
-    expect(value.tool).toBeUndefined();
+    expect(value.tools).toBeUndefined();
     expect(value.text?.content).toBe('Response text');
+  });
+
+  it('should keep deprecated function_call as single tool when reserveTool is true', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: '',
+        function_call: {
+          id: 'call_1',
+          name: 'search_web',
+          arguments: '{"query": "test"}',
+          toolName: 'Search',
+          toolAvatar: '/avatar.png'
+        } as any
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Function,
+        name: 'search_web',
+        content: '{"results": []}'
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages, reserveTool: true });
+
+    expect(result).toHaveLength(1);
+    const value = result[0].value[0] as any;
+    expect(value.tool).toMatchObject({
+      id: 'call_1',
+      toolName: 'Search',
+      toolAvatar: '/avatar.png',
+      functionName: 'search_web',
+      params: '{"query": "test"}',
+      response: '{"results": []}'
+    });
   });
 
   it('should handle interactive in assistant message', () => {
@@ -843,6 +1840,40 @@ describe('GPTMessages2Chats', () => {
     expect((result[0] as any).hideInUI).toBe(true);
   });
 
+  it('should restore assistant hideInUI to value level without hiding the whole AI chat', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        dataId: 'assistant-data-id',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning',
+        hideInUI: true
+      },
+      {
+        dataId: 'assistant-data-id',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Visible answer'
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].hideInUI).toBeUndefined();
+    expect(result[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Hidden reasoning'
+        },
+        hideInUI: true
+      },
+      {
+        text: {
+          content: 'Visible answer'
+        }
+      }
+    ]);
+  });
+
   it('should use getToolInfo callback when provided', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -878,118 +1909,6 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools).toHaveLength(1);
     expect(toolValue.tools[0].toolName).toBe('Custom Tool Display Name');
     expect(toolValue.tools[0].toolAvatar).toBe('http://example.com/avatar.png');
-  });
-
-  it('should handle function_call in assistant message with reserveTool true', () => {
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: '',
-        function_call: {
-          name: 'get_weather',
-          arguments: '{"location": "Beijing"}'
-        }
-      } as any,
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Function,
-        name: 'get_weather',
-        content: '{"temperature": 25}'
-      }
-    ];
-
-    // Add extended properties after creation
-    (messages[0] as any).function_call.id = 'func_1';
-    (messages[0] as any).function_call.toolName = 'Weather Tool';
-    (messages[0] as any).function_call.toolAvatar = 'http://example.com/weather.png';
-
-    const result = GPTMessages2Chats({ messages, reserveTool: true });
-
-    expect(result).toHaveLength(1);
-    const toolValue = result[0].value[0] as any;
-    expect(toolValue.tool).toBeDefined();
-    expect(toolValue.tool?.functionName).toBe('get_weather');
-    expect(toolValue.tool?.params).toBe('{"location": "Beijing"}');
-    expect(toolValue.tool?.response).toBe('{"temperature": 25}');
-    expect(toolValue.tool?.toolName).toBe('Weather Tool');
-    expect(toolValue.tool?.toolAvatar).toBe('http://example.com/weather.png');
-  });
-
-  it('should skip function_call when reserveTool is false', () => {
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'Response text',
-        function_call: {
-          name: 'get_weather',
-          arguments: '{"location": "Beijing"}'
-        }
-      } as any,
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Function,
-        name: 'get_weather',
-        content: '{"temperature": 25}'
-      }
-    ];
-
-    const result = GPTMessages2Chats({ messages, reserveTool: false });
-
-    expect(result).toHaveLength(1);
-    const value = result[0].value[0] as any;
-    expect(value.tool).toBeUndefined();
-    expect(value.text?.content).toBe('Response text');
-  });
-
-  it('should skip function_call when no matching function response', () => {
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'Response text',
-        function_call: {
-          name: 'get_weather',
-          arguments: '{"location": "Beijing"}'
-        }
-      } as any
-      // No function response message
-    ];
-
-    const result = GPTMessages2Chats({ messages, reserveTool: true });
-
-    expect(result).toHaveLength(1);
-    // Should only have text content since no function response was found
-    const value = result[0].value[0] as any;
-    expect(value.text?.content).toBe('Response text');
-  });
-
-  it('should skip plan_agent tool in tool_calls', () => {
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: '',
-        tool_calls: [
-          {
-            id: 'call_1',
-            type: 'function',
-            function: {
-              name: 'plan_agent',
-              arguments: '{"task": "test"}'
-            }
-          }
-        ]
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Tool,
-        tool_call_id: 'call_1',
-        content: '[]'
-      }
-    ];
-
-    const result = GPTMessages2Chats({ messages, reserveTool: true });
-
-    // plan_agent should be skipped, resulting in empty tools array
-    expect(result).toHaveLength(1);
-    const toolValue = result[0].value[0] as any;
-    expect(toolValue.tools).toBeDefined();
-    expect(toolValue.tools).toHaveLength(0);
   });
 });
 

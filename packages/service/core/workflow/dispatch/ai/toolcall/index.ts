@@ -2,34 +2,22 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
-import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
+import { getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
-import type { FileInputType } from './type';
-import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
-import type { UserChatItemFileItemType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  GPTMessages2Chats,
-  chats2GPTMessages,
-  getSystemPrompt_ChatItemType,
-  runtimePrompt2ChatsValue
-} from '@fastgpt/global/core/chat/adapt';
+import { type DispatchToolModuleProps } from './type';
+import { GPTMessages2Chats, chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { filterToolResponseToPreview } from './utils';
-import { parseUrlToFileType } from '../../../utils/context';
-import { formatUserQueryWithFiles, parseFileInfoFromUrls } from '../../../utils/file';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
-import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import { useToolNodeList } from './hooks/useToolNodeList';
+import { useToolMessages } from './hooks/useToolMessages';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
-  let {
+  const {
     node: { nodeId, isEntry, inputs },
     runtimeNodes,
     runtimeEdges,
@@ -39,20 +27,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     lastInteractive,
     runningUserInfo,
     externalProvider,
-    usageId,
     responseChatItemId,
     params: {
       model,
       systemPrompt,
       userChatInput,
       history = 6,
-      fileUrlList: fileLinks,
+      fileUrlList,
       aiChatVision,
       aiChatReasoning,
       isResponseAnswerText = true,
       useAgentSandbox
     }
   } = props;
+  let fileLinks = fileUrlList;
 
   const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
@@ -68,129 +56,31 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileLinks = undefined;
     }
 
-    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
-
-    // Gets the module to which the tool is connected
-    const toolNodes = toolNodeIds
-      .map((nodeId) => {
-        const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
-        return tool;
-      })
-      .filter((tool) => {
-        if (!tool) return false;
-        // Check is valid and filter
-        const configStatus = getToolConfigStatus({
-          tool
-        });
-        if (configStatus.status === 'invalid' || configStatus.status === 'waitingForConfig') {
-          return false;
-        }
-        return true;
-      })
-      .map<ToolNodeItemType>((_) => {
-        const tool = _!;
-        const toolParams: FlowNodeInputItemType[] = [];
-        tool?.inputs.forEach((input) => {
-          if (input.toolDescription) {
-            toolParams.push(input);
-          }
-          if (
-            (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') &&
-            input.value?.inputSchema
-          ) {
-            const value = input.value as McpToolDataType;
-            tool.jsonSchema = value.inputSchema;
-          }
-        });
-
-        return {
-          nodeId: tool.nodeId,
-          name: tool.name,
-          flowNodeType: tool.flowNodeType,
-          avatar: tool.avatar,
-          intro: tool.intro,
-          toolDescription: tool.toolDescription,
-          jsonSchema: tool.jsonSchema,
-          toolParams
-        };
-      });
-
-    // Check interactive entry
-    props.node.isEntry = false;
-
-    const { userFiles } = await getMultiInput({
-      fileLinks
+    const toolNodes = useToolNodeList({
+      nodeId,
+      runtimeNodes,
+      runtimeEdges
     });
 
-    const concatenateSystemPrompt = [toolModel.defaultSystemChatPrompt, systemPrompt]
-      .filter(Boolean)
-      .join('\n\n-----\n\n');
+    // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
+    props.node.isEntry = false;
 
-    const allFiles = new Map<string, FileInputType>();
-    const currentInputFiles: FileInputType[] = [];
-    const messages = await (async () => {
-      const value: ChatItemMiniType[] = [
-        ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
-        ...chatHistories,
-        {
-          dataId: responseChatItemId,
-          obj: ChatRoleEnum.Human,
-          value: runtimePrompt2ChatsValue({
-            text: userChatInput,
-            files: userFiles
-          })
-        }
-      ];
+    const { messages, allFiles, currentInputFiles } = await useToolMessages({
+      defaultSystemPrompt: toolModel.defaultSystemChatPrompt,
+      systemPrompt,
+      chatHistories,
+      responseChatItemId,
+      userChatInput,
+      fileLinks,
+      lastInteractive,
+      isEntry,
+      chatConfig,
+      requestOrigin,
+      runningUserInfo,
+      useSandbox
+    });
 
-      const runtimeMessages = lastInteractive && isEntry ? value.slice(0, -2) : value;
-
-      const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
-      return Promise.all(
-        runtimeMessages.map(async (message, index): Promise<ChatItemMiniType> => {
-          if (message.obj !== ChatRoleEnum.Human) {
-            return message;
-          }
-
-          const prefixId = message.dataId || `${index}`;
-          const query = await formatUserQueryWithFiles({
-            userQuery: message.value,
-            parseFileFn: async (urls) => {
-              const files = await parseFileInfoFromUrls({
-                urls,
-                requestOrigin,
-                maxFiles,
-                teamId: runningUserInfo.teamId
-              }).then((res) =>
-                res
-                  .filter((item) => item.success)
-                  .map((item, index) => ({
-                    id: `${prefixId}-${index}`,
-                    name: item.name,
-                    url: item.url,
-                    sandboxPath: useSandbox ? `${SANDBOX_USER_FILES_PATH}${item.name}` : undefined
-                  }))
-              );
-
-              files.forEach((file) => {
-                allFiles.set(file.id, file);
-              });
-              if (index === runtimeMessages.length - 1) {
-                currentInputFiles.push(...files);
-              }
-
-              return files;
-            }
-          });
-
-          return {
-            ...message,
-            value: query
-          };
-        })
-      );
-    })();
-
-    // censor model and system key
+    // 未配置独立模型密钥时，沿用系统文本审核逻辑。
     if (toolModel.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
         text: `${systemPrompt}
@@ -201,12 +91,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      toolDispatchFlowResponses, // tool flow response
+      toolDispatchFlowResponses, // 工具子流程运行详情
       toolCallInputTokens,
       toolCallOutputTokens,
       toolCallTotalPoints,
-      completeMessages = [], // The actual message sent to AI(just save text)
-      assistantResponses = [], // FastGPT system store assistant.value response
+      completeMessages = [], // 实际发送给模型的消息，只保留文本用于预览。
+      assistantResponses = [], // FastGPT 持久化到 assistant.value 的响应。
       finish_reason,
       error,
       requestIds
@@ -231,44 +121,41 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     })();
 
-    // Usage computed
-    // modelName 直接从 toolModel 获取；totalPoints 使用预计算值，保证梯度计费正确
+    const runTimes = toolDispatchFlowResponses.reduce((sum, item) => sum + item.runTimes, 0);
+    const toolDetail = toolDispatchFlowResponses.map((item) => item.flowResponses).flat();
+    const historyPreview = getHistoryPreview(
+      GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
+      10000,
+      useVision
+    );
+
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const toolTotalPoints = toolDispatchFlowResponses
       .map((item) => item.flowUsages)
       .flat()
       .reduce((sum, item) => sum + item.totalPoints, 0);
-    // concat tool usage
     const totalPointsUsage = modelTotalPoints + toolTotalPoints;
-
-    // Preview assistant responses
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+    const nodeResponse: Record<string, any> = {
+      totalPoints: totalPointsUsage,
+      toolCallInputTokens,
+      toolCallOutputTokens,
+      childTotalPoints: toolTotalPoints,
+      model: modelName,
+      query: userChatInput,
+      historyPreview,
+      toolDetail,
+      mergeSignId: nodeId,
+      finishReason: finish_reason,
+      llmRequestIds: requestIds
+    };
 
     if (error) {
       return getNodeErrResponse({
         error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          totalPoints: totalPointsUsage,
-          toolCallInputTokens: toolCallInputTokens,
-          toolCallOutputTokens: toolCallOutputTokens,
-          childTotalPoints: toolTotalPoints,
-          model: modelName,
-          query: userChatInput,
-          historyPreview: getHistoryPreview(
-            GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-            10000,
-            useVision
-          ),
-          toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
-          mergeSignId: nodeId,
-          finishReason: finish_reason,
-          llmRequestIds: requestIds
-        },
-        [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
-          (sum, item) => sum + item.runTimes,
-          0
-        )
+        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
       });
     }
 
@@ -279,42 +166,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           .map((item) => item.text?.content || '')
           .join('')
       },
-      [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
-        (sum, item) => sum + item.runTimes,
-        0
-      ),
+      [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? previewAssistantResponses
         : undefined,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        // 展示的积分消耗
-        totalPoints: totalPointsUsage,
-        toolCallInputTokens: toolCallInputTokens,
-        toolCallOutputTokens: toolCallOutputTokens,
-        childTotalPoints: toolTotalPoints,
-        model: modelName,
-        query: userChatInput,
-        historyPreview: getHistoryPreview(
-          GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-          10000,
-          useVision
-        ),
-        toolDetail: toolDispatchFlowResponses.map((item) => item.flowResponses).flat(),
-        mergeSignId: nodeId,
-        finishReason: finish_reason,
-        llmRequestIds: requestIds
-      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };
   } catch (error) {
     return getNodeErrResponse({ error });
   }
-};
-
-const getMultiInput = async ({ fileLinks = [] }: { fileLinks?: string[] }) => {
-  return {
-    userFiles: fileLinks
-      .map((url) => parseUrlToFileType(url))
-      .filter(Boolean) as UserChatItemFileItemType[]
-  };
 };

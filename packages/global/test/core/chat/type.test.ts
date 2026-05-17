@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   ToolModuleResponseItemSchema,
-  StepTitleItemSchema,
   UserChatItemFileItemSchema,
   UserChatItemValueItemSchema,
   UserChatItemSchema,
@@ -9,6 +8,7 @@ import {
   SystemChatItemSchema,
   AdminFbkSchema,
   AIChatItemValueSchema,
+  ContextCheckpointValueSchema,
   ToolCiteLinksSchema,
   RuntimeUserPromptSchema
 } from '@fastgpt/global/core/chat/type';
@@ -42,32 +42,6 @@ describe('ToolModuleResponseItemSchema', () => {
   it('should reject missing required fields', () => {
     const result = ToolModuleResponseItemSchema.safeParse({
       id: 'tool-1'
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('StepTitleItemSchema', () => {
-  it('should validate valid step title', () => {
-    const result = StepTitleItemSchema.safeParse({
-      stepId: 'step-1',
-      title: 'Step 1: Initialize'
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should validate step title with folded option', () => {
-    const result = StepTitleItemSchema.safeParse({
-      stepId: 'step-1',
-      title: 'Step 1',
-      folded: true
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should reject missing stepId', () => {
-    const result = StepTitleItemSchema.safeParse({
-      title: 'Step 1'
     });
     expect(result.success).toBe(false);
   });
@@ -231,7 +205,23 @@ describe('AIChatItemValueSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should validate tool response', () => {
+  it('should validate tool responses', () => {
+    const result = AIChatItemValueSchema.safeParse({
+      tools: [
+        {
+          id: 'tool-1',
+          toolName: 'Search',
+          toolAvatar: '/avatar.png',
+          params: '{}',
+          response: 'results',
+          functionName: 'search'
+        }
+      ]
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should keep deprecated single tool response readable', () => {
     const result = AIChatItemValueSchema.safeParse({
       tool: {
         id: 'tool-1',
@@ -245,22 +235,27 @@ describe('AIChatItemValueSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should validate with stepId', () => {
+  it('should validate context checkpoint value', () => {
+    const result = AIChatItemValueSchema.safeParse({
+      contextCheckpoint: '<context_checkpoint>\n# Context Checkpoint\n</context_checkpoint>'
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject non-string context checkpoint value', () => {
+    expect(ContextCheckpointValueSchema.safeParse({ content: 'bad' }).success).toBe(false);
+  });
+
+  it('should strip legacy stepId from AI chat value', () => {
     const result = AIChatItemValueSchema.safeParse({
       stepId: 'step-1',
       text: { content: 'Step result' }
     });
     expect(result.success).toBe(true);
-  });
-
-  it('should validate stepTitle', () => {
-    const result = AIChatItemValueSchema.safeParse({
-      stepTitle: {
-        stepId: 'step-1',
-        title: 'Processing'
-      }
+    expect(result.data).toEqual({
+      text: { content: 'Step result' }
     });
-    expect(result.success).toBe(true);
   });
 });
 

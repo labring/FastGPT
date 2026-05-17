@@ -1,9 +1,7 @@
 /**
  * Agent Sandbox Skills Prompt
  *
- * Implements progressive disclosure: only inject skill metadata
- * (name/description/location) into the prompt. LLM uses
- * sandbox_read_file to load full SKILL.md on demand.
+ * Injects skill metadata and the available sandbox workspace instructions.
  */
 
 import type { DeployedSkillInfo } from './types';
@@ -18,11 +16,10 @@ function escapeXml(str: string): string {
 }
 
 /**
- * Build skills context prompt for progressive disclosure.
+ * Build skills context prompt.
  *
  * Accepts DeployedSkillInfo[] so that name/description come from SKILL.md
  * frontmatter (scanned at deploy time) rather than from the database.
- * LLM loads full SKILL.md via sandbox_read_file when needed.
  *
  * When deployedSkills is empty, only the sandbox environment section is emitted,
  * allowing the agent to use sandbox tools even without any installed skills.
@@ -37,7 +34,7 @@ export function buildSkillsContextPrompt(
   if (deployedSkills.length > 0) {
     lines.push('<agent_skills>');
     lines.push(
-      'The following skills are deployed in the sandbox environment. When a task matches a skill description, use sandbox_read_file to load the SKILL.md for detailed instructions, then execute via sandbox_* tools.'
+      'The following skills are deployed in the sandbox environment. When a task matches a skill description, execute it with the available sandbox_* tools.'
     );
     lines.push('');
     lines.push('<available_skills>');
@@ -62,10 +59,10 @@ export function buildSkillsContextPrompt(
   lines.push('<sandbox_environment>');
   lines.push(`Workspace root: ${workDirectory}`);
   lines.push(
-    'You have access to sandbox_* tools: read, write, edit, execute, search files, and fetch user-uploaded files.'
+    'You have access to sandbox_* tools: write, edit, execute, search files, and fetch user-uploaded files.'
   );
   lines.push(
-    'If the conversation includes <available_files>, use sandbox_fetch_user_file to copy files into the workspace.'
+    'If the conversation includes # Input Files, use sandbox_fetch_user_file to copy files into the workspace by file id.'
   );
   lines.push(
     'Always use RELATIVE paths for target_path (e.g. "uploads/file.pdf"), never absolute paths or "..".'

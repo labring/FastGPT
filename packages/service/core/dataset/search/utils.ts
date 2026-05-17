@@ -2,6 +2,7 @@ import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -21,12 +22,14 @@ export const datasetSearchQueryExtension = async ({
   query,
   llmModel,
   embeddingModel,
+  userKey,
   extensionBg = '',
   histories = []
 }: {
   query: string;
   llmModel?: string;
   embeddingModel?: string;
+  userKey?: OpenaiAccountType;
   extensionBg?: string;
   histories?: ChatItemMiniType[];
 }) => {
@@ -44,7 +47,11 @@ export const datasetSearchQueryExtension = async ({
   };
 
   // 检查传入的 query 是否已经进行过扩展
-  let { queries, reRankQuery, alreadyExtension } = (() => {
+  const {
+    queries: initQueries,
+    reRankQuery: initReRankQuery,
+    alreadyExtension
+  } = (() => {
     /* if query already extension, direct parse */
     try {
       const jsonParse = JSON.parse(query);
@@ -55,7 +62,7 @@ export const datasetSearchQueryExtension = async ({
         reRankQuery: alreadyExtension ? queries.join('\n') : query,
         alreadyExtension
       };
-    } catch (error) {
+    } catch {
       return {
         queries: [query],
         reRankQuery: query,
@@ -63,6 +70,8 @@ export const datasetSearchQueryExtension = async ({
       };
     }
   })();
+  let queries = initQueries;
+  let reRankQuery = initReRankQuery;
 
   // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
@@ -74,7 +83,8 @@ export const datasetSearchQueryExtension = async ({
         query,
         histories,
         llmModel,
-        embeddingModel
+        embeddingModel,
+        userKey
       });
       if (result.extensionQueries?.length === 0) return;
       return result;

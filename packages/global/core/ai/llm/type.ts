@@ -231,7 +231,16 @@ export type UnStreamResponseType = openai.Chat.Completions.ChatCompletion & {
 
 export const CompletionFinishReasonSchema = z
   .union([
-    z.enum(['error', 'close', 'stop', 'length', 'tool_calls', 'content_filter', 'function_call']),
+    z.enum([
+      'error',
+      'close',
+      'abnormal_close',
+      'stop',
+      'length',
+      'tool_calls',
+      'content_filter',
+      'function_call'
+    ]),
     z.literal(null),
     z.undefined()
   ])

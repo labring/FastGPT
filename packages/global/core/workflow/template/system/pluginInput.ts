@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
 import { type FlowNodeTemplateType } from '../../type/node';

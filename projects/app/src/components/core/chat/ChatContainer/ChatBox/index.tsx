@@ -112,7 +112,7 @@ const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => {
     SseResponseEventEnum.toolResponse,
     SseResponseEventEnum.interactive,
     SseResponseEventEnum.plan,
-    SseResponseEventEnum.stepTitle,
+    SseResponseEventEnum.planStatus,
     SseResponseEventEnum.workflowDuration
   ].includes(event);
 };
@@ -133,7 +133,7 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
-    // TODO: 待优化。 自定义删除消息的实现，不传则使用默认的 delChatRecordById
+    // 支持外部自定义删除消息；不传则使用默认的 delChatRecordById。
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
   };
 
@@ -362,8 +362,7 @@ const ChatBox = ({
       tool,
       interactive,
       plan,
-      stepId,
-      stepTitle,
+      planStatus,
       sandboxStatus,
       skill,
       variables,
@@ -387,9 +386,6 @@ const ChatBox = ({
             return item.value.length - 1;
           })();
           const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
-          if (stepId) {
-            updateValue.stepId = stepId;
-          }
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -433,17 +429,17 @@ const ChatBox = ({
             };
           }
           if (event === SseResponseEventEnum.skillCall && skill) {
-            // 去重检查：避免同一个 skill 在同一步骤中重复展示
+            // 去重检查：避免同一个 skill 在同一响应中重复展示
             const alreadyExists = item.value.some(
               (v) =>
-                v.stepId === stepId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
+                v.id === responseValueId &&
+                v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
             );
             if (alreadyExists) return item;
 
             const skillId = skill.id || responseValueId || getNanoid(10);
             const val: AIChatItemValueItemType = {
               id: responseValueId,
-              stepId,
               skills: [
                 {
                   id: skillId,
@@ -461,7 +457,7 @@ const ChatBox = ({
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
-              if (updateValue?.reasoning && updateValue.stepId === stepId) {
+              if (updateValue?.reasoning) {
                 updateValue.reasoning.content += reasoningText;
                 return {
                   ...item,
@@ -485,7 +481,7 @@ const ChatBox = ({
               }
             }
             if (text) {
-              if (updateValue?.text && updateValue.stepId === stepId) {
+              if (updateValue?.text) {
                 updateValue.text.content += text;
                 return {
                   ...item,
@@ -513,17 +509,21 @@ const ChatBox = ({
           // Tool call
           if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
-              id: responseValueId,
-              tool
+              id: responseValueId || tool.id,
+              tools: [tool]
             };
             return {
               ...item,
               value: [...item.value, val]
             };
           }
-          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tool) {
+          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
             if (tool.params) {
-              updateValue.tool.params += tool.params;
+              updateValue.tools = updateValue.tools.map((item) =>
+                item.id === tool.id
+                  ? { ...item, params: `${item.params || ''}${tool.params}` }
+                  : item
+              );
               return {
                 ...item,
                 value: [
@@ -535,13 +535,13 @@ const ChatBox = ({
             }
             return item;
           }
-          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tool) {
+          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
             if (tool.response) {
-              // replace tool response
-              if (typeof updateValue.tool.response !== 'string') {
-                updateValue.tool.response = '';
-              }
-              updateValue.tool.response += tool.response;
+              updateValue.tools = updateValue.tools.map((item) =>
+                item.id === tool.id
+                  ? { ...item, response: `${item.response || ''}${tool.response}` }
+                  : item
+              );
 
               return {
                 ...item,
@@ -556,36 +556,66 @@ const ChatBox = ({
           }
 
           // Agent
-          if (event === SseResponseEventEnum.plan && plan) {
-            return {
-              ...item,
-              value: [
-                ...item.value,
-                {
-                  id: responseValueId,
-                  stepId,
-                  plan
-                }
-              ]
+          if (event === SseResponseEventEnum.planStatus && planStatus) {
+            const planStatusIndex = item.value.findIndex(
+              (value) => !!value.planStatus || (!!responseValueId && value.id === responseValueId)
+            );
+            const nextPlanStatusValue: AIChatItemValueItemType = {
+              id: responseValueId,
+              planStatus
             };
-          }
-          if (event === SseResponseEventEnum.stepTitle && stepTitle) {
-            return {
-              ...item,
-              value: [
-                ...item.value,
-                {
-                  id: responseValueId,
-                  stepId,
-                  stepTitle: {
-                    ...stepTitle,
-                    folded: false
-                  }
-                }
-              ]
-            };
-          }
 
+            if (planStatusIndex >= 0) {
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, planStatusIndex),
+                  {
+                    ...item.value[planStatusIndex],
+                    ...nextPlanStatusValue
+                  },
+                  ...item.value.slice(planStatusIndex + 1)
+                ]
+              };
+            }
+
+            return {
+              ...item,
+              value: [...item.value, nextPlanStatusValue]
+            };
+          }
+          if (event === SseResponseEventEnum.plan && plan) {
+            const planIndex = item.value.findIndex(
+              (value) =>
+                (!!responseValueId && value.id === responseValueId) ||
+                !!value.planStatus ||
+                (value.plan?.planId && value.plan.planId === plan.planId)
+            );
+            const nextPlanValue = {
+              id: responseValueId || plan.planId,
+              plan,
+              planStatus: undefined
+            };
+
+            if (planIndex >= 0) {
+              return {
+                ...item,
+                value: [
+                  ...item.value.slice(0, planIndex),
+                  {
+                    ...item.value[planIndex],
+                    ...nextPlanValue
+                  },
+                  ...item.value.slice(planIndex + 1)
+                ]
+              };
+            }
+
+            return {
+              ...item,
+              value: [...item.value, nextPlanValue]
+            };
+          }
           if (event === SseResponseEventEnum.updateVariables && variables) {
             resetVariables({ variables });
           }
@@ -676,7 +706,9 @@ const ChatBox = ({
       if (item.text?.content) return true;
       if (item.reasoning?.content) return true;
       if (item.tool?.params || item.tool?.response) return true;
-      if (item.plan || item.stepTitle || item.interactive) return true;
+      if (item.tools?.some((tool) => tool.params || tool.response)) return true;
+      if (item.skills?.length) return true;
+      if (item.plan || item.interactive) return true;
       return false;
     });
   });
@@ -993,7 +1025,6 @@ const ChatBox = ({
               return;
             }
 
-            console.log('Chat error', err);
             toast({
               title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
               status: 'error',
@@ -1049,9 +1080,7 @@ const ChatBox = ({
 
           autoTTSResponse && finishSegmentedAudio();
         },
-        (err) => {
-          console.log(err);
-        }
+        () => {}
       )();
     }
   );
@@ -1736,8 +1765,6 @@ const ChatBox = ({
     return result;
   }, [chatType, chatRecords, expandedDeletedGroups]);
   //chat history
-  const hasPlanCheck =
-    lastInteractive?.type === 'agentPlanCheck' && !lastInteractive.params.confirmed;
   const RecordsBox = useMemo(() => {
     return (
       <Box id={'history'}>

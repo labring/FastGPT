@@ -1,5 +1,5 @@
 import { type ErrType } from '../errorCode';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../i18n/utils';
 /* agentSkill: 509000 */
 export enum SkillErrEnum {
   unExist = 'skillUnExist',

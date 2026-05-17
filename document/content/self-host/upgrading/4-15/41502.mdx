@@ -5,6 +5,8 @@ description: 'FastGPT V4.15.0-beta2 更新说明'
 
 ## 🚀 新增内容
 
+1. 重写 agentV2 loop 逻辑。
+
 ## ⚙️ 优化
 
 1. 优化 OTEL 日志采集格式。
@@ -13,9 +15,14 @@ description: 'FastGPT V4.15.0-beta2 更新说明'
 4. 增加工作流节点，名字超长适配。
 5. 知识库搜索测试交互。
 6. 知识库数据编辑弹窗。
+7. reason hide 开关完善，确保只是 UI 不显示，但是 request llm 时候依然可以保留。
 
 ## 🐛 修复
 
 1. 工作流，单节点调试，存在异常默认值。
+2. 模型配置，defaultConfig 覆盖异常。
 
 ## 代码优化
+
+1. 拆分 AI request、工作流运行详情代码。
+2. 用户自定义密钥计费逻辑。

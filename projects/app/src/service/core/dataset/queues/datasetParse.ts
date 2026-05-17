@@ -32,7 +32,7 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -250,7 +250,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           continue;
         }
 
-        let { title, rawText } = await readDatasetSourceRawText({
+        const { title, rawText } = await readDatasetSourceRawText({
           teamId: data.teamId,
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,

@@ -1,7 +1,7 @@
 import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 

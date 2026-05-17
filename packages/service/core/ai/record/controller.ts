@@ -1,6 +1,11 @@
 import { MongoLLMRequestRecord } from './schema';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+
+export const createLLMRequestId = () => {
+  return getNanoid(12);
+};
 
 /**
  * 保存 LLM 请求追踪记录（异步，不阻塞主流程）

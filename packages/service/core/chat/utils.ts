@@ -50,10 +50,7 @@ export const addPreviewUrlToChatItems = async (
   }
 
   async function addToInteractive(interactive: WorkflowInteractiveResponseType) {
-    if (
-      (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') &&
-      Array.isArray(interactive.params?.inputForm)
-    ) {
+    if (interactive.type === 'userInput' && Array.isArray(interactive.params?.inputForm)) {
       await Promise.all(
         interactive.params.inputForm.map(async (input) => {
           if (input.type === FlowNodeInputTypeEnum.fileSelect) {

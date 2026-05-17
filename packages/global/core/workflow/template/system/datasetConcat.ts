@@ -13,7 +13,7 @@ import {
 } from '../../constants';
 import { getNanoid } from '../../../../common/string/tools';
 import { type FlowNodeInputItemType } from '../../type/io';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 
 export const getOneQuoteInputTemplate = ({
   key = getNanoid(),

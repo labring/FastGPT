@@ -1,6 +1,6 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ChannelInfoType } from './type';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export enum ChannelStatusEnum {
   ChannelStatusUnknown = 0,

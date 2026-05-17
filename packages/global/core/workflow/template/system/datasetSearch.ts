@@ -14,7 +14,7 @@ import {
 } from '../../constants';
 import { Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
 
 export const Dataset_SEARCH_DESC = i18nT('workflow:template.dataset_search_intro');

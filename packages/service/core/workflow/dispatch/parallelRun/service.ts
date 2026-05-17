@@ -4,7 +4,7 @@ import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { collectResponseFeedbacks, injectNestedStartInputs, safePoints } from '../utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';

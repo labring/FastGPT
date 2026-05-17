@@ -940,13 +940,10 @@ export const updateInteractiveChat = async ({
   */
   // Update interactive value
   {
-    if (
-      finalInteractive.type === 'userSelect' ||
-      finalInteractive.type === 'agentPlanAskUserSelect'
-    ) {
+    if (finalInteractive.type === 'userSelect') {
       finalInteractive.params.userSelectedVal = userInteractiveVal;
     } else if (
-      (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentPlanAskUserForm') &&
+      finalInteractive.type === 'userInput' &&
       typeof parsedUserInteractiveVal === 'object'
     ) {
       finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
@@ -986,8 +983,6 @@ export const updateInteractiveChat = async ({
       finalInteractive.params.submitted = true;
     } else if (finalInteractive.type === 'paymentPause') {
       chatItem.value.pop();
-    } else if (finalInteractive.type === 'agentPlanCheck') {
-      finalInteractive.params.confirmed = true;
     }
 
     // 将最新的 interactive 赋值给最后一条消息（最后一条必然是带交互的消息）

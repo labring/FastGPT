@@ -2,7 +2,7 @@ import type { FlowNodeOutputItemType } from '../type/io';
 import { NodeOutputKeyEnum } from '../constants';
 import { FlowNodeOutputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 
 export const Output_Template_AddOutput: FlowNodeOutputItemType = {
   id: NodeOutputKeyEnum.addOutputParam,

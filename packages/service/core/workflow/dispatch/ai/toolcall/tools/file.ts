@@ -5,7 +5,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger } from '@fastgpt-sdk/otel/logger';
 import { LogCategories } from '../../../../../../common/logger';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { i18nT } from '../../../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import z from 'zod';
 import type { ChildResponseItemType } from '../type';
 

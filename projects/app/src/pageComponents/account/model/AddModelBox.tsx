@@ -687,11 +687,11 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
         resize
         onChange={(e) => {
           if (!e) {
-            setValue('defaultConfig', undefined);
+            setValue('defaultConfig', {}, { shouldDirty: true });
             return;
           }
           try {
-            setValue('defaultConfig', JSON.parse(e.trim()));
+            setValue('defaultConfig', JSON.parse(e.trim()), { shouldDirty: true });
           } catch (error) {
             console.error(error);
           }

@@ -1,5 +1,5 @@
 import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { i18nT } from '../../../i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const adminAuditLogMap = {
   [AdminAuditEventEnum.ADMIN_LOGIN]: {

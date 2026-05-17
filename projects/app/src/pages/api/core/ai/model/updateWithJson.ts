@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type SystemModelSchemaType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -10,7 +10,7 @@ export type updateWithJsonBody = {
   config: string;
 };
 
-async function handler(req: ApiRequestProps<updateWithJsonBody>, res: ApiResponseType<any>) {
+async function handler(req: ApiRequestProps<updateWithJsonBody>) {
   await authSystemAdmin({ req });
 
   const { config } = req.body;

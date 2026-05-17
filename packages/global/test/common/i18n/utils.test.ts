@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { parseI18nString, formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
+import {
+  i18nT,
+  parseI18nString,
+  formatI18nLocationToZhEn
+} from '@fastgpt/global/common/i18n/utils';
 import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+
+describe('i18nT', () => {
+  it('should return the original i18n key', () => {
+    expect(i18nT('chat:completion_finish_stop')).toBe('chat:completion_finish_stop');
+  });
+});
 
 describe('parseI18nString', () => {
   it('should return string input as-is', () => {

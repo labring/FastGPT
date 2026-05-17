@@ -8,8 +8,13 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreate = vi.fn();
 vi.mock('@fastgpt/service/core/ai/config', () => ({
   getAIApi: () => ({
-    embeddings: {
-      create: mockCreate
+    ai: {
+      embeddings: {
+        create: mockCreate
+      }
+    },
+    requestMeta: {
+      usedUserOpenAIKey: false
     }
   })
 }));
@@ -219,7 +224,7 @@ describe('formatVectors function test', () => {
       expect(isNormalized(result)).toBe(true);
       // Should be truncated to first 1536 elements and then normalized
       expect(result).toEqual(
-        expect.arrayContaining(inputVector.slice(0, 1536).map((val) => expect.any(Number)))
+        expect.arrayContaining(inputVector.slice(0, 1536).map(() => expect.any(Number)))
       );
     });
 
@@ -260,7 +265,7 @@ describe('formatVectors function test', () => {
       expect(isNormalized(result)).toBe(true);
       // First 512 elements should match input, rest should be 0
       expect(result.slice(0, 512)).toEqual(
-        expect.arrayContaining(inputVector.map((val) => expect.any(Number)))
+        expect.arrayContaining(inputVector.map(() => expect.any(Number)))
       );
       expect(result.slice(512)).toEqual(new Array(1024).fill(0));
     });

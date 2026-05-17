@@ -4,7 +4,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { i18nT } from '../../../i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export type InputTypeConfigItem = {
   icon: string;

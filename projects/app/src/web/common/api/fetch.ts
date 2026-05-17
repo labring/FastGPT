@@ -22,13 +22,12 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import type {
-  StepTitleItemType,
   ToolModuleResponseItemType,
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
@@ -97,8 +96,8 @@ type ResponseQueueItemType = CommonResponseType &
         plan: AgentPlanType;
       }
     | {
-        event: SseResponseEventEnum.stepTitle;
-        stepTitle: StepTitleItemType;
+        event: SseResponseEventEnum.planStatus;
+        planStatus: AgentPlanStatusType;
       }
     | {
         event: SseResponseEventEnum.skillCall;
@@ -133,7 +132,7 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.toolResponse:
       case SseResponseEventEnum.interactive:
       case SseResponseEventEnum.plan:
-      case SseResponseEventEnum.stepTitle:
+      case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
         enqueue({ responseValueId, stepId, event, ...obj });
         break;

@@ -1,5 +1,5 @@
 import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { type McpToolConfigType } from '../../tool/mcpTool/type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';

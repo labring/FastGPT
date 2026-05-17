@@ -157,11 +157,12 @@ const EditForm = ({
               <SettingLLMModel
                 bg="myGray.50"
                 defaultData={{
-                  model: appForm.aiSettings.model
+                  model: appForm.aiSettings.model,
                   // temperature: appForm.aiSettings.temperature,
                   // maxToken: appForm.aiSettings.maxToken,
                   // maxHistories: appForm.aiSettings.maxHistories,
-                  // aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  aiChatReasoningEffort: appForm.aiSettings.aiChatReasoningEffort
                   // aiChatTopP: appForm.aiSettings.aiChatTopP,
                   // aiChatStopSign: appForm.aiSettings.aiChatStopSign,
                   // aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
@@ -172,7 +173,6 @@ const EditForm = ({
                 showTopP={false}
                 showStopSign={false}
                 showResponseFormat={false}
-                showReasoning={false}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,

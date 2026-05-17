@@ -30,7 +30,7 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
   Input_Template_UserChatInput

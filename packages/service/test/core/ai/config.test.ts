@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const originalEnv = {
   AIPROXY_API_ENDPOINT: process.env.AIPROXY_API_ENDPOINT,
@@ -78,5 +78,98 @@ describe('AI config defaults', () => {
 
     expect(openaiBaseUrl).toBe('https://example.com/v1');
     expect(openaiBaseKey).toBe('sk-chat');
+  });
+});
+
+describe('AI config user OpenAI account', () => {
+  const originalSystemEnv = global.systemEnv;
+
+  beforeEach(() => {
+    global.systemEnv = {
+      ...(global.systemEnv || {}),
+      oneapiUrl: 'https://system.example.com/v1',
+      chatApiKey: 'system-key'
+    } as any;
+  });
+
+  afterEach(() => {
+    global.systemEnv = originalSystemEnv;
+  });
+
+  it('should ignore user baseUrl when user key is missing', async () => {
+    const { getAIApi, getAxiosConfig } = await importConfig();
+
+    expect(
+      getAxiosConfig({
+        userKey: {
+          baseUrl: 'https://user.example.com/v1'
+        } as any
+      })
+    ).toEqual({
+      baseUrl: 'https://system.example.com/v1',
+      authorization: 'Bearer system-key'
+    });
+    expect(
+      getAIApi({
+        userKey: {
+          baseUrl: 'https://user.example.com/v1'
+        } as any
+      }).requestMeta
+    ).toEqual({
+      usedUserOpenAIKey: false,
+      baseUrl: 'https://system.example.com/v1'
+    });
+  });
+
+  it('should normalize user account with default OpenAI baseUrl when only key is provided', async () => {
+    const { defaultUserOpenAIBaseUrl, getAIApi, getAxiosConfig } = await importConfig();
+
+    expect(
+      getAxiosConfig({
+        userKey: {
+          key: 'user-key'
+        } as any
+      })
+    ).toEqual({
+      baseUrl: defaultUserOpenAIBaseUrl,
+      authorization: 'Bearer user-key'
+    });
+    expect(
+      getAIApi({
+        userKey: {
+          key: 'user-key'
+        } as any
+      }).requestMeta
+    ).toEqual({
+      usedUserOpenAIKey: true,
+      baseUrl: defaultUserOpenAIBaseUrl
+    });
+  });
+
+  it('should use user baseUrl only when user key is valid', async () => {
+    const { getAIApi, getAxiosConfig } = await importConfig();
+
+    expect(
+      getAxiosConfig({
+        userKey: {
+          key: 'user-key',
+          baseUrl: 'https://user.example.com/v1'
+        }
+      })
+    ).toEqual({
+      baseUrl: 'https://user.example.com/v1',
+      authorization: 'Bearer user-key'
+    });
+    expect(
+      getAIApi({
+        userKey: {
+          key: 'user-key',
+          baseUrl: 'https://user.example.com/v1'
+        }
+      }).requestMeta
+    ).toEqual({
+      usedUserOpenAIKey: true,
+      baseUrl: 'https://user.example.com/v1'
+    });
   });
 });
