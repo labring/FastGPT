@@ -7,10 +7,13 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
-const { createLLMResponseMock, compressRequestMessagesMock } = vi.hoisted(() => ({
-  createLLMResponseMock: vi.fn(),
-  compressRequestMessagesMock: vi.fn()
-}));
+const { createLLMResponseMock, compressRequestMessagesMock, compressToolResponseMock } = vi.hoisted(
+  () => ({
+    createLLMResponseMock: vi.fn(),
+    compressRequestMessagesMock: vi.fn(),
+    compressToolResponseMock: vi.fn()
+  })
+);
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
@@ -35,9 +38,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
   compressRequestMessages: compressRequestMessagesMock,
-  compressToolResponse: vi.fn(async ({ response }) => ({
-    compressed: response
-  }))
+  compressToolResponse: compressToolResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -95,6 +96,9 @@ describe('runUnifiedAgentLoop', () => {
     vi.clearAllMocks();
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
       messages
+    }));
+    compressToolResponseMock.mockImplementation(async ({ response }) => ({
+      compressed: response
     }));
   });
 
@@ -190,6 +194,35 @@ describe('runUnifiedAgentLoop', () => {
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
+  });
+
+  it('skips tool response compression for update_plan', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_update_plan',
+        name: 'update_plan',
+        args: {}
+      }),
+      text({
+        requestId: 'req_after_plan',
+        content: 'final after plan'
+      })
+    ]);
+
+    const result = await runUnifiedAgentLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Need a plan'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(compressToolResponseMock).not.toHaveBeenCalled();
   });
 
   it('uses update_plan and stop gate feedback in one main loop', async () => {
@@ -718,6 +751,7 @@ describe('runUnifiedAgentLoop', () => {
         }
       ]
     });
+    expect(compressToolResponseMock).not.toHaveBeenCalled();
   });
 
   it('continues the loop instead of returning an empty answer for invalid ask_agent args', async () => {

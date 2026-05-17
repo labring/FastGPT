@@ -237,7 +237,16 @@ describe('compressRequestMessages', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
-  it('should only use non-system messages to decide checkpoint compression', async () => {
+  it('should use the full request context to decide checkpoint compression', async () => {
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\nshort user summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 20,
+        outputTokens: 5
+      },
+      requestId: 'req_full_context_threshold',
+      finish_reason: 'stop'
+    });
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.System,
@@ -252,16 +261,30 @@ describe('compressRequestMessages', () => {
         content: 'short user history'
       }
     ];
-    countGptMessagesTokensMock.mockResolvedValue(100);
+    countGptMessagesTokensMock.mockImplementation(async (input: ChatCompletionMessageParam[]) =>
+      input === messages ? 4000 : 100
+    );
 
     const result = await compressRequestMessages({
       messages,
       model
     });
 
-    expect(result).toEqual({ messages });
-    expect(countGptMessagesTokensMock).toHaveBeenCalledWith([messages[2]]);
-    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(countGptMessagesTokensMock).toHaveBeenCalledWith(messages);
+    expect(result.messages).toEqual([
+      messages[0],
+      messages[1],
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>\nshort user summary\n</context_checkpoint>',
+        hideInUI: true
+      }
+    ]);
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    expect(userPrompt).toContain('short user history');
+    expect(userPrompt).not.toContain('very long system prompt');
+    expect(userPrompt).not.toContain('very long developer prompt');
   });
 
   it('should return original messages and usage when compressor returns empty content', async () => {

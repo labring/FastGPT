@@ -15,7 +15,11 @@ import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import type { AgentLoopChildrenInteractiveParams, AgentLoopToolChildrenInteractive } from './type';
+import type {
+  AgentLoopChildrenInteractiveParams,
+  AgentLoopToolChildrenInteractive,
+  AgentLoopToolExecutionResult
+} from './type';
 import { AgentUsageModuleName } from '../constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
@@ -43,24 +47,14 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     contextCheckpoint?: ContextCheckpointValueType;
   }) => void;
   // 处理交互工具
-  onRunInteractiveTool: (e: AgentLoopChildrenInteractiveParams<TChildrenResponse>) => Promise<{
-    response: string;
-    assistantMessages: ChatCompletionMessageParam[];
-    usages: ChatNodeUsageType[];
-    interactive?: TChildrenResponse;
-    stop?: boolean;
-  }>;
+  onRunInteractiveTool: (
+    e: AgentLoopChildrenInteractiveParams<TChildrenResponse>
+  ) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   // 处理工具响应
   onRunTool: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
-  }) => Promise<{
-    response: string;
-    assistantMessages: ChatCompletionMessageParam[];
-    usages: ChatNodeUsageType[];
-    interactive?: TChildrenResponse;
-    stop?: boolean;
-  }>;
+  }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   // 模型准备以无工具调用结束时的本地停止检查。
   // 返回 feedbackMessage 时会把消息追加回同一个 loop，而不是让外层重新开一层循环。
   onStopCandidate?: (e: {
@@ -441,7 +435,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           assistantMessages: toolAssistantMessages,
           usages: toolUsages,
           interactive,
-          stop: stopLoop
+          stop: stopLoop,
+          skipResponseCompress
         } = await (async () => {
           try {
             return await onRunTool({
@@ -464,6 +459,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
         // Compress tool response
         const { toolFinalResponse, toolResponseCompress } = await (async () => {
+          if (skipResponseCompress) {
+            return {
+              toolFinalResponse: response
+            };
+          }
+
           const compressStartTime = Date.now();
           const compressionResult = await compressToolResponse({
             response,

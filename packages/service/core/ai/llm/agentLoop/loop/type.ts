@@ -95,6 +95,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   usages: ChatNodeUsageType[];
   interactive?: TChildrenResponse;
   stop?: boolean;
+  skipResponseCompress?: boolean;
 };
 
 export type AgentLoopRuntime = {

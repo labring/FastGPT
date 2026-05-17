@@ -96,7 +96,9 @@ export const compressRequestMessages = async ({
     };
   }
 
-  const messageTokens = await countGptMessagesTokens(otherMessages);
+  // 触发阈值按完整请求上下文判断；压缩内容仍只包含非 system/developer 历史。
+  // system/developer 虽然不参与 checkpoint 压缩，但会真实占用模型上下文。
+  const messageTokens = await countGptMessagesTokens(messages);
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
 
   if (messageTokens < thresholds.threshold) {

@@ -253,10 +253,11 @@ export const runUnifiedAgentLoop = async ({
         argsDelta
       }),
     onRunTool: async ({ call, messages }) => {
+      // 先特殊处理系统级别工具
       if (call.function.name === askToolName) {
         const parsed = parsePlanAskToolCall(call);
         if (!parsed.success) {
-          return createToolResponse(parsed.error);
+          return createToolResponse(parsed.error, { skipResponseCompress: true });
         }
 
         pendingAsk = {
@@ -270,7 +271,10 @@ export const runUnifiedAgentLoop = async ({
           })
         };
 
-        return createToolResponse('Waiting for user answer.', { stop: true });
+        return createToolResponse('Waiting for user answer.', {
+          stop: true,
+          skipResponseCompress: true
+        });
       }
 
       if (call.function.name === updatePlanToolName) {
@@ -289,9 +293,10 @@ export const runUnifiedAgentLoop = async ({
           });
         }
 
-        return createToolResponse(updateResult.message);
+        return createToolResponse(updateResult.message, { skipResponseCompress: true });
       }
 
+      // 外部工具
       runtimeToolCalledSinceLastPlanUpdate = true;
       const toolResult = await runtime.executeTool({
         call,
