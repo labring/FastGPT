@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -46,7 +46,7 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
-import ConfirmDeleteSkillModal from './ConfirmDeleteSkillModal';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -498,11 +498,21 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
           );
         })}
       </Grid>
-      <ConfirmDeleteSkillModal
+      <ConfirmWarningModal
         isOpen={!!deleteTarget}
-        refsCount={deleteTarget?.refsCount ?? 0}
+        title={t('skill:confirm_delete_title')}
+        content={
+          <Trans
+            i18nKey={'skill:confirm_delete_with_refs'}
+            values={{ count: deleteTarget?.refsCount ?? 0 }}
+            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+          />
+        }
         onClose={() => setDeleteTarget(undefined)}
         onConfirm={() => (deleteTarget ? onClickDeleteSkill(deleteTarget.skillId) : undefined)}
+        cancelText={t('skill:confirm_delete_cancel')}
+        confirmText={t('skill:confirm_delete_action')}
+        confirmButtonVariant={'dangerFill'}
       />
       <ConfirmCopyModal />
       {!!editedSkill && (

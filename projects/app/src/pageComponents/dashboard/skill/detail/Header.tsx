@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -26,7 +26,7 @@ import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/con
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import ConfirmDeleteSkillModal from '../ConfirmDeleteSkillModal';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -256,11 +256,21 @@ const Header = () => {
       {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
 
       {/* 删除确认弹窗 */}
-      <ConfirmDeleteSkillModal
+      <ConfirmWarningModal
         isOpen={deleteOpen}
-        refsCount={skillDetail?.appCount ?? 0}
+        title={t('skill:confirm_delete_title')}
+        content={
+          <Trans
+            i18nKey={'skill:confirm_delete_with_refs'}
+            values={{ count: skillDetail?.appCount ?? 0 }}
+            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+          />
+        }
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => (skillDetail ? onClickDeleteSkill(skillDetail._id) : undefined)}
+        cancelText={t('skill:confirm_delete_cancel')}
+        confirmText={t('skill:confirm_delete_action')}
+        confirmButtonVariant={'dangerFill'}
       />
 
       {/* 编辑信息弹窗 */}

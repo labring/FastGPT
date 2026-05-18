@@ -1,17 +1,32 @@
 import React, { useState } from 'react';
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
-import { Trans, useTranslation } from 'next-i18next';
+import { Box, Button, Flex, HStack, type ButtonProps } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = {
   isOpen: boolean;
-  refsCount: number;
+  title: React.ReactNode;
+  content: React.ReactNode;
   onClose: () => void;
-  onConfirm: () => Promise<unknown> | unknown;
+  onConfirm?: () => Promise<unknown> | unknown;
+  confirmText?: React.ReactNode;
+  cancelText?: React.ReactNode;
+  showCancel?: boolean;
+  confirmButtonVariant?: ButtonProps['variant'];
 };
 
-const ConfirmDeleteSkillModal = ({ isOpen, refsCount, onClose, onConfirm }: Props) => {
+const ConfirmWarningModal = ({
+  isOpen,
+  title,
+  content,
+  onClose,
+  onConfirm,
+  confirmText,
+  cancelText,
+  showCancel = true,
+  confirmButtonVariant = 'primary'
+}: Props) => {
   const { t } = useTranslation();
   const [requesting, setRequesting] = useState(false);
 
@@ -45,43 +60,41 @@ const ConfirmDeleteSkillModal = ({ isOpen, refsCount, onClose, onConfirm }: Prop
             lineHeight={'26px'}
             color={'myGray.900'}
           >
-            {t('skill:confirm_delete_title')}
+            {title}
           </Box>
         </HStack>
 
         <Box fontSize={'14px'} lineHeight={'20px'} color={'myGray.900'}>
-          <Trans
-            i18nKey={'skill:confirm_delete_with_refs'}
-            values={{ count: refsCount }}
-            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-          />
+          {content}
         </Box>
 
         <HStack spacing={'12px'} justify={'flex-end'}>
+          {showCancel && (
+            <Button
+              size={'sm'}
+              variant={'whiteBase'}
+              onClick={onClose}
+              isDisabled={requesting}
+              px={'14px'}
+            >
+              {cancelText ?? t('common:Cancel')}
+            </Button>
+          )}
           <Button
             size={'sm'}
-            variant={'whiteBase'}
-            onClick={onClose}
-            isDisabled={requesting}
-            px={'14px'}
-          >
-            {t('skill:confirm_delete_cancel')}
-          </Button>
-          <Button
-            size={'sm'}
-            variant={'dangerFill'}
+            variant={confirmButtonVariant}
             isLoading={requesting}
             px={'14px'}
             onClick={async () => {
               setRequesting(true);
               try {
-                await onConfirm();
+                await onConfirm?.();
                 onClose();
-              } catch (_) {}
+              } catch {}
               setRequesting(false);
             }}
           >
-            {t('skill:confirm_delete_action')}
+            {confirmText ?? t('common:Confirm')}
           </Button>
         </HStack>
       </Flex>
@@ -89,4 +102,4 @@ const ConfirmDeleteSkillModal = ({ isOpen, refsCount, onClose, onConfirm }: Prop
   );
 };
 
-export default ConfirmDeleteSkillModal;
+export default React.memo(ConfirmWarningModal);

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -9,7 +9,10 @@ import {
   HStack,
   Switch
 } from '@chakra-ui/react';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  AppFormEditFormType,
+  SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -23,10 +26,10 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
-import SkillSelect from '../FormComponent/ToolSelector/SkillSelect';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSkillManager } from './hooks/useSkillManager';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -34,9 +37,11 @@ import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
+const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
@@ -64,6 +69,7 @@ const EditForm = ({
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const [sandboxWarning, setSandboxWarning] = useState<'permission' | 'disableBlocked'>();
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
@@ -116,9 +122,46 @@ const EditForm = ({
   } = useDisclosure();
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedAgentSkills = appForm.selectedAgentSkills || [];
+  const hasSelectedAgentSkills = selectedAgentSkills.length > 0;
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
+  const {
+    isOpen: isOpenSkillSelect,
+    onOpen: onOpenSkillSelect,
+    onClose: onCloseSkillSelect
+  } = useDisclosure();
+  const openSkillSelect = useCallback(() => {
+    if (!showSandbox || !enableSandbox) {
+      setSandboxWarning('permission');
+      return;
+    }
+    onOpenSkillSelect();
+  }, [enableSandbox, onOpenSkillSelect, showSandbox]);
+  const onAddAgentSkill = useCallback(
+    (skill: SelectedAgentSkillItemType) => {
+      setAppForm((state) => ({
+        ...state,
+        selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])],
+        aiSettings: {
+          ...state.aiSettings,
+          useAgentSandbox: true
+        }
+      }));
+    },
+    [setAppForm]
+  );
+  const onRemoveAgentSkill = useCallback(
+    (skillId: string) => {
+      setAppForm((state) => ({
+        ...state,
+        selectedAgentSkills:
+          state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
+      }));
+    },
+    [setAppForm]
+  );
 
   // Force close image select when model not support vision
   useEffect(() => {
@@ -235,6 +278,10 @@ const EditForm = ({
                   <Switch
                     isChecked={appForm.aiSettings.useAgentSandbox ?? false}
                     onChange={(e) => {
+                      if (!e.target.checked && hasSelectedAgentSkills) {
+                        setSandboxWarning('disableBlocked');
+                        return;
+                      }
                       setAppForm((state) => ({
                         ...state,
                         aiSettings: {
@@ -257,22 +304,87 @@ const EditForm = ({
         {/* skill choice */}
         {feConfigs?.show_skill && (
           <Box {...BoxStyles}>
-            <SkillSelect
-              selectedSkills={appForm.selectedAgentSkills || []}
-              onAddSkill={(skill) => {
-                setAppForm((state) => ({
-                  ...state,
-                  selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])]
-                }));
-              }}
-              onRemoveSkill={(skillId) => {
-                setAppForm((state) => ({
-                  ...state,
-                  selectedAgentSkills:
-                    state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
-                }));
-              }}
-            />
+            <Flex alignItems={'center'}>
+              <Flex alignItems={'center'} flex={1}>
+                <MyIcon name={'common/skill'} w={'20px'} color={'#487FFF'} />
+                <FormLabel ml={2}>{t('skill:associated_skills')}</FormLabel>
+              </Flex>
+              <Button
+                variant={'transparentBase'}
+                leftIcon={<SmallAddIcon />}
+                iconSpacing={1}
+                mr={'-5px'}
+                size={'sm'}
+                fontSize={'sm'}
+                onClick={openSkillSelect}
+              >
+                {t('common:Choose')}
+              </Button>
+            </Flex>
+            <Grid
+              mt={selectedAgentSkills.length > 0 ? 2 : 0}
+              gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
+              gridGap={[2, 4]}
+            >
+              {selectedAgentSkills.map((item) => (
+                <MyTooltip key={item.skillId} label={item.description}>
+                  <Flex
+                    overflow={'hidden'}
+                    alignItems={'center'}
+                    p={2.5}
+                    bg={'white'}
+                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                    borderRadius={'md'}
+                    border={'base'}
+                    userSelect={'none'}
+                    _hover={{
+                      borderColor: 'primary.300',
+                      '.delete': {
+                        display: 'flex'
+                      },
+                      '.hoverStyle': {
+                        display: 'flex'
+                      }
+                    }}
+                  >
+                    {item.avatar ? (
+                      <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
+                    ) : (
+                      <MyIcon name={'core/skill/default'} w={'1.5rem'} h={'1.5rem'} />
+                    )}
+                    <Box
+                      flex={'1 0 0'}
+                      ml={2}
+                      className={'textEllipsis'}
+                      fontSize={'sm'}
+                      color={'myGray.900'}
+                    >
+                      {item.name}
+                    </Box>
+                    <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
+                      <MyIconButton
+                        icon="delete"
+                        hoverBg="red.50"
+                        hoverColor="red.600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveAgentSkill(item.skillId);
+                        }}
+                      />
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              ))}
+            </Grid>
+
+            {isOpenSkillSelect && (
+              <SkillSelectModal
+                selectedSkills={selectedAgentSkills}
+                onAddSkill={onAddAgentSkill}
+                onRemoveSkill={onRemoveAgentSkill}
+                onClose={onCloseSkillSelect}
+              />
+            )}
           </Box>
         )}
 
@@ -560,6 +672,22 @@ const EditForm = ({
           }}
         />
       )}
+      <ConfirmWarningModal
+        isOpen={!!sandboxWarning}
+        title={
+          sandboxWarning === 'disableBlocked'
+            ? t('skill:sandbox_disable_blocked_title')
+            : t('skill:sandbox_permission_required_title')
+        }
+        content={
+          sandboxWarning === 'disableBlocked'
+            ? t('skill:sandbox_disable_blocked_content')
+            : t('skill:sandbox_permission_required_content')
+        }
+        onClose={() => setSandboxWarning(undefined)}
+        showCancel={false}
+        confirmText={t('common:OK')}
+      />
       <SkillModal />
     </>
   );

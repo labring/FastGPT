@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Flex, Grid, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack, Switch, useDisclosure } from '@chakra-ui/react';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -40,6 +40,10 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
+import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -140,6 +144,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, defaultModels } = useSystemStore();
+  const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
+  const [sandboxWarning, setSandboxWarning] = useState<'permission' | 'disableBlocked'>();
 
   // Split tool/common inputs and outputs
   const { isTool, commonInputs } = useMemoEnhance(
@@ -178,11 +187,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const externalVariables = useMemo(
     () =>
-      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+      externalProviderWorkflowVariables?.map((item) => ({
         key: item.key,
         label: item.name
       })) || [],
-    [feConfigs?.externalProviderWorkflowVariables]
+    [externalProviderWorkflowVariables]
   );
   const allVariables = useMemo(
     () => [...(editorVariables || []), ...(externalVariables || [])],
@@ -234,6 +243,16 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => inputs.find((i) => i.key === NodeInputKeyEnum.skills),
     [inputs]
   );
+  const sandboxInput = useMemo(
+    () => inputs.find((i) => i.key === NodeInputKeyEnum.useAgentSandbox),
+    [inputs]
+  );
+  const sandboxRenderType = sandboxInput ? getRenderType(sandboxInput) : undefined;
+  const showSandboxInput =
+    !!sandboxInput &&
+    !(sandboxInput.isPro && !feConfigs?.isPlus) &&
+    sandboxRenderType !== FlowNodeInputTypeEnum.hidden &&
+    !sandboxInput.canEdit;
   const toolsInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.selectedTools),
     [inputs]
@@ -246,6 +265,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
+        NodeInputKeyEnum.useAgentSandbox,
         NodeInputKeyEnum.selectedTools
       ]),
     []
@@ -355,15 +375,42 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
     [skillsInput]
   );
-  const skillsRenderType = useMemo(
-    () => (skillsInput ? getRenderType(skillsInput) : FlowNodeInputTypeEnum.selectSkill),
-    [skillsInput]
-  );
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
+  const openSkillSelect = useCallback(() => {
+    if (!showSandbox || !enableSandbox) {
+      setSandboxWarning('permission');
+      return;
+    }
+    onOpenSkillSelect();
+  }, [enableSandbox, onOpenSkillSelect, showSandbox]);
+  const onChangeAgentSandbox = useCallback(
+    (checked: boolean) => {
+      if (!sandboxInput) return;
+      if (!checked && selectedAgentSkills.length > 0) {
+        setSandboxWarning('disableBlocked');
+        return;
+      }
+
+      onChangeNode({
+        nodeId,
+        key: NodeInputKeyEnum.useAgentSandbox,
+        type: 'updateInput',
+        value: {
+          ...sandboxInput,
+          value: checked
+        }
+      });
+    },
+    [nodeId, onChangeNode, sandboxInput, selectedAgentSkills.length]
+  );
+  const skillsRenderType = useMemo(
+    () => (skillsInput ? getRenderType(skillsInput) : FlowNodeInputTypeEnum.selectSkill),
+    [skillsInput]
+  );
 
   // ---- Tools ----
   const toolsRenderType = useMemo(
@@ -429,6 +476,33 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {/* 3. Chat inputs (fileLink, userChatInput) */}
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
 
+        {showSandboxInput && sandboxInput && (
+          <Box
+            mb={5}
+            position={'relative'}
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <InputLabel nodeId={nodeId} input={sandboxInput} />
+            {showSandbox ? (
+              enableSandbox ? (
+                <Flex alignItems={'center'} gap={1} className={'nodrag'}>
+                  <SandboxTipTag />
+                  <Switch
+                    isChecked={!!sandboxInput.value}
+                    onChange={(e) => onChangeAgentSandbox(e.target.checked)}
+                  />
+                </Flex>
+              ) : (
+                <SandboxNotSupportTip type="freeDisable" />
+              )
+            ) : (
+              <SandboxNotSupportTip type="systemDisable" />
+            )}
+          </Box>
+        )}
+
         {/* 4. Skills section (manual select / reference dual mode) */}
         {feConfigs?.show_skill && skillsInput && (
           <Box mb={5}>
@@ -456,7 +530,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       border="1px solid #91BBF2"
                       _hover={{ bg: 'myGray.50' }}
                       leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-                      onClick={onOpenSkillSelect}
+                      onClick={openSkillSelect}
                     >
                       {t('common:Choose')}
                     </Button>
@@ -521,15 +595,30 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       selectedSkills={selectedAgentSkills}
                       onAddSkill={(skill: SelectedAgentSkillItemType) => {
                         if (!skillsInput) return;
-                        onChangeNode({
-                          nodeId,
-                          key: NodeInputKeyEnum.skills,
-                          type: 'updateInput',
-                          value: {
-                            ...skillsInput,
-                            value: [skill, ...selectedAgentSkills]
-                          }
-                        });
+                        onChangeNode([
+                          {
+                            nodeId,
+                            key: NodeInputKeyEnum.skills,
+                            type: 'updateInput',
+                            value: {
+                              ...skillsInput,
+                              value: [skill, ...selectedAgentSkills]
+                            }
+                          },
+                          ...(sandboxInput
+                            ? [
+                                {
+                                  nodeId,
+                                  key: NodeInputKeyEnum.useAgentSandbox,
+                                  type: 'updateInput' as const,
+                                  value: {
+                                    ...sandboxInput,
+                                    value: true
+                                  }
+                                }
+                              ]
+                            : [])
+                        ]);
                       }}
                       onRemoveSkill={(skillId: string) => {
                         if (!skillsInput) return;
@@ -759,6 +848,23 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
 
       <SkillModal />
+
+      <ConfirmWarningModal
+        isOpen={!!sandboxWarning}
+        title={
+          sandboxWarning === 'disableBlocked'
+            ? t('skill:sandbox_disable_blocked_title')
+            : t('skill:sandbox_permission_required_title')
+        }
+        content={
+          sandboxWarning === 'disableBlocked'
+            ? t('skill:sandbox_disable_blocked_content')
+            : t('skill:sandbox_permission_required_content')
+        }
+        onClose={() => setSandboxWarning(undefined)}
+        showCancel={false}
+        confirmText={t('common:OK')}
+      />
 
       {isOpenDatasetParams && (
         <DatasetParamsModal
