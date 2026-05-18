@@ -9,6 +9,24 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
+/**
+ * 判断系统是否显式配置了 Agent 虚拟机能力。
+ * 注意 serviceEnv 会给部分字段填默认值，这里必须读取原始 env，避免把未配置误判为已配置。
+ */
+export const hasAgentSandboxConfig = () => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+
+  if (provider === 'sealosdevbox') {
+    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
+  }
+
+  if (provider === 'opensandbox') {
+    return !!process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL;
+  }
+
+  return false;
+};
+
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);

@@ -39,7 +39,6 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/agentSkills/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import type {
   GetResourceFolderListProps,
   ParentIdType
@@ -179,10 +178,15 @@ const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number
   );
 };
 
-const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
+const List = ({
+  onClickCreate,
+  guardSkillSandboxOperation
+}: {
+  onClickCreate?: () => void;
+  guardSkillSandboxOperation?: () => boolean;
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { toast } = useToast();
   const { isPc } = useSystem();
 
   const { skills, loadSkills, isFetchingSkills, searchKey } = useContextSelector(
@@ -333,6 +337,7 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
                 if (isFolder) {
                   router.push({ query: { ...router.query, parentId: skill._id } });
                 } else {
+                  if (guardSkillSandboxOperation && !guardSkillSandboxOperation()) return;
                   router.push(`/skill/detail?skillId=${skill._id}`);
                 }
               }}
@@ -429,6 +434,13 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
                                 type: 'grayBg' as const,
                                 label: t('common:dataset.Edit Info'),
                                 onClick: () => {
+                                  if (
+                                    !isFolder &&
+                                    guardSkillSandboxOperation &&
+                                    !guardSkillSandboxOperation()
+                                  ) {
+                                    return;
+                                  }
                                   setEditedSkill({
                                     id: skill._id,
                                     avatar:

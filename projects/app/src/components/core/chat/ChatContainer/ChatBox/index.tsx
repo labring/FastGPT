@@ -136,6 +136,7 @@ type Props = OutLinkChatAuthProps &
     active?: boolean; // can use
     showWorkorder?: boolean;
     enableAutoResume?: boolean;
+    /** 是否执行普通 App Chat 的已读标记；Skill 调试会话没有普通 Chat history，需要关闭。 */
     enableMarkChatRead?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -144,9 +145,11 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
-    // 支持外部自定义删除消息；不传则使用默认的 delChatRecordById。
+    /** 覆盖默认消息删除接口；Skill 调试会话需要走 skill 专属 chat item 删除接口。 */
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
+    /** 覆盖默认停止对话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
     onStopChat?: () => Promise<unknown>;
+    /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
   };
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -9,10 +9,7 @@ import {
   HStack,
   Switch
 } from '@chakra-ui/react';
-import type {
-  AppFormEditFormType,
-  SelectedAgentSkillItemType
-} from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -35,17 +32,15 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { SkillSandboxPlanWarningModal } from '@/components/core/skill/useSkillSandboxOperationGuard';
+import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
-const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
-const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
-const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
@@ -69,7 +64,6 @@ const EditForm = ({
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
-  const [sandboxWarning, setSandboxWarning] = useState<'permission' | 'disableBlocked'>();
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
@@ -122,46 +116,26 @@ const EditForm = ({
   } = useDisclosure();
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
-  const selectedAgentSkills = appForm.selectedAgentSkills || [];
-  const hasSelectedAgentSkills = selectedAgentSkills.length > 0;
+  const {
+    selectedAgentSkills,
+    isAgentSkillSandboxUnavailable,
+    isOpenSkillSelect,
+    onCloseSkillSelect,
+    openSkillSelect,
+    onAddAgentSkill,
+    onRemoveAgentSkill,
+    onChangeAgentSandbox,
+    sandboxPlanWarning,
+    closeSandboxPlanWarning
+  } = useAgentSkillSelect({
+    appForm,
+    showSandbox,
+    enableSandbox,
+    setAppForm
+  });
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
-  const {
-    isOpen: isOpenSkillSelect,
-    onOpen: onOpenSkillSelect,
-    onClose: onCloseSkillSelect
-  } = useDisclosure();
-  const openSkillSelect = useCallback(() => {
-    if (!showSandbox || !enableSandbox) {
-      setSandboxWarning('permission');
-      return;
-    }
-    onOpenSkillSelect();
-  }, [enableSandbox, onOpenSkillSelect, showSandbox]);
-  const onAddAgentSkill = useCallback(
-    (skill: SelectedAgentSkillItemType) => {
-      setAppForm((state) => ({
-        ...state,
-        selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])],
-        aiSettings: {
-          ...state.aiSettings,
-          useAgentSandbox: true
-        }
-      }));
-    },
-    [setAppForm]
-  );
-  const onRemoveAgentSkill = useCallback(
-    (skillId: string) => {
-      setAppForm((state) => ({
-        ...state,
-        selectedAgentSkills:
-          state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
-      }));
-    },
-    [setAppForm]
-  );
 
   // Force close image select when model not support vision
   useEffect(() => {
@@ -269,35 +243,15 @@ const EditForm = ({
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
 
-            {showSandbox ? (
-              enableSandbox ? (
-                <>
-                  <Box mr={2}>
-                    <SandboxTipTag />
-                  </Box>
-                  <Switch
-                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-                    onChange={(e) => {
-                      if (!e.target.checked && hasSelectedAgentSkills) {
-                        setSandboxWarning('disableBlocked');
-                        return;
-                      }
-                      setAppForm((state) => ({
-                        ...state,
-                        aiSettings: {
-                          ...state.aiSettings,
-                          useAgentSandbox: e.target.checked
-                        }
-                      }));
-                    }}
-                  />
-                </>
-              ) : (
-                <SandboxNotSupportTip type="freeDisable" />
-              )
-            ) : (
-              <SandboxNotSupportTip type="systemDisable" />
+            {showSandbox && enableSandbox && (
+              <Box mr={2}>
+                <SandboxTipTag />
+              </Box>
             )}
+            <Switch
+              isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+              onChange={(e) => onChangeAgentSandbox(e.target.checked)}
+            />
           </Flex>
         </Box>
 
@@ -309,6 +263,17 @@ const EditForm = ({
                 <MyIcon name={'common/skill'} w={'20px'} color={'#487FFF'} />
                 <FormLabel ml={2}>{t('skill:associated_skills')}</FormLabel>
               </Flex>
+              {isAgentSkillSandboxUnavailable && (
+                <MyTag
+                  mr={2}
+                  colorSchema={'red'}
+                  type={'borderFill'}
+                  cursor={'pointer'}
+                  onClick={openSkillSelect}
+                >
+                  {t('skill:sandbox_unavailable_tag')}
+                </MyTag>
+              )}
               <Button
                 variant={'transparentBase'}
                 leftIcon={<SmallAddIcon />}
@@ -672,21 +637,9 @@ const EditForm = ({
           }}
         />
       )}
-      <ConfirmWarningModal
-        isOpen={!!sandboxWarning}
-        title={
-          sandboxWarning === 'disableBlocked'
-            ? t('skill:sandbox_disable_blocked_title')
-            : t('skill:sandbox_permission_required_title')
-        }
-        content={
-          sandboxWarning === 'disableBlocked'
-            ? t('skill:sandbox_disable_blocked_content')
-            : t('skill:sandbox_permission_required_content')
-        }
-        onClose={() => setSandboxWarning(undefined)}
-        showCancel={false}
-        confirmText={t('common:OK')}
+      <SkillSandboxPlanWarningModal
+        warningType={sandboxPlanWarning}
+        onClose={closeSandboxPlanWarning}
       />
       <SkillModal />
     </>

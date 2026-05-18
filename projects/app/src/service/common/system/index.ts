@@ -22,7 +22,7 @@ import type {
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { serviceEnv } from '@fastgpt/service/env';
+import { hasAgentSandboxConfig, serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 
@@ -162,7 +162,7 @@ export async function initSystemConfig() {
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      show_agent_sandbox: !!serviceEnv.AGENT_SANDBOX_PROVIDER,
+      show_agent_sandbox: hasAgentSandboxConfig(),
       show_skill: serviceEnv.SHOW_SKILL,
       sandboxProxy: {
         base: serviceEnv.SANDBOX_PROXY_BASE,

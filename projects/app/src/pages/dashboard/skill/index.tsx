@@ -21,6 +21,7 @@ import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillSandboxOperationGuard';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -36,6 +37,8 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
+    useSkillSandboxOperationGuard();
 
   const { skills, isFetchingSkills, loadSkills, searchKey, setSearchKey, parentId, paths } =
     useContextSelector(SkillListContext, (v) => v);
@@ -114,7 +117,11 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={() => setShowImportModal(true)}
+                    onClick={() => {
+                      if (guardSkillSandboxOperation()) {
+                        setShowImportModal(true);
+                      }
+                    }}
                     px={5}
                   >
                     {t('common:Import')}
@@ -137,7 +144,18 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           )}
 
           <MyBox flex={'1 0 0'} isLoading={skills.length === 0 && isFetchingSkills}>
-            <List onClickCreate={hasCreatePer ? () => setShowCreateModal(true) : undefined} />
+            <List
+              onClickCreate={
+                hasCreatePer
+                  ? () => {
+                      if (guardSkillSandboxOperation()) {
+                        setShowCreateModal(true);
+                      }
+                    }
+                  : undefined
+              }
+              guardSkillSandboxOperation={guardSkillSandboxOperation}
+            />
           </MyBox>
         </Flex>
       </Flex>
@@ -166,6 +184,8 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onSuccess={() => loadSkills()}
         />
       )}
+
+      {SkillSandboxOperationGuardModal}
     </Flex>
   );
 };

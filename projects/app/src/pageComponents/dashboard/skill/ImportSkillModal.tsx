@@ -1,5 +1,6 @@
 import React, { type DragEvent, useCallback, useState } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -11,6 +12,7 @@ import { importSkill } from '@/web/core/skill/api';
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
+const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
 type Props = {
   parentId?: string | null;
@@ -35,6 +37,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [skillName, setSkillName] = useState('');
 
   const { File: FileInput, onOpen } = useSelectFile({
     fileType: ACCEPT_TYPES,
@@ -46,6 +49,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     () => {
       const formData = new FormData();
       formData.append('file', selectedFile!);
+      formData.append('name', skillName.trim());
       if (parentId) formData.append('parentId', parentId);
       return importSkill(formData);
     },
@@ -104,10 +108,34 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         isOpen
         onClose={onClose}
         title={t('skill:import_skill')}
+        iconSrc="common/importLight"
+        iconColor={'primary.600'}
         w={'480px'}
         closeOnOverlayClick={false}
       >
         <ModalBody>
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            {t('common:input_name')}
+          </Box>
+          <Flex mt={2} mb={5} alignItems={'center'}>
+            <Avatar
+              flexShrink={0}
+              src={DEFAULT_SKILL_AVATAR}
+              w={['1.75rem', '2.25rem']}
+              h={['1.75rem', '2.25rem']}
+              borderRadius={'md'}
+            />
+            <Input
+              flex={1}
+              ml={3}
+              autoFocus
+              bg={'myWhite.600'}
+              placeholder={t('skill:skill_name_placeholder')}
+              value={skillName}
+              onChange={(e) => setSkillName(e.target.value)}
+            />
+          </Flex>
+
           {selectedFile ? (
             <Flex
               alignItems={'center'}
@@ -176,7 +204,11 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isDisabled={!selectedFile} isLoading={isImporting} onClick={onImport}>
+          <Button
+            isDisabled={!selectedFile || !skillName.trim()}
+            isLoading={isImporting}
+            onClick={onImport}
+          >
             {t('common:Confirm')}
           </Button>
         </ModalFooter>

@@ -112,6 +112,29 @@ export type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
+
+/**
+ * 判断 ChatAgent 是否处于历史遗留的 Skill + 虚拟机不可用状态。
+ * 该状态允许普通保存草稿，但不能继续发布或运行，因为 Skill 运行依赖虚拟机环境。
+ */
+export const checkAgentSkillSandboxUnavailable = ({
+  appForm,
+  showSandbox,
+  enableSandbox
+}: {
+  appForm: Pick<AppFormEditFormType, 'aiSettings' | 'selectedAgentSkills'>;
+  showSandbox?: boolean;
+  enableSandbox?: boolean;
+}) => {
+  const hasSelectedAgentSkills = (appForm.selectedAgentSkills?.length || 0) > 0;
+
+  return (
+    hasSelectedAgentSkills &&
+    !appForm.aiSettings.useAgentSandbox &&
+    (!showSandbox || !enableSandbox)
+  );
+};
+
 export function agentForm2AppWorkflow(
   data: AppFormEditFormType,
   t: any // i18nT

@@ -35,9 +35,11 @@ import {
 } from '@/web/core/workflow/utils';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
 
 const Header = ({
-  forbiddenSaveSnapshot,
+  forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
   appForm,
   setAppForm,
   past,
@@ -63,7 +65,10 @@ const Header = ({
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
-  const { lastAppListRouteType } = useSystemStore();
+  const { lastAppListRouteType, feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
 
   const { data: paths = [] } = useRequest(
     () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
@@ -147,13 +152,13 @@ const Header = ({
         appForm,
         title: `${t('app:version_copy')}-${appVersion.versionName}`
       });
-      forbiddenSaveSnapshot.current = true;
+      forbiddenSaveSnapshotRef.current = true;
 
       setAppForm(appForm);
 
       return res;
     },
-    [forbiddenSaveSnapshot, saveSnapshot, setAppForm, t]
+    [forbiddenSaveSnapshotRef, saveSnapshot, setAppForm, t]
   );
 
   // Check if the workflow is published
@@ -249,6 +254,20 @@ const Header = ({
                   isLoading={loading}
                   onClickSave={onClickSave}
                   checkData={() => {
+                    if (
+                      checkAgentSkillSandboxUnavailable({
+                        appForm,
+                        showSandbox,
+                        enableSandbox
+                      })
+                    ) {
+                      toast({
+                        title: t('skill:sandbox_skill_unavailable_toast'),
+                        status: 'warning'
+                      });
+                      return false;
+                    }
+
                     const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
 
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));

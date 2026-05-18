@@ -21,7 +21,7 @@ export type InitDateResponse = {
 };
 
 async function handler(
-  req: ApiRequestProps<{}, { bufferId?: string }>,
+  req: ApiRequestProps<Record<string, never>, { bufferId?: string }>,
   res: NextApiResponse
 ): Promise<InitDateResponse> {
   const { bufferId } = req.query;
@@ -32,6 +32,7 @@ async function handler(
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
         bufferId: global.systemInitBufferId,
+        feConfigs: global.feConfigs,
         systemVersion: global.systemVersion
       };
     }

@@ -43,7 +43,8 @@ import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
-import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -135,6 +136,7 @@ const CustomInputLabel = React.memo(function CustomInputLabel({
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, catchError, inputs, outputs } = data;
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
@@ -145,10 +147,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, defaultModels } = useSystemStore();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
-  const [sandboxWarning, setSandboxWarning] = useState<'permission' | 'disableBlocked'>();
+  const [sandboxPlanWarning, setSandboxPlanWarning] = useState<'switch' | 'skill'>();
 
   // Split tool/common inputs and outputs
   const { isTool, commonInputs } = useMemoEnhance(
@@ -380,18 +382,44 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
   const openSkillSelect = useCallback(() => {
-    if (!showSandbox || !enableSandbox) {
-      setSandboxWarning('permission');
+    if (!showSandbox) {
+      toast({
+        status: 'warning',
+        title: t('skill:sandbox_skill_system_not_configured_toast')
+      });
+      return;
+    }
+    if (!enableSandbox) {
+      setSandboxPlanWarning('skill');
       return;
     }
     onOpenSkillSelect();
-  }, [enableSandbox, onOpenSkillSelect, showSandbox]);
+  }, [enableSandbox, onOpenSkillSelect, showSandbox, t, toast]);
   const onChangeAgentSandbox = useCallback(
     (checked: boolean) => {
       if (!sandboxInput) return;
+      if (!showSandbox) {
+        toast({
+          status: 'warning',
+          title: t('skill:sandbox_system_not_configured_toast')
+        });
+        return;
+      }
+      if (!enableSandbox) {
+        setSandboxPlanWarning('switch');
+        return;
+      }
       if (!checked && selectedAgentSkills.length > 0) {
-        setSandboxWarning('disableBlocked');
+        toast({
+          status: 'warning',
+          title: t('skill:sandbox_disable_blocked_toast')
+        });
         return;
       }
 
@@ -405,7 +433,16 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       });
     },
-    [nodeId, onChangeNode, sandboxInput, selectedAgentSkills.length]
+    [
+      enableSandbox,
+      nodeId,
+      onChangeNode,
+      sandboxInput,
+      selectedAgentSkills.length,
+      showSandbox,
+      t,
+      toast
+    ]
   );
   const skillsRenderType = useMemo(
     () => (skillsInput ? getRenderType(skillsInput) : FlowNodeInputTypeEnum.selectSkill),
@@ -485,21 +522,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             justifyContent={'space-between'}
           >
             <InputLabel nodeId={nodeId} input={sandboxInput} />
-            {showSandbox ? (
-              enableSandbox ? (
-                <Flex alignItems={'center'} gap={1} className={'nodrag'}>
-                  <SandboxTipTag />
-                  <Switch
-                    isChecked={!!sandboxInput.value}
-                    onChange={(e) => onChangeAgentSandbox(e.target.checked)}
-                  />
-                </Flex>
-              ) : (
-                <SandboxNotSupportTip type="freeDisable" />
-              )
-            ) : (
-              <SandboxNotSupportTip type="systemDisable" />
-            )}
+            <Flex alignItems={'center'} gap={1} className={'nodrag'}>
+              {showSandbox && enableSandbox && <SandboxTipTag />}
+              <Switch
+                isChecked={!!sandboxInput.value}
+                onChange={(e) => onChangeAgentSandbox(e.target.checked)}
+              />
+            </Flex>
           </Box>
         )}
 
@@ -619,6 +648,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                               ]
                             : [])
                         ]);
+                        if (sandboxInput && !sandboxInput.value) {
+                          toast({
+                            status: 'success',
+                            title: t('skill:sandbox_auto_enabled_for_skill')
+                          });
+                        }
                       }}
                       onRemoveSkill={(skillId: string) => {
                         if (!skillsInput) return;
@@ -850,21 +885,34 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <SkillModal />
 
       <ConfirmWarningModal
-        isOpen={!!sandboxWarning}
-        title={
-          sandboxWarning === 'disableBlocked'
-            ? t('skill:sandbox_disable_blocked_title')
-            : t('skill:sandbox_permission_required_title')
-        }
+        isOpen={!!sandboxPlanWarning}
+        title={t('skill:sandbox_plan_not_supported_title')}
         content={
-          sandboxWarning === 'disableBlocked'
-            ? t('skill:sandbox_disable_blocked_content')
-            : t('skill:sandbox_permission_required_content')
+          sandboxPlanWarning === 'skill'
+            ? t('skill:sandbox_skill_plan_not_supported_content')
+            : t('skill:sandbox_plan_not_supported_content')
         }
-        onClose={() => setSandboxWarning(undefined)}
-        showCancel={false}
-        confirmText={t('common:OK')}
+        onClose={() => setSandboxPlanWarning(undefined)}
+        onConfirm={
+          isTeamAdmin
+            ? () => {
+                onOpenRecharge();
+              }
+            : undefined
+        }
+        confirmText={isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close')}
+        cancelText={t('common:Close')}
+        showCancel={isTeamAdmin}
       />
+      {isOpenRecharge && (
+        <RechargeModal
+          onClose={onCloseRecharge}
+          onPaySuccess={() => {
+            onCloseRecharge();
+            setSandboxPlanWarning(undefined);
+          }}
+        />
+      )}
 
       {isOpenDatasetParams && (
         <DatasetParamsModal
