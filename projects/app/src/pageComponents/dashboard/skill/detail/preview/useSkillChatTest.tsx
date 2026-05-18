@@ -1,8 +1,12 @@
 import { useCallback, useEffect } from 'react';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { streamFetch } from '@/web/common/api/fetch';
 import { SKILL_DEBUG_CHAT_URL, delSkillDebugChatItem } from '@/web/core/skill/api';
+import { syncSkillSandbox } from '@/pageComponents/dashboard/skill/detail/config/AgentSkillEditor/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -15,13 +19,16 @@ export const useSkillChatTest = ({
   skillId,
   model,
   chatId,
-  isReady
+  isReady = true
 }: {
   skillId: string;
   model: string;
   chatId: string;
-  isReady: boolean;
+  // session-runtime sandbox 懒初始化，首次发消息触发 warm-up；调用方一般不再需要传
+  isReady?: boolean;
 }) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
   // TODO: 暂时隐藏文件上传按钮，后续需要放开 canSelectFile 和 canSelectImg
@@ -53,6 +60,18 @@ export const useSkillChatTest = ({
 
   const startChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
+      // 发消息前先把编辑器最近改动同步到 editDebug 沙箱；首次预览（无沙箱实例）会返回
+      // noSandbox 由 createEditDebugSandbox 用最新 zip 全新创建，本就同步。同步失败 fail-open。
+      try {
+        await syncSkillSandbox({ skillId });
+      } catch (err) {
+        toast({
+          status: 'warning',
+          title: t('skill:preview_sync_failed_title'),
+          description: getErrText(err)
+        });
+      }
+
       const histories = messages.slice(-1);
 
       const { responseText } = await streamFetch({

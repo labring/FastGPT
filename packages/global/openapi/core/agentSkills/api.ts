@@ -39,7 +39,7 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   type: AgentSkillTypeSchema,
   createTime: z.string(),
   updateTime: z.string(),
-  permission: z.number().optional(),
+  permission: z.any().optional(),
   sourceMember: z
     .object({
       name: z.string(),
@@ -190,7 +190,15 @@ export type DeleteSandboxResponse = z.infer<typeof DeleteSandboxResponseSchema>;
 export const SaveDeploySkillBodySchema = z.object({
   skillId: IdSchema,
   versionName: z.string().optional(),
-  description: z.string().optional()
+  files: z
+    .array(
+      z.object({
+        path: z.string().describe('包内相对路径'),
+        content: z.string().describe('UTF-8 文本内容')
+      })
+    )
+    .default([])
+    .describe('编辑器当前所有 dirty 文件，在新版本中覆盖写入')
 });
 export type SaveDeploySkillBody = z.infer<typeof SaveDeploySkillBodySchema>;
 

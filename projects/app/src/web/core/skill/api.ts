@@ -13,19 +13,13 @@ import type {
   UpdateSkillBody,
   CopySkillBody,
   CopySkillResponse,
-  SaveDeploySkillBody,
-  SaveDeploySkillResponse,
   GetSkillFolderPathQuery,
   GetSkillFolderPathResponse,
   CreateEditDebugSandboxBody,
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
-  ListAppsBySkillIdResponse,
-  ListSkillVersionsBody,
-  ListSkillVersionsResponse,
-  SwitchSkillVersionBody,
-  UpdateSkillVersionBody
+  ListAppsBySkillIdResponse
 } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/agentSkills/api';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
@@ -65,10 +59,6 @@ export const deleteSkill = (skillId: string) => DELETE('/core/agentSkills/delete
 /** 导入 Skill 压缩包 */
 export const importSkill = (formData: FormData) =>
   POST<string>('/core/agentSkills/import', formData);
-
-/** 从 Sandbox 打包并发布新版本 */
-export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
-  POST<SaveDeploySkillResponse>('/core/agentSkills/save-deploy', data);
 
 /** 创建编辑调试沙箱（SSE 流式返回状态，最终推送 endpoint 信息） */
 export const postCreateEditDebugSandbox = (data: CreateEditDebugSandboxBody) =>
@@ -163,18 +153,6 @@ export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
   POST<GetRecordsV2ResponseType>('/core/agentSkills/debugSession/records', data);
-
-/** 获取 Skill 历史版本列表（支持分页滚动加载） */
-export const getSkillVersionList = (data: ListSkillVersionsBody) =>
-  POST<ListSkillVersionsResponse>('/core/agentSkills/version/list', data);
-
-/** 切换 Skill 当前激活版本 */
-export const postSwitchSkillVersion = (data: SwitchSkillVersionBody) =>
-  POST('/core/agentSkills/version/switch', data);
-
-/** 更新 Skill 版本名称 */
-export const postUpdateSkillVersion = (data: UpdateSkillVersionBody) =>
-  POST('/core/agentSkills/version/update', data);
 
 /** 恢复 Skill 权限继承 */
 export const resumeInheritPer = (skillId: string) =>
