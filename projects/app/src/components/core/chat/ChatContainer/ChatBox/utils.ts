@@ -119,26 +119,30 @@ export const mergeResumeCompletedChatRecords = ({
     if (item.obj !== ChatRoleEnum.AI) return item;
     const matchedCurrentAiRecord = item.dataId ? currentAiRecordMap.get(item.dataId) : undefined;
     const shouldMergeResponseData = item.dataId === responseChatId;
+    const currentValuesForInteractiveMerge = matchedCurrentAiRecord
+      ? matchedCurrentAiRecord.value
+      : Array.from(currentAiRecordMap.values()).flatMap((record) => record.value);
 
-    if (!matchedCurrentAiRecord && !shouldMergeResponseData) return item;
+    if (!currentValuesForInteractiveMerge.length && !shouldMergeResponseData) return item;
 
-    const mergedResponseData = shouldMergeResponseData && resumedResponseData?.length
-      ? mergeChatResponseData([
-          ...(item.responseData || []),
-          ...(resumedResponseData.filter(
-            (resumedItem) =>
-              !item.responseData?.some((completedItem) =>
-                areSameChatResponseDataItem(completedItem, resumedItem)
-              )
-          ) || [])
-        ])
-      : item.responseData;
+    const mergedResponseData =
+      shouldMergeResponseData && resumedResponseData?.length
+        ? mergeChatResponseData([
+            ...(item.responseData || []),
+            ...(resumedResponseData.filter(
+              (resumedItem) =>
+                !item.responseData?.some((completedItem) =>
+                  areSameChatResponseDataItem(completedItem, resumedItem)
+                )
+            ) || [])
+          ])
+        : item.responseData;
 
     return {
       ...item,
       value: mergeSubmittedInteractiveValues({
         completedValues: item.value,
-        currentValues: matchedCurrentAiRecord?.value || []
+        currentValues: currentValuesForInteractiveMerge
       }),
       responseData: mergedResponseData
     };
@@ -174,11 +178,7 @@ const mergeSubmittedInteractiveValues = ({
       if (!interactive) return false;
 
       const finalInteractive = extractDeepestInteractive(interactive);
-      return (
-        (finalInteractive.type === 'userInput' ||
-          finalInteractive.type === 'agentPlanAskUserForm') &&
-        !!finalInteractive.params.submitted
-      );
+      return finalInteractive.type === 'userInput' && !!finalInteractive.params.submitted;
     });
 
   if (!currentSubmittedInteractives.length) return completedValues;
@@ -188,7 +188,7 @@ const mergeSubmittedInteractiveValues = ({
     if (!value.interactive) return value;
 
     const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type !== 'userInput' && finalInteractive.type !== 'agentPlanAskUserForm') {
+    if (finalInteractive.type !== 'userInput') {
       return value;
     }
 
@@ -228,8 +228,7 @@ export const shouldAppendResumeInteractive = ({
     if (!isSameInteractive) return false;
 
     if (
-      (existingFinalInteractive.type === 'userInput' ||
-        existingFinalInteractive.type === 'agentPlanAskUserForm') &&
+      existingFinalInteractive.type === 'userInput' &&
       existingFinalInteractive.params.submitted
     ) {
       return true;
@@ -261,11 +260,7 @@ export const refreshSubmittedFormInteractiveValues = ({
       history.value.filter((value) => {
         if (!value.interactive) return false;
         const finalInteractive = extractDeepestInteractive(value.interactive);
-        return (
-          (finalInteractive.type === 'userInput' ||
-            finalInteractive.type === 'agentPlanAskUserForm') &&
-          !!finalInteractive.params.submitted
-        );
+        return finalInteractive.type === 'userInput' && !!finalInteractive.params.submitted;
       }).length
     );
   }, 0);
@@ -278,10 +273,7 @@ export const refreshSubmittedFormInteractiveValues = ({
       if (!value.interactive) return value;
 
       const finalInteractive = extractDeepestInteractive(value.interactive);
-      if (
-        finalInteractive.type !== 'userInput' &&
-        finalInteractive.type !== 'agentPlanAskUserForm'
-      ) {
+      if (finalInteractive.type !== 'userInput') {
         return value;
       }
       if (!finalInteractive.params.submitted) return value;

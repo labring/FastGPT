@@ -1,5 +1,8 @@
 import { Box, Flex } from '@chakra-ui/react';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -21,6 +24,7 @@ import RenderUserSelectInteractive from './RenderUserSelectInteractive';
 const AIResponseBox = ({
   chatItemDataId,
   value,
+  responseData,
   isLastResponseValue,
   isLastChild,
   isChatting,
@@ -28,6 +32,7 @@ const AIResponseBox = ({
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
+  responseData?: ChatHistoryItemResType[];
   isLastResponseValue: boolean;
   isLastChild: boolean;
   isChatting: boolean;
@@ -104,6 +109,7 @@ const AIResponseBox = ({
         <RenderUserFormInteractive
           key="interactive"
           interactive={interactive}
+          responseData={responseData}
           isLastChild={isLastChild}
         />
       );
