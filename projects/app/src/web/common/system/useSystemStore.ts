@@ -261,25 +261,30 @@ export const useSystemStore = create<State>()(
       })),
       {
         name: 'globalStore',
-        partialize: (state) => ({
-          gitStar: state.gitStar,
+        partialize: (state) => {
+          const stripTrainTaskList = (list: any[]) =>
+            list?.map(({ trainTaskList, ...rest }: any) => rest);
 
-          loginStore: state.loginStore,
-          initDataBufferId: state.initDataBufferId,
-          feConfigs: state.feConfigs,
-          subPlans: state.subPlans,
-          systemVersion: state.systemVersion,
+          return {
+            gitStar: state.gitStar,
 
-          modelProviders: state.modelProviders,
-          modelProviderMap: state.modelProviderMap,
-          aiproxyChannels: state.aiproxyChannels,
-          defaultModels: state.defaultModels,
-          llmModelList: state.llmModelList,
-          embeddingModelList: state.embeddingModelList,
-          ttsModelList: state.ttsModelList,
-          reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
-        })
+            loginStore: state.loginStore,
+            initDataBufferId: state.initDataBufferId,
+            feConfigs: state.feConfigs,
+            subPlans: state.subPlans,
+            systemVersion: state.systemVersion,
+
+            modelProviders: state.modelProviders,
+            modelProviderMap: state.modelProviderMap,
+            aiproxyChannels: state.aiproxyChannels,
+            defaultModels: state.defaultModels,
+            llmModelList: stripTrainTaskList(state.llmModelList),
+            embeddingModelList: stripTrainTaskList(state.embeddingModelList),
+            ttsModelList: stripTrainTaskList(state.ttsModelList),
+            reRankModelList: stripTrainTaskList(state.reRankModelList),
+            sttModelList: stripTrainTaskList(state.sttModelList)
+          };
+        }
       }
     )
   )
