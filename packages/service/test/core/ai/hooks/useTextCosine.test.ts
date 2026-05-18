@@ -25,6 +25,8 @@ describe('useTextCosine', () => {
       });
 
       expect(result.selectedData).toEqual([]);
+      expect(result.embeddingTokens).toBe(0);
+      expect(mockGetVectors).not.toHaveBeenCalled();
     });
 
     it('should select k candidates when k <= candidates.length', async () => {
@@ -132,6 +134,38 @@ describe('useTextCosine', () => {
         ],
         type: 'query'
       });
+    });
+
+    it('should trim original text and skip blank candidates before embedding', async () => {
+      const originalVector = generateMockEmbedding('test query');
+      const candidateVector = generateSimilarVector(originalVector, 0.9);
+      mockGetVectors.mockResolvedValueOnce({
+        tokens: 10,
+        vectors: [originalVector, candidateVector]
+      });
+
+      const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
+      const result = await lazyGreedyQuerySelection({
+        originalText: ' test query ',
+        candidates: [' ', ' candidate ', ''],
+        k: 3
+      });
+
+      expect(mockGetVectors).toHaveBeenCalledWith({
+        model: expect.anything(),
+        inputs: [
+          {
+            type: 'text',
+            input: 'test query'
+          },
+          {
+            type: 'text',
+            input: 'candidate'
+          }
+        ],
+        type: 'query'
+      });
+      expect(result.selectedData).toEqual(['candidate']);
     });
 
     it('should handle identical candidates correctly', async () => {

@@ -54,7 +54,12 @@ const buildVectorRecallTasks = async ({
   const textTasks = [
     ...textQueries.map((query) => ({ source: 'text' as const, query })),
     ...imageCaptionQueries.map((query) => ({ source: 'imageCaption' as const, query }))
-  ];
+  ]
+    .map((item) => ({
+      ...item,
+      query: item.query.trim()
+    }))
+    .filter((item) => item.query);
 
   const vectorInputs: {
     source: EmbeddingRecallSource;
@@ -67,10 +72,12 @@ const buildVectorRecallTasks = async ({
     }
   }));
 
-  if (imageQueries.length > 0 && isImageEmbeddingModel(embeddingModel)) {
+  const validImageQueries = imageQueries.map((url) => url.trim()).filter(Boolean);
+
+  if (validImageQueries.length > 0 && isImageEmbeddingModel(embeddingModel)) {
     const imageInputs = (
       await Promise.all(
-        imageQueries.map(async (url, index) => {
+        validImageQueries.map(async (url, index) => {
           try {
             return await normalizeImageToBase64(url);
           } catch (error) {
@@ -84,12 +91,12 @@ const buildVectorRecallTasks = async ({
         })
       )
     )
-      .filter((imageUrl): imageUrl is string => !!imageUrl)
+      .filter((imageUrl): imageUrl is string => typeof imageUrl === 'string' && !!imageUrl.trim())
       .map((imageUrl) => ({
         source: 'image' as const,
         input: {
           type: 'image' as const,
-          input: imageUrl
+          input: imageUrl.trim()
         }
       }));
 

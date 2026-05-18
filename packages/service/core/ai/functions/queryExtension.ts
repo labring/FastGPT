@@ -250,7 +250,21 @@ export const queryExtension = async ({
     const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
       embeddingModel
     });
-    queries = queries.map((item) => String(item));
+    queries = queries.map((item) => String(item).trim()).filter(Boolean);
+    if (queries.length === 0) {
+      return {
+        rawQuery: query,
+        extensionQueries: [],
+        llmModel: modelData.model,
+        embeddingModel,
+        requestId,
+        seconds,
+        inputTokens,
+        outputTokens,
+        usedUserOpenAIKey,
+        embeddingTokens: 0
+      };
+    }
 
     const { selectedData: selectedQueries, embeddingTokens } = await lazyGreedyQuerySelection({
       originalText: query,

@@ -193,6 +193,48 @@ describe('default recall dataset search', () => {
         ]
       })
     );
+    expect(mockGetImageBase64).not.toHaveBeenCalledWith('   ');
+  });
+
+  it('should skip blank embedding recall inputs while preserving valid task order', async () => {
+    mockGetLLMModel.mockReturnValue(undefined);
+    mockIsImageEmbeddingModel.mockReturnValue(true);
+    mockGetVectors.mockResolvedValueOnce({
+      tokens: 12,
+      vectors: [
+        [0.1, 0.2],
+        [0.3, 0.4]
+      ]
+    });
+
+    await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: 'mock-embedding-model',
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'black high heels',
+      textQueries: ['   ', ' black high heels '],
+      imageQueries: ['   ', 'data:image/png;base64,current-image'],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockGetVectors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: [
+          {
+            type: 'text',
+            input: 'black high heels'
+          },
+          {
+            type: 'image',
+            input: 'data:image/png;base64,current-image'
+          }
+        ]
+      })
+    );
   });
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
