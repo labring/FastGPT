@@ -1642,5 +1642,7 @@
   "core.workflow.inputType.datasetSelect": "知識庫選擇",
   "core.module.template.empty_agent": "空白 Agent",
   "core.app.share.Show full text": "查看引用全文",
-  "support.user.login.Wecom": "企業微信登錄"
+  "support.user.login.Wecom": "企業微信登錄",
+  "empty": "暫無數據",
+  "search": "搜尋"
 }

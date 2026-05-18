@@ -190,6 +190,8 @@ EmbeddingTrainTaskSchema.index({ jobId: 1 });
 EmbeddingTrainTaskSchema.index({ 'checkpoint.stage': 1, status: 1 });
 EmbeddingTrainTaskSchema.index({ teamId: 1, status: 1, createTime: -1 });
 EmbeddingTrainTaskSchema.index({ 'checkpoint.data.registering.tunedModelId': 1 });
+EmbeddingTrainTaskSchema.index({ teamId: 1, 'checkpoint.data.registering.tunedModelId': 1 });
+EmbeddingTrainTaskSchema.index({ teamId: 1, baseModelId: 1 });
 
 export const MongoEmbeddingTrainTask = getMongoModel<EmbeddingTrainTaskSchemaType>(
   'embedding_train_task',

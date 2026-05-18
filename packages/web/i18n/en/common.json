@@ -1672,5 +1672,7 @@
   "core.workflow.inputType.jsonEditor": "JSON Editor",
   "core.workflow.inputType.datasetSelect": "Dataset Select",
   "core.module.template.empty_agent": "Empty Agent",
-  "other_knowledge_base_search_results": "Other Knowledge Base Search Results"
+  "other_knowledge_base_search_results": "Other Knowledge Base Search Results",
+  "empty": "No data",
+  "search": "Search"
 }

@@ -1642,5 +1642,7 @@
   "language": "语言与时区",
   "FAQ.dataset_index_q": "知识库超出最大条目数后，多余的条目会被删除吗？",
   "database_search_results": "数据库检索结果",
-  "other_knowledge_base_search_results": "其他知识库检索结果"
+  "other_knowledge_base_search_results": "其他知识库检索结果",
+  "empty": "暂无数据",
+  "search": "搜索"
 }
