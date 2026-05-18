@@ -205,7 +205,7 @@
   "invalid_json_format": "JSON 格式錯誤",
   "json_schema_tip": "示例：\n{\n  \"name\": \"test\",\n  \"description\":\"測試\",\n  \"schema\": {\n    \"type\":\"object\",\n    \"properties\": {\n      \"test\": {\n        \"type\": \"string\",\n        \"description\": \"Text field\"\n      }\n    },\n    \"required\": [\n      \"test\"\n    ]\n  }\n}",
   "keep_the_latest": "保持最新版本",
-  "learning_status_pending": "等待中",
+  "learning_status_pending": "排队中",
   "llm_not_support_vision": "這個模型不支援圖片辨識",
   "llm_use_vision": "圖片辨識",
   "llm_use_vision_tip": "點選模型選擇後，可以看到模型是否支援圖片辨識以及控制是否啟用圖片辨識的功能。啟用圖片辨識後，模型會讀取檔案連結中的圖片內容，並且如果使用者問題少於 500 字，會自動解析使用者問題中的圖片。",

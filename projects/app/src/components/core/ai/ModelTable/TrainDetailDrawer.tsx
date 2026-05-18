@@ -491,7 +491,29 @@ const TrainDetailDrawer = ({
       );
 
       if (isPendingTrainTaskStatus(item.status)) {
-        return null;
+        const isDeleting = deletingTaskIds.has(item._id);
+
+        return (
+          <MyMenu
+            trigger={'click'}
+            Button={menuButton}
+            menuList={[
+              {
+                children: [
+                  {
+                    type: 'danger',
+                    icon: isDeleting ? 'common/loading' : 'common/trash',
+                    label: t('common:Delete'),
+                    onClick: () => handleDeleteTask(item._id),
+                    menuItemStyles: isDeleting
+                      ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
+                      : undefined
+                  }
+                ]
+              }
+            ]}
+          />
+        );
       }
 
       if (isRunningTrainTaskStatus(item.status)) {

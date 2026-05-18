@@ -213,7 +213,7 @@
   "invalid_json_format": "Please upload a valid JSON file.",
   "json_schema_tip": "Example:\n{\n  \"name\": \"test\",\n  \"description\":\"test\",\n  \"schema\": {\n    \"type\":\"object\",\n    \"properties\": {\n      \"test\": {\n        \"type\": \"string\",\n        \"description\": \"Text field\"\n      }\n    },\n    \"required\": [\n      \"test\"\n    ]\n  }\n}",
   "keep_the_latest": "Latest version",
-  "learning_status_pending": "Pending",
+  "learning_status_pending": "Queued",
   "llm_not_support_vision": "Not supported by the current model",
   "llm_use_vision": "Image recognition",
   "llm_use_vision_tip": "Select a model and then check whether it supports image recognition. If it is enabled, the model will read image contents from file links, and automatically parse images in the question if a question is less than 500 characters.",
