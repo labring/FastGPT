@@ -14,6 +14,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MultipleSelect, {
   useMultipleSelect
@@ -51,8 +52,16 @@ const UsageTable = () => {
 
   const hasManagePer = userInfo?.team?.permission.hasManagePer;
 
+  // 成员搜索关键词（用于 MultipleSelect 外部控制和接口搜索）
+  const [memberSearchKey, setMemberSearchKey] = useState('');
+
   // 成员相关
-  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(getTeamMembers, {});
+  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(
+    getTeamMembers,
+    {
+      params: { searchKey: memberSearchKey || undefined }
+    }
+  );
   const {
     value: selectTmbIds,
     setValue: setSelectTmbIds,
@@ -90,10 +99,10 @@ const UsageTable = () => {
   const groupList = useMemo(
     () =>
       groups.map((item) => ({
-        label: item.name,
+        label: item.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : item.name,
         value: item._id
       })),
-    [groups]
+    [groups, userInfo?.team.teamName]
   );
 
   // 部门相关
@@ -219,6 +228,9 @@ const UsageTable = () => {
                 setIsSelectAll={setIsSelectAllTmb}
                 borderColor={'myGray.200'}
                 formLabelFontSize={'sm'}
+                searchable
+                onSearch={setMemberSearchKey}
+                searchPlaceholder={t('account_usage:search')}
                 tagStyle={{
                   px: 1,
                   py: 1,
@@ -243,6 +255,8 @@ const UsageTable = () => {
                 setIsSelectAll={setIsSelectAllGroup}
                 borderColor={'myGray.200'}
                 formLabelFontSize={'sm'}
+                searchable
+                searchPlaceholder={t('account_usage:search')}
                 tagStyle={{
                   px: 1,
                   py: 1,

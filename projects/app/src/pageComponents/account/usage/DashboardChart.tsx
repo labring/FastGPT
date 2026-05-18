@@ -199,8 +199,8 @@ const DashboardChart = ({
             content={({ active, payload }: TooltipProps<ValueType, NameType>) => {
               const data = payload?.[0]?.payload as usageFormType;
               if (active && data) {
-                const input = data.inputTokens || 0;
-                const output = data.outputTokens || 0;
+                const input = Number(data.inputTokens) || 0;
+                const output = Number(data.outputTokens) || 0;
                 return (
                   <Box
                     bg={'white'}
