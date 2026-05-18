@@ -197,7 +197,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
 
         return {
           ...item,
-          retrievalContextsFull: retrievalResults,
+          retrievalContextsFull: retrievalResults.map((r: any) => ({
+            id: r.id,
+            score: r.score
+          })),
           expectedContextIds: [item.sourceDataId]
         };
       })

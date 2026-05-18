@@ -6,6 +6,12 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
   }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: {
+    find: vi.fn()
+  }
+}));
+
 vi.mock('@fastgpt/service/core/ai/rerank', () => ({
   reRankRecall: vi.fn()
 }));
@@ -19,6 +25,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 }));
 
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
@@ -41,10 +48,18 @@ function makeEvalItem(userInput: string, expectedContextIds: string[], retrieval
     expectedContextIds,
     retrievalContextsFull: retrievalList.map((id, i) => ({
       id,
-      q: `q_${id}`,
-      a: `a_${id}`,
       score: [{ type: 'embedding', value: 1 - i * 0.05, index: 0 }]
     }))
+  };
+}
+
+/** Build a mock MongoDatasetData.find response from candidate IDs */
+function mockDatasetDataFind(ids: string[]) {
+  return {
+    lean: () =>
+      Promise.resolve(
+        ids.map((id) => ({ _id: id, q: `q_${id}`, a: `a_${id}` }))
+      )
   };
 }
 
@@ -59,6 +74,17 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (getRerankModel as any).mockReturnValue(mockModel);
+    // Default: auto-generate q/a from any candidate IDs
+    (MongoDatasetData.find as any).mockReturnValue({
+      lean: () =>
+        Promise.resolve(
+          ['doc1', 'doc2', 'doc3', 'doc5', 'doc_not_here'].map((id) => ({
+            _id: id,
+            q: `q_${id}`,
+            a: `a_${id}`
+          }))
+        )
+    });
   });
 
   test('期望文档在重排后第 1 位: MRR = 1.0', async () => {
