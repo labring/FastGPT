@@ -22,7 +22,8 @@ export const defaultSearchDatasetData = async ({
   userKey,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
-  const query = props.textQueries.join('\n');
+  const textQueries = props.textQueries.map((query) => query.trim()).filter(Boolean);
+  const query = textQueries.join('\n');
 
   const { searchQueries, reRankQuery, aiExtensionResult } = query
     ? await datasetSearchQueryExtension({

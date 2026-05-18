@@ -11,6 +11,7 @@ const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
+const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
@@ -49,6 +50,12 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   DatasetDataCollectionName: 'dataset_datas',
   MongoDatasetData: {
     find: mockMongoDatasetDataFind
+  }
+}));
+
+vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
+  MongoDatasetDataText: {
+    aggregate: mockMongoDatasetDataTextAggregate
   }
 }));
 
@@ -93,6 +100,7 @@ describe('default recall dataset search', () => {
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([])
     });
+    mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {
@@ -281,5 +289,28 @@ describe('default recall dataset search', () => {
         ]
       })
     );
+  });
+
+  it('should skip blank full-text queries before Mongo text search', async () => {
+    mockGetLLMModel.mockReturnValue(undefined);
+    mockIsImageEmbeddingModel.mockReturnValue(false);
+
+    const result = await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: 'mock-embedding-model',
+      datasetIds: ['dataset-1'],
+      reRankQuery: '',
+      textQueries: ['   ', '\n'],
+      imageQueries: [],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.fullTextRecall,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockGetVectors).not.toHaveBeenCalled();
+    expect(mockMongoDatasetDataTextAggregate).not.toHaveBeenCalled();
+    expect(result.searchRes).toEqual([]);
   });
 });

@@ -46,7 +46,10 @@ export const fullTextRecall = async ({
   imageCaptionFullTextRecallResults: SearchDataResponseItemType[];
 }> => {
   const queryTasks = queryGroups.flatMap((group) =>
-    group.queries.map((query) => ({ source: group.source, query }))
+    group.queries
+      .map((query) => query.trim())
+      .filter(Boolean)
+      .map((query) => ({ source: group.source, query }))
   );
 
   if (limit === 0 || queryTasks.length === 0) {
