@@ -7,12 +7,10 @@ import remarkStringify from 'remark-stringify';
 import remarkMdx from 'remark-mdx';
 import { remarkInclude } from 'fumadocs-mdx/config';
 import { i18n } from '@/lib/i18n';
-import type { Plugin } from 'unified';
-import type { Root } from 'mdast';
 
 export const revalidate = false;
 
-const includeMdxFiles = remarkInclude as unknown as Plugin<[], Root, Root>;
+const includeMdxFiles = remarkInclude as typeof remarkMdx;
 
 const processor = remark()
   .use(remarkMdx)
