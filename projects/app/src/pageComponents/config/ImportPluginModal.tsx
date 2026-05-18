@@ -44,7 +44,8 @@ const ImportPluginModal = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
 
   const { data: allTags = [] } = useRequest(getMarketPlaceToolTags, {
-    manual: false
+    manual: false,
+    errorToast: ''
   });
 
   const uploadAndParseFile = async (file: UploadedPluginFile) => {
@@ -94,10 +95,12 @@ const ImportPluginModal = ({
                 icon: toolDetail.icon || '',
                 toolIntro: parseI18nString(toolDetail.description || '', i18n.language) || '',
                 toolTags:
-                  toolDetail.tags?.map((tag) => {
-                    const currentTag = allTags.find((item) => item.tagId === tag);
-                    return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
-                  }) || []
+                  toolDetail.tags
+                    ?.map((tag) => {
+                      const currentTag = allTags.find((item) => item.tagId === tag);
+                      return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
+                    })
+                    .filter(Boolean) || []
               }
             : prevFile
         )
