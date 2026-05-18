@@ -190,10 +190,8 @@ function main() {
 
     for (const { key, files } of items.sort((a, b) => a.key.localeCompare(b.key))) {
       console.log(`  ❌ "${key}"`);
-      if (SHOW_HINT) {
-        for (const f of files) {
-          console.log(`       引用于: ${f}`);
-        }
+      for (const f of files) {
+        console.log(`       引用于: ${f}`);
       }
       total++;
     }

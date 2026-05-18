@@ -188,6 +188,8 @@ RerankTrainTaskSchema.index({ jobId: 1 });
 RerankTrainTaskSchema.index({ 'checkpoint.stage': 1, status: 1 });
 RerankTrainTaskSchema.index({ teamId: 1, status: 1, createTime: -1 });
 RerankTrainTaskSchema.index({ 'checkpoint.data.registering.tunedModelId': 1 }); // For chain traversal in list API
+RerankTrainTaskSchema.index({ teamId: 1, 'checkpoint.data.registering.tunedModelId': 1 });
+RerankTrainTaskSchema.index({ teamId: 1, baseModelId: 1 });
 
 export const MongoRerankTrainTask = getMongoModel<RerankTrainTaskSchemaType>(
   'rerank_train_task',
