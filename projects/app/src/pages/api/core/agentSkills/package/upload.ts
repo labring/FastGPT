@@ -40,8 +40,8 @@ async function handler(req: ApiRequestProps): Promise<MutatePackageResponse> {
 
     filepaths.push(result.fileMetadata.path);
 
-    const skillId = result.data.skillId;
-    const path = result.data.path;
+    const skillId = result.data.skillId ?? (req.body?.skillId as string | undefined);
+    const path = result.data.path ?? (req.body?.path as string | undefined);
 
     if (!skillId || !isValidObjectId(skillId)) {
       return Promise.reject(SkillErrEnum.invalidSkillId);

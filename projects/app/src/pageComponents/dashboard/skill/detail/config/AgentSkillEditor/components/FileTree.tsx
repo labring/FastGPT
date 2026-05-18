@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   Box,
   VStack,
@@ -64,6 +64,21 @@ const FileTree = ({
 }: Props) => {
   const { t } = useTranslation();
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const contextMenuUploadRef = useRef<HTMLInputElement>(null);
+  const contextMenuUploadDirRef = useRef<string>('');
+
+  type ContextMenuState = { x: number; y: number; node: TreeNode };
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Close context menu on any click outside
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => closeContextMenu();
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [contextMenu, closeContextMenu]);
 
   const handleUploadClick = () => {
     uploadInputRef.current?.click();
@@ -75,6 +90,43 @@ const FileTree = ({
       onUploadFiles?.('', files);
     }
     e.target.value = '';
+  };
+
+  const handleContextMenuUpload = () => {
+    contextMenuUploadRef.current?.click();
+  };
+
+  const handleContextMenuUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0 && contextMenuUploadDirRef.current) {
+      onUploadFiles?.(contextMenuUploadDirRef.current, files);
+    }
+    e.target.value = '';
+  };
+
+  const handleContextMenuAction = (
+    action: 'newFile' | 'newFolder' | 'upload' | 'rename' | 'delete',
+    node: TreeNode
+  ) => {
+    closeContextMenu();
+    switch (action) {
+      case 'newFile':
+        onCreateFile?.(node.path);
+        break;
+      case 'newFolder':
+        onCreateFolder?.(node.path);
+        break;
+      case 'upload':
+        contextMenuUploadDirRef.current = node.path;
+        handleContextMenuUpload();
+        break;
+      case 'rename':
+        onRename?.(node);
+        break;
+      case 'delete':
+        onDelete?.(node);
+        break;
+    }
   };
 
   const renderTreeNode = (node: TreeNode): React.ReactNode => {
@@ -101,6 +153,11 @@ const FileTree = ({
             } else {
               toggleDirectory(node);
             }
+          }}
+          onContextMenu={(e) => {
+            if (!canWrite) return;
+            e.preventDefault();
+            setContextMenu({ x: e.clientX, y: e.clientY, node });
           }}
           align="center"
           fontSize="12px"
@@ -243,8 +300,90 @@ const FileTree = ({
           {filteredTree.map(renderTreeNode)}
         </VStack>
       </Box>
+
+      {/* Hidden file input for context menu upload */}
+      <input
+        ref={contextMenuUploadRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleContextMenuUploadChange}
+      />
+
+      {/* Context menu */}
+      {contextMenu && (
+        <Box
+          position="fixed"
+          top={`${contextMenu.y}px`}
+          left={`${contextMenu.x}px`}
+          bg="white"
+          borderRadius="md"
+          boxShadow="0px 2px 8px 0px rgba(0, 0, 0, 0.15)"
+          py={1}
+          minW="140px"
+          zIndex={1500}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.node.type === 'directory' ? (
+            <>
+              <ContextMenuItem
+                icon="common/addLight"
+                label={t('skill:editor_new_file')}
+                onClick={() => handleContextMenuAction('newFile', contextMenu.node)}
+              />
+              <ContextMenuItem
+                icon="common/folderFill"
+                label={t('skill:editor_new_folder')}
+                onClick={() => handleContextMenuAction('newFolder', contextMenu.node)}
+              />
+              <ContextMenuItem
+                icon="common/uploadFileFill"
+                label={t('skill:editor_upload')}
+                onClick={() => handleContextMenuAction('upload', contextMenu.node)}
+              />
+            </>
+          ) : (
+            <>
+              <ContextMenuItem
+                icon="edit"
+                label={t('skill:editor_rename')}
+                onClick={() => handleContextMenuAction('rename', contextMenu.node)}
+              />
+              <ContextMenuItem
+                icon="delete"
+                label={t('skill:editor_delete')}
+                color="red.500"
+                onClick={() => handleContextMenuAction('delete', contextMenu.node)}
+              />
+            </>
+          )}
+        </Box>
+      )}
     </Box>
   );
 };
+
+type ContextMenuItemProps = {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  color?: string;
+};
+
+const ContextMenuItem = ({ icon, label, onClick, color }: ContextMenuItemProps) => (
+  <Flex
+    px={3}
+    py={1.5}
+    align="center"
+    cursor="pointer"
+    fontSize="sm"
+    color={color || 'myGray.600'}
+    _hover={{ bg: 'myGray.50', color: 'primary.600' }}
+    onClick={onClick}
+  >
+    <MyIcon name={icon as any} w="14px" mr={2} />
+    <Text>{label}</Text>
+  </Flex>
+);
 
 export default FileTree;

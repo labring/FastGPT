@@ -133,6 +133,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
         )}
       </MyBox>
       <ops.DeleteConfirmModal />
+      <ops.NameInputModal />
     </Flex>
   );
 };

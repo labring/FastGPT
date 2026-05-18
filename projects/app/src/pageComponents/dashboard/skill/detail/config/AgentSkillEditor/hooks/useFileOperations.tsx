@@ -1,5 +1,14 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
+import {
+  useDisclosure,
+  Button,
+  ModalBody,
+  ModalFooter,
+  Input,
+  FormControl
+} from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLatest } from 'ahooks';
@@ -44,6 +53,74 @@ export const useFileOperations = ({
   }, [openedFiles, activeFilePath]);
 
   const openedFilesRef = useLatest(openedFiles);
+
+  // Name-input modal
+  const nameModalState = useRef<{ title: string; defaultValue?: string }>({ title: '' });
+  const nameResolveRef = useRef<((value: string | null) => void) | null>(null);
+  const [nameInputValue, setNameInputValue] = useState('');
+  const {
+    isOpen: isNameModalOpen,
+    onOpen: onNameModalOpen,
+    onClose: onNameModalClose
+  } = useDisclosure();
+
+  const requestName = useCallback(
+    (params: { title: string; defaultValue?: string }): Promise<string | null> => {
+      return new Promise((resolve) => {
+        nameResolveRef.current = resolve;
+        nameModalState.current = params;
+        setNameInputValue(params.defaultValue || '');
+        onNameModalOpen();
+      });
+    },
+    [onNameModalOpen]
+  );
+
+  const handleNameConfirm = useCallback(() => {
+    nameResolveRef.current?.(nameInputValue.trim() || null);
+    nameResolveRef.current = null;
+    onNameModalClose();
+  }, [nameInputValue, onNameModalClose]);
+
+  const handleNameCancel = useCallback(() => {
+    nameResolveRef.current?.(null);
+    nameResolveRef.current = null;
+    onNameModalClose();
+  }, [onNameModalClose]);
+
+  const NameInputModal = useCallback(
+    () => (
+      <MyModal
+        isOpen={isNameModalOpen}
+        onClose={handleNameCancel}
+        title={nameModalState.current.title}
+        maxW={['90vw', '400px']}
+      >
+        <ModalBody pt={5}>
+          <FormControl>
+            <Input
+              value={nameInputValue}
+              autoFocus
+              onChange={(e) => setNameInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleNameConfirm();
+              }}
+              placeholder={nameModalState.current.defaultValue || ''}
+            />
+          </FormControl>
+        </ModalBody>
+        <ModalFooter>
+          <Button size={'sm'} variant={'whiteBase'} onClick={handleNameCancel} px={5}>
+            {t('common:Cancel')}
+          </Button>
+          <Button size={'sm'} variant={'primary'} ml={3} onClick={handleNameConfirm} px={5}>
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
+    ),
+    [isNameModalOpen, nameInputValue, handleNameConfirm, handleNameCancel, t]
+  );
 
   const { runAsync: loadFile, loading: loadingFile } = useRequest(
     async (
@@ -121,7 +198,7 @@ export const useFileOperations = ({
 
   const handleCreateFile = useCallback(
     async (parentDir: string) => {
-      const name = window.prompt(t('skill:editor_prompt_new_file_name'));
+      const name = await requestName({ title: t('skill:editor_prompt_new_file_name') });
       if (!name) return;
       const fullPath = parentDir ? `${parentDir}/${name}` : name;
       try {
@@ -136,12 +213,12 @@ export const useFileOperations = ({
         });
       }
     },
-    [skillId, t, toast, refreshDir, openFile]
+    [skillId, requestName, t, toast, refreshDir, openFile]
   );
 
   const handleCreateFolder = useCallback(
     async (parentDir: string) => {
-      const name = window.prompt(t('skill:editor_prompt_new_folder_name'));
+      const name = await requestName({ title: t('skill:editor_prompt_new_folder_name') });
       if (!name) return;
       const fullPath = parentDir ? `${parentDir}/${name}` : name;
       try {
@@ -155,7 +232,7 @@ export const useFileOperations = ({
         });
       }
     },
-    [skillId, t, toast, refreshDir]
+    [skillId, requestName, t, toast, refreshDir]
   );
 
   const handleUploadFiles = useCallback(
@@ -180,7 +257,10 @@ export const useFileOperations = ({
 
   const handleRename = useCallback(
     async (node: TreeNode) => {
-      const newName = window.prompt(t('skill:editor_prompt_rename'), node.name);
+      const newName = await requestName({
+        title: t('skill:editor_prompt_rename'),
+        defaultValue: node.name
+      });
       if (!newName || newName === node.name) return;
       const parent = node.path.includes('/') ? node.path.slice(0, node.path.lastIndexOf('/')) : '';
       const toPath = parent ? `${parent}/${newName}` : newName;
@@ -204,7 +284,7 @@ export const useFileOperations = ({
         });
       }
     },
-    [skillId, t, toast, flushPendingForPath, refreshDir, activeFilePath]
+    [skillId, requestName, t, toast, flushPendingForPath, refreshDir, activeFilePath]
   );
 
   const { openConfirm: openConfirmDelete, ConfirmModal: DeleteConfirmModal } = useConfirm({
@@ -261,6 +341,7 @@ export const useFileOperations = ({
     handleUploadFiles,
     handleRename,
     handleDelete,
-    DeleteConfirmModal
+    DeleteConfirmModal,
+    NameInputModal
   };
 };
