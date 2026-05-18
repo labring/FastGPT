@@ -23,7 +23,7 @@ export default defineConfig({
     },
     coverage: {
       enabled: true,
-      reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
+      reporter: ['html', 'json-summary', 'json'],
       reportOnFailure: true,
       include: ['common/**/*.ts', 'core/**/*.ts', 'support/**/*.ts', 'worker/**/*.ts'],
       exclude: [
