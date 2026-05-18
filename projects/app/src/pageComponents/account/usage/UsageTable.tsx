@@ -149,7 +149,7 @@ const UsageTableList = ({
             <Tr>
               <Th>{t('common:user.Time')}</Th>
               <Th>{t('account_usage:member')}</Th>
-              <Th>{t('account_usage:user_type')}</Th>
+              <Th>{t('account_usage:source')}</Th>
               <Th>{t('account_usage:project_name')}</Th>
               <Th>{t('account_usage:total_points')}</Th>
               <Th>{t('account_usage:total_tokens')}</Th>

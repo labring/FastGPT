@@ -91,6 +91,8 @@ const MySelect = <T = any,>(
     footer,
     isInvalid,
     isDisabled,
+    h,
+    minH,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -222,7 +224,8 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
-          h={'auto'}
+          h={h}
+          minH={minH ?? h}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
           transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}

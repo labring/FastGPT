@@ -58,6 +58,15 @@ const AccountContainer = ({
 
   const tabList = useMemo(
     () => [
+      ...(feConfigs?.isPlus
+        ? [
+            {
+              icon: 'support/usage/usageRecordLight',
+              label: t('common:usage_records'),
+              value: TabEnum.usage
+            }
+          ]
+        : []),
       {
         icon: 'support/user/userLight',
         label: t('common:personal_information'),
@@ -69,11 +78,6 @@ const AccountContainer = ({
               icon: 'support/user/usersLight',
               label: t('common:team'),
               value: TabEnum.team
-            },
-            {
-              icon: 'support/usage/usageRecordLight',
-              label: t('common:usage_records'),
-              value: TabEnum.usage
             }
           ]
         : []),

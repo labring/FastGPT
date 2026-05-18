@@ -461,6 +461,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                 <Box
                   color={'#999'}
                   maxW={'60px'}
+                  lineHeight={'16px'}
                   overflow={'hidden'}
                   textOverflow={'ellipsis'}
                   whiteSpace={'nowrap'}
