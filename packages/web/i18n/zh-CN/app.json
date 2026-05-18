@@ -231,7 +231,7 @@
   "learning_status_abnormal": "异常",
   "learning_status_cancelled": "已取消",
   "learning_status_failed": "已失败",
-  "learning_status_pending": "等待中",
+  "learning_status_pending": "排队中",
   "llm_not_support_vision": "该模型不支持图片识别",
   "llm_use_vision": "图片识别",
   "llm_use_vision_tip": "点击模型选择后，可以看到模型是否支持图片识别以及控制是否启动图片识别的能力。启动图片识别后，模型会读取文件链接里图片内容，并且如果用户问题少于 500 字，会自动解析用户问题中的图片。",
