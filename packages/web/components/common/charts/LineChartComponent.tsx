@@ -167,7 +167,7 @@ const LineChartComponent = ({
           <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'}>
             {title}
           </Box>
-          <QuestionTip label={description} />
+          {description && <QuestionTip label={description} />}
         </Flex>
         <Box filter={blur ? 'blur(7.5px)' : 'none'} pointerEvents={blur ? 'none' : 'auto'}>
           {HeaderRightChildren}

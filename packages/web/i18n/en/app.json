@@ -289,7 +289,7 @@
   "logs_output_token": "Output Tokens",
   "logs_input": "Input: ",
   "logs_output": "Output: ",
-  "logs_token_trend": "Token Consumption Trend",
+  "logs_token_trend": "Token Consumption",
   "logs_total_users": "Users",
   "logs_unread_only": "Unread Only",
   "logs_user_count": "Users",
