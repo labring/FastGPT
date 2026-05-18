@@ -435,6 +435,7 @@
   "search_name": "搜索名稱",
   "chunk_count": "分塊數",
   "processing": "處理中",
+  "queued": "排隊中",
   "view_original": "查看原文",
   "download_file": "下載文件",
   "view_image": "查看原圖",

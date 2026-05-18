@@ -448,6 +448,7 @@
   "core.dataset.collection.metadata.source size": "Source data size",
   "core.dataset.collection.status.active": "Ready",
   "core.dataset.collection.status.error": "Training error",
+  "core.dataset.collection.status.queued": "Queued",
   "core.dataset.collection.sync.result.sameRaw": "Update is not required because the content is not changed.",
   "core.dataset.collection.sync.result.success": "Sync now",
   "core.dataset.data.Edit": "Edit data",

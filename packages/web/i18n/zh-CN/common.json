@@ -449,6 +449,7 @@
   "core.dataset.collection.metadata.source size": "来源大小",
   "core.dataset.collection.status.active": "已就绪",
   "core.dataset.collection.status.error": "训练异常",
+  "core.dataset.collection.status.queued": "排队中",
   "core.dataset.collection.sync.result.sameRaw": "内容未变动，无需更新",
   "core.dataset.collection.sync.result.success": "开始同步",
   "core.dataset.data.Edit": "编辑数据",

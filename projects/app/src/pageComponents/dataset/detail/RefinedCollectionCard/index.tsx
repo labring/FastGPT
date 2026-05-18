@@ -41,7 +41,8 @@ import {
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
   DatasetTypeEnum,
-  ApiDatasetTypeMap
+  ApiDatasetTypeMap,
+  CollectionStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -177,6 +178,13 @@ const CollectionCard = () => {
             };
           }
           if (collection.trainingAmount > 0) {
+            if (collection.status === CollectionStatusEnum.queued) {
+              return {
+                statusText: t('dataset:queued'),
+                colorSchema: 'gray',
+                statusKey: 'queued'
+              };
+            }
             return {
               statusText: t('dataset:processing'),
               colorSchema: 'blue',
@@ -368,7 +376,10 @@ const CollectionCard = () => {
 
   // Check if there are any collections in processing state
   const hasProcessingCollections = useMemo(
-    () => !!formatCollections.find((item) => item.statusKey === 'processing'),
+    () =>
+      !!formatCollections.find(
+        (item) => item.statusKey === 'processing' || item.statusKey === 'queued'
+      ),
     [formatCollections]
   );
 

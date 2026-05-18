@@ -6,7 +6,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
-  CollectionStatusEnum
+  CollectionStatusEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   authDataset,
@@ -32,6 +33,7 @@ import {
   DatasetTrainingCollectionName
 } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { addMinutes } from 'date-fns';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -46,6 +48,8 @@ function getFileStatus(item: {
   trainingAmount: number;
   hasError?: boolean;
   tableSchemaExist?: boolean; // 数据库表是否存在（仅数据库类型知识库）
+  hasActive?: boolean; // 是否有训练任务在近10分钟内被队列 worker 拉取（lockTime > now-10min）
+  allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
 }): CollectionStatusEnum {
   // 不存在状态：数据库知识库的表被删除
   if (item.tableSchemaExist === false) {
@@ -55,7 +59,11 @@ function getFileStatus(item: {
     return CollectionStatusEnum.error;
   }
   if (item.trainingAmount > 0) {
-    // 有训练任务则为处理中状态（无论是否有数据产出）
+    // 训练任务全部未被 worker 拉取 且 全部是 parse 模式 → 排队中（parse 之前）
+    if (!item.hasActive && item.allParse) {
+      return CollectionStatusEnum.queued;
+    }
+    // 有任务正在执行 或 parse 已完成（已有 chunk 等后续任务）→ 处理中
     return CollectionStatusEnum.training;
   }
   // 没有训练任务时，无论是否有数据，都表示训练已完成
@@ -165,7 +173,9 @@ async function computeFolderMatchingStatuses(
         $group: {
           _id: '$collectionId',
           count: { $sum: 1 },
-          hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
+          hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+          hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+          allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
         }
       }
     ]),
@@ -186,7 +196,13 @@ async function computeFolderMatchingStatuses(
     ])
   ]);
 
-  type TrainingAggResult = { _id: string; count: number; hasError: boolean };
+  type TrainingAggResult = {
+    _id: string;
+    count: number;
+    hasError: boolean;
+    hasActive: boolean;
+    allParse: boolean;
+  };
   type DataAggResult = { _id: string; count: number };
 
   const trainingMap = new Map<string, TrainingAggResult>(
@@ -206,6 +222,8 @@ async function computeFolderMatchingStatuses(
       dataAmount: data?.count || 0,
       trainingAmount: training?.count || 0,
       hasError: training?.hasError || false,
+      hasActive: training?.hasActive || false,
+      allParse: training?.allParse || false,
       tableSchemaExist
     });
   });
@@ -616,7 +634,7 @@ async function handleFieldSort({
 
     // 聚合数据量（仅分页后的数据）
     const [trainingAmountResult, dataAmountResult]: [
-      { _id: string; count: number; hasError: boolean }[],
+      { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
       { _id: string; count: number }[]
     ] = await Promise.all([
       MongoDatasetTraining.aggregate(
@@ -632,7 +650,9 @@ async function handleFieldSort({
             $group: {
               _id: '$collectionId',
               count: { $sum: 1 },
-              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
+              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+              hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+              allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
             }
           }
         ],
@@ -704,6 +724,8 @@ async function handleFieldSort({
       const trainingAmount = training?.count || 0;
       const dataAmount = data?.count || 0;
       const hasError = training?.hasError || false;
+      const hasActive = training?.hasActive || false;
+      const allParse = training?.allParse || false;
 
       const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
@@ -729,6 +751,8 @@ async function handleFieldSort({
           dataAmount,
           trainingAmount,
           hasError,
+          hasActive,
+          allParse,
           tableSchemaExist: item.tableSchema?.exist
         });
         return {
@@ -782,7 +806,7 @@ async function handleFieldSort({
 
   // 4. 聚合数据量（仅分页后的数据）
   const [trainingAmountResult, dataAmountResult]: [
-    { _id: string; count: number; hasError: boolean }[],
+    { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
     { _id: string; count: number }[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
@@ -798,7 +822,9 @@ async function handleFieldSort({
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
+            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
           }
         }
       ],
@@ -877,6 +903,8 @@ async function handleFieldSort({
     const trainingAmount = training?.count || 0;
     const dataAmount = data?.count || 0;
     const hasError = training?.hasError || false;
+    const hasActive = training?.hasActive || false;
+    const allParse = training?.allParse || false;
     const itemPermission = permissionsMap.get(itemId) ?? parentFolderPermission;
 
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
@@ -904,6 +932,8 @@ async function handleFieldSort({
         dataAmount,
         trainingAmount,
         hasError,
+        hasActive,
+        allParse,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {
@@ -1015,7 +1045,9 @@ async function handleDataAmountSortOrStatusFilter({
             $group: {
               _id: null,
               count: { $sum: 1 },
-              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
+              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+              hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+              allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
             }
           }
         ],
@@ -1051,7 +1083,9 @@ async function handleDataAmountSortOrStatusFilter({
       $addFields: {
         trainingAmount: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.count', 0] }, 0] },
         dataAmount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.count', 0] }, 0] },
-        hasError: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasError', 0] }, false] }
+        hasError: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasError', 0] }, false] },
+        hasActive: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasActive', 0] }, false] },
+        allParse: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.allParse', 0] }, false] }
       }
     },
 
@@ -1073,7 +1107,15 @@ async function handleDataAmountSortOrStatusFilter({
                     else: {
                       $cond: {
                         if: { $gt: ['$trainingAmount', 0] },
-                        then: CollectionStatusEnum.training,
+                        then: {
+                          $cond: {
+                            if: {
+                              $and: [{ $eq: ['$hasActive', false] }, { $eq: ['$allParse', true] }]
+                            },
+                            then: CollectionStatusEnum.queued,
+                            else: CollectionStatusEnum.training
+                          }
+                        },
                         else: CollectionStatusEnum.ready
                       }
                     }
@@ -1240,7 +1282,13 @@ async function handleStatusFilterWithMemoryPagination({
 
   // 聚合数据量
   const [trainingAmount, dataAmount] = await Promise.all([
-    MongoDatasetTraining.aggregate<{ _id: string; count: number; hasError: boolean }>(
+    MongoDatasetTraining.aggregate<{
+      _id: string;
+      count: number;
+      hasError: boolean;
+      hasActive: boolean;
+      allParse: boolean;
+    }>(
       [
         {
           $match: {
@@ -1253,7 +1301,9 @@ async function handleStatusFilterWithMemoryPagination({
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
+            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
           }
         }
       ],
@@ -1310,6 +1360,8 @@ async function handleStatusFilterWithMemoryPagination({
     const trainingAmountVal = training?.count || 0;
     const dataAmountVal = data?.count || 0;
     const hasErrorVal = training?.hasError || false;
+    const hasActiveVal = training?.hasActive || false;
+    const allParseVal = training?.allParse || false;
 
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
@@ -1328,6 +1380,8 @@ async function handleStatusFilterWithMemoryPagination({
         dataAmount: dataAmountVal,
         trainingAmount: trainingAmountVal,
         hasError: hasErrorVal,
+        hasActive: hasActiveVal,
+        allParse: allParseVal,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {
