@@ -11,7 +11,10 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  generateSandboxId,
+  SANDBOX_SYSTEM_PROMPT
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import {
@@ -110,11 +113,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     runningUserInfo,
     workflowStreamResponse,
     usagePush,
-    mode,
     chatId,
     responseChatItemId,
     timezone,
-    showSkillReferences,
     params: {
       systemPrompt,
       userChatInput,
@@ -179,7 +180,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // Skill/Sandbox 是可插拔能力：它们可以追加 system prompt、completion tools 和 tool handler，
     // 但不会改变 agent loop 本身的上下文协议。
     if (serviceEnv.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+      const sandboxSessionId = generateSandboxId(runningAppInfo.id, runningAppInfo.tmbId, chatId);
       const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
 
       const sandboxCap = await createSandboxSkillsCapability({

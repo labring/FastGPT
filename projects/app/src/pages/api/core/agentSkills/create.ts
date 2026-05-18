@@ -7,10 +7,16 @@ import {
   updateCurrentStorage
 } from '@fastgpt/service/core/agentSkills/controller';
 import { buildSkillMd, generateSkillMd } from '@fastgpt/service/core/agentSkills/skillMdBuilder';
+import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
 import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import { createVersion } from '@fastgpt/service/core/agentSkills/version/controller';
-import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import {
+  CreateSkillBodySchema,
+  CreateSkillResponseSchema,
+  type CreateSkillBody,
+  type CreateSkillResponse
+} from '@fastgpt/global/core/agentSkills/api';
 import {
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum
@@ -46,7 +52,10 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     category = [],
     config = {},
     avatar
-  } = req.body;
+  } = CreateSkillBodySchema.parse(req.body);
+
+  const requestedName = name.trim();
+  const requestedDescription = description?.trim() || '';
 
   // Authenticate user: if parentId exists, verify parent folder permission
   const { teamId, tmbId, userId } = parentId
@@ -65,13 +74,13 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       });
 
   // Validate required fields
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+  if (requestedName.length === 0) {
     return Promise.reject(SkillErrEnum.invalidSkillName);
   }
-  if (name.length > 50) {
+  if (requestedName.length > 50) {
     return Promise.reject(SkillErrEnum.skillNameTooLong);
   }
-  if (description && description.length > 500) {
+  if (requestedDescription.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);
   }
   if (requirements && !model) {
@@ -89,33 +98,46 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     return Promise.reject(SkillErrEnum.invalidConfig);
   }
 
-  // Check if skill name already exists in the same parent folder
-  const nameExists = await checkSkillNameExists(name.trim(), teamId, parentId || null);
+  // Display name comes from the create modal and remains user-facing.
+  const nameExists = await checkSkillNameExists(requestedName, teamId, parentId || null);
   if (nameExists) {
     return Promise.reject(SkillErrEnum.skillNameExists);
   }
 
   // Generate SKILL.md content
   let skillMd: string;
+  let packageRootName = requestedName;
 
   if (requirements && model) {
     logger.debug('Using AI-assisted skill generation', {
-      name: name.trim(),
+      name: requestedName,
       hasDescription: !!description,
       requirementsLength: requirements.length,
       model
     });
 
     const [generatedSkillMd, usage] = await generateSkillMd({
-      name: name.trim(),
-      description: description?.trim() || '',
+      name: requestedName,
+      description: requestedDescription,
       requirements: requirements.trim(),
       model
     });
 
     skillMd = generatedSkillMd;
 
+    const { skill: generatedSkill, error: parseError } = extractSkillFromMarkdown(skillMd);
+    if (parseError || !generatedSkill?.name) {
+      logger.warn('AI generated invalid SKILL.md', {
+        name: requestedName,
+        parseError
+      });
+      return Promise.reject(SkillErrEnum.invalidSkillPackage);
+    }
+    packageRootName = generatedSkill.name;
+
     logger.debug('AI skill generation completed', {
+      requestedName,
+      generatedName: packageRootName,
       skillMdLength: skillMd.length,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
@@ -145,26 +167,26 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     });
   } else {
     logger.debug('Using simple skill generation', {
-      name: name.trim(),
+      name: requestedName,
       hasDescription: !!description
     });
 
     skillMd = buildSkillMd({
-      name: name.trim(),
-      description: description?.trim() || ''
+      name: packageRootName,
+      description: requestedDescription
     });
   }
 
   // Create skill with full workflow (transaction)
   // E11000 from concurrent duplicate creation propagates as-is (409-like conflict)
   const skillId = await mongoSessionRun(async (session) => {
-    const zipBuffer = await createSkillPackage({ name: name.trim(), skillMd });
+    const zipBuffer = await createSkillPackage({ name: packageRootName, skillMd });
 
     const newSkillId = await createSkill(
       {
         parentId: parentId || null,
-        name: name.trim(),
-        description: description?.trim() || '',
+        name: requestedName,
+        description: requestedDescription,
         author: userId || '',
         category: category.length > 0 ? category : [AgentSkillCategoryEnum.other],
         config,
@@ -216,11 +238,11 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL,
-      params: { skillName: name.trim(), skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
+      params: { skillName: requestedName, skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
     });
   })();
 
-  return skillId;
+  return CreateSkillResponseSchema.parse(skillId);
 }
 
 export default NextAPI(handler);

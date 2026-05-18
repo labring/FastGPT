@@ -470,6 +470,20 @@ category: [search, tool, coding]
       expect(result.frontmatter.category).toEqual(['search', 'tool', 'coding']);
     });
 
+    it('should parse frontmatter-only SKILL.md content', () => {
+      const markdown = `---
+name: test-skill
+description: A test
+---`;
+
+      const result = parseSkillMarkdown(markdown);
+
+      expect(result.error).toBeUndefined();
+      expect(result.frontmatter.name).toBe('test-skill');
+      expect(result.frontmatter.description).toBe('A test');
+      expect(result.content).toBe('');
+    });
+
     it('should parse boolean values correctly', () => {
       const markdown = `---
 name: test-skill

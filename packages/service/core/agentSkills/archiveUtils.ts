@@ -73,40 +73,39 @@ export function stripRootPrefix(fileMap: ArchiveFileMap, rootPrefix: string): Ar
 /** SKILL.md content together with its relative path inside the archive. */
 export type SkillMdInfo = { content: string; relativePath: string };
 
-/**
- * Extract SKILL.md content and its relative path from a ZIP buffer without writing to disk.
- * Searches the same locations as findSkillMdKey:
- *   - root: SKILL.md
- *   - one level deep: {dir}/SKILL.md
- * Returns null when SKILL.md is not found.
- */
-export async function extractSkillMdInfoFromBuffer(buffer: Buffer): Promise<SkillMdInfo | null> {
-  const files = await decompress(buffer);
+function normalizeArchivePath(path: string): string {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter((part) => part && part !== '.')
+    .join('/');
+}
 
-  const target = files.find((f) => {
-    const p = f.path.replace(/\\/g, '/').replace(/^\//, '');
-    const parts = p.split('/');
-    if (parts.length === 1 && parts[0].toLowerCase() === 'skill.md') return true;
-    if (parts.length === 2 && parts[1].toLowerCase() === 'skill.md') return true;
-    return false;
-  });
-
-  if (!target || !target.data) return null;
-  const content = Buffer.isBuffer(target.data)
-    ? target.data.toString('utf-8')
-    : String(target.data);
-  const relativePath = target.path.replace(/\\/g, '/').replace(/^\//, '');
-  return { content, relativePath };
+function isSafeArchivePath(path: string): boolean {
+  return !!path && !path.split('/').includes('..');
 }
 
 /**
- * Extract SKILL.md content from a ZIP buffer without writing to disk.
- * Searches the same locations as findSkillMdKey:
- *   - root: SKILL.md
- *   - one level deep: {dir}/SKILL.md
- * Returns null when SKILL.md is not found.
+ * Extract every SKILL.md file from a ZIP buffer, recursively.
+ * Paths are returned relative to the archive root and sorted for deterministic prompts.
  */
-export async function extractSkillMdContentFromBuffer(buffer: Buffer): Promise<string | null> {
-  const info = await extractSkillMdInfoFromBuffer(buffer);
-  return info ? info.content : null;
+export async function extractSkillMdInfosFromBuffer(buffer: Buffer): Promise<SkillMdInfo[]> {
+  const files = await decompress(buffer);
+  const result: SkillMdInfo[] = [];
+
+  for (const file of files) {
+    if (file.type === 'directory' || !file.data) continue;
+
+    const relativePath = normalizeArchivePath(file.path);
+    if (!isSafeArchivePath(relativePath)) continue;
+
+    const filename = relativePath.split('/').pop()?.toLowerCase();
+    if (filename !== 'skill.md') continue;
+
+    const content = Buffer.isBuffer(file.data) ? file.data.toString('utf-8') : String(file.data);
+    result.push({ content, relativePath });
+  }
+
+  return result.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }

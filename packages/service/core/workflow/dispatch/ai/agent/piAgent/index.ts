@@ -1,5 +1,8 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  generateSandboxId,
+  SANDBOX_SYSTEM_PROMPT
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
@@ -45,11 +48,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     runningUserInfo,
     workflowStreamResponse,
     usagePush,
-    mode,
     chatId,
     responseChatItemId,
     timezone,
-    showSkillReferences,
     params: {
       model,
       systemPrompt,
@@ -126,7 +127,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     // 2. 初始化独立能力。技能能力只贡献 system prompt / tools / assistantResponses，不直接参与 PiAgent loop 状态。
     if (serviceEnv.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+      const sandboxSessionId = generateSandboxId(runningAppInfo.id, runningAppInfo.tmbId, chatId);
       const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
 
       const sandboxCap = await createSandboxSkillsCapability({

@@ -444,8 +444,7 @@ export async function packageSkillInSandbox(params: {
       }
     }
 
-    // Zip workDirectory directly so that archive entries are {skill-name}/...
-    // keeping the same structure expected by validateZipStructure.
+    // Zip workDirectory directly so the deployed package keeps the workspace file tree.
     const zipCommand = `cd ${targetDir} && zip -r package.zip . -x 'package.zip'`;
 
     const zipResult = await newSandbox.execute(zipCommand);

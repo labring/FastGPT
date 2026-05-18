@@ -22,4 +22,15 @@ describe('generateSandboxId', () => {
     expect(id).toHaveLength(16);
     expect(id).toMatch(/^[0-9a-f]{16}$/);
   });
+
+  it('should hash mixed-case source into a lowercase hex string', () => {
+    const id = generateSandboxId(
+      '69ce5237057b145f058436f4',
+      '69ce490acaad46cd13982521',
+      'debug-69ce5237057b145f058436f4-7BdojPlukIQw'
+    );
+
+    expect(id).toHaveLength(16);
+    expect(id).toMatch(/^[0-9a-f]{16}$/);
+  });
 });

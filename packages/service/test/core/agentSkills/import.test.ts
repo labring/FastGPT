@@ -7,7 +7,8 @@ import {
   getSupportedArchiveFormat,
   findSkillMdKey,
   getRootPrefix,
-  stripRootPrefix
+  stripRootPrefix,
+  extractSkillMdInfosFromBuffer
 } from '@fastgpt/service/core/agentSkills/archiveUtils';
 import { repackFileMapAsZip, JSZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
 
@@ -343,5 +344,53 @@ describe('repackFileMapAsZip', () => {
     expect(zipBuffer).toBeInstanceOf(Buffer);
     const zip = await JSZip.loadAsync(zipBuffer);
     expect(Object.keys(zip.files)).toHaveLength(0);
+  });
+});
+
+describe('extractSkillMdInfosFromBuffer', () => {
+  it('extracts every recursive skill.md path in deterministic order', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'skill2/2/SKILL.md',
+      `---
+name: gamma
+description: Gamma skill
+---
+
+# Gamma`
+    );
+    zip.file(
+      'skill1/skill.md',
+      `---
+name: alpha
+description: Alpha skill
+---
+
+# Alpha`
+    );
+    zip.file(
+      'skill2/1/skill.md',
+      `---
+name: beta
+description: Beta skill
+---
+
+# Beta`
+    );
+    zip.file('skill2/1/readme.md', '# readme');
+
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+    const result = await extractSkillMdInfosFromBuffer(buffer);
+
+    expect(result.map((item) => item.relativePath)).toEqual([
+      'skill1/skill.md',
+      'skill2/1/skill.md',
+      'skill2/2/SKILL.md'
+    ]);
+    expect(result.map((item) => item.content)).toEqual([
+      expect.stringContaining('name: alpha'),
+      expect.stringContaining('name: beta'),
+      expect.stringContaining('name: gamma')
+    ]);
   });
 });

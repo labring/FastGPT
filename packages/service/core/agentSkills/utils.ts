@@ -11,7 +11,7 @@ export function parseSkillMarkdown(markdown: string): {
   error?: string;
 } {
   // Check for YAML frontmatter delimited by ---
-  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
+  const frontmatterRegex = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n([\s\S]*))?$/;
   const match = markdown.match(frontmatterRegex);
 
   if (!match) {
@@ -23,7 +23,7 @@ export function parseSkillMarkdown(markdown: string): {
   }
 
   const yamlContent = match[1];
-  const bodyContent = match[2];
+  const bodyContent = match[2] ?? '';
 
   try {
     const frontmatter = parseYamlFrontmatter(yamlContent);
@@ -102,7 +102,7 @@ function parseYamlFrontmatter(yaml: string): Record<string, any> {
  * Returns FastGPT skill object format
  */
 export function extractSkillFromMarkdown(markdown: string): { skill: any; error?: string } {
-  const { frontmatter, content, error } = parseSkillMarkdown(markdown);
+  const { frontmatter, error } = parseSkillMarkdown(markdown);
 
   if (error) {
     return { skill: null, error };

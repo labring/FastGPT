@@ -10,19 +10,17 @@ import {
   setActiveVersion
 } from '@fastgpt/service/core/agentSkills/version/controller';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
-import {
-  validateZipStructure,
-  extractSkillPackage,
-  standardizeSkillPackage
-} from '@fastgpt/service/core/agentSkills/zipBuilder';
+import { extractSkillMdInfosFromBuffer } from '@fastgpt/service/core/agentSkills/archiveUtils';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import type {
-  SaveDeploySkillBody,
-  SaveDeploySkillResponse
+import {
+  SaveDeploySkillBodySchema,
+  SaveDeploySkillResponseSchema,
+  type SaveDeploySkillBody,
+  type SaveDeploySkillResponse
 } from '@fastgpt/global/core/agentSkills/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
@@ -41,7 +39,7 @@ const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.DEPLOY);
 async function handler(
   req: ApiRequestProps<SaveDeploySkillBody>
 ): Promise<SaveDeploySkillResponse> {
-  const { skillId, versionName } = req.body;
+  const { skillId, versionName } = SaveDeploySkillBodySchema.parse(req.body);
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
@@ -80,42 +78,19 @@ async function handler(
     );
   }
 
-  // Validate the ZIP structure
-  const validation = await validateZipStructure(packageBuffer);
-  if (!validation.valid) {
-    logger.warn('Invalid skill package structure', { error: validation.error });
+  const skillMdInfos = await extractSkillMdInfosFromBuffer(packageBuffer);
+  if (skillMdInfos.length === 0) {
+    logger.warn('SKILL.md not found in skill package');
     return Promise.reject(SkillErrEnum.invalidSkillPackage);
   }
 
-  // Extract SKILL.md from the ZIP
-  const extractResult = await extractSkillPackage(packageBuffer);
-  if (!extractResult.success || !extractResult.skillMd) {
-    logger.warn('SKILL.md not found or extraction failed in skill package', {
-      success: extractResult.success,
-      hasSkillMd: !!extractResult.skillMd
-    });
-    return Promise.reject(SkillErrEnum.invalidSkillPackage);
-  }
-
-  // Parse skill metadata from SKILL.md frontmatter
-  const { skill: skillMetadata, error: parseError } = extractSkillFromMarkdown(
-    extractResult.skillMd
-  );
-  if (parseError || !skillMetadata) {
-    return Promise.reject(
-      new UserError(`Failed to parse SKILL.md: ${parseError || 'Unknown error'}`)
-    );
-  }
-
-  // Standardize the ZIP package (ensure the root folder is named after the skill)
-  let standardizedPackageBuffer: Buffer;
-  try {
-    const { buffer } = await standardizeSkillPackage(packageBuffer, skillMetadata.name);
-    standardizedPackageBuffer = buffer;
-  } catch (error: any) {
-    return Promise.reject(
-      new UserError(`Failed to standardize skill package: ${error.message || 'Unknown error'}`)
-    );
+  for (const info of skillMdInfos) {
+    const { skill: parsedSkill, error: parseError } = extractSkillFromMarkdown(info.content);
+    if (parseError || !parsedSkill) {
+      return Promise.reject(
+        new UserError(`Failed to parse ${info.relativePath}: ${parseError || 'Unknown error'}`)
+      );
+    }
   }
 
   // Transaction: create version record and upload package
@@ -128,7 +103,7 @@ async function handler(
         teamId,
         skillId,
         version: nextVersion,
-        zipBuffer: standardizedPackageBuffer
+        zipBuffer: packageBuffer
       });
     } catch (error: any) {
       throw new UserError(`Failed to upload package: ${error.message || 'Unknown error'}`);
@@ -177,7 +152,7 @@ async function handler(
     });
   })();
 
-  return response;
+  return SaveDeploySkillResponseSchema.parse(response);
 }
 
 export default NextAPI(handler);

@@ -47,7 +47,8 @@ export {
   createAgentSandbox,
   releaseAgentSandbox,
   connectEditDebugSandbox,
-  disconnectEditDebugSandbox
+  disconnectEditDebugSandbox,
+  getSkillWorkspaceDirName
 } from './lifecycle';
 export {
   dispatchSandboxWriteFile,

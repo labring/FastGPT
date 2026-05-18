@@ -13,7 +13,8 @@ import {
   createAgentSandbox,
   releaseAgentSandbox,
   connectEditDebugSandbox,
-  disconnectEditDebugSandbox
+  disconnectEditDebugSandbox,
+  getSkillWorkspaceDirName
 } from '../sub/sandbox';
 import { buildSkillsContextPrompt } from '../sub/sandbox/prompt';
 import { parseJsonArgs } from '../../../../../ai/utils';
@@ -33,7 +34,7 @@ import { MongoAgentSkills } from '../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../ai/sandbox/schema';
 import { getSandboxDefaults } from '../../../../../agentSkills/sandboxConfig';
 import { downloadSkillPackage } from '../../../../../agentSkills/storage';
-import { extractSkillMdInfoFromBuffer } from '../../../../../agentSkills/archiveUtils';
+import { extractSkillMdInfosFromBuffer } from '../../../../../agentSkills/archiveUtils';
 import { parseSkillMarkdown } from '../../../../../agentSkills/utils';
 
 type SandboxToolResult = {
@@ -52,64 +53,69 @@ type SandboxSkillsCapabilityParams = {
 };
 
 /** Fetch skill metadata from MongoDB and compute sandbox paths from the ZIP for prompt construction. */
-async function fetchSkillsMetaForPrompt(
+export async function fetchSkillsMetaForPrompt(
   skillIds: string[],
   teamId: string,
   workDirectory: string
 ): Promise<DeployedSkillInfo[]> {
-  const skills = await MongoAgentSkills.find(
+  const skillDocs = await MongoAgentSkills.find(
     { _id: { $in: skillIds }, teamId, deleteTime: null },
     { name: 1, description: 1, avatar: 1, currentStorage: 1 }
   ).lean();
+  const skillIdOrder = new Map(skillIds.map((id, index) => [String(id), index]));
+  const skills = skillDocs.sort(
+    (a, b) =>
+      (skillIdOrder.get(String(a._id)) ?? Number.MAX_SAFE_INTEGER) -
+      (skillIdOrder.get(String(b._id)) ?? Number.MAX_SAFE_INTEGER)
+  );
 
-  const results = await Promise.allSettled(
-    skills.map(async (skill) => {
-      const fallback: DeployedSkillInfo = {
-        id: String(skill._id),
-        name: skill.name,
-        description: skill.description ?? '',
-        avatar: skill.avatar,
-        skillMdPath: '',
-        directory: ''
-      };
+  const result: DeployedSkillInfo[] = [];
 
-      if (!skill.currentStorage) return fallback;
+  for (const skill of skills) {
+    const fallback: DeployedSkillInfo = {
+      id: String(skill._id),
+      name: skill.name,
+      description: skill.description ?? '',
+      avatar: skill.avatar,
+      skillMdPath: '',
+      directory: ''
+    };
 
-      try {
-        const buffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
-        const info = await extractSkillMdInfoFromBuffer(buffer);
-        if (!info) return fallback;
+    if (!skill.currentStorage) {
+      result.push(fallback);
+      continue;
+    }
 
-        const { frontmatter } = parseSkillMarkdown(info.content);
-        const skillMdPath = `${workDirectory}/${info.relativePath}`;
-        return {
+    try {
+      const buffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
+      const infos = await extractSkillMdInfosFromBuffer(buffer);
+      const rootDir = getSkillWorkspaceDirName(skill);
+      const beforeCount = result.length;
+
+      for (const info of infos) {
+        const { frontmatter, error } = parseSkillMarkdown(info.content);
+        if (error || !frontmatter.name) continue;
+
+        const skillMdPath = `${workDirectory}/${rootDir}/${info.relativePath}`;
+        result.push({
           id: fallback.id,
-          name: frontmatter.name ? String(frontmatter.name) : fallback.name,
-          description: frontmatter.description
-            ? String(frontmatter.description)
-            : fallback.description,
+          name: String(frontmatter.name),
+          description: frontmatter.description ? String(frontmatter.description) : '',
           avatar: fallback.avatar,
           skillMdPath,
           directory: path.dirname(skillMdPath)
-        };
-      } catch {
-        return fallback;
+        });
       }
-    })
-  );
 
-  return results.map((r, i) =>
-    r.status === 'fulfilled'
-      ? r.value
-      : {
-          id: String(skills[i]._id),
-          name: skills[i].name,
-          description: skills[i].description ?? '',
-          avatar: skills[i].avatar,
-          skillMdPath: '',
-          directory: ''
-        }
-  );
+      if (result.length === beforeCount) {
+        result.push(fallback);
+      }
+    } catch {
+      result.push(fallback);
+    }
+  }
+
+  return result;
 }
 
 /** Check whether an error indicates a sandbox that no longer exists or is unreachable. */
@@ -157,13 +163,7 @@ export async function createSandboxSkillsCapability(
       completionTools: allSandboxTools,
       handleToolCall: async (toolId, args) => {
         if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
-        const result = await buildEditDebugHandler(
-          toolId,
-          args,
-          sandboxContext,
-          allFilesMap,
-          workflowStreamResponse
-        );
+        const result = await buildEditDebugHandler(toolId, args, sandboxContext, allFilesMap);
         if (result !== null) {
           // Fire-and-forget: renew sandbox expiration after successful execution
           MongoSandboxInstance.updateOne(
@@ -271,7 +271,7 @@ export async function createSandboxSkillsCapability(
       if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
 
       return executeWithRetry(async (ctx) => {
-        return buildSessionHandler(toolId, args, ctx, allFilesMap, workflowStreamResponse);
+        return buildSessionHandler(toolId, args, ctx, allFilesMap);
       });
     },
     dispose: async () => {
@@ -290,8 +290,7 @@ async function buildEditDebugHandler(
   toolId: string,
   args: string,
   sandboxContext: AgentSandboxContext,
-  allFilesMap: Record<string, { url: string; name: string; type: string }>,
-  workflowStreamResponse?: WorkflowResponseType
+  allFilesMap: Record<string, { url: string; name: string; type: string }>
 ): Promise<SandboxToolResult | null> {
   const handlers: Record<string, () => Promise<SandboxToolResult>> = {
     [SandboxToolIds.writeFile]: async () => {
@@ -330,8 +329,7 @@ async function buildSessionHandler(
   toolId: string,
   args: string,
   sandboxContext: AgentSandboxContext,
-  allFilesMap: Record<string, { url: string; name: string; type: string }>,
-  workflowStreamResponse?: WorkflowResponseType
+  allFilesMap: Record<string, { url: string; name: string; type: string }>
 ): Promise<SandboxToolResult> {
   const handlers: Record<string, () => Promise<SandboxToolResult>> = {
     [SandboxToolIds.writeFile]: async () => {

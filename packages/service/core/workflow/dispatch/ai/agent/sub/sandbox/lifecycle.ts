@@ -43,7 +43,7 @@ type CreateAgentSandboxParams = {
   skillIds: string[];
   teamId: string;
   tmbId: string;
-  sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key
+  sessionId: string; // FastGPT 侧稳定 sandbox id，由 app/user/chat hash 生成。
   entrypoint?: string; // override default entrypoint for this request
   image?: SandboxImageConfigType; // override default image for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
@@ -58,6 +58,18 @@ type VersionDoc = HydratedDocument<AgentSkillsVersionSchemaType>;
 
 const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 
+export function getSkillWorkspaceDirName(skill: { _id?: unknown; id?: unknown; name: string }) {
+  const dirName = skill.name
+    .trim()
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[\\/]/g, '-')
+    .trim()
+    .slice(0, 80);
+
+  if (dirName && dirName !== '.' && dirName !== '..') return dirName;
+  return `skill-${String(skill._id ?? skill.id ?? 'package').slice(-8)}`;
+}
+
 /** Query skills and their active versions, returning a map keyed by skillId string. */
 async function fetchSkillsWithVersionMap(
   skillIds: string[],
@@ -68,6 +80,12 @@ async function fetchSkillsWithVersionMap(
     teamId,
     deleteTime: null
   });
+  const skillIdOrder = new Map(skillIds.map((id, index) => [String(id), index]));
+  skills.sort(
+    (a, b) =>
+      (skillIdOrder.get(String(a._id)) ?? Number.MAX_SAFE_INTEGER) -
+      (skillIdOrder.get(String(b._id)) ?? Number.MAX_SAFE_INTEGER)
+  );
   const activeVersions = await MongoAgentSkillsVersion.find({
     skillId: { $in: skills.map((s) => s._id) },
     isActive: true,
@@ -88,22 +106,21 @@ function mergeSkillWithVersion(
 
 /** Dynamically discover all deployed skill directories in the sandbox by locating SKILL.md files.
  * Example:
- * $ find ${FASTGPT_WORKDIR} -name "SKILL.md" -maxdepth 5 2>/dev/null
+ * $ find ${FASTGPT_WORKDIR} -iname "SKILL.md" 2>/dev/null
  * /home/sandbox/workspace/projects/skill-creator/SKILL.md
  * /home/sandbox/workspace/projects/deep-research/SKILL.md
  * /home/sandbox/workspace/projects/science/SKILL.md
  *
- * Runs `find` inside the sandbox to locate SKILL.md files up to maxdepth 5,
- * then reads each file and parses the frontmatter for name/description.
+ * Runs `find` inside the sandbox to locate SKILL.md files recursively, then reads each
+ * file and parses the frontmatter for name/description.
  * This replaces the pre-scan approach and works with arbitrary ZIP structures.
  */
 async function discoverSkillsInSandbox(
   sandbox: ISandbox,
   workDirectory: string
 ): Promise<DeployedSkillInfo[]> {
-  // Use `find` with -maxdepth 5 to avoid deep recursion performance issues.
   const findResult = await sandbox.execute(
-    `find ${shellQuote(workDirectory)} -name "SKILL.md" -maxdepth 5 2>/dev/null`
+    `find ${shellQuote(workDirectory)} -iname "SKILL.md" 2>/dev/null`
   );
   if (findResult.exitCode !== 0 || !findResult.stdout.trim()) return [];
 
@@ -118,7 +135,7 @@ async function discoverSkillsInSandbox(
         : String(file.content);
     const { frontmatter } = parseSkillMarkdown(content);
     if (!frontmatter.name) continue;
-    const directory = file.path.replace(/\/SKILL\.md$/i, '');
+    const directory = file.path.replace(/\/skill\.md$/i, '');
     result.push({
       id: file.path,
       name: String(frontmatter.name),
@@ -151,17 +168,20 @@ async function deploySkillsToSandbox(
       onProgress?.({ sandboxId, phase: 'downloadingPackage', skillName: skill.name });
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
 
-      // Write raw ZIP to sandbox and extract directly into workDirectory.
+      // Write raw ZIP to sandbox and extract under the outer skill workspace directory.
       const zipFileName = `package_${String(skill._id)}.zip`;
       const zipPath = `${workDirectory}/${zipFileName}`;
+      const targetDir = `${workDirectory}/${getSkillWorkspaceDirName(skill)}`;
       onProgress?.({ sandboxId, phase: 'uploadingPackage', skillName: skill.name });
       await sandbox.writeFiles([{ path: zipPath, data: packageBuffer }]);
 
       onProgress?.({ sandboxId, phase: 'extractingPackage', skillName: skill.name });
       const extractResult = await sandbox.execute(
-        `cd ${shellQuote(workDirectory)} && unzip -o ${shellQuote(zipFileName)} && rm ${shellQuote(
+        buildExtractSkillPackageCommand({
+          workDirectory,
+          targetDir,
           zipFileName
-        )}`
+        })
       );
 
       if (extractResult.exitCode !== 0) {
@@ -174,6 +194,20 @@ async function deploySkillsToSandbox(
       logger.error('[Agent Sandbox] Failed to deploy skill', { skillName: skill.name, error });
     }
   }
+}
+
+export function buildExtractSkillPackageCommand({
+  workDirectory,
+  targetDir,
+  zipFileName
+}: {
+  workDirectory: string;
+  targetDir: string;
+  zipFileName: string;
+}) {
+  return `mkdir -p ${shellQuote(targetDir)} && cd ${shellQuote(targetDir)} && unzip -o ${shellQuote(
+    `../${zipFileName}`
+  )} && rm ${shellQuote(`${workDirectory}/${zipFileName}`)}`;
 }
 
 // --- Exported lifecycle functions ---

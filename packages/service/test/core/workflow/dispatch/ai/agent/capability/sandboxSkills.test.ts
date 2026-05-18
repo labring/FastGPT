@@ -1,14 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   isSandboxExpiredError,
-  collectSkillReferenceResponses
+  fetchSkillsMetaForPrompt
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/capability/sandboxSkills';
-import type { AgentSandboxContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/types';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   allSandboxTools,
   SandboxToolIds
 } from '@fastgpt/global/core/workflow/node/agent/skillTools';
+import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
+import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
+import { JSZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 
 describe('isSandboxExpiredError', () => {
   it('should return true for "not found" error', () => {
@@ -60,227 +63,104 @@ describe('isSandboxExpiredError', () => {
   });
 });
 
-describe('collectSkillReferenceResponses', () => {
-  const createMockSandboxContext = (
-    deployedSkills: AgentSandboxContext['deployedSkills']
-  ): AgentSandboxContext =>
-    ({
-      deployedSkills,
-      workDirectory: '/work',
-      sandboxId: 'sandbox-123'
-    }) as AgentSandboxContext;
+describe('fetchSkillsMetaForPrompt', () => {
+  it('injects every recursive skill.md from every selected outer skill', async () => {
+    const teamId = new Types.ObjectId().toHexString();
+    const tmbId = new Types.ObjectId().toHexString();
 
-  it('should return empty array when showSkillReferences is false', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'TestSkill',
-        description: 'A test skill',
-        avatar: '',
-        skillMdPath: '/work/skill/SKILL.md',
-        directory: '/work/skill'
+    const makePackage = async (
+      entries: Array<{ path: string; name: string; description: string }>
+    ) => {
+      const zip = new JSZip();
+      for (const entry of entries) {
+        zip.file(
+          entry.path,
+          `---
+name: ${entry.name}
+description: ${entry.description}
+---
+
+# ${entry.name}`
+        );
       }
-    ]);
+      return zip.generateAsync({ type: 'nodebuffer' });
+    };
 
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/skill/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: false,
-      toolCallId: 'call-1'
-    });
-
-    expect(result).toEqual([]);
-  });
-
-  it('should skip paths that do not end with /SKILL.md', () => {
-    const context = createMockSandboxContext([
+    const [skill1, skill2] = await MongoAgentSkills.create([
       {
-        id: 'skill-1',
-        name: 'TestSkill',
-        description: 'A test skill',
-        avatar: '',
-        skillMdPath: '/work/skill/SKILL.md',
-        directory: '/work/skill'
-      }
-    ]);
-
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/skill/README.md', '/work/skill/index.ts'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'call-1'
-    });
-
-    expect(result).toEqual([]);
-  });
-
-  it('should collect skill reference for matching SKILL.md path', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'TestSkill',
-        description: 'A test skill',
-        avatar: 'avatar.png',
-        skillMdPath: '/work/skill/SKILL.md',
-        directory: '/work/skill'
-      }
-    ]);
-
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/skill/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'tool-call-123'
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
-      skills: [
-        {
-          id: 'tool-call-123',
-          skillName: 'TestSkill',
-          skillAvatar: 'avatar.png',
-          description: 'A test skill',
-          skillMdPath: '/work/skill/SKILL.md'
-        }
-      ]
-    });
-  });
-
-  it('should match skill by directory prefix', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'TestSkill',
-        description: 'A test skill',
-        avatar: '',
-        skillMdPath: '/work/myskill/SKILL.md',
-        directory: '/work/myskill'
-      }
-    ]);
-
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/myskill/subdir/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'call-1'
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0].skills?.[0].skillName).toBe('TestSkill');
-  });
-
-  it('should call workflowStreamResponse with skillCall event', () => {
-    const mockStreamResponse = vi.fn();
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'StreamSkill',
-        description: 'Skill for stream test',
-        avatar: 'stream.png',
-        skillMdPath: '/work/stream/SKILL.md',
-        directory: '/work/stream'
-      }
-    ]);
-
-    collectSkillReferenceResponses({
-      paths: ['/work/stream/SKILL.md'],
-      sandboxContext: context,
-      workflowStreamResponse: mockStreamResponse,
-      showSkillReferences: true,
-      toolCallId: 'stream-call-1'
-    });
-
-    expect(mockStreamResponse).toHaveBeenCalledTimes(1);
-    expect(mockStreamResponse).toHaveBeenCalledWith({
-      id: 'stream-call-1',
-      event: SseResponseEventEnum.skillCall,
-      data: {
-        skill: {
-          id: 'stream-call-1',
-          skillName: 'StreamSkill',
-          skillAvatar: 'stream.png',
-          description: 'Skill for stream test',
-          skillMdPath: '/work/stream/SKILL.md'
-        }
-      }
-    });
-  });
-
-  it('should handle multiple SKILL.md paths', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
         name: 'Skill1',
-        description: 'First skill',
-        avatar: '',
-        skillMdPath: '/work/skill1/SKILL.md',
-        directory: '/work/skill1'
+        description: '',
+        author: 'test',
+        teamId,
+        tmbId,
+        source: AgentSkillSourceEnum.personal
       },
       {
-        id: 'skill-2',
         name: 'Skill2',
-        description: 'Second skill',
-        avatar: '',
-        skillMdPath: '/work/skill2/SKILL.md',
-        directory: '/work/skill2'
+        description: '',
+        author: 'test',
+        teamId,
+        tmbId,
+        source: AgentSkillSourceEnum.personal
       }
     ]);
 
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/skill1/SKILL.md', '/work/skill2/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'multi-call'
-    });
-
-    expect(result).toHaveLength(2);
-    expect(result[0].skills?.[0].skillName).toBe('Skill1');
-    expect(result[1].skills?.[0].skillName).toBe('Skill2');
-  });
-
-  it('should skip SKILL.md paths with no matching skill', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'Skill1',
-        description: 'First skill',
-        avatar: '',
-        skillMdPath: '/work/skill1/SKILL.md',
-        directory: '/work/skill1'
-      }
+    const [skill1Package, skill2Package] = await Promise.all([
+      makePackage([
+        { path: 'skill1/skill.md', name: 'alpha', description: 'Alpha skill' },
+        { path: 'skill2/1/skill.md', name: 'beta', description: 'Beta skill' },
+        { path: 'skill2/2/skill.md', name: 'gamma', description: 'Gamma skill' }
+      ]),
+      makePackage([
+        { path: 'skill1/skill.md', name: 'delta', description: 'Delta skill' },
+        { path: 'skill2/1/skill.md', name: 'epsilon', description: 'Epsilon skill' },
+        { path: 'skill2/2/skill.md', name: 'zeta', description: 'Zeta skill' }
+      ])
     ]);
 
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/unknown/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'call-1'
-    });
-
-    expect(result).toEqual([]);
-  });
-
-  it('should use empty string for missing avatar', () => {
-    const context = createMockSandboxContext([
-      {
-        id: 'skill-1',
-        name: 'NoAvatarSkill',
-        description: 'Skill without avatar',
-        avatar: undefined as any,
-        skillMdPath: '/work/skill/SKILL.md',
-        directory: '/work/skill'
-      }
+    const [skill1Storage, skill2Storage] = await Promise.all([
+      uploadSkillPackage({
+        teamId,
+        skillId: String(skill1._id),
+        version: 0,
+        zipBuffer: skill1Package
+      }),
+      uploadSkillPackage({
+        teamId,
+        skillId: String(skill2._id),
+        version: 0,
+        zipBuffer: skill2Package
+      })
     ]);
 
-    const result = collectSkillReferenceResponses({
-      paths: ['/work/skill/SKILL.md'],
-      sandboxContext: context,
-      showSkillReferences: true,
-      toolCallId: 'call-1'
-    });
+    await Promise.all([
+      MongoAgentSkills.updateOne({ _id: skill1._id }, { currentStorage: skill1Storage }),
+      MongoAgentSkills.updateOne({ _id: skill2._id }, { currentStorage: skill2Storage })
+    ]);
 
-    expect(result[0].skills?.[0].skillAvatar).toBe('');
+    const result = await fetchSkillsMetaForPrompt(
+      [String(skill1._id), String(skill2._id)],
+      teamId,
+      '/workspace'
+    );
+
+    expect(result).toHaveLength(6);
+    expect(result.map((item) => item.name)).toEqual([
+      'alpha',
+      'beta',
+      'gamma',
+      'delta',
+      'epsilon',
+      'zeta'
+    ]);
+    expect(result.map((item) => item.skillMdPath)).toEqual([
+      '/workspace/Skill1/skill1/skill.md',
+      '/workspace/Skill1/skill2/1/skill.md',
+      '/workspace/Skill1/skill2/2/skill.md',
+      '/workspace/Skill2/skill1/skill.md',
+      '/workspace/Skill2/skill2/1/skill.md',
+      '/workspace/Skill2/skill2/2/skill.md'
+    ]);
   });
 });
 
