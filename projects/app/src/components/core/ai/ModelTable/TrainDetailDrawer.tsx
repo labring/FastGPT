@@ -418,7 +418,14 @@ const TrainDetailDrawer = ({
   const renderMetricRow = useCallback(
     (label: string, before?: number, after?: number, isPercent = true) => {
       if (before === undefined && after === undefined) return null;
-      const isWorse = after !== undefined && before !== undefined && after < before;
+
+      // 先按显示精度四舍五入，再比较，避免因多余小数位导致显示一致但箭头变红
+      const round = (v: number) => (isPercent ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100);
+      const roundedBefore = before !== undefined ? round(before) : undefined;
+      const roundedAfter = after !== undefined ? round(after) : undefined;
+      const isWorse =
+        roundedAfter !== undefined && roundedBefore !== undefined && roundedAfter < roundedBefore;
+
       const formatVal = (v?: number) => {
         if (v === undefined) return '-';
         return isPercent ? `${(v * 100).toFixed(1)}%` : v.toFixed(2);

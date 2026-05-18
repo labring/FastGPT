@@ -50,24 +50,40 @@ const EllipsisTooltip = ({
 }: EllipsisTooltipProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isOverflowed, setIsOverflowed] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useLayoutEffect(() => {
     if (ref.current) setIsOverflowed(isOverflow(ref.current));
   }, [label, lineClamp]);
 
   const handleMouseEnter = () => {
-    if (ref.current) setIsOverflowed(isOverflow(ref.current));
+    if (ref.current) {
+      const overflow = isOverflow(ref.current);
+      setIsOverflowed(overflow);
+      if (overflow) setIsOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsOpen(false);
   };
 
   return (
     <MyTooltip
       label={tooltipLabel ?? label}
       isDisabled={!forceShow && !isOverflowed}
+      isOpen={isOpen}
       hasArrow
       shouldWrapChildren={false}
       {...tooltipProps}
     >
-      <Box ref={ref} onMouseEnter={handleMouseEnter} noOfLines={lineClamp} {...boxProps}>
+      <Box
+        ref={ref}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        noOfLines={lineClamp}
+        {...boxProps}
+      >
         {label}
       </Box>
     </MyTooltip>

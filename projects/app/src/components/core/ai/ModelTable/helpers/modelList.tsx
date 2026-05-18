@@ -246,17 +246,29 @@ export const getFilteredModelList = ({
   });
 };
 
+const getLatestTrainTime = (trainTaskList?: ModelRow['trainTaskList']) => {
+  if (!trainTaskList?.length) return 0;
+  return Math.max(...trainTaskList.map((t) => new Date(t.createTime).getTime()));
+};
+
 export const getSortedModelList = (
   modelList: ModelRow[],
-  trainTaskCountSortOrder?: 'asc' | 'desc'
+  trainTaskCountSortOrder?: 'asc' | 'desc',
+  trainTimeSortOrder?: 'asc' | 'desc'
 ) => {
-  if (!trainTaskCountSortOrder) {
+  if (!trainTaskCountSortOrder && !trainTimeSortOrder) {
     return modelList;
   }
 
   return [...modelList].sort((a, b) => {
-    const countA = a.trainTaskList?.length || 0;
-    const countB = b.trainTaskList?.length || 0;
-    return trainTaskCountSortOrder === 'asc' ? countA - countB : countB - countA;
+    if (trainTaskCountSortOrder) {
+      const countA = a.trainTaskList?.length || 0;
+      const countB = b.trainTaskList?.length || 0;
+      return trainTaskCountSortOrder === 'asc' ? countA - countB : countB - countA;
+    }
+
+    const timeA = getLatestTrainTime(a.trainTaskList);
+    const timeB = getLatestTrainTime(b.trainTaskList);
+    return trainTimeSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
   });
 };
