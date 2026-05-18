@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
 const mockGetEmbeddingModel = vi.hoisted(() => vi.fn());
@@ -10,7 +11,9 @@ const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
-const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
+const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+
+const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
@@ -31,6 +34,10 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mockCreateLLMResponse
 }));
 
+vi.mock('@fastgpt/service/common/file/image/utils', () => ({
+  getImageBase64: mockGetImageBase64
+}));
+
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
   DatasetColCollectionName: 'dataset_collections',
   MongoDatasetCollection: {
@@ -45,17 +52,16 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    createExternalUrl: mockCreateExternalUrl
-  })
-}));
-
 import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
+
+afterEach(() => {
+  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+});
 
 describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
 
     mockGetEmbeddingModel.mockReturnValue({
       model: 'mock-embedding-model',
@@ -86,9 +92,6 @@ describe('default recall dataset search', () => {
     });
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([])
-    });
-    mockCreateExternalUrl.mockResolvedValue({
-      url: 'https://file.fastgpt.io/image.png?token=mock'
     });
   });
 
@@ -187,7 +190,8 @@ describe('default recall dataset search', () => {
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     mockGetLLMModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(true);
-    mockCreateExternalUrl.mockRejectedValueOnce(new Error('expired image'));
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -203,7 +207,10 @@ describe('default recall dataset search', () => {
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
       textQueries: ['black high heels'],
-      imageQueries: ['temp/team-1/expired.png', 'data:image/png;base64,current-image'],
+      imageQueries: [
+        'https://file.fastgpt.io/temp/team-1/expired.png?token=mock',
+        'data:image/png;base64,current-image'
+      ],
       limit: 5000,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: 0.5,

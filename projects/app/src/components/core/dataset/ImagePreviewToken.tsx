@@ -20,6 +20,15 @@ export type ImagePreviewTokenItemType = {
   name?: string;
 };
 
+type PreviewCache =
+  | {
+      status: 'ready';
+      url: string;
+    }
+  | {
+      status: 'expired';
+    };
+
 const getDirectPreviewUrl = (image: ImagePreviewTokenItemType) => {
   const url = image.previewUrl || image.url || '';
   return url && !isDatasetFileObjectKey(url) ? url : '';
@@ -28,16 +37,33 @@ const getDirectPreviewUrl = (image: ImagePreviewTokenItemType) => {
 const getImageCacheKey = (image: ImagePreviewTokenItemType, index: number) =>
   image.key || image.url || image.previewUrl || `${index}`;
 
+const PREVIEW_URL_TIMEOUT_MS = 5000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+  let timer: ReturnType<typeof setTimeout>;
+
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Search test image preview timeout')), timeoutMs);
+    })
+  ]).finally(() => {
+    clearTimeout(timer);
+  });
+};
+
 const ImagePreview = React.memo(function ImagePreview({
   image,
   datasetId,
   cachedPreviewUrl,
-  onPreviewUrlChange
+  onPreviewUrlChange,
+  onPreviewExpired
 }: {
   image: ImagePreviewTokenItemType;
   datasetId?: string;
   cachedPreviewUrl?: string;
   onPreviewUrlChange?: (previewUrl: string) => void;
+  onPreviewExpired?: () => void;
 }) {
   const { t } = useSafeTranslation();
   const [previewUrl, setPreviewUrl] = useState(
@@ -61,19 +87,30 @@ const ImagePreview = React.memo(function ImagePreview({
     setHasRefreshed(true);
     setIsRefreshing(true);
 
-    postGetSearchTestImagePreviewUrls({
-      datasetId,
-      keys: [image.key]
-    })
+    withTimeout(
+      postGetSearchTestImagePreviewUrls({
+        datasetId,
+        keys: [image.key]
+      }),
+      PREVIEW_URL_TIMEOUT_MS
+    )
       .then((res) => {
         const nextPreviewUrl = res.find((item) => item.key === image.key)?.previewUrl;
-        if (!canceled && nextPreviewUrl) {
-          setPreviewUrl(nextPreviewUrl);
-          onPreviewUrlChange?.(nextPreviewUrl);
-          setLoadFailed(false);
+        if (!canceled) {
+          if (nextPreviewUrl) {
+            setPreviewUrl(nextPreviewUrl);
+            onPreviewUrlChange?.(nextPreviewUrl);
+            setLoadFailed(false);
+          } else {
+            onPreviewExpired?.();
+          }
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!canceled) {
+          onPreviewExpired?.();
+        }
+      })
       .finally(() => {
         if (!canceled) {
           setIsRefreshing(false);
@@ -83,7 +120,15 @@ const ImagePreview = React.memo(function ImagePreview({
     return () => {
       canceled = true;
     };
-  }, [datasetId, hasRefreshed, image.key, loadFailed, onPreviewUrlChange, previewUrl]);
+  }, [
+    datasetId,
+    hasRefreshed,
+    image.key,
+    loadFailed,
+    onPreviewExpired,
+    onPreviewUrlChange,
+    previewUrl
+  ]);
 
   if (previewUrl && !loadFailed) {
     return (
@@ -95,7 +140,12 @@ const ImagePreview = React.memo(function ImagePreview({
         h={'80px'}
         objectFit={'cover'}
         borderRadius={'sm'}
-        onError={() => setLoadFailed(true)}
+        onError={() => {
+          setLoadFailed(true);
+          if (!image.key || !datasetId || hasRefreshed) {
+            onPreviewExpired?.();
+          }
+        }}
       />
     );
   }
@@ -175,7 +225,7 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
       }
     | undefined
   >();
-  const [previewUrlMap, setPreviewUrlMap] = useState<Record<string, string>>({});
+  const [previewCacheMap, setPreviewCacheMap] = useState<Record<string, PreviewCache>>({});
   const [viewerImage, setViewerImage] = useState<
     | {
         cacheKey: string;
@@ -185,80 +235,115 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
   >();
 
   const updatePreviewUrl = useCallback((cacheKey: string, previewUrl: string) => {
-    setPreviewUrlMap((state) => ({
+    setPreviewCacheMap((state) => ({
       ...state,
-      [cacheKey]: previewUrl
+      [cacheKey]: {
+        status: 'ready',
+        url: previewUrl
+      }
+    }));
+  }, []);
+
+  const markPreviewExpired = useCallback((cacheKey: string) => {
+    setPreviewCacheMap((state) => ({
+      ...state,
+      [cacheKey]: {
+        status: 'expired'
+      }
     }));
   }, []);
 
   const resolvePreviewUrl = useCallback(
     async (image: ImagePreviewTokenItemType, index: number) => {
+      const cacheKey = getImageCacheKey(image, index);
+      const previewCache = previewCacheMap[cacheKey];
+      if (previewCache?.status === 'expired') return '';
+
       const directPreviewUrl = getDirectPreviewUrl(image);
       if (directPreviewUrl) return directPreviewUrl;
 
-      const cacheKey = getImageCacheKey(image, index);
-      const cachedPreviewUrl = previewUrlMap[cacheKey];
-      if (cachedPreviewUrl) return cachedPreviewUrl;
+      if (previewCache?.status === 'ready') return previewCache.url;
       if (!image.key || !datasetId) return '';
 
-      const previewUrl = await postGetSearchTestImagePreviewUrls({
-        datasetId,
-        keys: [image.key]
-      })
+      const previewUrl = await withTimeout(
+        postGetSearchTestImagePreviewUrls({
+          datasetId,
+          keys: [image.key]
+        }),
+        PREVIEW_URL_TIMEOUT_MS
+      )
         .then((previewUrls) => previewUrls.find((item) => item.key === image.key)?.previewUrl || '')
         .catch(() => '');
 
       if (previewUrl) {
         updatePreviewUrl(cacheKey, previewUrl);
+      } else {
+        markPreviewExpired(cacheKey);
       }
 
       return previewUrl;
     },
-    [datasetId, previewUrlMap, updatePreviewUrl]
+    [datasetId, markPreviewExpired, previewCacheMap, updatePreviewUrl]
   );
 
   if (images.length === 0) return null;
 
+  const hoveredPreviewCache = hoveredImage ? previewCacheMap[hoveredImage.cacheKey] : undefined;
+  const hoveredPreviewUrl =
+    hoveredPreviewCache?.status === 'ready' ? hoveredPreviewCache.url : undefined;
+
   return (
     <>
       <Flex flexWrap={'wrap'} gap={2} {...containerProps}>
-        {images.map((image, index) => (
-          <Box
-            key={`${getImageCacheKey(image, index)}`}
-            {...defaultTokenStyles}
-            {...tokenProps}
-            role={'button'}
-            tabIndex={0}
-            title={t('common:Click_to_expand')}
-            onMouseEnter={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setHoveredImage({
-                image,
-                cacheKey: getImageCacheKey(image, index),
-                top: rect.bottom + 8,
-                left: rect.left
-              });
-            }}
-            onMouseLeave={() => setHoveredImage(undefined)}
-            onClick={async (e) => {
-              e.stopPropagation();
-              const previewUrl = await resolvePreviewUrl(image, index);
-              if (!previewUrl) return;
+        {images.map((image, index) => {
+          const cacheKey = getImageCacheKey(image, index);
+          const isPreviewExpired = previewCacheMap[cacheKey]?.status === 'expired';
 
-              setViewerImage({
-                cacheKey: getImageCacheKey(image, index),
-                src: previewUrl
-              });
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' && e.key !== ' ') return;
-              e.preventDefault();
-              e.currentTarget.click();
-            }}
-          >
-            {t('common:core.dataset.test.image_token')}
-          </Box>
-        ))}
+          return (
+            <Box
+              key={cacheKey}
+              {...defaultTokenStyles}
+              {...tokenProps}
+              cursor={isPreviewExpired ? 'default' : 'pointer'}
+              role={isPreviewExpired ? undefined : 'button'}
+              tabIndex={isPreviewExpired ? undefined : 0}
+              aria-label={
+                isPreviewExpired
+                  ? t('common:core.dataset.test.image_expired')
+                  : t('common:Click_to_expand')
+              }
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setHoveredImage({
+                  image,
+                  cacheKey,
+                  top: rect.bottom + 8,
+                  left: rect.left
+                });
+              }}
+              onMouseLeave={() => setHoveredImage(undefined)}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isPreviewExpired) return;
+
+                const previewUrl = await resolvePreviewUrl(image, index);
+                if (!previewUrl) return;
+
+                setViewerImage({
+                  cacheKey,
+                  src: previewUrl
+                });
+              }}
+              onKeyDown={(e) => {
+                if (isPreviewExpired || (e.key !== 'Enter' && e.key !== ' ')) return;
+                e.preventDefault();
+                e.currentTarget.click();
+              }}
+            >
+              {t('common:core.dataset.test.image_token')}
+            </Box>
+          );
+        })}
       </Flex>
 
       {!!hoveredImage && (
@@ -279,10 +364,11 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
             <ImagePreview
               image={hoveredImage.image}
               datasetId={datasetId}
-              cachedPreviewUrl={previewUrlMap[hoveredImage.cacheKey]}
+              cachedPreviewUrl={hoveredPreviewUrl}
               onPreviewUrlChange={(previewUrl) =>
                 updatePreviewUrl(hoveredImage.cacheKey, previewUrl)
               }
+              onPreviewExpired={() => markPreviewExpired(hoveredImage.cacheKey)}
             />
           </Flex>
         </Portal>

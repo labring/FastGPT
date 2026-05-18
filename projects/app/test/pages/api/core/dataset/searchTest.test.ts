@@ -9,6 +9,7 @@ const mockPushDatasetTestUsage = vi.hoisted(() => vi.fn());
 const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
 const mockGetRerankModel = vi.hoisted(() => vi.fn());
 const mockAddAuditLog = vi.hoisted(() => vi.fn());
+const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
@@ -38,6 +39,12 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: mockAddAuditLog,
   getI18nDatasetType: vi.fn((type: string) => type)
+}));
+
+vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
+  getS3DatasetSource: () => ({
+    createExternalUrl: mockCreateExternalUrl
+  })
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -83,9 +90,12 @@ describe('searchTest query image auth', () => {
       searchMode: DatasetSearchModeEnum.embedding,
       similarity: 0
     });
+    mockCreateExternalUrl.mockResolvedValue({
+      url: 'https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'
+    });
   });
 
-  it('should pass current-team temp image keys to dataset search', async () => {
+  it('should convert current-team temp image keys to external urls before dataset search', async () => {
     await handler({
       body: {
         datasetId,
@@ -98,9 +108,13 @@ describe('searchTest query image auth', () => {
         teamId: 'team-1',
         datasetIds: [datasetId],
         textQueries: [],
-        imageQueries: ['temp/team-1/search-image.png']
+        imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock']
       })
     );
+    expect(mockCreateExternalUrl).toHaveBeenCalledWith({
+      key: 'temp/team-1/search-image.png',
+      expiredHours: 1
+    });
   });
 
   it('should reject non-temp or foreign-team query image keys before dataset search', async () => {
@@ -120,5 +134,6 @@ describe('searchTest query image auth', () => {
 
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
     expect(mockDeepRagSearch).not.toHaveBeenCalled();
+    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
   });
 });

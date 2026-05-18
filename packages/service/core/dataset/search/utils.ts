@@ -4,8 +4,6 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { isS3ObjectKey } from '../../../common/s3/utils';
 import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
@@ -29,9 +27,10 @@ export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
 
 /**
  * 按环境开关规范化图片输入。
- * data URL 已经是模型可读内容，始终原样返回；serviceEnv.MULTIPLE_DATA_TO_BASE64
- * 为 true 时，FastGPT 内部对象 key 和普通图片 URL 都会转成 base64，避免模型服务反向
- * 访问内网/本地存储地址；关闭该开关时，内部对象 key 会换成临时外部访问 URL。
+ * data URL 已经是模型可读内容，始终原样返回；普通图片 URL 只有
+ * serviceEnv.MULTIPLE_DATA_TO_BASE64 为 true 时才转成 base64。
+ * FastGPT 内部对象 key 的鉴权和临时 URL 生成应在入口层完成，避免通用规范化函数
+ * 混入业务权限和存储来源判断。
  * 这里不吞异常，由上层按图片粒度降级，避免一张坏图中断整次检索。
  */
 export const normalizeImageToBase64 = async (imageUrl: string) => {
@@ -39,29 +38,12 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
     return imageUrl;
   }
 
-  const isInternalObjectKey =
-    isS3ObjectKey(imageUrl, 'dataset') ||
-    isS3ObjectKey(imageUrl, 'temp') ||
-    isS3ObjectKey(imageUrl, 'chat');
-
-  if (serviceEnv.MULTIPLE_DATA_TO_BASE64) {
-    if (isInternalObjectKey) {
-      return getS3DatasetSource().getDatasetBase64Image(imageUrl);
-    }
-
-    const { completeBase64 } = await getImageBase64(imageUrl);
-    return completeBase64;
-  }
-
-  if (!isInternalObjectKey) {
+  if (!serviceEnv.MULTIPLE_DATA_TO_BASE64) {
     return imageUrl;
   }
 
-  const { url } = await getS3DatasetSource().createExternalUrl({
-    key: imageUrl,
-    expiredHours: 1
-  });
-  return url;
+  const { completeBase64 } = await getImageBase64(imageUrl);
+  return completeBase64;
 };
 
 /**

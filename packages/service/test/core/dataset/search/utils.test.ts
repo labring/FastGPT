@@ -3,8 +3,6 @@ import { serviceEnv } from '@fastgpt/service/env';
 
 const mockQueryExtension = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
-const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
-const mockGetDatasetBase64Image = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/functions/queryExtension', () => ({
   queryExtension: mockQueryExtension
@@ -12,13 +10,6 @@ vi.mock('@fastgpt/service/core/ai/functions/queryExtension', () => ({
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: mockGetImageBase64
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    createExternalUrl: mockCreateExternalUrl,
-    getDatasetBase64Image: mockGetDatasetBase64Image
-  })
 }));
 
 import {
@@ -46,31 +37,19 @@ describe('normalizeImageToBase64', () => {
 
     expect(result).toBe('https://example.com/image.png');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
-    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
-    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
-  it('should convert internal object keys to temporary access url when base64 conversion is disabled', async () => {
+  it('should keep internal object keys unchanged when base64 conversion is disabled', async () => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
-    mockCreateExternalUrl.mockResolvedValue({
-      url: 'https://file.fastgpt.io/file.png?token=mock'
-    });
 
     const keys = ['dataset/team/file.png', 'temp/team/file.png', 'chat/app/user/chat/file.png'];
 
     await expect(Promise.all(keys.map((key) => normalizeImageToBase64(key)))).resolves.toEqual([
-      'https://file.fastgpt.io/file.png?token=mock',
-      'https://file.fastgpt.io/file.png?token=mock',
-      'https://file.fastgpt.io/file.png?token=mock'
+      'dataset/team/file.png',
+      'temp/team/file.png',
+      'chat/app/user/chat/file.png'
     ]);
-    for (const key of keys) {
-      expect(mockCreateExternalUrl).toHaveBeenCalledWith({
-        key,
-        expiredHours: 1
-      });
-    }
     expect(mockGetImageBase64).not.toHaveBeenCalled();
-    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
   it('should convert image url to base64 when base64 conversion is enabled', async () => {
@@ -83,20 +62,18 @@ describe('normalizeImageToBase64', () => {
 
     expect(result).toBe('data:image/png;base64,converted');
     expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/image.png');
-    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
-    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
-  it('should convert object key to base64 when base64 conversion is enabled', async () => {
+  it('should treat internal object keys as plain inputs when base64 conversion is enabled', async () => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
-    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,dataset');
+    mockGetImageBase64.mockResolvedValue({
+      completeBase64: 'data:image/png;base64,converted'
+    });
 
     const result = await normalizeImageToBase64('dataset/team/file.png');
 
-    expect(result).toBe('data:image/png;base64,dataset');
-    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith('dataset/team/file.png');
-    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
-    expect(mockGetImageBase64).not.toHaveBeenCalled();
+    expect(result).toBe('data:image/png;base64,converted');
+    expect(mockGetImageBase64).toHaveBeenCalledWith('dataset/team/file.png');
   });
 
   it('should keep data image unchanged regardless of base64 conversion flag', async () => {
@@ -106,8 +83,6 @@ describe('normalizeImageToBase64', () => {
 
     expect(result).toBe('data:image/png;base64,input');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
-    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
-    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 });
 

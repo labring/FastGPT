@@ -13,6 +13,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
@@ -61,13 +62,24 @@ export async function handler(
 
   // Search-test images must be temp objects created by this team. Client-supplied keys are not
   // proof of ownership, so reject dataset/chat/foreign-team keys before any S3 read happens.
-  const validQueryImageUrls = queryImageUrls.filter(
+  const validQueryImageKeys = queryImageUrls.filter(
     (key) => isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`)
   );
 
-  if (validQueryImageUrls.length !== queryImageUrls.length) {
+  if (validQueryImageKeys.length !== queryImageUrls.length) {
     return Promise.reject('Invalid query image key');
   }
+
+  // 搜索主链路只接收模型可读图片 URL；temp key 的鉴权和临时 URL 生成固定在入口层完成。
+  const validQueryImageUrls = await Promise.all(
+    validQueryImageKeys.map(async (key) => {
+      const { url } = await getS3DatasetSource().createExternalUrl({
+        key,
+        expiredHours: 1
+      });
+      return url;
+    })
+  );
 
   const rerankModelData = getRerankModel(rerankModel);
 
