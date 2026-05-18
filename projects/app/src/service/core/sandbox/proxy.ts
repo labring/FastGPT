@@ -1,4 +1,5 @@
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   getSandboxProviderConfig,
   connectToSandbox,
@@ -8,11 +9,7 @@ import {
 import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 /**
- * Read code-server's password from the container's config.yaml via exec.
- * Best-effort — returns null when:
- *   - the sandbox can't be resolved
- *   - the config file is missing
- *   - password cannot be resolved from config
+ * 从 code-server 配置文件读取访问密码；读取失败时由调用方按无密码目标处理。
  */
 async function readCodeServerPasswordFromSandbox(
   adapter: Awaited<ReturnType<typeof connectToSandbox>>
@@ -38,8 +35,11 @@ export async function getSandboxProxyTarget(
 ): Promise<SandboxProxyTargetResponse> {
   const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
   if (!sandbox) throw new Error('Sandbox not found');
+  if (sandbox.status !== SandboxStatusEnum.running) {
+    throw new Error('Sandbox is not running');
+  }
 
-  const providerConfig = getSandboxProviderConfig();
+  const providerConfig = getSandboxProviderConfig(sandbox.provider);
   const adapter = await connectToSandbox(providerConfig, sandbox.sandboxId);
 
   try {

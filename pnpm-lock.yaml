@@ -444,8 +444,8 @@ importers:
         specifier: workspace:*
         version: link:../../sdk/otel
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.40-beta.2
-        version: 0.0.40-beta.2
+        specifier: ^0.0.40-beta.4
+        version: 0.0.40-beta.4
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -3551,8 +3551,8 @@ packages:
   '@fastgpt-sdk/plugin@0.6.1':
     resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.2':
-    resolution: {integrity: sha512-mnn8esKryPHcH0CgE0VyC5gTJny/IspC3+5tDWd4T9XHxsT4q/QZxRreRE5OhzEm3WIZWWIGw2aXC6dn6lSl7g==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.4':
+    resolution: {integrity: sha512-Kvk7EID9hqxv4cmFziuItP8HL56KJd1/CuEm0p+e3QoZOsE2Ng1ECQZkEpSUHHlH6x1X2uyyXuHI06f4y25qng==}
     engines: {node: '>=18'}
 
   '@fidm/asn1@1.0.4':
@@ -17665,7 +17665,7 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.2':
+  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.4':
     dependencies:
       '@alibaba-group/opensandbox': 0.1.6
       '@e2b/code-interpreter': 2.4.0

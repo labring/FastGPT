@@ -68,6 +68,23 @@ const SandboxIframe = () => {
   const tokenTtl = useSystemStore((s) => s.feConfigs?.sandboxProxy?.tokenTtl) ?? 1800;
   const tokenRefreshInterval = getTokenRefreshInterval(tokenTtl);
   const sandboxId = sandboxEndpoint?.sandboxId;
+  // 子域用于隔离 code-server 的绝对 URL/WS/cookie；provider path 由 sandbox-proxy 内部解析。
+  const sandboxOrigin = sandboxId && proxyBase ? `${proxyScheme}://${sandboxId}.${proxyBase}` : '';
+
+  React.useEffect(() => {
+    if (!sandboxOrigin) return;
+
+    const handleSandboxProxyRefresh = (event: MessageEvent) => {
+      if (event.origin !== sandboxOrigin || event.data?.type !== 'sandboxProxyRefreshPage') {
+        return;
+      }
+
+      window.location.reload();
+    };
+
+    window.addEventListener('message', handleSandboxProxyRefresh);
+    return () => window.removeEventListener('message', handleSandboxProxyRefresh);
+  }, [sandboxOrigin]);
 
   const { data: tokenData } = useQuery({
     queryKey: ['sandboxProxyToken', sandboxId],
@@ -103,9 +120,6 @@ const SandboxIframe = () => {
       </Box>
     );
   }
-
-  // 子域用于隔离 code-server 的绝对 URL/WS/cookie；provider path 由 sandbox-proxy 内部解析。
-  const sandboxOrigin = `${proxyScheme}://${sandboxId}.${proxyBase}`;
 
   return (
     <Box w={'100%'} h={'100%'}>

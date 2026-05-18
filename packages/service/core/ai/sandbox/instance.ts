@@ -61,6 +61,8 @@ export async function updateSandboxInstanceEndpoint(params: {
     { _id: instanceId },
     {
       $set: {
+        status: SandboxStatusEnum.running,
+        lastActiveAt: new Date(),
         'metadata.endpoint': endpoint
       }
     }
