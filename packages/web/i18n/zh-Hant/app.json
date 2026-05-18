@@ -115,7 +115,7 @@
   "custom_plugin": "自訂外掛",
   "custom_plugin_associated_plugin_label": "關聯外掛",
   "custom_plugin_associated_plugin_placeholder": "輸入外掛名稱或 appId 尋找外掛",
-  "custom_plugin_associated_plugin_required": "關聯應用不能為空",
+  "custom_plugin_associated_plugin_required": "關聯外掛不能為空",
   "custom_plugin_author_label": "作者名稱",
   "custom_plugin_author_placeholder": "預設為系統名稱",
   "custom_plugin_call_price_label": "呼叫價格 (n積分/次)",

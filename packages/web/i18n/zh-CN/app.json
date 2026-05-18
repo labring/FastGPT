@@ -123,7 +123,7 @@
   "custom_plugin": "自定义工具",
   "custom_plugin_associated_plugin_label": "关联工具",
   "custom_plugin_associated_plugin_placeholder": "输入工具名或 appId 查找工具",
-  "custom_plugin_associated_plugin_required": "关联应用不能为空",
+  "custom_plugin_associated_plugin_required": "关联工具不能为空",
   "custom_plugin_author_label": "作者名称",
   "custom_plugin_author_placeholder": "默认为系统名",
   "custom_plugin_call_price_label": "调用价格 (n积分/次)",
