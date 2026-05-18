@@ -112,13 +112,6 @@ const ChunkCardList = React.memo(function QuoteList({
           }
         }
 
-        // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
-        let recallRank = '-';
-        if (item.retrievalRank !== undefined) {
-          recallRank = `${item.retrievalRank + 1}`;
-        }
-        !isAgenticMode && descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
-
         // 使用 TOP1、TOP2 格式作为标题
         const title = `TOP${index + 1}`;
 
