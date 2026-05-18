@@ -464,6 +464,101 @@ describe('mergeResumeCompletedChatRecords', () => {
     ]);
     expect(result[1].value).toEqual([{ text: { content: 'done' } }]);
   });
+
+  it('preserves hydrated submitted interactive values when completed interactive dataId changes', () => {
+    const responseChatId = 'streaming-ai-data-id';
+    const hydratedInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'usage-id',
+      params: {
+        description: '',
+        submitted: true,
+        inputForm: [
+          {
+            type: 'fileSelect',
+            key: 'File',
+            label: 'File',
+            valueType: 'arrayString',
+            description: '',
+            required: false,
+            defaultValue: '',
+            canLocalUpload: true,
+            canSelectFile: true,
+            maxFiles: 5,
+            value: [
+              {
+                name: 'file.docx',
+                url: 'https://example.com/file.docx'
+              }
+            ]
+          }
+        ]
+      }
+    };
+    const currentRecords = [
+      {
+        id: 'temporary-interactive-ai-data-id',
+        dataId: 'temporary-interactive-ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ interactive: hydratedInteractive }]
+      },
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'loading',
+        value: [{ text: { content: 'streaming' } }]
+      }
+    ] as ChatSiteItemType[];
+    const completedRecords = [
+      {
+        id: 'persisted-interactive-ai-data-id',
+        dataId: 'persisted-interactive-ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              ...hydratedInteractive,
+              params: {
+                ...hydratedInteractive.params,
+                inputForm: [
+                  {
+                    ...hydratedInteractive.params.inputForm[0],
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        id: responseChatId,
+        dataId: responseChatId,
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [{ text: { content: 'done' } }]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords,
+      completedRecords,
+      responseChatId
+    });
+
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        name: 'file.docx',
+        url: 'https://example.com/file.docx'
+      }
+    ]);
+  });
 });
 
 describe('refreshSubmittedFormInteractiveValues', () => {

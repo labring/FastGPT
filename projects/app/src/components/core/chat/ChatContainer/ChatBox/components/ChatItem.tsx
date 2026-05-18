@@ -18,7 +18,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -112,6 +115,7 @@ const HumanContentCard = React.memo(
 );
 const AIContentCard = React.memo(function AIContentCard({
   chatValue,
+  responseData,
   dataId,
   isLastChild,
   isChatting,
@@ -120,6 +124,7 @@ const AIContentCard = React.memo(function AIContentCard({
 }: {
   dataId: string;
   chatValue: AIChatItemValueItemType[];
+  responseData?: ChatHistoryItemResType[];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
@@ -150,6 +155,7 @@ const AIContentCard = React.memo(function AIContentCard({
             <AIResponseBox
               chatItemDataId={dataId}
               value={value}
+              responseData={responseData}
               isLastResponseValue={isLastResponse}
               isLastChild={isLastChild}
               isChatting={isChatting}
@@ -464,6 +470,7 @@ const ChatItem = (props: Props) => {
                 <>
                   <AIContentCard
                     chatValue={value as AIChatItemValueItemType[]}
+                    responseData={chat.responseData}
                     dataId={chat.dataId}
                     isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                     isChatting={isChatting}
