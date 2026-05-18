@@ -38,7 +38,7 @@ const UsageItemSchema = new Schema({
   duration: Number,
   pages: Number,
   count: Number,
-  model: String
+  modelId: String
 });
 
 try {

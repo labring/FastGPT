@@ -26,8 +26,8 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type GetDatasetListWithChildrenBody = {
@@ -193,7 +193,7 @@ async function handler(
 
       const children = await MongoDataset.find(
         { parentId: { $in: [...childIdToRootFolders.keys()] }, teamId, deleteTime: null },
-        '_id type parentId avatar name intro vectorModel inheritPermission tmbId updateTime'
+        '_id type parentId avatar name intro vectorModelId inheritPermission tmbId updateTime'
       ).lean();
 
       const nextQueue: FolderQueueItem[] = [];
@@ -351,10 +351,7 @@ async function handler(
       name: dataset.name,
       intro: dataset.intro,
       type: dataset.type,
-      vectorModel:
-        dataset.type !== DatasetTypeEnum.structureDocument
-          ? getEmbeddingModel(dataset.vectorModel)
-          : undefined,
+      vectorModel: getEmbeddingModelById(dataset.vectorModelId), 
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,
       updateTime: dataset.updateTime,

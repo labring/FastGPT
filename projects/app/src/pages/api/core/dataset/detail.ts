@@ -1,4 +1,4 @@
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModelById, getEmbeddingModelById, getVlmModelById } from '@fastgpt/service/core/ai/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
@@ -32,10 +32,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     permission,
     vectorModel:
       dataset.type !== DatasetTypeEnum.structureDocument
-        ? getEmbeddingModel(dataset.vectorModel)
+        ? getEmbeddingModelById(dataset.vectorModelId)
         : (undefined as any),
-    agentModel: getLLMModel(dataset.agentModel),
-    vlmModel: getVlmModel(dataset.vlmModel),
+    agentModel: getLLMModelById(dataset.agentModelId),
+    vlmModel: getVlmModelById(dataset.vlmModelId),
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   };
 

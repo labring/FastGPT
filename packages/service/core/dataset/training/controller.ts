@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
+import { getLLMModelById, getEmbeddingModelById, getVlmModelById } from '../../ai/model';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '../../../../global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
@@ -44,9 +44,9 @@ export const pushDataListToTrainingQueue = async ({
   tmbId,
   datasetId,
   collectionId,
-  agentModel,
-  vectorModel,
-  vlmModel,
+  agentModelId,
+  vectorModelId,
+  vlmModelId,
   data,
   billId,
   mode = TrainingModeEnum.chunk,
@@ -61,9 +61,9 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel: string;
-  vectorModel: string;
-  vlmModel?: string;
+  agentModelId: string;
+  vectorModelId: string;
+  vlmModelId?: string;
 
   indexSize?: number;
 
@@ -86,11 +86,11 @@ export const pushDataListToTrainingQueue = async ({
     throw new Error('知识库正在进行同义词处理,请等待处理完成后再训练');
   }
 
-  const vectorModelData = getEmbeddingModel(vectorModel);
+  const vectorModelData = getEmbeddingModelById(vectorModelId);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));
   }
-  const agentModelData = getLLMModel(agentModel);
+  const agentModelData = getLLMModelById(agentModelId);
   if (!agentModelData) {
     return Promise.reject(i18nT('common:error_llm_not_config'));
   }
@@ -111,7 +111,7 @@ export const pushDataListToTrainingQueue = async ({
       };
     }
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
-      const vllmModelData = getVlmModel(vlmModel);
+      const vllmModelData = getVlmModelById(vlmModelId);
       if (!vllmModelData) {
         // imageParse mode can use customPdfParse service instead of VLM
         const hasCustomPdfParse =

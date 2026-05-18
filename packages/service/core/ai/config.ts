@@ -8,7 +8,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../global/common/i18n/utils';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import { getLLMModel } from './model';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
@@ -50,7 +49,7 @@ export const createChatCompletion = async ({
   timeout,
   options
 }: {
-  modelData?: LLMModelItemType;
+  modelData: LLMModelItemType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
@@ -71,11 +70,7 @@ export const createChatCompletion = async ({
 > => {
   try {
     // Rewrite model
-    const modelConstantsData = modelData || getLLMModel(body.model);
-    if (!modelConstantsData) {
-      return Promise.reject(`${body.model} not found`);
-    }
-    body.model = modelConstantsData.model;
+    body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;
     const ai = getAIApi({
@@ -89,11 +84,11 @@ export const createChatCompletion = async ({
 
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),
+      ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelConstantsData.requestAuth
-          ? { Authorization: `Bearer ${modelConstantsData.requestAuth}` }
+        ...(modelData.requestAuth
+          ? { Authorization: `Bearer ${modelData.requestAuth}` }
           : {})
       }
     });

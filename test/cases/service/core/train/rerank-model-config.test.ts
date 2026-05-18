@@ -66,6 +66,8 @@ describe('Rerank Model Config Controller', () => {
           api_key: 'test-api-key',
           model: 'test-model'
         },
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         isActive: true,
         charsPointsPrice: 1,
         maxToken: 8192
@@ -76,6 +78,9 @@ describe('Rerank Model Config Controller', () => {
         { model: 'test-model' },
         {
           model: 'test-model',
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          isShared: false,
           metadata: expect.objectContaining({
             provider: 'aicp',
             model: 'test-model',
@@ -116,6 +121,8 @@ describe('Rerank Model Config Controller', () => {
         name: 'Poll Test Model',
         endpoint,
         isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         charsPointsPrice: 1
       });
 
@@ -147,6 +154,8 @@ describe('Rerank Model Config Controller', () => {
             model: 'test-model'
           },
           isActive: true,
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
           charsPointsPrice: 1
         })
       ).rejects.toThrow('did not become available');
@@ -166,6 +175,8 @@ describe('Rerank Model Config Controller', () => {
           model: 'simple-model'
         },
         isActive: false,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         charsPointsPrice: 2
       });
 
@@ -173,6 +184,9 @@ describe('Rerank Model Config Controller', () => {
         { model: 'simple-model' },
         {
           model: 'simple-model',
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          isShared: false,
           metadata: expect.objectContaining({
             provider: 'aicp',
             model: 'simple-model',
@@ -210,6 +224,8 @@ describe('Rerank Model Config Controller', () => {
             model: 'error-model'
           },
           isActive: true,
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
           charsPointsPrice: 1
         })
       ).rejects.toThrow('Database connection failed');
@@ -230,6 +246,8 @@ describe('Rerank Model Config Controller', () => {
           model: 'log-test-model'
         },
         isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         charsPointsPrice: 0
       });
 

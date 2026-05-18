@@ -8,6 +8,7 @@ type PriceType = {
   outputPrice?: number; // 1k tokens=n points
 };
 type BaseModelItemType = {
+  id: string
   provider: string;
   model: string;
   name: string;

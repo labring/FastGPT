@@ -6,7 +6,7 @@ import {
   deleteDatasetDataVector,
   insertDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { jiebaSplitWithCustomDict } from '@fastgpt/service/common/string/jieba';
 import type {
@@ -26,7 +26,7 @@ import {
 } from '@fastgpt/service/core/dataset/indexTransform/utils';
 
 type TrainingDataType = DatasetTrainingSchemaType & {
-  dataset: { vectorModel: string };
+  dataset: { vectorModelId: string };
   collection: { name: string };
   data: {
     _id: string;
@@ -117,7 +117,7 @@ export const processSynonymStandardize = async ({
   });
 
   // ✅ 获取 embedding 模型的 maxToken 限制
-  const embeddingModel = getEmbeddingModel(trainingData.dataset.vectorModel);
+  const embeddingModel = getEmbeddingModelById(trainingData.dataset.vectorModelId);
   const maxTokenLimit = embeddingModel?.maxToken || 8000;
 
   // 2. 对 q/a 应用同义词 (仅用于全文检索,不存储)
@@ -232,7 +232,7 @@ export const processSynonymStandardize = async ({
     // 插入新向量
     insertResult = await insertDatasetDataVector({
       inputs: indexesToUpdate.map((item) => item.indexResult.transformedText),
-      model: getEmbeddingModel(trainingData.dataset.vectorModel),
+      model: getEmbeddingModelById(trainingData.dataset.vectorModelId),
       teamId: String(teamId),
       datasetId: String(datasetId),
       collectionId: String(trainingData.collectionId)

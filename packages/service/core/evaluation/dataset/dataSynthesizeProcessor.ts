@@ -17,17 +17,18 @@ import {
 import { createSynthesizerInstance } from '../synthesizer';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { createEvalDatasetDataSynthesisUsage } from '../../../support/wallet/usage/controller';
+import { getLLMModelById } from '../../ai/model';
 import { addAuditLog } from '../../../support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
-  const { dataId, intelligentGenerationModel, evalDatasetCollectionId } = job.data;
+  const { dataId, intelligentGenerationModelId, evalDatasetCollectionId } = job.data;
 
   try {
     addLog.info('Starting eval dataset data synthesis', {
       dataId,
       evalDatasetCollectionId,
-      intelligentGenerationModel
+      intelligentGenerationModelId
     });
 
     const sourceData = await MongoDatasetData.findById(dataId);
@@ -45,7 +46,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
     await checkTeamAIPoints(evalDatasetCollection.teamId);
 
     const llmConfig = {
-      name: intelligentGenerationModel
+      modelId: intelligentGenerationModelId
     };
 
     const synthesisCase = {
@@ -61,7 +62,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
       const { totalPoints: calculatedPoints } = await createEvalDatasetDataSynthesisUsage({
         teamId: evalDatasetCollection.teamId,
         tmbId: evalDatasetCollection.tmbId,
-        model: intelligentGenerationModel,
+        modelId: getLLMModelById(intelligentGenerationModelId)?.id || intelligentGenerationModelId,
         usages: synthesisResult.usages
       });
       totalPoints = calculatedPoints;
@@ -92,7 +93,7 @@ async function processor(job: Job<EvalDatasetDataSynthesizeData>) {
         sourceDataId: sourceData._id.toString(),
         sourceDatasetId: sourceData.datasetId.toString(),
         sourceCollectionId: sourceData.collectionId.toString(),
-        intelligentGenerationModel,
+        intelligentGenerationModelId: intelligentGenerationModelId,
         generatedAt: new Date(),
         synthesizedAt: new Date()
       },

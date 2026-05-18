@@ -96,8 +96,8 @@ describe('Rerank Train Task Controller', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    // Mock global.reRankModelMap
-    (global as any).reRankModelMap = new Map([
+    // Mock global.reRankModelIdMap
+    (global as any).reRankModelIdMap = new Map([
       [
         'model_123',
         {
@@ -186,11 +186,8 @@ describe('Rerank Train Task Controller', () => {
     });
 
     test('基础模型已禁用时应拒绝创建', async () => {
-      const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
-
-      (MongoSystemModel.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue({ metadata: { isActive: false } })
-      });
+      // Set isActive: false on the model in the global map (business code reads from global.reRankModelIdMap)
+      (global as any).reRankModelIdMap.get('model_123').isActive = false;
 
       await expect(
         createRerankTrainTask({

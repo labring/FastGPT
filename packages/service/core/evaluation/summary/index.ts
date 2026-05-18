@@ -578,7 +578,7 @@ export class EvaluationSummaryService {
     });
 
     const modelData = getEvaluationSummaryModel();
-    const tokenLimit = getEvaluationSummaryTokenLimit(modelData.name);
+    const tokenLimit = getEvaluationSummaryTokenLimit(modelData.model || '');
     const { truncatedData, truncatedCount } = await this.truncateDataByTokens(
       filteredData,
       tokenLimit,
@@ -918,7 +918,7 @@ export class EvaluationSummaryService {
       const outputTokens = usage?.completion_tokens || 0;
 
       const { totalPoints } = formatModelChars2Points({
-        model: modelData.model,
+        modelId: modelData.id,
         inputTokens,
         outputTokens
       });

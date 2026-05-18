@@ -12,7 +12,7 @@ import {
   type ValidationResult,
   type ValidationError
 } from '@fastgpt/global/core/evaluation/validate';
-import { getEvaluationModel, getEmbeddingModel } from '../../ai/model';
+import { getEvaluationModelById, getEmbeddingModelById } from '../../ai/model';
 import { createDitingClient } from './ditingClient';
 import { formatModelChars2Points } from '../../../support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
@@ -89,25 +89,25 @@ export abstract class Evaluator extends Validatable {
 
       // Validate LLM configuration if provided
       if (this.llmConfig) {
-        if (!this.llmConfig.name) {
+        if (!this.llmConfig.modelId) {
           errors.push({
             code: EvaluationErrEnum.evaluatorLLmModelNotFound,
-            message: 'LLM model name is required',
-            field: 'llmConfig.name'
+            message: 'LLM model modelId is required',
+            field: 'llmConfig.modelId'
           });
         } else {
           try {
-            const llm = getEvaluationModel(this.llmConfig.name);
+            const llm = getEvaluationModelById(this.llmConfig.modelId);
             if (!llm) {
-              throw new Error(`Evaluation model '${this.llmConfig.name}' not found`);
+              throw new Error(`Evaluation model '${this.llmConfig.modelId}' not found`);
             }
           } catch (err) {
             errors.push({
               code: EvaluationErrEnum.evaluatorLLmModelNotFound,
-              message: `LLM model '${this.llmConfig.name}' not found or not accessible`,
-              field: 'llmConfig.name',
+              message: `LLM model '${this.llmConfig.modelId}' not found or not accessible`,
+              field: 'llmConfig.modelId',
               debugInfo: {
-                modelName: this.llmConfig.name,
+                modelName: this.llmConfig.modelId,
                 error: err instanceof Error ? err.message : String(err)
               }
             });
@@ -117,22 +117,22 @@ export abstract class Evaluator extends Validatable {
 
       // Validate embedding configuration if provided
       if (this.embeddingConfig) {
-        if (!this.embeddingConfig.name) {
+        if (!this.embeddingConfig.modelId) {
           errors.push({
             code: EvaluationErrEnum.evaluatorEmbeddingModelNotFound,
-            message: 'Embedding model name is required',
-            field: 'embeddingConfig.name'
+            message: 'Embedding model id is required',
+            field: 'embeddingConfig.modelId'
           });
         } else {
           try {
-            getEmbeddingModel(this.embeddingConfig.name);
+            getEmbeddingModelById(this.embeddingConfig.modelId);
           } catch (err) {
             errors.push({
               code: EvaluationErrEnum.evaluatorEmbeddingModelNotFound,
-              message: `Embedding model '${this.embeddingConfig.name}' not found or not accessible`,
-              field: 'embeddingConfig.name',
+              message: `Embedding model '${this.embeddingConfig.modelId}' not found or not accessible`,
+              field: 'embeddingConfig.modelId',
               debugInfo: {
-                modelName: this.embeddingConfig.name,
+                modelName: this.embeddingConfig.modelId,
                 error: err instanceof Error ? err.message : String(err)
               }
             });
@@ -191,14 +191,14 @@ export class DitingEvaluator extends Evaluator {
         if (usage.promptTokens || usage.completionTokens) {
           const modelType =
             usage.modelType === 'embed' ? ModelTypeEnum.embedding : ModelTypeEnum.llm;
-          const model =
+          const modelId =
             modelType === ModelTypeEnum.embedding
-              ? this.embeddingConfig?.name
-              : this.llmConfig?.name;
+              ? this.embeddingConfig?.modelId
+              : this.llmConfig?.modelId;
 
-          if (model) {
+          if (modelId) {
             const { totalPoints: usagePoints } = formatModelChars2Points({
-              model,
+              modelId,
               inputTokens: usage.promptTokens || 0,
               outputTokens: usage.completionTokens || 0
             });
@@ -242,14 +242,14 @@ export async function createEvaluatorInstance(
   let llmConfig: EvalModelConfigType | undefined = undefined;
   let embeddingConfig: EvalModelConfigType | undefined = undefined;
 
-  if (evaluatorConfig.runtimeConfig?.llm) {
+  if (evaluatorConfig.runtimeConfig?.llmId) {
     try {
-      const llm = getEvaluationModel(evaluatorConfig.runtimeConfig.llm);
+      const llm = getEvaluationModelById(evaluatorConfig.runtimeConfig.llmId);
       if (!llm) {
-        throw new Error(`Evaluation model '${evaluatorConfig.runtimeConfig.llm}' not found`);
+        throw new Error(`Evaluation model '${evaluatorConfig.runtimeConfig.llmId}' not found`);
       }
       llmConfig = {
-        name: evaluatorConfig.runtimeConfig.llm,
+        modelId: evaluatorConfig.runtimeConfig.llmId,
         baseUrl: llm.requestUrl ?? undefined,
         apiKey: llm.requestAuth ?? undefined
       };
@@ -258,11 +258,11 @@ export async function createEvaluatorInstance(
     }
   }
 
-  if (evaluatorConfig.runtimeConfig?.embedding) {
+  if (evaluatorConfig.runtimeConfig?.embeddingId) {
     try {
-      const embedding = getEmbeddingModel(evaluatorConfig.runtimeConfig.embedding);
+      const embedding = getEmbeddingModelById(evaluatorConfig.runtimeConfig.embeddingId);
       embeddingConfig = {
-        name: evaluatorConfig.runtimeConfig.embedding,
+        modelId: evaluatorConfig.runtimeConfig.embeddingId,
         baseUrl: embedding.requestUrl ?? undefined,
         apiKey: embedding.requestAuth ?? undefined
       };

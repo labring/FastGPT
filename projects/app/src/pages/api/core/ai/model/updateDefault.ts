@@ -3,20 +3,20 @@ import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export type updateDefaultQuery = {};
 
 export type updateDefaultBody = {
-  [ModelTypeEnum.llm]?: string;
-  [ModelTypeEnum.embedding]?: string;
-  [ModelTypeEnum.tts]?: string;
-  [ModelTypeEnum.stt]?: string;
-  [ModelTypeEnum.rerank]?: string;
-  datasetTextLLM?: string;
-  datasetImageLLM?: string;
-  evaluation?: string;
+  llmId?: string;
+  embeddingId?: string;
+  ttsId?: string;
+  sttId?: string;
+  rerankId?: string;
+  datasetTextLLMId?: string;
+  datasetImageLLMId?: string;
+  evaluationId?: string;
 };
 
 export type updateDefaultResponse = {};
@@ -27,8 +27,16 @@ async function handler(
 ): Promise<updateDefaultResponse> {
   await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, evaluation } =
-    req.body;
+  const {
+    llmId,
+    embeddingId,
+    ttsId,
+    sttId,
+    rerankId,
+    datasetTextLLMId,
+    datasetImageLLMId,
+    evaluationId
+  } = req.body;
 
   await mongoSessionRun(async (session) => {
     // Remove all default flags
@@ -45,58 +53,58 @@ async function handler(
       { session }
     );
 
-    if (llm) {
+    if (llmId) {
       await MongoSystemModel.updateOne(
-        { model: llm },
+        { _id: new Types.ObjectId(llmId) },
         { $set: { 'metadata.isDefault': true } },
         { session }
       );
     }
-    if (datasetTextLLM) {
+    if (datasetTextLLMId) {
       await MongoSystemModel.updateOne(
-        { model: datasetTextLLM },
+        { _id: new Types.ObjectId(datasetTextLLMId) },
         { $set: { 'metadata.isDefaultDatasetTextModel': true } },
         { session }
       );
     }
-    if (datasetImageLLM) {
+    if (datasetImageLLMId) {
       await MongoSystemModel.updateOne(
-        { model: datasetImageLLM },
+        { _id: new Types.ObjectId(datasetImageLLMId) },
         { $set: { 'metadata.isDefaultDatasetImageModel': true } },
         { session }
       );
     }
-    if (evaluation) {
+    if (evaluationId) {
       await MongoSystemModel.updateOne(
-        { model: evaluation },
+        { _id: new Types.ObjectId(evaluationId) },
         { $set: { 'metadata.isDefaultEvaluationModel': true } },
         { session }
       );
     }
-    if (embedding) {
+    if (embeddingId) {
       await MongoSystemModel.updateOne(
-        { model: embedding },
+        { _id: new Types.ObjectId(embeddingId) },
         { $set: { 'metadata.isDefault': true } },
         { session }
       );
     }
-    if (tts) {
+    if (ttsId) {
       await MongoSystemModel.updateOne(
-        { model: tts },
+        { _id: new Types.ObjectId(ttsId) },
         { $set: { 'metadata.isDefault': true } },
         { session }
       );
     }
-    if (stt) {
+    if (sttId) {
       await MongoSystemModel.updateOne(
-        { model: stt },
+        { _id: new Types.ObjectId(sttId) },
         { $set: { 'metadata.isDefault': true } },
         { session }
       );
     }
-    if (rerank) {
+    if (rerankId) {
       await MongoSystemModel.updateOne(
-        { model: rerank },
+        { _id: new Types.ObjectId(rerankId) },
         { $set: { 'metadata.isDefault': true } },
         { session }
       );

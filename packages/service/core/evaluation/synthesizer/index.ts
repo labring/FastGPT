@@ -5,7 +5,7 @@ import type {
   EvalModelConfigType,
   SynthesisResult
 } from '@fastgpt/global/core/evaluation/metric/type';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModelById, getEmbeddingModelById } from '../../ai/model';
 import { createDitingSynthesisClient } from './ditingSynthesisClient';
 
 export abstract class Synthesizer {
@@ -73,9 +73,9 @@ export function createSynthesizerInstance(
     synthesizerName: synthesizerName
   };
 
-  if (llmConfig?.name) {
+  if (llmConfig?.modelId) {
     try {
-      const llm = getLLMModel(llmConfig.name);
+      const llm = getLLMModelById(llmConfig.modelId);
       llmConfig = {
         ...llmConfig,
         baseUrl: llm.requestUrl || '',
@@ -86,9 +86,9 @@ export function createSynthesizerInstance(
     }
   }
 
-  if (embeddingConfig?.name) {
+  if (embeddingConfig?.modelId) {
     try {
-      const embedding = getEmbeddingModel(embeddingConfig.name);
+      const embedding = getEmbeddingModelById(embeddingConfig.modelId);
       embeddingConfig = {
         ...embeddingConfig,
         baseUrl: embedding.requestUrl || '',

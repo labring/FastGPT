@@ -1,4 +1,3 @@
-import { getEmbeddingModel } from '../../../../service/core/ai/model';
 import { type EmbeddingModelItemType, type LLMModelItemType } from '../../ai/model.schema';
 import {
   ChunkSettingModeEnum,
@@ -30,17 +29,13 @@ export const getLLMMaxChunkSize = (model?: LLMModelItemType) => {
 };
 
 // Index size
-export const getMaxIndexSize = (model?: EmbeddingModelItemType | string) => {
+export const getMaxIndexSize = (model?: EmbeddingModelItemType) => {
   if (!model) return 512;
-  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
-
-  return modelData?.maxToken || 512;
+  return model?.maxToken || 512;
 };
-export const getAutoIndexSize = (model?: EmbeddingModelItemType | string) => {
+export const getAutoIndexSize = (model?: EmbeddingModelItemType) => {
   if (!model) return 512;
-
-  const modelData = typeof model === 'string' ? getEmbeddingModel(model) : model;
-  return modelData?.defaultToken || 512;
+  return model?.defaultToken || 512;
 };
 
 const indexSizeSelectList = [

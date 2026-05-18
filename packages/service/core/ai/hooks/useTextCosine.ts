@@ -4,7 +4,7 @@
 */
 
 import { getVectorsByText } from '../embedding';
-import { getEmbeddingModel } from '../model';
+import { getEmbeddingModelById } from '../model';
 
 class PriorityQueue<T> {
   private heap: Array<{ item: T; priority: number }> = [];
@@ -26,8 +26,8 @@ class PriorityQueue<T> {
     return this.heap.length;
   }
 }
-export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) => {
-  const vectorModel = getEmbeddingModel(embeddingModel);
+export const useTextCosine = ({ embeddingModelId }: { embeddingModelId: string }) => {
+  const vectorModel = getEmbeddingModelById(embeddingModelId);
   // Calculate marginal gain
   const computeMarginalGain = (
     candidateEmbedding: number[],
@@ -149,6 +149,6 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
 
   return {
     lazyGreedyQuerySelection,
-    embeddingModel: vectorModel.model
+    embeddingModelId: vectorModel.id
   };
 };

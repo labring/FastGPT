@@ -18,7 +18,7 @@ describe('form2AppWorkflow', () => {
   it('should generate simple chat workflow when no datasets or tools selected', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-3.5',
         [NodeInputKeyEnum.aiChatTemperature]: 0.7,
         [NodeInputKeyEnum.aiChatMaxToken]: 2000,
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
@@ -37,11 +37,11 @@ describe('form2AppWorkflow', () => {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -57,7 +57,7 @@ describe('form2AppWorkflow', () => {
   it('should generate dataset workflow when datasets are selected', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-3.5',
         [NodeInputKeyEnum.aiChatTemperature]: 0.7,
         [NodeInputKeyEnum.aiChatMaxToken]: 2000,
         [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
@@ -83,11 +83,11 @@ describe('form2AppWorkflow', () => {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [],
@@ -114,7 +114,7 @@ describe('filterSensitiveFormData', () => {
     };
     const appForm: AppFormEditFormType = {
       aiSettings: {
-        [NodeInputKeyEnum.aiModel]: 'gpt-4',
+        [NodeInputKeyEnum.aiModelId]: 'gpt-4',
         [NodeInputKeyEnum.aiChatTemperature]: 0.8,
         maxHistories: 5,
         [NodeInputKeyEnum.aiChatIsResponseText]: true
@@ -128,15 +128,15 @@ describe('filterSensitiveFormData', () => {
             vectorModel: { model: 'text-embedding-ada-002' } as any
           }
         ],
-        searchMode: 'embedding' as any,
+        searchMode: DatasetSearchModeEnum.embedding,
         similarity: 0.9,
         limit: 1500,
         embeddingWeight: 0.7,
         usingReRank: false,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: '',
+        datasetSearchExtensionModelId: '',
         datasetSearchExtensionBg: ''
       },
       selectedTools: [
@@ -243,7 +243,7 @@ describe('appWorkflow2AgentForm', () => {
     });
 
     expect(result.dataset.usingReRank).toBe(false);
-    expect(result.dataset.rerankModel).toBe('');
+    expect(result.dataset.rerankModelId).toBe('');
     expect(result.dataset.rerankWeight).toBe(0.4);
   });
 });

@@ -25,7 +25,7 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel, getRerankModel } from '../../ai/model';
+import { getLLMModelById, getEmbeddingModelById, getVlmModelById, getRerankModelById } from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
@@ -136,8 +136,8 @@ export const createCollectionAndInsertData = async ({
 
   const formatCreateCollectionParams = computedCollectionChunkSettings({
     ...createCollectionParams,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: getLLMModelById(dataset.agentModelId),
+    vectorModel: getEmbeddingModelById(dataset.vectorModelId)
   });
 
   const teamId = formatCreateCollectionParams.teamId;
@@ -236,7 +236,7 @@ export const createCollectionAndInsertData = async ({
         chunkSize: formatCreateCollectionParams.chunkSize,
         paragraphChunkDeep: formatCreateCollectionParams.paragraphChunkDeep,
         paragraphChunkMinSize: formatCreateCollectionParams.paragraphChunkMinSize,
-        maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+        maxSize: getLLMMaxChunkSize(getLLMModelById(dataset.agentModelId)),
         overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
@@ -298,10 +298,10 @@ export const createCollectionAndInsertData = async ({
         tmbId,
         appName: formatCreateCollectionParams.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-        agentModel: getLLMModel(dataset.agentModel)?.name,
-        vllmModel: getVlmModel(dataset.vlmModel)?.name,
-        rerankModel: getRerankModel()?.name,
+        vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id,
+        agentModelId: getLLMModelById(dataset.agentModelId)?.id,
+        vllmModelId: getVlmModelById(dataset.vlmModelId)?.id,
+        rerankModelId: getRerankModelById()?.id,
         session
       });
       return newUsageId;
@@ -322,9 +322,9 @@ export const createCollectionAndInsertData = async ({
           tmbId,
           datasetId: dataset._id,
           collectionId,
-          agentModel: dataset.agentModel,
-          vectorModel: dataset.vectorModel,
-          vlmModel: dataset.vlmModel,
+          agentModelId: dataset.agentModelId,
+          vectorModelId: dataset.vectorModelId,
+          vlmModelId: dataset.vlmModelId,
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,

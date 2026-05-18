@@ -47,7 +47,7 @@ export type ToolDispatchContext = Pick<
   | 'workflowDispatchDeep'
   | 'usagePush'
 > & {
-  model: string;
+  modelId: string;
   datasetParams?: AppFormEditFormType['dataset'];
 };
 
@@ -88,7 +88,7 @@ export async function buildAgentTools({
     maxRunTimes,
     workflowDispatchDeep,
     usagePush,
-    model,
+    modelId,
     datasetParams
   } = ctx;
 
@@ -124,7 +124,7 @@ export async function buildAgentTools({
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
               customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-              model,
+              modelId,
               userKey: externalProvider.openaiAccount as OpenaiAccountType | undefined
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
@@ -146,16 +146,16 @@ export async function buildAgentTools({
                 searchMode: datasetParams.searchMode,
                 embeddingWeight: datasetParams.embeddingWeight,
                 usingReRank: datasetParams.usingReRank ?? false,
-                rerankModel: datasetParams.rerankModel,
+                rerankModelId: datasetParams.rerankModelId,
                 rerankWeight: datasetParams.rerankWeight || 0.5,
                 usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
-                extensionModel: datasetParams.datasetSearchExtensionModel,
+                extensionModelId: datasetParams.datasetSearchExtensionModelId,
                 extensionBg: datasetParams.datasetSearchExtensionBg,
                 collectionFilterMatch: datasetParams.collectionFilterMatch
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              llmModel: model,
+              llmModelId: modelId,
               lang: lang
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);

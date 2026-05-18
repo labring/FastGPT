@@ -20,7 +20,7 @@ import type {
   SqlResultWithDatasetId
 } from '@fastgpt/global/core/dataset/database/api';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { getEmbeddingModel, getLLMModel, getRerankModel } from '../../../ai/model';
+import { getLLMModelById, getRerankModelById, getEmbeddingModelById } from '../../../ai/model';
 import {
   deepRagSearch,
   defaultSearchDatasetData,
@@ -91,7 +91,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankMethod]: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
@@ -99,21 +99,21 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.authTmbId]?: boolean;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]: string;
 
   [NodeInputKeyEnum.datasetDeepSearch]?: boolean;
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 
-  [NodeInputKeyEnum.generateSqlModel]?: string;
+  [NodeInputKeyEnum.generateSqlModelId]?: string;
 
   // 检索模式（单轮/多轮）
   [NodeInputKeyEnum.datasetRetrievalMode]?: `${DatasetRetrievalModeEnum}`;
   // 多轮智能检索配置
-  [NodeInputKeyEnum.datasetAgenticSearchLLMModel]?: string;
-  [NodeInputKeyEnum.datasetAgenticSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchLLMModelId]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetAgenticSearchReasoning]?: boolean;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
@@ -142,23 +142,23 @@ export async function dispatchDatasetSearch(
       searchMode,
       embeddingWeight,
       usingReRank,
-      rerankModel,
+      rerankModelId,
       rerankMethod = RerankMethodEnum.content,
       rerankWeight,
 
       // 检索模式（单轮/多轮）
       retrievalMode = DatasetRetrievalModeEnum.standard,
       // 多轮智能检索配置
-      agenticSearchLLMModel,
-      agenticSearchRerankModel,
+      agenticSearchLLMModelId,
+      agenticSearchRerankModelId,
       agenticSearchReasoning = true,
 
       datasetSearchUsingExtensionQuery,
-      datasetSearchExtensionModel,
+      datasetSearchExtensionModelId,
       datasetSearchExtensionBg,
-      generateSqlModel,
+      generateSqlModelId,
       datasetDeepSearch,
-      datasetDeepSearchModel,
+      datasetDeepSearchModelId,
       datasetDeepSearchMaxTimes,
       datasetDeepSearchBg
     }
@@ -238,13 +238,13 @@ export async function dispatchDatasetSearch(
     );
     // Get vector model for database type search (SearchDatabaseData uses this)
     const vectorModel = useVectorModelDataset
-      ? getEmbeddingModel(
-          (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
-            ?.vectorModel
+      ? getEmbeddingModelById(
+          (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModelId').lean())
+            ?.vectorModelId
         )
       : undefined;
     // Get Rerank Model
-    const rerankModelData = getRerankModel(rerankModel);
+    const rerankModelData = getRerankModelById(rerankModelId);
 
     // Check dataset types and separate them
     const datasetDetails = await Promise.all(
@@ -320,16 +320,16 @@ export async function dispatchDatasetSearch(
       // SQL数据库检索开始计时
       const sqlRetrievalStartTime = Date.now();
 
-      const sqlLLM = getLLMModel(generateSqlModel);
-      // Calculate dynamic limit based on generateSqlModel's maxContext
+      const sqlLLM = getLLMModelById(generateSqlModelId);
+      // Calculate dynamic limit based on generateSqlModelId's maxContext
       const dynamicLimit = calculateDynamicLimit({
-        generateSqlModel: sqlLLM.name,
+        generateSqlModelId,
         safetyFactor: 0.6,
         estimatedTokensPerItem: 1024 // Assume each item may consume around 1000 tokens after formatting
       });
 
       addLog.debug('Dataset Search - Using dynamic limit for database search', {
-        generateSqlModel: sqlLLM.name,
+        generateSqlModelId,
         calculatedLimit: dynamicLimit
       });
 
@@ -367,7 +367,7 @@ export async function dispatchDatasetSearch(
               histories,
               teamId,
               queries: [userChatInput],
-              model: vectorModel!.model,
+              modelId: vectorModel!.id,
               limit: dynamicLimit,
               datasetIds: [datasetId],
               authForbidCollectionIds
@@ -482,13 +482,13 @@ export async function dispatchDatasetSearch(
       if (
         isAssistant &&
         datasetSearchUsingExtensionQuery &&
-        datasetSearchExtensionModel &&
+        datasetSearchExtensionModelId &&
         vectorModel
       ) {
         preComputedQueryExtension = await datasetSearchQueryExtension({
           query: userChatInput,
-          llmModel: getLLMModel(datasetSearchExtensionModel).model,
-          embeddingModel: vectorModel.model,
+          llmModelId: datasetSearchExtensionModelId,
+          embeddingModelId: vectorModel.id,
           extensionBg: datasetSearchExtensionBg,
           histories,
           isAssistant: true,
@@ -503,14 +503,14 @@ export async function dispatchDatasetSearch(
         teamId,
         reRankQuery: userChatInput,
         queries: [userChatInput],
-        model: vectorModel!.model,
+        modelId: vectorModel!.id,
         similarity,
         limit,
         datasetIds: commonDatasetIds,
         searchMode,
         embeddingWeight,
         usingReRank,
-        rerankModel: rerankModelData,
+        rerankModelId: rerankModelData.id,
         rerankMethod,
         rerankWeight,
         collectionFilterMatch,
@@ -619,8 +619,8 @@ export async function dispatchDatasetSearch(
               },
               queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
                 ? {
-                    llmModel: corrFaqQueryExtensionResult.aiExtensionResult.llmModel,
-                    embeddingModel: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModel,
+                    llmModelId: corrFaqQueryExtensionResult.aiExtensionResult.llmModelId,
+                    embeddingModelId: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
                     inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
                     outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
                     embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
@@ -674,8 +674,8 @@ export async function dispatchDatasetSearch(
               retrievalType: 'faq' as const,
               queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
                 ? {
-                    llmModel: corrFaqQueryExtensionResult.aiExtensionResult.llmModel,
-                    embeddingModel: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModel,
+                    llmModelId: corrFaqQueryExtensionResult.aiExtensionResult.llmModelId,
+                    embeddingModelId: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
                     inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
                     outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
                     embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
@@ -707,8 +707,8 @@ export async function dispatchDatasetSearch(
 
           commonSearchResult = await agenticSearchDispatch({
             ...searchData,
-            agenticSearchLLMModel,
-            agenticSearchRerankModel,
+            agenticSearchLLMModelId,
+            agenticSearchRerankModelId,
             agenticSearchReasoning,
             workflowStreamResponse,
             queryLanguage,
@@ -721,7 +721,7 @@ export async function dispatchDatasetSearch(
         } else if (datasetDeepSearch) {
           commonSearchResult = await deepRagSearch({
             ...searchData,
-            datasetDeepSearchModel,
+            datasetDeepSearchModelId,
             datasetDeepSearchMaxTimes,
             datasetDeepSearchBg
           });
@@ -734,7 +734,7 @@ export async function dispatchDatasetSearch(
 
             for (const d of datasets) {
               if (!commonDatasetIds.includes(d.datasetId)) continue;
-              const modelId = d.vectorModel?.model;
+              const modelId = d.vectorModel?.id;
               if (modelId) {
                 if (!modelGroupMap.has(modelId)) {
                   modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
@@ -748,11 +748,11 @@ export async function dispatchDatasetSearch(
             // Fall back to DB lookup for datasets without vectorModel in SelectedDatasetType (backward compat)
             if (needsDbLookupIds.length > 0) {
               const dbModels = await Promise.all(
-                needsDbLookupIds.map((id) => MongoDataset.findById(id, 'vectorModel').lean())
+                needsDbLookupIds.map((id) => MongoDataset.findById(id, 'vectorModelId').lean())
               );
               for (let i = 0; i < needsDbLookupIds.length; i++) {
                 const dsId = needsDbLookupIds[i];
-                const modelId = getEmbeddingModel(dbModels[i]?.vectorModel).model;
+                const modelId = getEmbeddingModelById(dbModels[i]?.vectorModelId).id;
                 if (!modelGroupMap.has(modelId)) {
                   modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
                 }
@@ -778,14 +778,14 @@ export async function dispatchDatasetSearch(
                   teamId,
                   reRankQuery: userChatInput,
                   queries: [userChatInput],
-                  model: group.vectorModelId,
+                  modelId: group.vectorModelId,
                   similarity,
                   limit,
                   datasetIds: group.datasetIds,
                   searchMode,
                   embeddingWeight,
                   usingReRank,
-                  rerankModel: rerankModelData,
+                  rerankModelId: rerankModelData.id,
                   rerankMethod,
                   rerankWeight,
                   collectionFilterMatch,
@@ -796,7 +796,7 @@ export async function dispatchDatasetSearch(
                 const result = await defaultSearchDatasetData({
                   ...groupSearchData,
                   datasetSearchUsingExtensionQuery,
-                  datasetSearchExtensionModel,
+                  datasetSearchExtensionModelId,
                   datasetSearchExtensionBg,
                   isAssistant,
                   synonymDatasetIds: datasetIds, // 所有知识库 ID，用于同义词检索；向量检索使用 groupSearchData.datasetIds（分组 ID）
@@ -859,16 +859,17 @@ export async function dispatchDatasetSearch(
               });
 
               // Store per-model token counts for billing
-              const modelTokenMap = new Map<string, { modelName: string; tokens: number }>();
+              const modelTokenMap = new Map<string, { modelId: string; modelName: string; tokens: number }>();
               for (const { result, vectorModelId } of groupSearchResults) {
                 if (result.embeddingTokens > 0) {
-                  const modelData = getEmbeddingModel(vectorModelId);
+                  const modelData = getEmbeddingModelById(vectorModelId);
                   const key = vectorModelId;
                   const existing = modelTokenMap.get(key);
                   if (existing) {
                     existing.tokens += result.embeddingTokens;
                   } else {
                     modelTokenMap.set(key, {
+                      modelId: modelData?.id || vectorModelId,
                       modelName: modelData?.name || vectorModelId,
                       tokens: result.embeddingTokens
                     });
@@ -934,18 +935,18 @@ export async function dispatchDatasetSearch(
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     // 1. Search vector — bill per embedding model used across all groups
-    const modelTokenMap: Map<string, { modelName: string; tokens: number }> | undefined =
+    const modelTokenMap: Map<string, { modelId: string; modelName: string; tokens: number }> | undefined =
       commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
     if (modelTokenMap && modelTokenMap.size > 0) {
-      for (const { modelName, tokens } of modelTokenMap.values()) {
+      for (const { modelId, modelName, tokens } of modelTokenMap.values()) {
         const { totalPoints, modelName: billingModelName } = formatModelChars2Points({
-          model: modelName,
+          modelId,
           inputTokens: tokens
         });
         nodeUsages.push({
           totalPoints,
           moduleName: node.name,
-          model: billingModelName,
+          modelId: modelId,
           inputTokens: tokens
         });
       }
@@ -953,13 +954,13 @@ export async function dispatchDatasetSearch(
       // Fallback: bill using the primary vectorModel (database search tokens)
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: vectorModel.name,
+          modelId: vectorModel.id,
           inputTokens: embeddingTokens
         });
       nodeUsages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: node.name,
-        model: embeddingModelName,
+        modelId: vectorModel.id,
         inputTokens: embeddingTokens
       });
     }
@@ -967,40 +968,40 @@ export async function dispatchDatasetSearch(
     if (searchUsingReRank) {
       const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
         formatModelChars2Points({
-          model: rerankModelData?.model,
+          modelId: rerankModelData?.id || '',
           inputTokens: reRankInputTokens
         });
       nodeUsages.push({
         totalPoints: reRankTotalPoints,
         moduleName: i18nT('account_usage:rerank'),
-        model: reRankModelName,
+        modelId: rerankModelData?.id,
         inputTokens: reRankInputTokens
       });
     }
     // 3. Query extension
     if (queryExtensionResult) {
       const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-        model: queryExtensionResult.llmModel,
+        modelId: queryExtensionResult.llmModelId,
         inputTokens: queryExtensionResult.inputTokens,
         outputTokens: queryExtensionResult.outputTokens
       });
       nodeUsages.push({
         totalPoints: llmPoints,
         moduleName: i18nT('common:core.module.template.Query extension'),
-        model: llmModelName,
+        modelId: queryExtensionResult.llmModelId,
         inputTokens: queryExtensionResult.inputTokens,
         outputTokens: queryExtensionResult.outputTokens
       });
 
       const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: queryExtensionResult.embeddingModel,
+          modelId: queryExtensionResult.embeddingModelId,
           inputTokens: queryExtensionResult.embeddingTokens
         });
       nodeUsages.push({
         totalPoints: embeddingPoints,
         moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
-        model: embeddingModelName,
+        modelId: queryExtensionResult.embeddingModelId,
         inputTokens: queryExtensionResult.embeddingTokens,
         outputTokens: 0
       });
@@ -1008,14 +1009,14 @@ export async function dispatchDatasetSearch(
     // 4. Deep search
     if (deepSearchResult) {
       const { totalPoints, modelName } = formatModelChars2Points({
-        model: deepSearchResult.model,
+        modelId: deepSearchResult.modelId,
         inputTokens: deepSearchResult.inputTokens,
         outputTokens: deepSearchResult.outputTokens
       });
       nodeUsages.push({
         totalPoints,
         moduleName: i18nT('common:deep_rag_search'),
-        model: modelName,
+        modelId: deepSearchResult.modelId,
         inputTokens: deepSearchResult.inputTokens,
         outputTokens: deepSearchResult.outputTokens
       });
@@ -1025,15 +1026,16 @@ export async function dispatchDatasetSearch(
       agenticSearchResult &&
       (agenticSearchResult.llmInputTokens || agenticSearchResult.llmOutputTokens)
     ) {
+      const modelId = agenticSearchResult.llmModelId || agenticSearchLLMModelId || '';
       const { totalPoints, modelName } = formatModelChars2Points({
-        model: agenticSearchResult.llmModel || agenticSearchLLMModel || '',
+        modelId: modelId,
         inputTokens: agenticSearchResult.llmInputTokens,
         outputTokens: agenticSearchResult.llmOutputTokens
       });
       nodeUsages.push({
         totalPoints,
         moduleName: i18nT('common:agentic_search'),
-        model: modelName,
+        modelId: modelId,
         inputTokens: agenticSearchResult.llmInputTokens,
         outputTokens: agenticSearchResult.llmOutputTokens
       });
@@ -1042,14 +1044,14 @@ export async function dispatchDatasetSearch(
     if (sqlResult.length > 0) {
       sqlResult.forEach((result) => {
         const { totalPoints, modelName } = formatModelChars2Points({
-          model: generateSqlModel!,
+          modelId: generateSqlModelId!,
           inputTokens: result.input_tokens,
           outputTokens: result.output_tokens
         });
         nodeUsages.push({
           totalPoints,
           moduleName: i18nT('common:database_search'),
-          model: modelName,
+          modelId: generateSqlModelId,
           inputTokens: result.input_tokens,
           outputTokens: result.output_tokens
         });
@@ -1098,7 +1100,7 @@ export async function dispatchDatasetSearch(
         totalPoints,
         query: userChatInput,
         retrievalMode: retrievalMode as DatasetRetrievalModeEnum,
-        embeddingModel: vectorModel?.name,
+        embeddingModelId: vectorModel?.id,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,
         limit,
@@ -1107,7 +1109,7 @@ export async function dispatchDatasetSearch(
           searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
         // Rerank
         ...(searchUsingReRank && {
-          rerankModel: rerankModelData?.name,
+          rerankModelId: rerankModelData?.id,
           rerankMethod: rerankMethod,
           rerankWeight: rerankWeight,
           reRankInputTokens
@@ -1117,7 +1119,7 @@ export async function dispatchDatasetSearch(
         searchUsingReRank,
         queryExtensionResult: queryExtensionResult
           ? {
-              model: queryExtensionResult.llmModel,
+              modelId: queryExtensionResult.llmModelId,
               inputTokens: queryExtensionResult.inputTokens,
               outputTokens: queryExtensionResult.outputTokens,
               query: queryExtensionResult.query || '',

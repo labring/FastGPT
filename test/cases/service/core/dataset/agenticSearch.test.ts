@@ -46,7 +46,7 @@ describe('AgenticSearch 功能测试', () => {
       teamId: TEST_CONFIG.teamId,
       uid: 'test-user-id',
       tmbId: 'test-team-member-id',
-      model: TEST_CONFIG.embedModel,
+      modelId: TEST_CONFIG.embedModel,
       datasetIds: TEST_CONFIG.datasetIds,
       reRankQuery: '什么是 FastGPT？',
       queries: ['什么是 FastGPT？'],
@@ -57,7 +57,7 @@ describe('AgenticSearch 功能测试', () => {
     // 调用 agenticSearchDispatch (模拟前端选择"多轮智能检索"模式)
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModel,
       agenticSearchReasoning: true
     });
 
@@ -86,7 +86,7 @@ describe('AgenticSearch 功能测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: TEST_CONFIG.teamId,
-        model: TEST_CONFIG.embedModel,
+        modelId: TEST_CONFIG.embedModel,
         datasetIds: TEST_CONFIG.datasetIds,
         reRankQuery: 'FastGPT 的特点是什么？',
         queries: ['FastGPT 的特点是什么？'],
@@ -96,7 +96,7 @@ describe('AgenticSearch 功能测试', () => {
       // 调用 agenticSearchDispatch，关闭思考过程输出
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: TEST_CONFIG.llmModel,
+        agenticSearchLLMModelId: TEST_CONFIG.llmModel,
         agenticSearchReasoning: false // 关闭思考过程
       });
 
@@ -124,7 +124,7 @@ describe('AgenticSearch 功能测试', () => {
     const props: SearchDatasetDataProps = {
       histories: histories as any,
       teamId: TEST_CONFIG.teamId,
-      model: TEST_CONFIG.embedModel,
+      modelId: TEST_CONFIG.embedModel,
       datasetIds: TEST_CONFIG.datasetIds,
       reRankQuery: '它支持哪些功能？',
       queries: ['它支持哪些功能？'],
@@ -133,7 +133,7 @@ describe('AgenticSearch 功能测试', () => {
 
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModel,
       agenticSearchReasoning: true
     });
 
@@ -151,7 +151,7 @@ describe('AgenticSearch 功能测试', () => {
     const props: SearchDatasetDataProps = {
       histories: [],
       teamId: TEST_CONFIG.teamId,
-      model: TEST_CONFIG.embedModel,
+      modelId: TEST_CONFIG.embedModel,
       datasetIds: TEST_CONFIG.datasetIds,
       reRankQuery: '测试查询',
       queries: ['测试查询'],
@@ -161,7 +161,7 @@ describe('AgenticSearch 功能测试', () => {
     // 使用一个不存在的 LLM 模型，模拟调用失败
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: 'non-existent-model-12345',
+      agenticSearchLLMModelId: 'non-existent-model-12345',
       agenticSearchReasoning: true
     });
 

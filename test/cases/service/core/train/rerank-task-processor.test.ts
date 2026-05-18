@@ -66,7 +66,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   createRerankModelConfig: vi.fn(),
   getDefaultLLMModel: vi.fn(),
-  getRerankModel: vi.fn()
+  getRerankModelById: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
@@ -82,6 +82,14 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
         metadata: {
           charsPointsPrice: 0,
           maxToken: 8192,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+        }
+      })
+    }),
+    findById: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        metadata: {
+          charsPointsPrice: 0,
           instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         }
       })
@@ -417,9 +425,10 @@ describe('Rerank Train Task Processor', () => {
         ])
       });
 
-      // Mock getRerankModel
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-      (getRerankModel as any).mockReturnValue({
+      // Mock getRerankModelById
+      const { getRerankModelById } = await import('@fastgpt/service/core/ai/model');
+      (getRerankModelById as any).mockReturnValue({
+        id: 'test-rerank-model',
         model: 'test-rerank-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -574,18 +583,20 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Verify registration stage - uses tunedModelId as name
-      expect(createRerankModelConfig).toHaveBeenCalledWith({
-        name: 'tuned-model', // use tunedModelId directly as name
-        endpoint: {
-          base_url: 'http://sft-bridge.com/v1',
-          api_key: 'sft-brige-key',
-          model: 'tuned-model'
-        },
-        isActive: true,
-        charsPointsPrice: 0,
-        maxToken: 8192,
-        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-      });
+      expect(createRerankModelConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'tuned-model', // use tunedModelId directly as name
+          endpoint: {
+            base_url: 'http://sft-bridge.com/v1',
+            api_key: 'sft-brige-key',
+            model: 'tuned-model'
+          },
+          isActive: true,
+          charsPointsPrice: 0,
+          maxToken: 8192,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+        })
+      );
 
       // Verify evaluation stage
       expect(synthesizeRerankEvalData).toHaveBeenCalled(); // called multiple times in generate_evaldataset stage (MIN_EVAL_QA_COUNT)
@@ -628,7 +639,7 @@ describe('Rerank Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -770,10 +781,11 @@ describe('Rerank Train Task Processor', () => {
         ])
       });
 
-      // Mock getRerankModel
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-      if (!(getRerankModel as any).mock) {
-        (getRerankModel as any).mockReturnValue({
+      // Mock getRerankModelById
+      const { getRerankModelById } = await import('@fastgpt/service/core/ai/model');
+      if (!(getRerankModelById as any).mock) {
+        (getRerankModelById as any).mockReturnValue({
+          id: 'test-rerank-model',
           model: 'test-rerank-model',
           requestUrl: 'http://test.com',
           requestAuth: 'test-api-key'
@@ -858,7 +870,7 @@ describe('Rerank Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: 'trainset_1', // use existing preparing data, not regenerated
             trainDatasetFilePath: '/tmp/test.jsonl', // use existing preparing data, not regenerated
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -979,8 +991,9 @@ describe('Rerank Train Task Processor', () => {
         ])
       });
 
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-      (getRerankModel as any).mockReturnValue({
+      const { getRerankModelById } = await import('@fastgpt/service/core/ai/model');
+      (getRerankModelById as any).mockReturnValue({
+        id: 'test-rerank-model',
         model: 'test-rerank-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -1299,10 +1312,11 @@ describe('Rerank Train Task Processor', () => {
         ])
       });
 
-      // Mock getRerankModel
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-      if (!(getRerankModel as any).mock) {
-        (getRerankModel as any).mockReturnValue({
+      // Mock getRerankModelById
+      const { getRerankModelById } = await import('@fastgpt/service/core/ai/model');
+      if (!(getRerankModelById as any).mock) {
+        (getRerankModelById as any).mockReturnValue({
+          id: 'test-rerank-model',
           model: 'test-rerank-model',
           requestUrl: 'http://test.com',
           requestAuth: 'test-api-key'
@@ -1370,7 +1384,7 @@ describe('Rerank Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -2025,7 +2039,7 @@ describe('Rerank Train Task Processor', () => {
       expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'gpt-4' // should use system default model
+            modelId: ''
           })
         })
       );
@@ -2145,7 +2159,7 @@ describe('Rerank Train Task Processor', () => {
       expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'default-llm-model' // should use system default model
+            modelId: ''
           })
         })
       );

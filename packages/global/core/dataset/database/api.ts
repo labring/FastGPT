@@ -79,7 +79,7 @@ export type ApplyChangesResponse = {
 export type DatabaseSearchTestBody = {
   datasetId: string;
   query: string;
-  model?: string;
+  modelId?: string;
 };
 
 /*-------Dativate Retrieval Type-------*/

@@ -57,7 +57,7 @@ describe('QualityAssessment API', () => {
   const validEvaluationModel = 'gpt-4';
 
   const setupMocks = () => {
-    global.llmModelMap = new Map([
+    global.llmModelIdMap = new Map([
       ['gpt-4', { model: 'gpt-4' }],
       ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
     ]) as any;
@@ -82,7 +82,7 @@ describe('QualityAssessment API', () => {
       _id: validCollectionId,
       name: 'Test Collection',
       teamId: validTeamId,
-      evaluationModel: validEvaluationModel
+      evaluationModelId: validEvaluationModel
     };
     mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollection as any);
 
@@ -92,8 +92,8 @@ describe('QualityAssessment API', () => {
     mockMongoEvalDatasetData.findByIdAndUpdate.mockResolvedValue({} as any);
   };
 
-  const createRequest = (dataId = validDataId, evaluationModel = validEvaluationModel) => ({
-    body: { dataId, evaluationModel }
+  const createRequest = (dataId = validDataId, evaluationModelId = validEvaluationModel) => ({
+    body: { dataId, evaluationModelId }
   });
 
   beforeEach(setupMocks);
@@ -102,7 +102,7 @@ describe('QualityAssessment API', () => {
     it('should return error when dataId is missing', async () => {
       const req = {
         body: {
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -121,7 +121,7 @@ describe('QualityAssessment API', () => {
       await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
-    it('should return error when evaluationModel is invalid type', async () => {
+    it('should return error when evaluationModelId is invalid type', async () => {
       const req = createRequest(validDataId, 123 as any);
 
       await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetModelNotFound);
@@ -132,7 +132,7 @@ describe('QualityAssessment API', () => {
         _id: validCollectionId,
         name: 'Test Collection',
         teamId: validTeamId,
-        evaluationModel: ''
+        evaluationModelId: ''
       };
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollectionNoModel as any);
 
@@ -142,7 +142,7 @@ describe('QualityAssessment API', () => {
     });
 
     it('should return error when invalid evaluation model', async () => {
-      global.llmModelMap.clear();
+      global.llmModelIdMap.clear();
 
       const req = createRequest(validDataId, 'invalid-model');
 
@@ -170,7 +170,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -185,7 +185,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -196,7 +196,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -214,7 +214,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -229,7 +229,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -244,7 +244,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -259,7 +259,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -274,7 +274,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -287,7 +287,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -295,7 +295,7 @@ describe('QualityAssessment API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evaluationModel: validEvaluationModel
+        evaluationModelId: validEvaluationModel
       });
     });
 
@@ -303,7 +303,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -312,7 +312,7 @@ describe('QualityAssessment API', () => {
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
           'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-          'qualityMetadata.model': validEvaluationModel,
+          'qualityMetadata.modelId': validEvaluationModel,
           'qualityMetadata.queueTime': expect.any(Date)
         },
         $unset: {
@@ -332,7 +332,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -401,26 +401,26 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: '',
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
       await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
-    it('should handle empty string evaluationModel', async () => {
+    it('should handle empty string evaluationModelId', async () => {
       const mockCollectionEmptyModel = {
         _id: validCollectionId,
         name: 'Test Collection',
         teamId: validTeamId,
-        evaluationModel: ''
+        evaluationModelId: ''
       };
       mockMongoEvalDatasetCollection.findOne.mockResolvedValue(mockCollectionEmptyModel as any);
 
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: ''
+          evaluationModelId: ''
         }
       };
 
@@ -431,18 +431,18 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: null,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
       await expect(handler_test(req as any)).rejects.toBe(EvaluationErrEnum.datasetDataIdRequired);
     });
 
-    it('should handle undefined evaluationModel with collection fallback', async () => {
+    it('should handle undefined evaluationModelId with collection fallback', async () => {
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: undefined
+          evaluationModelId: undefined
         }
       };
 
@@ -451,7 +451,7 @@ describe('QualityAssessment API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evaluationModel: validEvaluationModel // Should use collection's model
+        evaluationModelId: validEvaluationModel // Should use collection's model
       });
     });
 
@@ -461,7 +461,7 @@ describe('QualityAssessment API', () => {
       const req = {
         body: {
           dataId: longDataId,
-          evaluationModel: validEvaluationModel
+          evaluationModelId: validEvaluationModel
         }
       };
 
@@ -469,14 +469,14 @@ describe('QualityAssessment API', () => {
       expect(result).toBe('success');
     });
 
-    it('should handle very long evaluationModel', async () => {
+    it('should handle very long evaluationModelId', async () => {
       const longEvaluationModel = 'gpt-4-' + 'a'.repeat(1000);
-      global.llmModelMap.set(longEvaluationModel, { model: longEvaluationModel } as any);
+      global.llmModelIdMap.set(longEvaluationModel, { model: longEvaluationModel } as any);
 
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: longEvaluationModel
+          evaluationModelId: longEvaluationModel
         }
       };
 
@@ -484,14 +484,14 @@ describe('QualityAssessment API', () => {
       expect(result).toBe('success');
     });
 
-    it('should handle special characters in evaluationModel', async () => {
+    it('should handle special characters in evaluationModelId', async () => {
       const specialEvaluationModel = 'gpt-4-特殊字符-🚀';
-      global.llmModelMap.set(specialEvaluationModel, { model: specialEvaluationModel } as any);
+      global.llmModelIdMap.set(specialEvaluationModel, { model: specialEvaluationModel } as any);
 
       const req = {
         body: {
           dataId: validDataId,
-          evaluationModel: specialEvaluationModel
+          evaluationModelId: specialEvaluationModel
         }
       };
 
@@ -500,7 +500,7 @@ describe('QualityAssessment API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evaluationModel: specialEvaluationModel
+        evaluationModelId: specialEvaluationModel
       });
     });
   });
@@ -540,12 +540,12 @@ describe('QualityAssessment API', () => {
       expect(mockRemoveEvalDatasetDataQualityJobsRobust).not.toHaveBeenCalled();
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: validDataId,
-        evaluationModel: validEvaluationModel
+        evaluationModelId: validEvaluationModel
       });
       expect(mockMongoEvalDatasetData.findByIdAndUpdate).toHaveBeenCalledWith(validDataId, {
         $set: {
           'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-          'qualityMetadata.model': validEvaluationModel,
+          'qualityMetadata.modelId': validEvaluationModel,
           'qualityMetadata.queueTime': expect.any(Date)
         },
         $unset: {

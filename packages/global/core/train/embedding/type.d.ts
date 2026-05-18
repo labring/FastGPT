@@ -150,7 +150,7 @@ export type EmbeddingTrainTaskSchemaType = {
   tmbId: string;
 
   name: string;
-  /** Base model ID (BaseModelItemType.model) */
+  /** Base model ID (BaseModelItemType.id) */
   baseModelId: string;
   baseModelEndpoint: {
     base_url?: string;

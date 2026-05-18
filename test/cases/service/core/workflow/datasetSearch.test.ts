@@ -46,13 +46,15 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   },
   MongoDatasetCollection: {
     countDocuments: vi.fn().mockResolvedValue(0)
-  }
+  },
+  DatasetCollectionName: 'datasets'
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
   MongoDatasetCollection: {
     countDocuments: vi.fn().mockResolvedValue(0)
-  }
+  },
+  DatasetColCollectionName: 'dataset_collections'
 }));
 
 // ─── Mock: filterDatasetsByTmbId（直接透传） ─────────────────────────────
@@ -72,18 +74,20 @@ vi.mock('@fastgpt/service/core/dataset/search/controller', () => ({
 
 // ─── Mock: ai/model ──────────────────────────────────────────────────────
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn((modelId: string) => ({
+  getEmbeddingModelById: vi.fn((modelId: string) => ({
+    id: modelId,
     model: modelId,
     name: `Model-${modelId}`
   })),
-  getLLMModel: vi.fn(() => ({
+  getLLMModelById: vi.fn(() => ({
+    id: 'gpt-3.5-turbo',
     model: 'gpt-3.5-turbo',
     name: 'GPT-3.5',
     maxContext: 4096,
     requestUrl: '',
     requestAuth: ''
   })),
-  getRerankModel: vi.fn(() => undefined)
+  getRerankModelById: vi.fn(() => undefined)
 }));
 
 // ─── Mock: wallet usage（formatModelChars2Points） ────────────────────────
@@ -231,7 +235,7 @@ function buildProps(datasets: SelectedDatasetType[], overrides: Record<string, a
       rerankMethod: RerankMethodEnum.content,
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: false,
-      datasetSearchExtensionModel: '',
+      datasetSearchExtensionModelId: '',
       datasetSearchExtensionBg: '',
       ...overrides
     }
@@ -302,9 +306,9 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
             Promise.resolve({ _id: id, type: DatasetTypeEnum.dataset, databaseConfig: null })
         };
       }
-      if (fields === 'vectorModel') {
+      if (fields === 'vectorModelId') {
         const modelId = vectorModelMap[id] || '';
-        return { lean: () => Promise.resolve({ _id: id, vectorModel: modelId }) };
+        return { lean: () => Promise.resolve({ _id: id, vectorModelId: modelId }) };
       }
       if (fields === 'name') {
         return {
@@ -340,14 +344,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A'} as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -360,7 +364,7 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     // 只应调用一次，且包含两个知识库 ID
     expect(defaultSearchDatasetData).toHaveBeenCalledTimes(1);
     const call = (defaultSearchDatasetData as any).mock.calls[0][0];
-    expect(call.model).toBe('model-A');
+    expect(call.modelId).toBe('model-A');
     expect(call.datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2']));
     expect(call.datasetIds).toHaveLength(2);
   });
@@ -384,14 +388,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-B', name: 'Model B' } as any,
+        vectorModel: { id: 'model-B'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -405,12 +409,12 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     expect(defaultSearchDatasetData).toHaveBeenCalledTimes(2);
 
     const calls = (defaultSearchDatasetData as any).mock.calls;
-    const modelsCalled = calls.map((c: any[]) => c[0].model).sort();
+    const modelsCalled = calls.map((c: any[]) => c[0].modelId).sort();
     expect(modelsCalled).toEqual(['model-A', 'model-B']);
 
     // 每个 model 组只包含对应的 datasetId
-    const callByModelA = calls.find((c: any[]) => c[0].model === 'model-A');
-    const callByModelB = calls.find((c: any[]) => c[0].model === 'model-B');
+    const callByModelA = calls.find((c: any[]) => c[0].modelId === 'model-A');
+    const callByModelB = calls.find((c: any[]) => c[0].modelId === 'model-B');
     expect(callByModelA[0].datasetIds).toContain('ds1');
     expect(callByModelA[0].datasetIds).not.toContain('ds2');
     expect(callByModelB[0].datasetIds).toContain('ds2');
@@ -437,7 +441,7 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
@@ -454,10 +458,10 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    // 验证 MongoDataset.findById 被用 'vectorModel' 字段调用过（DB 回退）
+    // 验证 MongoDataset.findById 被用 'vectorModelId' 字段调用过（DB 回退）
     const findByIdCalls = (MongoDataset.findById as any).mock.calls;
     const dbFallbackCalls = findByIdCalls.filter(
-      (c: any[]) => c[1] === 'vectorModel' && c[0] === 'ds2'
+      (c: any[]) => c[1] === 'vectorModelId' && c[0] === 'ds2'
     );
     expect(dbFallbackCalls.length).toBeGreaterThan(0);
   });
@@ -484,14 +488,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-B', name: 'Model B' } as any,
+        vectorModel: { id: 'model-B'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -532,14 +536,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-B', name: 'Model B' } as any,
+        vectorModel: { id: 'model-B'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -573,9 +577,9 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
       .mockResolvedValueOnce(buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 120))
       .mockResolvedValueOnce(buildSearchResult([{ id: 'r2', scoreValue: 0.7 }], 80));
 
-    // 拦截 getEmbeddingModel，让其按 modelId 返回 name
-    const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-    (getEmbeddingModel as any).mockImplementation((modelId: string) => ({
+    const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+    (getEmbeddingModelById as any).mockImplementation((modelId: string) => ({
+      id: modelId,
       model: modelId,
       name: `Name-${modelId}`
     }));
@@ -585,14 +589,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-B', name: 'Model B' } as any,
+        vectorModel: { id: 'model-B'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -602,10 +606,10 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    // getEmbeddingModel 应该被调用（用于 modelTokenMap）
+    // getEmbeddingModelById 应该被调用（用于 modelTokenMap）
     // 由于有 embeddingTokens > 0，应该至少被调用两次（model-A 和 model-B）
-    expect(getEmbeddingModel).toHaveBeenCalledWith('model-A');
-    expect(getEmbeddingModel).toHaveBeenCalledWith('model-B');
+    expect(getEmbeddingModelById).toHaveBeenCalledWith('model-A');
+    expect(getEmbeddingModelById).toHaveBeenCalledWith('model-B');
   });
 
   // ─── Test 7: userChatInput 为空时直接返回 emptyResult ───────────────────
@@ -619,7 +623,7 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -669,21 +673,21 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { model: 'model-A', name: 'Model A' } as any,
+        vectorModel: { id: 'model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds3',
         name: 'Dataset 3',
         avatar: '',
-        vectorModel: { model: 'model-B', name: 'Model B' } as any,
+        vectorModel: { id: 'model-B'} as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -696,8 +700,8 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     expect(defaultSearchDatasetData).toHaveBeenCalledTimes(2);
 
     const calls = (defaultSearchDatasetData as any).mock.calls;
-    const callA = calls.find((c: any[]) => c[0].model === 'model-A');
-    const callB = calls.find((c: any[]) => c[0].model === 'model-B');
+    const callA = calls.find((c: any[]) => c[0].modelId === 'model-A');
+    const callB = calls.find((c: any[]) => c[0].modelId === 'model-B');
 
     expect(callA).toBeDefined();
     expect(callA[0].datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2']));

@@ -8,7 +8,7 @@
 import { Types } from '../../../common/mongo';
 import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel } from '../../ai/model';
+import { getDefaultRerankModel, getEmbeddingModelById } from '../../ai/model';
 import { reRankRecall } from '../../../core/ai/rerank';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetCollection } from '../collection/schema';
@@ -39,7 +39,7 @@ export interface RecallOptions {
   teamId: string;
   datasetIds: string[];
   queries: string[];
-  model: string;
+  modelId: string;
   limit: number;
   forbidCollectionIdList?: string[];
   filterCollectionIdList?: string[];
@@ -137,7 +137,7 @@ export async function embeddingRecall(options: RecallOptions): Promise<RecallRes
     teamId,
     datasetIds,
     queries,
-    model,
+    modelId,
     limit,
     forbidCollectionIdList = [],
     filterCollectionIdList,
@@ -152,7 +152,7 @@ export async function embeddingRecall(options: RecallOptions): Promise<RecallRes
     vectors = precomputedVectors;
     tokens = 0;
   } else {
-    const vectorModel = getEmbeddingModel(model);
+    const vectorModel = getEmbeddingModelById(modelId);
     const result = await getVectorsByText({
       model: vectorModel,
       input: queries,
@@ -294,7 +294,7 @@ export async function embeddingRecallPerQuery(
     teamId,
     datasetIds,
     queries,
-    model,
+    modelId,
     limit,
     forbidCollectionIdList = [],
     filterCollectionIdList
@@ -304,7 +304,7 @@ export async function embeddingRecallPerQuery(
     return { results: [], tokens: 0 };
   }
 
-  const vectorModel = getEmbeddingModel(model);
+  const vectorModel = getEmbeddingModelById(modelId);
 
   const { vectors, tokens } = await getVectorsByText({
     model: vectorModel,
@@ -885,7 +885,7 @@ export async function milvusHybridRecall(options: {
   teamId: string;
   datasetIds: string[];
   queries: string[];
-  model: string;
+  modelId: string;
   limit: number;
   forbidCollectionIdList: string[];
   filterCollectionIdList?: string[];
@@ -894,7 +894,7 @@ export async function milvusHybridRecall(options: {
     teamId,
     datasetIds,
     queries,
-    model,
+    modelId,
     limit,
     forbidCollectionIdList,
     filterCollectionIdList
@@ -905,7 +905,7 @@ export async function milvusHybridRecall(options: {
   const datasetCollectionSelectField =
     '_id name fileId rawLink apiFileId externalFileId externalFileUrl';
 
-  const vectorModel = getEmbeddingModel(model);
+  const vectorModel = getEmbeddingModelById(modelId);
   const { vectors, tokens } = await getVectorsByText({
     model: vectorModel,
     input: queries,
@@ -1181,7 +1181,7 @@ export async function mixedRecall(options: MixedRecallOptions): Promise<MixedRec
     teamId,
     datasetIds,
     queries,
-    model,
+    modelId,
     limit,
     embeddingWeight = 0.5,
     usingReRank = false,
@@ -1201,7 +1201,7 @@ export async function mixedRecall(options: MixedRecallOptions): Promise<MixedRec
       teamId,
       datasetIds,
       queries,
-      model,
+      modelId,
       limit,
       forbidCollectionIdList,
       filterCollectionIdList
@@ -1210,7 +1210,7 @@ export async function mixedRecall(options: MixedRecallOptions): Promise<MixedRec
       teamId,
       datasetIds,
       queries,
-      model, // 添加 model 参数
+      modelId,
       limit,
       forbidCollectionIdList,
       filterCollectionIdList

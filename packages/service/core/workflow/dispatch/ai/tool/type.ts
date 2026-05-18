@@ -16,7 +16,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;

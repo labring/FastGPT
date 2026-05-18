@@ -5,7 +5,7 @@ import type {
   DispatchNodeResultType,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModelById } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
@@ -54,7 +54,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     externalProvider,
     usageId,
     params: {
-      model,
+      modelId,
       systemPrompt,
       userChatInput,
       history = 6,
@@ -66,7 +66,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   } = props;
 
   try {
-    const toolModel = getLLMModel(model);
+    const toolModel = getLLMModelById(modelId);
     const useVision = aiChatVision && toolModel.vision;
     const chatHistories = getHistories(history, histories);
 
@@ -231,8 +231,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     })();
 
     // Usage computed
-    // modelName 直接从 toolModel 获取；totalPoints 使用预计算值，保证梯度计费正确
-    const modelName = toolModel.name;
+    // totalPoints 使用预计算值，保证梯度计费正确
     const modelTotalPoints = toolCallTotalPoints;
     const toolTotalPoints = toolDispatchFlowResponses
       .map((item) => item.flowUsages)
@@ -252,7 +251,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           toolCallInputTokens: toolCallInputTokens,
           toolCallOutputTokens: toolCallOutputTokens,
           childTotalPoints: toolTotalPoints,
-          model: modelName,
+          modelId: modelId,
           query: userChatInput,
           historyPreview: getHistoryPreview(
             GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
@@ -291,7 +290,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolCallInputTokens: toolCallInputTokens,
         toolCallOutputTokens: toolCallOutputTokens,
         childTotalPoints: toolTotalPoints,
-        model: modelName,
+        modelId: modelId,
         query: userChatInput,
         historyPreview: getHistoryPreview(
           GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),

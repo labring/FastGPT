@@ -20,7 +20,7 @@ import { MongoDatasetData } from '../data/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel } from '../../ai/model';
+import { getEmbeddingModelById } from '../../ai/model';
 import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
 import { detectAndDecodeBuffer } from '../../../common/file/encoding';
 import { addLog } from '../../../common/system/log';
@@ -322,7 +322,7 @@ export async function uploadSynonymFile({
     }
 
     // 5. 获取知识库信息（用于创建billId）
-    const dataset = await MongoDataset.findById(datasetId).select('vectorModel').lean();
+    const dataset = await MongoDataset.findById(datasetId).select('vectorModelId').lean();
     if (!dataset) {
       throw new Error(DatasetErrEnum.unExist);
     }
@@ -333,7 +333,7 @@ export async function uploadSynonymFile({
       tmbId,
       appName: i18nT('account_usage:synonym_standardize'),
       billSource: UsageSourceEnum.training,
-      vectorModel: getEmbeddingModel(dataset.vectorModel)?.name
+      vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id
     });
 
     // 7-9. 使用事务创建同义词记录、映射和更新知识库（保证原子性）
@@ -541,7 +541,7 @@ export async function deleteSynonymFile({
   }
 
   // 2. 获取知识库信息（用于创建billId）
-  const dataset = await MongoDataset.findById(datasetId).select('vectorModel').lean();
+  const dataset = await MongoDataset.findById(datasetId).select('vectorModelId').lean();
   if (!dataset) {
     throw new Error(DatasetErrEnum.unExist);
   }
@@ -553,7 +553,7 @@ export async function deleteSynonymFile({
   //   tmbId,
   //   appName: '同义词恢复',
   //   billSource: UsageSourceEnum.training,
-  //   vectorModel: getEmbeddingModel(dataset.vectorModel)?.name
+  //   vectorModelId: getEmbeddingModelById(dataset.vectorModel)?.id
   // });
 
   // 4. 标记所有需要恢复的数据

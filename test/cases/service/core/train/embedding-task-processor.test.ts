@@ -68,7 +68,7 @@ vi.mock('@fastgpt/service/core/train/embedding/data/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   createEmbeddingModelConfig: vi.fn(),
   getDefaultLLMModel: vi.fn(),
-  getEmbeddingModel: vi.fn()
+  getEmbeddingModelById: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/embedding/model/controller', () => ({
@@ -80,6 +80,17 @@ vi.mock('@fastgpt/service/core/train/embedding/model/controller', () => ({
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
     findOne: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        metadata: {
+          charsPointsPrice: 0,
+          defaultToken: 512,
+          maxToken: 512,
+          weight: 0,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+        }
+      })
+    }),
+    findById: vi.fn().mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         metadata: {
           charsPointsPrice: 0,
@@ -430,9 +441,10 @@ describe('Embedding Train Task Processor', () => {
           .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
-      // Mock getEmbeddingModel
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -626,7 +638,7 @@ describe('Embedding Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -764,9 +776,10 @@ describe('Embedding Train Task Processor', () => {
           .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
-      // Mock getEmbeddingModel
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -853,7 +866,7 @@ describe('Embedding Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: 'trainset_1',
             trainDatasetFilePath: '/tmp/test.jsonl',
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -1133,9 +1146,10 @@ describe('Embedding Train Task Processor', () => {
         ])
       });
 
-      // Mock getEmbeddingModel for eval_basemodel stage
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById for eval_basemodel stage
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -1567,7 +1581,7 @@ describe('Embedding Train Task Processor', () => {
       expect(synthesizeEmbeddingEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'gpt-4'
+            modelId: ''
           })
         })
       );

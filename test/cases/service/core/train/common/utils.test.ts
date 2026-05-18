@@ -42,8 +42,8 @@ async function createDataset(teamId: string, name: string) {
     tmbId: new Types.ObjectId(),
     name,
     type: DatasetTypeEnum.dataset,
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   });
 }
 

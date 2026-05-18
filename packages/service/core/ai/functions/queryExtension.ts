@@ -1,7 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { type ChatItemMiniType, type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getLLMModel } from '../model';
+import { getLLMModelById } from '../model';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
@@ -128,21 +128,21 @@ export const queryExtension = async ({
   chatBg,
   query,
   histories = [],
-  llmModel,
-  embeddingModel,
+  llmModelId,
+  embeddingModelId,
   generateCount = 10 // 生成优化问题集的数量，默认为10个
 }: {
   chatBg?: string;
   query: string;
   histories: ChatItemMiniType[];
-  llmModel: string;
-  embeddingModel: string;
+  llmModelId: string;
+  embeddingModelId: string;
   generateCount?: number;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
-  llmModel: string;
-  embeddingModel: string;
+  llmModelId: string;
+  embeddingModelId: string;
   inputTokens: number;
   outputTokens: number;
   embeddingTokens: number;
@@ -158,7 +158,7 @@ assistant: ${chatBg}
     : '';
 
   // 1. Request model
-  const modelData = getLLMModel(llmModel);
+  const modelData = getLLMModelById(llmModelId);
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
     maxContext: modelData.maxContext - 1000
@@ -197,7 +197,7 @@ assistant: ${chatBg}
   } = await createLLMResponse({
     body: {
       stream: true,
-      model: modelData.model,
+      modelId: llmModelId,
       temperature: 0.1,
       messages
     }
@@ -207,8 +207,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModelId: embeddingModelId,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       embeddingTokens: 0
@@ -225,8 +225,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModelId: embeddingModelId,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       embeddingTokens: 0
@@ -246,8 +246,8 @@ assistant: ${chatBg}
       return {
         rawQuery: query,
         extensionQueries: [],
-        llmModel: modelData.model,
-        embeddingModel,
+        llmModelId: modelData.id,
+        embeddingModelId: embeddingModelId,
         inputTokens,
         outputTokens,
         embeddingTokens: 0
@@ -255,8 +255,8 @@ assistant: ${chatBg}
     }
 
     // 3. 通过计算获取到最优的检索词
-    const { lazyGreedyQuerySelection, embeddingModel: useEmbeddingModel } = useTextCosine({
-      embeddingModel
+    const { lazyGreedyQuerySelection, embeddingModelId: useEmbeddingModelId } = useTextCosine({
+      embeddingModelId
     });
     queries = queries.map((item) => String(item));
 
@@ -270,8 +270,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: selectedQueries,
-      llmModel: modelData.model,
-      embeddingModel: useEmbeddingModel,
+      llmModelId: modelData.id,
+      embeddingModelId: useEmbeddingModelId,
       inputTokens,
       outputTokens,
       embeddingTokens,
@@ -285,8 +285,8 @@ assistant: ${chatBg}
     return {
       rawQuery: query,
       extensionQueries: [],
-      llmModel: modelData.model,
-      embeddingModel,
+      llmModelId: modelData.id,
+      embeddingModelId: embeddingModelId,
       inputTokens,
       outputTokens,
       embeddingTokens: 0,
@@ -420,12 +420,12 @@ const getMergedQueryOptimizationPrompt = (lang: string) => {
 async function mergedQueryOptimization({
   histories,
   query,
-  model,
+  modelId,
   lang
 }: {
   histories: ChatItemType[];
   query: string;
-  model: string;
+  modelId: string;
   lang: string;
 }): Promise<{
   resolvedQuery: string;
@@ -459,7 +459,7 @@ async function mergedQueryOptimization({
       usage: { inputTokens, outputTokens }
     } = await createLLMResponse({
       body: {
-        model,
+        modelId: modelId,
         temperature: 0.1,
         messages: requestMessages,
         stream: true
@@ -528,22 +528,22 @@ async function mergedQueryOptimization({
 export const queryExtensionForAssistant = async ({
   query,
   histories = [],
-  model,
+  modelId,
   teamId,
   datasetIds,
   lang
 }: {
   query: string;
   histories: ChatItemType[];
-  model: string;
+  modelId: string;
   teamId: string;
   datasetIds: string[];
   lang: string;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
-  llmModel: string;
-  embeddingModel: string;
+  llmModelId: string;
+  embeddingModelId: string;
   inputTokens: number;
   outputTokens: number;
   embeddingTokens: number;
@@ -560,7 +560,7 @@ export const queryExtensionForAssistant = async ({
     const optimizationResult = await mergedQueryOptimization({
       histories,
       query,
-      model,
+      modelId,
       lang
     });
     totalInputTokens += optimizationResult.inputTokens;
@@ -627,8 +627,8 @@ export const queryExtensionForAssistant = async ({
     return {
       rawQuery: query,
       extensionQueries,
-      llmModel: model,
-      embeddingModel: '',
+      llmModelId: modelId,
+      embeddingModelId: '',
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       embeddingTokens: 0,
@@ -639,8 +639,8 @@ export const queryExtensionForAssistant = async ({
     return {
       rawQuery: query,
       extensionQueries: [query],
-      llmModel: model,
-      embeddingModel: '',
+      llmModelId: modelId,
+      embeddingModelId: '',
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       embeddingTokens: 0

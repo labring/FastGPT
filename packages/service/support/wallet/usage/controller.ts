@@ -9,6 +9,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '../../../../global/common/i18n/utils';
 import { formatModelChars2Points } from './utils';
+import { getModelById } from '../../../core/ai/model';
 import { MongoUsageItem } from './usageItemSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -77,14 +78,14 @@ export const createPdfParseUsage = async ({
 
 export const pushLLMTrainingUsage = async ({
   teamId,
-  model,
+  modelId,
   inputTokens,
   outputTokens,
   usageId,
   type
 }: {
   teamId: string;
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
   usageId: string;
@@ -92,7 +93,7 @@ export const pushLLMTrainingUsage = async ({
 }) => {
   // Compute points
   const { totalPoints } = formatModelChars2Points({
-    model,
+    modelId,
     inputTokens,
     outputTokens
   });
@@ -158,7 +159,7 @@ export const pushChatItemUsage = ({
     list: nodeUsages.map((item) => ({
       moduleName: item.moduleName,
       amount: item.totalPoints,
-      model: item.model,
+      modelId: item.modelId,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens
     }))
@@ -170,20 +171,20 @@ export const createTrainingUsage = async ({
   tmbId,
   appName,
   billSource,
-  vectorModel,
-  agentModel,
-  vllmModel,
-  rerankModel,
+  vectorModelId,
+  agentModelId,
+  vllmModelId,
+  rerankModelId,
   session
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
   billSource: UsageSourceEnum;
-  vectorModel: string;
-  agentModel?: string;
-  vllmModel?: string;
-  rerankModel?: string;
+  vectorModelId: string;
+  agentModelId?: string;
+  vllmModelId?: string;
+  rerankModelId?: string;
   session?: ClientSession;
 }) => {
   const create = async (session: ClientSession) => {
@@ -206,18 +207,18 @@ export const createTrainingUsage = async ({
           usageId: result._id,
           itemType: UsageItemTypeEnum.training_vector,
           name: i18nT('account_usage:embedding_index'),
-          model: vectorModel,
+          modelId: vectorModelId,
           amount: 0,
           inputTokens: 0
         },
-        ...(agentModel
+        ...(agentModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_paragraph,
                 name: i18nT('account_usage:llm_paragraph'),
-                model: agentModel,
+                modelId: agentModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -227,7 +228,7 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_qa,
                 name: i18nT('account_usage:qa'),
-                model: agentModel,
+                modelId: agentModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -237,21 +238,21 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_autoIndex,
                 name: i18nT('account_usage:auto_index'),
-                model: agentModel,
+                modelId: agentModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
               }
             ]
           : []),
-        ...(vllmModel
+        ...(vllmModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageIndex,
                 name: i18nT('account_usage:image_index'),
-                model: vllmModel,
+                modelId: vllmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -261,21 +262,21 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageParse,
                 name: i18nT('account_usage:image_parse'),
-                model: vllmModel,
+                modelId: vllmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
               }
             ]
           : []),
-        ...(vectorModel && agentModel
+        ...(vectorModelId && agentModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_hypeIndex,
                 name: i18nT('account_usage:hype_index'),
-                model: vectorModel,
+                modelId: vectorModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -285,21 +286,21 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_hypeIndex,
                 name: i18nT('account_usage:hype_index'),
-                model: agentModel,
+                modelId: agentModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
               }
             ]
           : []),
-        ...(rerankModel
+        ...(rerankModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_hypeIndex,
                 name: i18nT('account_usage:hype_index'),
-                model: rerankModel,
+                modelId: rerankModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -323,12 +324,12 @@ export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
-  model
+  modelId
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
-  model: string;
+  modelId: string;
 }) => {
   return mongoSessionRun(async (session) => {
     const [result] = await MongoUsage.create(
@@ -350,7 +351,7 @@ export const createEvaluationUsage = async ({
           usageId: result._id,
           itemType: UsageItemTypeEnum.evaluation_generateAnswer,
           name: i18nT('account_usage:generate_answer'),
-          model,
+          modelId,
           amount: 0,
           inputTokens: 0,
           outputTokens: 0
@@ -360,7 +361,7 @@ export const createEvaluationUsage = async ({
           usageId: result._id,
           itemType: UsageItemTypeEnum.evaluation_metricsExecute,
           name: i18nT('account_usage:metrics_execute'),
-          model,
+          modelId,
           amount: 0,
           inputTokens: 0,
           outputTokens: 0
@@ -370,7 +371,7 @@ export const createEvaluationUsage = async ({
           usageId: result._id,
           itemType: UsageItemTypeEnum.evaluation_summaryGeneration,
           name: i18nT('account_usage:evaluation_summary_generation'),
-          model,
+          modelId,
           amount: 0,
           inputTokens: 0,
           outputTokens: 0
@@ -386,12 +387,12 @@ export const createEvaluationUsage = async ({
 export const createEvalDatasetDataQualityUsage = async ({
   teamId,
   tmbId,
-  model,
+  modelId,
   usages
 }: {
   teamId: string;
   tmbId: string;
-  model: string;
+  modelId: string;
   usages: Array<{
     promptTokens?: number;
     completionTokens?: number;
@@ -400,7 +401,7 @@ export const createEvalDatasetDataQualityUsage = async ({
   let totalPoints = 0;
   const usageList = usages.map((usage) => {
     const { totalPoints: points } = formatModelChars2Points({
-      model,
+      modelId,
       inputTokens: usage.promptTokens || 0,
       outputTokens: usage.completionTokens || 0
     });
@@ -409,7 +410,7 @@ export const createEvalDatasetDataQualityUsage = async ({
     return {
       moduleName: i18nT('account_usage:evaluation_quality_assessment'),
       amount: points,
-      model,
+      modelId: modelId,
       inputTokens: usage.promptTokens || 0,
       outputTokens: usage.completionTokens || 0
     };
@@ -430,21 +431,22 @@ export const createEvalDatasetDataQualityUsage = async ({
 export const createEvalDatasetDataSynthesisUsage = async ({
   teamId,
   tmbId,
-  model,
+  modelId,
   usages
 }: {
   teamId: string;
   tmbId: string;
-  model: string;
+  modelId: string;
   usages: Array<{
     promptTokens?: number;
     completionTokens?: number;
   }>;
 }) => {
   let totalPoints = 0;
+  const modelData = getModelById(modelId);
   const usageList = usages.map((usage) => {
     const { totalPoints: points } = formatModelChars2Points({
-      model,
+      modelId,
       inputTokens: usage.promptTokens || 0,
       outputTokens: usage.completionTokens || 0
     });
@@ -453,7 +455,7 @@ export const createEvalDatasetDataSynthesisUsage = async ({
     return {
       moduleName: i18nT('account_usage:evaluation_dataset_data_qa_synthesis'),
       amount: points,
-      model,
+      modelId: modelId,
       inputTokens: usage.promptTokens || 0,
       outputTokens: usage.completionTokens || 0
     };
@@ -476,7 +478,7 @@ export const createEvaluationMetricDebugUsage = async ({
   tmbId,
   metricName,
   totalPoints,
-  model,
+  modelId,
   inputTokens,
   outputTokens
 }: {
@@ -484,7 +486,7 @@ export const createEvaluationMetricDebugUsage = async ({
   tmbId: string;
   metricName: string;
   totalPoints: number;
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
 }) => {
@@ -502,7 +504,7 @@ export const createEvaluationMetricDebugUsage = async ({
       {
         moduleName: `Debug: ${metricName}`,
         amount: totalPoints,
-        model,
+        modelId,
         inputTokens,
         outputTokens
       }

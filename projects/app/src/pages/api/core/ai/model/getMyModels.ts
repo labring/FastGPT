@@ -24,7 +24,7 @@ async function handler(
   req: ApiRequestProps<GetMyModelsBody, GetMyModelsQuery>,
   res: ApiResponseType<any>
 ): Promise<GetMyModelsResponse> {
-  const { teamId, tmbId, isRoot, tmb } = await authUserPer({
+  const { teamId, tmbId, permission: teamPer, isRoot } = await authUserPer({
     req,
     authToken: true,
     per: ReadPermissionVal
@@ -44,7 +44,8 @@ async function handler(
   const models = await getMyModels({
     teamId,
     tmbId,
-    isTeamOwner: tmb.role === 'owner' || isRoot
+    teamPer,
+    isRoot
   });
 
   return {

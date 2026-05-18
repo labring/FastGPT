@@ -22,9 +22,9 @@ function validateUpdateParams(params: {
   collectionId?: string;
   name?: string;
   description?: string;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 }) {
-  const { collectionId, name, description, evaluationModel } = params;
+  const { collectionId, name, description, evaluationModelId } = params;
 
   if (!collectionId || typeof collectionId !== 'string' || collectionId.trim().length === 0) {
     throw EvaluationErrEnum.datasetCollectionIdRequired;
@@ -48,16 +48,16 @@ function validateUpdateParams(params: {
     throw EvaluationErrEnum.evalDescriptionTooLong;
   }
 
-  if (evaluationModel && typeof evaluationModel !== 'string') {
+  if (evaluationModelId && typeof evaluationModelId !== 'string') {
     throw EvaluationErrEnum.evalModelNameInvalid;
   }
 
-  if (evaluationModel && evaluationModel.length > MAX_MODEL_NAME_LENGTH) {
+  if (evaluationModelId && evaluationModelId.length > MAX_MODEL_NAME_LENGTH) {
     throw EvaluationErrEnum.evalModelNameTooLong;
   }
 
-  if (evaluationModel) {
-    if (!global.llmModelMap.has(evaluationModel)) {
+  if (evaluationModelId) {
+    if (!global.llmModelIdMap.has(evaluationModelId)) {
       throw EvaluationErrEnum.datasetModelNotFound;
     }
   }
@@ -66,7 +66,7 @@ function validateUpdateParams(params: {
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionUpdateBody, EvalDatasetCollectionUpdateQuery>
 ): Promise<EvalDatasetCollectionUpdateResponse> {
-  const { collectionId, name, description = '', evaluationModel } = req.body;
+  const { collectionId, name, description = '', evaluationModelId } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
     req,
@@ -74,7 +74,7 @@ async function handler(
     authToken: true
   });
 
-  validateUpdateParams({ collectionId, name, description, evaluationModel });
+  validateUpdateParams({ collectionId, name, description, evaluationModelId });
 
   const existingCollection = await MongoEvalDatasetCollection.findOne({
     _id: collectionId,
@@ -106,7 +106,7 @@ async function handler(
             description: description.trim(),
             updateTime: new Date(),
             ...(name !== undefined && { name: name.trim() }),
-            ...(evaluationModel !== undefined && { evaluationModel: evaluationModel.trim() })
+            ...(evaluationModelId !== undefined && { evaluationModelId: evaluationModelId.trim() })
           }
         },
         { session }

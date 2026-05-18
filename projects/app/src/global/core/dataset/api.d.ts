@@ -68,7 +68,7 @@ export type SearchTestProps = {
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankMethod]: `${RerankMethodEnum}`;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
@@ -77,7 +77,7 @@ export type SearchTestProps = {
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
 
   [NodeInputKeyEnum.datasetDeepSearch]?: boolean;
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };

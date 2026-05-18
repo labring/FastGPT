@@ -48,9 +48,9 @@ export const RebuildEmbeddingBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
   }),
-  vectorModel: z.string().meta({
-    example: 'text-embedding-3-small',
-    description: '新的向量模型名称，不能与当前模型相同'
+  vectorModelId: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '新的向量模型Id，不能与当前模型相同'
   })
 });
 export type RebuildEmbeddingBody = z.infer<typeof RebuildEmbeddingBodySchema>;

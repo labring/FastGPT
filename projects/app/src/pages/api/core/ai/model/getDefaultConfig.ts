@@ -4,7 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { getSystemModelConfig } from '@fastgpt/service/core/ai/config/utils';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 
-export type getDefaultQuery = { model: string };
+export type getDefaultQuery = { modelId: string };
 
 export type getDefaultBody = {};
 
@@ -14,9 +14,9 @@ async function handler(
 ): Promise<SystemModelItemType> {
   await authSystemAdmin({ req });
 
-  const model = req.query.model;
+  const modelId = req.query.modelId;
 
-  return getSystemModelConfig(model);
+  return getSystemModelConfig(modelId);
 }
 
 export default NextAPI(handler);

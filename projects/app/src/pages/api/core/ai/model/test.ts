@@ -1,7 +1,8 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getModelById } from '@fastgpt/service/core/ai/model';
 import {
   type EmbeddingModelItemType,
   type LLMModelItemType,
@@ -19,9 +20,12 @@ import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = { model: string; channelId?: number };
+export type testQuery = {};
 
-export type testBody = {};
+export type testBody = {
+  id: string;
+  channelId?: number;
+};
 
 export type testResponse = any;
 
@@ -29,10 +33,14 @@ async function handler(
   req: ApiRequestProps<testBody, testQuery>,
   res: ApiResponseType<any>
 ): Promise<testResponse> {
-  await authSystemAdmin({ req });
+  await authUserPer({
+    req,
+    authToken: true,
+    per: WritePermissionVal
+  });
 
-  const { model, channelId } = req.query;
-  const modelData = findModelFromAlldata(model);
+  const { id, channelId } = req.body;
+  const modelData = getModelById(id);
 
   if (!modelData) return Promise.reject('Model not found');
 
@@ -72,7 +80,7 @@ export default NextAPI(handler);
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const { answerText } = await createLLMResponse({
     body: {
-      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
+      modelId: model.id, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },

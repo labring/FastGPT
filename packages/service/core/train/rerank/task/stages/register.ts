@@ -48,24 +48,26 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
 
   const tunedEndpoint = checkpointData.finetuning.tunedModelEndpoint;
   const baseModelId = task.baseModelId;
-  const tunedModelId = tunedEndpoint.model;
 
   // Use task.newModelName if provided, otherwise fall back to the model ID from SFT Bridge
-  const tunedModelName = task.newModelName || tunedModelId;
+  const tunedModelName = task.newModelName || tunedEndpoint.model;
 
   // Inherit charsPointsPrice and instruction from base model
-  const baseModelDoc = await MongoSystemModel.findOne({ model: baseModelId }).lean();
+  const baseModelDoc = await MongoSystemModel.findById(baseModelId).lean();
   const baseMeta = (baseModelDoc?.metadata ?? {}) as {
     charsPointsPrice?: number;
     maxToken?: number;
     instruction?: string;
   };
 
+  let tunedModelId: string;
   try {
-    const tunedModelObjectId = await createRerankModelConfig({
+    tunedModelId = await createRerankModelConfig({
       name: tunedModelName,
       endpoint: tunedEndpoint,
       isActive: true,
+      tmbId: task.tmbId,
+      teamId: task.teamId,
       charsPointsPrice: baseMeta.charsPointsPrice,
       maxToken: baseMeta.maxToken,
       instruction:
@@ -75,7 +77,7 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
     addLog.info('Created tuned model config and channel', {
       taskId: String(task._id),
       tunedModelId,
-      tunedModelObjectId,
+      tunedModelName,
       endpoint: tunedEndpoint
     });
   } catch (error) {
@@ -99,7 +101,8 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   addLog.info('Register stage completed', {
     taskId: String(task._id),
     baseModelId,
-    tunedModelId
+    tunedModelId,
+    tunedModelName
   });
 
   return {

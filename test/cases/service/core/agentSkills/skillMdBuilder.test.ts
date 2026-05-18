@@ -404,7 +404,7 @@ describe('skillMdBuilder', () => {
         name: 'code-review',
         description: 'Review code',
         requirements: 'Analyze code quality and suggest improvements',
-        model: 'gpt-4o'
+        modelId: 'gpt-4o'
       });
 
       expect(content).toBe(skillMdContent);
@@ -428,7 +428,7 @@ describe('skillMdBuilder', () => {
         name: 'test-skill',
         description: 'Test description',
         requirements: 'Test requirements',
-        model: 'gpt-4o'
+        modelId: 'gpt-4o'
       });
 
       // First call is getSkillGuidance — verify messages include skill name/description/requirements
@@ -455,11 +455,11 @@ describe('skillMdBuilder', () => {
         name: 'test',
         description: '',
         requirements: 'reqs',
-        model: 'gpt-4o'
+        modelId: 'gpt-4o'
       });
 
-      expect(mockCreateLLMResponse.mock.calls[0][0].body.model).toBe('gpt-4o');
-      expect(mockCreateLLMResponse.mock.calls[1][0].body.model).toBe('gpt-4o');
+      expect(mockCreateLLMResponse.mock.calls[0][0].body.modelId).toBe('gpt-4o');
+      expect(mockCreateLLMResponse.mock.calls[1][0].body.modelId).toBe('gpt-4o');
     });
 
     it('should not include response_format in LLM request body', async () => {
@@ -476,7 +476,7 @@ describe('skillMdBuilder', () => {
         name: 'test',
         description: '',
         requirements: 'reqs',
-        model: 'any-model'
+        modelId: 'any-model'
       });
 
       // Neither call should use response_format (not all models support it)

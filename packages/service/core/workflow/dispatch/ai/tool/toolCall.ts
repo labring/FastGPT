@@ -169,7 +169,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     body: {
       messages: finalMessages,
       tools,
-      model: toolModel.model,
+      modelId: toolModel,
       max_tokens: maxToken,
       stream,
       temperature,

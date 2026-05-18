@@ -3,7 +3,7 @@ import type { ModelTypeEnum, EvalMetricTypeEnum, MetricResultStatusEnum } from '
 import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 
 export type EvalModelConfigType = {
-  name: string;
+  modelId: string
   baseUrl?: string;
   apiKey?: string;
   timeout?: number;

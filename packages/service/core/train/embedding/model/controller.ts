@@ -36,6 +36,8 @@ export async function createEmbeddingModelConfig(params: {
     model: string;
   };
   isActive: boolean;
+  tmbId: string;
+  teamId: string;
   charsPointsPrice?: number;
   defaultToken?: number;
   maxToken?: number;
@@ -45,11 +47,12 @@ export async function createEmbeddingModelConfig(params: {
   defaultConfig?: Record<string, any>;
   instruction?: string;
 }): Promise<string> {
-  const { name, endpoint, isActive } = params;
+  const { name, endpoint, isActive, tmbId, teamId } = params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
   const modelConfig: EmbeddingModelItemType = {
+    id: '',
     provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
@@ -71,6 +74,9 @@ export async function createEmbeddingModelConfig(params: {
     { model },
     {
       model,
+      tmbId,
+      teamId,
+      isShared: false,
       metadata: modelConfig
     },
     {
@@ -118,30 +124,39 @@ export async function createEmbeddingModelConfig(params: {
  * SFT Bridge resource cleanup is handled separately by deleteEmbeddingTrainTask.
  * Order: 1) Delete channel first, 2) Delete model config + reload.
  *
- * @param modelConfigId - Model configuration ID (same as endpoint.model)
+ * @param modelId - Model's MongoDB _id (platform-unique model ID)
  * @returns Promise that resolves when deletion is complete
  * @throws {Error} When channel or model deletion fails
  */
-export async function deleteEmbeddingModelConfig(modelConfigId: string): Promise<void> {
-  addLog.info('Deleting embedding model config', { modelConfigId });
+export async function deleteEmbeddingModelConfig(modelId: string): Promise<void> {
+  addLog.info('Deleting embedding model config', { modelId });
+
+  // Look up the model config to get the model name (needed for channel operations)
+  const doc = await MongoSystemModel.findById(modelId).lean();
+  if (!doc) {
+    addLog.warn('No model config found to delete in FastGPT', { modelId });
+    return;
+  }
+  const modelName = doc.model;
 
   // Step 1: Delete AI Proxy channel first (contains access credentials)
-  await deleteTunedModelChannel(modelConfigId);
-  addLog.info('Deleted AI Proxy channel', { modelConfigId });
+  await deleteTunedModelChannel(modelName);
+  addLog.info('Deleted AI Proxy channel', { modelId, modelName });
 
   // Step 2: Delete model configuration from FastGPT database
-  const deleteResult = await MongoSystemModel.deleteOne({ model: modelConfigId });
+  const deleteResult = await MongoSystemModel.deleteOne({ _id: modelId });
 
   if (deleteResult.deletedCount === 0) {
-    addLog.warn('No model config found to delete in FastGPT', { modelConfigId });
+    addLog.warn('No model config found to delete in FastGPT', { modelId });
   } else {
     addLog.info('Deleted embedding model config from FastGPT', {
-      modelConfigId,
+      modelId,
+      modelName,
       deletedCount: deleteResult.deletedCount
     });
 
     // Reload system models after deletion
     await updatedReloadSystemModel();
-    addLog.info('Reloaded system models', { modelConfigId });
+    addLog.info('Reloaded system models', { modelId });
   }
 }

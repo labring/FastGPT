@@ -181,7 +181,7 @@ const EvaluationCreating = () => {
                 value={evalModel}
                 list={llmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.id
                 }))}
                 onChange={(e) => {
                   setValue('evalModel', e);

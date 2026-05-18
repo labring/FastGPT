@@ -10,7 +10,7 @@ import {
   deleteDatasetDataVector,
   insertDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
@@ -31,7 +31,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string };
+  dataset: { vectorModelId: string };
   collection: { name: string; indexPrefixTitle: boolean; hypeIndexes: boolean };
   data: { _id: string; q: string; a: string; indexes: DatasetDataSchemaType['indexes'] };
 };
@@ -81,7 +81,7 @@ export async function generateVector(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'vectorModel'
+                select: 'vectorModelId'
               },
               {
                 path: 'collection',
@@ -182,7 +182,7 @@ export async function generateVector(): Promise<any> {
           teamId: data.teamId,
           tmbId: data.tmbId,
           inputTokens: tokens,
-          model: data.dataset.vectorModel,
+          modelId: data.dataset.vectorModelId,
           usageId: data.billId
         });
 
@@ -279,7 +279,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   // 1. Insert new vector to dataset_data
   const insertResult = await insertDatasetDataVector({
     inputs: trainingData.data.indexes.map((index) => index.text),
-    model: getEmbeddingModel(trainingData.dataset.vectorModel),
+    model: getEmbeddingModelById(trainingData.dataset.vectorModelId),
     teamId: trainingData.teamId,
     datasetId: trainingData.datasetId,
     collectionId: trainingData.collectionId
@@ -329,13 +329,13 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       chunkIndex: trainingData.chunkIndex,
       indexSize:
         trainingData.indexSize ||
-        getMaxIndexSize(getEmbeddingModel(trainingData.dataset.vectorModel)),
+        getMaxIndexSize(getEmbeddingModelById(trainingData.dataset.vectorModelId)),
       indexes: trainingData.indexes,
       metadata: trainingData.dataMetadata,
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,
-      embeddingModel: trainingData.dataset.vectorModel,
+      embeddingModelId: trainingData.dataset.vectorModelId,
       session
     });
 

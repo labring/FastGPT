@@ -4,7 +4,7 @@ import { MongoChatCorrection } from './schema';
 import { MongoChatItem } from '../chatItemSchema';
 import type { CorrectionDataType } from '@fastgpt/global/core/chat/correction/type';
 import { CorrectionModeEnum } from '@fastgpt/global/core/chat/correction/constants';
-import { getEmbeddingModel } from '../../ai/model';
+import { getEmbeddingModelById } from '../../ai/model';
 import {
   insertDatasetDataVector,
   deleteDatasetDataVector
@@ -23,7 +23,7 @@ type SubmitChatCorrectionProps = {
   chatId: string;
   dataId: string;
   correctionData: CorrectionDataType;
-  modelName: string;
+  modelId: string;
 };
 
 type ProcessEditModeProps = {
@@ -31,7 +31,7 @@ type ProcessEditModeProps = {
   appId: string;
   correctionId: string;
   correctionData: CorrectionDataType;
-  modelName: string;
+  modelId: string;
   session: ClientSession;
 };
 
@@ -39,7 +39,7 @@ type ProcessAnnotateModeProps = {
   teamId: string;
   correctionId: string;
   correctionData: CorrectionDataType;
-  modelName: string;
+  modelId: string;
   session: ClientSession;
 };
 
@@ -53,7 +53,7 @@ export async function submitChatCorrection({
   chatId,
   dataId,
   correctionData,
-  modelName
+  modelId
 }: SubmitChatCorrectionProps): Promise<string> {
   // Validate required parameters
   if (!teamId || !tmbId || !appId || !chatId || !dataId) {
@@ -64,7 +64,7 @@ export async function submitChatCorrection({
     throw new Error('Correction data and question are required');
   }
 
-  if (!modelName?.trim()) {
+  if (!modelId?.trim()) {
     throw new Error(ChatErrEnum.modelNameRequired);
   }
 
@@ -165,7 +165,7 @@ export async function submitChatCorrection({
         appId,
         correctionId,
         correctionData,
-        modelName,
+        modelId,
         session
       });
     } else {
@@ -173,7 +173,7 @@ export async function submitChatCorrection({
         teamId,
         correctionId,
         correctionData,
-        modelName,
+        modelId,
         session
       });
     }
@@ -195,7 +195,7 @@ async function processEditMode({
   appId,
   correctionId,
   correctionData,
-  modelName,
+  modelId,
   session
 }: ProcessEditModeProps): Promise<void> {
   const { question, correctedAnswer } = correctionData;
@@ -205,7 +205,7 @@ async function processEditMode({
   }
 
   // 1. Generate vectors for question and answer
-  const embModel = getEmbeddingModel(modelName);
+  const embModel = getEmbeddingModelById(modelId);
   // 2. Insert into modeldata table (reuse existing interface)
   // Use appId as datasetId, correctionId as collectionId
   const { insertIds } = await insertDatasetDataVector({
@@ -260,7 +260,7 @@ async function processAnnotateMode({
   teamId,
   correctionId,
   correctionData,
-  modelName,
+  modelId,
   session
 }: ProcessAnnotateModeProps): Promise<void> {
   // Step 1: Store citation references in correction document
@@ -278,7 +278,7 @@ async function processAnnotateMode({
 
   // Step 2: Add correction question as a new index to each referenced dataset data
   if (correctionData.correctedQuoteList && correctionData.correctedQuoteList.length > 0) {
-    const embModel = getEmbeddingModel(modelName);
+    const embModel = getEmbeddingModelById(modelId);
     const insertedVectorIds: string[] = [];
 
     try {

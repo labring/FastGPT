@@ -357,33 +357,33 @@ describe('EvalDatasetCollection Create API', () => {
     it('should reject invalid evaluation model', async () => {
       const invalidModel = 'invalid-model';
 
-      // Mock global.llmModelMap.has to return false for invalid model
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(false);
+      // Mock global.llmModelIdMap.has to return false for invalid model
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(false);
 
       const req = {
-        body: { name: 'Test Dataset', evaluationModel: invalidModel }
+        body: { name: 'Test Dataset', evaluationModelId: invalidModel }
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
         EvaluationErrEnum.datasetModelNotFound
       );
 
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(invalidModel);
     });
 
     it('should accept valid evaluation model', async () => {
       const validModel = 'gpt-4';
 
-      // Mock global.llmModelMap.has to return true for valid model
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+      // Mock global.llmModelIdMap.has to return true for valid model
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(true);
 
       const req = {
-        body: { name: 'Test Dataset', evaluationModel: validModel }
+        body: { name: 'Test Dataset', evaluationModelId: validModel }
       };
 
       const result = await handler_test(req as any);
       expect(result).toBe(mockDatasetId);
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(validModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(validModel);
     });
 
     it('should use default evaluation model when none provided', async () => {
@@ -490,7 +490,7 @@ describe('EvalDatasetCollection Create API', () => {
 
     it('should reject when evaluation model is not a string', async () => {
       const req = {
-        body: { name: 'Test Dataset', evaluationModel: 123 }
+        body: { name: 'Test Dataset', evaluationModelId: 123 }
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -501,7 +501,7 @@ describe('EvalDatasetCollection Create API', () => {
     it('should reject when evaluation model exceeds 100 characters', async () => {
       const longModel = 'a'.repeat(101);
       const req = {
-        body: { name: 'Test Dataset', evaluationModel: longModel }
+        body: { name: 'Test Dataset', evaluationModelId: longModel }
       };
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -512,16 +512,16 @@ describe('EvalDatasetCollection Create API', () => {
     it('should handle exactly 100 character evaluation model', async () => {
       const exactLengthModel = 'a'.repeat(100);
 
-      // Mock global.llmModelMap.has to return true for valid model
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+      // Mock global.llmModelIdMap.has to return true for valid model
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(true);
 
       const req = {
-        body: { name: 'Test Dataset', evaluationModel: exactLengthModel }
+        body: { name: 'Test Dataset', evaluationModelId: exactLengthModel }
       };
 
       const result = await handler_test(req as any);
       expect(result).toBe(mockDatasetId);
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(exactLengthModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(exactLengthModel);
     });
   });
 });

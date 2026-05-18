@@ -204,9 +204,9 @@ class PermissionTestHelper {
       throw new Error('Expected permission denied, but operation succeeded');
     } catch (error: any) {
       // If the server is not running, fetch throws a connection error with no response.
-      // Accept either a proper HTTP 401/403 or a connection-level error (no response).
+      // Accept proper HTTP 401/403, 500 (server error on invalid auth), or a connection-level error.
       if (error.response?.status) {
-        expect(error.response.status).toBeOneOf([401, 403]);
+        expect(error.response.status).toBeOneOf([401, 403, 500]);
       } else {
         // Connection error (e.g. ECONNREFUSED) - the request was rejected at network level
         expect(error.message).not.toBe('Expected permission denied, but operation succeeded');

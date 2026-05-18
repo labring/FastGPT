@@ -23,7 +23,7 @@ export async function mockSynthesizeEvalData(
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
     numCases,
-    llmModel: request.llm_config.name
+    llmModel: request.llm_config.modelId
   });
 
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
@@ -58,7 +58,7 @@ export async function mockSynthesizeEvalData(
     },
     usages: [
       {
-        modelType: request.llm_config.name,
+        modelType: request.llm_config.modelId,
         promptTokens: 100 * numCases,
         completionTokens: 50 * numCases,
         totalTokens: 150 * numCases

@@ -85,7 +85,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   });
 
   // In auto mode, use the default LLM model name directly.
-  const aiModelName = getDefaultLLMModel()?.model || '';
+  const aiModelId = getDefaultLLMModel()?.id || '';
 
   // Controlled concurrency for DiTing API calls
   const ditingConcurrency = Math.min(
@@ -110,7 +110,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
             numCases: numCasesPerSample
           },
           llm_config: {
-            name: aiModelName,
+            modelId: aiModelId,
             timeout: trainEnv.DITING_TIMEOUT / 1000
           }
         });
@@ -270,7 +270,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
       synthesisMetadata: {
         sourceDataId: item.sourceDataId,
         sourceDatasetId: item.sourceDatasetId,
-        intelligentGenerationModel: aiModelName,
+        intelligentGenerationModelId: aiModelId,
         synthesizedAt: item.synthesizedAt,
         generatedAt: new Date()
       }

@@ -14,7 +14,7 @@ vi.mock('@fastgpt/service/core/ai/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
+  getLLMModelById: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -69,7 +69,7 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
 
 // Import mocked modules
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/core/ai/utils';
@@ -82,7 +82,7 @@ import {
 } from '@fastgpt/service/core/ai/llm/request';
 
 const mockGetAIApi = vi.mocked(getAIApi);
-const mockGetLLMModel = vi.mocked(getLLMModel);
+const mockGetLLMModel = vi.mocked(getLLMModelById);
 const mockLoadRequestMessages = vi.mocked(loadRequestMessages);
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
@@ -92,6 +92,7 @@ const mockParseReasoningContent = vi.mocked(parseReasoningContent);
 const createMockModelData = (overrides?: Partial<LLMModelItemType>): LLMModelItemType => ({
   type: ModelTypeEnum.llm,
   provider: 'openai',
+  id: 'gpt-4',
   model: 'gpt-4',
   name: 'GPT-4',
   maxContext: 128000,
@@ -167,7 +168,7 @@ describe('createLLMResponse', () => {
       let streamedText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         },
@@ -217,7 +218,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         }
@@ -284,7 +285,7 @@ describe('createLLMResponse', () => {
       let streamedText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: true
         },
@@ -352,7 +353,7 @@ describe('createLLMResponse', () => {
       let callCount = 0;
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: true
         },
@@ -405,7 +406,7 @@ describe('createLLMResponse', () => {
       let answerText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         },
@@ -459,7 +460,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         }
@@ -534,7 +535,7 @@ describe('createLLMResponse', () => {
       let answerText = '';
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: true
         },
@@ -619,7 +620,7 @@ describe('createLLMResponse', () => {
       const toolCallResults: ChatCompletionMessageToolCall[] = [];
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           tools,
           stream: false
@@ -739,7 +740,7 @@ describe('createLLMResponse', () => {
       const toolParamResults: string[] = [];
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           tools,
           stream: true
@@ -833,7 +834,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           tools,
           stream: false
@@ -903,7 +904,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           tools,
           stream: false
@@ -935,7 +936,7 @@ describe('createLLMResponse', () => {
         createLLMResponse({
           throwError: true,
           body: {
-            model: 'gpt-4',
+            modelId: 'gpt-4',
             messages,
             stream: false
           }
@@ -978,7 +979,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         }
@@ -1047,7 +1048,7 @@ describe('createLLMResponse', () => {
       const result = await createLLMResponse({
         throwError: false,
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: true
         }
@@ -1092,7 +1093,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         }
@@ -1135,7 +1136,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         }
@@ -1194,7 +1195,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         },
@@ -1239,7 +1240,7 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         body: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           messages,
           stream: false
         },
@@ -1275,7 +1276,7 @@ describe('createCompleteResponse', () => {
     let streamedText = '';
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         messages: [],
         stream: false
       },
@@ -1326,7 +1327,7 @@ describe('createCompleteResponse', () => {
     const toolCalls: any[] = [];
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         messages: [],
         tools,
         stream: false
@@ -1383,7 +1384,7 @@ describe('createStreamResponse', () => {
     let streamedText = '';
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         messages: [],
         stream: true
       },
@@ -1438,7 +1439,7 @@ describe('createStreamResponse', () => {
     let answerText = '';
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         messages: [],
         stream: true
       },

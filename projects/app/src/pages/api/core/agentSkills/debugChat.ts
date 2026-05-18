@@ -55,7 +55,7 @@ export type Props = {
   chatId: string;
   responseChatItemId?: string;
   messages: ChatCompletionMessageParam[];
-  model?: string;
+  modelId?: string;
   systemPrompt?: string;
 };
 
@@ -69,7 +69,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
  */
 export function buildDebugRuntimeNodes(
   skillId: string,
-  model: string,
+  modelId: string,
   systemPrompt: string
 ): {
   runtimeNodes: RuntimeNodeItemType[];
@@ -134,12 +134,12 @@ export function buildDebugRuntimeNodes(
           value: 20
         },
         {
-          key: NodeInputKeyEnum.aiModel,
+          key: NodeInputKeyEnum.aiModelId,
           renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
           label: 'AI Model',
           required: true,
           valueType: WorkflowIOValueTypeEnum.string,
-          value: model
+          value: modelId
         },
         {
           key: NodeInputKeyEnum.aiSystemPrompt,
@@ -187,7 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId,
     responseChatItemId = getNanoid(),
     messages = [],
-    model,
+    modelId,
     systemPrompt = ''
   } = req.body as Props;
 
@@ -199,7 +199,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new UserError('messages is required');
     }
 
-    const resolvedModel = model || getDefaultLLMModel().model;
+    const resolvedModelId = modelId || getDefaultLLMModel().id;
 
     const originIp = getIpFromRequest(req);
 
@@ -239,7 +239,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Build the minimal workflow
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
       skillId,
-      resolvedModel,
+      resolvedModelId,
       systemPrompt
     );
 
@@ -252,7 +252,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: true
     });
 
-    logger.debug('Dispatching skill debug workflow', { skillId, chatId, model });
+    logger.debug('Dispatching skill debug workflow', { skillId, chatId, modelId });
 
     // Execute workflow
     const { flowResponses, assistantResponses, system_memories, durationSeconds, customFeedbacks } =

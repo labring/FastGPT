@@ -16,7 +16,7 @@ export type EvalDatasetDataQualityMetadata = {
   status: EvalDatasetDataQualityStatusEnum;
   score?: number;
   reason?: string;
-  model?: string;
+  modelId?: string;
   usages?: Usage[];
   runLogs?: any[];
   startTime?: Date;
@@ -29,7 +29,7 @@ export type EvalDatasetDataSynthesisMetadata = {
   sourceDataId?: string;
   sourceDatasetId?: string;
   sourceCollectionId?: string;
-  intelligentGenerationModel?: string;
+  intelligentGenerationModelId?: string;
   synthesizedAt?: Date;
   generatedAt?: Date;
 };
@@ -52,7 +52,7 @@ export type EvalDatasetCollectionSchemaType = {
   createTime: Date;
   updateTime: Date;
   metadata: Record<string, any>;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 };
 
 export type EvalDatasetDataSchemaType = {

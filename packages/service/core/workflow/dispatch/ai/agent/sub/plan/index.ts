@@ -10,7 +10,7 @@ import {
   getInitialPlanQuery,
   reTryPlanPrompt
 } from './prompt';
-import { getLLMModel } from '../../../../../../ai/model';
+import { getLLMModelById } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
@@ -38,7 +38,7 @@ const agentLogger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type PlanAgentConfig = {
   systemPrompt?: string;
-  model: string;
+  modelId?: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
@@ -172,7 +172,7 @@ export const dispatchPlanAgent = async ({
   completionTools,
   getSubAppInfo,
   systemPrompt,
-  model,
+  modelId,
   planId,
   task,
   description,
@@ -181,7 +181,7 @@ export const dispatchPlanAgent = async ({
   ...props
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const startTime = Date.now();
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModelById(modelId);
 
   // 移除 plan 工具
   completionTools = completionTools.filter((item) => item.function.name !== SubAppIds.plan);
@@ -240,7 +240,7 @@ export const dispatchPlanAgent = async ({
   // console.log('userInput:', userInput, 'mode:', mode, 'interactive?.type:', interactive?.type);
 
   const requestParams = {
-    model: modelData.model,
+    modelId: modelData.id,
     stream: true,
     tools: props.mode === 'continue' ? undefined : [AIAskTool],
     tool_choice: 'auto' as const,
@@ -274,7 +274,7 @@ export const dispatchPlanAgent = async ({
   const initialPoints = userKey
     ? 0
     : formatModelChars2Points({
-        model: modelData.model,
+        modelId: modelData.id,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }).totalPoints;
@@ -333,7 +333,7 @@ export const dispatchPlanAgent = async ({
     const regenPoints = userKey
       ? 0
       : formatModelChars2Points({
-          model: modelData.model,
+          modelId: modelData.id,
           inputTokens: regenerateResponse.usage.inputTokens,
           outputTokens: regenerateResponse.usage.outputTokens
         }).totalPoints;
@@ -380,8 +380,6 @@ export const dispatchPlanAgent = async ({
   })();
 
   // 使用累加的价格（每次调用单独计价后累加），保证梯度计费正确
-  const modelName = modelData.name;
-
   const nodeId = getNanoid(6);
   const nodeResponse: ChatHistoryItemResType = {
     nodeId: nodeId,
@@ -393,7 +391,7 @@ export const dispatchPlanAgent = async ({
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalPoints,
-    model: modelName,
+    modelId: modelData.id,
     runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
     llmRequestIds
   };
@@ -412,7 +410,7 @@ export const dispatchPlanAgent = async ({
     usages: [
       {
         moduleName: i18nT('account_usage:agent_call'),
-        model: modelName,
+        modelId: modelData.id,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens

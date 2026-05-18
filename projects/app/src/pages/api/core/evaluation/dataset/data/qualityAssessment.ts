@@ -22,7 +22,7 @@ export type QualityAssessmentResponse = string;
 async function handler(
   req: ApiRequestProps<QualityAssessmentBody, QualityAssessmentQuery>
 ): Promise<QualityAssessmentResponse> {
-  const { dataId, evaluationModel } = req.body;
+  const { dataId, evaluationModelId } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetDataUpdateById(dataId, {
     req,
@@ -34,7 +34,7 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.datasetDataIdRequired);
   }
 
-  if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
+  if (evaluationModelId !== undefined && typeof evaluationModelId !== 'string') {
     return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
 
@@ -55,13 +55,13 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
-  const finalEvaluationModel = evaluationModel || collection.evaluationModel;
+  const finalEvaluationModelId = evaluationModelId || collection.evaluationModelId;
 
-  if (!finalEvaluationModel || typeof finalEvaluationModel !== 'string') {
+  if (!finalEvaluationModelId || typeof finalEvaluationModelId !== 'string') {
     return Promise.reject(EvaluationErrEnum.evalModelNameInvalid);
   }
 
-  if (!global.llmModelMap.has(finalEvaluationModel)) {
+  if (!global.llmModelIdMap.has(finalEvaluationModelId)) {
     return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
 
@@ -73,14 +73,14 @@ async function handler(
 
     await addEvalDatasetDataQualityJob({
       dataId: dataId,
-      evaluationModel: finalEvaluationModel
+      evaluationModelId: finalEvaluationModelId
     });
 
     // Reset quality metadata and quality result fields
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
       $set: {
         'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-        'qualityMetadata.model': finalEvaluationModel,
+        'qualityMetadata.modelId': finalEvaluationModelId,
         'qualityMetadata.queueTime': new Date()
       },
       $unset: {

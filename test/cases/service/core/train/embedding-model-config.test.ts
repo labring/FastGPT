@@ -67,6 +67,8 @@ describe('Embedding Model Config Controller', () => {
           model: 'test-model'
         },
         isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         charsPointsPrice: 1
       });
 
@@ -75,6 +77,9 @@ describe('Embedding Model Config Controller', () => {
         { model: 'test-model' },
         {
           model: 'test-model',
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          isShared: false,
           metadata: expect.objectContaining({
             provider: 'aicp',
             model: 'test-model',
@@ -109,6 +114,8 @@ describe('Embedding Model Config Controller', () => {
           model: 'type-check-model'
         },
         isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         charsPointsPrice: 1
       });
 

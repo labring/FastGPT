@@ -1,4 +1,4 @@
-import { getLLMModel } from '../../../../../ai/model';
+import { getLLMModelById } from '../../../../../ai/model';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
@@ -8,8 +8,8 @@ const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
 const defaultBaseUrl = aiProxyBaseUrl || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const defaultApiKey = process.env.AIPROXY_API_TOKEN || process.env.CHAT_API_KEY || '';
 
-export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model {
-  const cfg = getLLMModel(modelNameOrId);
+export function buildPiModel(modelId?: string, useVision?: boolean): Model {
+  const cfg = getLLMModelById(modelId);
   // requestUrl is the full endpoint (e.g. https://api.deepseek.com/chat/completions).
   // pi-ai's openai-completions provider appends /chat/completions automatically,
   // so we strip it to get baseUrl.
@@ -40,7 +40,7 @@ export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model
   };
 }
 
-export function getModelApiKey(modelNameOrId?: string): string {
-  const cfg = getLLMModel(modelNameOrId);
+export function getModelApiKey(modelId?: string): string {
+  const cfg = getLLMModelById(modelId);
   return cfg?.requestAuth || defaultApiKey;
 }

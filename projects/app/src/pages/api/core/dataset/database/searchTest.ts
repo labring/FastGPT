@@ -12,7 +12,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById, getLLMModelById } from '@fastgpt/service/core/ai/model';
 import {
   generateAndExecuteSQL,
   SearchDatabaseData
@@ -39,7 +39,7 @@ async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>
 ): Promise<DatabaseSearchTestResponse> {
   // 未选择model时使用默认模型
-  const { datasetId, query, model } = req.body;
+  const { datasetId, query, modelId } = req.body;
 
   // auth dataset role
   const { dataset, teamId, tmbId, apikey } = await authDataset({
@@ -52,12 +52,12 @@ async function handler(
 
   // auth balance
   await checkTeamAIPoints(teamId);
-  const vectorModel = getEmbeddingModel(dataset.vectorModel);
-  const sqlLLM = getLLMModel(model);
+  const vectorModel = getEmbeddingModelById(dataset.vectorModelId);
+  const sqlLLM = getLLMModelById(modelId);
 
   // Calculate dynamic limit based on generateSqlModel's maxContext
   const dynamicLimit = calculateDynamicLimit({
-    generateSqlModel: model,
+    generateSqlModelId: sqlLLM.model,
     safetyFactor: 0.6,
     estimatedTokensPerItem: 1024
   });
@@ -87,7 +87,7 @@ async function handler(
       histories: [],
       teamId: teamId,
       queries: [query],
-      model: vectorModel?.model,
+      modelId: vectorModel?.id,
       limit: dynamicLimit,
       datasetIds: [datasetId]
     });
@@ -126,7 +126,7 @@ async function handler(
       teamId,
       tmbId,
       inputTokens: embeddingTokens,
-      model: dataset.vectorModel!,
+      modelId: dataset.vectorModelId!,
       source
     });
     const { totalPoints: generateSqlTotalPoints } = pushGenerateSqlUsage({
@@ -134,7 +134,7 @@ async function handler(
       tmbId,
       inputTokens: generateSqlResult.input_tokens,
       outputTokens: generateSqlResult.output_tokens,
-      model: sqlLLM.model
+      modelId: sqlLLM.id
     });
 
     if (apikey) {
@@ -221,7 +221,7 @@ async function handler(
       tmbId,
       inputTokens: result.input_tokens,
       outputTokens: result.output_tokens,
-      model: sqlLLM.model
+      modelId: sqlLLM.id
     });
 
     if (apikey) {

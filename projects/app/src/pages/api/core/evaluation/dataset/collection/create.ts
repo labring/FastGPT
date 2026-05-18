@@ -22,9 +22,9 @@ export type EvalDatasetCollectionCreateResponse = string;
 function validateRequestParams(params: {
   name?: string;
   description?: string;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 }) {
-  const { name, description, evaluationModel } = params;
+  const { name, description, evaluationModelId } = params;
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     throw EvaluationErrEnum.evalNameRequired;
@@ -42,11 +42,11 @@ function validateRequestParams(params: {
     throw EvaluationErrEnum.evalDescriptionTooLong;
   }
 
-  if (evaluationModel && typeof evaluationModel !== 'string') {
+  if (evaluationModelId && typeof evaluationModelId !== 'string') {
     throw EvaluationErrEnum.evalModelNameInvalid;
   }
 
-  if (evaluationModel && evaluationModel.length > MAX_MODEL_NAME_LENGTH) {
+  if (evaluationModelId && evaluationModelId.length > MAX_MODEL_NAME_LENGTH) {
     throw EvaluationErrEnum.evalModelNameTooLong;
   }
 }
@@ -54,7 +54,7 @@ function validateRequestParams(params: {
 async function handler(
   req: ApiRequestProps<EvalDatasetCollectionCreateBody, EvalDatasetCollectionCreateQuery>
 ): Promise<EvalDatasetCollectionCreateResponse> {
-  const { name, description = '', evaluationModel } = req.body;
+  const { name, description = '', evaluationModelId } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetCreate({
     req,
@@ -62,10 +62,10 @@ async function handler(
     authToken: true
   });
 
-  validateRequestParams({ name, description, evaluationModel });
+  validateRequestParams({ name, description, evaluationModelId });
 
-  if (evaluationModel) {
-    if (!global.llmModelMap.has(evaluationModel)) {
+  if (evaluationModelId) {
+    if (!global.llmModelIdMap.has(evaluationModelId)) {
       return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
     }
   }
@@ -83,7 +83,7 @@ async function handler(
   await checkTeamEvalDatasetLimit(teamId);
 
   const defaultEvaluationModel = getDefaultEvaluationModel();
-  const modelToUse = evaluationModel || defaultEvaluationModel?.model;
+  const modelToUse = evaluationModelId || defaultEvaluationModel?.model;
 
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetCollection.create(
@@ -93,7 +93,7 @@ async function handler(
           tmbId,
           name: name.trim(),
           description: description.trim(),
-          ...(modelToUse && { evaluationModel: modelToUse })
+          ...(modelToUse && { evaluationModelId: modelToUse })
         }
       ],
       { session, ordered: true }

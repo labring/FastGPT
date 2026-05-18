@@ -25,7 +25,7 @@ import type {
   CustomFileImportModeType,
   CustomFileImportConfigType
 } from '@fastgpt/global/common/system/types';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';

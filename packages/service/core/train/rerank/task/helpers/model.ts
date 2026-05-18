@@ -1,4 +1,4 @@
-import { getRerankModel } from '../../../../ai/model';
+import { getRerankModelById } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 
 /**
@@ -7,7 +7,7 @@ import { addLog } from '../../../../../common/system/log';
  * @returns true if it's a fine-tuned model, false otherwise
  */
 export function isTunedModel(modelConfigId: string): boolean {
-  const modelConfig = getRerankModel(modelConfigId);
+  const modelConfig = getRerankModelById(modelConfigId);
   if (!modelConfig) {
     addLog.warn('Model config not found when checking if tuned', { modelConfigId });
     return false;

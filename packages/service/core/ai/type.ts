@@ -13,6 +13,9 @@ export type SystemModelSchemaType = {
   _id: string;
   model: string;
   metadata: SystemModelItemType;
+  tmbId?: string;
+  teamId?: string;
+  isShared: boolean;
 };
 
 export type SystemModelItemType =
@@ -42,12 +45,12 @@ declare global {
   var aiproxyChannelsCache: AIProxyChannelsType;
 
   var systemModelList: SystemModelItemType[];
-  // var systemModelMap: Map<string, SystemModelItemType>;
-  var llmModelMap: Map<string, LLMModelItemType>;
-  var embeddingModelMap: Map<string, EmbeddingModelItemType>;
-  var ttsModelMap: Map<string, TTSModelType>;
-  var sttModelMap: Map<string, STTModelType>;
-  var reRankModelMap: Map<string, RerankModelItemType>;
+  var systemModelIdMap: Map<string, SystemModelItemType>;
+  var llmModelIdMap: Map<string, LLMModelItemType>;
+  var embeddingModelIdMap: Map<string, EmbeddingModelItemType>;
+  var ttsModelIdMap: Map<string, TTSModelType>;
+  var sttModelIdMap: Map<string, STTModelType>;
+  var reRankModelIdMap: Map<string, RerankModelItemType>;
 
   var systemActiveModelList: SystemModelItemType[];
   var systemActiveDesensitizedModels: SystemModelItemType[];

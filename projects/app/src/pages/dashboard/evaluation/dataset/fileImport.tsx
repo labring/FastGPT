@@ -41,7 +41,7 @@ import {
 
 type FileImportFormType = {
   name: string;
-  evaluationModel: string;
+  evaluationModelId: string;
   files: File[];
   autoEvaluation: boolean;
 };
@@ -74,14 +74,14 @@ const FileImport = () => {
   const { register, setValue, watch, handleSubmit } = useForm<FileImportFormType>({
     defaultValues: {
       name: '',
-      evaluationModel: evalModelList[0]?.model || '',
+      evaluationModelId: evalModelList[0]?.model || '',
       files: [],
       autoEvaluation: true
     }
   });
 
   const name = watch('name');
-  const evaluationModel = watch('evaluationModel');
+  const evaluationModelId = watch('evaluationModelId');
   const files = watch('files');
   const autoEvaluation = watch('autoEvaluation');
 
@@ -137,7 +137,7 @@ const FileImport = () => {
         percentListen: setPercent,
         collectionId: currentCollectionId,
         enableQualityEvaluation: data.autoEvaluation,
-        evaluationModel: data.autoEvaluation ? data.evaluationModel : undefined
+        evaluationModelId: data.autoEvaluation ? data.evaluationModelId : undefined
       });
     },
     {
@@ -347,12 +347,12 @@ const FileImport = () => {
                   <Box flex={1}>
                     <AIModelSelector
                       bg="myGray.50"
-                      value={evaluationModel}
+                      value={evaluationModelId}
                       list={evalModelList.map((item) => ({
-                        value: item.model,
+                        value: item.id,
                         label: item.name
                       }))}
-                      onChange={(value) => setValue('evaluationModel', value)}
+                      onChange={(value) => setValue('evaluationModelId', value)}
                       placeholder={t(
                         'dashboard_evaluation:file_import_evaluation_model_placeholder'
                       )}

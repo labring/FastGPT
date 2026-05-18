@@ -198,7 +198,7 @@ export type DispatchNodeResponseType = {
   retrievalResults?: SearchDataResponseItemType[]; // 检索结果（RRF融合后的中间结果）
   retrievalType?: 'correction' | 'faq'; // 检索类型标记，仅当 correction 或 faq 命中时存在
   queryExtensionResult?: {
-    model: string;
+    modelId: string;
     inputTokens: number;
     outputTokens: number;
     query?: string; // 改为可选，当没有问题改写时为 undefined
@@ -209,7 +209,7 @@ export type DispatchNodeResponseType = {
     };
   };
   deepSearchResult?: {
-    model: string;
+    modelId: string;
     inputTokens: number;
     outputTokens: number;
   };
@@ -329,7 +329,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
 
 /* Single node props */
 export type AIChatNodeProps = {
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.aiChatTemperature]?: number;
   [NodeInputKeyEnum.aiChatMaxToken]?: number;

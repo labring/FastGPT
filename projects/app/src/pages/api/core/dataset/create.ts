@@ -25,11 +25,11 @@ import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permissi
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
-  getDatasetModel,
+  getDefaultDatasetModel,
   getDefaultEmbeddingModel,
   getDefaultVLMModel,
-  getEmbeddingModel,
-  getLLMModel
+  getEmbeddingModelById,
+  getLLMModelById
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -53,16 +53,16 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDatasetModel()?.model,
-    vlmModel: rawVlmModel,
+    vectorModelId = getDefaultEmbeddingModel()?.id,
+    agentModelId = getDefaultDatasetModel()?.id,
+    vlmModelId: rawVlmModelId,
     apiDatasetServer,
     websiteConfig,
     autoSync
   } = CreateDatasetBodySchema.parse(req.body);
 
-  // vlmModel: null=不使用, undefined=取默认值, string=指定模型
-  const vlmModel = rawVlmModel === null ? undefined : rawVlmModel ?? getDefaultVLMModel()?.model;
+  // vlmModelId: null=不使用, undefined=取默认值, string=指定模型
+  const vlmModelId = rawVlmModelId === null ? undefined : rawVlmModelId ?? getDefaultVLMModel()?.id;
 
   // auth
   const { teamId, tmbId, userId } = parentId
@@ -81,8 +81,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       });
 
   // check model valid
-  const vectorModelStore = getEmbeddingModel(vectorModel);
-  const agentModelStore = getLLMModel(agentModel);
+  const vectorModelStore = getEmbeddingModelById(vectorModelId);
+  const agentModelStore = getLLMModelById(agentModelId);
 
   const skipVecModelCheckTypes = new Set([DatasetTypeEnum.structureDocument]);
   const skipLMCheckTypes = new Set([DatasetTypeEnum.database, DatasetTypeEnum.structureDocument]);
@@ -109,7 +109,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
 
     if (importMode) {
       const { adjustedEnhanceConfig, adjustments } = adaptiveAdjustConfig({
-        dataset: { agentModel, vlmModel } as any,
+        dataset: { agentModelId, vlmModelId } as any,
         modeConfig: importMode
       });
       logAdaptiveAdjustments('new_dataset', adjustments);
@@ -145,9 +145,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           intro,
           teamId,
           tmbId,
-          ...(!skipVecModelCheckTypes.has(type) && { vectorModel }),
-          agentModel,
-          vlmModel,
+          ...(!skipVecModelCheckTypes.has(type) && { vectorModelId }),
+          agentModelId,
+          vlmModelId,
           avatar,
           type,
           apiDatasetServer,

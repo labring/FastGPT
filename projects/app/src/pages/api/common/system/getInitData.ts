@@ -13,6 +13,11 @@ import { resolveEmbeddingTasksByTunedModelId } from '@fastgpt/service/core/train
 import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { Types } from '@fastgpt/service/common/mongo';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getOrgsByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 
 export type TrainTaskSummary = {
   totalCount: number;
@@ -185,12 +190,12 @@ async function buildActiveModelList(
     batchQueryNonTunedSummaries(
       MongoEmbeddingTrainTask,
       teamId,
-      nonTunedEmbedding.map((m) => m.model)
+      nonTunedEmbedding.map((m) => m.id)
     ),
     batchQueryNonTunedSummaries(
       MongoRerankTrainTask,
       teamId,
-      nonTunedRerank.map((m) => m.model)
+      nonTunedRerank.map((m) => m.id)
     )
   ]);
 
@@ -199,12 +204,12 @@ async function buildActiveModelList(
 
   // Individual queries for tuned models (rare, one per model)
   for (const model of tunedEmbedding) {
-    const tasks = await resolveEmbeddingTasksByTunedModelId(model.model, teamId);
-    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+    const tasks = await resolveEmbeddingTasksByTunedModelId(model.id, teamId);
+    summaryMap.set(model.id, computeSummaryFromTasks(tasks as any));
   }
   for (const model of tunedRerank) {
-    const tasks = await resolveRerankTasksByTunedModelId(model.model, teamId);
-    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+    const tasks = await resolveRerankTasksByTunedModelId(model.id, teamId);
+    summaryMap.set(model.id, computeSummaryFromTasks(tasks as any));
   }
 
   // Batch resolve creator names (1 query)
@@ -215,11 +220,52 @@ async function buildActiveModelList(
     if (model.type !== ModelTypeEnum.embedding && model.type !== ModelTypeEnum.rerank) {
       return { ...model, trainTaskSummary: emptySummary() };
     }
-    const summary = summaryMap.get(model.model);
+    const summary = summaryMap.get(model.id);
     return {
       ...model,
       trainTaskSummary: summary || emptySummary()
     };
+  });
+}
+
+async function filterModelsByPermission({
+  teamId,
+  tmbId,
+  isRoot
+}: {
+  teamId: string;
+  tmbId: string;
+  isRoot: boolean;
+}): Promise<SystemModelItemType[]> {
+  const sourceList = global.systemActiveDesensitizedModels;
+
+  // Root sees all models
+  if (isRoot) return sourceList;
+
+  const [groups, orgs, rps] = await Promise.all([
+    getGroupsByTmbId({ teamId, tmbId }),
+    getOrgsByTmbId({ teamId, tmbId }),
+    MongoResourcePermission.find({
+      teamId,
+      resourceType: PerResourceTypeEnum.model
+    }).lean()
+  ]);
+
+  const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
+  const permissionModelSet = new Set(
+    rps.filter((rp) => myIdSet.has(getCollaboratorId(rp))).map((rp) => String(rp.resourceId))
+  );
+
+  return sourceList.filter((model) => {
+    // System models (no creator) are only visible if shared by root
+    if (!model.isCustom) return model.isShared === true;
+    // Globally shared custom models
+    if (model.isShared) return true;
+    // Creator's own models
+    if (String(model.tmbId) === String(tmbId)) return true;
+    // Models user has collaborator permission for
+    if (model.id && permissionModelSet.has(model.id)) return true;
+    return false;
   });
 }
 
@@ -230,7 +276,7 @@ async function handler(
   const { bufferId } = req.query;
 
   try {
-    const { teamId } = await authCert({ req, authToken: true });
+    const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
     // If bufferId is the same as the current bufferId, return directly
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
@@ -239,12 +285,14 @@ async function handler(
       };
     }
 
+    const userAccessibleModels = await filterModelsByPermission({ teamId, tmbId, isRoot });
+
     return {
       bufferId: global.systemInitBufferId,
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
-      activeModelList: await buildActiveModelList(global.systemActiveDesensitizedModels, teamId),
+      activeModelList: await buildActiveModelList(userAccessibleModels, teamId),
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache

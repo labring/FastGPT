@@ -18,7 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DatasetSearchToolSchema } from '../sub/dataset/utils';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
 import type { DispatchAgentModuleProps } from '..';
-import { getLLMModel } from '../../../../../ai/model';
+import { getLLMModelById } from '../../../../../ai/model';
 import { getStepCallQuery, getStepDependon } from './dependon';
 import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
@@ -101,7 +101,7 @@ export const masterCall = async ({
     workflowStreamResponse,
     usagePush,
     params: {
-      model,
+      modelId,
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
@@ -138,7 +138,7 @@ export const masterCall = async ({
             nodeResponse
           } = await getStepDependon({
             checkIsStopping,
-            model,
+            modelId,
             steps,
             step
           });
@@ -157,7 +157,7 @@ export const masterCall = async ({
         checkIsStopping,
         steps,
         step,
-        model,
+        modelId,
         filesMap
       });
       if (callQuery.usage) {
@@ -216,7 +216,7 @@ export const masterCall = async ({
   let planResult: DispatchPlanAgentResponse | undefined;
 
   const {
-    model: agentModel,
+    modelId: agentModelId,
     assistantMessages,
     completeMessages,
     inputTokens,
@@ -230,7 +230,7 @@ export const masterCall = async ({
     maxRunAgentTimes: 100,
     body: {
       messages: requestMessages,
-      model: getLLMModel(model),
+      modelId: modelId,
       stream: true,
       useVision: aiChatVision,
       tools: isStepCall
@@ -298,7 +298,7 @@ export const masterCall = async ({
         moduleType: FlowNodeTypeEnum.emptyNode,
         moduleName: i18nT('chat:compress_llm_messages'),
         moduleLogo: 'core/app/agent/child/contextCompress',
-        model: modelName,
+        modelId: modelId,
         inputTokens,
         outputTokens,
         totalPoints,
@@ -334,7 +334,7 @@ export const masterCall = async ({
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
               customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-              model,
+              modelId,
               userKey: externalProvider.openaiAccount
             });
 
@@ -375,16 +375,16 @@ export const masterCall = async ({
                 searchMode: datasetParams.searchMode,
                 embeddingWeight: datasetParams.embeddingWeight,
                 usingReRank: datasetParams.usingReRank ?? false,
-                rerankModel: datasetParams.rerankModel,
+                rerankModelId: datasetParams.rerankModelId,
                 rerankWeight: datasetParams.rerankWeight || 0.5,
                 usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
-                extensionModel: datasetParams.datasetSearchExtensionModel,
+                extensionModelId: datasetParams.datasetSearchExtensionModelId,
                 extensionBg: datasetParams.datasetSearchExtensionBg,
                 collectionFilterMatch: datasetParams.collectionFilterMatch
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              llmModel: model,
+              llmModelId: modelId,
               lang: props.lang
             });
 
@@ -469,7 +469,7 @@ export const masterCall = async ({
                 completionTools,
                 getSubAppInfo,
                 systemPrompt,
-                model,
+                modelId,
                 stream,
                 mode: 'initial',
                 ...toolArgs.data,
@@ -701,7 +701,7 @@ export const masterCall = async ({
 
   // llmTotalPoints 是 runAgentCall 内每次 LLM 调用单独计价后的累计值，保证梯度计费正确
   const llmUsage = {
-    modelName: getLLMModel(agentModel).name,
+    modelId: getLLMModelById(agentModelId).id,
     totalPoints: llmTotalPoints
   };
   const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);
@@ -710,7 +710,7 @@ export const masterCall = async ({
     id: getNanoid(6),
     moduleType: FlowNodeTypeEnum.agent,
     moduleName: isStepCall ? i18nT('chat:step_call') : i18nT('chat:master_agent_call'),
-    model: llmUsage.modelName,
+    modelId: llmUsage.modelId,
     moduleLogo: isStepCall ? 'core/app/agent/child/stepCall' : 'core/app/type/agentFill',
     ...(agentError && { errorText: getErrText(agentError) }),
     inputTokens,
@@ -749,7 +749,7 @@ export const masterCall = async ({
     } = await getOneStepResponseSummary({
       checkIsStopping,
       response: answerText,
-      model
+      modelId
     });
     summaryUsage && usagePush([summaryUsage]);
     summaryNodeResponse && nodeResponse.childrenResponses?.push(summaryNodeResponse);

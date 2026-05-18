@@ -1,15 +1,22 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { getModelById } from '@fastgpt/service/core/ai/model';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import { getTmbPermission } from '@fastgpt/service/support/permission/controller';
+import {
+  ManagePermissionVal,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
-export type deleteQuery = {
-  model: string;
+export type deleteQuery = {};
+
+export type deleteBody = {
+  id: string;
 };
-
-export type deleteBody = {};
 
 export type deleteResponse = {};
 
@@ -17,21 +24,45 @@ async function handler(
   req: ApiRequestProps<deleteBody, deleteQuery>,
   res: ApiResponseType<any>
 ): Promise<deleteResponse> {
-  await authSystemAdmin({ req });
+  const { tmbId, teamId, isRoot } = await authUserPer({
+    req,
+    authToken: true,
+    per: WritePermissionVal
+  });
 
-  const { model } = req.query;
+  const { id } = req.body;
 
-  const modelData = findModelFromAlldata(model);
+  const modelItem = getModelById(id);
+  if (!modelItem) return Promise.reject(new Error('Model not found'));
+  if (!modelItem.id) return Promise.reject(new Error('System model cannot be deleted'));
 
-  if (!modelData) {
-    return Promise.reject('Model not found');
+  const dbModel = await MongoSystemModel.findById(modelItem.id).lean();
+  if (!dbModel) return Promise.reject(new Error('Model not found'));
+  const _id = dbModel._id;
+
+  // Root can delete any model
+  if (!isRoot) {
+    if (modelItem.isCustom === false) {
+      return Promise.reject(new Error('System model cannot be deleted'));
+    }
+    if (String(dbModel.tmbId) !== String(tmbId)) {
+      const tmbPer = await getTmbPermission({
+        resourceType: PerResourceTypeEnum.model,
+        teamId,
+        tmbId,
+        resourceId: String(_id)
+      });
+      if (!tmbPer || !(tmbPer & ManagePermissionVal)) {
+        return Promise.reject(new Error('No permission to delete this model'));
+      }
+    }
   }
 
-  if (!modelData.isCustom) {
-    return Promise.reject('System model cannot be deleted');
-  }
-
-  await MongoSystemModel.deleteOne({ model });
+  await MongoSystemModel.deleteOne({ _id });
+  await MongoResourcePermission.deleteMany({
+    resourceType: PerResourceTypeEnum.model,
+    resourceId: _id
+  });
 
   await updatedReloadSystemModel();
 

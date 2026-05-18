@@ -6,7 +6,6 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -17,7 +16,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
-  const { datasetId, vectorModel } = RebuildEmbeddingBodySchema.parse(req.body);
+  const { datasetId, vectorModelId } = RebuildEmbeddingBodySchema.parse(req.body);
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -28,8 +27,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   });
 
   // check vector model
-  if (!vectorModel || dataset.vectorModel === vectorModel) {
-    return Promise.reject('vectorModel 不合法');
+  if (!vectorModelId || dataset.vectorModelId === vectorModelId) {
+    return Promise.reject('vectorModelId 不合法');
   }
 
   // check rebuilding or training
@@ -47,9 +46,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     tmbId,
     appName: '切换向量模型',
     billSource: UsageSourceEnum.training,
-    vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-    agentModel: getLLMModel(dataset.agentModel)?.name,
-    vllmModel: getVlmModel(dataset.vlmModel)?.name
+    vectorModelId: dataset.vectorModelId,
+    agentModelId: dataset.agentModelId,
+    vllmModelId: dataset.vlmModelId
   });
 
   // update vector model and dataset.data rebuild field
@@ -57,7 +56,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     await MongoDataset.findByIdAndUpdate(
       datasetId,
       {
-        vectorModel
+        vectorModelId
       },
       { session }
     );
@@ -115,7 +114,6 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
                 collectionId: data.collectionId,
                 billId: usageId,
                 mode: TrainingModeEnum.chunk,
-                model: vectorModel,
                 dataId: data._id,
                 retryCount: 50
               }

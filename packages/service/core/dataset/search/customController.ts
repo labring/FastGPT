@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel } from '../../ai/model';
+import { getEmbeddingModelById, getDefaultRerankModel, getRerankModelById } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import type {
   DatasetCollectionSchemaType,
@@ -111,13 +111,13 @@ export async function searchDatasetDataForAssistant(
     teamId,
     reRankQuery,
     queries,
-    model,
+    modelId,
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     embeddingWeight = 0.5,
     usingReRank = false,
-    rerankModel,
+    rerankModelId,
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
@@ -198,7 +198,7 @@ export async function searchDatasetDataForAssistant(
     }
 
     const { vectors, tokens } = await getVectorsByText({
-      model: getEmbeddingModel(model),
+      model: getEmbeddingModelById(modelId),
       input: queries,
       type: 'query'
     });
@@ -553,7 +553,7 @@ export async function searchDatasetDataForAssistant(
     datasetCount: datasetIds.length,
     maxTokens,
     usingReRank,
-    rerankModel,
+    rerankModelId,
     rerankMethod
   });
 
@@ -632,6 +632,7 @@ export async function searchDatasetDataForAssistant(
       };
     }
 
+    const rerankModel = getRerankModelById(rerankModelId);
     try {
       return await assistantDatasetReRank({
         rerankModel,
@@ -641,7 +642,7 @@ export async function searchDatasetDataForAssistant(
         // rerankStrategy 使用默认值 RerankStrategyEnum.maxScore
       });
     } catch (error) {
-      addLog.error('Reranker raw error caught', { error, model: rerankModel?.model });
+      addLog.error('Reranker raw error caught', { error, modelId: rerankModel?.id });
 
       // 构建结构化的错误对象
       let errorMessage: Record<string, any> = {};

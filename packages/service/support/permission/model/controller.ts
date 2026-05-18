@@ -3,20 +3,23 @@ import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgsByTmbId } from '../org/controllers';
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
-import { isProVersion } from '../../../common/system/constants';
 
 export const getMyModels = async ({
   teamId,
   tmbId,
-  isTeamOwner
+  teamPer,
+  isRoot
 }: {
   teamId: string;
   tmbId: string;
-  isTeamOwner: boolean;
+  teamPer: { isOwner: boolean };
+  isRoot?: boolean;
 }) => {
-  if (isTeamOwner || !isProVersion()) {
-    return global.systemModelList.map((m) => m.model);
+  // Root sees all active models across all teams
+  if (isRoot) {
+    return global.systemActiveModelList.map((m) => m.id);
   }
+
   const [groups, orgs] = await Promise.all([
     getGroupsByTmbId({
       teamId,
@@ -35,13 +38,23 @@ export const getMyModels = async ({
     resourceType: PerResourceTypeEnum.model
   }).lean();
 
-  // 未配置权限的，默认是有权限
-  const permissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
-  const unconfiguredModels = global.systemModelList.filter(
-    (model) => !permissionConfiguredModelSet.has(model.model)
+  const permissionModelSet = new Set(
+    rps.filter((rp) => myIdSet.has(getCollaboratorId(rp))).map((rp) => String(rp.resourceId))
   );
 
-  const myModels = rps.filter((rp) => myIdSet.has(getCollaboratorId(rp)));
-
-  return [...unconfiguredModels.map((m) => m.model), ...myModels.map((m) => m.resourceName)];
+  return global.systemActiveModelList
+    .filter((m) => {
+      // System models (no creator) are only visible if shared by root
+      if (!m.isCustom) return m.isShared === true;
+      // Globally shared models are visible to all
+      if (m.isShared) return true;
+      // Creator's own models
+      if (String(m.tmbId) === String(tmbId)) return true;
+      // Models user has collaborator permission for (matched by id)
+      if (m.id && permissionModelSet.has(m.id)) return true;
+      // Team owner sees all models belonging to their team
+      if (teamPer.isOwner && m.teamId && String(m.teamId) === String(teamId)) return true;
+      return false;
+    })
+    .map((m) => m.id);
 };

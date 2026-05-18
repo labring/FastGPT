@@ -8,6 +8,8 @@ export async function Call<B = any, Q = any, R = any>(
 ) {
   const { body = {}, query = {}, ...rest } = props || {};
   let raw;
+  let statusCode = 200;
+  let jsonData: any;
   const res: any = {
     setHeader: vi.fn(),
     write: vi.fn((data: any) => {
@@ -19,7 +21,14 @@ export async function Call<B = any, Q = any, R = any>(
         // 模拟 drain 事件
       }
     }),
-    status: vi.fn()
+    status: vi.fn((code: number) => {
+      statusCode = code;
+      return res;
+    }),
+    json: vi.fn((data: any) => {
+      jsonData = data;
+      return res;
+    })
   };
   const response = (await handler(
     {
@@ -30,7 +39,9 @@ export async function Call<B = any, Q = any, R = any>(
     res
   )) as any;
   return {
-    ...response,
+    code: jsonData?.code ?? (response?.code ?? statusCode),
+    data: jsonData?.data ?? response?.data ?? response,
+    error: jsonData?.error ?? response?.error ?? jsonData?.zodError,
     raw
   } as {
     code: number;

@@ -59,7 +59,7 @@ export const CreateSkillBodySchema = z.object({
   name: z.string().describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
   requirements: z.string().optional().describe('用于 AI 生成技能的需求描述'),
-  model: z.string().optional().describe('生成技能时使用的模型'),
+  modelId: z.string().optional().describe('生成技能时使用的模型'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
   config: AgentSkillConfigSchema.optional().describe('技能配置'),
   avatar: z.string().optional().describe('技能头像')

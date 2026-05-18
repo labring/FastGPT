@@ -34,6 +34,7 @@ const PriceTypeSchema = z.object({
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
+  id: z.string(),
   provider: z.string(),
   model: z.string(),
   name: z.string(),
@@ -49,7 +50,12 @@ const BaseModelItemSchema = z.object({
   requestAuth: z.string().optional(),
 
   // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
-  testMode: z.boolean().optional() // test mode flag
+  testMode: z.boolean().optional(), // test mode flag
+
+  // Permission fields
+  tmbId: z.string().optional(),
+  teamId: z.string().optional(),
+  isShared: z.boolean().optional()
 });
 type BaseModelItemType = z.infer<typeof BaseModelItemSchema>;
 

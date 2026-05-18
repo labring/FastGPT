@@ -2,7 +2,7 @@ import { type HelperBotDispatchParamsType, type HelperBotDispatchResponseType } 
 import { helperChats2GPTMessages } from '@fastgpt/global/core/chat/helperBot/adaptor';
 import { getPrompt } from './prompt';
 import { createLLMResponse } from '../../../../ai/llm/request';
-import { getDefaultHelperBotModel, getLLMModel } from '../../../../ai/model';
+import { getDefaultHelperBotModel, getLLMModelById } from '../../../../ai/model';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -29,13 +29,13 @@ export const dispatchTopAgent = async (
 ): Promise<HelperBotDispatchResponseType> => {
   const { query, files, data, histories, workflowResponseWrite, user } = props;
 
-  const modelData = getLLMModel(data.model ?? undefined) || getDefaultHelperBotModel();
+  const modelData = getLLMModelById(data.modelId ?? undefined) || getDefaultHelperBotModel();
   if (!modelData) {
     return Promise.reject('Can not get model data');
   }
 
   const usage = {
-    model: modelData.model,
+    modelId: modelData.id,
     inputTokens: 0,
     outputTokens: 0
   };
@@ -64,7 +64,7 @@ export const dispatchTopAgent = async (
   const llmResponse = await createLLMResponse({
     body: {
       messages: conversationMessages,
-      model: modelData,
+      modelId: modelData.id,
       stream: true
     },
     onReasoning: ({ text }) => {
@@ -114,7 +114,7 @@ export const dispatchTopAgent = async (
               content: repairPrompt
             }
           ],
-          model: modelData,
+          modelId: modelData.id,
           stream: true
         }
       });
@@ -278,14 +278,14 @@ const filterValidDatasets = async ({
         })
       }
     },
-    '_id avatar name vectorModel'
+    '_id avatar name vectorModelId'
   ).lean();
   return result.map((item) => ({
     datasetId: String(item._id),
     avatar: item.avatar,
     name: item.name,
     vectorModel: {
-      model: item.vectorModel
+      id: item.vectorModelId
     }
   }));
 };

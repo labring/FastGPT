@@ -11,7 +11,7 @@ import {
   databaseEmbeddingRecall
 } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
+import { getDefaultRerankModel, getEmbeddingModelById, getRerankModelById } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import type {
   DatabaseConfig,
@@ -84,7 +84,7 @@ export type SearchDatasetDataProps = {
   teamId: string;
   uid?: string;
   tmbId?: string;
-  model: string;
+  modelId: string;
   datasetIds: string[];
   reRankQuery: string;
   queries: string[];
@@ -96,7 +96,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankMethod]?: RerankMethodEnum;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
@@ -120,7 +120,7 @@ export type SearchDatasetDataProps = {
 export type SearchDatabaseDataProps = {
   histories?: ChatItemType[];
   teamId: string;
-  model: string;
+  modelId: string;
   datasetIds: string[];
   queries: string[];
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
@@ -151,8 +151,8 @@ export type SearchDatasetDataResponse = {
   };
 
   queryExtensionResult?: {
-    llmModel: string;
-    embeddingModel: string;
+    llmModelId: string;
+    embeddingModelId: string;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
@@ -163,7 +163,7 @@ export type SearchDatasetDataResponse = {
     };
     rewriteTime?: number; // 问题改写耗时(s)，保留2位小数
   };
-  deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+  deepSearchResult?: { modelId: string; inputTokens: number; outputTokens: number };
 
   // 校正数据结果
   correctionData?: {
@@ -178,7 +178,7 @@ export type SearchDatasetDataResponse = {
     reasoningText: string; // 思考过程文本
     searchCount: number; // 实际检索轮次
     toolCallCount: number; // Tool 调用总次数
-    llmModel?: string; // 实际使用的 LLM 模型名
+    llmModelId?: string; // 实际使用的 LLM 模型名
     llmInputTokens: number; // LLM 输入 token 总量
     llmOutputTokens: number; // LLM 输出 token 总量
     playbook?: string; // 使用的 playbook
@@ -763,13 +763,13 @@ export async function searchDatasetData(
     teamId,
     reRankQuery,
     queries,
-    model,
+    modelId,
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     embeddingWeight = 0.5,
     usingReRank = false,
-    rerankModel,
+    rerankModelId,
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
@@ -859,7 +859,7 @@ export async function searchDatasetData(
     }
 
     const { vectors, tokens } = await getVectorsByText({
-      model: getEmbeddingModel(model),
+      model: getEmbeddingModelById(modelId),
       input: queries,
       type: 'query'
     });
@@ -1390,7 +1390,7 @@ export async function searchDatasetData(
         teamId,
         datasetIds,
         queries,
-        model,
+        modelId,
         limit: Math.max(embeddingLimit, fullTextLimit),
         forbidCollectionIdList: mergedForbidList,
         filterCollectionIdList
@@ -1453,7 +1453,7 @@ export async function searchDatasetData(
     datasetCount: datasetIds.length,
     maxTokens,
     usingReRank,
-    rerankModel,
+    rerankModelId,
     rerankMethod
   });
 
@@ -1487,6 +1487,7 @@ export async function searchDatasetData(
     // remove same q and a data（使用 capabilities 的 dedupeByContent）
     const filterSameDataResults = dedupeByContent(concatRecallResults);
 
+    const rerankModel = getRerankModelById(rerankModelId);
     try {
       return await datasetDataReRank({
         rerankModel,
@@ -1534,7 +1535,7 @@ export async function searchDatasetData(
       const i18nErrorMessage = generateI18nErrorKey(errorTextForI18n);
 
       addLog.error('Reranker error', {
-        model: rerankModel?.model,
+        modelId: rerankModel?.id,
         errorMessage,
         i18nErrorKey: i18nErrorMessage
       });
@@ -1635,7 +1636,7 @@ export async function searchDatasetData(
 
 export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   isAssistant?: boolean;
   /**
@@ -1652,7 +1653,7 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
-  datasetSearchExtensionModel,
+  datasetSearchExtensionModelId,
   datasetSearchExtensionBg,
   isAssistant,
   synonymDatasetIds,
@@ -1671,10 +1672,10 @@ export const defaultSearchDatasetData = async ({
     preComputedQueryExtension ??
     (await datasetSearchQueryExtension({
       query,
-      llmModel: datasetSearchUsingExtensionQuery
-        ? getLLMModel(datasetSearchExtensionModel).model
+      llmModelId: datasetSearchUsingExtensionQuery
+        ? datasetSearchExtensionModelId
         : undefined,
-      embeddingModel: props.model,
+      embeddingModelId: props.modelId,
       extensionBg: datasetSearchExtensionBg,
       histories,
       isAssistant,
@@ -1709,8 +1710,8 @@ export const defaultSearchDatasetData = async ({
     ...result,
     queryExtensionResult: aiExtensionResult
       ? {
-          llmModel: aiExtensionResult.llmModel,
-          embeddingModel: aiExtensionResult.embeddingModel,
+          llmModelId: aiExtensionResult.llmModelId,
+          embeddingModelId: aiExtensionResult.embeddingModelId,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           embeddingTokens: aiExtensionResult.embeddingTokens,
@@ -1723,7 +1724,7 @@ export const defaultSearchDatasetData = async ({
 };
 
 export type DeepRagSearchProps = SearchDatasetDataProps & {
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
@@ -1735,7 +1736,7 @@ export const SearchDatabaseData = async (
   let {
     histories,
     teamId,
-    model,
+    modelId,
     datasetIds,
     queries,
     limit = 50,
@@ -1752,7 +1753,7 @@ export const SearchDatabaseData = async (
       },
       '_id'
     );
-    const vectorModel = getEmbeddingModel(model);
+    const vectorModel = getEmbeddingModelById(modelId);
     let totalTokens = 0;
     const columnDescriptionRecallResList: DatabaseEmbeddingRecallItemType[] = [];
     const columnValueRecallResultList: DatabaseEmbeddingRecallItemType[] = [];

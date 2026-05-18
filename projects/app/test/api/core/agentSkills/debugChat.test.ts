@@ -113,7 +113,7 @@ describe('buildDebugRuntimeNodes', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
       expect(modelInput).toBeDefined();
       expect(modelInput!.value).toBe(MODEL);
       expect(modelInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
@@ -189,7 +189,7 @@ describe('buildDebugRuntimeNodes', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, 'claude-3-5-sonnet', SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
       expect(modelInput!.value).toBe('claude-3-5-sonnet');
     });
 

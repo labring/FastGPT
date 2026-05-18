@@ -1,4 +1,4 @@
-import { getLLMModel } from '../../../../../ai/model';
+import { getLLMModelById } from '../../../../../ai/model';
 import type { AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import { createLLMResponse } from '../../../../../ai/llm/request';
 import { parseJsonArgs } from '../../../../../ai/utils';
@@ -16,12 +16,12 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 
 export const getStepDependon = async ({
   checkIsStopping,
-  model,
+  modelId,
   steps,
   step
 }: {
   checkIsStopping: () => boolean;
-  model: string;
+  modelId?: string;
   steps: AgentStepItemType[];
   step: AgentStepItemType;
 }): Promise<{
@@ -30,7 +30,7 @@ export const getStepDependon = async ({
   nodeResponse?: ChatHistoryItemResType;
 }> => {
   const startTime = Date.now();
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModelById(modelId);
   const historySummary = steps
     .filter((item) => item.summary)
     .map((item) => `- ${item.id}: ${item.summary}`)
@@ -81,19 +81,19 @@ export const getStepDependon = async ({
     const { answerText, usage, requestId } = await createLLMResponse({
       isAborted: checkIsStopping,
       body: {
-        model: modelData.model,
+        modelId: modelData.id,
         messages: [{ role: 'user', content: prompt }],
         stream: true
       }
     });
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelData.model,
+      modelId: modelData.id,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
     const formatUsage = {
       moduleName: i18nT('account_usage:context_pick'),
-      model: modelName,
+      modelId: modelData.id,
       totalPoints,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
@@ -107,7 +107,7 @@ export const getStepDependon = async ({
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       totalPoints,
-      model: modelName,
+      modelId: modelData.id,
       runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
       llmRequestIds: [requestId]
     };
@@ -140,13 +140,13 @@ export const getStepDependon = async ({
 export const getStepCallQuery = async ({
   steps,
   step,
-  model,
+  modelId,
   filesMap = {},
   checkIsStopping
 }: {
   steps: AgentStepItemType[];
   step: AgentStepItemType;
-  model: string;
+  modelId?: string;
   filesMap?: Record<string, string>;
   checkIsStopping: () => boolean;
 }) => {
@@ -156,7 +156,7 @@ export const getStepCallQuery = async ({
    */
   const compressStepPrompt = async (
     stepPrompt: string,
-    model: string,
+    modelId: string | undefined,
     currentDescription: string
   ): Promise<{
     stepPrompt: string;
@@ -164,7 +164,7 @@ export const getStepCallQuery = async ({
   }> => {
     if (!stepPrompt) return { stepPrompt };
 
-    const modelData = getLLMModel(model);
+    const modelData = getLLMModelById(modelId);
     if (!modelData) return { stepPrompt };
 
     const tokenCount = await countPromptTokens(stepPrompt);
@@ -270,7 +270,7 @@ ${stepPrompt}
       const { answerText, usage, finish_reason } = await createLLMResponse({
         isAborted: checkIsStopping,
         body: {
-          model: modelData,
+          modelId: modelData.id,
           messages: [
             {
               role: ChatCompletionRequestMessageRoleEnum.System,
@@ -287,7 +287,7 @@ ${stepPrompt}
       });
 
       const { totalPoints, modelName } = formatModelChars2Points({
-        model: modelData.model,
+        modelId: modelData.id,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       });
@@ -296,7 +296,7 @@ ${stepPrompt}
         stepPrompt: finish_reason === 'close' ? stepPrompt : answerText || stepPrompt,
         usage: {
           moduleName: i18nT('account_usage:llm_compress_text'),
-          model: modelName,
+          modelId: modelData.id,
           totalPoints,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
@@ -323,7 +323,7 @@ ${stepPrompt}
   // 压缩依赖的上下文
   const compressResult = await compressStepPrompt(
     preStepPrompt,
-    model,
+    modelId,
     step.description || step.title
   );
   preStepPrompt = compressResult.stepPrompt;

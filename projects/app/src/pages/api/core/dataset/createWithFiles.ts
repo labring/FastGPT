@@ -26,7 +26,7 @@ import {
   getDefaultEmbeddingModel,
   getDefaultLLMModel,
   getDefaultVLMModel,
-  getEmbeddingModel
+  getEmbeddingModelById
 } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -48,13 +48,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     parentId,
     name,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDefaultLLMModel()?.model,
-    vlmModel: rawVlmModel
+    vectorModelId = getDefaultEmbeddingModel()?.id,
+    agentModelId = getDefaultLLMModel()?.id,
+    vlmModelId: rawVlmModelId
   } = datasetParams;
 
-  // vlmModel: null=不使用, undefined=取默认值, string=指定模型
-  const vlmModel = rawVlmModel === null ? undefined : rawVlmModel ?? getDefaultVLMModel()?.model;
+  // vlmModelId: null=不使用, undefined=取默认值, string=指定模型
+  const vlmModelId = rawVlmModelId === null ? undefined : rawVlmModelId ?? getDefaultVLMModel()?.id;
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({
@@ -84,9 +84,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             name,
             teamId,
             tmbId,
-            vectorModel,
-            agentModel,
-            vlmModel,
+            vectorModelId,
+            agentModelId,
+            vlmModelId,
             avatar,
             intro: '',
             type: DatasetTypeEnum.dataset
@@ -154,7 +154,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         datasetId: dataset._id,
         name: dataset.name,
         avatar: dataset.avatar,
-        vectorModel: getEmbeddingModel(dataset.vectorModel)
+        vectorModel: getEmbeddingModelById(dataset.vectorModelId)
       };
     });
 

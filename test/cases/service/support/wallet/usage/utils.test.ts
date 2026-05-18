@@ -4,6 +4,7 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 // mock findAIModel，避免依赖全局 model map
 const mockModels: Record<string, any> = {
   'gpt-4': {
+    id: 'GPT-4',
     name: 'GPT-4',
     model: 'gpt-4',
     charsPointsPrice: 0,
@@ -11,11 +12,13 @@ const mockModels: Record<string, any> = {
     outputPrice: 6
   },
   'gpt-3.5': {
+    id: 'GPT-3.5',
     name: 'GPT-3.5',
     model: 'gpt-3.5',
     charsPointsPrice: 2
   },
   'tiered-model': {
+    id: 'tiered-model',
     name: 'Tiered',
     model: 'tiered-model',
     priceTiers: [
@@ -26,23 +29,23 @@ const mockModels: Record<string, any> = {
 };
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  findAIModel: (model: string) => mockModels[model]
+  getModelById: (modelId: string) => mockModels[modelId]
 }));
 
 describe('formatModelChars2Points', () => {
   it('should return 0 points and empty name when model not found', () => {
-    const result = formatModelChars2Points({ model: 'non-existent' });
+    const result = formatModelChars2Points({ modelId: 'non-existent' });
     expect(result).toEqual({ totalPoints: 0, modelName: '' });
   });
 
   it('should return 0 points and empty name when model is empty string', () => {
-    const result = formatModelChars2Points({ model: '' });
+    const result = formatModelChars2Points({ modelId: '' });
     expect(result).toEqual({ totalPoints: 0, modelName: '' });
   });
 
   it('should calculate points with legacy input/output pricing', () => {
     const result = formatModelChars2Points({
-      model: 'gpt-4',
+      modelId: 'gpt-4',
       inputTokens: 1000,
       outputTokens: 500
     });
@@ -53,7 +56,7 @@ describe('formatModelChars2Points', () => {
 
   it('should calculate points with comprehensive price', () => {
     const result = formatModelChars2Points({
-      model: 'gpt-3.5',
+      modelId: 'gpt-3.5',
       inputTokens: 2000,
       outputTokens: 1000
     });
@@ -64,14 +67,14 @@ describe('formatModelChars2Points', () => {
   });
 
   it('should use default 0 tokens when not provided', () => {
-    const result = formatModelChars2Points({ model: 'gpt-4' });
+    const result = formatModelChars2Points({ modelId: 'gpt-4' });
     expect(result.modelName).toBe('GPT-4');
     expect(result.totalPoints).toBe(0);
   });
 
   it('should support custom multiple parameter', () => {
     const result = formatModelChars2Points({
-      model: 'gpt-4',
+      modelId: 'gpt-4',
       inputTokens: 500,
       outputTokens: 500,
       multiple: 500
@@ -83,7 +86,7 @@ describe('formatModelChars2Points', () => {
 
   it('should calculate points with price tiers', () => {
     const result = formatModelChars2Points({
-      model: 'tiered-model',
+      modelId: 'tiered-model',
       inputTokens: 2000,
       outputTokens: 100
     });

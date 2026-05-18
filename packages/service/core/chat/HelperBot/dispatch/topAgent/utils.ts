@@ -38,7 +38,7 @@ const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId:
     teamId,
     deleteTime: null
   })
-    .select('_id name intro avatar vectorModel')
+    .select('_id name intro avatar vectorModelId')
     .sort({ updateTime: -1 })
     .lean();
 };

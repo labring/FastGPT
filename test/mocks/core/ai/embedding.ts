@@ -123,7 +123,8 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
-    getEmbeddingModel: vi.fn().mockReturnValue({
+    getEmbeddingModelById: vi.fn().mockReturnValue({
+      id: 'text-embedding-ada-002',
       model: 'text-embedding-ada-002',
       name: 'text-embedding-ada-002'
     })

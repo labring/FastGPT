@@ -10,10 +10,9 @@ import { getVectorsByText } from '../../../ai/embedding';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { createChatCompletion } from '../../../ai/config';
 import {
-  getEmbeddingModel,
-  getDefaultRerankModel,
-  getRerankModel,
-  getLLMModel
+  getLLMModelById,
+  getEmbeddingModelById,
+  getRerankModelById
 } from '../../../ai/model';
 import type { LLMModelItemType, RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type {
@@ -53,9 +52,9 @@ import type {
 } from 'diting-rag-ts';
 
 export interface FastGPTProvidersConfig {
-  llmModel: string;
-  embedModel: string;
-  rerankModel?: string;
+  llmModelId: string;
+  embedModelId: string;
+  rerankModelId?: string;
   teamId: string;
 }
 
@@ -107,10 +106,10 @@ function detectTruncation(content: string): boolean {
 export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMProvider {
   return {
     async chat(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
-      const modelData = getLLMModel(config.llmModel);
+      const modelData = getLLMModelById(config.llmModelId);
 
       const body: Record<string, unknown> = {
-        model: config.llmModel,
+        model: modelData.model,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
         // 仅当调用方显式传了 maxTokens 时才发送，避免部分模型兼容问题
@@ -131,7 +130,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
       );
 
       const result = await createChatCompletion({
-        modelData: modelData ?? undefined,
+        modelData: modelData,
         body: filteredBody as unknown as ChatCompletionCreateParamsNonStreaming,
         options: options?.requestOptions as any
       });
@@ -164,7 +163,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
 
       if (truncated && options?.maxTokens) {
         addLog.warn('[FastGPTLLMProvider] response truncated, retrying with 2x maxTokens', {
-          model: config.llmModel,
+          llmModelId: config.llmModelId,
           maxTokens: options.maxTokens,
           finishReason,
           contentPreview: content.slice(0, 200)
@@ -175,7 +174,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
           max_tokens: options.maxTokens * 2
         };
         const retryResult = await createChatCompletion({
-          modelData: modelData ?? undefined,
+          modelData: modelData,
           body: retryBody as unknown as ChatCompletionCreateParamsNonStreaming,
           options: options?.requestOptions as any
         });
@@ -231,10 +230,10 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
       messages: LLMMessage[],
       options?: LLMCallOptions
     ): AsyncIterable<LLMResponse> {
-      const modelData = getLLMModel(config.llmModel);
+      const modelData = getLLMModelById(config.llmModelId);
 
       const body: Record<string, unknown> = {
-        model: config.llmModel,
+        model: modelData.model,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
         ...(options?.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
@@ -253,7 +252,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
       );
 
       const result = await createChatCompletion({
-        modelData: modelData ?? undefined,
+        modelData: modelData,
         body: filteredBody as unknown as ChatCompletionCreateParamsStreaming,
         options: options?.requestOptions as any
       });
@@ -320,7 +319,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
 
       if (truncated && options?.maxTokens) {
         addLog.warn('[FastGPTLLMProvider] stream truncated, retrying with 2x maxTokens', {
-          model: config.llmModel,
+          llmModelId: config.llmModelId,
           maxTokens: options.maxTokens,
           finishReason: streamFinishReason,
           contentPreview: accumulatedContent.slice(0, 200)
@@ -333,7 +332,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
           stream: false
         };
         const retryResult = await createChatCompletion({
-          modelData: modelData ?? undefined,
+          modelData: modelData,
           body: retryBody as unknown as ChatCompletionCreateParamsNonStreaming,
           options: options?.requestOptions as any
         });
@@ -376,9 +375,9 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
     },
 
     getModelInfo(): { name: string; contextWindow: number; maxOutputTokens: number } {
-      const model = getLLMModel(config.llmModel);
+      const model = getLLMModelById(config.llmModelId);
       return {
-        name: model?.model || config.llmModel,
+        name: model?.model || config.llmModelId,
         contextWindow: (model as any)?.contextSize || 16000,
         maxOutputTokens: (model as any)?.maxTokens || 8192
       };
@@ -392,7 +391,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
 export function createFastGPTEmbeddingProvider(config: FastGPTProvidersConfig): EmbeddingProvider {
   return {
     async embed(texts: string[]): Promise<EmbedResult> {
-      const model = getEmbeddingModel(config.embedModel);
+      const model = getEmbeddingModelById(config.embedModelId);
       const result = await getVectorsByText({
         model: model as EmbeddingModelItemType,
         input: texts
@@ -405,9 +404,9 @@ export function createFastGPTEmbeddingProvider(config: FastGPTProvidersConfig): 
     },
 
     getModelInfo(): { name: string; dimension: number } {
-      const model = getEmbeddingModel(config.embedModel);
+      const model = getEmbeddingModelById(config.embedModelId);
       return {
-        name: model?.model || config.embedModel,
+        name: model?.model || config.embedModelId,
         dimension: model?.dimensions || 1536
       };
     }
@@ -436,7 +435,7 @@ export function createFastGPTVectorSearchProvider(
           teamId: config.teamId,
           datasetIds,
           queries: [], // Provider 场景由外部传入 vectors，precomputedVectors 已提供
-          model: config.embedModel,
+          modelId: config.embedModelId,
           limit: options.limit || 10,
           forbidCollectionIdList: options.filter?.forbidCollectionIds || [],
           precomputedVectors: vectors
@@ -510,7 +509,7 @@ export function createFastGPTFullTextSearchProvider(
         // 使用 capabilities 中的 fullTextRecall
         const result = await fullTextRecall({
           teamId: config.teamId,
-          model: config.embedModel,
+          modelId: config.embedModelId,
           datasetIds,
           queries: [query],
           limit: options.limit || 10,
@@ -591,10 +590,7 @@ export function createFastGPTRerankProvider(config: FastGPTProvidersConfig): Rer
         }));
 
         let rerankModelData: RerankModelItemType | undefined;
-        const rerankModelName = config.rerankModel || getDefaultRerankModel()?.model;
-        if (rerankModelName) {
-          rerankModelData = getRerankModel(rerankModelName);
-        }
+        rerankModelData = getRerankModelById(config.rerankModelId);
 
         if (!rerankModelData) {
           // c.score is already a proper number after our provider fix; use vectorScore as best signal
@@ -650,7 +646,7 @@ export function createFastGPTMixedSearchProvider(
           teamId: config.teamId,
           datasetIds,
           queries: [query],
-          model: config.embedModel,
+          modelId: config.embedModelId,
           limit: options.limit || 10,
           embeddingWeight: options.vectorWeight ?? 0.5,
           usingReRank: false,
