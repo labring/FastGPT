@@ -43,6 +43,7 @@ export const defaultSearchDatasetData = async ({
 
   const result = await searchDatasetData({
     ...props,
+    userKey,
     reRankQuery,
     textQueries: searchQueries
   });

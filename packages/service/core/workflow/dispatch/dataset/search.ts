@@ -16,7 +16,10 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { createQueryExtensionChildNodeResponse } from './nodeResponse';
+import {
+  createImageCaptionChildNodeResponse,
+  createQueryExtensionChildNodeResponse
+} from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
@@ -251,13 +254,23 @@ export async function dispatchDatasetSearch(
           inputTokens: imageCaptionResult.inputTokens,
           outputTokens: imageCaptionResult.outputTokens
         });
-        nodeUsages.push({
-          totalPoints,
+        const imageCaptionPoints = imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints;
+        const imageCaptionUsage: ChatNodeUsageType = {
+          totalPoints: imageCaptionPoints,
           moduleName: i18nT('account_usage:image_parse'),
           model: modelName,
           inputTokens: imageCaptionResult.inputTokens,
           outputTokens: imageCaptionResult.outputTokens
-        });
+        };
+        nodeUsages.push(imageCaptionUsage);
+        childrenResponses.push(
+          createImageCaptionChildNodeResponse({
+            requestIds: imageCaptionResult.requestIds,
+            usage: imageCaptionUsage,
+            seconds: imageCaptionResult.seconds,
+            queries: imageCaptionResult.queries
+          })
+        );
       }
       // 5. Deep search
       if (deepSearchResult) {

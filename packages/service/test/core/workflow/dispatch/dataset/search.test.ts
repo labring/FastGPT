@@ -211,6 +211,81 @@ describe('dispatchDatasetSearch', () => {
     );
   });
 
+  it('adds image caption request ids and skips platform points when external OpenAI key is used', async () => {
+    const userKey = { key: 'user-key', baseUrl: 'https://api.example.com/v1' };
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 20,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false,
+      imageCaptionResult: {
+        model: 'gpt-vision',
+        inputTokens: 4,
+        outputTokens: 3,
+        requestIds: ['req_image_caption_1', 'req_image_caption_2'],
+        seconds: 1.5,
+        usedUserOpenAIKey: true,
+        queries: ['red handbag', 'blue sneaker']
+      }
+    });
+
+    const result = await dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {
+        openaiAccount: userKey
+      },
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        userChatInput: '',
+        datasetSearchInput: ['https://files.example.com/query.png'],
+        authTmbId: false,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: false
+      },
+      usagePush: usagePushMock
+    } as any);
+
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userKey,
+        imageQueries: ['https://files.example.com/query.png']
+      })
+    );
+
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+    expect(nodeResponse?.childrenResponses?.[0]).toMatchObject({
+      id: 'req_image_caption_1',
+      nodeId: 'req_image_caption_1',
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      moduleName: 'account_usage:image_parse',
+      moduleLogo: 'core/workflow/template/datasetSearch',
+      runningTime: 1.5,
+      model: 'gpt-vision name',
+      llmRequestIds: ['req_image_caption_1', 'req_image_caption_2'],
+      inputTokens: 4,
+      outputTokens: 3,
+      totalPoints: 0,
+      textOutput: 'red handbag\nblue sneaker'
+    });
+    expect(usagePushMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          moduleName: 'account_usage:image_parse',
+          totalPoints: 0
+        })
+      ])
+    );
+  });
+
   it('uses default recall for image-only input even when deep search is enabled', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],

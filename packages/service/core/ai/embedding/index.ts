@@ -43,8 +43,14 @@ const countInputTokens = async (input: GetVectorInputItem) => {
 };
 
 export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
-  const inputs = z.array(InputItemSchema).parse(rawInputs);
-  if (inputs.length === 0) {
+  const inputs = z
+    .array(InputItemSchema)
+    .parse(rawInputs)
+    .map((item) => ({
+      ...item,
+      input: item.input.trim()
+    }));
+  if (inputs.length === 0 || inputs.some((item) => !item.input)) {
     return Promise.reject({
       code: 500,
       message: 'input is empty'

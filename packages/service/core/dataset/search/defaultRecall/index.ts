@@ -40,6 +40,7 @@ export async function searchDatasetData(
     reRankQuery,
     textQueries,
     imageQueries = [],
+    userKey,
     model,
     vlmModel,
     similarity = 0,
@@ -62,16 +63,22 @@ export async function searchDatasetData(
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。
   const imageCaptionQueries = await getImageCaptionQueries({
     vlmModel,
-    imageQueries
+    imageQueries,
+    userKey
   });
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。
+  const hasImageCaptionUsage =
+    imageCaptionQueries.inputTokens > 0 || imageCaptionQueries.outputTokens > 0;
   const imageCaptionResult: SearchDatasetDataResponse['imageCaptionResult'] =
-    imageCaptionQueries.queries.length > 0 && imageCaptionQueries.model
+    imageCaptionQueries.model && (imageCaptionQueries.queries.length > 0 || hasImageCaptionUsage)
       ? {
           model: imageCaptionQueries.model,
           inputTokens: imageCaptionQueries.inputTokens,
           outputTokens: imageCaptionQueries.outputTokens,
+          requestIds: imageCaptionQueries.requestIds,
+          seconds: imageCaptionQueries.seconds,
+          usedUserOpenAIKey: imageCaptionQueries.usedUserOpenAIKey,
           queries: imageCaptionQueries.queries
         }
       : undefined;

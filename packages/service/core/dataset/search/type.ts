@@ -18,6 +18,8 @@ export type SearchDatasetDataProps = {
   textQueries: string[];
   // 工作流入口归一化后的图片 query。
   imageQueries?: string[];
+  // 外部 OpenAI 账号。默认召回里的辅助 LLM 请求需要沿用它来保持计费一致。
+  userKey?: OpenaiAccountType;
 
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
@@ -69,6 +71,9 @@ export type SearchDatasetDataResponse = {
     model: string;
     inputTokens: number;
     outputTokens: number;
+    requestIds: string[];
+    seconds: number;
+    usedUserOpenAIKey: boolean;
     queries: string[];
   };
 };

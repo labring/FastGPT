@@ -96,11 +96,14 @@ describe('default recall dataset search', () => {
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {
+    const userKey = { key: 'user-key', baseUrl: 'https://api.example.com/v1' };
     mockCreateLLMResponse.mockRejectedValueOnce(new Error('vlm failed')).mockResolvedValueOnce({
+      requestId: 'req_image_caption_2',
       answerText: 'red handbag on a white table',
       usage: {
         inputTokens: 3,
-        outputTokens: 2
+        outputTokens: 2,
+        usedUserOpenAIKey: true
       }
     });
 
@@ -113,6 +116,7 @@ describe('default recall dataset search', () => {
       reRankQuery: 'black high heels',
       textQueries: ['black high heels'],
       imageQueries: ['data:image/png;base64,broken-image', 'data:image/png;base64,current-image'],
+      userKey,
       limit: 5000,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: 0.5,
@@ -123,6 +127,9 @@ describe('default recall dataset search', () => {
       model: 'mock-vlm-model',
       inputTokens: 3,
       outputTokens: 2,
+      requestIds: ['req_image_caption_2'],
+      seconds: expect.any(Number),
+      usedUserOpenAIKey: true,
       queries: ['red handbag on a white table']
     });
     expect(mockGetVectors).toHaveBeenCalledWith(
@@ -142,6 +149,7 @@ describe('default recall dataset search', () => {
     expect(mockCreateLLMResponse.mock.calls[1][0].body.messages[0].content[0].image_url.url).toBe(
       'data:image/png;base64,current-image'
     );
+    expect(mockCreateLLMResponse.mock.calls[1][0].userKey).toBe(userKey);
     expect(result.searchRes).toEqual([]);
   });
 
