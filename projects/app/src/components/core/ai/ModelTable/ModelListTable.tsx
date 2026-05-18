@@ -53,6 +53,8 @@ export type ModelListTableProps = {
   selectAllTrigger: () => void;
   trainTaskCountSortOrder?: 'asc' | 'desc';
   toggleTrainTaskCountSort: () => void;
+  trainTimeSortOrder?: 'asc' | 'desc';
+  toggleTrainTimeSort?: () => void;
   handleOpenTrainDrawer: OpenTrainModelHandler;
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
 };
@@ -99,6 +101,8 @@ const ModelListTable = ({
   selectAllTrigger,
   trainTaskCountSortOrder,
   toggleTrainTaskCountSort,
+  trainTimeSortOrder,
+  toggleTrainTimeSort,
   handleOpenTrainDrawer,
   setTrainDetailDrawer
 }: ModelListTableProps) => {
@@ -175,8 +179,34 @@ const ModelListTable = ({
             </Th>
             {showTrainedModelColumns ? (
               <>
-                <Th fontSize={'xs'} w={'250px'}>
-                  {t('account_model:train_detail_train_time')}
+                <Th
+                  fontSize={'xs'}
+                  w={'250px'}
+                  cursor={'pointer'}
+                  userSelect={'none'}
+                  onClick={() => toggleTrainTimeSort?.()}
+                >
+                  <HStack spacing={1}>
+                    <Box>{t('account_model:train_detail_train_time')}</Box>
+                    {trainTimeSortOrder ? (
+                      <MyIcon
+                        name={
+                          trainTimeSortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'
+                        }
+                        w={'12px'}
+                        cursor={'pointer'}
+                        color={'primary.600'}
+                      />
+                    ) : (
+                      <MyIcon
+                        name={'common/table/sort'}
+                        w={'12px'}
+                        cursor={'pointer'}
+                        color={'myGray.400'}
+                        _hover={{ color: 'primary.600' }}
+                      />
+                    )}
+                  </HStack>
                 </Th>
                 <Th fontSize={'xs'} w={'150px'}>
                   {t('account_model:train_detail_trainer')}
