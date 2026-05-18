@@ -85,5 +85,8 @@
   "usage_detail": "使用詳細資訊",
   "wechat": "微信個人號",
   "wecom": "企業微信",
+  "loading": "加載中",
+  "no_data": "暫無數據",
+  "search": "搜索",
   "check_left_points": "查看剩餘積分"
 }

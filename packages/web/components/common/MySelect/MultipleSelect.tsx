@@ -22,6 +22,7 @@ import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 import MyLoading from '../MyLoading';
+import SearchInput from '../Input/SearchInput';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -59,6 +60,10 @@ export type SelectProps<T = any> = {
   inputValue?: string;
   setInputValue?: (val: string) => void;
 
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  onSearch?: (val: string) => void;
+
   onOpenFunc?: () => void;
 
   tagStyle?: FlexProps;
@@ -89,6 +94,10 @@ const MultipleSelect = <T = any,>({
   inputValue,
   setInputValue,
 
+  searchable,
+  searchPlaceholder,
+  onSearch,
+
   onOpenFunc,
 
   tagStyle,
@@ -108,6 +117,17 @@ const MultipleSelect = <T = any,>({
   }, [originalOnOpen, onOpenFunc]);
 
   const canInput = setInputValue !== undefined;
+  const isSearchable = searchable || canInput;
+
+  // 内部搜索状态（当使用 searchable 模式时）
+  const [internalSearchKey, setInternalSearchKey] = useState('');
+  const searchKey = searchable ? internalSearchKey : inputValue ?? '';
+  const setSearchKey = searchable
+    ? (val: string) => {
+        setInternalSearchKey(val);
+        onSearch?.(val);
+      }
+    : setInputValue;
 
   const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
   const [overflowItems, setOverflowItems] = useState<SelectedItemType<T>[]>([]);
@@ -136,8 +156,42 @@ const MultipleSelect = <T = any,>({
   useEffect(() => {
     if (!isOpen) {
       setInputValue?.('');
+      if (searchable) {
+        setInternalSearchKey('');
+      }
     }
-  }, [isOpen, setInputValue]);
+  }, [isOpen, setInputValue, searchable]);
+
+  // 从 React 节点中提取文本内容
+  const extractTextFromNode = useCallback((node: React.ReactNode): string => {
+    if (typeof node === 'string') return node;
+    if (typeof node === 'number') return String(node);
+    if (!node) return '';
+    // 处理 React 元素，递归提取子节点的文本
+    if (React.isValidElement(node)) {
+      const props = node.props as { children?: React.ReactNode };
+      if (props.children) {
+        if (Array.isArray(props.children)) {
+          return props.children.map(extractTextFromNode).join('');
+        }
+        return extractTextFromNode(props.children);
+      }
+    }
+    if (Array.isArray(node)) {
+      return node.map(extractTextFromNode).join('');
+    }
+    return '';
+  }, []);
+
+  // 根据搜索关键词过滤列表
+  const filteredList = useMemo(() => {
+    if (!searchKey) return list;
+    const lowerSearch = searchKey.toLowerCase();
+    return list.filter((item) => {
+      const labelText = extractTextFromNode(item.label);
+      return labelText.toLowerCase().includes(lowerSearch);
+    });
+  }, [list, searchKey, extractTextFromNode]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -279,7 +333,7 @@ const MultipleSelect = <T = any,>({
   const ListRender = useMemo(() => {
     return (
       <>
-        {list.map((item, i) => {
+        {filteredList.map((item, i) => {
           const isSelected = isSelectAll || formatValue.includes(item.value);
           return (
             <MenuItem
@@ -309,7 +363,7 @@ const MultipleSelect = <T = any,>({
         })}
       </>
     );
-  }, [list, isSelectAll, formatValue, onclickItem]);
+  }, [filteredList, isSelectAll, formatValue, onclickItem]);
 
   return (
     <Box h={'100%'} w={'100%'}>
@@ -457,6 +511,17 @@ const MultipleSelect = <T = any,>({
           overflowY={'auto'}
           position={'relative'}
         >
+          {/* 搜索框 */}
+          {searchable && (
+            <Box px={'6px'} pt={'6px'} pb={'6px'}>
+              <SearchInput
+                placeholder={searchPlaceholder || t('common:search')}
+                value={internalSearchKey}
+                onChange={(e) => setSearchKey?.(e.target.value)}
+              />
+            </Box>
+          )}
+
           {setIsSelectAll && (
             <>
               <MenuItem
