@@ -18,7 +18,7 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamAIPoints: mockCheckTeamAIPoints
 }));
 
-vi.mock('@fastgpt/service/core/dataset/search/controller', () => ({
+vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: mockDefaultSearchDatasetData,
   deepRagSearch: mockDeepRagSearch
 }));
@@ -97,7 +97,8 @@ describe('searchTest query image auth', () => {
       expect.objectContaining({
         teamId: 'team-1',
         datasetIds: [datasetId],
-        queryImageUrls: ['temp/team-1/search-image.png']
+        textQueries: [],
+        imageQueries: ['temp/team-1/search-image.png']
       })
     );
   });

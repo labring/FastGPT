@@ -1,17 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isLikelyUserFileUrl,
   parseUrlToFileType,
   runWithContext,
   getWorkflowContext,
   updateWorkflowContextVal
-} from '@fastgpt/service/core/workflow/utils/context';
+} from '../../../../core/workflow/utils/context';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const createWorkflowContext = (queryUrlTypeMap: Record<string, ChatFileTypeEnum>) => ({
+  queryUrlTypeMap,
+  mcpClientMemory: {}
+});
 
 describe('WorkflowContext', () => {
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', () => {
-      const ctx = { queryUrlTypeMap: { 'http://a.com/f.pdf': ChatFileTypeEnum.file } };
+      const ctx = createWorkflowContext({
+        'http://a.com/f.pdf': ChatFileTypeEnum.file
+      });
 
       runWithContext(ctx, () => {
         const store = getWorkflowContext();
@@ -25,8 +31,8 @@ describe('WorkflowContext', () => {
     });
 
     it('should isolate nested contexts', () => {
-      const outer = { queryUrlTypeMap: { a: ChatFileTypeEnum.file } };
-      const inner = { queryUrlTypeMap: { b: ChatFileTypeEnum.image } };
+      const outer = createWorkflowContext({ a: ChatFileTypeEnum.file });
+      const inner = createWorkflowContext({ b: ChatFileTypeEnum.image });
 
       runWithContext(outer, () => {
         expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(outer.queryUrlTypeMap);
@@ -41,7 +47,7 @@ describe('WorkflowContext', () => {
     });
 
     it('should work with async functions', async () => {
-      const ctx = { queryUrlTypeMap: { url1: ChatFileTypeEnum.image } };
+      const ctx = createWorkflowContext({ url1: ChatFileTypeEnum.image });
 
       await new Promise<void>((resolve) => {
         runWithContext(ctx, async () => {
@@ -55,7 +61,7 @@ describe('WorkflowContext', () => {
 
   describe('updateWorkflowContextVal', () => {
     it('should update existing context values', () => {
-      const ctx = { queryUrlTypeMap: { a: ChatFileTypeEnum.file } };
+      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
 
       runWithContext(ctx, () => {
         updateWorkflowContextVal({
@@ -75,7 +81,7 @@ describe('WorkflowContext', () => {
     });
 
     it('should support partial updates', () => {
-      const ctx = { queryUrlTypeMap: { a: ChatFileTypeEnum.file } };
+      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
 
       runWithContext(ctx, () => {
         // Update with empty partial — no keys iterated
@@ -88,7 +94,7 @@ describe('WorkflowContext', () => {
   describe('parseUrlToFileType with context', () => {
     it('should use queryUrlTypeMap to determine file type', () => {
       const url = 'https://example.com/unknown-resource';
-      const ctx = { queryUrlTypeMap: { [url]: ChatFileTypeEnum.image } };
+      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.image });
 
       runWithContext(ctx, () => {
         const result = parseUrlToFileType(url);
@@ -98,7 +104,7 @@ describe('WorkflowContext', () => {
 
     it('should prefer context type over extension-based detection', () => {
       const url = 'https://example.com/photo.png';
-      const ctx = { queryUrlTypeMap: { [url]: ChatFileTypeEnum.file } };
+      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.file });
 
       runWithContext(ctx, () => {
         const result = parseUrlToFileType(url);
@@ -108,35 +114,13 @@ describe('WorkflowContext', () => {
     });
 
     it('should fall back to extension detection when URL not in context', () => {
-      const ctx = { queryUrlTypeMap: { 'other-url': ChatFileTypeEnum.file } };
+      const ctx = createWorkflowContext({ 'other-url': ChatFileTypeEnum.file });
 
       runWithContext(ctx, () => {
         const result = parseUrlToFileType('https://example.com/photo.png');
         expect(result?.type).toBe(ChatFileTypeEnum.image);
       });
     });
-  });
-});
-
-describe('isLikelyUserFileUrl', () => {
-  it('should identify object keys and data urls as user file urls', () => {
-    expect(isLikelyUserFileUrl('temp/team-1/image.png')).toBe(true);
-    expect(isLikelyUserFileUrl('chat/team-1/file.pdf')).toBe(true);
-    expect(isLikelyUserFileUrl('dataset/team-1/file.pdf')).toBe(true);
-    expect(isLikelyUserFileUrl('data:image/png;base64,abc')).toBe(true);
-  });
-
-  it('should identify known file api urls with filename extensions', () => {
-    expect(isLikelyUserFileUrl('/api/file/read?filename=manual.pdf')).toBe(true);
-  });
-
-  it('should keep normal text as non-file input', () => {
-    expect(isLikelyUserFileUrl('black high heels')).toBe(false);
-    expect(isLikelyUserFileUrl('https://example.com/search?q=black high heels')).toBe(false);
-    expect(isLikelyUserFileUrl('https://example.com/current.png')).toBe(false);
-    expect(isLikelyUserFileUrl('https://cdn.example.com/download?filename=current.png')).toBe(
-      false
-    );
   });
 });
 

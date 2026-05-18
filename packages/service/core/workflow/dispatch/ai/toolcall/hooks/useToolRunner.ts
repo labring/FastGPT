@@ -1,6 +1,9 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../../ai/llm/agentLoop';
 import { runSandboxTools } from '../../../../../ai/sandbox/toolCall';
@@ -43,11 +46,42 @@ const getAssistantMessages = (assistantResponses: DispatchFlowResponse['assistan
     reserveId: false
   });
 
+/**
+ * ToolCall 调用知识库搜索节点时，模型只生成文本 query；父节点输入文件需要在这里追加。
+ * 这里只做最小拼接，不判断文件类型：搜索节点会统一调用 normalizeDatasetSearchInput
+ * 拆分文本和图片。清空 userChatInput 是为了让搜索节点走 datasetSearchInput 数组，
+ * 避免旧字段优先级导致追加的文件 URL 被忽略。
+ */
+const mergeDatasetToolFileUrls = ({
+  flowNodeType,
+  startParams,
+  fileUrls = []
+}: {
+  flowNodeType: RuntimeNodeItemType['flowNodeType'];
+  startParams: Record<string, any>;
+  fileUrls?: string[];
+}) => {
+  if (flowNodeType !== FlowNodeTypeEnum.datasetSearchNode || fileUrls.length === 0) {
+    return startParams;
+  }
+
+  const queryInput =
+    startParams[NodeInputKeyEnum.datasetSearchInput] ?? startParams[NodeInputKeyEnum.userChatInput];
+  const queryList = Array.isArray(queryInput) ? queryInput : queryInput ? [queryInput] : [];
+
+  return {
+    ...startParams,
+    [NodeInputKeyEnum.userChatInput]: '',
+    [NodeInputKeyEnum.datasetSearchInput]: [...queryList, ...fileUrls]
+  };
+};
+
 export const useToolRunner = ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
   allFiles,
+  fileUrls = [],
   getToolInfo,
   cacheToolFlowResponse,
   appendToolFlowResponse,
@@ -57,6 +91,7 @@ export const useToolRunner = ({
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
   allFiles: Map<string, FileInputType>;
+  fileUrls?: string[];
   getToolInfo: (name: string) => ToolInfo | undefined;
   cacheToolFlowResponse: (args: {
     call: ChatCompletionMessageToolCall;
@@ -133,7 +168,11 @@ export const useToolRunner = ({
        * 用户配置的工具节点会在当前 runtime 副本中被标记为入口节点；
        * 参数只注入入口节点，后续依旧走原 workflow 的边和节点调度。
        */
-      const startParams = parseJsonArgs(call.function.arguments);
+      const startParams = mergeDatasetToolFileUrls({
+        flowNodeType: toolNode.flowNodeType,
+        startParams: parseJsonArgs(call.function.arguments) ?? {},
+        fileUrls
+      });
       initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
       initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
 

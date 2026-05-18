@@ -6,9 +6,15 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
+/**
+ * 计算多个 collection 过滤条件的交集。
+ * `undefined` 表示当前过滤维度未启用，应被忽略；空数组表示该维度明确无命中，
+ * 会参与交集并让最终结果为空。
+ */
 export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
   const validLists = lists.filter((list): list is string[] => list !== undefined);
 
@@ -21,6 +27,12 @@ export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
   });
 };
 
+/**
+ * 按环境开关规范化图片输入。
+ * data URL 已经是模型可读内容，始终原样返回；FastGPT 内部对象 key 不能直接交给模型，
+ * 需要先换成临时外部访问 URL；普通图片 URL 只有 serviceEnv.MULTIPLE_DATA_TO_BASE64
+ * 为 true 时才转成 base64。这里不吞异常，由上层按图片粒度降级，避免一张坏图中断整次检索。
+ */
 export const normalizeImageToBase64 = async (imageUrl: string) => {
   if (imageUrl.startsWith('data:image/')) {
     return imageUrl;
@@ -31,13 +43,27 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
     isS3ObjectKey(imageUrl, 'temp') ||
     isS3ObjectKey(imageUrl, 'chat')
   ) {
-    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+    const { url } = await getS3DatasetSource().createExternalUrl({
+      key: imageUrl,
+      expiredHours: 1
+    });
+    return url;
+  }
+
+  if (!serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+    return imageUrl;
   }
 
   const { completeBase64 } = await getImageBase64(imageUrl);
   return completeBase64;
 };
 
+/**
+ * 对文本查询做 query extension。
+ * 调用方会先把多个文本 query 合并成一个字符串传入，这里始终按普通字符串处理，
+ * 不再兼容旧的“query 已经是扩展结果 JSON”分支。扩展失败时返回原始 query，
+ * 保证搜索主链路不被 LLM 扩展能力影响。
+ */
 export const datasetSearchQueryExtension = async ({
   query,
   llmModel,
@@ -53,49 +79,32 @@ export const datasetSearchQueryExtension = async ({
   extensionBg?: string;
   histories?: ChatItemMiniType[];
 }) => {
-  const filterSamQuery = (queries: string[]) => {
+  /**
+   * query extension 结果可能与原 query 只有标点或空格差异。
+   * 去重时忽略标点和空白，但保留原始文本，避免影响后续 embedding 和展示。
+   */
+  const filterSameQuery = (queries: string[]) => {
     const set = new Set<string>();
-    const filterSameQueries = queries.filter((item) => {
-      // 删除所有的标点符号与空格等，只对文本进行比较
-      const str = hashStr(item.replace(/[^\p{L}\p{N}]/gu, ''));
-      if (set.has(str)) return false;
-      set.add(str);
-      return true;
-    });
+    const filterSameQueries = queries
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => {
+        // 删除所有的标点符号与空格等，只对文本进行比较
+        const str = hashStr(item.replace(/[^\p{L}\p{N}]/gu, ''));
+        if (set.has(str)) return false;
+        set.add(str);
+        return true;
+      });
 
     return filterSameQueries;
   };
 
-  // 检查传入的 query 是否已经进行过扩展
-  const {
-    queries: initQueries,
-    reRankQuery: initReRankQuery,
-    alreadyExtension
-  } = (() => {
-    /* if query already extension, direct parse */
-    try {
-      const jsonParse = JSON.parse(query);
-      const queries: string[] = Array.isArray(jsonParse) ? filterSamQuery(jsonParse) : [query];
-      const alreadyExtension = Array.isArray(jsonParse);
-      return {
-        queries,
-        reRankQuery: alreadyExtension ? queries.join('\n') : query,
-        alreadyExtension
-      };
-    } catch {
-      return {
-        queries: [query],
-        reRankQuery: query,
-        alreadyExtension: false
-      };
-    }
-  })();
-  let queries = initQueries;
-  let reRankQuery = initReRankQuery;
+  let queries = [query];
+  let reRankQuery = query;
 
   // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!llmModel || !embeddingModel || alreadyExtension) return;
+    if (!llmModel || !embeddingModel) return;
 
     try {
       const result = await queryExtension({
@@ -114,7 +123,7 @@ export const datasetSearchQueryExtension = async ({
   })();
 
   if (aiExtensionResult) {
-    queries = queries.concat(aiExtensionResult.extensionQueries);
+    queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
   }
 

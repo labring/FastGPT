@@ -4,6 +4,7 @@ import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import z from 'zod';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
@@ -13,15 +14,11 @@ type GetVectorsBaseProps = {
   headers?: Record<string, string>;
 };
 
-export type GetVectorInputItem =
-  | {
-      type: 'text';
-      input: string;
-    }
-  | {
-      type: 'image';
-      input: string;
-    };
+const InputItemSchema = z.object({
+  type: z.enum(['text', 'image']),
+  input: z.string()
+});
+type GetVectorInputItem = z.infer<typeof InputItemSchema>;
 
 export type GetVectorsProps = GetVectorsBaseProps & {
   inputs: GetVectorInputItem[];
@@ -45,14 +42,9 @@ const countInputTokens = async (input: GetVectorInputItem) => {
   return countPromptTokens(input.input);
 };
 
-export async function getVectors({ model, inputs, type, headers }: GetVectorsProps) {
+export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
+  const inputs = z.array(InputItemSchema).parse(rawInputs);
   if (inputs.length === 0) {
-    return Promise.reject({
-      code: 500,
-      message: 'input is empty'
-    });
-  }
-  if (inputs.some((input) => !input.input)) {
     return Promise.reject({
       code: 500,
       message: 'input is empty'

@@ -16,7 +16,7 @@ const {
   formatModelChars2PointsMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/dataset/search/controller', () => ({
+vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 

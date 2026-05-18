@@ -4,7 +4,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getEmbeddingModel, getRerankModel } from '../../../ai/model';
-import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search/controller';
+import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -17,8 +17,7 @@ import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { createQueryExtensionChildNodeResponse } from './nodeResponse';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { formatQueryImages, isLikelyUserFileUrl, parseUrlToFileType } from '../../utils/context';
+import { normalizeDatasetSearchInput } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -26,8 +25,8 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
-  [NodeInputKeyEnum.userChatInput]?: string | string[];
-  [NodeInputKeyEnum.datasetSearchInput]?: string | string[];
+  [NodeInputKeyEnum.userChatInput]?: string;
+  [NodeInputKeyEnum.datasetSearchInput]?: string[];
   [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
@@ -51,37 +50,6 @@ export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
 
-const normalizeDatasetSearchInput = (input?: string | string[]) => {
-  const inputList = (Array.isArray(input) ? input : [input])
-    .filter((item): item is string => typeof item === 'string')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const textQueries: string[] = [];
-  const queryImageUrls: string[] = [];
-  let filteredFileCount = 0;
-
-  for (const item of inputList) {
-    if (isLikelyUserFileUrl(item)) {
-      const fileInfo = parseUrlToFileType(item);
-      if (fileInfo?.type === ChatFileTypeEnum.image) {
-        queryImageUrls.push(item);
-      } else {
-        filteredFileCount++;
-      }
-      continue;
-    }
-
-    textQueries.push(item);
-  }
-
-  return {
-    textQueries,
-    queryImageUrls,
-    filteredFileCount
-  };
-};
-
 export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
@@ -96,7 +64,7 @@ export async function dispatchDatasetSearch(
       similarity,
       limit = 5000,
       userChatInput = '',
-      datasetSearchInput,
+      datasetSearchInput = [],
       authTmbId = false,
       collectionFilterMatch,
       searchMode,
@@ -137,18 +105,10 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.toolResponses]: []
   };
 
-  const hasDatasetSearchInput = Array.isArray(datasetSearchInput)
-    ? datasetSearchInput.length > 0
-    : typeof datasetSearchInput === 'string'
-      ? datasetSearchInput.trim() !== ''
-      : false;
-  const { textQueries, queryImageUrls, filteredFileCount } = normalizeDatasetSearchInput(
-    hasDatasetSearchInput ? datasetSearchInput : userChatInput
-  );
-  const normalizedUserChatInput = textQueries.join('\n');
-  const queryImages = formatQueryImages(queryImageUrls);
+  const searchQueries = userChatInput ? [userChatInput] : datasetSearchInput;
 
-  if (!normalizedUserChatInput && queryImageUrls.length === 0) {
+  const { textQueries, imageQueries } = normalizeDatasetSearchInput(searchQueries);
+  if (textQueries.length === 0 && imageQueries.length === 0) {
     return emptyResult;
   }
 
@@ -177,9 +137,8 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
-      reRankQuery: normalizedUserChatInput,
-      queries: textQueries,
-      queryImageUrls,
+      textQueries,
+      imageQueries,
       model: vectorModel.model,
       vlmModel: dataset?.vlmModel,
       similarity,
@@ -192,6 +151,7 @@ export async function dispatchDatasetSearch(
       rerankWeight,
       collectionFilterMatch
     };
+    const useDeepSearch = datasetDeepSearch && textQueries.length > 0;
     const {
       searchRes,
       embeddingTokens,
@@ -201,7 +161,7 @@ export async function dispatchDatasetSearch(
       queryExtensionResult,
       imageCaptionResult,
       deepSearchResult
-    } = datasetDeepSearch && textQueries.length > 0
+    } = useDeepSearch
       ? await deepRagSearch({
           ...searchData,
           datasetDeepSearchModel,
@@ -328,9 +288,7 @@ export async function dispatchDatasetSearch(
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
-        query: normalizedUserChatInput,
-        queryImages,
-        filteredFileCount,
+        datasetQueries: [...textQueries, ...imageQueries],
         embeddingModel: vectorModel.name,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,

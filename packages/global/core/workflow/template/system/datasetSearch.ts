@@ -131,6 +131,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     },
     {
       ...Input_Template_UserChatInput,
+      label: i18nT('workflow:search_query'),
       key: NodeInputKeyEnum.datasetSearchInput,
       valueType: WorkflowIOValueTypeEnum.arrayString,
       toolDescription: i18nT('workflow:content_to_search')

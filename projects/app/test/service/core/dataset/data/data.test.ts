@@ -15,7 +15,7 @@ import type {
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
 import { getRootUser } from '@test/datas/users';
-import { createMockVectorsResponse, mockGetVectorsByText } from '@test/mocks/core/ai/embedding';
+import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import {
   createDatasetData,
@@ -135,11 +135,11 @@ const toDataItem = (
 describe('Dataset data service', () => {
   beforeEach(() => {
     resetVectorMocks();
-    mockGetVectorsByText.mockClear();
+    mockGetVectors.mockClear();
     mockDeleteDatasetFileByKey.mockReset();
     mockCountPromptTokens.mockClear();
     vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
-    mockGetVectorsByText.mockImplementation(async ({ inputs }) =>
+    mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
     mockVectorInsert.mockResolvedValue({

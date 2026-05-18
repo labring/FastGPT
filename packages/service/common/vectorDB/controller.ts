@@ -111,6 +111,13 @@ export const insertDatasetDataVector = async ({
   inputs: string[];
   model: EmbeddingModelItemType;
 }) => {
+  if (inputs.length === 0) {
+    return {
+      tokens: 0,
+      insertIds: []
+    };
+  }
+
   const { vectors, tokens } = await getVectors({
     model,
     inputs: inputs.map((text) => ({

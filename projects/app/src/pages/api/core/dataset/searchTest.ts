@@ -1,9 +1,6 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
-import {
-  deepRagSearch,
-  defaultSearchDatasetData
-} from '@fastgpt/service/core/dataset/search/controller';
+import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -78,8 +75,8 @@ export async function handler(
     histories: [],
     teamId,
     reRankQuery: text,
-    queries: text ? [text] : [],
-    queryImageUrls: validQueryImageUrls,
+    textQueries: text ? [text] : [],
+    imageQueries: validQueryImageUrls,
     model: dataset.vectorModel,
     vlmModel: dataset.vlmModel,
     limit: Math.min(limit, 20000),

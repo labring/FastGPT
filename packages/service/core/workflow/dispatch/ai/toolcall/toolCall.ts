@@ -36,8 +36,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     childrenInteractiveParams,
     allFiles,
     currentInputFiles,
-    fileUrls = [],
-
     ...workflowProps
   } = props;
   const {
@@ -61,7 +59,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       aiChatReasoning,
       aiChatReasoningEffort,
       isResponseAnswerText = true,
-      useAgentSandbox
+      useAgentSandbox,
+      fileUrlList
     }
   } = workflowProps;
 
@@ -99,6 +98,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     runtimeNodes,
     runtimeEdges,
     allFiles,
+    fileUrls: fileUrlList,
     getToolInfo,
     cacheToolFlowResponse,
     appendToolFlowResponse,

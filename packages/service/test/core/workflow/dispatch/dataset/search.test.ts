@@ -5,19 +5,21 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const {
   defaultSearchDatasetDataMock,
+  deepRagSearchMock,
   findDatasetByIdMock,
   formatModelChars2PointsMock,
   usagePushMock
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
+  deepRagSearchMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
   usagePushMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/dataset/search/controller', () => ({
+vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock,
-  deepRagSearch: vi.fn()
+  deepRagSearch: deepRagSearchMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
@@ -207,5 +209,49 @@ describe('dispatchDatasetSearch', () => {
         })
       ])
     );
+  });
+
+  it('uses default recall for image-only input even when deep search is enabled', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 4,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    const result = await dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        userChatInput: '',
+        datasetSearchInput: ['https://files.example.com/query.png'],
+        authTmbId: false,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: false,
+        datasetDeepSearch: true
+      },
+      usagePush: usagePushMock
+    } as any);
+
+    expect(deepRagSearchMock).not.toHaveBeenCalled();
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: [],
+        imageQueries: ['https://files.example.com/query.png']
+      })
+    );
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.datasetQueries).toEqual([
+      'https://files.example.com/query.png'
+    ]);
   });
 });

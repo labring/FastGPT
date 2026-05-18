@@ -89,12 +89,11 @@ export const generateOrthogonalVector = (baseVector: number[]): number[] => {
 
 /**
  * Mock implementation for getVectors
- * Automatically generates embeddings based on input text
+ * Automatically generates embeddings based on input content
  */
-export const mockGetVectorsByText = vi.fn(
+export const mockGetVectors = vi.fn(
   async ({
-    inputs,
-    type
+    inputs
   }: {
     model: any;
     inputs: { type: 'text' | 'image'; input: string }[];
@@ -112,7 +111,7 @@ vi.mock('@fastgpt/service/core/ai/embedding', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
-    getVectors: mockGetVectorsByText
+    getVectors: mockGetVectors
   };
 });
 

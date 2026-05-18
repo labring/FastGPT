@@ -385,7 +385,7 @@ export function form2AppWorkflow(
     return {
       nodeId: datasetNodeId,
       name: t(DatasetSearchModule.name),
-      intro: t('app:dataset_search_tool_description'),
+      intro: DatasetSearchModule.intro,
       avatar: DatasetSearchModule.avatar,
       flowNodeType: DatasetSearchModule.flowNodeType,
       showStatus: true,

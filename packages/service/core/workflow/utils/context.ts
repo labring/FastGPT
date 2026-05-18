@@ -13,10 +13,10 @@ type ContextType = {
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
 
-export const runWithContext = <T>(value: ContextType, fn: (ctx: ContextType) => T) => {
-  return WorkflowContext.run(value, () => {
+export const runWithContext = (value: ContextType, fn: (ctx: ContextType) => void) => {
+  WorkflowContext.run(value, () => {
     const store = WorkflowContext.getStore()!;
-    return fn(store);
+    fn(store);
   });
 };
 
@@ -28,7 +28,7 @@ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
   const context = getWorkflowContext();
   if (context) {
     for (const key in val) {
-      // @ts-expect-error context update uses dynamic workflow context keys
+      // @ts-ignore
       context[key] = val[key];
     }
   }
@@ -109,38 +109,4 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
       url
     };
   }
-};
-
-export const isLikelyUserFileUrl = (input: string) => {
-  if (/^(data:|dataset\/|chat\/|temp\/)/i.test(input)) return true;
-
-  if (!/^(https?:\/\/|\/)/i.test(input)) return false;
-
-  try {
-    const parsedUrl = new URL(input, 'http://localhost:3000');
-    const filename = parsedUrl.searchParams.get('filename') || '';
-    const isFileApi = parsedUrl.pathname.includes('/api/') || parsedUrl.pathname.includes('/file/');
-
-    return isFileApi && filename.includes('.');
-  } catch {
-    return false;
-  }
-};
-
-const isObjectKeyUrl = (url: string) => /^(temp|chat|dataset)\//i.test(url);
-
-export const formatQueryImages = (queryImageUrls?: string[]) => {
-  const images = (queryImageUrls || [])
-    .map((url) => {
-      const fileInfo = parseUrlToFileType(url);
-      if (fileInfo?.type !== ChatFileTypeEnum.image) return;
-
-      return {
-        ...(isObjectKeyUrl(url) ? { key: url } : { url }),
-        name: fileInfo.name
-      };
-    })
-    .filter(Boolean) as { key?: string; url?: string; name?: string }[];
-
-  return images.length > 0 ? images : undefined;
 };

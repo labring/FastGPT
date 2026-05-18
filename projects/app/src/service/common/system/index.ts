@@ -12,7 +12,7 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
   type DeepRagSearchProps,
   type SearchDatasetDataResponse
-} from '@fastgpt/service/core/dataset/search/controller';
+} from '@fastgpt/service/core/dataset/search';
 import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
 import type {
   PushUsageItemsProps,
@@ -219,14 +219,15 @@ export async function initAppTemplateTypes() {
   try {
     await Promise.all(
       defaultTemplateTypes.map((templateType) => {
-        const { typeOrder, ...rest } = templateType;
-
         return MongoTemplateTypes.updateOne(
           {
             typeId: templateType.typeId
           },
           {
-            $set: rest
+            $set: {
+              typeId: templateType.typeId,
+              typeName: templateType.typeName
+            }
           },
           {
             upsert: true

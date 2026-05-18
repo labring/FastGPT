@@ -10,7 +10,7 @@ const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
-const mockGetDatasetBase64Image = vi.hoisted(() => vi.fn());
+const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
@@ -47,13 +47,13 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   getS3DatasetSource: () => ({
-    getDatasetBase64Image: mockGetDatasetBase64Image
+    createExternalUrl: mockCreateExternalUrl
   })
 }));
 
-import { searchDatasetData } from '@fastgpt/service/core/dataset/search/controller';
+import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall';
 
-describe('searchDatasetData image caption fallback', () => {
+describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -87,7 +87,9 @@ describe('searchDatasetData image caption fallback', () => {
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([])
     });
-    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,from-s3');
+    mockCreateExternalUrl.mockResolvedValue({
+      url: 'https://file.fastgpt.io/image.png?token=mock'
+    });
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {
@@ -106,8 +108,8 @@ describe('searchDatasetData image caption fallback', () => {
       vlmModel: 'mock-vlm-model',
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
-      queries: ['black high heels'],
-      queryImageUrls: ['data:image/png;base64,broken-image', 'data:image/png;base64,current-image'],
+      textQueries: ['black high heels'],
+      imageQueries: ['data:image/png;base64,broken-image', 'data:image/png;base64,current-image'],
       limit: 5000,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: 0.5,
@@ -157,8 +159,8 @@ describe('searchDatasetData image caption fallback', () => {
       model: 'mock-embedding-model',
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
-      queries: ['black high heels'],
-      queryImageUrls: ['data:image/png;base64,current-image'],
+      textQueries: ['black high heels'],
+      imageQueries: ['data:image/png;base64,current-image'],
       limit: 5000,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: 0.5,
@@ -185,7 +187,7 @@ describe('searchDatasetData image caption fallback', () => {
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     mockGetLLMModel.mockReturnValue(undefined);
     mockIsImageEmbeddingModel.mockReturnValue(true);
-    mockGetDatasetBase64Image.mockRejectedValueOnce(new Error('expired image'));
+    mockCreateExternalUrl.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -200,8 +202,8 @@ describe('searchDatasetData image caption fallback', () => {
       model: 'mock-embedding-model',
       datasetIds: ['dataset-1'],
       reRankQuery: 'black high heels',
-      queries: ['black high heels'],
-      queryImageUrls: ['temp/team-1/expired.png', 'data:image/png;base64,current-image'],
+      textQueries: ['black high heels'],
+      imageQueries: ['temp/team-1/expired.png', 'data:image/png;base64,current-image'],
       limit: 5000,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: 0.5,
