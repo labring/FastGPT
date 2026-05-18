@@ -251,7 +251,12 @@ const ModelTableRow = ({
                       animation: 'modelTrainTaskSpin 1s linear infinite'
                     }}
                   >
-                    <MyIcon name={'common/running'} w={'16px'} h={'16px'} transform={'scaleX(-1)'} />
+                    <MyIcon
+                      name={'common/running'}
+                      w={'16px'}
+                      h={'16px'}
+                      transform={'scaleX(-1)'}
+                    />
                   </Box>
                 </MyTooltip>
               )}

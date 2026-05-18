@@ -52,7 +52,6 @@ import TagManageModal from './TagManageModal';
 
 type AddMode = 'file' | 'faq' | 'web';
 
-
 export type AddFileModalProps = {
   isOpen: boolean;
   onClose: () => void;
