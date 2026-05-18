@@ -242,9 +242,6 @@ importers:
       hono:
         specifier: ^4.0.0
         version: 4.12.12
-      iso-639-1-dir:
-        specifier: ^3.0.5
-        version: 3.0.5
       jieba-wasm:
         specifier: ^2.2.0
         version: 2.2.0
@@ -9152,10 +9149,6 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
-
-  iso-639-1-dir@3.0.5:
-    resolution: {integrity: sha512-48R1O3hszSPq9vylU0bnNdm2nczx9wBnLS+0zEK7Od5bticI/w3XrE5RBlG8wISmPyf8RAt7CETIDaIg2n2M+A==}
-    engines: {node: '>=6.0'}
 
   isomorphic.js@0.2.5:
     resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==, tarball: http://npm.uedc.sangfor.com.cn:80/isomorphic.js/-/isomorphic.js-0.2.5.tgz}
@@ -22821,8 +22814,6 @@ snapshots:
   isarray@2.0.5: {}
 
   isexe@2.0.0: {}
-
-  iso-639-1-dir@3.0.5: {}
 
   isomorphic.js@0.2.5: {}
 
