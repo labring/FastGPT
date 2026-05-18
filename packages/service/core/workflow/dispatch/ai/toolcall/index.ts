@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
@@ -18,7 +18,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, isEntry, inputs },
+    node: { nodeId, isEntry },
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -33,14 +33,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       systemPrompt,
       userChatInput,
       history = 6,
-      fileUrlList,
+      fileUrlList: fileLinks,
       aiChatVision,
       aiChatReasoning,
       isResponseAnswerText = true,
       useAgentSandbox
     }
   } = props;
-  let fileLinks = fileUrlList;
 
   const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
@@ -51,10 +50,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
-    const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
-      fileLinks = undefined;
-    }
 
     const toolNodes = useToolNodeList({
       nodeId,

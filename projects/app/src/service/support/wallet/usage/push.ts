@@ -280,7 +280,8 @@ export const pushDatasetTestUsage = ({
   source = UsageSourceEnum.fastgpt,
   embUsage,
   rerankUsage,
-  extensionUsage
+  extensionUsage,
+  imageCaptionUsage
 }: {
   teamId: string;
   tmbId: string;
@@ -299,6 +300,11 @@ export const pushDatasetTestUsage = ({
     outputTokens: number;
     embeddingTokens: number;
     embeddingModel: string;
+  };
+  imageCaptionUsage?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
   };
 }) => {
   const list: UsageItemType[] = [];
@@ -357,6 +363,21 @@ export const pushDatasetTestUsage = ({
       amount: totalPoints,
       model: modelName,
       inputTokens: rerankUsage.inputTokens
+    });
+  }
+  if (imageCaptionUsage) {
+    const { totalPoints, modelName } = formatModelChars2Points({
+      model: imageCaptionUsage.model,
+      inputTokens: imageCaptionUsage.inputTokens,
+      outputTokens: imageCaptionUsage.outputTokens
+    });
+    points += totalPoints;
+    list.push({
+      moduleName: i18nT('account_usage:image_parse'),
+      amount: totalPoints,
+      model: modelName,
+      inputTokens: imageCaptionUsage.inputTokens,
+      outputTokens: imageCaptionUsage.outputTokens
     });
   }
 

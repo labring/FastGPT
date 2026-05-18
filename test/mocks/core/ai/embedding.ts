@@ -39,7 +39,7 @@ export const generateMockEmbeddings = (texts: string[], dimension: number = 1536
 };
 
 /**
- * Create a mock response for getVectorsByText
+ * Create a mock response for getVectors
  */
 export const createMockVectorsResponse = (
   texts: string | string[],
@@ -88,19 +88,18 @@ export const generateOrthogonalVector = (baseVector: number[]): number[] => {
 };
 
 /**
- * Mock implementation for getVectorsByText
- * Automatically generates embeddings based on input text
+ * Mock implementation for getVectors
+ * Automatically generates embeddings based on input content
  */
-export const mockGetVectorsByText = vi.fn(
+export const mockGetVectors = vi.fn(
   async ({
-    input,
-    type
+    inputs
   }: {
     model: any;
-    input: string[] | string;
+    inputs: { type: 'text' | 'image'; input: string }[];
     type?: string;
   }): Promise<{ tokens: number; vectors: number[][] }> => {
-    const texts = Array.isArray(input) ? input : [input];
+    const texts = inputs.map((input) => input.input);
     return createMockVectorsResponse(texts);
   }
 );
@@ -112,7 +111,7 @@ vi.mock('@fastgpt/service/core/ai/embedding', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
-    getVectorsByText: mockGetVectorsByText
+    getVectors: mockGetVectors
   };
 });
 

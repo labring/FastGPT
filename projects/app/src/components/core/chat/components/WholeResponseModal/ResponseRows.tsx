@@ -167,20 +167,7 @@ export const AiChatRows = ({
       />
       <Row label={t('chat:step_query')} value={activeModule.stepQuery} />
 
-      {activeModule.queryImages && activeModule.queryImages.length > 0 ? (
-        <Row
-          label={t('common:core.chat.response.module query')}
-          rawDom={
-            <ImageQuery
-              query={activeModule.query}
-              queryImages={activeModule.queryImages}
-              datasetId={queryPreviewDatasetId}
-            />
-          }
-        />
-      ) : (
-        <Row label={t('common:core.chat.response.module query')} value={activeModule.query} />
-      )}
+      <Row label={t('common:core.chat.response.module query')} value={activeModule.query} />
       <Row
         label={t('common:core.chat.response.context total length')}
         value={activeModule.contextTotalLen}
@@ -251,6 +238,17 @@ export const DatasetSearchRows = ({
         label={t('common:core.chat.response.module similarity')}
         value={activeModule.similarity}
       />
+      {activeModule.datasetQueries && activeModule.datasetQueries.length > 0 && (
+        <Row
+          label={t('common:core.chat.response.module query')}
+          rawDom={
+            <ImageQuery
+              datasetQueries={activeModule.datasetQueries}
+              datasetId={activeModule.quoteList?.[0]?.datasetId}
+            />
+          }
+        />
+      )}
       <Row label={t('common:core.chat.response.module limit')} value={activeModule.limit} />
       <Row label={t('chat:response_embedding_model')} value={activeModule.embeddingModel} />
       <Row

@@ -5,7 +5,7 @@ import {
   createMockVectorsResponse,
   generateSimilarVector,
   generateOrthogonalVector,
-  mockGetVectorsByText
+  mockGetVectors
 } from '@test/mocks/core/ai/embedding';
 
 describe('useTextCosine', () => {
@@ -25,6 +25,8 @@ describe('useTextCosine', () => {
       });
 
       expect(result.selectedData).toEqual([]);
+      expect(result.embeddingTokens).toBe(0);
+      expect(mockGetVectors).not.toHaveBeenCalled();
     });
 
     it('should select k candidates when k <= candidates.length', async () => {
@@ -73,7 +75,7 @@ describe('useTextCosine', () => {
       // Create a candidate very different from original
       const differentVector = generateOrthogonalVector(originalVector);
 
-      mockGetVectorsByText.mockResolvedValueOnce({
+      mockGetVectors.mockResolvedValueOnce({
         tokens: 30,
         vectors: [originalVector, differentVector, similarVector]
       });
@@ -110,7 +112,7 @@ describe('useTextCosine', () => {
       expect(result.selectedData).toContain('c3');
     });
 
-    it('should call getVectorsByText with correct parameters', async () => {
+    it('should call getVectors with correct parameters', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
       await lazyGreedyQuerySelection({
         originalText: 'test query',
@@ -118,18 +120,59 @@ describe('useTextCosine', () => {
         k: 1
       });
 
-      expect(mockGetVectorsByText).toHaveBeenCalledWith({
+      expect(mockGetVectors).toHaveBeenCalledWith({
         model: expect.anything(),
-        input: ['test query', 'candidate'],
+        inputs: [
+          {
+            type: 'text',
+            input: 'test query'
+          },
+          {
+            type: 'text',
+            input: 'candidate'
+          }
+        ],
         type: 'query'
       });
+    });
+
+    it('should trim original text and skip blank candidates before embedding', async () => {
+      const originalVector = generateMockEmbedding('test query');
+      const candidateVector = generateSimilarVector(originalVector, 0.9);
+      mockGetVectors.mockResolvedValueOnce({
+        tokens: 10,
+        vectors: [originalVector, candidateVector]
+      });
+
+      const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
+      const result = await lazyGreedyQuerySelection({
+        originalText: ' test query ',
+        candidates: [' ', ' candidate ', ''],
+        k: 3
+      });
+
+      expect(mockGetVectors).toHaveBeenCalledWith({
+        model: expect.anything(),
+        inputs: [
+          {
+            type: 'text',
+            input: 'test query'
+          },
+          {
+            type: 'text',
+            input: 'candidate'
+          }
+        ],
+        type: 'query'
+      });
+      expect(result.selectedData).toEqual(['candidate']);
     });
 
     it('should handle identical candidates correctly', async () => {
       const originalVector = generateMockEmbedding('original');
       const identicalVector = generateMockEmbedding('same');
 
-      mockGetVectorsByText.mockResolvedValueOnce({
+      mockGetVectors.mockResolvedValueOnce({
         tokens: 30,
         vectors: [originalVector, identicalVector, identicalVector, identicalVector]
       });
@@ -152,7 +195,7 @@ describe('useTextCosine', () => {
       const similarVector = generateSimilarVector(originalVector, 0.9);
       const differentVector = generateOrthogonalVector(originalVector);
 
-      mockGetVectorsByText.mockResolvedValueOnce({
+      mockGetVectors.mockResolvedValueOnce({
         tokens: 25,
         vectors: [originalVector, similarVector, differentVector]
       });
@@ -176,7 +219,7 @@ describe('useTextCosine', () => {
       const mockResponse = createMockVectorsResponse(['test', 'candidate']);
       mockResponse.tokens = 12345; // Override tokens for specific test
 
-      mockGetVectorsByText.mockResolvedValueOnce(mockResponse);
+      mockGetVectors.mockResolvedValueOnce(mockResponse);
 
       const { lazyGreedyQuerySelection } = useTextCosine({
         embeddingModel: 'text-embedding-ada-002'
@@ -210,7 +253,7 @@ describe('useTextCosine', () => {
       const similar2 = generateSimilarVector(similar1, 0.95); // Very close to similar1
       const different = generateOrthogonalVector(originalVector);
 
-      mockGetVectorsByText.mockResolvedValueOnce({
+      mockGetVectors.mockResolvedValueOnce({
         tokens: 40,
         vectors: [originalVector, similar1, similar2, different]
       });

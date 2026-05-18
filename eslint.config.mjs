@@ -20,6 +20,7 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {

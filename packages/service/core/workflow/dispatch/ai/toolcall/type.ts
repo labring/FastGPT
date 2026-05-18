@@ -35,6 +35,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<WorkflowInteractiveResponseType>;
   allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
+  fileUrls?: string[];
 };
 
 export type ToolNodeItemType = {

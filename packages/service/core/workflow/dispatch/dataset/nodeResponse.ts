@@ -8,17 +8,20 @@ const datasetSearchModuleLogo = 'core/workflow/template/datasetSearch';
 
 const createDatasetSearchChildNodeResponse = ({
   requestId,
+  requestIds,
   usage,
   moduleName,
   seconds,
   textOutput
 }: {
   requestId?: string;
+  requestIds?: string[];
   usage: ChatNodeUsageType;
   moduleName: string;
   seconds?: number;
   textOutput?: string;
 }): ChatHistoryItemResType => {
+  const llmRequestIds = requestIds?.length ? requestIds : requestId ? [requestId] : undefined;
   const id = requestId || getNanoid();
 
   return {
@@ -29,7 +32,7 @@ const createDatasetSearchChildNodeResponse = ({
     moduleLogo: datasetSearchModuleLogo,
     runningTime: seconds,
     model: usage.model,
-    llmRequestIds: requestId ? [requestId] : undefined,
+    llmRequestIds,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalPoints: usage.totalPoints,
@@ -58,6 +61,29 @@ export const createQueryExtensionChildNodeResponse = ({
     seconds,
     moduleName: i18nT('common:core.module.template.Query extension'),
     textOutput: query
+  });
+
+/**
+ * 创建知识库搜索里的图片解析子 nodeResponse。
+ * 一次图搜可能解析多张图片，所以这里保留所有 caption LLM requestId。
+ */
+export const createImageCaptionChildNodeResponse = ({
+  requestIds,
+  usage,
+  seconds,
+  queries
+}: {
+  requestIds?: string[];
+  usage: ChatNodeUsageType;
+  seconds?: number;
+  queries: string[];
+}) =>
+  createDatasetSearchChildNodeResponse({
+    requestIds,
+    usage,
+    seconds,
+    moduleName: i18nT('account_usage:image_parse'),
+    textOutput: queries.join('\n')
   });
 
 /**

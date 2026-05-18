@@ -4,7 +4,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getEmbeddingModel, getRerankModel } from '../../../ai/model';
-import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search/controller';
+import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -16,7 +16,11 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { createQueryExtensionChildNodeResponse } from './nodeResponse';
+import {
+  createImageCaptionChildNodeResponse,
+  createQueryExtensionChildNodeResponse
+} from './nodeResponse';
+import { normalizeDatasetSearchInput } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -25,6 +29,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.userChatInput]?: string;
+  [NodeInputKeyEnum.datasetSearchInput]?: string[];
   [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
@@ -62,6 +67,7 @@ export async function dispatchDatasetSearch(
       similarity,
       limit = 5000,
       userChatInput = '',
+      datasetSearchInput = [],
       authTmbId = false,
       collectionFilterMatch,
       searchMode,
@@ -102,7 +108,10 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.toolResponses]: []
   };
 
-  if (!userChatInput) {
+  const searchQueries = userChatInput ? [userChatInput] : datasetSearchInput;
+
+  const { textQueries, imageQueries } = normalizeDatasetSearchInput(searchQueries);
+  if (textQueries.length === 0 && imageQueries.length === 0) {
     return emptyResult;
   }
 
@@ -119,9 +128,11 @@ export async function dispatchDatasetSearch(
     }
 
     // Get vector model
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
-    );
+    const dataset = await MongoDataset.findById(
+      datasets[0].datasetId,
+      'vectorModel vlmModel'
+    ).lean();
+    const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);
 
@@ -129,9 +140,10 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
-      reRankQuery: userChatInput,
-      queries: [userChatInput],
+      textQueries,
+      imageQueries,
       model: vectorModel.model,
+      vlmModel: dataset?.vlmModel,
       similarity,
       limit,
       datasetIds,
@@ -142,6 +154,7 @@ export async function dispatchDatasetSearch(
       rerankWeight,
       collectionFilterMatch
     };
+    const useDeepSearch = datasetDeepSearch && textQueries.length > 0;
     const {
       searchRes,
       embeddingTokens,
@@ -149,8 +162,9 @@ export async function dispatchDatasetSearch(
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
       queryExtensionResult,
+      imageCaptionResult,
       deepSearchResult
-    } = datasetDeepSearch
+    } = useDeepSearch
       ? await deepRagSearch({
           ...searchData,
           datasetDeepSearchModel,
@@ -233,7 +247,32 @@ export async function dispatchDatasetSearch(
           outputTokens: 0
         });
       }
-      // 4. Deep search
+      // 4. Image caption
+      if (imageCaptionResult) {
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        });
+        const imageCaptionPoints = imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints;
+        const imageCaptionUsage: ChatNodeUsageType = {
+          totalPoints: imageCaptionPoints,
+          moduleName: i18nT('account_usage:image_parse'),
+          model: modelName,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        };
+        nodeUsages.push(imageCaptionUsage);
+        childrenResponses.push(
+          createImageCaptionChildNodeResponse({
+            requestIds: imageCaptionResult.requestIds,
+            usage: imageCaptionUsage,
+            seconds: imageCaptionResult.seconds,
+            queries: imageCaptionResult.queries
+          })
+        );
+      }
+      // 5. Deep search
       if (deepSearchResult) {
         const { totalPoints, modelName } = formatModelChars2Points({
           model: deepSearchResult.model,
@@ -262,7 +301,7 @@ export async function dispatchDatasetSearch(
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
-        query: userChatInput,
+        datasetQueries: [...textQueries, ...imageQueries],
         embeddingModel: vectorModel.name,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,

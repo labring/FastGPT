@@ -1,7 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Flex, Portal, type BoxProps, type FlexProps } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Box,
+  CircularProgress,
+  Flex,
+  Portal,
+  type BoxProps,
+  type FlexProps
+} from '@chakra-ui/react';
 import { isDatasetFileObjectKey } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { MyPhotoSlider } from '@fastgpt/web/components/common/Image/PhotoView';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { postGetSearchTestImagePreviewUrls } from '@/web/core/dataset/api/file';
 
@@ -12,52 +20,115 @@ export type ImagePreviewTokenItemType = {
   name?: string;
 };
 
+type PreviewCache =
+  | {
+      status: 'ready';
+      url: string;
+    }
+  | {
+      status: 'expired';
+    };
+
 const getDirectPreviewUrl = (image: ImagePreviewTokenItemType) => {
   const url = image.previewUrl || image.url || '';
   return url && !isDatasetFileObjectKey(url) ? url : '';
 };
 
+const getImageCacheKey = (image: ImagePreviewTokenItemType, index: number) =>
+  image.key || image.url || image.previewUrl || `${index}`;
+
+const PREVIEW_URL_TIMEOUT_MS = 5000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+  let timer: ReturnType<typeof setTimeout>;
+
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Search test image preview timeout')), timeoutMs);
+    })
+  ]).finally(() => {
+    clearTimeout(timer);
+  });
+};
+
 const ImagePreview = React.memo(function ImagePreview({
   image,
-  datasetId
+  datasetId,
+  cachedPreviewUrl,
+  onPreviewUrlChange,
+  onPreviewExpired
 }: {
   image: ImagePreviewTokenItemType;
   datasetId?: string;
+  cachedPreviewUrl?: string;
+  onPreviewUrlChange?: (previewUrl: string) => void;
+  onPreviewExpired?: () => void;
 }) {
   const { t } = useSafeTranslation();
-  const [previewUrl, setPreviewUrl] = useState(() => getDirectPreviewUrl(image));
+  const [previewUrl, setPreviewUrl] = useState(
+    () => getDirectPreviewUrl(image) || cachedPreviewUrl
+  );
   const [loadFailed, setLoadFailed] = useState(false);
   const [hasRefreshed, setHasRefreshed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    setPreviewUrl(getDirectPreviewUrl(image));
+    setPreviewUrl(getDirectPreviewUrl(image) || cachedPreviewUrl || '');
     setLoadFailed(false);
     setHasRefreshed(false);
-  }, [image]);
+    setIsRefreshing(false);
+  }, [cachedPreviewUrl, image]);
 
   useEffect(() => {
     if (!image.key || !datasetId || hasRefreshed || (previewUrl && !loadFailed)) return;
 
     let canceled = false;
     setHasRefreshed(true);
+    setIsRefreshing(true);
 
-    postGetSearchTestImagePreviewUrls({
-      datasetId,
-      keys: [image.key]
-    })
+    withTimeout(
+      postGetSearchTestImagePreviewUrls({
+        datasetId,
+        keys: [image.key]
+      }),
+      PREVIEW_URL_TIMEOUT_MS
+    )
       .then((res) => {
         const nextPreviewUrl = res.find((item) => item.key === image.key)?.previewUrl;
-        if (!canceled && nextPreviewUrl) {
-          setPreviewUrl(nextPreviewUrl);
-          setLoadFailed(false);
+        if (!canceled) {
+          if (nextPreviewUrl) {
+            setPreviewUrl(nextPreviewUrl);
+            onPreviewUrlChange?.(nextPreviewUrl);
+            setLoadFailed(false);
+          } else {
+            onPreviewExpired?.();
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!canceled) {
+          onPreviewExpired?.();
+        }
+      })
+      .finally(() => {
+        if (!canceled) {
+          setIsRefreshing(false);
+        }
+      });
 
     return () => {
       canceled = true;
     };
-  }, [datasetId, hasRefreshed, image.key, loadFailed, previewUrl]);
+  }, [
+    datasetId,
+    hasRefreshed,
+    image.key,
+    loadFailed,
+    onPreviewExpired,
+    onPreviewUrlChange,
+    previewUrl
+  ]);
 
   if (previewUrl && !loadFailed) {
     return (
@@ -69,8 +140,30 @@ const ImagePreview = React.memo(function ImagePreview({
         h={'80px'}
         objectFit={'cover'}
         borderRadius={'sm'}
-        onError={() => setLoadFailed(true)}
+        onError={() => {
+          setLoadFailed(true);
+          if (!image.key || !datasetId || hasRefreshed) {
+            onPreviewExpired?.();
+          }
+        }}
       />
+    );
+  }
+
+  if (image.key && datasetId && (!hasRefreshed || isRefreshing)) {
+    return (
+      <Flex
+        w={'80px'}
+        h={'80px'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        bg={'myGray.50'}
+        border={'1px dashed'}
+        borderColor={'myGray.300'}
+        borderRadius={'sm'}
+      >
+        <CircularProgress isIndeterminate size={'24px'} color={'primary.600'} />
+      </Flex>
     );
   }
 
@@ -106,7 +199,7 @@ const defaultTokenStyles: BoxProps = {
   borderRadius: 'md',
   bg: 'white',
   color: 'myGray.700',
-  cursor: 'default',
+  cursor: 'pointer',
   lineHeight: '16px',
   verticalAlign: 'baseline'
 };
@@ -126,35 +219,131 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
   const [hoveredImage, setHoveredImage] = useState<
     | {
         image: ImagePreviewTokenItemType;
+        cacheKey: string;
         top: number;
         left: number;
       }
     | undefined
   >();
+  const [previewCacheMap, setPreviewCacheMap] = useState<Record<string, PreviewCache>>({});
+  const [viewerImage, setViewerImage] = useState<
+    | {
+        cacheKey: string;
+        src: string;
+      }
+    | undefined
+  >();
+
+  const updatePreviewUrl = useCallback((cacheKey: string, previewUrl: string) => {
+    setPreviewCacheMap((state) => ({
+      ...state,
+      [cacheKey]: {
+        status: 'ready',
+        url: previewUrl
+      }
+    }));
+  }, []);
+
+  const markPreviewExpired = useCallback((cacheKey: string) => {
+    setPreviewCacheMap((state) => ({
+      ...state,
+      [cacheKey]: {
+        status: 'expired'
+      }
+    }));
+  }, []);
+
+  const resolvePreviewUrl = useCallback(
+    async (image: ImagePreviewTokenItemType, index: number) => {
+      const cacheKey = getImageCacheKey(image, index);
+      const previewCache = previewCacheMap[cacheKey];
+      if (previewCache?.status === 'expired') return '';
+
+      const directPreviewUrl = getDirectPreviewUrl(image);
+      if (directPreviewUrl) return directPreviewUrl;
+
+      if (previewCache?.status === 'ready') return previewCache.url;
+      if (!image.key || !datasetId) return '';
+
+      const previewUrl = await withTimeout(
+        postGetSearchTestImagePreviewUrls({
+          datasetId,
+          keys: [image.key]
+        }),
+        PREVIEW_URL_TIMEOUT_MS
+      )
+        .then((previewUrls) => previewUrls.find((item) => item.key === image.key)?.previewUrl || '')
+        .catch(() => '');
+
+      if (previewUrl) {
+        updatePreviewUrl(cacheKey, previewUrl);
+      } else {
+        markPreviewExpired(cacheKey);
+      }
+
+      return previewUrl;
+    },
+    [datasetId, markPreviewExpired, previewCacheMap, updatePreviewUrl]
+  );
 
   if (images.length === 0) return null;
+
+  const hoveredPreviewCache = hoveredImage ? previewCacheMap[hoveredImage.cacheKey] : undefined;
+  const hoveredPreviewUrl =
+    hoveredPreviewCache?.status === 'ready' ? hoveredPreviewCache.url : undefined;
 
   return (
     <>
       <Flex flexWrap={'wrap'} gap={2} {...containerProps}>
-        {images.map((image, index) => (
-          <Box
-            key={`${image.key || image.url || image.previewUrl || index}`}
-            {...defaultTokenStyles}
-            {...tokenProps}
-            onMouseEnter={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setHoveredImage({
-                image,
-                top: rect.bottom + 8,
-                left: rect.left
-              });
-            }}
-            onMouseLeave={() => setHoveredImage(undefined)}
-          >
-            {t('common:core.dataset.test.image_token')}
-          </Box>
-        ))}
+        {images.map((image, index) => {
+          const cacheKey = getImageCacheKey(image, index);
+          const isPreviewExpired = previewCacheMap[cacheKey]?.status === 'expired';
+
+          return (
+            <Box
+              key={cacheKey}
+              {...defaultTokenStyles}
+              {...tokenProps}
+              cursor={isPreviewExpired ? 'default' : 'pointer'}
+              role={isPreviewExpired ? undefined : 'button'}
+              tabIndex={isPreviewExpired ? undefined : 0}
+              aria-label={
+                isPreviewExpired
+                  ? t('common:core.dataset.test.image_expired')
+                  : t('common:Click_to_expand')
+              }
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setHoveredImage({
+                  image,
+                  cacheKey,
+                  top: rect.bottom + 8,
+                  left: rect.left
+                });
+              }}
+              onMouseLeave={() => setHoveredImage(undefined)}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isPreviewExpired) return;
+
+                const previewUrl = await resolvePreviewUrl(image, index);
+                if (!previewUrl) return;
+
+                setViewerImage({
+                  cacheKey,
+                  src: previewUrl
+                });
+              }}
+              onKeyDown={(e) => {
+                if (isPreviewExpired || (e.key !== 'Enter' && e.key !== ' ')) return;
+                e.preventDefault();
+                e.currentTarget.click();
+              }}
+            >
+              {t('common:core.dataset.test.image_token')}
+            </Box>
+          );
+        })}
       </Flex>
 
       {!!hoveredImage && (
@@ -172,10 +361,25 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
             boxShadow={'2'}
             pointerEvents={'none'}
           >
-            <ImagePreview image={hoveredImage.image} datasetId={datasetId} />
+            <ImagePreview
+              image={hoveredImage.image}
+              datasetId={datasetId}
+              cachedPreviewUrl={hoveredPreviewUrl}
+              onPreviewUrlChange={(previewUrl) =>
+                updatePreviewUrl(hoveredImage.cacheKey, previewUrl)
+              }
+              onPreviewExpired={() => markPreviewExpired(hoveredImage.cacheKey)}
+            />
           </Flex>
         </Portal>
       )}
+
+      <MyPhotoSlider
+        src={viewerImage?.src}
+        visible={!!viewerImage}
+        onClose={() => setViewerImage(undefined)}
+        imageKey={viewerImage?.cacheKey}
+      />
     </>
   );
 });

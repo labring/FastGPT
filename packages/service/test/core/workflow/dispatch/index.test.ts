@@ -559,7 +559,7 @@ describe('WorkflowQueue', () => {
         const group1 = [createEdge('A', 'D', 'waiting')];
         const group2 = [createEdge('B', 'D', 'skipped'), createEdge('C', 'D', 'skipped')];
         const nodeEdgeGroupsMap = new Map([['D', [group1, group2]]]);
-        console.log(nodeEdgeGroupsMap);
+
         const result = WorkflowQueue.getNodeRunStatus({ node, nodeEdgeGroupsMap });
 
         expect(result).toBe('wait');

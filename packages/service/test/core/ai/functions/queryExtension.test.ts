@@ -73,6 +73,55 @@ describe('queryExtension', () => {
     });
   });
 
+  it('filters blank generated queries before cosine selection', async () => {
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '["  ", " expanded query ", ""]',
+      requestId: 'req_query_extension_filter',
+      usage: {
+        inputTokens: 11,
+        outputTokens: 3,
+        usedUserOpenAIKey: false
+      }
+    });
+
+    await queryExtension({
+      query: 'original query',
+      histories: [],
+      llmModel: 'gpt-query',
+      embeddingModel: 'embedding-query'
+    });
+
+    expect(lazyGreedyQuerySelectionMock).toHaveBeenCalledWith({
+      originalText: 'original query',
+      candidates: ['expanded query'],
+      k: 1,
+      alpha: 0.3
+    });
+  });
+
+  it('does not run cosine selection when generated queries are all blank', async () => {
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '["  ", ""]',
+      requestId: 'req_query_extension_blank',
+      usage: {
+        inputTokens: 11,
+        outputTokens: 3,
+        usedUserOpenAIKey: false
+      }
+    });
+
+    const result = await queryExtension({
+      query: 'original query',
+      histories: [],
+      llmModel: 'gpt-query',
+      embeddingModel: 'embedding-query'
+    });
+
+    expect(lazyGreedyQuerySelectionMock).not.toHaveBeenCalled();
+    expect(result.extensionQueries).toEqual([]);
+    expect(result.embeddingTokens).toBe(0);
+  });
+
   it('splits fixed system prompt and dynamic user prompt', async () => {
     filterGPTMessageByMaxContextMock.mockResolvedValue([
       {

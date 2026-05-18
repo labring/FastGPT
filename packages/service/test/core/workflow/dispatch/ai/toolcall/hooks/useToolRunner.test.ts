@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolRunner';
 
@@ -78,12 +79,14 @@ const createRunner = ({
   getToolInfo,
   runtimeNodes = [],
   runtimeEdges = [],
-  allFiles = new Map()
+  allFiles = new Map(),
+  fileUrls = []
 }: {
   getToolInfo: (name: string) => any;
   runtimeNodes?: any[];
   runtimeEdges?: any[];
   allFiles?: Map<string, any>;
+  fileUrls?: string[];
 }) => {
   const cacheToolFlowResponse = vi.fn();
   const appendToolFlowResponse = vi.fn();
@@ -93,6 +96,7 @@ const createRunner = ({
     runtimeNodes,
     runtimeEdges,
     allFiles,
+    fileUrls,
     getToolInfo,
     cacheToolFlowResponse,
     appendToolFlowResponse,
@@ -251,6 +255,92 @@ describe('useToolRunner', () => {
     expect(cacheToolFlowResponse).toHaveBeenCalledWith({
       call,
       flowResponse
+    });
+  });
+
+  it('injects parent file urls into dataset search tool calls', async () => {
+    const runtimeNodes = [
+      {
+        nodeId: 'dataset_search',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userChatInput,
+            value: 'legacy default'
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchInput,
+            value: []
+          },
+          {
+            key: 'limit',
+            value: 10
+          }
+        ]
+      }
+    ];
+    const runtimeEdges = [
+      {
+        target: 'dataset_search'
+      }
+    ];
+    runWorkflowMock.mockResolvedValue({
+      toolResponses: 'dataset ok',
+      assistantResponses: [],
+      flowUsages: [],
+      workflowInteractiveResponse: undefined,
+      flowResponses: []
+    });
+
+    const { runTool } = createRunner({
+      runtimeNodes,
+      runtimeEdges,
+      fileUrls: ['https://files/image.png'],
+      getToolInfo: () => ({
+        type: 'user',
+        name: 'Dataset search',
+        avatar: 'dataset-avatar',
+        rawData: {
+          nodeId: 'dataset_search',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode
+        }
+      })
+    });
+    const call = createCall({
+      id: 'call_dataset_search',
+      name: 'dataset_search',
+      args: '{"datasetSearchInput":"red shoes","limit":3}'
+    });
+
+    const result = await runTool({ call });
+
+    expect(runtimeNodes[0]).toEqual({
+      nodeId: 'dataset_search',
+      isEntry: true,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          value: ''
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchInput,
+          value: ['red shoes', 'https://files/image.png']
+        },
+        {
+          key: 'limit',
+          value: 3
+        }
+      ]
+    });
+    expect(runtimeEdges[0]).toEqual({
+      target: 'dataset_search',
+      status: 'active'
+    });
+    expect(result).toEqual({
+      response: 'dataset ok',
+      assistantMessages: [],
+      usages: [],
+      interactive: undefined,
+      stop: false
     });
   });
 

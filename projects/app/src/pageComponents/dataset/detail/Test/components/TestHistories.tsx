@@ -52,10 +52,10 @@ const TestHistories = ({
               borderColor: 'primary.300',
               boxShadow: '1',
               '& .delete': {
-                display: 'block'
+                visibility: 'visible'
               },
               '& .time': {
-                display: 'none'
+                visibility: 'hidden'
               }
             }}
             cursor={'pointer'}
@@ -97,7 +97,7 @@ const TestHistories = ({
               {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
             </Box>
             <MyTooltip label={t('common:core.dataset.test.delete test history')}>
-              <Box className="delete" display={'none'} w={'0.8rem'} h={'0.8rem'} ml={1}>
+              <Box className="delete" visibility={'hidden'} w={'0.8rem'} h={'0.8rem'} ml={1}>
                 <MyIcon
                   name={'delete'}
                   w={'0.8rem'}

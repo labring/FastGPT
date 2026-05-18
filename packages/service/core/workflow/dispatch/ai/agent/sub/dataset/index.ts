@@ -12,7 +12,7 @@ import { MongoDataset } from '../../../../../../dataset/schema';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
-} from '../../../../../../dataset/search/controller';
+} from '../../../../../../dataset/search';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { DispatchSubAppResponse } from '../../type';
@@ -199,8 +199,7 @@ export const dispatchAgentDatasetSearch = async ({
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
       teamId,
-      reRankQuery: query,
-      queries: [query],
+      textQueries: [query],
       model: vectorModel.model,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
