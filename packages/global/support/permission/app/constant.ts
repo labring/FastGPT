@@ -35,7 +35,7 @@ export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
   },
   [AppPermissionKeyEnum.ReadChatLog]: {
     value: 0b1000,
-    checkBoxType: 'multiple',
+    checkBoxType: 'hidden',
     name: i18nT('app:permission.name.readChatLog'),
     description: ''
   }
@@ -43,6 +43,18 @@ export const AppRoleList: RoleListType<AppPermissionKeyEnum> = {
 
 export const AppRolePerMap: RolePerMapType = new Map([
   ...CommonRolePerMap,
+  [
+    CommonRoleList[CommonPerKeyEnum.write].value,
+    sumPer(
+      CommonPerList[CommonPerKeyEnum.read],
+      CommonPerList[CommonPerKeyEnum.write],
+      AppPerList[AppPermissionKeyEnum.ReadChatLog]
+    )!
+  ],
+  [
+    CommonRoleList[CommonPerKeyEnum.read].value,
+    sumPer(CommonPerList[CommonPerKeyEnum.read], AppPerList[AppPermissionKeyEnum.ReadChatLog])!
+  ],
   [
     CommonRoleList[CommonPerKeyEnum.manage].value,
     sumPer(

@@ -59,6 +59,7 @@ type Props = {
   appIntro: string;
   appAvatar: string;
   shareId: string;
+  teamId: string;
   authToken: string;
   customUid: string;
   canDownloadSource: boolean;
@@ -374,7 +375,7 @@ const OutLink = (props: Props) => {
 const Render = (props: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { shareId, authToken, customUid, appId, allowAnonymous } = props;
+  const { shareId, authToken, customUid, appId, allowAnonymous, teamId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
@@ -503,7 +504,7 @@ const Render = (props: Props) => {
       return (
         <>
           <NextHead title={feConfigs?.systemTitle} />
-          <LoginModal onSuccess={handleLoginSuccess} />
+          <LoginModal onSuccess={handleLoginSuccess} teamId={teamId} />
         </>
       );
     }
@@ -550,7 +551,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId canDownloadSource showCite showFullText showRunningStatus showSkillReferences allowAnonymous'
+        'appId teamId canDownloadSource showCite showFullText showRunningStatus showSkillReferences allowAnonymous'
       )
         .populate<{ associatedApp: AppSchemaType }>('associatedApp', 'name avatar intro')
         .lean();
@@ -575,6 +576,7 @@ export async function getServerSideProps(context: any) {
       showRunningStatus: app?.showRunningStatus ?? false,
       showSkillReferences: app?.showSkillReferences ?? false,
       shareId: shareId ?? '',
+      teamId: app?.teamId ? String(app.teamId) : '',
       authToken: authToken ?? '',
       allowAnonymous: app?.allowAnonymous ?? true,
       customUid,

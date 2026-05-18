@@ -75,6 +75,9 @@ export const LoginByPasswordBodySchema = z
     language: LanguageSchema.optional().default('zh-CN').meta({
       example: 'zh-CN',
       description: '用户语言偏好'
+    }),
+    teamId: z.string().optional().meta({
+      description: '团队ID，用于登录后进入指定团队空间'
     })
   })
   .meta({
