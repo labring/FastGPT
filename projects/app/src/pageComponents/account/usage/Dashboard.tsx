@@ -24,7 +24,7 @@ const UsageDashboard = ({
   Selectors: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
+  const { dateRange, memberFilter, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
   const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
@@ -37,7 +37,7 @@ const UsageDashboard = ({
           ? dayjs(addDays(dateRange.to, 1).setHours(0, 0, 0, 0)).format()
           : dayjs(addDays(new Date(), 1).setHours(0, 0, 0, 0)).format(),
         sources: isSelectAllSource ? undefined : usageSources,
-        teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+        memberFilter: isSelectAllTmb ? undefined : memberFilter,
         unit
       }).then((res) =>
         res.map((item) => ({

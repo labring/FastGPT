@@ -50,14 +50,14 @@ const UsageTableList = ({
     onClose: onCloseRecharge
   } = useDisclosure();
 
-  const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
+  const { dateRange, memberFilter, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
       dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
       sources: isSelectAllSource ? undefined : usageSources,
-      teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+      memberFilter: isSelectAllTmb ? undefined : memberFilter,
       projectName
     };
   }, [
@@ -66,7 +66,7 @@ const UsageTableList = ({
     isSelectAllSource,
     isSelectAllTmb,
     projectName,
-    selectTmbIds,
+    memberFilter,
     usageSources
   ]);
 

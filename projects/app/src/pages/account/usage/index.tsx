@@ -13,8 +13,7 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import { getGroupList, getGroupMembers } from '@/web/support/user/team/group/api';
-import { getOrgList } from '@/web/support/user/team/org/api';
+import { getGroupList } from '@/web/support/user/team/group/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MultipleSelect, {
   useMultipleSelect
@@ -122,81 +121,6 @@ const UsageTable = () => {
     },
     [setSelectGroupIds, setSelectOrgIds, setSelectTmbIds, setIsSelectAllGroup, setIsSelectAllOrg, setIsSelectAllTmb]
   );
-
-  // 预解析：将部门/群组转换为 tmbId 列表
-  const [resolvedTmbIds, setResolvedTmbIds] = useState<string[]>([]);
-  const [resolvedIsSelectAll, setResolvedIsSelectAll] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (filterMode === 'member') {
-      setResolvedTmbIds(selectTmbIds);
-      setResolvedIsSelectAll(isSelectAllTmb);
-      return;
-    }
-
-    if (filterMode === 'group') {
-      if (isSelectAllGroup) {
-        setResolvedTmbIds([]);
-        setResolvedIsSelectAll(true);
-        return;
-      }
-      if (selectGroupIds.length === 0) {
-        setResolvedTmbIds([]);
-        setResolvedIsSelectAll(false);
-        return;
-      }
-      Promise.all(selectGroupIds.map((gid) => getGroupMembers(gid))).then((results) => {
-        const ids = [...new Set(results.flat().map((m) => m.tmbId))];
-        setResolvedTmbIds(ids);
-        setResolvedIsSelectAll(false);
-      });
-      return;
-    }
-
-    if (filterMode === 'org') {
-      if (isSelectAllOrg) {
-        setResolvedTmbIds([]);
-        setResolvedIsSelectAll(true);
-        return;
-      }
-      if (selectOrgIds.length === 0) {
-        setResolvedTmbIds([]);
-        setResolvedIsSelectAll(false);
-        return;
-      }
-      // 递归收集选中部门及其所有后代部门
-      const collectOrgIds = async (orgId: string): Promise<string[]> => {
-        const result = [orgId];
-        const children = await getOrgList({ orgId });
-        for (const child of children) {
-          const childIds = await collectOrgIds(child._id);
-          result.push(...childIds);
-        }
-        return result;
-      };
-      Promise.all(selectOrgIds.map((id) => collectOrgIds(id))).then(async (allOrgIdArrays) => {
-        const allOrgIds = [...new Set(allOrgIdArrays.flat())];
-        const memberArrays = await Promise.all(
-          allOrgIds.map((orgId) =>
-            getTeamMembers({ pageNum: 1, pageSize: 1000, orgId }).then((res) =>
-              res.list.map((m) => m.tmbId)
-            )
-          )
-        );
-        const ids = [...new Set(memberArrays.flat())];
-        setResolvedTmbIds(ids);
-        setResolvedIsSelectAll(false);
-      });
-    }
-  }, [
-    filterMode,
-    selectTmbIds,
-    isSelectAllTmb,
-    selectGroupIds,
-    isSelectAllGroup,
-    selectOrgIds,
-    isSelectAllOrg
-  ]);
 
   const {
     value: usageSources,
@@ -405,18 +329,45 @@ const UsageTable = () => {
     return () => clearTimeout(timer);
   }, [inputValue]);
 
-  const filterParams = useMemo(
-    () => ({
+  const filterParams = useMemo(() => {
+    const isSelectAll =
+      filterMode === 'member'
+        ? isSelectAllTmb
+        : filterMode === 'group'
+          ? isSelectAllGroup
+          : isSelectAllOrg;
+
+    const memberFilter = isSelectAll
+      ? undefined
+      : filterMode === 'member'
+        ? { type: 'member' as const, memberIds: selectTmbIds }
+        : filterMode === 'group'
+          ? { type: 'group' as const, groupIds: selectGroupIds }
+          : { type: 'org' as const, orgIds: selectOrgIds };
+
+    return {
       dateRange,
-      selectTmbIds: resolvedTmbIds,
-      projectName,
-      isSelectAllTmb: resolvedIsSelectAll,
+      memberFilter,
+      isSelectAllTmb: isSelectAll,
       usageSources,
       isSelectAllSource,
+      projectName,
       unit
-    }),
-    [dateRange, isSelectAllSource, unit, resolvedIsSelectAll, projectName, resolvedTmbIds, usageSources]
-  );
+    };
+  }, [
+    dateRange,
+    filterMode,
+    isSelectAllTmb,
+    isSelectAllGroup,
+    isSelectAllOrg,
+    selectTmbIds,
+    selectGroupIds,
+    selectOrgIds,
+    usageSources,
+    isSelectAllSource,
+    projectName,
+    unit
+  ]);
 
   return (
     <AccountContainer>
