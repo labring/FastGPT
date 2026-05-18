@@ -24,7 +24,8 @@ import {
   putDatasetById,
   getDatasetById,
   getDatasetTrainingQueue,
-  postDatasetSync
+  postDatasetSync,
+  postRebuildEmbedding
 } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
@@ -77,6 +78,7 @@ const CreateModal = ({
   const isEditMode = !!editId;
 
   const [isTraining, setIsTraining] = useState(false);
+  const [originalVectorModel, setOriginalVectorModel] = useState<string>();
   const [syncApiModalOpen, setSyncApiModalOpen] = useState(false);
   const [syncTab, setSyncTab] = useState<'request' | 'params' | 'response'>('request');
 
@@ -124,6 +126,7 @@ const CreateModal = ({
       manual: false,
       onSuccess: (data) => {
         if (!data) return;
+        setOriginalVectorModel(data.vectorModel?.model);
         reset({
           name: data.name,
           intro: data.intro || '',
@@ -165,12 +168,16 @@ const CreateModal = ({
   const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (data: CreateDatasetParams) => {
       if (isEditMode) {
+        const vectorModelChanged =
+          data.vectorModel && originalVectorModel && data.vectorModel !== originalVectorModel;
+
         const updateData = {
           id: editId!,
           name: data.name,
           intro: data.intro,
           avatar: data.avatar,
-          vectorModel: data.vectorModel,
+          // 如果向量模型变了，不在这里更新，由 rebuildEmbedding 负责更新
+          ...(!vectorModelChanged && { vectorModel: data.vectorModel }),
           agentModel: data.agentModel,
           vlmModel: data.vlmModel,
           apiDatasetServer: data.apiDatasetServer,
@@ -178,6 +185,15 @@ const CreateModal = ({
           ...(hasAutoSync && { autoSync: data.autoSync })
         };
         await putDatasetById(updateData);
+
+        // 如果向量模型发生了变化，调用 rebuildEmbedding 重建所有 embedding
+        if (vectorModelChanged) {
+          await postRebuildEmbedding({
+            datasetId: editId!,
+            vectorModel: data.vectorModel!
+          });
+        }
+
         onUpdateSuccess?.();
         onClose();
         return;
