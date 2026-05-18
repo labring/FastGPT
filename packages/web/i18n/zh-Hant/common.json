@@ -443,6 +443,7 @@
   "core.dataset.collection.metadata.source size": "來源大小",
   "core.dataset.collection.status.active": "已就緒",
   "core.dataset.collection.status.error": "訓練異常",
+  "core.dataset.collection.status.queued": "排隊中",
   "core.dataset.collection.sync.result.sameRaw": "內容未變更，無需更新",
   "core.dataset.collection.sync.result.success": "開始同步",
   "core.dataset.data.Edit": "編輯資料",

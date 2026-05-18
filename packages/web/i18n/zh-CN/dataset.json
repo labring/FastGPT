@@ -441,6 +441,7 @@
   "search_name": "搜索名称",
   "chunk_count": "分块数",
   "processing": "处理中",
+  "queued": "排队中",
   "view_original": "查看原文",
   "download_file": "下载文件",
   "view_image": "查看原图",
