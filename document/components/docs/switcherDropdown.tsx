@@ -79,6 +79,23 @@ export function SwitcherDropdown({
     );
 
     if (item.href) {
+      if (/^https?:\/\//i.test(item.href)) {
+        return (
+          <a
+            key={item.key}
+            href={item.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={() => selectItem(item)}
+            className={className}
+            role="option"
+            aria-selected={active}
+          >
+            {content}
+          </a>
+        );
+      }
+
       return (
         <Link
           key={item.key}

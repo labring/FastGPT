@@ -54,7 +54,7 @@ const exactMap: Record<string, string> = {
 
   // Navbar redirects.
   '/guide': defaultHomePath,
-  '/use-cases': '/use-cases/app-cases/submit_application_template',
+  '/use-cases': defaultHomePath,
   '/self-host': '/self-host/deploy/docker',
   '/openapi': '/openapi/intro',
   '/faq': '/faq/app'

@@ -12,7 +12,7 @@ import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
 import { normalizePageTreeSections } from '@/lib/page-tree';
-import { BookOpen, Code, Lightbulb, CircleHelp, Server } from 'lucide-react';
+import { BookOpen, Code, CircleHelp, Handshake, Server } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -31,11 +31,6 @@ export default async function Layout({
       url: getLocalizedPath('/guide', lang)
     },
     {
-      icon: <Lightbulb className={iconClass} />,
-      title: t('common:use-cases', lang),
-      url: getLocalizedPath('/use-cases', lang)
-    },
-    {
       icon: <Server className={iconClass} />,
       title: t('common:selfHost', lang),
       url: getLocalizedPath('/self-host', lang)
@@ -49,6 +44,11 @@ export default async function Layout({
       icon: <CircleHelp className={iconClass} />,
       title: t('common:faq', lang),
       url: getLocalizedPath('/faq', lang)
+    },
+    {
+      icon: <Handshake className={iconClass} />,
+      title: t('common:businessConsultation', lang),
+      url: 'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc'
     }
   ];
 

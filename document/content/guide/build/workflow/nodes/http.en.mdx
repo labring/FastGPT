@@ -45,9 +45,9 @@ Usage is the same as Postman and ApiFox.
 
 Use `{{key}}` to reference variables. For example:
 
-| key | value |
-| --- | --- |
-| appId | `{{appId}}` |
+| key           | value              |
+| ------------- | ------------------ |
+| appId         | `{{appId}}`        |
 | Authorization | Bearer `{{token}}` |
 
 ### Body
@@ -58,7 +58,6 @@ Write a custom JSON body and use `{{key}}` to reference variables. For example:
 
 <Tabs items={['Sample variables','Body declaration in HTTP node','Final parsed result']}>
   <Tab value="Sample variables" >
-
 
 ```json
 {
@@ -73,10 +72,8 @@ Write a custom JSON body and use `{{key}}` to reference variables. For example:
 }
 ```
 
-
   </Tab>
   <Tab value="Body declaration in HTTP node" >
-
 
 When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 
@@ -92,10 +89,8 @@ When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 }
 ```
 
-
   </Tab>
   <Tab value="Final parsed result" >
-
 
 ```json
 {
@@ -112,7 +107,6 @@ When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 }
 ```
 
-
   </Tab>
 </Tabs>
 
@@ -125,31 +119,28 @@ Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 <Tabs items={['API response example','Extraction example']}>
   <Tab value="API response example" >
 
-
 ```json
 {
   "message": "测试",
-  "data":{
-      "user": {
+  "data": {
+    "user": {
+      "name": "xxx",
+      "age": 12
+    },
+    "list": [
+      {
         "name": "xxx",
-        "age": 12
+        "age": 50
       },
-      "list": [
-        {
-          "name": "xxx",
-          "age": 50
-        },
-        [{ "test": 22 }]
-      ],
-      "psw": "xxx"
+      [{ "test": 22 }]
+    ],
+    "psw": "xxx"
   }
 }
 ```
 
-
   </Tab>
   <Tab value="Extraction example" >
-
 
 ```json
 {
@@ -157,21 +148,19 @@ Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
   "$.data.user": { "name": "xxx", "age": 12 },
   "$.data.user.name": "xxx",
   "$.data.user.age": 12,
-  "$.data.list": [ { "name": "xxx", "age": 50 }, [{ "test": 22 }] ],
+  "$.data.list": [{ "name": "xxx", "age": 50 }, [{ "test": 22 }]],
   "$.data.list[0]": { "name": "xxx", "age": 50 },
   "$.data.list[0].name": "xxx",
   "$.data.list[0].age": 50,
-  "$.data.list[1]": [ { "test": 22 } ],
+  "$.data.list[1]": [{ "test": 22 }],
   "$.data.list[1][0]": { "test": 22 },
   "$.data.list[1][0].test": 22,
   "$.data.psw": "xxx"
 }
 ```
 
-
   </Tab>
 </Tabs>
-
 
 Configure the `key` to extract values from FastGPT's parsed format, following standard JavaScript object access rules. For example:
 
@@ -183,55 +172,53 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 
 Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.
 
-
 <Alert context="warning">
 The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow capabilities.
 
 If you don't want to deploy additional services, use [Laf](https://laf.dev/) to quickly develop and publish APIs -- write and ship instantly with no deployment needed.
+
 </Alert>
 
 ## Laf HTTP Integration Example
 
-
 Here is a POST request example written in Laf:
 
 ```ts
-import cloud from '@lafjs/cloud'
-const db = cloud.database()
+import cloud from '@lafjs/cloud';
+const db = cloud.database();
 
 type RequestType = {
   appId: string;
   appointment: string;
-  action: 'post' | 'delete' | 'put' | 'get'
-}
+  action: 'post' | 'delete' | 'put' | 'get';
+};
 
 export default async function (ctx: FunctionContext) {
   try {
     // Get parameters from body
-    const { appId, appointment, action } = ctx.body as RequestType
+    const { appId, appointment, action } = ctx.body as RequestType;
 
-    const parseBody = JSON.parse(appointment)
+    const parseBody = JSON.parse(appointment);
     if (action === 'get') {
-      return await getRecord(parseBody)
+      return await getRecord(parseBody);
     }
     if (action === 'post') {
-      return await createRecord(parseBody)
+      return await createRecord(parseBody);
     }
     if (action === 'put') {
-      return await putRecord(parseBody)
+      return await putRecord(parseBody);
     }
     if (action === 'delete') {
-      return await removeRecord(parseBody)
+      return await removeRecord(parseBody);
     }
-
 
     return {
-      response: "Error"
-    }
+      response: 'Error'
+    };
   } catch (err) {
     return {
-      response: "Error"
-    }
+      response: 'Error'
+    };
   }
 }
 ```
@@ -239,15 +226,9 @@ export default async function (ctx: FunctionContext) {
 ## Use Cases
 
 The HTTP node enables unlimited extensibility, such as:
+
 - Database operations
 - External data source calls
 - Web searches
 - Sending emails
 - ....
-
-
-## Related Examples
-
-- [Google Search](../../../../use-cases/app-cases/google_search.en.mdx)
-- [Send Lark Webhook](../../../../use-cases/app-cases/feishu_webhook.en.mdx)
-- [Lab Appointment (Database Operations)](../../../../use-cases/app-cases/lab_appointment.en.mdx)
