@@ -7,6 +7,25 @@ import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { createNode, createEdge } from '../utils';
 
+const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
+
 describe('createClientAbortTracker', () => {
   const mockRes = (overrides: Record<string, any> = {}) => {
     const res = new EventEmitter() as any;
@@ -29,6 +48,8 @@ describe('createClientAbortTracker', () => {
     req.socket.destroyed = false;
     return req;
   };
+
+  const mockSocketError = (code: string) => Object.assign(new Error(code), { code });
 
   it('响应正常结束后 close，不应判定为客户端 abort', () => {
     const req = mockReq();
@@ -134,6 +155,42 @@ describe('createClientAbortTracker', () => {
     tracker.cleanup();
   });
 
+  it('客户端 reset 类 socket error 后触发请求 aborted，应判定为用户主动 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.socket.emit('error', mockSocketError('ECONNRESET'));
+    req.emit('aborted');
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('客户端 reset 类 socket error 后响应 close，应作为客户端 abort fallback', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.socket.emit('error', mockSocketError('EPIPE'));
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('响应 close 后再触发服务端 socket error，应回滚客户端 abort fallback', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.emit('close');
+    req.socket.emit('error', new Error('server socket error'));
+
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
   it('响应错误触发请求 aborted，不应判定为用户主动 abort', () => {
     const req = mockReq();
     const res = mockRes();
@@ -141,6 +198,18 @@ describe('createClientAbortTracker', () => {
 
     res.emit('error', new Error('server response error'));
     req.emit('aborted');
+
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('响应 close 后再触发响应 error，应回滚客户端 abort fallback', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.emit('close');
+    res.emit('error', new Error('server response error'));
 
     expect(tracker.isClientAborted()).toBe(false);
     tracker.cleanup();
@@ -227,12 +296,13 @@ describe('createClientAbortTracker', () => {
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const { port } = server.address() as AddressInfo;
     const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
     try {
       const response = await fetch(`http://127.0.0.1:${port}/sse`, {
         signal: controller.signal
       });
-      const reader = response.body?.getReader();
+      reader = response.body?.getReader();
       expect(reader).toBeDefined();
 
       const firstChunk = await reader!.read();
@@ -241,8 +311,10 @@ describe('createClientAbortTracker', () => {
       controller.abort();
       await reader!.read().catch(() => undefined);
 
-      expect(await serverAbort).toBe(true);
+      expect(await waitWithTimeout(serverAbort, 3000, 'server abort signal')).toBe(true);
     } finally {
+      await reader?.cancel().catch(() => undefined);
+      server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
@@ -266,31 +338,35 @@ describe('createClientAbortTracker', () => {
       });
       res.write('data: first\n\n');
 
+      const destroyTimer = setTimeout(() => {
+        req.socket.destroy(new Error('server socket unstable close'));
+      }, 10);
+
       res.on('close', () => {
+        clearTimeout(destroyTimer);
         const aborted = checkIsStopping();
         tracker.cleanup();
         resolveServerAbort(aborted);
       });
-
-      setTimeout(() => {
-        req.socket.destroy(new Error('server socket unstable close'));
-      }, 10);
     });
 
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const { port } = server.address() as AddressInfo;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
     try {
       const response = await fetch(`http://127.0.0.1:${port}/sse`);
-      const reader = response.body?.getReader();
+      reader = response.body?.getReader();
       expect(reader).toBeDefined();
 
       const firstChunk = await reader!.read();
       expect(firstChunk.done).toBe(false);
       await reader!.read().catch(() => undefined);
 
-      expect(await serverAbort).toBe(false);
+      expect(await waitWithTimeout(serverAbort, 3000, 'server abort signal')).toBe(false);
     } finally {
+      await reader?.cancel().catch(() => undefined);
+      server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });

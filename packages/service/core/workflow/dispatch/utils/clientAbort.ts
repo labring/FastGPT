@@ -1,6 +1,19 @@
 import type { NextApiResponse } from 'next';
 import type { IncomingMessage } from 'node:http';
 
+const getErrorCode = (error: unknown) => {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return '';
+  }
+
+  return String((error as { code?: unknown }).code);
+};
+
+const isClientResetSocketError = (error: unknown) => {
+  const code = getErrorCode(error);
+  return code === 'ECONNRESET' || code === 'EPIPE';
+};
+
 export const createClientAbortTracker = ({
   req,
   res
@@ -12,18 +25,19 @@ export const createClientAbortTracker = ({
   let requestAborted = !!req?.aborted;
   let responseCompleted = !!(res?.writableEnded || res?.writableFinished);
   let responseError = !!res?.errored;
-  let socketError = false;
+  let serverSocketError = false;
 
   /**
    * v1 工作流只在客户端主动断开当前响应时停止。
    *
    * `socket.destroyed`、`res.destroyed`、`writableAborted` 这类快照过宽，不能单独证明用户取消。
-   * `req.aborted` 是首选信号；但 Next API 运行时下 fetch abort 可能只稳定落到
-   * 未 finish 的 `res.close`，因此把 close 作为 fallback，同时排除服务端 response/socket error。
+   * `req.aborted` 是首选信号；但 Next API 运行时下 fetch abort 可能只稳定落到未 finish 的
+   * `res.close`，因此把 close 作为 fallback。服务端 response/socket error 会屏蔽该 fallback，
+   * 但客户端 reset 类 socket error 仍属于断开信号，不能抢先屏蔽后续 `req.aborted`/`res.close`。
    */
   const responseFinished = () =>
     responseCompleted || !!(res?.writableEnded || res?.writableFinished);
-  const responseErrored = () => responseError || socketError || !!res?.errored;
+  const responseErrored = () => responseError || serverSocketError || !!res?.errored;
   const canAcceptRequestAbort = () => !responseFinished() && !responseErrored();
   const isRequestAbortedSnapshot = () =>
     (requestAborted || !!req?.aborted) && canAcceptRequestAbort();
@@ -33,8 +47,10 @@ export const createClientAbortTracker = ({
   const markResponseError = () => {
     responseError = true;
   };
-  const markSocketError = () => {
-    socketError = true;
+  const markSocketError = (error: unknown) => {
+    if (!isClientResetSocketError(error)) {
+      serverSocketError = true;
+    }
   };
   const markClientAborted = () => {
     requestAborted = true;
@@ -55,7 +71,7 @@ export const createClientAbortTracker = ({
   res?.on('close', markResponseClosed);
 
   return {
-    isClientAborted: () => clientAborted || isRequestAbortedSnapshot(),
+    isClientAborted: () => canAcceptRequestAbort() && (clientAborted || isRequestAbortedSnapshot()),
     cleanup: () => {
       req?.off('aborted', markClientAborted);
       req?.socket?.off('error', markSocketError);
