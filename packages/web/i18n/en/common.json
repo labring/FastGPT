@@ -1335,7 +1335,7 @@
   "core.dataset.error.synonymFileUnsupportedFormat": "Only CSV, XLSX, and XLS format files are supported for upload.",
   "core.dataset.error.synonymFileParseFailed": "Failed to parse file. Please check the file format and encoding.",
   "core.dataset.error.synonymTermDuplicate": "Standard term cannot be the same as synonym term. Please check the file content.",
-  "core.dataset.error.datasetTrainingInProgress": "The knowledge base is currently training. Please wait for the training to complete before proceeding.",
+  "core.dataset.error.datasetTrainingInProgress": "The knowledge base is currently processing. Please wait for the processing to complete before proceeding.",
   "core.dataset.error.collectionNameDuplicate": "A file with the same name already exists in this dataset.",
   "core.dataset.error.fileContentDuplicate": "A file with identical content already exists in this dataset.",
   "core.dataset.error.Rerank timeout": "Rerank model \"{{modelName}}\" timeout, knowledge reranking not performed",

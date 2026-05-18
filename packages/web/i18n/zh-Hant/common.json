@@ -1316,7 +1316,7 @@
   "core.dataset.error.collectionNameExtensionMismatch": "檔案副檔名與原檔案不一致，不能修改副檔名",
   "core.dataset.error.collectionNameMissingExtension": "不能去除檔案副檔名，請保留原檔案副檔名",
   "core.dataset.error.datasetIdMismatch": "資料集ID不匹配",
-  "core.dataset.error.datasetTrainingInProgress": "知識庫正在訓練中，請等待訓練完成後再操作。",
+  "core.dataset.error.datasetTrainingInProgress": "知識庫正在處理中，請等待處理完成後操作",
   "core.dataset.error.invalidVectorModelOrQAModel": "向量模型或問答模型錯誤",
   "core.dataset.error.noDataTables": "資料庫知識庫中沒有資料表，請先新增資料表",
   "core.dataset.error.noFiles": "文件知識庫中沒有文件，請先上傳文件",
