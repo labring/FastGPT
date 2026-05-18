@@ -29,33 +29,39 @@ export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
 
 /**
  * 按环境开关规范化图片输入。
- * data URL 已经是模型可读内容，始终原样返回；FastGPT 内部对象 key 不能直接交给模型，
- * 需要先换成临时外部访问 URL；普通图片 URL 只有 serviceEnv.MULTIPLE_DATA_TO_BASE64
- * 为 true 时才转成 base64。这里不吞异常，由上层按图片粒度降级，避免一张坏图中断整次检索。
+ * data URL 已经是模型可读内容，始终原样返回；serviceEnv.MULTIPLE_DATA_TO_BASE64
+ * 为 true 时，FastGPT 内部对象 key 和普通图片 URL 都会转成 base64，避免模型服务反向
+ * 访问内网/本地存储地址；关闭该开关时，内部对象 key 会换成临时外部访问 URL。
+ * 这里不吞异常，由上层按图片粒度降级，避免一张坏图中断整次检索。
  */
 export const normalizeImageToBase64 = async (imageUrl: string) => {
   if (imageUrl.startsWith('data:image/')) {
     return imageUrl;
   }
 
-  if (
+  const isInternalObjectKey =
     isS3ObjectKey(imageUrl, 'dataset') ||
     isS3ObjectKey(imageUrl, 'temp') ||
-    isS3ObjectKey(imageUrl, 'chat')
-  ) {
-    const { url } = await getS3DatasetSource().createExternalUrl({
-      key: imageUrl,
-      expiredHours: 1
-    });
-    return url;
+    isS3ObjectKey(imageUrl, 'chat');
+
+  if (serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+    if (isInternalObjectKey) {
+      return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+    }
+
+    const { completeBase64 } = await getImageBase64(imageUrl);
+    return completeBase64;
   }
 
-  if (!serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+  if (!isInternalObjectKey) {
     return imageUrl;
   }
 
-  const { completeBase64 } = await getImageBase64(imageUrl);
-  return completeBase64;
+  const { url } = await getS3DatasetSource().createExternalUrl({
+    key: imageUrl,
+    expiredHours: 1
+  });
+  return url;
 };
 
 /**

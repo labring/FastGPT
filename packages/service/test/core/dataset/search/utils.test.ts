@@ -4,6 +4,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 const mockQueryExtension = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
+const mockGetDatasetBase64Image = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/functions/queryExtension', () => ({
   queryExtension: mockQueryExtension
@@ -15,7 +16,8 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   getS3DatasetSource: () => ({
-    createExternalUrl: mockCreateExternalUrl
+    createExternalUrl: mockCreateExternalUrl,
+    getDatasetBase64Image: mockGetDatasetBase64Image
   })
 }));
 
@@ -45,6 +47,7 @@ describe('normalizeImageToBase64', () => {
     expect(result).toBe('https://example.com/image.png');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
   it('should convert internal object keys to temporary access url when base64 conversion is disabled', async () => {
@@ -67,6 +70,7 @@ describe('normalizeImageToBase64', () => {
       });
     }
     expect(mockGetImageBase64).not.toHaveBeenCalled();
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
   it('should convert image url to base64 when base64 conversion is enabled', async () => {
@@ -80,21 +84,18 @@ describe('normalizeImageToBase64', () => {
     expect(result).toBe('data:image/png;base64,converted');
     expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/image.png');
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
-  it('should convert object key to temporary access url when base64 conversion is enabled', async () => {
+  it('should convert object key to base64 when base64 conversion is enabled', async () => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
-    mockCreateExternalUrl.mockResolvedValue({
-      url: 'https://file.fastgpt.io/dataset/team/file.png?token=mock'
-    });
+    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,dataset');
 
     const result = await normalizeImageToBase64('dataset/team/file.png');
 
-    expect(result).toBe('https://file.fastgpt.io/dataset/team/file.png?token=mock');
-    expect(mockCreateExternalUrl).toHaveBeenCalledWith({
-      key: 'dataset/team/file.png',
-      expiredHours: 1
-    });
+    expect(result).toBe('data:image/png;base64,dataset');
+    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith('dataset/team/file.png');
+    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
     expect(mockGetImageBase64).not.toHaveBeenCalled();
   });
 
@@ -106,6 +107,7 @@ describe('normalizeImageToBase64', () => {
     expect(result).toBe('data:image/png;base64,input');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 });
 

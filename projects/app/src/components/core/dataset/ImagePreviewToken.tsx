@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   CircularProgress,
@@ -9,6 +9,7 @@ import {
 } from '@chakra-ui/react';
 import { isDatasetFileObjectKey } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { MyPhotoSlider } from '@fastgpt/web/components/common/Image/PhotoView';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { postGetSearchTestImagePreviewUrls } from '@/web/core/dataset/api/file';
 
@@ -24,25 +25,34 @@ const getDirectPreviewUrl = (image: ImagePreviewTokenItemType) => {
   return url && !isDatasetFileObjectKey(url) ? url : '';
 };
 
+const getImageCacheKey = (image: ImagePreviewTokenItemType, index: number) =>
+  image.key || image.url || image.previewUrl || `${index}`;
+
 const ImagePreview = React.memo(function ImagePreview({
   image,
-  datasetId
+  datasetId,
+  cachedPreviewUrl,
+  onPreviewUrlChange
 }: {
   image: ImagePreviewTokenItemType;
   datasetId?: string;
+  cachedPreviewUrl?: string;
+  onPreviewUrlChange?: (previewUrl: string) => void;
 }) {
   const { t } = useSafeTranslation();
-  const [previewUrl, setPreviewUrl] = useState(() => getDirectPreviewUrl(image));
+  const [previewUrl, setPreviewUrl] = useState(
+    () => getDirectPreviewUrl(image) || cachedPreviewUrl
+  );
   const [loadFailed, setLoadFailed] = useState(false);
   const [hasRefreshed, setHasRefreshed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    setPreviewUrl(getDirectPreviewUrl(image));
+    setPreviewUrl(getDirectPreviewUrl(image) || cachedPreviewUrl || '');
     setLoadFailed(false);
     setHasRefreshed(false);
     setIsRefreshing(false);
-  }, [image]);
+  }, [cachedPreviewUrl, image]);
 
   useEffect(() => {
     if (!image.key || !datasetId || hasRefreshed || (previewUrl && !loadFailed)) return;
@@ -59,6 +69,7 @@ const ImagePreview = React.memo(function ImagePreview({
         const nextPreviewUrl = res.find((item) => item.key === image.key)?.previewUrl;
         if (!canceled && nextPreviewUrl) {
           setPreviewUrl(nextPreviewUrl);
+          onPreviewUrlChange?.(nextPreviewUrl);
           setLoadFailed(false);
         }
       })
@@ -72,7 +83,7 @@ const ImagePreview = React.memo(function ImagePreview({
     return () => {
       canceled = true;
     };
-  }, [datasetId, hasRefreshed, image.key, loadFailed, previewUrl]);
+  }, [datasetId, hasRefreshed, image.key, loadFailed, onPreviewUrlChange, previewUrl]);
 
   if (previewUrl && !loadFailed) {
     return (
@@ -138,7 +149,7 @@ const defaultTokenStyles: BoxProps = {
   borderRadius: 'md',
   bg: 'white',
   color: 'myGray.700',
-  cursor: 'default',
+  cursor: 'pointer',
   lineHeight: '16px',
   verticalAlign: 'baseline'
 };
@@ -158,11 +169,53 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
   const [hoveredImage, setHoveredImage] = useState<
     | {
         image: ImagePreviewTokenItemType;
+        cacheKey: string;
         top: number;
         left: number;
       }
     | undefined
   >();
+  const [previewUrlMap, setPreviewUrlMap] = useState<Record<string, string>>({});
+  const [viewerImage, setViewerImage] = useState<
+    | {
+        cacheKey: string;
+        src: string;
+      }
+    | undefined
+  >();
+
+  const updatePreviewUrl = useCallback((cacheKey: string, previewUrl: string) => {
+    setPreviewUrlMap((state) => ({
+      ...state,
+      [cacheKey]: previewUrl
+    }));
+  }, []);
+
+  const resolvePreviewUrl = useCallback(
+    async (image: ImagePreviewTokenItemType, index: number) => {
+      const directPreviewUrl = getDirectPreviewUrl(image);
+      if (directPreviewUrl) return directPreviewUrl;
+
+      const cacheKey = getImageCacheKey(image, index);
+      const cachedPreviewUrl = previewUrlMap[cacheKey];
+      if (cachedPreviewUrl) return cachedPreviewUrl;
+      if (!image.key || !datasetId) return '';
+
+      const previewUrl = await postGetSearchTestImagePreviewUrls({
+        datasetId,
+        keys: [image.key]
+      })
+        .then((previewUrls) => previewUrls.find((item) => item.key === image.key)?.previewUrl || '')
+        .catch(() => '');
+
+      if (previewUrl) {
+        updatePreviewUrl(cacheKey, previewUrl);
+      }
+
+      return previewUrl;
+    },
+    [datasetId, previewUrlMap, updatePreviewUrl]
+  );
 
   if (images.length === 0) return null;
 
@@ -171,18 +224,37 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
       <Flex flexWrap={'wrap'} gap={2} {...containerProps}>
         {images.map((image, index) => (
           <Box
-            key={`${image.key || image.url || image.previewUrl || index}`}
+            key={`${getImageCacheKey(image, index)}`}
             {...defaultTokenStyles}
             {...tokenProps}
+            role={'button'}
+            tabIndex={0}
+            title={t('common:Click_to_expand')}
             onMouseEnter={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setHoveredImage({
                 image,
+                cacheKey: getImageCacheKey(image, index),
                 top: rect.bottom + 8,
                 left: rect.left
               });
             }}
             onMouseLeave={() => setHoveredImage(undefined)}
+            onClick={async (e) => {
+              e.stopPropagation();
+              const previewUrl = await resolvePreviewUrl(image, index);
+              if (!previewUrl) return;
+
+              setViewerImage({
+                cacheKey: getImageCacheKey(image, index),
+                src: previewUrl
+              });
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return;
+              e.preventDefault();
+              e.currentTarget.click();
+            }}
           >
             {t('common:core.dataset.test.image_token')}
           </Box>
@@ -204,10 +276,24 @@ const ImagePreviewToken = React.memo(function ImagePreviewToken({
             boxShadow={'2'}
             pointerEvents={'none'}
           >
-            <ImagePreview image={hoveredImage.image} datasetId={datasetId} />
+            <ImagePreview
+              image={hoveredImage.image}
+              datasetId={datasetId}
+              cachedPreviewUrl={previewUrlMap[hoveredImage.cacheKey]}
+              onPreviewUrlChange={(previewUrl) =>
+                updatePreviewUrl(hoveredImage.cacheKey, previewUrl)
+              }
+            />
           </Flex>
         </Portal>
       )}
+
+      <MyPhotoSlider
+        src={viewerImage?.src}
+        visible={!!viewerImage}
+        onClose={() => setViewerImage(undefined)}
+        imageKey={viewerImage?.cacheKey}
+      />
     </>
   );
 });
