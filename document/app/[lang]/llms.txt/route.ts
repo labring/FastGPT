@@ -10,10 +10,12 @@ import { i18n } from '@/lib/i18n';
 
 export const revalidate = false;
 
+const includeMdxFiles = remarkInclude as unknown as typeof remarkMdx;
+
 const processor = remark()
   .use(remarkMdx)
   // https://fumadocs.vercel.app/docs/mdx/include
-  .use(remarkInclude)
+  .use(includeMdxFiles)
   // gfm styles
   .use(remarkGfm)
   // .use(your remark plugins)

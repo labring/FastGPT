@@ -6,7 +6,6 @@ const fg = require('fast-glob');
 
 // 黑名单路径（不带语言前缀）
 const blacklist = [
-  'use-cases/index',
   'protocol/index',
   'api/index',
   'faq/index',

@@ -1,8 +1,17 @@
 import type { NextApiResponse } from 'next';
 import type { IncomingMessage } from 'node:http';
 
-type ResponseWithWritableAborted = NextApiResponse & {
-  writableAborted?: boolean;
+const getErrorCode = (error: unknown) => {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return '';
+  }
+
+  return String((error as { code?: unknown }).code);
+};
+
+const isClientResetSocketError = (error: unknown) => {
+  const code = getErrorCode(error);
+  return code === 'ECONNRESET' || code === 'EPIPE';
 };
 
 export const createClientAbortTracker = ({
@@ -13,51 +22,62 @@ export const createClientAbortTracker = ({
   res?: NextApiResponse;
 }) => {
   let clientAborted = false;
+  let requestAborted = !!req?.aborted;
   let responseCompleted = !!(res?.writableEnded || res?.writableFinished);
+  let responseError = !!res?.errored;
+  let serverSocketError = false;
 
-  // For workflow stopping, "client aborted" means the current response can no longer be written.
-  // It is intentionally broader than a strict user-initiated cancel audit signal.
+  /**
+   * v1 工作流只在客户端主动断开当前响应时停止。
+   *
+   * `socket.destroyed`、`res.destroyed`、`writableAborted` 这类快照过宽，不能单独证明用户取消。
+   * `req.aborted` 是首选信号；但 Next API 运行时下 fetch abort 可能只稳定落到未 finish 的
+   * `res.close`，因此把 close 作为 fallback。服务端 response/socket error 会屏蔽该 fallback，
+   * 但客户端 reset 类 socket error 仍属于断开信号，不能抢先屏蔽后续 `req.aborted`/`res.close`。
+   */
   const responseFinished = () =>
     responseCompleted || !!(res?.writableEnded || res?.writableFinished);
-  const responseWritableAborted = () =>
-    !!(res as ResponseWithWritableAborted | undefined)?.writableAborted;
-  const hasExplicitAbort = () => !!(req?.aborted || responseWritableAborted());
-  const hasBrokenConnection = () => !!(req?.socket?.destroyed || res?.destroyed || res?.errored);
-  const isAbortedSnapshot = () => {
-    // A normal completed response may also emit close later. Do not treat that as abort.
-    if (responseFinished()) return false;
-
-    return hasExplicitAbort() || hasBrokenConnection();
-  };
+  const responseErrored = () => responseError || serverSocketError || !!res?.errored;
+  const canAcceptRequestAbort = () => !responseFinished() && !responseErrored();
+  const isRequestAbortedSnapshot = () =>
+    (requestAborted || !!req?.aborted) && canAcceptRequestAbort();
   const markResponseCompleted = () => {
     responseCompleted = true;
   };
+  const markResponseError = () => {
+    responseError = true;
+  };
+  const markSocketError = (error: unknown) => {
+    if (!isClientResetSocketError(error)) {
+      serverSocketError = true;
+    }
+  };
   const markClientAborted = () => {
-    if (!responseFinished()) {
+    requestAborted = true;
+    if (canAcceptRequestAbort()) {
       clientAborted = true;
     }
   };
-  const markClientAbortedIfConnectionBroken = () => {
-    if (!responseFinished() && (hasExplicitAbort() || hasBrokenConnection())) {
+  const markResponseClosed = () => {
+    if (canAcceptRequestAbort()) {
       clientAborted = true;
     }
   };
 
   req?.on('aborted', markClientAborted);
-  // close itself is too broad; only stop when paired with explicit abort or a broken connection.
-  req?.socket?.on('close', markClientAbortedIfConnectionBroken);
+  req?.socket?.on('error', markSocketError);
   res?.on('finish', markResponseCompleted);
-  res?.on('close', markClientAbortedIfConnectionBroken);
-  res?.on('error', markClientAborted);
+  res?.on('error', markResponseError);
+  res?.on('close', markResponseClosed);
 
   return {
-    isClientAborted: () => clientAborted || isAbortedSnapshot(),
+    isClientAborted: () => canAcceptRequestAbort() && (clientAborted || isRequestAbortedSnapshot()),
     cleanup: () => {
       req?.off('aborted', markClientAborted);
-      req?.socket?.off('close', markClientAbortedIfConnectionBroken);
+      req?.socket?.off('error', markSocketError);
       res?.off('finish', markResponseCompleted);
-      res?.off('close', markClientAbortedIfConnectionBroken);
-      res?.off('error', markClientAborted);
+      res?.off('error', markResponseError);
+      res?.off('close', markResponseClosed);
     }
   };
 };
