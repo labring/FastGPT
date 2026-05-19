@@ -12,9 +12,15 @@ import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/da
 import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import Markdown from '@/components/Markdown';
 
-const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
+const InputDataModal = dynamic(
+  () => import('@/pageComponents/dataset/detail/components/InputDataModal')
+);
 
-export type ScoreItemType = SearchDataResponseItemType['score'][0];
+export type ScoreItemType = {
+  type: SearchScoreTypeEnum;
+  value: number;
+  index: number;
+};
 export const scoreTheme: Record<
   string,
   {
@@ -52,32 +58,19 @@ export const formatScore = (score: ScoreItemType[]) => {
     };
   }
 
-  // rrf -> rerank -> embedding -> fullText 优先级
-  let rrfScore: ScoreItemType | undefined = undefined;
-  let reRankScore: ScoreItemType | undefined = undefined;
-  let embeddingScore: ScoreItemType | undefined = undefined;
-  let fullTextScore: ScoreItemType | undefined = undefined;
+  const scoreList = [
+    SearchScoreTypeEnum.rrf,
+    SearchScoreTypeEnum.reRank,
+    SearchScoreTypeEnum.embedding,
+    SearchScoreTypeEnum.fullText
+  ]
+    .map((type) => score.find((item) => item.type === type))
+    .filter((item): item is ScoreItemType => !!item);
 
-  score.forEach((item) => {
-    if (item.type === SearchScoreTypeEnum.rrf) {
-      rrfScore = item;
-    } else if (item.type === SearchScoreTypeEnum.reRank) {
-      reRankScore = item;
-    } else if (item.type === SearchScoreTypeEnum.embedding) {
-      embeddingScore = item;
-    } else if (item.type === SearchScoreTypeEnum.fullText) {
-      fullTextScore = item;
-    }
-  });
-
-  const primaryScore = (rrfScore ||
-    reRankScore ||
-    embeddingScore ||
-    fullTextScore) as unknown as ScoreItemType;
-  const secondaryScore = [rrfScore, reRankScore, embeddingScore, fullTextScore].filter(
-    // @ts-ignore
-    (item) => item && primaryScore && item.type !== primaryScore.type
-  ) as unknown as ScoreItemType[];
+  const primaryScore = scoreList[0];
+  const secondaryScore = primaryScore
+    ? scoreList.slice(1).filter((item) => item.type !== primaryScore.type)
+    : [];
 
   return {
     primaryScore,
@@ -142,41 +135,49 @@ const QuoteItem = ({
               </Flex>
             </MyTooltip>
           )}
-          {score.secondaryScore.map((item, i) => (
-            <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
-              <Box fontSize={'xs'}>
-                <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
-                  <Box
-                    px={'5px'}
-                    borderWidth={'1px'}
-                    borderRadius={'sm'}
-                    mr={'2px'}
-                    {...(scoreTheme[i] && scoreTheme[i])}
-                  >
-                    <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
-                  </Box>
-                  <Box transform={'scale(0.9)'}>
-                    {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
-                  </Box>
-                </Flex>
-                <Box h={'4px'}>
-                  {SearchScoreTypeMap[item.type]?.showScore && (
-                    <Progress
-                      value={item.value * 100}
-                      h={'4px'}
-                      w={'100%'}
-                      size="sm"
-                      borderRadius={'20px'}
-                      {...(scoreTheme[i] && {
-                        colorScheme: scoreTheme[i].colorScheme
+          {score.secondaryScore.map((item, i) => {
+            const theme = scoreTheme[i];
+
+            return (
+              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
+                <Box fontSize={'xs'}>
+                  <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                    <Box
+                      px={'5px'}
+                      borderWidth={'1px'}
+                      borderRadius={'sm'}
+                      mr={'2px'}
+                      {...(theme && {
+                        color: theme.color,
+                        bg: theme.bg,
+                        borderColor: theme.borderColor
                       })}
-                      bg="#E8EBF0"
-                    />
-                  )}
+                    >
+                      <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
+                    </Box>
+                    <Box transform={'scale(0.9)'}>
+                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
+                    </Box>
+                  </Flex>
+                  <Box h={'4px'}>
+                    {SearchScoreTypeMap[item.type]?.showScore && (
+                      <Progress
+                        value={item.value * 100}
+                        h={'4px'}
+                        w={'100%'}
+                        size="sm"
+                        borderRadius={'20px'}
+                        {...(theme && {
+                          colorScheme: theme.colorScheme
+                        })}
+                        bg="#E8EBF0"
+                      />
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </MyTooltip>
-          ))}
+              </MyTooltip>
+            );
+          })}
         </Flex>
 
         <Box flex={'1 0 0'}>

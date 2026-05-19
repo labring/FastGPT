@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export const iconPaths = {
   alignLeft: () => import('./icons/alignLeft.svg'),
   backup: () => import('./icons/backup.svg'),
@@ -122,8 +120,6 @@ export const iconPaths = {
     import('./icons/core/app/agent/child/contextCompress.svg'),
   'core/app/agent/child/contextPick': () => import('./icons/core/app/agent/child/contextPick.svg'),
   'core/app/agent/child/plan': () => import('./icons/core/app/agent/child/plan.svg'),
-  'core/app/agent/child/stepCall': () => import('./icons/core/app/agent/child/stepCall.svg'),
-  'core/app/agent/child/stepSummary': () => import('./icons/core/app/agent/child/stepSummary.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
   'core/app/aiLightSmall': () => import('./icons/core/app/aiLightSmall.svg'),
@@ -298,104 +294,101 @@ export const iconPaths = {
   'core/workflow/template/BI': () => import('./icons/core/workflow/template/BI.svg'),
   'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
   'core/workflow/template/agent': () => import('./icons/core/workflow/template/agent.svg'),
-  'core/workflow/template/agentLinear': () =>
-    import('./icons/core/workflow/template/agentLinear.tsx'),
+  'core/workflow/template/agentLinear': () => import('./icons/core/workflow/template/agentLinear'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
   'core/workflow/template/aiChatLinear': () =>
-    import('./icons/core/workflow/template/aiChatLinear.tsx'),
+    import('./icons/core/workflow/template/aiChatLinear'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
   'core/workflow/template/codeRunLinear': () =>
-    import('./icons/core/workflow/template/codeRunLinear.tsx'),
+    import('./icons/core/workflow/template/codeRunLinear'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),
   'core/workflow/template/customFeedbackLinear': () =>
-    import('./icons/core/workflow/template/customFeedbackLinear.tsx'),
+    import('./icons/core/workflow/template/customFeedbackLinear'),
   'core/workflow/template/datasetConcat': () =>
     import('./icons/core/workflow/template/datasetConcat.svg'),
   'core/workflow/template/datasetConcatLinear': () =>
-    import('./icons/core/workflow/template/datasetConcatLinear.tsx'),
+    import('./icons/core/workflow/template/datasetConcatLinear'),
   'core/workflow/template/datasetSearch': () =>
     import('./icons/core/workflow/template/datasetSearch.svg'),
   'core/workflow/template/datasetSearchLinear': () =>
-    import('./icons/core/workflow/template/datasetSearchLinear.tsx'),
+    import('./icons/core/workflow/template/datasetSearchLinear'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
   'core/workflow/template/extractJsonLinear': () =>
-    import('./icons/core/workflow/template/extractJsonLinear.tsx'),
+    import('./icons/core/workflow/template/extractJsonLinear'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/formInputLinear': () =>
-    import('./icons/core/workflow/template/formInputLinear.tsx'),
+    import('./icons/core/workflow/template/formInputLinear'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/httpRequestLinear': () =>
-    import('./icons/core/workflow/template/httpRequestLinear.tsx'),
+    import('./icons/core/workflow/template/httpRequestLinear'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
   'core/workflow/template/ifelseLinear': () =>
-    import('./icons/core/workflow/template/ifelseLinear.tsx'),
+    import('./icons/core/workflow/template/ifelseLinear'),
   'core/workflow/template/lafDispatch': () =>
     import('./icons/core/workflow/template/lafDispatch.svg'),
   'core/workflow/template/loop': () => import('./icons/core/workflow/template/loop.svg'),
   'core/workflow/template/loopEnd': () => import('./icons/core/workflow/template/loopEnd.svg'),
   'core/workflow/template/loopEndLinear': () =>
-    import('./icons/core/workflow/template/loopEndLinear.tsx'),
-  'core/workflow/template/loopLinear': () =>
-    import('./icons/core/workflow/template/loopLinear.tsx'),
+    import('./icons/core/workflow/template/loopEndLinear'),
+  'core/workflow/template/loopLinear': () => import('./icons/core/workflow/template/loopLinear'),
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
-    import('./icons/core/workflow/template/loopStartLinear.tsx'),
+    import('./icons/core/workflow/template/loopStartLinear'),
   'core/workflow/template/parallelRun': () =>
     import('./icons/core/workflow/template/parallelRun.svg'),
   'core/workflow/template/parallelRunLinear': () =>
-    import('./icons/core/workflow/template/parallelRunLinear.tsx'),
+    import('./icons/core/workflow/template/parallelRunLinear'),
   'core/workflow/template/loopRun': () => import('./icons/core/workflow/template/loopRun.svg'),
   'core/workflow/template/loopRunLinear': () =>
-    import('./icons/core/workflow/template/loopRunLinear.tsx'),
+    import('./icons/core/workflow/template/loopRunLinear'),
   'core/workflow/template/loopRunStart': () =>
     import('./icons/core/workflow/template/loopRunStart.svg'),
   'core/workflow/template/loopRunStartLinear': () =>
-    import('./icons/core/workflow/template/loopRunStartLinear.tsx'),
+    import('./icons/core/workflow/template/loopRunStartLinear'),
   'core/workflow/template/loopRunBreak': () =>
     import('./icons/core/workflow/template/loopRunBreak.svg'),
   'core/workflow/template/loopRunBreakLinear': () =>
-    import('./icons/core/workflow/template/loopRunBreakLinear.tsx'),
+    import('./icons/core/workflow/template/loopRunBreakLinear'),
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/pluginOutputLinear': () =>
-    import('./icons/core/workflow/template/pluginOutputLinear.tsx'),
+    import('./icons/core/workflow/template/pluginOutputLinear'),
   'core/workflow/template/queryExtension': () =>
     import('./icons/core/workflow/template/queryExtension.svg'),
   'core/workflow/template/queryExtensionLinear': () =>
-    import('./icons/core/workflow/template/queryExtensionLinear.tsx'),
+    import('./icons/core/workflow/template/queryExtensionLinear'),
   'core/workflow/template/questionClassify': () =>
     import('./icons/core/workflow/template/questionClassify.svg'),
   'core/workflow/template/questionClassifyLinear': () =>
-    import('./icons/core/workflow/template/questionClassifyLinear.tsx'),
+    import('./icons/core/workflow/template/questionClassifyLinear'),
   'core/workflow/template/readFiles': () => import('./icons/core/workflow/template/readFiles.svg'),
   'core/workflow/template/readFilesLinear': () =>
-    import('./icons/core/workflow/template/readFilesLinear.tsx'),
+    import('./icons/core/workflow/template/readFilesLinear'),
   'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
-  'core/workflow/template/replyLinear': () =>
-    import('./icons/core/workflow/template/replyLinear.tsx'),
+  'core/workflow/template/replyLinear': () => import('./icons/core/workflow/template/replyLinear'),
   'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
   'core/workflow/template/stopTool': () => import('./icons/core/workflow/template/stopTool.svg'),
   'core/workflow/template/stopToolLinear': () =>
-    import('./icons/core/workflow/template/stopToolLinear.tsx'),
+    import('./icons/core/workflow/template/stopToolLinear'),
   'core/workflow/template/systemConfig': () =>
     import('./icons/core/workflow/template/systemConfig.svg'),
   'core/workflow/template/systemConfigLinear': () =>
-    import('./icons/core/workflow/template/systemConfigLinear.tsx'),
+    import('./icons/core/workflow/template/systemConfigLinear'),
   'core/workflow/template/textConcat': () =>
     import('./icons/core/workflow/template/textConcat.svg'),
   'core/workflow/template/textConcatLinear': () =>
-    import('./icons/core/workflow/template/textConcatLinear.tsx'),
+    import('./icons/core/workflow/template/textConcatLinear'),
   'core/workflow/template/toolCall': () => import('./icons/core/workflow/template/toolCall.svg'),
   'core/workflow/template/toolCallLinear': () =>
-    import('./icons/core/workflow/template/toolCallLinear.tsx'),
+    import('./icons/core/workflow/template/toolCallLinear'),
   'core/workflow/template/toolParams': () =>
     import('./icons/core/workflow/template/toolParams.svg'),
   'core/workflow/template/toolParamsLinear': () =>
-    import('./icons/core/workflow/template/toolParamsLinear.tsx'),
+    import('./icons/core/workflow/template/toolParamsLinear'),
   'core/workflow/template/toolkitActive': () =>
     import('./icons/core/workflow/template/toolkitActive.svg'),
   'core/workflow/template/toolkitInactive': () =>
@@ -403,16 +396,16 @@ export const iconPaths = {
   'core/workflow/template/userSelect': () =>
     import('./icons/core/workflow/template/userSelect.svg'),
   'core/workflow/template/userSelectLinear': () =>
-    import('./icons/core/workflow/template/userSelectLinear.tsx'),
+    import('./icons/core/workflow/template/userSelectLinear'),
   'core/workflow/template/variable': () => import('./icons/core/workflow/template/variable.svg'),
   'core/workflow/template/variableUpdate': () =>
     import('./icons/core/workflow/template/variableUpdate.svg'),
   'core/workflow/template/variableUpdateLinear': () =>
-    import('./icons/core/workflow/template/variableUpdateLinear.tsx'),
+    import('./icons/core/workflow/template/variableUpdateLinear'),
   'core/workflow/template/workflowStart': () =>
     import('./icons/core/workflow/template/workflowStart.svg'),
   'core/workflow/template/workflowStartLinear': () =>
-    import('./icons/core/workflow/template/workflowStartLinear.tsx'),
+    import('./icons/core/workflow/template/workflowStartLinear'),
   'core/workflow/touchTable': () => import('./icons/core/workflow/touchTable.svg'),
   'core/workflow/undo': () => import('./icons/core/workflow/undo.svg'),
   'core/workflow/upload': () => import('./icons/core/workflow/upload.svg'),

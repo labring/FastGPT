@@ -19,16 +19,12 @@ vi.mock('@/web/support/user/auth', () => ({
   clearToken: vi.fn()
 }));
 
-vi.mock('../system/useSystemStore', () => ({
+vi.mock('../../../../src/web/common/system/useSystemStore', () => ({
   useSystemStore: {
     getState: vi.fn().mockReturnValue({
       setNotSufficientModalType: vi.fn()
     })
   }
-}));
-
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn().mockReturnValue('Unauthorized token')
 }));
 
 // Mock window.location

@@ -87,19 +87,18 @@ export type LoopRunInteractive = InteractiveNodeType & {
   };
 };
 
-// Agent Interactive
-export const AgentPlanCheckInteractiveSchema = z.object({
-  type: z.literal('agentPlanCheck'),
-  params: z.object({
-    confirmed: z.boolean().optional()
-  })
-});
-export type AgentPlanCheckInteractive = z.infer<typeof AgentPlanCheckInteractiveSchema>;
+export const AgentPlanAskOptionSchema = z.string().min(1);
+export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
 export const AgentPlanAskQueryInteractiveSchema = z.object({
   type: z.literal('agentPlanAskQuery'),
   params: z.object({
     content: z.string(),
+    reason: z.string().optional(),
+    blockerType: z
+      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal'])
+      .optional(),
+    options: z.array(AgentPlanAskOptionSchema).min(3).max(5),
     answer: z.string().optional()
   })
 });
@@ -112,7 +111,7 @@ export const UserSelectOptionItemSchema = z.object({
 });
 export type UserSelectOptionItemType = z.infer<typeof UserSelectOptionItemSchema>;
 export const UserSelectInteractiveSchema = z.object({
-  type: z.literal('userSelect').or(z.literal('agentPlanAskUserSelect')),
+  type: z.literal('userSelect'),
   params: z.object({
     description: z.string(),
     userSelectOptions: z.array(UserSelectOptionItemSchema),
@@ -140,7 +139,7 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
 });
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
-  type: z.literal('userInput').or(z.literal('agentPlanAskUserForm')),
+  type: z.literal('userInput'),
   params: z.object({
     description: z.string(),
     inputForm: z.array(UserInputFormItemSchema),
@@ -168,7 +167,6 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopInteractiveSchema,
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
-    AgentPlanCheckInteractiveSchema,
     AgentPlanAskQueryInteractiveSchema
   ]),
   z.object({

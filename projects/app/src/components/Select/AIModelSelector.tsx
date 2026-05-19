@@ -8,9 +8,11 @@ import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySel
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -18,14 +20,50 @@ type Props = SelectProps & {
   cacheModel?: boolean;
 };
 
+const modelAvatarSizeMap = {
+  sm: '1rem',
+  md: '1.2rem',
+  lg: '1.4rem'
+} as const;
+
+const getModelAvatarSize = (size?: Props['size']) => {
+  if (typeof size === 'string' && size in modelAvatarSizeMap) {
+    return modelAvatarSizeMap[size as keyof typeof modelAvatarSizeMap];
+  }
+
+  return modelAvatarSizeMap.md;
+};
+
 const isTestModeModel = (model?: SystemModelItemType) => {
   return !!model?.testMode;
 };
+const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
+  return model?.type === ModelTypeEnum.embedding && !!model.vision;
+};
 
-const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {
+const SelectorActiveModelTags = React.memo(function SelectorActiveModelTags({
+  model
+}: {
+  model?: SystemModelItemType;
+}) {
+  const showTestModeTip = isTestModeModel(model);
+  const showMultimodalTip = isMultimodalEmbeddingModel(model);
+
+  if (!showTestModeTip && !showMultimodalTip) return null;
+
   return (
-    <Box position={'absolute'} top={'50%'} right={'40px'} transform={'translateY(-50%)'} zIndex={3}>
-      <TestModeBetaTag />
+    <Box
+      position={'absolute'}
+      top={'50%'}
+      right={'40px'}
+      transform={'translateY(-50%)'}
+      zIndex={3}
+      display={'flex'}
+      alignItems={'center'}
+      gap={1}
+    >
+      {showTestModeTip && <TestModeBetaTag />}
+      {showMultimodalTip && <MultimodalTag />}
     </Box>
   );
 });
@@ -33,20 +71,27 @@ const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip(
 const ModelOptionLabel = React.memo(function ModelOptionLabel({
   name,
   showTestModeTip,
+  showMultimodalTip,
   noOfLines
 }: {
   name: string;
   showTestModeTip: boolean;
+  showMultimodalTip?: boolean;
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
       {showTestModeTip && (
         <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
           <TestModeBetaTag />
+        </Box>
+      )}
+      {showMultimodalTip && (
+        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
+          <MultimodalTag />
         </Box>
       )}
     </Flex>
@@ -86,15 +131,7 @@ const OneRowSelector = ({
     }
   );
 
-  const avatarSize = useMemo(() => {
-    const size = {
-      sm: '1rem',
-      md: '1.2rem',
-      lg: '1.4rem'
-    };
-    //@ts-ignore
-    return props.size ? size[props.size] : size['md'];
-  }, [props.size]);
+  const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const allModels = useMemo(
     () => [
       ...llmModelList,
@@ -123,7 +160,7 @@ const OneRowSelector = ({
         return {
           value: item.value,
           label: (
-            <Flex alignItems={'center'} py={1} minW={0}>
+            <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
               <Avatar
                 borderRadius={'0'}
                 mr={2}
@@ -135,6 +172,7 @@ const OneRowSelector = ({
                 name={modelData.name}
                 noOfLines={noOfLines}
                 showTestModeTip={isTestModeModel(modelData)}
+                showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
               />
             </Flex>
           )
@@ -174,6 +212,7 @@ const OneRowSelector = ({
                   name={selectedModelData.name}
                   noOfLines={noOfLines}
                   showTestModeTip={false}
+                  showMultimodalTip={false}
                 />
               </Flex>
             ) : undefined
@@ -187,7 +226,7 @@ const OneRowSelector = ({
           }}
         />
       </MyTooltip>
-      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
+      <SelectorActiveModelTags model={selectedModelData} />
     </Box>
   );
 };
@@ -238,20 +277,14 @@ const MultipleRowSelector = ({
     myModels
   ]);
 
-  const [value, setValue] = useState<string[]>([]);
-
-  const avatarSize = useMemo(() => {
-    const size = {
-      sm: '1rem',
-      md: '1.2rem',
-      lg: '1.4rem'
-    };
-    //@ts-ignore
-    return props.size ? size[props.size] : size['md'];
-  }, [props.size]);
+  const avatarSize = useMemo(() => getModelAvatarSize(props.size), [props.size]);
   const selectedModelData = useMemo(
     () => modelList.find((model) => model?.model === props.value),
     [modelList, props.value]
+  );
+  const value = useMemo(
+    () => (selectedModelData ? [selectedModelData.provider, selectedModelData.model] : []),
+    [selectedModelData]
   );
 
   const selectorList = useMemo(() => {
@@ -285,7 +318,13 @@ const MultipleRowSelector = ({
 
       provider?.children.push({
         label: (
-          <ModelOptionLabel name={modelData.name} showTestModeTip={isTestModeModel(modelData)} />
+          <Flex w={'100%'} minW={0}>
+            <ModelOptionLabel
+              name={modelData.name}
+              showTestModeTip={isTestModeModel(modelData)}
+              showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
+            />
+          </Flex>
         ),
         value: modelData.model
       });
@@ -304,13 +343,9 @@ const MultipleRowSelector = ({
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
     if (!props.value) return <>{t('common:not_model_config')}</>;
-    const modelData = modelList.find((model) => model?.model === props.value);
+    if (!selectedModelData) return <>{t('common:not_model_config')}</>;
 
-    if (!modelData) return <>{t('common:not_model_config')}</>;
-
-    setValue([modelData.provider, props.value]);
-
-    const avatar = getModelProvider(modelData.provider)?.avatar;
+    const avatar = getModelProvider(selectedModelData.provider)?.avatar;
 
     return (
       <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
@@ -321,10 +356,15 @@ const MultipleRowSelector = ({
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <ModelOptionLabel name={modelData.name} noOfLines={noOfLines} showTestModeTip={false} />
+        <ModelOptionLabel
+          name={selectedModelData.name}
+          noOfLines={noOfLines}
+          showTestModeTip={false}
+          showMultimodalTip={false}
+        />
       </Flex>
     );
-  }, [loading, props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
+  }, [loading, props.value, t, selectedModelData, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box
@@ -351,7 +391,7 @@ const MultipleRowSelector = ({
           }}
         />
       </MyTooltip>
-      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
+      <SelectorActiveModelTags model={selectedModelData} />
     </Box>
   );
 };

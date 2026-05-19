@@ -5,7 +5,7 @@ import {
   NodeInputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 
 export const AssignedAnswerModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.answerNode,

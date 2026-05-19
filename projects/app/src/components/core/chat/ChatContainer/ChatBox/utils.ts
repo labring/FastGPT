@@ -11,7 +11,6 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
@@ -98,15 +97,7 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (finalInteractive.type === 'agentPlanCheck' && !finalInteractive.params.confirmed) {
-    return {
-      interactive: finalInteractive,
-      canSendQuery: true
-    };
-  } else if (
-    finalInteractive.type === 'agentPlanAskQuery' ||
-    finalInteractive.type === 'agentPlanAskUserForm'
-  ) {
+  } else if (finalInteractive.type === 'agentPlanAskQuery') {
     return {
       interactive: finalInteractive,
       canSendQuery: true
@@ -151,10 +142,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
 
-      if (
-        finalInteractive.type === 'userSelect' ||
-        finalInteractive.type === 'agentPlanAskUserSelect'
-      ) {
+      if (finalInteractive.type === 'userSelect') {
         return {
           ...val,
           interactive: {
@@ -169,10 +157,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
         };
       }
 
-      if (
-        finalInteractive.type === 'userInput' ||
-        finalInteractive.type === 'agentPlanAskUserForm'
-      ) {
+      if (finalInteractive.type === 'userInput') {
         const submittedData: Record<string, any> = (() => {
           try {
             return JSON.parse(interactiveVal);
@@ -208,19 +193,6 @@ export const rewriteHistoriesByInteractiveResponse = ({
             params: {
               ...finalInteractive.params,
               continue: true
-            }
-          }
-        };
-      }
-
-      if (finalInteractive.type === 'agentPlanCheck' && interactiveVal === ConfirmPlanAgentText) {
-        return {
-          ...val,
-          interactive: {
-            ...finalInteractive,
-            params: {
-              ...finalInteractive.params,
-              confirmed: true
             }
           }
         };

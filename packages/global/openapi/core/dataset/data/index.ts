@@ -9,7 +9,15 @@ import {
   InsertImagesBodySchema,
   PushDataBodySchema,
   GetDatasetDataListBodySchema,
-  GetDatasetDataListResponseSchema
+  GetDatasetDataListResponseSchema,
+  UpdateDatasetDataResponseSchema,
+  CreateDatasetDataIndexBodySchema,
+  DatasetDataIndexResponseSchema,
+  UpdateDatasetDataIndexBodySchema,
+  DeleteDatasetDataIndexBodySchema,
+  DeleteDatasetDataIndexResponseSchema,
+  GetDatasetDataDetailResponseSchema,
+  DeleteDatasetDataResponseSchema
 } from './api';
 
 export const DatasetDataPath: OpenAPIPath = {
@@ -47,7 +55,12 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回数据详情'
+          description: '成功返回数据详情',
+          content: {
+            'application/json': {
+              schema: GetDatasetDataDetailResponseSchema
+            }
+          }
         }
       }
     }
@@ -67,7 +80,87 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '更新成功'
+          description: '更新成功',
+          content: {
+            'application/json': {
+              schema: UpdateDatasetDataResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/dataset/data/index/create': {
+    post: {
+      summary: '新增数据索引',
+      description: '新增指定数据下的单个自定义索引，不覆盖其它索引',
+      tags: [TagsMap.datasetData],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateDatasetDataIndexBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '保存成功',
+          content: {
+            'application/json': {
+              schema: DatasetDataIndexResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/dataset/data/index/update': {
+    post: {
+      summary: '更新数据索引',
+      description: '更新指定数据下的单个自定义索引，不覆盖其它索引',
+      tags: [TagsMap.datasetData],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateDatasetDataIndexBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '更新成功',
+          content: {
+            'application/json': {
+              schema: DatasetDataIndexResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/dataset/data/index/delete': {
+    post: {
+      summary: '删除数据索引',
+      description: '删除指定数据下的单个索引，不触发整条数据重建',
+      tags: [TagsMap.datasetData],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: DeleteDatasetDataIndexBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '删除成功',
+          content: {
+            'application/json': {
+              schema: DeleteDatasetDataIndexResponseSchema
+            }
+          }
         }
       }
     }
@@ -83,7 +176,12 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '删除成功'
+          description: '删除成功',
+          content: {
+            'application/json': {
+              schema: DeleteDatasetDataResponseSchema
+            }
+          }
         }
       }
     }

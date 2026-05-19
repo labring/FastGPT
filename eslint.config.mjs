@@ -20,11 +20,22 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {
           prefer: 'type-imports',
           disallowTypeAnnotations: false
+        }
+      ],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-expect-error': 'allow-with-description',
+          'ts-ignore': false,
+          'ts-nocheck': true,
+          'ts-check': false,
+          minimumDescriptionLength: 3
         }
       ],
 

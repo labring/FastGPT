@@ -11,13 +11,12 @@ import {
   Tr,
   Switch,
   ModalBody,
-  Input,
   ModalFooter,
   Button,
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -63,24 +62,30 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const isRoot = userInfo?.username === 'root';
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useRef<{ label: React.ReactNode; value: string | '' }[]>([
-    { label: t('common:All'), value: '' },
-    ...getModelProviders(i18n.language).map((item) => ({
-      label: (
-        <HStack>
-          <Avatar src={item.avatar} w={'1rem'} />
-          <Box>{item.name}</Box>
-        </HStack>
-      ),
-      value: item.id
-    }))
-  ]);
+  const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(
+    () => [
+      { label: t('common:All'), value: '' },
+      ...getModelProviders(i18n.language).map((item) => ({
+        label: (
+          <HStack>
+            <Avatar src={item.avatar} w={'1rem'} />
+            <Box>{item.name}</Box>
+          </HStack>
+        ),
+        value: item.id
+      }))
+    ],
+    [getModelProviders, i18n.language, t]
+  );
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
-  const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
-    { label: t('common:All'), value: '' },
-    ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
-  ]);
+  const selectModelTypeList = useMemo<{ label: string; value: ModelTypeEnum | '' }[]>(
+    () => [
+      { label: t('common:All'), value: '' },
+      ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
+    ],
+    [t]
+  );
 
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(false);
@@ -233,10 +238,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const filterProviderList = useMemo(() => {
     const allProviderIds: string[] = systemModelList.map((model) => model.provider);
 
-    return providerList.current.filter(
-      (item) => allProviderIds.includes(item.value) || item.value === ''
-    );
-  }, [systemModelList]);
+    return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
+  }, [providerList, systemModelList]);
 
   const { runAsync: onTestModel, loading: testingModel } = useRequest(getTestModel, {
     manual: true,
@@ -263,7 +266,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const onCreateModel = (type: ModelTypeEnum) => {
     const defaultModel = defaultModels[type];
 
-    setEditModelData({
+    const modelData = {
       ...defaultModel,
       model: '',
       name: '',
@@ -278,9 +281,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       isDefault: false,
       isDefaultDatasetTextModel: false,
       isDefaultDatasetImageModel: false,
-      // @ts-ignore
       type
-    });
+    } as SystemModelItemType;
+
+    setEditModelData(modelData);
   };
 
   const {
@@ -337,7 +341,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 bg={'myGray.50'}
                 value={modelType}
                 onChange={setModelType}
-                list={selectModelTypeList.current}
+                list={selectModelTypeList}
               />
             </HStack>
             <Box flex={1} />
@@ -381,7 +385,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 </Tr>
               </Thead>
               <Tbody>
-                {modelList.map((item, index) => (
+                {modelList.map((item) => (
                   <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
                     <Td fontSize={'sm'}>
                       <HStack>
@@ -405,7 +409,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         )}
                         {item.vision && (
                           <MyTag type="borderFill" colorSchema="green" py={0.5}>
-                            {t('account:model.vision_tag')}
+                            {item.type === ModelTypeEnum.llm
+                              ? t('account:model.vision_tag')
+                              : t('common:core.ai.model.multimodal')}
                           </MyTag>
                         )}
                         {item.toolChoice && (

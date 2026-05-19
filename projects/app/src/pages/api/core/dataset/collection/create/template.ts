@@ -9,7 +9,7 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';

@@ -48,7 +48,6 @@ const ResponseTags = ({
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
 
-  const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -302,9 +301,7 @@ const ResponseTags = ({
         </Flex>
       )}
 
-      {isOpenWholeModal && (
-        <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
-      )}
+      {isOpenWholeModal && <WholeResponseModal dataId={dataId} onClose={onCloseWholeModal} />}
     </>
   );
 };

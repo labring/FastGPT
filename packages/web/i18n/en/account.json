@@ -95,6 +95,7 @@
   "model.vision": "Vision model",
   "model.vision_tag": "Vision",
   "model.vision_tip": "If the model supports image recognition, turn on this switch.",
+  "model.embedding_vision_tip": "Enable this when the embedding model can accept image input for image vector indexing and image search.",
   "model.voices": "voice role",
   "model.voices_tip": "Configure multiple through an array, for example:\n\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
   "model_provider": "Model Provider",

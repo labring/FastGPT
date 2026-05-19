@@ -1,7 +1,4 @@
-import type {
-  DeepRagSearchProps,
-  SearchDatasetDataResponse
-} from '../../core/dataset/search/controller';
+import type { DeepRagSearchProps, SearchDatasetDataResponse } from '../../core/dataset/search';
 import type { AuthOpenApiLimitProps } from '../../support/openapi/auth';
 import type {
   CreateUsageProps,

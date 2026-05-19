@@ -183,7 +183,8 @@ export const DatasetPath: OpenAPIPath = {
   '/core/dataset/searchTest': {
     post: {
       summary: '搜索测试',
-      description: '对知识库执行搜索测试,支持多种搜索模式、重排序和问题扩展',
+      description:
+        '对知识库执行搜索测试，支持多种搜索模式、重排序、问题扩展和临时图片 key 检索。图片检索需先调用 /core/dataset/file/presignSearchTestImage 获取预签名上传 URL 和 temp/${teamId}/... key',
       tags: [TagsMap.datasetCommon],
       requestBody: {
         content: {

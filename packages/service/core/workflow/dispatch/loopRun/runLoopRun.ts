@@ -19,7 +19,7 @@ import {
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 
 import { serviceEnv } from '../../../../env';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
 import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
 import {
@@ -98,7 +98,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   }
 
   const loopHistory: LoopRunHistoryItem[] = interactiveData
-    ? (interactiveData.loopHistory as LoopRunHistoryItem[]) ?? []
+    ? ((interactiveData.loopHistory as LoopRunHistoryItem[]) ?? [])
     : [];
   const loopResponseDetail: ChatHistoryItemResType[] = [];
   const assistantResponses: AIChatItemValueItemType[] = [];
@@ -272,7 +272,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const errorText = maxIterationsExceeded
     ? maxIterationsMessage
     : lastFailed
-      ? lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed')
+      ? (lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed'))
       : undefined;
 
   return {

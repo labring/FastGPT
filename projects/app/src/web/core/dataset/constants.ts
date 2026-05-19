@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetCollectionItemType, DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const defaultDatasetDetail: DatasetItemType = {
   _id: '',

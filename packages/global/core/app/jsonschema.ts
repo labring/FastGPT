@@ -5,7 +5,7 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { OpenApiJsonSchema } from './tool/httpTool/type';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
 
 export const JsonSchemaPropertiesItemSchema = z.object({

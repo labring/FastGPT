@@ -19,7 +19,6 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-import { getPlanCallResponseText } from './utils';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
@@ -41,6 +40,177 @@ export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
   return content;
 };
 
+// 获取最后一个压缩的 messages
+const getLatestCheckpointPosition = (messages: ChatItemMiniType[]) => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const item = messages[index];
+    if (item.obj !== ChatRoleEnum.AI) continue;
+
+    for (let valueIndex = item.value.length - 1; valueIndex >= 0; valueIndex--) {
+      if (item.value[valueIndex].contextCheckpoint) {
+        return {
+          historyIndex: index,
+          valueIndex
+        };
+      }
+    }
+  }
+
+  return;
+};
+
+// 找到最后一个包含压缩的 messages，且只取 compressIndex 后面的 value
+const getCheckpointAwareMessages = (messages: ChatItemMiniType[]) => {
+  const checkpointPosition = getLatestCheckpointPosition(messages);
+  if (!checkpointPosition) return messages;
+
+  // Checkpoint resets chat history, but leading system histories still describe the runtime.
+  const systemMessages = messages
+    .slice(0, checkpointPosition.historyIndex)
+    .filter((item) => item.obj === ChatRoleEnum.System);
+
+  const checkpointAndRecentMessages = messages
+    .slice(checkpointPosition.historyIndex)
+    .map((item, index) => {
+      if (index !== 0 || item.obj !== ChatRoleEnum.AI) return item;
+
+      return {
+        ...item,
+        value: item.value.slice(checkpointPosition.valueIndex)
+      };
+    });
+
+  return [...systemMessages, ...checkpointAndRecentMessages];
+};
+
+export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam[]) => {
+  type AssistantToolCallMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }> & {
+    tool_calls: ChatCompletionMessageToolCall[];
+  };
+
+  type ToolMessage = Extract<ChatCompletionMessageParam, { role: 'tool' }> & {
+    tool_call_id: string;
+  };
+
+  const isAssistantFieldMessage = (message?: ChatCompletionMessageParam) => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    return (
+      !message.tool_calls &&
+      (typeof message.content === 'string' || typeof message.reasoning_content === 'string')
+    );
+  };
+
+  const isAssistantToolCallMessage = (
+    message?: ChatCompletionMessageParam
+  ): message is AssistantToolCallMessage => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    return (
+      Array.isArray(message.tool_calls) &&
+      message.tool_calls.length > 0 &&
+      typeof message.content !== 'string' &&
+      typeof message.reasoning_content !== 'string'
+    );
+  };
+
+  const isToolResponseForToolCalls = (
+    message: ChatCompletionMessageParam | undefined,
+    toolCallIds: Set<string>
+  ): message is ToolMessage =>
+    message?.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+    toolCallIds.has(message.tool_call_id || '');
+
+  const hasSameVisibility = (
+    message: ChatCompletionMessageParam | undefined,
+    assistantMessage: ChatCompletionMessageParam
+  ) => (message?.hideInUI ?? false) === (assistantMessage.hideInUI ?? false);
+
+  const mergedMessages: ChatCompletionMessageParam[] = [];
+
+  for (let index = 0; index < messages.length; index++) {
+    const currentMessage = messages[index];
+    if (!isAssistantFieldMessage(currentMessage)) {
+      mergedMessages.push(currentMessage);
+      continue;
+    }
+
+    const assistantMessage: ChatCompletionMessageParam = { ...currentMessage };
+    let cursor = index + 1;
+
+    while (isAssistantFieldMessage(messages[cursor])) {
+      const nextMessage = messages[cursor];
+      if (!hasSameVisibility(nextMessage, assistantMessage)) break;
+
+      const nextReasoning =
+        typeof nextMessage.reasoning_content === 'string' ? nextMessage.reasoning_content : '';
+      const nextContent = typeof nextMessage.content === 'string' ? nextMessage.content : '';
+
+      if (
+        nextReasoning &&
+        (typeof assistantMessage.reasoning_content === 'string' ||
+          typeof assistantMessage.content === 'string')
+      ) {
+        break;
+      }
+
+      if (nextReasoning) {
+        assistantMessage.reasoning_content = nextReasoning;
+      }
+
+      if (typeof nextMessage.content === 'string') {
+        if (typeof assistantMessage.content === 'string') {
+          assistantMessage.content += nextContent;
+        } else {
+          assistantMessage.content = nextContent;
+        }
+      }
+
+      cursor++;
+    }
+
+    const toolCalls: ChatCompletionMessageToolCall[] = [];
+    const toolResponses: ChatCompletionMessageParam[] = [];
+
+    let assistantToolMessage: ChatCompletionMessageParam | undefined = messages[cursor];
+    while (isAssistantToolCallMessage(assistantToolMessage)) {
+      if (!hasSameVisibility(assistantToolMessage, assistantMessage)) break;
+
+      const currentToolCalls = assistantToolMessage.tool_calls;
+      const currentToolCallIds = new Set(currentToolCalls.map((toolCall) => toolCall.id));
+      const currentToolResponses: ChatCompletionMessageParam[] = [];
+      let responseCursor = cursor + 1;
+
+      while (isToolResponseForToolCalls(messages[responseCursor], currentToolCallIds)) {
+        currentToolResponses.push(messages[responseCursor]);
+        responseCursor++;
+      }
+
+      if (!currentToolResponses.length) break;
+
+      toolCalls.push(...currentToolCalls);
+      toolResponses.push(...currentToolResponses);
+      cursor = responseCursor;
+      assistantToolMessage = messages[cursor];
+    }
+
+    if (!toolCalls.length) {
+      mergedMessages.push(assistantMessage);
+      index = cursor - 1;
+      continue;
+    }
+
+    mergedMessages.push({
+      ...assistantMessage,
+      tool_calls: toolCalls
+    } as ChatCompletionMessageParam);
+    mergedMessages.push(...toolResponses);
+    index = cursor - 1;
+  }
+
+  return mergedMessages;
+};
+
 export const chats2GPTMessages = ({
   messages,
   reserveId,
@@ -51,8 +221,59 @@ export const chats2GPTMessages = ({
   reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
+  const sourceMessages = getCheckpointAwareMessages(messages);
 
-  messages.forEach((item, index) => {
+  const isNonEmptyString = (value: unknown): value is string =>
+    typeof value === 'string' && value.trim().length > 0;
+
+  const normalizeToolArguments = (params: unknown) => {
+    if (typeof params === 'string') {
+      return params || '{}';
+    }
+
+    try {
+      return JSON.stringify(params ?? {});
+    } catch {
+      return '{}';
+    }
+  };
+
+  type NormalizedChatToolContext = {
+    toolCall: ChatCompletionMessageToolCall;
+    toolResponse: ChatCompletionToolMessageParam;
+  };
+  const isNormalizedChatToolContext = (
+    item: NormalizedChatToolContext | undefined
+  ): item is NormalizedChatToolContext => Boolean(item);
+
+  const normalizeChatToolContext = (
+    tool?: Partial<ToolModuleResponseItemType> | null
+  ): NormalizedChatToolContext | undefined => {
+    if (!tool || !isNonEmptyString(tool.id) || !isNonEmptyString(tool.functionName)) {
+      return;
+    }
+
+    const id = tool.id.trim();
+    const functionName = tool.functionName.trim();
+
+    return {
+      toolCall: {
+        id,
+        type: 'function' as const,
+        function: {
+          name: functionName,
+          arguments: normalizeToolArguments(tool.params)
+        }
+      },
+      toolResponse: {
+        tool_call_id: id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: typeof tool.response === 'string' ? tool.response : ''
+      }
+    };
+  };
+
+  sourceMessages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -65,7 +286,8 @@ export const chats2GPTMessages = ({
       }
     } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
-        // 有 planId 的过滤掉，会被 planTool 一起处理
+        // Agent 追问的用户答案会通过当轮 pendingMainContext 恢复为 ask_agent 的 tool response。
+        // 带 planId 的历史用户消息只作为 UI 记录保存，不再重复塞进普通对话上下文。
         .filter((item) => !item.planId)
         .map((item) => {
           if (item.text) {
@@ -105,127 +327,185 @@ export const chats2GPTMessages = ({
       }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+      const agentAskAnswerMap = new Map<string, string>();
+      item.value.forEach((value) => {
+        if (
+          value.interactive?.type === 'agentPlanAskQuery' &&
+          value.interactive.planId &&
+          typeof value.interactive.params.answer === 'string'
+        ) {
+          agentAskAnswerMap.set(value.interactive.planId, value.interactive.params.answer);
+        }
+      });
 
-      item.value.forEach((value, i) => {
-        /* Plan agent 产生的上下文都需要合并到一个 toolCall 里。
-          Plan agent 产生的上下文都会携带 planId
-          value.plan 代表的是 plan 的具体内容，根据这个值去转化成 toolcall
-        */
-        if (value.planId && !value.plan) return;
+      const appendAssistantToolCall = ({
+        id,
+        functionName,
+        params,
+        assistantText,
+        reasoningText,
+        hideInUI
+      }: {
+        id: string;
+        functionName: string;
+        params: string;
+        assistantText?: string;
+        reasoningText?: string;
+        hideInUI?: boolean;
+      }) => {
+        const normalizedToolContext = normalizeChatToolContext({
+          id,
+          functionName,
+          params,
+          response: ''
+        });
 
-        const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
+        if (reasoningText) appendAssistantReasoning(reasoningText, hideInUI);
+        if (assistantText) appendAssistantText(assistantText, hideInUI);
+        if (!normalizedToolContext) {
+          return false;
+        }
+
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
+          tool_calls: [normalizedToolContext.toolCall]
+        });
+        return normalizedToolContext;
+      };
+
+      const appendAssistantReasoning = (content: string, hideInUI?: boolean) => {
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
+          reasoning_content: content
+        });
+      };
+
+      const appendAssistantText = (content: string, hideInUI?: boolean) => {
+        if (!content && item.value.length > 1) return;
+
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          ...(hideInUI ? { hideInUI } : {}),
+          content
+        });
+      };
+
+      const appendToolMessage = ({ id, response }: { id: string; response: string }) => {
+        aiResults.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: id,
+          content: response
+        });
+      };
+
+      item.value.forEach((value) => {
+        if (value.contextCheckpoint) {
+          // A checkpoint value replaces everything before it; fields on the same value are ignored.
+          results = results.concat(mergeAssistantFieldMessages(aiResults));
+          aiResults.length = 0;
+          results.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: value.contextCheckpoint,
+            hideInUI: true
+          });
+          return;
+        }
+
+        // agent plan card
+        if (reserveTool && value.agentPlanUpdate) {
+          const appendedToolCall = appendAssistantToolCall({
+            id: value.agentPlanUpdate.id,
+            functionName: value.agentPlanUpdate.functionName,
+            params: value.agentPlanUpdate.params,
+            assistantText: value.agentPlanUpdate.assistantText,
+            reasoningText: value.agentPlanUpdate.reasoningText,
+            hideInUI: value.hideInUI
+          });
+          if (appendedToolCall && typeof value.agentPlanUpdate.response === 'string') {
+            appendToolMessage({
+              id: appendedToolCall.toolCall.id,
+              response: value.agentPlanUpdate.response
+            });
+          }
+        }
+
+        // Agent ask tool
+        if (reserveTool && value.agentAsk) {
+          const appendedToolCall = appendAssistantToolCall({
+            id: value.agentAsk.id,
+            functionName: value.agentAsk.functionName,
+            params: value.agentAsk.params,
+            assistantText: value.agentAsk.assistantText,
+            reasoningText: value.agentAsk.reasoningText,
+            hideInUI: value.hideInUI
+          });
+          const answer = value.agentAsk.planId
+            ? agentAskAnswerMap.get(value.agentAsk.planId)
+            : undefined;
+          if (appendedToolCall && typeof answer === 'string') {
+            appendToolMessage({
+              id: appendedToolCall.toolCall.id,
+              response: answer
+            });
+          }
+        }
+
+        // Stop tool
+        if (reserveTool && value.agentStopGate) {
+          if (value.agentStopGate.reasoningText)
+            appendAssistantReasoning(value.agentStopGate.reasoningText, value.hideInUI);
+          if (value.agentStopGate.assistantText)
+            appendAssistantText(value.agentStopGate.assistantText, value.hideInUI);
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: value.agentStopGate.feedback
+          });
+        }
 
         if (typeof value.reasoning?.content === 'string') {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            reasoning_content: value.reasoning.content
-          });
+          appendAssistantReasoning(value.reasoning.content, value.hideInUI);
         }
 
-        if (reserveTool && (hasTools || value.tool)) {
-          const tools = hasTools ? value.tools! : [value.tool!];
-          const tool_calls: ChatCompletionMessageToolCall[] = [];
-          const toolResponse: ChatCompletionToolMessageParam[] = [];
-          tools.forEach((tool) => {
-            tool_calls.push({
-              id: tool.id,
-              type: 'function',
-              function: {
-                name: tool.functionName,
-                arguments: tool.params
-              }
-            });
-            toolResponse.push({
-              tool_call_id: tool.id,
-              role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: tool.response || ''
-            });
-          });
-
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult &&
-            lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            lastResult.reasoning_content
-          ) {
-            lastResult.tool_calls = tool_calls;
-          } else {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              tool_calls
-            });
-          }
-
-          aiResults.push(...toolResponse);
-        }
         if (typeof value.text?.content === 'string') {
-          if (!value.text.content && item.value.length > 1) {
-            return;
-          }
-          // Concat text
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult?.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            typeof lastResult?.content === 'string'
-          ) {
-            lastResult.content += value.text.content;
-          } else if (lastResult?.reasoning_content) {
-            lastResult.content = value.text.content;
-          } else {
-            aiResults.push({
+          appendAssistantText(value.text.content, value.hideInUI);
+        }
+
+        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
+        const hasTools = Array.isArray(tools) && tools.length > 0;
+
+        if (reserveTool && hasTools) {
+          const normalizedToolContexts = tools
+            .map((tool) => normalizeChatToolContext(tool))
+            .filter(isNormalizedChatToolContext);
+
+          // 清除无效 tool 后，还有 tool 才推送
+          if (normalizedToolContexts.length) {
+            const tool_calls = normalizedToolContexts.map((item) => item.toolCall);
+            const toolResponse = normalizedToolContexts.map((item) => item.toolResponse);
+
+            const assistantMessage: ChatCompletionMessageParam = {
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: value.text.content
-            });
+              ...(value.hideInUI ? { hideInUI: value.hideInUI } : {}),
+              tool_calls
+            };
+
+            aiResults.push(assistantMessage);
+            aiResults.push(...toolResponse);
           }
-        }
-        if (value.plan) {
-          // 查找该 Plan 产生的上下文，组成一个 toolcall
-          // 需要跨所有历史消息收集同 planId 的 values（ask 信息可能在之前的 AI 消息中）
-          const planId = value.plan.planId;
-          const allPlanValues = messages
-            .filter((msg) => msg.obj === ChatRoleEnum.AI)
-            .flatMap((msg) =>
-              (msg.value as AIChatItemValueItemType[]).filter((v) => v.planId === planId)
-            );
-          const planResponseText = getPlanCallResponseText({
-            plan: value.plan,
-            assistantResponses: allPlanValues
-          });
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            tool_calls: [
-              {
-                id: planId,
-                type: 'function',
-                function: {
-                  name: 'plan_agent',
-                  arguments: JSON.stringify({
-                    task: value.plan.task,
-                    description: value.plan.description,
-                    background: value.plan.background
-                  })
-                }
-              }
-            ]
-          });
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: planId,
-            content: planResponseText
-          });
-        }
-        if (value.interactive) {
-          // 目前只有 plan 里会有交互，所以这里暂时不需要处理
         }
       });
 
       // Auto add empty assistant message
-      results = results.concat(aiResults);
+      results = results.concat(mergeAssistantFieldMessages(aiResults));
     }
   });
 
@@ -326,12 +606,14 @@ export const GPTMessages2Chats = ({
         item.role === ChatCompletionRequestMessageRoleEnum.Assistant
       ) {
         const value: AIChatItemValueItemType[] = [];
+        const valueVisibility = item.hideInUI ? { hideInUI: item.hideInUI } : {};
 
         if (typeof item.reasoning_content === 'string' && item.reasoning_content && reserveReason) {
           value.push({
             reasoning: {
               content: item.reasoning_content
-            }
+            },
+            ...valueVisibility
           });
         }
         if (typeof item.content === 'string' && item.content) {
@@ -342,7 +624,8 @@ export const GPTMessages2Chats = ({
             value.push({
               text: {
                 content: item.content
-              }
+              },
+              ...valueVisibility
             });
           }
         }
@@ -351,10 +634,6 @@ export const GPTMessages2Chats = ({
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
-            // Skil plan tool
-            if (tool.function.name === 'plan_agent') {
-              return [];
-            }
             let toolResponse =
               messages.find(
                 (msg) =>
@@ -378,7 +657,8 @@ export const GPTMessages2Chats = ({
             ];
           });
           value.push({
-            tools
+            tools,
+            ...valueVisibility
           });
         }
         if (item.function_call && reserveTool) {
@@ -398,20 +678,21 @@ export const GPTMessages2Chats = ({
                 functionName: functionCall.name,
                 params: functionCall.arguments,
                 response: functionResponse.content || ''
-              }
+              },
+              ...valueVisibility
             });
           }
         }
         if (item.interactive) {
           value.push({
-            interactive: item.interactive
+            interactive: item.interactive,
+            ...valueVisibility
           });
         }
 
         return {
           dataId: item.dataId,
           obj,
-          hideInUI: item.hideInUI,
           value
         };
       }

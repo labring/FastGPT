@@ -1,6 +1,6 @@
 /* v8 ignore file */
 import { type PromptTemplateItem } from '../llm/type';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { getPromptByVersion } from './utils';
 
 export const Prompt_userQuotePromptList: PromptTemplateItem[] = [

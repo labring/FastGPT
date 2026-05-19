@@ -1,31 +1,32 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { getHistories, getNodeErrResponse } from '../../../utils';
-import { parseUserSystemPrompt } from '../sub/plan/prompt';
-import { formatFileInput } from '../sub/file/utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
-import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { ToolDispatchContext } from '../utils';
-import { getSubapps } from '../utils';
-import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
-import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { buildPiModel, getModelApiKey } from './modelBridge';
-import { buildAgentTools } from './toolAdapter';
+import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { Agent, type AgentEvent, type AgentMessage } from '@mariozechner/pi-agent-core';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
-import { Agent, type AgentEvent } from '@mariozechner/pi-agent-core';
+import { parseUserSystemPrompt } from '../adapter/prompt';
+import { buildAgentUserContextInput } from '../adapter/userContext';
+import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
+import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
+import { getSubapps, type ToolDispatchContext } from '../utils';
+import {
+  createPiAgentWorkflowRuntime,
+  normalizePiAgentMessages,
+  type PiAgentWorkflowRuntimeArtifacts
+} from './adapter/runtime';
+import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge';
+import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -37,14 +38,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     node: { nodeId, inputs },
     lang,
     histories,
-    query: _query,
+    query,
     requestOrigin,
     chatConfig,
     runningAppInfo,
+    runningUserInfo,
     workflowStreamResponse,
     usagePush,
     mode,
     chatId,
+    responseChatItemId,
+    timezone,
     showSkillReferences,
     params: {
       model,
@@ -57,42 +61,72 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       useEditDebugSandbox,
       agent_datasetParams: datasetParams,
       useAgentSandbox = false,
-      aiChatVision
+      aiChatVision,
+      aiChatReasoning,
+      aiChatReasoningEffort
     }
   } = props;
 
-  const chatHistories = getHistories(history, histories);
+  const piMessagesKey = `piMessages-${nodeId}`;
   const normalizedSkillIds = normalizeSkillIds(skillIds);
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
   const capabilities: AgentCapability[] = [];
+  let agent: InstanceType<typeof Agent> | undefined;
+  let piRuntime: PiAgentWorkflowRuntimeArtifacts | undefined;
+  let stopPoller: ReturnType<typeof setInterval> | undefined;
+
+  const appendFinalAssistantResponses = () => {
+    const reasoningText = piRuntime?.getReasoningText() || '';
+    const answerText = piRuntime?.getAnswerText() || '';
+    const showReasoning = aiChatReasoning !== false;
+
+    if (reasoningText) {
+      assistantResponses.push({
+        reasoning: {
+          content: reasoningText
+        },
+        ...(!showReasoning ? { hideInUI: true } : {})
+      });
+    }
+
+    if (answerText) {
+      assistantResponses.push({
+        text: {
+          content: answerText
+        }
+      });
+    }
+
+    return answerText;
+  };
 
   try {
-    // Get files — check whether fileUrlList input has actual values
+    // 1. 准备用户输入与文件上下文。PiAgent 自己维护 messages，这里只负责把本轮输入整理成 prompt。
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     const fileLinks =
       fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
         ? fileLinksInput
         : undefined;
 
-    const {
-      filesMap,
-      allFilesMap,
-      prompt: fileInputPrompt
-    } = formatFileInput({
-      fileUrls: fileLinks,
-      requestOrigin,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      histories: chatHistories,
-      useSkill: skillIds.length > 0
-    });
+    const { chatHistories, currentUserMessage, filesMap, allFilesMap } =
+      await buildAgentUserContextInput({
+        history,
+        histories,
+        currentFiles: fileLinks,
+        currentUserInput: userChatInput,
+        currentQuery: query,
+        currentDataId: responseChatItemId,
+        selectedDataset: datasetParams?.datasets,
+        tmbId: runningUserInfo.tmbId,
+        timezone,
+        requestOrigin,
+        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
+      });
+    const { text: formatUserChatInput } = chatValue2RuntimePrompt(currentUserMessage.value);
 
-    const formatUserChatInput = fileInputPrompt
-      ? `${fileInputPrompt}\n\n${userChatInput}`
-      : userChatInput;
-
-    // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
+    // 2. 初始化独立能力。技能能力只贡献 system prompt / tools / assistantResponses，不直接参与 PiAgent loop 状态。
     if (serviceEnv.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
       const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
@@ -104,28 +138,25 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         sessionId: sandboxSessionId,
         mode: sandboxMode,
         workflowStreamResponse,
-        showSkillReferences: showSkillReferences === true,
         allFilesMap
       });
       capabilities.push(sandboxCap);
     }
 
-    // Aggregate capability contributions
     const capabilitySystemPrompt = capabilities
-      .map((c) => c.systemPrompt)
+      .map((item) => item.systemPrompt)
       .filter(Boolean)
       .join('\n\n');
-    const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
+    const capabilityTools = capabilities.flatMap((item) => item.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
-    // Get sub apps — pi-agent-core manages reasoning, no plan tool needed
+    // 3. 收集 workflow 可用工具。PiAgent 工具执行仍复用现有 workflow 子工具调度器。
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
         tmbId: runningAppInfo.tmbId,
         lang,
-        getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
         useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
@@ -143,29 +174,40 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           toolDescription: userToolNode.toolDescription || userToolNode.name || ''
         };
       }
-      const systemToolNode = systemSubInfo[id] || systemSubInfo[formatId];
-      const systemDisplayName = parseI18nString(systemToolNode?.name, lang);
+
+      const systemToolNode = getSystemToolInfo(id, lang) || getSystemToolInfo(formatId, lang);
       return {
-        name: systemDisplayName || '',
+        name: systemToolNode?.name || '',
         avatar: systemToolNode?.avatar || '',
-        toolDescription: systemToolNode?.toolDescription || systemDisplayName || ''
+        toolDescription: systemToolNode?.toolDescription || systemToolNode?.name || ''
       };
     };
     const getSubApp = (id: string) => {
-      const formatId = id.slice(1);
+      const formatId = id.startsWith('t') ? id.slice(1) : id;
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
+    // 4. 拼接 PiAgent 的 system prompt。这里补齐 workflow 专属约束、capability prompt 和 sandbox prompt。
+    const sandboxSystemPrompt =
+      useAgentSandbox && !!global.feConfigs?.show_agent_sandbox ? SANDBOX_SYSTEM_PROMPT : '';
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: capabilitySystemPrompt
-        ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`.trim()
-        : systemPrompt,
-      selectedDataset: datasetParams?.datasets
+      userSystemPrompt: [systemPrompt || '', capabilitySystemPrompt, sandboxSystemPrompt]
+        .filter(Boolean)
+        .join('\n\n')
     });
 
-    /* ===== Build pi-agent-core model & tools ===== */
-    const piModel = buildPiModel(model, aiChatVision);
-    const apiKey = getModelApiKey(model);
+    // 5. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。
+    piRuntime = createPiAgentWorkflowRuntime({
+      props,
+      nodeResponses,
+      workflowStreamResponse,
+      usagePush,
+      completionTools: agentCompletionTools
+    });
+
+    const piModel = buildPiModel(model, aiChatVision, props.externalProvider.openaiAccount);
+    const thinkingLevel = getPiThinkingLevel(model, aiChatReasoningEffort);
+    const apiKey = getModelApiKey(model, props.externalProvider.openaiAccount);
 
     const toolCtx: ToolDispatchContext = {
       ...props,
@@ -179,75 +221,73 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     const piTools = await buildAgentTools({
       ctx: toolCtx,
-      nodeResponses,
+      assistantResponses,
+      appendChildNodeResponse: piRuntime.appendChildNodeResponse,
       usagePush
     });
+    const handlePiToolEvent = createPiAgentToolEventHandler({
+      ctx: toolCtx,
+      assistantResponses,
+      appendChildNodeResponse: piRuntime.appendChildNodeResponse,
+      nodeResponses
+    });
 
-    /* ===== Restore session messages from last AI history ===== */
-    const piMessagesKey = `piMessages-${nodeId}`;
+    // 6. 恢复上一轮 PiAgent messages。只从当前节点 memory 恢复，保持 PiAgent 独立 loop 的连续性。
     const lastHistory = chatHistories[chatHistories.length - 1];
     const restoredMessages =
       lastHistory?.obj === ChatRoleEnum.AI
-        ? (lastHistory.memories?.[piMessagesKey] as any[] | undefined) ?? []
+        ? ((lastHistory.memories?.[piMessagesKey] as AgentMessage[] | undefined) ?? [])
         : [];
+    const normalizedRestoredMessages = normalizePiAgentMessages({
+      messages: restoredMessages,
+      completionTools: agentCompletionTools
+    });
 
-    /* ===== Create & run Agent ===== */
-
-    const agent = new Agent({
+    agent = new Agent({
       initialState: {
         systemPrompt: formatedSystemPrompt,
         model: piModel,
+        thinkingLevel,
         tools: piTools,
-        messages: restoredMessages
+        messages: normalizedRestoredMessages
       },
-      getApiKey: () => apiKey
+      getApiKey: () => apiKey,
+      onPayload: piRuntime.onPayload,
+      transformContext: async (messages) =>
+        normalizePiAgentMessages({
+          messages,
+          completionTools: agentCompletionTools
+        })
     });
 
-    // Collect text deltas to build answerText
-    let answerText = '';
-
     agent.subscribe((event: AgentEvent) => {
-      if (event.type === 'message_update') {
-        const e = event.assistantMessageEvent;
-        if (e.type === 'text_delta') {
-          answerText += e.delta;
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ text: e.delta })
-          });
-        }
-      } else if (event.type === 'turn_end') {
-        const errMsg = (event.message as any).errorMessage as string | undefined;
+      piRuntime?.handleAgentEvent(event);
+      handlePiToolEvent(event);
+
+      if (event.type === 'turn_end') {
+        const errMsg = (event.message as { errorMessage?: string }).errorMessage;
         if (errMsg) {
           getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] Turn error: ${errMsg}`);
         }
       }
-      // SSE toolCall / toolResponse events are emitted inside each tool's execute()
-      // wrapper in toolAdapter.ts
     });
 
-    // Poll for user-initiated stop
-    const stopPoller = setInterval(() => {
+    stopPoller = setInterval(() => {
       if (checkIsStopping()) {
-        agent.abort();
-        clearInterval(stopPoller);
+        agent?.abort();
+        if (stopPoller) clearInterval(stopPoller);
       }
     }, 200);
 
     getLogger(LogCategories.MODULE.AI.AGENT).debug(`[piAgent] Starting agent prompt`);
     await agent.prompt(formatUserChatInput);
-    clearInterval(stopPoller);
     getLogger(LogCategories.MODULE.AI.AGENT).debug(`[piAgent] Agent completed`);
 
-    // Surface API errors that pi-agent-core stores instead of throwing
     if (agent.state.errorMessage) {
       throw new Error(agent.state.errorMessage);
     }
 
-    // Build assistant responses
-    if (answerText) {
-      assistantResponses.push({ text: { content: answerText } });
-    }
+    const answerText = appendFinalAssistantResponses();
 
     return {
       data: {
@@ -261,8 +301,36 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     };
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] dispatchPiAgent error`, { error });
-    return getNodeErrResponse({ error });
+
+    const answerText = appendFinalAssistantResponses();
+    const errorText = getErrText(error);
+    piRuntime?.appendPendingAgentError(errorText);
+    const memories = agent
+      ? {
+          [piMessagesKey]: agent.state.messages
+        }
+      : undefined;
+
+    return {
+      data: {
+        [NodeOutputKeyEnum.answerText]: answerText
+      },
+      error: {
+        [NodeOutputKeyEnum.errorText]: errorText
+      },
+      [DispatchNodeResponseKeyEnum.toolResponses]: {
+        error: errorText
+      },
+      ...(memories
+        ? {
+            [DispatchNodeResponseKeyEnum.memories]: memories
+          }
+        : {}),
+      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+    };
   } finally {
+    if (stopPoller) clearInterval(stopPoller);
     for (const cap of capabilities) {
       await cap.dispose?.();
     }

@@ -1,4 +1,3 @@
-import { type I18nKeyFunction } from './i18next';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import Cookies from 'js-cookie';
 
@@ -7,7 +6,7 @@ const LANG_KEY = 'NEXT_LOCALE';
 const isInIframe = () => {
   try {
     return window.self !== window.top;
-  } catch (e) {
+  } catch {
     return true;
   }
 };
@@ -55,4 +54,4 @@ export const getLangMapping = (lng: string): string => {
   return lang || LangEnum.zh_CN;
 };
 
-export const i18nT: I18nKeyFunction = (key) => key;
+export { i18nT } from '@fastgpt/global/common/i18n/utils';

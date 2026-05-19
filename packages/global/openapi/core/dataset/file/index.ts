@@ -1,11 +1,15 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
+  GetSearchTestImagePreviewUrlsBodySchema,
+  GetSearchTestImagePreviewUrlsResponseSchema,
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
-  PresignDatasetFilePostUrlBodySchema
+  PresignDatasetFilePostUrlBodySchema,
+  PresignDatasetFilePostUrlResponseSchema,
+  PresignSearchTestImageBodySchema,
+  PresignSearchTestImageResponseSchema
 } from './api';
-import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 
 export const DatasetFilePath: OpenAPIPath = {
   '/core/dataset/file/getPreviewChunks': {
@@ -49,7 +53,55 @@ export const DatasetFilePath: OpenAPIPath = {
           description: '成功返回预签名上传 URL、key、请求头和最大文件大小',
           content: {
             'application/json': {
-              schema: CreatePostPresignedUrlResponseSchema
+              schema: PresignDatasetFilePostUrlResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/file/presignSearchTestImage': {
+    post: {
+      summary: '获取搜索测试图片上传预签名 URL',
+      description: '获取搜索测试图片上传预签名 URL，仅支持图片文件，上传对象 3 小时后过期',
+      tags: [TagsMap.datasetFile],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: PresignSearchTestImageBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回临时图片上传 URL、key 和缩略图预览 URL',
+          content: {
+            'application/json': {
+              schema: PresignSearchTestImageResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/file/getSearchTestImagePreviewUrls': {
+    post: {
+      summary: '获取搜索测试图片预览 URL',
+      description: '根据搜索测试历史中的临时图片 key 重新生成短期预览 URL',
+      tags: [TagsMap.datasetFile],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetSearchTestImagePreviewUrlsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回临时图片 key 和缩略图预览 URL 列表',
+          content: {
+            'application/json': {
+              schema: GetSearchTestImagePreviewUrlsResponseSchema
             }
           }
         }

@@ -1,6 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -192,6 +193,14 @@ export const getHistories = (
   history?: ChatItemMiniType[] | number,
   histories: ChatItemMiniType[] = []
 ) => {
+  const getLatestContextCheckpointIndex = (histories: ChatItemMiniType[]) => {
+    for (let index = histories.length - 1; index >= 0; index--) {
+      if (hasContextCheckpoint(histories[index])) return index;
+    }
+
+    return -1;
+  };
+
   if (!history) return [];
   // Select reference history
   if (Array.isArray(history)) return history;
@@ -200,6 +209,14 @@ export const getHistories = (
   const systemHistoryIndex = histories.findIndex((item) => item.obj !== ChatRoleEnum.System);
   const systemHistories = histories.slice(0, systemHistoryIndex);
   const chatHistories = histories.slice(systemHistoryIndex);
+
+  // Checkpoint is a compact replacement for previous chat history, so it must survive
+  // the normal recent-N window. chats2GPTMessages will adapt its content into messages.
+  const checkpointIndex = getLatestContextCheckpointIndex(chatHistories);
+  if (checkpointIndex >= 0) {
+    return [...systemHistories, ...chatHistories.slice(checkpointIndex)];
+  }
+
   const filterHistories = chatHistories.slice(-(history * 2));
 
   return [...systemHistories, ...filterHistories];
@@ -350,7 +367,10 @@ export const rewriteRuntimeWorkFlow = async ({
       (node) => node.flowNodeType === FlowNodeTypeEnum.tool && node.toolConfig?.mcpTool
     );
     const parseMcpToolConfigs = mcpToolNodes
-      .map((node) => parsetMcpToolConfig(node.toolConfig?.mcpTool!))
+      .map((node) => {
+        const mcpTool = node.toolConfig?.mcpTool;
+        return mcpTool ? parsetMcpToolConfig(mcpTool) : undefined;
+      })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset
     const toolsets = await getMcpToolsets({
@@ -386,7 +406,10 @@ export const rewriteRuntimeWorkFlow = async ({
       (node) => node.flowNodeType === FlowNodeTypeEnum.tool && node.toolConfig?.httpTool
     );
     const parseHttpToolConfigs = httpToolNodes
-      .map((node) => parseHttpToolConfig(node.toolConfig?.httpTool!))
+      .map((node) => {
+        const httpTool = node.toolConfig?.httpTool;
+        return httpTool ? parseHttpToolConfig(httpTool) : undefined;
+      })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset
     const toolsets = await getHttpToolsets({

@@ -56,7 +56,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
@@ -81,6 +81,7 @@ type Props = Omit<
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
 }>;
+
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
 };
@@ -113,7 +114,9 @@ function shouldTraceWorkflowStep(nodeType: FlowNodeTypeEnum) {
 }
 
 function getWorkflowStepStatus(result: WorkflowObservedStepResult): 'ok' | 'error' {
-  return result.result[DispatchNodeResponseKeyEnum.nodeResponse]?.error ? 'error' : 'ok';
+  return result.result[DispatchNodeResponseKeyEnum.nodeResponse]?.error || result.result.error
+    ? 'error'
+    : 'ok';
 }
 
 function addWorkflowStepEvent({
@@ -923,6 +926,7 @@ export class WorkflowQueue {
                 // status see `.error` uniformly across both failure paths.
                 const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
                 const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
+
                 return {
                   ...result,
                   [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -1652,7 +1656,7 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
     if (item.text) {
       const text = item.text?.content || '';
       const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
+      if (lastItem && lastItem.text?.content) {
         lastItem.text.content += text;
         continue;
       }

@@ -19,7 +19,7 @@ import {
   Input_Template_UserChatInput,
   Input_Template_File_Link
 } from '../../input';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
 
 export const AiChatQuoteRole = {

@@ -16,7 +16,7 @@ import {
   Input_Template_UserChatInput
 } from '../../input';
 import { Input_Template_System_Prompt } from '../../input';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,

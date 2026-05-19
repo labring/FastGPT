@@ -32,6 +32,8 @@ import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
 
+const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
+
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
   2. 递归线，会根据最近的一个 target 分支进行分类，同一个分支的属于一组
@@ -167,6 +169,9 @@ export const DispatchNodeResponseSchema = z
     textOutput: z.string().optional().meta({ description: '文本输出' }),
 
     llmRequestIds: z.array(z.string()).optional().meta({ description: 'LLM 请求追踪 ID 列表' }),
+    agentPlanStatus: AgentPlanNodeStatusSchema.optional().meta({
+      description: 'Agent 计划节点状态'
+    }),
 
     error: z
       .union([z.record(z.string(), z.any()), z.string()])
@@ -215,19 +220,12 @@ export const DispatchNodeResponseSchema = z
     limit: z.number().optional().meta({ description: '限制' }),
     searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
+    datasetQueries: z.array(z.string()).optional().meta({ description: '检索词' }),
+
     rerankModel: z.string().optional().meta({ description: '重排模型' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
-    queryExtensionResult: z
-      .object({
-        model: z.string().meta({ description: '模型' }),
-        inputTokens: z.number().meta({ description: '输入 token' }),
-        outputTokens: z.number().meta({ description: '输出 token' }),
-        query: z.string().meta({ description: '查询内容' })
-      })
-      .optional()
-      .meta({ description: '查询扩展结果' }),
     deepSearchResult: z
       .object({
         model: z.string().meta({ description: '模型' }),
@@ -359,7 +357,10 @@ export type DispatchNodeResponseType = Omit<
   toolDetail?: DispatchNodeResponseType[];
 };
 
-export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]?: string }> = {
+export type DispatchNodeResultType<
+  T = Record<string, never>,
+  ERR = { [NodeOutputKeyEnum.errorText]?: string }
+> = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id

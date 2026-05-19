@@ -1,6 +1,6 @@
 {
   "Image_Preview": "Picture preview",
-  "Image_dataset_requires_VLM_model_to_be_configured": "The image dataset needs to be configured with the image understanding model (VLM) to be used. Please add a model that supports image understanding in the model configuration first.",
+  "Image_dataset_requires_VLM_model_to_be_configured": "Image datasets require an image understanding model or a multimodal index model. Please configure a matching model first.",
   "click_to_view_raw_source": "Click to View Original Source",
   "file_name": "Filename",
   "file_size": "Filesize",

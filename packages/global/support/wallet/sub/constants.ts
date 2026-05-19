@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { BillTypeEnum } from '../bill/constants';
 
 export enum SubTypeEnum {

@@ -65,7 +65,8 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
         url,
         method,
         data: ['POST', 'PUT'].includes(method) ? data : undefined,
-        params: !['POST', 'PUT'].includes(method) ? data : undefined
+        params: !['POST', 'PUT'].includes(method) ? data : undefined,
+        timeout: 60000
       })
       .then((res) => checkRes(res.data))
       .catch((err) => responseError(err));
@@ -93,7 +94,8 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Length': fileBuffer.length.toString()
-        }
+        },
+        timeout: 600000
       })
       .catch((error) => {
         return Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
@@ -197,7 +199,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       });
 
       // Get base64 from image url
-      let resultImageList: ImageType[] = [];
+      const resultImageList: ImageType[] = [];
       await batchRun(
         imageList,
         async (item) => {

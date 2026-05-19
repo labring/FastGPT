@@ -12,7 +12,7 @@ import {
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput, Output_Template_Error_Message } from '../output';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 
 export const nodeLafCustomInputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),

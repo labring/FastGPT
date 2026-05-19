@@ -19,7 +19,7 @@ export enum SseResponseEventEnum {
 
   // Agent
   plan = 'plan', // plan response
-  stepTitle = 'stepTitle', // step title response
+  planStatus = 'planStatus', // plan lifecycle status
 
   // Sandbox lifecycle
   sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
@@ -71,6 +71,3 @@ export const needReplaceReferenceInputTypeList = [
   FlowNodeInputTypeEnum.addInputParam,
   FlowNodeInputTypeEnum.custom
 ] as string[];
-
-// Interactive
-export const ConfirmPlanAgentText = 'CONFIRM';

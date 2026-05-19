@@ -4,7 +4,6 @@ import type { I18nStringType, localeType } from '../../../../common/i18n/type';
 import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SandboxToolIds {
-  readFile = 'sandbox_read_file',
   writeFile = 'sandbox_write_file',
   editFile = 'sandbox_edit_file',
   execute = 'sandbox_execute',
@@ -17,16 +16,6 @@ export const skillToolsMap: Record<
   { name: I18nStringType; avatar: string; toolDescription: string }
 > = {
   // Sandbox tools
-  [SandboxToolIds.readFile]: {
-    name: {
-      'zh-CN': '读取文件',
-      'zh-Hant': '讀取文件',
-      en: 'ReadFile'
-    },
-    avatar: 'core/workflow/template/readFiles',
-    toolDescription:
-      'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.'
-  },
   [SandboxToolIds.writeFile]: {
     name: {
       'zh-CN': '写入文件',
@@ -93,9 +82,6 @@ export const getSkillToolInfo = (
 };
 
 // Zod parameter schemas (runtime validation)
-export const SandboxReadFileSchema = z.object({
-  paths: z.array(z.string()).describe('Array of absolute file paths')
-});
 export const SandboxWriteFileSchema = z.object({
   path: z.string().describe('Absolute file path'),
   content: z.string().describe('File content')
@@ -119,7 +105,7 @@ export const SandboxSearchSchema = z.object({
   path: z.string().optional().describe('Starting path for search (optional)')
 });
 export const SandboxFetchUserFileSchema = z.object({
-  file_index: z.string().describe('File index from available_files (e.g. "1")'),
+  file_index: z.string().describe('File id from # Input Files (e.g. "current-0")'),
   target_path: z
     .string()
     .describe(
@@ -128,25 +114,6 @@ export const SandboxFetchUserFileSchema = z.object({
 });
 
 // ChatCompletionTool definitions (exposed to LLM)
-export const sandboxReadFileTool: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: SandboxToolIds.readFile,
-    description: skillToolsMap[SandboxToolIds.readFile].toolDescription,
-    parameters: {
-      type: 'object',
-      properties: {
-        paths: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of absolute file paths'
-        }
-      },
-      required: ['paths']
-    }
-  }
-};
-
 export const sandboxWriteFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
@@ -233,7 +200,7 @@ export const sandboxFetchUserFileTool: ChatCompletionTool = {
       properties: {
         file_index: {
           type: 'string',
-          description: 'File index from available_files (e.g. "1")'
+          description: 'File id from # Input Files (e.g. "current-0")'
         },
         target_path: {
           type: 'string',
@@ -247,7 +214,6 @@ export const sandboxFetchUserFileTool: ChatCompletionTool = {
 };
 
 export const allSandboxTools: ChatCompletionTool[] = [
-  sandboxReadFileTool,
   sandboxWriteFileTool,
   sandboxEditFileTool,
   sandboxExecuteTool,

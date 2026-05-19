@@ -1,6 +1,7 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { WorkflowIOValueTypeEnum } from '../constants';
-export enum FlowNodeInputTypeEnum { // render ui
+export enum FlowNodeInputTypeEnum {
+  // render ui
   reference = 'reference', // reference to other node output
   input = 'input', // one line input
   textarea = 'textarea',

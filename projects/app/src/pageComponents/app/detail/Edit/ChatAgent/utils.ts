@@ -25,7 +25,7 @@ import {
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -60,6 +60,11 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
+      defaultAppForm.aiSettings.aiChatReasoning =
+        inputMap.get(NodeInputKeyEnum.aiChatReasoning) ?? true;
+      defaultAppForm.aiSettings.aiChatReasoningEffort = inputMap.get(
+        NodeInputKeyEnum.aiChatReasoningEffort
+      );
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
       defaultAppForm.aiSettings.useAgentSandbox = inputMap.get(NodeInputKeyEnum.useAgentSandbox);
 
@@ -187,6 +192,20 @@ export function agentForm2AppWorkflow(
               value: true
             },
             {
+              key: NodeInputKeyEnum.aiChatReasoning,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: data.aiSettings.aiChatReasoning ?? true
+            },
+            {
+              key: NodeInputKeyEnum.aiChatReasoningEffort,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: data.aiSettings.aiChatReasoningEffort
+            },
+            {
               key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
@@ -303,7 +322,8 @@ export const getEmptyAgentConfig = (t: any) => {
       aiSettings: {
         model: '',
         maxHistories: 6,
-        isResponseAnswerText: true
+        isResponseAnswerText: true,
+        aiChatReasoning: true
       },
       dataset: {
         ...defaultAppForm.dataset,

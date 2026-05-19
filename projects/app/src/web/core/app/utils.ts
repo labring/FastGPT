@@ -7,7 +7,7 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 
 export function filterSensitiveFormData(appForm: AppFormEditFormType) {

@@ -82,6 +82,7 @@ export const LogCategories = {
       EMBEDDING: ['ai', 'embedding'],
       FUNCTIONS: ['ai', 'functions'],
       LLM: ['ai', 'llm'],
+      LLM_COMPRESS: ['ai', 'llm', 'compress'],
       MODEL: ['ai', 'model'],
       OPTIMIZE_PROMPT: ['ai', 'optimize-prompt'],
       RERANK: ['ai', 'rerank'],

@@ -4,10 +4,9 @@ import { skillToolsMap } from './skillTools';
 import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SubAppIds {
-  plan = 'plan_agent',
   ask = 'ask_agent',
   model = 'model_agent',
-  fileRead = 'file_read',
+  readFiles = 'read_files',
   datasetSearch = 'dataset_search'
 }
 
@@ -15,16 +14,7 @@ export const systemSubInfo: Record<
   string,
   { name: I18nStringType; avatar: string; toolDescription: string }
 > = {
-  [SubAppIds.plan]: {
-    name: {
-      'zh-CN': '规划Agent',
-      'zh-Hant': '規劃Agent',
-      en: 'PlanAgent'
-    },
-    avatar: 'common/detail',
-    toolDescription: '将任务拆解成多个步骤执行，适合处理复杂任务。'
-  },
-  [SubAppIds.fileRead]: {
+  [SubAppIds.readFiles]: {
     name: {
       'zh-CN': '文件解析',
       'zh-Hant': '文件解析',

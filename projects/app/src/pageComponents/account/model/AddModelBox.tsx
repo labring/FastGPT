@@ -687,11 +687,11 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
         resize
         onChange={(e) => {
           if (!e) {
-            setValue('defaultConfig', undefined);
+            setValue('defaultConfig', {}, { shouldDirty: true });
             return;
           }
           try {
-            setValue('defaultConfig', JSON.parse(e.trim()));
+            setValue('defaultConfig', JSON.parse(e.trim()), { shouldDirty: true });
           } catch (error) {
             console.error(error);
           }
@@ -838,12 +838,11 @@ export const ModelEditModal = ({
         data.priceTiers = priceTiers as any;
       }
 
-      for (const key in data) {
-        // @ts-ignore
-        const val = data[key];
+      const modelData = data as Record<string, unknown>;
+      for (const key of Object.keys(modelData)) {
+        const val = modelData[key];
         if (val === null || val === undefined || Number.isNaN(val)) {
-          // @ts-ignore
-          data[key] = '';
+          modelData[key] = '';
         }
       }
 
@@ -915,7 +914,7 @@ export const ModelEditModal = ({
       headerPx={'32px'}
     >
       <ModalBody px={'32px'} py={0}>
-        <Section title={t('account:model.basic_config_section')}>
+        <Section key={key} title={t('account:model.basic_config_section')}>
           <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
             <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
@@ -1097,6 +1096,19 @@ export const ModelEditModal = ({
                   register={register}
                 />
               )}
+            </Grid>
+          </Section>
+        )}
+
+        {isEmbeddingModel && (
+          <Section title={t('account:model.feature_config_section')}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+              <SwitchField
+                label={t('account:model.vision')}
+                tip={t('account:model.embedding_vision_tip')}
+                field={'vision'}
+                register={register}
+              />
             </Grid>
           </Section>
         )}

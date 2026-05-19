@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.15.0",
+  "version": "4.15.0-2",
   "private": false,
   "browserslist": [
     "Chrome >= 80",
@@ -70,7 +70,7 @@
     "jszip": "^3.10.1",
     "katex": "0.16.22",
     "lodash": "catalog:",
-    "mermaid": "^10.9.4",
+    "mermaid": "^10.9.6",
     "mime": "catalog:",
     "minio": "catalog:",
     "mongoose": "catalog:",
