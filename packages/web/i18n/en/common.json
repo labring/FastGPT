@@ -239,7 +239,7 @@
   "core.ai.Not deploy rerank model": "No reranker models available.",
   "core.ai.Prompt": "Prompt",
   "core.ai.Support tool": "Function call",
-  "core.ai.model.Dataset Agent Model": "LLM",
+  "core.ai.model.Dataset Agent Model": "Knowledge Enhancement Model",
   "core.ai.model.Vector Model": "Index model",
   "core.ai.model.doc_index_and_dialog": "Document & chat indexes",
   "core.app.Api request": "API access",

@@ -110,7 +110,7 @@
   "image_training_queue": "图片处理排队",
   "images_creating": "正在创建",
   "immediate_sync": "立即同步",
-  "import.Auto mode Estimated Price Tips": "需调用文本理解模型，需要消耗较多AI 积分：{{price}} 积分/1K tokens",
+  "import.Auto mode Estimated Price Tips": "需调用知识增强模型，需要消耗较多AI 积分：{{price}} 积分/1K tokens",
   "import.Embedding Estimated Price Tips": "仅使用向量模型，消耗少量 AI 积分：{{price}} 积分/1K tokens",
   "import_confirm": "确认上传",
   "import_data_preview": "数据预览",

@@ -236,7 +236,7 @@
   "core.ai.Not deploy rerank model": "未部署重新排名模型",
   "core.ai.Prompt": "提示詞",
   "core.ai.Support tool": "函式呼叫",
-  "core.ai.model.Dataset Agent Model": "檔案處理模型",
+  "core.ai.model.Dataset Agent Model": "知識增強模型",
   "core.ai.model.Vector Model": "向量模型",
   "core.ai.model.doc_index_and_dialog": "文件索引與對話索引",
   "core.app.Api request": "API 存取",
