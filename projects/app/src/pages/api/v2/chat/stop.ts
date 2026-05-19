@@ -9,18 +9,38 @@ import {
   StopV2ChatSchema,
   type StopV2ChatResponse
 } from '@fastgpt/global/openapi/core/chat/controler/api';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { authSkillByTmbId } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV2ChatResponse> {
   const { appId, chatId, outLinkAuthData } = StopV2ChatSchema.parse(req.body);
 
-  await authChatCrud({
-    req,
-    authToken: true,
-    authApiKey: true,
-    appId,
-    chatId,
-    ...outLinkAuthData
-  });
+  try {
+    await authChatCrud({
+      req,
+      authToken: true,
+      authApiKey: true,
+      appId,
+      chatId,
+      ...outLinkAuthData
+    });
+  } catch (err: any) {
+    // Fallback: appId may be a skillId (e.g. Skill Preview debug chat).
+    // authChatCrud → authApp fails with AppErrEnum.unExist when appId is not a real app.
+    const errCode = err?.message || err?.statusText || err;
+    if (errCode !== AppErrEnum.unExist) {
+      throw err;
+    }
+
+    const { tmbId } = await parseHeaderCert({ req, authToken: true, authApiKey: true });
+    await authSkillByTmbId({
+      tmbId,
+      skillId: appId,
+      per: ReadPermissionVal
+    });
+  }
 
   // 设置停止状态
   await setAgentRuntimeStop({

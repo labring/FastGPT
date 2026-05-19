@@ -385,7 +385,6 @@ export async function createAgentSandbox(
             teamId,
             tmbId,
             sandboxType: SandboxTypeEnum.sessionRuntime,
-            skillIds: skillIds.join('-'),
             sessionId
           }
         }
