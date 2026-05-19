@@ -93,25 +93,11 @@ export type MkdirPackageBody = z.infer<typeof MkdirPackageBodySchema>;
 
 // ============ upload (multipart) ============
 
-export const UploadPackageFileMultipartRequestSchema = {
-  type: 'object' as const,
-  properties: {
-    skillId: {
-      type: 'string' as const,
-      description: 'Skill ID'
-    },
-    path: {
-      type: 'string' as const,
-      description: 'Target path (full zip-internal file path)'
-    },
-    file: {
-      type: 'string' as const,
-      format: 'binary' as const,
-      description: 'Uploaded file content'
-    }
-  },
-  required: ['skillId', 'path', 'file'] as string[]
-};
+export const UploadPackageFileMultipartRequestSchema = z.object({
+  skillId: z.string().describe('Skill ID'),
+  path: z.string().describe('Target path (full zip-internal file path)'),
+  file: z.string().meta({ format: 'binary' }).describe('Uploaded file content')
+});
 
 // ============ common mutate response ============
 

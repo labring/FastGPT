@@ -80,6 +80,7 @@
   "editor_save_failed": "儲存失敗",
   "editor_save_all_success": "已儲存全部改動",
   "editor_open_failed": "開啟檔案失敗",
+  "editor_flush_failed": "刷新待處理更改失敗",
   "editor_load_dir_failed": "載入目錄失敗",
   "editor_create_failed": "建立失敗",
   "editor_upload_success": "上傳成功",

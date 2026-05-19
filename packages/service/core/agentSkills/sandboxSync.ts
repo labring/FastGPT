@@ -76,8 +76,15 @@ export async function syncSkillSandbox(params: {
 
     const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
 
-    // Parse top-level entries to selectively clean
     const zip = await JSZip.loadAsync(zipBuffer);
+
+    // Validate zip entries before unzipping (Zip Slip defence)
+    const dangerous = Object.keys(zip.files).some((k) => k.includes('..') || k.startsWith('/'));
+    if (dangerous) {
+      throw new UserError('Package contains invalid paths');
+    }
+
+    // Parse top-level entries to selectively clean
     const rootEntries = listZipDirectory(zip, '');
     const rootNames = rootEntries.map((e) => e.name).filter((n) => n && n !== '.' && n !== '..');
 

@@ -80,6 +80,7 @@
   "editor_save_failed": "保存失败",
   "editor_save_all_success": "已保存全部改动",
   "editor_open_failed": "打开文件失败",
+  "editor_flush_failed": "刷新待处理更改失败",
   "editor_load_dir_failed": "加载目录失败",
   "editor_create_failed": "创建失败",
   "editor_upload_success": "上传成功",

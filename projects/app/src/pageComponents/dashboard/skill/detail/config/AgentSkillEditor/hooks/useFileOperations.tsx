@@ -224,7 +224,16 @@ export const useFileOperations = ({
       const parent = node.path.includes('/') ? node.path.slice(0, node.path.lastIndexOf('/')) : '';
       const toPath = parent ? `${parent}/${newName}` : newName;
 
-      await flushPendingForPath(node.path);
+      try {
+        await flushPendingForPath(node.path);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_flush_failed'),
+          description: getErrText(err)
+        });
+        return;
+      }
 
       try {
         await renameSkillPackageEntry({ skillId, fromPath: node.path, toPath });
@@ -255,8 +264,8 @@ export const useFileOperations = ({
     (node: TreeNode) => {
       openConfirmDelete({
         onConfirm: async () => {
-          cancelPendingForPath(node.path);
           try {
+            cancelPendingForPath(node.path);
             await deleteSkillPackageEntry({
               skillId,
               path: node.path,

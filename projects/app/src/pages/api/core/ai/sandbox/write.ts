@@ -15,14 +15,28 @@ async function handler(
 ): Promise<SandboxWriteResponse> {
   const { appId, chatId, path, content, outLinkAuthData } = SandboxWriteBodySchema.parse(req.body);
 
-  const { uid } = await authSandboxAccess({
-    req,
-    authToken: true,
-    authApiKey: true,
-    appId,
-    chatId,
-    outLinkAuthData
-  });
+  const result = await (async () => {
+    try {
+      return await authSandboxAccess({
+        req,
+        authToken: true,
+        authApiKey: false,
+        appId,
+        chatId,
+        outLinkAuthData
+      });
+    } catch (_tokenError) {
+      return await authSandboxAccess({
+        req,
+        authToken: false,
+        authApiKey: true,
+        appId,
+        chatId,
+        outLinkAuthData
+      });
+    }
+  })();
+  const { uid } = result;
 
   const sandbox = await getSandboxClientByChat({ appId, userId: uid, chatId });
   await sandbox.ensureAvailable();

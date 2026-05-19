@@ -92,6 +92,7 @@
   "editor_save_failed": "Save failed",
   "editor_save_all_success": "All changes saved",
   "editor_open_failed": "Failed to open file",
+  "editor_flush_failed": "Failed to flush pending changes",
   "editor_load_dir_failed": "Failed to load directory",
   "editor_create_failed": "Create failed",
   "editor_upload_success": "Upload succeeded",

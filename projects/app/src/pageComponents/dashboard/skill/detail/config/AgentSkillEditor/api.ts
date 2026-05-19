@@ -82,11 +82,14 @@ export const uploadSkillPackageFile = async (params: {
     method: 'POST',
     body: form
   });
+
+  const text = await response.text();
+
   if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    throw new Error(errText || `Upload failed: ${response.status}`);
+    throw new Error(text || `Upload failed: ${response.status}`);
   }
-  const json = (await response.json()) as {
+
+  const json = JSON.parse(text) as {
     code: number;
     data: MutatePackageResponse;
     message?: string;
