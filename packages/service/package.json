@@ -11,9 +11,11 @@
     "@mariozechner/pi-agent-core": "^0.67.3",
     "@mariozechner/pi-ai": "^0.67.3",
     "@fastgpt-sdk/sandbox-adapter": "^0.0.36",
-    "@fastgpt-sdk/otel": "catalog:",
-    "@fastgpt-sdk/storage": "catalog:",
+    "@fastgpt-sdk/otel": "workspace:*",
+    "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
+    "@langfuse/otel": "^5.0.0",
+    "@langfuse/tracing": "^5.0.0",
     "@maxmind/geoip2-node": "^6.3.4",
     "@modelcontextprotocol/sdk": "catalog:",
     "@node-rs/jieba": "2.0.1",
@@ -106,4 +108,3 @@
     "@types/turndown": "^5.0.4"
   }
 }
-

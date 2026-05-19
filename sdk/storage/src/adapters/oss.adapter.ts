@@ -242,7 +242,6 @@ export class OssStorageAdapter implements IStorage {
       headersToSign['Content-Type'] = contentType;
     }
 
-    // @ts-expect-error ali-oss SDK 类型未定义但存在此方法
     // @see https://github.com/ali-sdk/ali-oss?tab=readme-ov-file#signatureurlv4method-expires-request-objectname-additionalheaders
     const url = await this.client.signatureUrlV4(
       'PUT',
