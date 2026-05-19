@@ -107,8 +107,34 @@ const FileSelector = ({
 
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {
-      if (selectFiles.length + files.length > maxCount) {
-        files = files.slice(0, maxCount - selectFiles.length);
+      // 基于 文件名-大小-最后修改时间 生成唯一key，过滤重复文件
+      const existingKeys = new Set(
+        selectFiles
+          .filter((f) => f.file)
+          .map((f) => `${f.file!.name}-${f.file!.size}-${f.file!.lastModified}`)
+      );
+
+      let hasDuplicates = false;
+      const uniqueFiles: SelectFileItemType[] = [];
+      for (const f of files) {
+        const key = `${f.file.name}-${f.file.size}-${f.file.lastModified}`;
+        if (existingKeys.has(key)) {
+          hasDuplicates = true;
+        } else {
+          existingKeys.add(key);
+          uniqueFiles.push(f);
+        }
+      }
+
+      if (hasDuplicates) {
+        toast({
+          title: t('dataset:file_already_uploaded'),
+          status: 'warning'
+        });
+      }
+
+      if (selectFiles.length + uniqueFiles.length > maxCount) {
+        uniqueFiles.splice(maxCount - selectFiles.length);
         toast({
           status: 'warning',
           title: t('file:some_file_count_exceeds_limit', { maxCount })
@@ -116,11 +142,11 @@ const FileSelector = ({
       }
       // size check
       if (maxSize == null) {
-        return onSelectFiles(files);
+        return onSelectFiles(uniqueFiles);
       }
-      const filterFiles = files.filter((item) => item.file.size <= maxSize);
+      const filterFiles = uniqueFiles.filter((item) => item.file.size <= maxSize);
 
-      if (filterFiles.length < files.length) {
+      if (filterFiles.length < uniqueFiles.length) {
         toast({
           status: 'warning',
           title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
@@ -129,7 +155,7 @@ const FileSelector = ({
 
       return onSelectFiles(filterFiles);
     },
-    [t, maxCount, maxSize, onSelectFiles, selectFiles.length, toast]
+    [t, maxCount, maxSize, onSelectFiles, selectFiles, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {

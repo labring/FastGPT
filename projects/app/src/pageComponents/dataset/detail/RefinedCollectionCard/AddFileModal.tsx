@@ -1003,7 +1003,7 @@ const FileFields: React.FC<{
             onSelectFiles={onSelectFiles}
           />
           {selectFiles.length > 0 && (
-            <VStack gap={2} alignItems="stretch" mt={3}>
+            <VStack gap={2} alignItems="stretch" mt={2}>
               {selectFiles.map((item, index) => (
                 <HStack key={item.id} w="100%" spacing={2} justifyContent="space-between">
                   <HStack spacing={2} flex={1} overflow="hidden">

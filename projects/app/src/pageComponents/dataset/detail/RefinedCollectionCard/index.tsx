@@ -482,6 +482,14 @@ const CollectionCard = () => {
                       <Th py={4} w="100px">
                         <Box>{t('dataset:collection_data_count')}</Box>
                       </Th>
+                      {feConfigs?.isPlus && (
+                        <Th py={4} w="180px">
+                          <HStack spacing={1}>
+                            <Box>{t('dataset:tag.tags')}</Box>
+                            <TagFilter />
+                          </HStack>
+                        </Th>
+                      )}
                       <Th py={4} w="150px">
                         <HStack
                           spacing={1}
@@ -639,6 +647,93 @@ const CollectionCard = () => {
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
+                        {feConfigs?.isPlus && (
+                          <Td py={2} w="180px" onClick={(e) => e.stopPropagation()}>
+                            {(() => {
+                              const tagValues = (collection.tags || []).filter(
+                                (t): t is CollectionTagValueType =>
+                                  typeof t === 'object' && t !== null
+                              );
+                              if (tagValues.length === 0) return <Box color="myGray.400">-</Box>;
+                              const visible = tagValues.slice(0, 2);
+                              const overflowCount = tagValues.length - 2;
+                              const getTagText = (tv: CollectionTagValueType) => {
+                                const tagDef = allDatasetTags.find((t) => t._id === tv.tagId);
+                                return tagDef
+                                  ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
+                                  : tv.value;
+                              };
+                              const tagBadge = (tv: CollectionTagValueType, idx: number) => (
+                                <Box
+                                  key={idx}
+                                  px={2}
+                                  py={1}
+                                  fontSize={'xs'}
+                                  bg={'#F4F4F7'}
+                                  color={'#505F73'}
+                                  borderRadius={'6px'}
+                                  whiteSpace={'nowrap'}
+                                  lineHeight={'14px'}
+                                >
+                                  {getTagText(tv)}
+                                </Box>
+                              );
+                              const trigger = (
+                                <Flex gap={1} align={'center'} flexWrap={'nowrap'}>
+                                  {visible.map((tv, idx) => tagBadge(tv, idx))}
+                                  {overflowCount > 0 && (
+                                    <Box
+                                      px={2}
+                                      py={1}
+                                      bg={'#F4F4F7'}
+                                      borderRadius={'6px'}
+                                      fontSize={'xs'}
+                                      color={'#505F73'}
+                                      whiteSpace={'nowrap'}
+                                      cursor={'pointer'}
+                                      lineHeight={'14px'}
+                                    >
+                                      {`+${overflowCount}`}
+                                    </Box>
+                                  )}
+                                </Flex>
+                              );
+                              if (tagValues.length >= 3) {
+                                return (
+                                  <MyPopover
+                                    hasArrow={true}
+                                    trigger={'hover'}
+                                    w="fit-content"
+                                    maxW="none"
+                                    Trigger={trigger}
+                                  >
+                                    {({}) => (
+                                      <Flex flexDirection={'column'} gap={2} p={3}>
+                                        {tagValues.map((tv, idx) => (
+                                          <Box
+                                            key={idx}
+                                            px={2}
+                                            py={1}
+                                            fontSize={'xs'}
+                                            bg={'#F4F4F7'}
+                                            color={'#505F73'}
+                                            borderRadius={'6px'}
+                                            whiteSpace={'nowrap'}
+                                            lineHeight={'14px'}
+                                            alignSelf={'flex-start'}
+                                          >
+                                            {getTagText(tv)}
+                                          </Box>
+                                        ))}
+                                      </Flex>
+                                    )}
+                                  </MyPopover>
+                                );
+                              }
+                              return trigger;
+                            })()}
+                          </Td>
+                        )}
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
                           {formatTime2YMDHM(collection.createTime)}
                         </Td>
@@ -999,7 +1094,13 @@ const CollectionCard = () => {
                               {
                                 children: [...(tagItem ? [tagItem] : []), permissionItem]
                               },
-                              { children: [sourceItem, moveItem, renameItem, deleteItem] }
+                              {
+                                children: [
+                                  sourceItem,
+                                  ...(isStructureDocument ? [] : [moveItem, renameItem]),
+                                  deleteItem
+                                ]
+                              }
                             ];
                           })()}
                         />

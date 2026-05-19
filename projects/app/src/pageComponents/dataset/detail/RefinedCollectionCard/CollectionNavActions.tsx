@@ -244,7 +244,7 @@ const CollectionNavActions = () => {
     <HStack spacing={2} flexShrink={0}>
       {/* 搜索框 */}
       <MyInput
-        maxW={'250px'}
+        maxW={'180px'}
         size={'sm'}
         h={'36px'}
         bg={'white'}

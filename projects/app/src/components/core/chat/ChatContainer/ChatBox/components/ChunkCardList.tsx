@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Box, useTheme, Button } from '@chakra-ui/react';
 
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -14,6 +14,22 @@ import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import ChunkInfoCard from '@/components/core/chat/components/ChunkInfoCard';
+
+const findScrollableAncestor = (el: HTMLElement | null): HTMLElement | null => {
+  if (!el) return null;
+  let current: HTMLElement | null = el;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const overflowY = style.overflowY;
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
+      if (current.scrollHeight > current.clientHeight) {
+        return current;
+      }
+    }
+    current = current.parentElement;
+  }
+  return null;
+};
 
 const ChunkCardList = React.memo(function QuoteList({
   chatItemDataId = '',
@@ -140,24 +156,44 @@ const ChunkCardList = React.memo(function QuoteList({
 
   const maxCount = 10;
   const [isShowAll, toggleStatus] = useState(formatedDataList.length <= maxCount);
-  const displayList = useMemo(
-    () => (isShowAll ? formatedDataList : formatedDataList.slice(0, maxCount)),
-    [isShowAll, formatedDataList]
-  );
+  const listRef = useRef<HTMLDivElement>(null);
 
   return (
-    <>
-      {displayList.map((item, i) => (
-        <Box key={i} mb={1}>
+    <Box ref={listRef}>
+      {formatedDataList.map((item, i) => (
+        <Box
+          key={item.id || `${item.collectionId || 'collection'}-${item.chunkIndex || i}`}
+          mb={1}
+          display={isShowAll || i < maxCount ? undefined : 'none'}
+        >
           <ChunkInfoCard {...item} />
         </Box>
       ))}
       {!isShowAll && (
-        <Button onClick={() => toggleStatus(!isShowAll)} w="100%" variant={'primaryOutline'}>
+        <Button
+          onClick={() => {
+            const scrollContainer = findScrollableAncestor(listRef.current);
+            const savedScrollTop = scrollContainer?.scrollTop;
+
+            toggleStatus(true);
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  if (scrollContainer && savedScrollTop !== undefined) {
+                    scrollContainer.scrollTop = savedScrollTop;
+                  }
+                }, 0);
+              });
+            });
+          }}
+          w="100%"
+          variant={'primaryOutline'}
+        >
           {t('chat:view_all_knowledge', { count: formatedDataList.length })}
         </Button>
       )}
-    </>
+    </Box>
   );
 });
 
