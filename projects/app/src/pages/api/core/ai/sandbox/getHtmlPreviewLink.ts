@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authSandboxAccess } from '@/service/support/permission/auth/chat';
 import { SandboxGetHtmlPreviewLinkBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
@@ -28,13 +28,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   );
 
   // 1. 鉴权
-  const { teamId, uid } = await authChatCrud({
+  const { teamId, uid } = await authSandboxAccess({
     req,
     authToken: true,
     authApiKey: true,
     appId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
 
   // 2. 从沙箱读取实际文件内容，避免客户端传入任意 HTML
