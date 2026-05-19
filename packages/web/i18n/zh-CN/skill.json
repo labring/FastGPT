@@ -53,6 +53,8 @@
   "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
   "select_skill": "选择 Skill",
   "associated_skills": "关联 Skill",
+  "skill_deleted": "技能已删除",
+  "skill_deleted_click_remove_tip": "技能已删除，点击删除",
   "skill_select_limit_tip": "已达到单个应用可关联 Skill 的上限（100 个）",
   "sandbox_auto_enabled_for_skill": "skill运行依赖虚拟机环境，已为你打开虚拟机功能",
   "sandbox_disable_blocked_toast": "Skill运行依赖虚拟机环境，当前 Agent 已配置 Skill，请先移除所有 Skill 再关闭虚拟机",

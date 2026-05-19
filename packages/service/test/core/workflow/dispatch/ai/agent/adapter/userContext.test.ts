@@ -8,12 +8,12 @@ import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
 import {
-  type AgentSkillContext,
   buildAgentSkillsPrompt,
   buildAgentInputFilesPrompt,
   buildAgentUserReminderInput,
   useUserContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/agentSkills/runtime/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
@@ -93,7 +93,7 @@ const getUserContextMessagesForTest = async ({
   currentWorkingDirectory,
   ...params
 }: Parameters<typeof useUserContext>[0] & {
-  skillInfos?: AgentSkillContext[];
+  skillInfos?: DeployedSkillInfo[];
   currentWorkingDirectory?: string;
 }) => {
   const context = await useUserContext(params);
@@ -111,7 +111,7 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentInputFilesPrompt', () => {
-  it('generates # Input Files XML block with stable ids', () => {
+  it('generates file XML block with stable ids', () => {
     const result = buildAgentInputFilesPrompt([
       {
         id: 'current-0',
@@ -127,7 +127,7 @@ describe('buildAgentInputFilesPrompt', () => {
       }
     ]);
 
-    expect(result).toContain('# Input Files');
+    expect(result).toContain('## 文件');
     expect(result).toContain('<id>current-0</id>');
     expect(result).toContain('<type>document</type>');
     expect(result).toContain('<id>current-1</id>');
@@ -159,8 +159,10 @@ describe('buildAgentUserReminderInput', () => {
       query: '帮我总结',
       skillInfos: [
         {
+          id: 'skill_1',
           name: 'Skill',
           description: 'Skill description',
+          directory: '/workspace/Skill',
           skillMdPath: '/workspace/Skill/SKILL.md'
         }
       ],
@@ -178,16 +180,17 @@ describe('buildAgentUserReminderInput', () => {
     });
 
     expect(result).toContain('<system-reminder>');
-    expect(result).toContain('# Sandbox');
-    expect(result).toContain('<pwd>/workspace</pwd>');
-    expect(result).toContain('<agent_skills>');
+    expect(result).toContain('## 技能');
     expect(result).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(result.indexOf('# Sandbox')).toBeLessThan(result.indexOf('<agent_skills>'));
-    expect(result.indexOf('<agent_skills>')).toBeLessThan(result.indexOf('# Input Files'));
-    expect(result).toContain('# Input Files');
-    expect(result).toContain('# Input datasets');
+    expect(result.indexOf('## 技能')).toBeLessThan(result.indexOf('## 文件'));
+    expect(result.indexOf('## 文件')).toBeLessThan(result.indexOf('## 知识库'));
+    expect(result.indexOf('## 知识库')).toBeLessThan(result.indexOf('## 背景信息'));
+    expect(result).toContain('## 文件');
+    expect(result).toContain('## 知识库');
     expect(result).toContain('<id>dataset_1</id>');
-    expect(result).toContain('# Current time');
+    expect(result).toContain('## 背景信息');
+    expect(result).toContain('当前时间: 2026-05-14 10:00:00 Thursday');
+    expect(result).toContain('当前 sandbox 工作目录: /workspace');
     expect(result).toContain('帮我总结');
   });
 
@@ -227,33 +230,27 @@ describe('buildAgentUserReminderInput', () => {
         query: '',
         currentWorkingDirectory: '/workspace'
       })
-    ).toContain(`<pwd>/workspace</pwd>`);
+    ).toContain(`当前 sandbox 工作目录: /workspace`);
     expect(
       buildAgentUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
-    ).toContain(`# Current time
-2026-05-14 10:00:00 Thursday`);
+    ).toContain(`当前时间: 2026-05-14 10:00:00 Thursday`);
     expect(
       buildAgentUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
-    ).toBe(`<system-reminder>
-依据以下内容完成任务
-
-# Current time
-2026-05-14 10:00:00 Thursday
-</system-reminder>`);
+    ).toContain(`## 背景信息`);
 
     const datasetOnly = buildAgentUserReminderInput({
       query: 'hello',
       selectedDataset
     });
-    expect(datasetOnly).toContain('# Input datasets');
-    expect(datasetOnly).not.toContain('# Input Files');
-    expect(datasetOnly).not.toContain('# Current time');
+    expect(datasetOnly).toContain('## 知识库');
+    expect(datasetOnly).not.toContain('## 文件');
+    expect(datasetOnly).not.toContain('当前时间');
   });
 
   it('returns original query when there is no context', () => {
@@ -269,42 +266,37 @@ describe('buildAgentUserReminderInput', () => {
       query: '执行这个技能',
       skillInfos: [
         {
+          id: 'skill_report',
           name: 'Report',
           description: 'Write reports',
+          directory: '/workspace/Report',
           skillMdPath: '/workspace/Report/SKILL.md'
         }
       ]
     });
 
-    expect(result).toBe(`<system-reminder>
-依据以下内容完成任务
-
-<agent_skills>
-The following skills are available in the sandbox. When a task matches a skill description, read the SKILL.md path first and execute it with the generic sandbox tools.
-
-<available_skills>
-  <skill>
-    <name>Report</name>
-    <description>Write reports</description>
-    <path>/workspace/Report/SKILL.md</path>
-  </skill>
-</available_skills>
-</agent_skills>
-</system-reminder>
-执行这个技能`);
+    expect(result).toContain('## 技能');
+    expect(result).toContain('<name>Report</name>');
+    expect(result).toContain('<description>Write reports</description>');
+    expect(result).toContain('<directory>/workspace/Report</directory>');
+    expect(result).toContain('<path>/workspace/Report/SKILL.md</path>');
+    expect(result).toContain('执行这个技能');
   });
 
   it('escapes XML fields in skill metadata', () => {
     const result = buildAgentSkillsPrompt([
       {
+        id: 'skill_report',
         name: 'Report <R&D>',
         description: 'Write & review',
+        directory: '/workspace/Report & Review',
         skillMdPath: '/workspace/Report & Review/SKILL.md'
       }
     ]);
 
     expect(result).toContain('<name>Report &lt;R&amp;D&gt;</name>');
     expect(result).toContain('<description>Write &amp; review</description>');
+    expect(result).toContain('<directory>/workspace/Report &amp; Review</directory>');
     expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
   });
 });
@@ -369,14 +361,14 @@ describe('useUserContext', () => {
         );
 
         expect(historyText).toContain('<id>history_1-0</id>');
-        expect(historyText).not.toContain('# Sandbox');
-        expect(historyText).not.toContain('# Current time');
+        expect(historyText).not.toContain('当前 sandbox 工作目录');
+        expect(historyText).not.toContain('当前时间');
         expect(currentFiles).toEqual([]);
-        expect(currentText).toContain('# Sandbox');
-        expect(currentText).toContain('<pwd>/workspace</pwd>');
+        expect(currentText).toContain('## 背景信息');
+        expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
         expect(currentText).toContain('<id>current_chat_item-1</id>');
-        expect(currentText).toContain('# Input datasets');
+        expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
         expect(currentText).toContain('当前问题');
@@ -407,8 +399,10 @@ describe('useUserContext', () => {
           currentDataId: 'current_chat_item',
           skillInfos: [
             {
+              id: 'skill_report',
               name: 'Report',
               description: 'Write reports',
+              directory: '/workspace/Report',
               skillMdPath: '/workspace/Report/SKILL.md'
             }
           ],
@@ -420,9 +414,9 @@ describe('useUserContext', () => {
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
 
-        expect(historyText).toContain('# Input Files');
-        expect(historyText).not.toContain('<agent_skills>');
-        expect(currentText).toContain('<agent_skills>');
+        expect(historyText).toContain('## 文件');
+        expect(historyText).not.toContain('## 技能');
+        expect(currentText).toContain('## 技能');
         expect(currentText).toContain('<path>/workspace/Report/SKILL.md</path>');
         expect(currentText).toContain('当前问题');
       }
@@ -749,7 +743,7 @@ describe('useUserContext', () => {
         expect(result.filesMap).toEqual({});
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('# Input Files');
+        expect(text).not.toContain('## 文件');
         expect(text).toContain('分析文件');
       }
     );
@@ -900,7 +894,7 @@ describe('useUserContext', () => {
         expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('# Input Files');
+        expect(text).not.toContain('## 文件');
         expect(text).toContain('当前问题');
       }
     );
@@ -935,9 +929,9 @@ describe('useUserContext', () => {
 
         const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(files).toEqual([]);
-        expect(text).toContain('# Current time');
+        expect(text).toContain('当前时间');
         expect(text).toContain('只问一个问题');
-        expect(text).not.toContain('# Input Files');
+        expect(text).not.toContain('## 文件');
       }
     );
   });

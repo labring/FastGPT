@@ -3,6 +3,7 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxProtocolEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { serviceEnv } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -339,43 +340,39 @@ export async function disconnectSandbox(sandbox: ISandbox): Promise<void> {
 }
 
 export async function getSandboxEndpoint(sandbox: ISandbox): Promise<SkillSandboxEndpointType> {
-  const endpointResolver = sandbox as unknown as {
-    getEndpoint?: (selector: 'code-server') => Promise<SkillSandboxEndpointType>;
-  };
-
-  if (!endpointResolver.getEndpoint) {
+  if (typeof sandbox.getEndpoint !== 'function') {
     throw new Error(
       `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
     );
   }
 
   const endpoint = await retrySandboxProviderProbe('get code-server endpoint', () =>
-    endpointResolver.getEndpoint('code-server')
+    sandbox.getEndpoint('code-server')
   );
-  return {
+  const skillEndpoint: SkillSandboxEndpointType = {
     host: endpoint.host,
     port: endpoint.port,
-    protocol: endpoint.protocol,
-    url: endpoint.url,
-    proxyRevision: buildSandboxProxyRevision(endpoint)
+    protocol: endpoint.protocol === 'https' ? SandboxProtocolEnum.https : SandboxProtocolEnum.http,
+    url: endpoint.url
+  };
+
+  return {
+    ...skillEndpoint,
+    proxyRevision: buildSandboxProxyRevision(skillEndpoint)
   };
 }
 
 export async function getSandboxCodeServerProxyTarget(
   sandbox: ISandbox
 ): Promise<CodeServerProxyTarget> {
-  const proxyResolver = sandbox as unknown as {
-    getProxyTarget?: (service: 'code-server') => Promise<CodeServerProxyTarget>;
-  };
-
-  if (!proxyResolver.getProxyTarget) {
+  if (typeof sandbox.getProxyTarget !== 'function') {
     throw new Error(
       `Sandbox provider "${sandbox.provider}" does not expose proxy target capability through @fastgpt/sandbox.`
     );
   }
 
   return retrySandboxProviderProbe('get code-server proxy target', () =>
-    proxyResolver.getProxyTarget('code-server')
+    sandbox.getProxyTarget('code-server')
   );
 }
 

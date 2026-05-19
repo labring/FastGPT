@@ -126,7 +126,8 @@ const EditForm = ({
     onRemoveAgentSkill,
     onChangeAgentSandbox,
     sandboxPlanWarning,
-    closeSandboxPlanWarning
+    closeSandboxPlanWarning,
+    selectedAgentSkillStatus
   } = useAgentSkillSelect({
     appForm,
     showSandbox,
@@ -291,55 +292,76 @@ const EditForm = ({
               gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
               gridGap={[2, 4]}
             >
-              {selectedAgentSkills.map((item) => (
-                <MyTooltip key={item.skillId} label={item.description}>
-                  <Flex
-                    overflow={'hidden'}
-                    alignItems={'center'}
-                    p={2.5}
-                    bg={'white'}
-                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                    borderRadius={'md'}
-                    border={'base'}
-                    userSelect={'none'}
-                    _hover={{
-                      borderColor: 'primary.300',
-                      '.delete': {
-                        display: 'flex'
-                      },
-                      '.hoverStyle': {
-                        display: 'flex'
-                      }
-                    }}
+              {selectedAgentSkills.map((item) => {
+                const isDeleted = selectedAgentSkillStatus[item.skillId];
+
+                return (
+                  <MyTooltip
+                    key={item.skillId}
+                    label={isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description}
                   >
-                    {item.avatar ? (
-                      <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-                    ) : (
-                      <MyIcon name={'core/skill/default'} w={'1.5rem'} h={'1.5rem'} />
-                    )}
-                    <Box
-                      flex={'1 0 0'}
-                      ml={2}
-                      className={'textEllipsis'}
-                      fontSize={'sm'}
-                      color={'myGray.900'}
+                    <Flex
+                      overflow={'hidden'}
+                      alignItems={'center'}
+                      p={2.5}
+                      bg={'white'}
+                      boxShadow={
+                        '0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'
+                      }
+                      borderRadius={'md'}
+                      border={'base'}
+                      borderColor={isDeleted ? 'red.600' : undefined}
+                      userSelect={'none'}
+                      _hover={{
+                        borderColor: isDeleted ? 'red.600' : 'primary.300',
+                        '.delete': {
+                          display: 'flex'
+                        },
+                        '.hoverStyle': {
+                          display: 'flex'
+                        },
+                        '.unHoverStyle': {
+                          display: 'none'
+                        }
+                      }}
                     >
-                      {item.name}
-                    </Box>
-                    <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
-                      <MyIconButton
-                        icon="delete"
-                        hoverBg="red.50"
-                        hoverColor="red.600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveAgentSkill(item.skillId);
-                        }}
-                      />
-                    </Box>
-                  </Flex>
-                </MyTooltip>
-              ))}
+                      {item.avatar ? (
+                        <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
+                      ) : (
+                        <MyIcon name={'core/skill/default'} w={'1.5rem'} h={'1.5rem'} />
+                      )}
+                      <Box
+                        flex={'1 0 0'}
+                        ml={2}
+                        className={'textEllipsis'}
+                        fontSize={'sm'}
+                        color={'myGray.900'}
+                      >
+                        {item.name}
+                      </Box>
+                      {isDeleted && (
+                        <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                          <MyIcon name={'common/error'} w={'14px'} mr={1} />
+                          <Box color={'red.600'} maxW={'120px'} className="textEllipsis">
+                            {t('skill:skill_deleted')}
+                          </Box>
+                        </MyTag>
+                      )}
+                      <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
+                        <MyIconButton
+                          icon="delete"
+                          hoverBg="red.50"
+                          hoverColor="red.600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveAgentSkill(item.skillId);
+                          }}
+                        />
+                      </Box>
+                    </Flex>
+                  </MyTooltip>
+                );
+              })}
             </Grid>
 
             {isOpenSkillSelect && (

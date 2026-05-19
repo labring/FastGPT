@@ -54,6 +54,8 @@
   "exit_tips": "Your changes have not been saved. \"Exit directly\" will not save your edits.",
   "select_skill": "Select Skill",
   "associated_skills": "Skills",
+  "skill_deleted": "Skill deleted",
+  "skill_deleted_click_remove_tip": "Skill deleted, click to remove",
   "skill_select_limit_tip": "Reached the limit of 100 associated Skills per app",
   "sandbox_auto_enabled_for_skill": "Skills depend on the virtual machine runtime. Virtual machine has been enabled for you.",
   "sandbox_disable_blocked_toast": "Skills depend on the virtual machine runtime. This Agent has Skills configured. Remove all Skills before turning off the virtual machine.",

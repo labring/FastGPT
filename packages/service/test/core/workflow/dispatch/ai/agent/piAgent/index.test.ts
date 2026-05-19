@@ -325,9 +325,9 @@ describe('dispatchPiAgent user context', () => {
     const prompt = agentPromptMock.mock.calls[0][0];
     expect(prompt).toContain('<system-reminder>');
     expect(prompt).toContain('<id>current_ai_1-0</id>');
-    expect(prompt).toContain('# Input datasets');
+    expect(prompt).toContain('## 知识库');
     expect(prompt).toContain('<id>dataset_1</id>');
-    expect(prompt).toContain('# Current time');
+    expect(prompt).toContain('当前时间');
     expect(prompt).toContain('当前问题');
     expect(prompt).not.toContain('history_ai_1-0');
 
@@ -427,7 +427,7 @@ describe('dispatchPiAgent user context', () => {
       'user_files/current.pdf'
     ]);
     expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('pwd: /workspace');
-    expect(agentPromptMock.mock.calls[0][0]).toContain('<pwd>/workspace</pwd>');
+    expect(agentPromptMock.mock.calls[0][0]).toContain('当前 sandbox 工作目录: /workspace');
     expect(buildAgentToolsMock.mock.calls[0][0].ctx.sandboxClient).toBeDefined();
     expect('sandboxId' in buildAgentToolsMock.mock.calls[0][0].ctx).toBe(false);
   });
@@ -475,10 +475,10 @@ describe('dispatchPiAgent user context', () => {
     expect(buildAgentToolsMock.mock.calls[0][0].ctx.sandboxClient).toBeDefined();
 
     const prompt = agentPromptMock.mock.calls[0][0];
-    expect(prompt).toContain('<agent_skills>');
+    expect(prompt).toContain('## 技能');
     expect(prompt).toContain('<name>Report</name>');
     expect(prompt).toContain('<path>./skills/Report-skill_1/SKILL.md</path>');
-    expect(prompt).toContain('<pwd>/workspace</pwd>');
+    expect(prompt).toContain('当前 sandbox 工作目录: /workspace');
     expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('## 沙盒能力');
     expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('sandbox_shell');
   });
@@ -517,7 +517,7 @@ describe('dispatchPiAgent user context', () => {
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
 
     const prompt = agentPromptMock.mock.calls[0][0];
-    expect(prompt).toContain('<agent_skills>');
+    expect(prompt).toContain('## 技能');
     expect(prompt).toContain('<name>Edit Skill</name>');
     expect(prompt).toContain('<path>./skills/EditSkill/SKILL.md</path>');
   });

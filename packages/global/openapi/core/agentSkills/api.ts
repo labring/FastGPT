@@ -28,9 +28,11 @@ export const ListSkillsQuerySchema = z.object({
   searchKey: z.string().optional().describe('搜索关键词'),
   category: AgentSkillCategorySchema.optional().describe('技能分类'),
   type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
+  skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
   parentId: NullableParentIdSchema,
   page: z.coerce.number().int().positive().optional().describe('页码'),
-  pageSize: z.coerce.number().int().positive().optional().describe('每页数量')
+  pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
+  withAppCount: z.boolean().optional().describe('是否返回引用应用数量')
 });
 export type ListSkillsQuery = z.infer<typeof ListSkillsQuerySchema>;
 

@@ -45,6 +45,8 @@ import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSelectedAgentSkillStatus } from '@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSelectedAgentSkillStatus';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -377,6 +379,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
     [skillsInput]
   );
+  const selectedAgentSkillStatus = useSelectedAgentSkillStatus(selectedAgentSkills);
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
@@ -563,61 +566,80 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     >
                       {t('common:Choose')}
                     </Button>
-                    {selectedAgentSkills.map((item) => (
-                      <MyTooltip key={item.skillId} label={item.description}>
-                        <Flex
-                          alignItems={'center'}
-                          h={10}
-                          boxShadow={'sm'}
-                          bg={'white'}
-                          border={'base'}
-                          px={2}
-                          borderRadius={'md'}
-                          _hover={{
-                            borderColor: 'primary.300',
-                            '& .delete-btn': { display: 'flex' }
-                          }}
+                    {selectedAgentSkills.map((item) => {
+                      const isDeleted = selectedAgentSkillStatus[item.skillId];
+
+                      return (
+                        <MyTooltip
+                          key={item.skillId}
+                          label={
+                            isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description
+                          }
                         >
-                          {item.avatar ? (
-                            <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                          ) : (
-                            <MyIcon name={'core/skill/default'} w={'18px'} />
-                          )}
-                          <Box
-                            ml={1.5}
-                            flex={'1 0 0'}
-                            w={0}
-                            className="textEllipsis"
-                            fontWeight={'bold'}
-                            fontSize={['sm', 'sm']}
+                          <Flex
+                            alignItems={'center'}
+                            h={10}
+                            boxShadow={'sm'}
+                            bg={'white'}
+                            border={'base'}
+                            borderColor={isDeleted ? 'red.600' : undefined}
+                            px={2}
+                            borderRadius={'md'}
+                            _hover={{
+                              borderColor: isDeleted ? 'red.600' : 'primary.300',
+                              '& .delete-btn': { display: 'flex' },
+                              '& .unHoverStyle': { display: 'none' }
+                            }}
                           >
-                            {item.name}
-                          </Box>
-                          <Box className="delete-btn" display={'none'}>
-                            <MyIconButton
-                              icon="delete"
-                              hoverBg="red.50"
-                              hoverColor="red.600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!skillsInput) return;
-                                onChangeNode({
-                                  nodeId,
-                                  key: NodeInputKeyEnum.skills,
-                                  type: 'updateInput',
-                                  value: {
-                                    ...skillsInput,
-                                    value: selectedAgentSkills.filter(
-                                      (s) => s.skillId !== item.skillId
-                                    )
-                                  }
-                                });
-                              }}
-                            />
-                          </Box>
-                        </Flex>
-                      </MyTooltip>
-                    ))}
+                            {item.avatar ? (
+                              <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
+                            ) : (
+                              <MyIcon name={'core/skill/default'} w={'18px'} />
+                            )}
+                            <Box
+                              ml={1.5}
+                              flex={'1 0 0'}
+                              w={0}
+                              className="textEllipsis"
+                              fontWeight={'bold'}
+                              fontSize={['sm', 'sm']}
+                            >
+                              {item.name}
+                            </Box>
+                            {isDeleted && (
+                              <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                                <MyIcon name={'common/error'} w={'14px'} mr={1} />
+                                <Box color={'red.600'} maxW={'100px'} className="textEllipsis">
+                                  {t('skill:skill_deleted')}
+                                </Box>
+                              </MyTag>
+                            )}
+                            <Box className="delete-btn" display={'none'}>
+                              <MyIconButton
+                                icon="delete"
+                                hoverBg="red.50"
+                                hoverColor="red.600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!skillsInput) return;
+                                  onChangeNode({
+                                    nodeId,
+                                    key: NodeInputKeyEnum.skills,
+                                    type: 'updateInput',
+                                    value: {
+                                      ...skillsInput,
+                                      value: selectedAgentSkills.filter(
+                                        (s) => s.skillId !== item.skillId
+                                      )
+                                    }
+                                  });
+                                }}
+                              />
+                            </Box>
+                          </Flex>
+                        </MyTooltip>
+                      );
+                    })}
                   </Grid>
                   {isOpenSkillSelect && (
                     <SkillSelectModal

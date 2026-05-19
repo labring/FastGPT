@@ -15,6 +15,7 @@ import type {
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkAgentSkillSandboxUnavailable } from '../utils';
 import type { SkillSandboxPlanWarningType } from '@/components/core/skill/useSkillSandboxOperationGuard';
+import { useSelectedAgentSkillStatus } from '../../FormComponent/ToolSelector/hooks/useSelectedAgentSkillStatus';
 
 /**
  * 管理 ChatAgent 表单中的 Skill 选择与 sandbox 开关联动。
@@ -47,6 +48,7 @@ export const useAgentSkillSelect = ({
   } = useDisclosure();
 
   const selectedAgentSkills = appForm.selectedAgentSkills || [];
+  const selectedAgentSkillStatus = useSelectedAgentSkillStatus(selectedAgentSkills);
   const hasSelectedAgentSkills = selectedAgentSkills.length > 0;
   const isAgentSkillSandboxUnavailable = checkAgentSkillSandboxUnavailable({
     appForm,
@@ -171,6 +173,7 @@ export const useAgentSkillSelect = ({
 
   return {
     selectedAgentSkills,
+    selectedAgentSkillStatus,
     isAgentSkillSandboxUnavailable,
     isOpenSkillSelect,
     onCloseSkillSelect,

@@ -29,12 +29,29 @@ export type GetSkillListBody = {
   searchKey?: string;
   category?: string;
   type?: string;
+  skillIds?: string[];
   page?: number;
   pageSize?: number;
+  withAppCount?: boolean;
+};
+
+const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
+  const validQueries = queries.filter((query) => Object.keys(query).length > 0);
+
+  if (validQueries.length === 0) return {};
+  if (validQueries.length === 1) return validQueries[0];
+
+  // 多个过滤条件都可能包含 $or，用 $and 合并避免对象展开时覆盖同名键。
+  return {
+    $and: validQueries
+  };
 };
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
-  const { parentId, source, searchKey, category, type, page, pageSize } = req.body;
+  const { parentId, source, searchKey, category, type, skillIds, page, pageSize, withAppCount } =
+    req.body;
+  const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
+  const isSkillIdsQuery = selectedSkillIds.length > 0;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -44,7 +61,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       authApiKey: true,
       per: ReadPermissionVal
     }),
-    ...(parentId
+    ...(parentId && !isSkillIdsQuery
       ? [
           authSkill({
             req,
@@ -90,26 +107,20 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
   );
 
   const findSkillQuery = (() => {
-    // Filter skills by permission, if not owner, only get skills that I have permission to access
-    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
-    const skillPerQuery = teamPer.isOwner
-      ? {}
-      : parentId
-        ? {
-            $or: [idList, parseParentIdInMongo(parentId)]
-          }
-        : { $or: [idList, { parentId: null }] };
-
-    // Map API source ('store'|'mine') to DB source enum
     const sourceQuery = (() => {
       if (source === 'store') return { source: AgentSkillSourceEnum.system };
       if (source === 'mine') return { source: AgentSkillSourceEnum.personal };
       return {};
     })();
-
-    // Only restrict by teamId for personal (mine) skills; store (system) skills are global
-    const teamIdQuery = source === 'store' ? {} : { teamId };
-
+    const typeQuery = {
+      ...(category ? { category: { $in: [category] } } : {}),
+      ...(type ? { type } : {})
+    };
+    const baseQuery = {
+      deleteTime: null,
+      ...sourceQuery,
+      ...typeQuery
+    };
     const searchMatch = searchKey
       ? {
           $or: [
@@ -119,30 +130,43 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
         }
       : {};
 
-    if (searchKey) {
-      const data = {
-        ...skillPerQuery,
-        ...teamIdQuery,
-        deleteTime: null,
-        ...searchMatch,
-        ...sourceQuery,
-        ...(category ? { category: { $in: [category] } } : {}),
-        ...(type ? { type } : {})
-      };
-      // @ts-ignore
-      delete data.parentId;
-      return data;
+    if (isSkillIdsQuery) {
+      const scopeQuery = source
+        ? source === 'store'
+          ? {}
+          : { teamId }
+        : {
+            $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
+          };
+
+      return mergeMongoAndQuery(baseQuery, scopeQuery, {
+        _id: { $in: selectedSkillIds },
+        ...searchMatch
+      });
     }
 
-    return {
-      ...skillPerQuery,
-      ...teamIdQuery,
-      deleteTime: null,
-      ...sourceQuery,
-      ...(category ? { category: { $in: [category] } } : {}),
-      ...(type ? { type } : {}),
-      ...parseParentIdInMongo(parentId)
-    };
+    // Filter skills by permission, if not owner, only get skills that I have permission to access
+    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
+    const skillPerQuery = teamPer.isOwner
+      ? {}
+      : parentId
+        ? {
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
+        : { $or: [idList, { parentId: null }] };
+    // Only restrict by teamId for personal (mine) skills; store (system) skills are global
+    const teamIdQuery = source === 'store' ? {} : { teamId };
+
+    if (searchKey) {
+      return mergeMongoAndQuery(skillPerQuery, teamIdQuery, baseQuery, searchMatch);
+    }
+
+    return mergeMongoAndQuery(
+      skillPerQuery,
+      teamIdQuery,
+      baseQuery,
+      parseParentIdInMongo(parentId)
+    );
   })();
 
   const mySkills = await MongoAgentSkills.find(findSkillQuery)
@@ -209,8 +233,9 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     })
     .filter((skill) => skill.permission.hasReadPer);
 
-  // Compute appCount for non-folder skills
-  const nonFolderSkills = formatSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder);
+  // 默认保持历史行为返回 appCount；编辑页状态校验可显式关闭，避免批量校验时产生额外 count 查询。
+  const nonFolderSkills =
+    withAppCount !== false ? formatSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
   const appCountMap = new Map<string, number>();
   if (nonFolderSkills.length > 0) {
     const counts = await Promise.all(
