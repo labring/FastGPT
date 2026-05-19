@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/service/core/agentSkills/packageEditor';
 
 // sandboxSync shares withSkillEditLock with packageEditor — verify lock behavior.
-// Full syncEditDebugSandbox tests require MongoDB and sandbox infrastructure;
+// Full syncSkillSandbox tests require MongoDB and sandbox infrastructure;
 // these are covered by integration tests.
 
 describe('sandboxSync lock integration', () => {

@@ -117,12 +117,7 @@ export const dispatchSandboxGetFileUrl = async ({
 
 // Agent Skills re-exports
 export type { AgentSandboxContext } from './types';
-export {
-  createAgentSandbox,
-  releaseAgentSandbox,
-  connectEditDebugSandbox,
-  disconnectEditDebugSandbox
-} from './lifecycle';
+export { createAgentSandbox, releaseAgentSandbox } from './lifecycle';
 export {
   dispatchSandboxReadFile,
   dispatchSandboxWriteFile,

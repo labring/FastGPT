@@ -1,4 +1,4 @@
-import React, { type ReactNode, useMemo, useState } from 'react';
+import React, { type ReactNode, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import type { AgentSkillDetailType } from '@fastgpt/global/core/agentSkills/type';
@@ -19,6 +19,7 @@ type SkillDetailContextType = {
   refreshSkillDetail: () => void;
   currentTab: TabEnum;
   setCurrentTab: (tab: TabEnum) => void;
+  flushAllPendingRef: React.MutableRefObject<(() => Promise<void>) | undefined>;
 };
 
 export const SkillDetailContext = createContext<SkillDetailContextType>({
@@ -27,7 +28,8 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   isFetchingSkillDetail: false,
   refreshSkillDetail: () => {},
   currentTab: TabEnum.config,
-  setCurrentTab: () => {}
+  setCurrentTab: () => {},
+  flushAllPendingRef: { current: undefined }
 });
 
 const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
@@ -35,6 +37,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const { skillId = '' } = router.query as { skillId: string };
 
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.config);
+  const flushAllPendingRef = useRef<() => Promise<void>>();
 
   // Skill detail fetch
   const {
@@ -76,7 +79,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       isFetchingSkillDetail,
       refreshSkillDetail,
       currentTab,
-      setCurrentTab
+      setCurrentTab,
+      flushAllPendingRef
     }),
     [skillId, skillDetail, isFetchingSkillDetail, refreshSkillDetail, currentTab]
   );

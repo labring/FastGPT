@@ -144,9 +144,9 @@ export const AgentSkillsPackagePath: OpenAPIPath = {
   },
   '/core/agentSkills/package/sandbox/sync': {
     post: {
-      summary: 'Sync skill package to the editDebug sandbox',
+      summary: 'Sync skill package to the sandbox',
       description:
-        'Push the current version package.zip to the running editDebug sandbox and unzip in-place. Called before Run Preview so recent editor changes take effect.',
+        'Push the current version package.zip to the running sandbox and unzip in-place. Called before Run Preview so recent editor changes take effect.',
       tags: [TagsMap.aiSkill],
       requestBody: {
         content: { 'application/json': { schema: SyncSkillSandboxBodySchema } }

@@ -7,6 +7,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { streamFetch } from '@/web/common/api/fetch';
 import { SKILL_DEBUG_CHAT_URL, delSkillDebugChatItem } from '@/web/core/skill/api';
 import { syncSkillSandbox } from '@/pageComponents/dashboard/skill/detail/config/AgentSkillEditor/api';
+import { SkillDetailContext } from '../context';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -30,6 +31,7 @@ export const useSkillChatTest = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const flushAllPendingRef = useContextSelector(SkillDetailContext, (v) => v.flushAllPendingRef);
 
   // TODO: 暂时隐藏文件上传按钮，后续需要放开 canSelectFile 和 canSelectImg
   const fileSelectConfig: AppFileSelectConfigType = {
@@ -60,8 +62,9 @@ export const useSkillChatTest = ({
 
   const startChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
-      // 发消息前先把编辑器最近改动同步到 editDebug 沙箱；首次预览（无沙箱实例）会返回
-      // noSandbox 由 createEditDebugSandbox 用最新 zip 全新创建，本就同步。同步失败 fail-open。
+      // Flush pending editor auto-saves so the sandbox sync picks up the latest content.
+      await flushAllPendingRef.current?.();
+
       try {
         await syncSkillSandbox({ skillId });
       } catch (err) {

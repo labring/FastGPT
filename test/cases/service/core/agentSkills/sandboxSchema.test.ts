@@ -13,10 +13,10 @@ describe('SandboxInstance Schema', () => {
       sandboxId: 'provider-sandbox-abc123',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'edit-debug',
+      chatId: 'session-runtime',
       status: 'running',
       metadata: {
-        sandboxType: 'edit-debug',
+        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -31,9 +31,9 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance(mockInstance);
     expect(doc.sandboxId).toBe(mockInstance.sandboxId);
     expect(doc.appId).toBe(mockInstance.appId);
-    expect(doc.chatId).toBe('edit-debug');
+    expect(doc.chatId).toBe('session-runtime');
     expect(doc.status).toBe('running');
-    expect(doc.metadata?.sandboxType).toBe('edit-debug');
+    expect(doc.metadata?.sandboxType).toBe('session-runtime');
     expect(doc?.provider).toBe('opensandbox');
   });
 
@@ -67,10 +67,10 @@ describe('SandboxInstance Schema', () => {
       sandboxId: 'provider-sandbox-ghi789',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'edit-debug',
+      chatId: 'session-runtime',
       status: 'invalid-status' as any,
       metadata: {
-        sandboxType: 'edit-debug',
+        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -109,10 +109,10 @@ describe('SandboxInstance Schema', () => {
       sandboxId: 'provider-sandbox-mno345',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'edit-debug',
+      chatId: 'session-runtime',
       status: 'running',
       metadata: {
-        sandboxType: 'edit-debug',
+        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',

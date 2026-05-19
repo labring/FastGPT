@@ -65,7 +65,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
 
 /**
  * Build a minimal two-node runtime workflow for skill debug:
- * workflowStart -> agent (with useEditDebugSandbox=true + skillId)
+ * workflowStart -> agent (with skillId, sessionRuntime sandbox)
  */
 export function buildDebugRuntimeNodes(
   skillId: string,
@@ -154,13 +154,6 @@ export function buildDebugRuntimeNodes(
           valueType: WorkflowIOValueTypeEnum.arrayString,
           label: 'Skills',
           value: [skillId]
-        },
-        {
-          key: NodeInputKeyEnum.useEditDebugSandbox,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.boolean,
-          label: 'Use Edit Debug Sandbox',
-          value: false
         }
       ],
       outputs: [

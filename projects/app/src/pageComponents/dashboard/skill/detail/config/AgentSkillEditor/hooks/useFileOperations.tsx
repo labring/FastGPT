@@ -1,14 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
+import type React from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
-import {
-  useDisclosure,
-  Button,
-  ModalBody,
-  ModalFooter,
-  Input,
-  FormControl
-} from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useDisclosure } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLatest } from 'ahooks';
@@ -54,7 +47,7 @@ export const useFileOperations = ({
 
   const openedFilesRef = useLatest(openedFiles);
 
-  // Name-input modal
+  // Name-input modal state exposed for inline rendering
   const nameModalState = useRef<{ title: string; defaultValue?: string }>({ title: '' });
   const nameResolveRef = useRef<((value: string | null) => void) | null>(null);
   const [nameInputValue, setNameInputValue] = useState('');
@@ -87,40 +80,6 @@ export const useFileOperations = ({
     nameResolveRef.current = null;
     onNameModalClose();
   }, [onNameModalClose]);
-
-  const NameInputModal = useCallback(
-    () => (
-      <MyModal
-        isOpen={isNameModalOpen}
-        onClose={handleNameCancel}
-        title={nameModalState.current.title}
-        maxW={['90vw', '400px']}
-      >
-        <ModalBody pt={5}>
-          <FormControl>
-            <Input
-              value={nameInputValue}
-              autoFocus
-              onChange={(e) => setNameInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNameConfirm();
-              }}
-              placeholder={nameModalState.current.defaultValue || ''}
-            />
-          </FormControl>
-        </ModalBody>
-        <ModalFooter>
-          <Button size={'sm'} variant={'whiteBase'} onClick={handleNameCancel} px={5}>
-            {t('common:Cancel')}
-          </Button>
-          <Button size={'sm'} variant={'primary'} ml={3} onClick={handleNameConfirm} px={5}>
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
-      </MyModal>
-    ),
-    [isNameModalOpen, nameInputValue, handleNameConfirm, handleNameCancel, t]
-  );
 
   const { runAsync: loadFile, loading: loadingFile } = useRequest(
     async (
@@ -342,6 +301,11 @@ export const useFileOperations = ({
     handleRename,
     handleDelete,
     DeleteConfirmModal,
-    NameInputModal
+    nameModalState,
+    nameInputValue,
+    setNameInputValue,
+    isNameModalOpen,
+    handleNameConfirm,
+    handleNameCancel
   };
 };

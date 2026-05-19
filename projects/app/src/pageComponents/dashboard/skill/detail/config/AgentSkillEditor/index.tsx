@@ -1,9 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { Flex, Center, VStack } from '@chakra-ui/react';
+import {
+  Flex,
+  Center,
+  VStack,
+  ModalBody,
+  ModalFooter,
+  Input,
+  FormControl,
+  Button
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { EditorInstance } from './types';
+import { useContextSelector } from 'use-context-selector';
+import { SkillDetailContext } from '../../context';
 
 import FileTree from './components/FileTree';
 import FileTabs from './components/FileTabs';
@@ -21,15 +33,20 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
   const { t } = useTranslation();
   const editorRef = useRef<EditorInstance>();
   const isUpdatingRef = useRef(false);
+  const flushAllPendingRef = useContextSelector(SkillDetailContext, (v) => v.flushAllPendingRef);
 
   const tree = useFileTree({ skillId });
   const {
     scheduleAutoSave,
     flushPendingForPath,
+    flushAllPending,
     cancelPendingForPath,
     closeFile: closeFileFlush,
     setOpenedFilesRef
   } = useAutoSave({ skillId });
+
+  // Expose flushAllPending so the preview tab can flush pending saves before sandbox sync
+  flushAllPendingRef.current = flushAllPending;
   const ops = useFileOperations({
     skillId,
     closeFileFlush,
@@ -133,7 +150,34 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
         )}
       </MyBox>
       <ops.DeleteConfirmModal />
-      <ops.NameInputModal />
+      <MyModal
+        isOpen={ops.isNameModalOpen}
+        onClose={ops.handleNameCancel}
+        title={ops.nameModalState.current.title}
+        maxW={['90vw', '400px']}
+      >
+        <ModalBody pt={5}>
+          <FormControl>
+            <Input
+              value={ops.nameInputValue}
+              autoFocus
+              onChange={(e) => ops.setNameInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') ops.handleNameConfirm();
+              }}
+              placeholder={ops.nameModalState.current.defaultValue || ''}
+            />
+          </FormControl>
+        </ModalBody>
+        <ModalFooter>
+          <Button size={'sm'} variant={'whiteBase'} onClick={ops.handleNameCancel} px={5}>
+            {t('common:Cancel')}
+          </Button>
+          <Button size={'sm'} variant={'primary'} ml={3} onClick={ops.handleNameConfirm} px={5}>
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
     </Flex>
   );
 };

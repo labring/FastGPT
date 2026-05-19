@@ -1,9 +1,5 @@
 import { GET, DELETE, POST } from '@/web/common/api/request';
 import { downloadFetch } from '@/web/common/system/utils';
-import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type {
   ListSkillsQuery,
   ListSkillsResponse,
@@ -15,8 +11,6 @@ import type {
   CopySkillResponse,
   GetSkillFolderPathQuery,
   GetSkillFolderPathResponse,
-  CreateEditDebugSandboxBody,
-  CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
   ListAppsBySkillIdResponse
@@ -60,71 +54,7 @@ export const deleteSkill = (skillId: string) => DELETE('/core/agentSkills/delete
 export const importSkill = (formData: FormData) =>
   POST<string>('/core/agentSkills/import', formData);
 
-/** 创建编辑调试沙箱（SSE 流式返回状态，最终推送 endpoint 信息） */
-export const postCreateEditDebugSandbox = (data: CreateEditDebugSandboxBody) =>
-  POST<CreateEditDebugSandboxResponse>('/core/agentSkills/edit', data);
-
-/** 创建编辑调试沙箱 — SSE 流式版本，逐阶段回调 */
-export const streamCreateEditDebugSandbox = ({
-  data,
-  onStatus,
-  onError,
-  abortCtrl
-}: {
-  data: CreateEditDebugSandboxBody;
-  onStatus: (status: SandboxStatusItemType) => void;
-  onError: (err: string) => void;
-  abortCtrl: AbortController;
-}): Promise<void> =>
-  new Promise<void>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      abortCtrl.abort('Timeout');
-    }, 60000);
-
-    fetchEventSource(getWebReqUrl('/api/core/agentSkills/edit'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-      signal: abortCtrl.signal,
-      async onopen(res) {
-        clearTimeout(timeoutId);
-        if (!res.ok || !res.headers.get('content-type')?.startsWith(EventStreamContentType)) {
-          try {
-            const errData = await res.clone().json();
-            reject(errData?.message || 'SSE open failed');
-          } catch {
-            reject('SSE open failed');
-          }
-        }
-      },
-      onmessage({ event, data: rawData }) {
-        if (event === SseResponseEventEnum.sandboxStatus) {
-          try {
-            const status: SandboxStatusItemType = JSON.parse(rawData);
-            onStatus(status);
-          } catch {}
-        } else if (event === SseResponseEventEnum.error) {
-          try {
-            const err = JSON.parse(rawData);
-            onError(err?.message || 'Unknown error');
-          } catch {
-            onError(rawData || 'Unknown error');
-          }
-        }
-      },
-      onclose() {
-        resolve();
-      },
-      onerror(err) {
-        clearTimeout(timeoutId);
-        reject(err?.message || String(err) || 'SSE connection error');
-        throw err; // stop retrying
-      },
-      openWhenHidden: true
-    });
-  });
-
-/** Skill 调试对话 SSE 接口 URL */
+/** 创建 Skill 副本 */
 export const SKILL_DEBUG_CHAT_URL = '/api/core/agentSkills/debugChat';
 
 /** 创建 Skill 文件夹 */

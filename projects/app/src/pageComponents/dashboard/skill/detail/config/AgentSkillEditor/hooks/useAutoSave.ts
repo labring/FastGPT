@@ -83,6 +83,24 @@ export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
     [writeFile]
   );
 
+  // Flush all pending auto-saves unconditionally. Called before sandbox sync to
+  // ensure the latest editor content reaches MinIO before the zip is pushed.
+  const flushAllPending = useCallback(async () => {
+    const paths: string[] = [];
+    pendingTimersRef.current.forEach((timer, p) => {
+      clearTimeout(timer);
+      paths.push(p);
+    });
+    paths.forEach((p) => pendingTimersRef.current.delete(p));
+    await Promise.all(
+      paths.map((p) => {
+        const file = openedFilesRef.current?.find((f) => f.path === p);
+        if (!file || file.isBinary || file.isUnknown) return Promise.resolve();
+        return writeFile(p, file.content);
+      })
+    );
+  }, [writeFile]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -106,6 +124,7 @@ export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
   return {
     scheduleAutoSave,
     flushPendingForPath,
+    flushAllPending,
     cancelPendingForPath,
     closeFile,
     setOpenedFilesRef

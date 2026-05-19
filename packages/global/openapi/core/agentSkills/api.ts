@@ -7,7 +7,6 @@ import {
   AgentSkillTypeSchema,
   AgentSkillConfigSchema,
   ExtractedSkillPackageSchema,
-  SandboxImageConfigSchema,
   SandboxProviderStatusSchema,
   SkillPackageSchema,
   SkillSandboxEndpointSchema,
@@ -142,23 +141,6 @@ export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 
 export const ImportSkillResponseSchema = IdSchema;
 export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
-
-export const CreateEditDebugSandboxBodySchema = z.object({
-  skillId: IdSchema,
-  image: SandboxImageConfigSchema.optional()
-});
-export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBodySchema>;
-
-export const CreateEditDebugSandboxResponseSchema = z.object({
-  sandboxId: z.string(),
-  providerSandboxId: z.string(),
-  endpoint: SkillSandboxEndpointSchema,
-  status: SandboxProviderStatusSchema.pick({
-    state: true,
-    message: true
-  })
-});
-export type CreateEditDebugSandboxResponse = z.infer<typeof CreateEditDebugSandboxResponseSchema>;
 
 export const GetSandboxInfoQuerySchema = z.object({
   sandboxId: IdSchema

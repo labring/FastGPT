@@ -4,7 +4,7 @@ import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
-import { syncEditDebugSandbox } from '@fastgpt/service/core/agentSkills/sandboxSync';
+import { syncSkillSandbox } from '@fastgpt/service/core/agentSkills/sandboxSync';
 import {
   SyncSkillSandboxBodySchema,
   type SyncSkillSandboxResponse
@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps): Promise<SyncSkillSandboxResponse> 
     per: ReadPermissionVal
   });
 
-  return syncEditDebugSandbox({ skillId, teamId });
+  return syncSkillSandbox({ skillId, teamId });
 }
 
 export default NextAPI(handler);

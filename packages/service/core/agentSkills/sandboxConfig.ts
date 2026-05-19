@@ -252,7 +252,7 @@ export async function getProviderSandboxEndpoint(
   }
 
   throw new Error(
-    `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
+    `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This workflow currently requires opensandbox-compatible endpoint support.`
   );
 }
 

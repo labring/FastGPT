@@ -131,7 +131,7 @@ export const SyncSkillSandboxResponseSchema = z.object({
   reason: z
     .enum(['noSandbox', 'pushed'])
     .describe(
-      'noSandbox = no editDebug sandbox instance yet (lifecycle creates with latest zip); pushed = synced'
+      'noSandbox = no sandbox instance yet (lifecycle creates with latest zip); pushed = synced'
     )
 });
 export type SyncSkillSandboxResponse = z.infer<typeof SyncSkillSandboxResponseSchema>;

@@ -30,7 +30,7 @@ const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 // Keep in sync with debugChat.ts:66.
 const AGENT_NODE_ID = 'skill-debug-agent';
 
-export type SyncEditDebugSandboxResult = {
+export type SyncSkillSandboxResult = {
   synced: boolean;
   reason: 'noSandbox' | 'pushed';
 };
@@ -46,10 +46,10 @@ function shellSingleQuote(s: string): string {
  * - no sandbox instance → { synced: false, reason: 'noSandbox' } (lifecycle creates with latest zip)
  * - instance exists → download zip → write to container → remove only zip's root entries → unzip
  */
-export async function syncEditDebugSandbox(params: {
+export async function syncSkillSandbox(params: {
   skillId: string;
   teamId: string;
-}): Promise<SyncEditDebugSandboxResult> {
+}): Promise<SyncSkillSandboxResult> {
   const { skillId, teamId } = params;
 
   const sessionId = `debug-${skillId}-${AGENT_NODE_ID}`;

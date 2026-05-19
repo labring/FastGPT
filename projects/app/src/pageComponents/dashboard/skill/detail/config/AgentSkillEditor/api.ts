@@ -98,7 +98,7 @@ export const uploadSkillPackageFile = async (params: {
 };
 
 /**
- * 同步当前 Skill 包到正在运行的 editDebug 沙箱（Run Preview 前调用）
+ * 同步当前 Skill 包到正在运行的沙箱（Run Preview 前调用）
  */
 export const syncSkillSandbox = (data: SyncSkillSandboxBody) =>
   POST<SyncSkillSandboxResponse>('/core/agentSkills/package/sandbox/sync', data);
