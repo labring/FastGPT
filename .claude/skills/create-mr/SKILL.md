@@ -22,158 +22,32 @@ TD 修复完成后，调用此 skill 创建 GitLab MR。
 
 ## 执行步骤
 
-### 1. 获取当前分支名
+### 1. 获取配置和分支名
 
 ```bash
-cd "d:/ai-build/FastGPT"
+cd "d:/ai/FastGPT-1.3.0"
 branch=$(git rev-parse --abbrev-ref HEAD)
-echo "当前分支: $branch"
+td_id="<由 Agent 从分支名或上下文提取的 TD 编号>"
 ```
 
-### 2. 读取 GitLab 配置
+### 2. 读取 .env.local 并设置环境变量
 
 ```bash
-cd "d:/ai-build/FastGPT"
-env_file="projects/app/.env.local"
+cd "d:/ai/FastGPT-1.3.0"
 
-# 从 .env.local 读取配置（如果存在）
-if [ -f "$env_file" ]; then
-  set -a
-  source "$env_file"
-  set +a
-fi
+export GITLAB_PRIVATE_TOKEN=$(grep -oP 'GITLAB_PRIVATE_TOKEN=\K.*' projects/app/.env.local 2>/dev/null || echo '**')
+export GITLAB_BASE_URL=$(grep -oP 'GITLAB_BASE_URL=\K.*' projects/app/.env.local 2>/dev/null || echo 'http://mq.code.sangfor.org')
+export GITLAB_PROJECT_ID=$(grep -oP 'GITLAB_PROJECT_ID=\K.*' projects/app/.env.local 2>/dev/null || echo '15836')
+export GITLAB_TARGET_BRANCH=$(grep -oP 'GITLAB_TARGET_BRANCH=\K.*' projects/app/.env.local 2>/dev/null || echo 'develop-1.3.0')
+export BRANCH="$branch"
+export TD_ID="$td_id"
 
-# 设置 GitLab 配置（环境变量优先，否则使用默认值）
-GITLAB_PRIVATE_TOKEN="${GITLAB_PRIVATE_TOKEN:-**}"
-GITLAB_BASE_URL="${GITLAB_BASE_URL:-http://mq.code.sangfor.org}"
-GITLAB_PROJECT_ID="${GITLAB_PROJECT_ID:-15836}"
-GITLAB_TARGET_BRANCH="${GITLAB_TARGET_BRANCH:-develop-1.3.0}"
-
-echo "Base URL: $GITLAB_BASE_URL"
-echo "Project ID: $GITLAB_PROJECT_ID"
-echo "Target Branch: $GITLAB_TARGET_BRANCH"
+node .claude/skills/create-mr/create-mr.js
 ```
 
-### 3. 读取 TD 信息
-
-```bash
-# 从分支名提取 TD 纯数字 ID（分支名格式如 76887/2025080700223 或 fix/TD-2025080700223）
-td_id=$(echo "$branch" | grep -oP '\d{8,}' | head -1 || echo "")
-
-# 如果分支名无法提取，尝试从最近 commit 获取
-if [ -z "$td_id" ]; then
-  td_id=$(git log -1 --format="%s" | grep -oP '\d{8,}' | head -1 || echo "")
-fi
-
-# TD 跳转链接
-td_url="https://td.sangfor.com/#/defect/details/${td_id}"
-
-# 读取 TD 文档全文内容
-td_file=".frieren/agent-tasks/TD/${td_id}.md"
-td_title=""
-td_content=""
-
-if [ -f "$td_file" ]; then
-  td_title=$(grep -E "^# " "$td_file" | sed 's/^# //' | head -1)
-  td_content=$(cat "$td_file")
-else
-  echo "⚠ TD 文件不存在: $td_file，使用分支名作为标题"
-fi
-```
-
-### 4. 创建 MR
-
-```bash
-# 构建 MR 标题和描述（包含 TD 链接 + TD 文档全文）
-mr_title="WIP: fix: ${td_id} ${td_title}"
-mr_description="TD 链接: ${td_url}
-
-${td_content}"
-
-# 调用 GitLab API（使用 jq 构建 JSON，避免特殊字符转义问题）
-response=$(curl -s -X POST "${GITLAB_BASE_URL}/api/v4/projects/${GITLAB_PROJECT_ID}/merge_requests" \
-  --header "PRIVATE-TOKEN: ${GITLAB_PRIVATE_TOKEN}" \
-  --header "Content-Type: application/json" \
-  --data "$(jq -n \
-    --arg sb "$branch" \
-    --arg tb "$GITLAB_TARGET_BRANCH" \
-    --arg title "$mr_title" \
-    --arg desc "$mr_description" \
-    '{source_branch: $sb, target_branch: $tb, title: $title, description: $desc, remove_source_branch: true, draft: true}'
-  )")
-
-# 输出结果
-web_url=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('web_url',''))" 2>/dev/null)
-iid=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('iid',''))" 2>/dev/null)
-
-if [ -n "$web_url" ]; then
-  echo "✅ MR 创建成功！"
-  echo "MR 链接: $web_url"
-  echo "MR 编号: $iid"
-else
-  echo "❌ MR 创建失败"
-  echo "响应: $response"
-fi
-```
-
-## 完整脚本
-
-也可以直接执行以下完整脚本一键创建 MR：
-
-```bash
-cd "d:/ai-build/FastGPT"
-env_file="projects/app/.env.local"
-
-[ -f "$env_file" ] && { set -a; source "$env_file"; set +a; }
-
-GITLAB_PRIVATE_TOKEN="${GITLAB_PRIVATE_TOKEN:-**}"
-GITLAB_BASE_URL="${GITLAB_BASE_URL:-http://mq.code.sangfor.org}"
-GITLAB_PROJECT_ID="${GITLAB_PROJECT_ID:-15836}"
-GITLAB_TARGET_BRANCH="${GITLAB_TARGET_BRANCH:-develop-1.3.0}"
-
-branch=$(git rev-parse --abbrev-ref HEAD)
-
-# 提取纯数字 TD ID（8位以上，如 2025080700223）
-td_id=$(echo "$branch" | grep -oP '\d{8,}' | head -1 || git log -1 --format="%s" | grep -oP '\d{8,}' | head -1 || echo "")
-
-td_url="https://td.sangfor.com/#/defect/details/${td_id}"
-td_file=".frieren/agent-tasks/TD/${td_id}.md"
-td_title=""
-td_content=""
-
-[ -f "$td_file" ] && {
-  td_title=$(grep -E "^# " "$td_file" | sed 's/^# //' | head -1)
-  td_content=$(cat "$td_file")
-}
-
-mr_title="WIP: fix: ${td_id} ${td_title}"
-mr_description="TD 链接: ${td_url}
-
-${td_content}"
-
-response=$(curl -s -X POST "${GITLAB_BASE_URL}/api/v4/projects/${GITLAB_PROJECT_ID}/merge_requests" \
-  --header "PRIVATE-TOKEN: ${GITLAB_PRIVATE_TOKEN}" \
-  --header "Content-Type: application/json" \
-  --data "$(jq -n \
-    --arg sb "$branch" \
-    --arg tb "$GITLAB_TARGET_BRANCH" \
-    --arg title "$mr_title" \
-    --arg desc "$mr_description" \
-    '{source_branch: $sb, target_branch: $tb, title: $title, description: $desc, remove_source_branch: true, draft: true}'
-  )")
-
-echo "$response" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-url = data.get('web_url', '')
-iid = data.get('iid', '')
-if url:
-    print(f'✅ MR Created!')
-    print(f'MR URL: {url}')
-    print(f'MR IID: {iid}')
-else:
-    print(f'❌ Failed: {json.dumps(data, indent=2)}')
-" 2>/dev/null || echo "Response: $response"
-
-[ -f "$td_file" ] && rm "$td_file" && echo "Cleaned up: $td_file"
-```
+脚本路径：`.claude/skills/create-mr/create-mr.js`
+- 通过环境变量读取配置
+- 从 `.frieren/agent-tasks/TD/${TD_ID}.md` 读取 TD 文档内容
+- MR title: `WIP: fix: {TD_ID} {问题摘要}`
+- MR description: `TD 链接: {TD_URL}\n\n{TD文档全文}`
+- MR draft: true, 完成后删除 source branch
