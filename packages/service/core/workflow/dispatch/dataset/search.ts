@@ -227,7 +227,7 @@ export async function dispatchDatasetSearch(
         nodeUsages.push(queryExtensionUsage);
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
-            requestId: queryExtensionResult.requestId,
+            requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             seconds: queryExtensionResult.seconds,
             query: queryExtensionResult.query

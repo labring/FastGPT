@@ -247,7 +247,7 @@ export const dispatchAgentDatasetSearch = async ({
         usages.push(queryExtensionUsage);
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
-            requestId: queryExtensionResult.requestId,
+            requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             seconds: queryExtensionResult.seconds,
             query: queryExtensionResult.query
@@ -314,7 +314,7 @@ export const dispatchAgentDatasetSearch = async ({
         usages.push(pickResults.usage);
         childrenResponses.push(
           createChunkSelectionChildNodeResponse({
-            requestId: pickResults.requestId,
+            requestIds: [pickResults.requestId],
             usage: pickResults.usage,
             seconds: pickResults.seconds,
             selectedChunkIds: pickResults.ids
