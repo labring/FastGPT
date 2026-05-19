@@ -61,6 +61,7 @@ describe('isTextLikeFile', () => {
 
   it('does not mark binary files as text-like', () => {
     expect(isTextLikeFile({ contentType: 'application/pdf', filename: 'report.pdf' })).toBe(false);
+    expect(isTextLikeFile({ contentType: 'application/pdf', filename: 'a.md' })).toBe(false);
     expect(isTextLikeFile({ contentType: 'image/png', filename: 'image.png' })).toBe(false);
   });
 });
@@ -98,6 +99,12 @@ describe('ensureTextContentTypeCharset', () => {
       ensureTextContentTypeCharset({
         contentType: 'application/pdf',
         filename: 'report.pdf'
+      })
+    ).toBe('application/pdf');
+    expect(
+      ensureTextContentTypeCharset({
+        contentType: 'application/pdf',
+        filename: 'a.md'
       })
     ).toBe('application/pdf');
   });

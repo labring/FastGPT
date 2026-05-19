@@ -68,6 +68,7 @@ export const isTextLikeFile = ({
   const normalizedContentType = normalizeMimeType(contentType, '');
   if (normalizedContentType.startsWith('text/')) return true;
   if (textLikeMimeTypes.has(normalizedContentType)) return true;
+  if (normalizedContentType && normalizedContentType !== DEFAULT_CONTENT_TYPE) return false;
 
   const extension = path.extname(filename || '').toLowerCase();
   return textLikeExtensions.has(extension);
