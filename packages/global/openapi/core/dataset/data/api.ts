@@ -53,6 +53,50 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
  * ============================================================================ */
 export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema;
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
+export const UpdateDatasetDataResponseSchema = z.object({});
+export type UpdateDatasetDataResponse = z.infer<typeof UpdateDatasetDataResponseSchema>;
+
+const DatasetDataIndexContentSchema = z.object({
+  type: DatasetDataIndexItemSchema.shape.type.meta({
+    description: '索引类型'
+  }),
+  text: z.string().min(1).meta({
+    example: 'FastGPT 是一个 AI Agent 构建平台',
+    description: '索引文本'
+  })
+});
+
+/* ============================================================================
+ * API: 新增数据索引
+ * Route: POST /api/core/dataset/data/index/create
+ * ============================================================================ */
+export const CreateDatasetDataIndexBodySchema = DatasetDataIndexContentSchema.extend({
+  dataId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
+  })
+});
+export type CreateDatasetDataIndexBody = z.infer<typeof CreateDatasetDataIndexBodySchema>;
+export const DatasetDataIndexResponseSchema = z.object({
+  index: DatasetDataIndexItemSchema
+});
+export type DatasetDataIndexResponse = z.infer<typeof DatasetDataIndexResponseSchema>;
+
+/* ============================================================================
+ * API: 更新数据索引
+ * Route: POST /api/core/dataset/data/index/update
+ * ============================================================================ */
+export const UpdateDatasetDataIndexBodySchema = DatasetDataIndexContentSchema.extend({
+  dataId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
+  }),
+  indexDataId: z.string().meta({
+    example: '68ad85a7463006c963799a09',
+    description: '索引对应的 vectorDB ID'
+  })
+});
+export type UpdateDatasetDataIndexBody = z.infer<typeof UpdateDatasetDataIndexBodySchema>;
 
 /* ============================================================================
  * API: 删除数据集数据
@@ -65,6 +109,28 @@ export const DeleteDatasetDataQuerySchema = z.object({
   })
 });
 export type DeleteDatasetDataQuery = z.infer<typeof DeleteDatasetDataQuerySchema>;
+
+export const DeleteDatasetDataResponseSchema = z.literal('success');
+export type DeleteDatasetDataResponse = z.infer<typeof DeleteDatasetDataResponseSchema>;
+
+/* ============================================================================
+ * API: 删除数据索引
+ * Route: POST /api/core/dataset/data/index/delete
+ * ============================================================================ */
+export const DeleteDatasetDataIndexBodySchema = z.object({
+  dataId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
+  }),
+  indexDataId: z.string().meta({
+    example: '68ad85a7463006c963799a09',
+    description: '索引对应的 vectorDB ID'
+  })
+});
+export type DeleteDatasetDataIndexBody = z.infer<typeof DeleteDatasetDataIndexBodySchema>;
+
+export const DeleteDatasetDataIndexResponseSchema = z.object({});
+export type DeleteDatasetDataIndexResponse = z.infer<typeof DeleteDatasetDataIndexResponseSchema>;
 
 /* ============================================================================
  * API: 获取引用数据

@@ -15,10 +15,6 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: vi.fn()
 }));
 
-vi.mock('@fastgpt/web/i18n/utils', () => ({
-  i18nT: vi.fn((key: string) => key)
-}));
-
 vi.mock('@fastgpt/service/common/system/log', () => ({
   addLog: {
     info: vi.fn(),
@@ -26,8 +22,8 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
-vi.mock('axios', () => ({
-  default: {
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  axios: {
     head: vi.fn()
   }
 }));
@@ -35,13 +31,12 @@ vi.mock('axios', () => ({
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 import { serviceEnv } from '@fastgpt/service/env';
-
-// @ts-ignore
-import axios from 'axios';
+import { axios } from '@fastgpt/service/common/api/axios';
 
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
+const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
@@ -176,6 +171,103 @@ describe('filterGPTMessageByMaxContext function tests', () => {
       expect(result[1].content).toBe('Large user message');
       expect(result[2].content).toBe('Large assistant response');
     });
+
+    it('should preserve a leading context checkpoint before recent chat messages', async () => {
+      const checkpointMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: '<context_checkpoint>old context summary</context_checkpoint>',
+        hideInUI: true
+      };
+      const currentUserMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'current user request'
+      };
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        { role: ChatCompletionRequestMessageRoleEnum.Developer, content: 'Developer' },
+        checkpointMessage,
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'old user request' },
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'old assistant answer' },
+        currentUserMessage
+      ];
+
+      mockCountGptMessagesTokens
+        .mockResolvedValueOnce(30) // system + developer + checkpoint
+        .mockResolvedValueOnce(20) // current user
+        .mockResolvedValueOnce(80); // previous full round exceeds remaining context
+
+      const result = await filterGPTMessageByMaxContext({
+        messages,
+        maxContext: 100
+      });
+
+      expect(result).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        { role: ChatCompletionRequestMessageRoleEnum.Developer, content: 'Developer' },
+        checkpointMessage,
+        currentUserMessage
+      ]);
+    });
+
+    it('should not treat visible user text containing checkpoint tags as a context checkpoint', async () => {
+      const visibleCheckpointLikeMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'please explain <context_checkpoint> as plain text'
+      };
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        visibleCheckpointLikeMessage,
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Assistant 1' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'current user request' }
+      ];
+
+      mockCountGptMessagesTokens
+        .mockResolvedValueOnce(20) // system only, no leading checkpoint is counted here
+        .mockResolvedValueOnce(20) // current user
+        .mockResolvedValueOnce(120); // visible checkpoint-like user round exceeds remaining context
+
+      const result = await filterGPTMessageByMaxContext({
+        messages,
+        maxContext: 60
+      });
+
+      expect(result).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'current user request' }
+      ]);
+      expect(mockCountGptMessagesTokens).toHaveBeenNthCalledWith(1, [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' }
+      ]);
+    });
+
+    it('should not preserve malformed hidden checkpoint-like messages as leading checkpoints', async () => {
+      const malformedCheckpointMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'prefix <context_checkpoint>old context summary</context_checkpoint>',
+        hideInUI: true
+      };
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        malformedCheckpointMessage,
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Assistant 1' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'current user request' }
+      ];
+
+      mockCountGptMessagesTokens
+        .mockResolvedValueOnce(20) // system only, malformed checkpoint is not preserved
+        .mockResolvedValueOnce(20) // current user
+        .mockResolvedValueOnce(120); // malformed checkpoint round exceeds remaining context
+
+      const result = await filterGPTMessageByMaxContext({
+        messages,
+        maxContext: 60
+      });
+
+      expect(result).toEqual([
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'current user request' }
+      ]);
+    });
   });
 
   describe('Complex conversation patterns', () => {
@@ -292,6 +384,7 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -567,7 +660,6 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle invalid remote images gracefully', async () => {
-      const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
       serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
@@ -863,6 +955,8 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,

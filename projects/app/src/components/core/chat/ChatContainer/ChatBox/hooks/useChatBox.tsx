@@ -44,7 +44,7 @@ export const useChatBox = () => {
           fileDownload({
             text: history
               .map((item) => {
-                let result = `Role: ${item.obj}\n`;
+                const result = `Role: ${item.obj}\n`;
                 const content = item.value.map((item) => {
                   if (item.text) {
                     return item.text?.content;
@@ -56,6 +56,12 @@ export const useChatBox = () => {
                     return `
 \`\`\`Tool
 ${JSON.stringify(item.tools, null, 2)}
+\`\`\`
+`;
+                  } else if ('tool' in item && item.tool) {
+                    return `
+\`\`\`Tool
+${JSON.stringify(item.tool, null, 2)}
 \`\`\`
 `;
                   }

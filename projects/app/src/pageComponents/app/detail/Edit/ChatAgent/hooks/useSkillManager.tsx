@@ -89,18 +89,6 @@ export const useSkillManager = ({
         })
         .filter((item) => !item.parentId);
 
-      // Merge internal tools
-      const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
-      if (fileReadInfo) {
-        apiTools.unshift({
-          id: SubAppIds.fileRead,
-          label: parseI18nString(fileReadInfo.name, i18n.language),
-          icon: fileReadInfo.avatar,
-          description: fileReadInfo.toolDescription,
-          canClick: true
-        });
-      }
-
       const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
       if (datasetSearchInfo) {
         apiTools.unshift({
@@ -287,9 +275,6 @@ export const useSkillManager = ({
         if (tool.pluginData?.error) {
           return 'invalid';
         }
-        if (tool.pluginId === SubAppIds.fileRead) {
-          return canUploadFile ? 'configured' : 'invalid';
-        }
         if (tool.pluginId === SubAppIds.datasetSearch) {
           return hasSelectedDataset ? 'configured' : 'invalid';
         }
@@ -303,24 +288,6 @@ export const useSkillManager = ({
         configStatus
       };
     });
-
-    // Merge file read tool
-    if (canUploadFile) {
-      const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
-
-      tools.push({
-        id: SubAppIds.fileRead,
-        pluginId: SubAppIds.fileRead,
-        name: parseI18nString(fileReadInfo.name, i18n.language),
-        avatar: fileReadInfo.avatar,
-        intro: fileReadInfo.toolDescription,
-        flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.tools,
-        inputs: [],
-        outputs: [],
-        configStatus: 'noConfig'
-      });
-    }
 
     const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
     if (datasetSearchInfo) {

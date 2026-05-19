@@ -1,9 +1,6 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
-import {
-  deepRagSearch,
-  defaultSearchDatasetData
-} from '@fastgpt/service/core/dataset/search/controller';
+import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -15,6 +12,8 @@ import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
@@ -22,12 +21,13 @@ import {
   type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<SearchDatasetTestBody>
 ): Promise<SearchDatasetTestResponse> {
   const {
     datasetId,
     text,
+    queryImageUrls,
     limit = 5000,
     similarity,
     searchMode,
@@ -50,7 +50,7 @@ async function handler(
   const start = Date.now();
 
   // auth dataset role
-  const { dataset, teamId, tmbId, userId, apikey } = await authDataset({
+  const { dataset, teamId, tmbId, apikey } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -60,14 +60,37 @@ async function handler(
   // auth balance
   await checkTeamAIPoints(teamId);
 
+  // Search-test images must be temp objects created by this team. Client-supplied keys are not
+  // proof of ownership, so reject dataset/chat/foreign-team keys before any S3 read happens.
+  const validQueryImageKeys = queryImageUrls.filter(
+    (key) => isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`)
+  );
+
+  if (validQueryImageKeys.length !== queryImageUrls.length) {
+    return Promise.reject('Invalid query image key');
+  }
+
+  // 搜索主链路只接收模型可读图片 URL；temp key 的鉴权和临时 URL 生成固定在入口层完成。
+  const validQueryImageUrls = await Promise.all(
+    validQueryImageKeys.map(async (key) => {
+      const { url } = await getS3DatasetSource().createExternalUrl({
+        key,
+        expiredHours: 1
+      });
+      return url;
+    })
+  );
+
   const rerankModelData = getRerankModel(rerankModel);
 
   const searchData = {
     histories: [],
     teamId,
     reRankQuery: text,
-    queries: [text],
+    textQueries: text ? [text] : [],
+    imageQueries: validQueryImageUrls,
     model: dataset.vectorModel,
+    vlmModel: dataset.vlmModel,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -83,9 +106,9 @@ async function handler(
     reRankInputTokens,
     usingReRank: searchUsingReRank,
     queryExtensionResult,
-    deepSearchResult,
+    imageCaptionResult,
     ...result
-  } = datasetDeepSearch
+  } = datasetDeepSearch && !!text.trim()
     ? await deepRagSearch({
         ...searchData,
         datasetDeepSearchModel,
@@ -122,6 +145,13 @@ async function handler(
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
           embeddingModel: dataset.vectorModel
+        }
+      : undefined,
+    imageCaptionUsage: imageCaptionResult
+      ? {
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
         }
       : undefined
   });

@@ -12,7 +12,13 @@ import { DispatchNodeResponseSchema } from '../workflow/runtime/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import z from 'zod';
-import { AgentPlanSchema } from '../ai/agent/type';
+import {
+  AgentLoopAskSchema,
+  AgentLoopPlanUpdateSchema,
+  AgentLoopStopGateSchema,
+  AgentPlanSchema,
+  AgentPlanStatusSchema
+} from '../ai/agent/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -34,16 +40,6 @@ export const ToolModuleResponseItemSchema = z.object({
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
-
-/* step call */
-export const StepTitleItemSchema = z.object({
-  stepId: z.string(),
-  title: z.string(),
-
-  // Client data
-  folded: z.boolean().optional()
-});
-export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
 /* Sandbox lifecycle phase */
 export type SandboxStatusPhase =
@@ -202,9 +198,12 @@ export const AdminFbkSchema = z.object({
 });
 export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 
+// Stores only the compacted context text; usage and request ids stay in runtime traces.
+export const ContextCheckpointValueSchema = z.string();
+export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSchema>;
+
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
-  stepId: z.string().nullish(),
   planId: z.string().nullish(),
   text: z
     .object({
@@ -220,10 +219,13 @@ export const AIChatItemValueSchema = z.object({
   skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
   plan: AgentPlanSchema.nullish(),
-  stepTitle: StepTitleItemSchema.nullish(),
-
-  /** @deprecated */
-  tool: ToolModuleResponseItemSchema.nullish()
+  planStatus: AgentPlanStatusSchema.nullish(),
+  agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
+  agentAsk: AgentLoopAskSchema.nullish(),
+  agentStopGate: AgentLoopStopGateSchema.nullish(),
+  contextCheckpoint: ContextCheckpointValueSchema.nullish(),
+  tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
+  hideInUI: z.boolean().optional()
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

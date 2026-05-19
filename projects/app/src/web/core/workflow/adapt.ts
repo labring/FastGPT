@@ -475,7 +475,20 @@ export const v1Workflow2V2 = (
   // 更新特殊的输入(输入全部从开始取)
   newNodes.forEach((node) => {
     node.inputs.forEach((input) => {
-      if (workflowStart && input.key === NodeInputKeyEnum.userChatInput) {
+      if (workflowStart) {
+        if (
+          node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
+          input.key === NodeInputKeyEnum.datasetSearchInput
+        ) {
+          input.value = [
+            [workflowStart.nodeId, NodeOutputKeyEnum.userChatInput],
+            [workflowStart.nodeId, NodeOutputKeyEnum.userFiles]
+          ];
+          input.valueType = WorkflowIOValueTypeEnum.arrayString;
+          return;
+        }
+
+        if (input.key !== NodeInputKeyEnum.userChatInput) return;
         input.value = [workflowStart.nodeId, NodeOutputKeyEnum.userChatInput];
       }
     });

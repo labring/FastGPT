@@ -41,7 +41,7 @@ const EditAPIDatasetInfoModal = ({
   const { runAsync: onSave, loading } = useRequest(
     (data: EditAPIDatasetInfoFormType) => onEdit(data),
     {
-      onSuccess: (res) => {
+      onSuccess: () => {
         toast({
           title: t('common:update_success'),
           status: 'success'
@@ -72,7 +72,6 @@ const EditAPIDatasetInfoModal = ({
             </Flex>
           </Flex>
         )}
-        {/* @ts-ignore */}
         <ApiDatasetForm datasetId={datasetDetail._id} type={type} form={form} />
       </ModalBody>
       <ModalFooter>

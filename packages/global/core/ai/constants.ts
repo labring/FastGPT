@@ -1,4 +1,4 @@
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
 import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
 
@@ -101,6 +101,7 @@ export const reasoningEffortList: { label: string; value: ReasoningEffort }[] = 
 export const completionFinishReasonMap = {
   error: i18nT('chat:completion_finish_error'),
   close: i18nT('chat:completion_finish_close'),
+  abnormal_close: i18nT('chat:completion_finish_abnormal_close'),
   stop: i18nT('chat:completion_finish_stop'),
   length: i18nT('chat:completion_finish_length'),
   tool_calls: i18nT('chat:completion_finish_tool_calls'),

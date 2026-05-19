@@ -25,8 +25,9 @@ export const clearDirFiles = (dirPath: string) => {
     return;
   }
 
-  fs.rmdirSync(dirPath, {
-    recursive: true
+  fs.rmSync(dirPath, {
+    recursive: true,
+    force: true
   });
 };
 

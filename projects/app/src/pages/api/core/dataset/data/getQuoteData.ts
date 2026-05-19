@@ -6,7 +6,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {

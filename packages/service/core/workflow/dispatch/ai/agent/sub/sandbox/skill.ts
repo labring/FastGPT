@@ -8,7 +8,6 @@
 import type { AgentSandboxContext } from './types';
 import type { z } from 'zod';
 import type {
-  SandboxReadFileSchema,
   SandboxWriteFileSchema,
   SandboxEditFileSchema,
   SandboxExecuteSchema,
@@ -22,37 +21,6 @@ type DispatchResult = {
   response: string;
   usages: [];
 };
-
-/**
- * Read files from sandbox
- */
-export async function dispatchSandboxReadFile(
-  ctx: AgentSandboxContext,
-  params: z.infer<typeof SandboxReadFileSchema>
-): Promise<DispatchResult> {
-  try {
-    const files = await ctx.sandbox.readFiles(params.paths);
-
-    if (!files || files.length === 0) {
-      return { response: 'No files found', usages: [] };
-    }
-
-    const results = files.map((file: { path: string; content: Uint8Array | string }) => {
-      const content =
-        file.content instanceof Uint8Array
-          ? new TextDecoder('utf-8').decode(file.content)
-          : String(file.content);
-      return `--- ${file.path} ---\n${content}`;
-    });
-
-    return { response: results.join('\n\n'), usages: [] };
-  } catch (error) {
-    return {
-      response: `Failed to read files: ${error instanceof Error ? error.message : String(error)}`,
-      usages: []
-    };
-  }
-}
 
 /**
  * Write a file to sandbox
@@ -186,7 +154,7 @@ export async function dispatchSandboxFetchUserFile(
   const fileEntry = allFilesMap[params.file_index];
   if (!fileEntry) {
     return {
-      response: `Failed: file index "${params.file_index}" not found in available_files`,
+      response: `Failed: file id "${params.file_index}" not found in # Input Files`,
       usages: []
     };
   }

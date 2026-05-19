@@ -10,6 +10,10 @@ export type SearchTestStoreItemType = {
   time: Date;
   duration: string;
   results: SearchDataResponseItemType[];
+  queryImageRefs?: {
+    key: string;
+    previewUrl?: string;
+  }[];
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   usingReRank: boolean;
@@ -27,7 +31,7 @@ type State = {
 export const useSearchTestStore = create<State>()(
   devtools(
     persist(
-      immer((set, get) => ({
+      immer((set) => ({
         datasetTestList: [],
         pushDatasetTestItem(data) {
           set((state) => {

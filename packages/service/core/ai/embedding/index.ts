@@ -4,34 +4,67 @@ import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import z from 'zod';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
-type GetVectorProps = {
+type GetVectorsBaseProps = {
   model: EmbeddingModelItemType;
-  input: string[] | string;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
 };
 
-// text to vector
-export async function getVectorsByText({ model, input, type, headers }: GetVectorProps) {
-  if (!input) {
+const InputItemSchema = z.object({
+  type: z.enum(['text', 'image']),
+  input: z.string()
+});
+type GetVectorInputItem = z.infer<typeof InputItemSchema>;
+
+export type GetVectorsProps = GetVectorsBaseProps & {
+  inputs: GetVectorInputItem[];
+};
+
+const getRequestInput = (input: GetVectorInputItem) => {
+  if (input.type === 'image') {
+    return {
+      type: 'image_url',
+      image_url: {
+        url: input.input
+      }
+    };
+  }
+
+  return input.input;
+};
+
+const countInputTokens = async (input: GetVectorInputItem) => {
+  if (input.type === 'image') return 1;
+  return countPromptTokens(input.input);
+};
+
+export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
+  const inputs = z
+    .array(InputItemSchema)
+    .parse(rawInputs)
+    .map((item) => ({
+      ...item,
+      input: item.input.trim()
+    }));
+  if (inputs.length === 0 || inputs.some((item) => !item.input)) {
     return Promise.reject({
       code: 500,
       message: 'input is empty'
     });
   }
-  const ai = getAIApi();
 
-  const formatInput = Array.isArray(input) ? input : [input];
+  const { ai } = getAIApi();
 
   let chunkSize = Number(model.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
 
   const chunks = [];
-  for (let i = 0; i < formatInput.length; i += chunkSize) {
-    chunks.push(formatInput.slice(i, i + chunkSize));
+  for (let i = 0; i < inputs.length; i += chunkSize) {
+    chunks.push(inputs.slice(i, i + chunkSize));
   }
 
   try {
@@ -40,18 +73,20 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
     const allVectors: number[][] = [];
 
     for (const chunk of chunks) {
-      // input text to vector
+      const requestInput = chunk.map(getRequestInput);
+      const inputTypes = Array.from(new Set(chunk.map((item) => item.type)));
+
       const result = await retryFn(() =>
         ai.embeddings
           .create(
             {
               model: model.model,
-              input: chunk,
+              input: requestInput,
               encoding_format: 'float',
               ...model.defaultConfig,
               ...(type === EmbeddingTypeEnm.db && model.dbConfig),
               ...(type === EmbeddingTypeEnm.query && model.queryConfig)
-            },
+            } as any,
             model.requestUrl
               ? {
                   path: model.requestUrl,
@@ -66,17 +101,19 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
             if (!res.data) {
               logger.error('Embedding API returned empty data', {
                 model: model.model,
-                inputLength: chunk.length,
+                inputTypes,
+                inputCount: chunk.length,
                 response: res
               });
               return Promise.reject('Embedding API is not responding');
             }
             if (!res?.data?.[0]?.embedding) {
-              // @ts-ignore
+              // @ts-expect-error provider error payload is not part of the embedding response type
               const msg = res.data?.err?.message || '';
               logger.error('Embedding API returned invalid embedding', {
                 model: model.model,
-                inputLength: chunk.length,
+                inputTypes,
+                inputCount: chunk.length,
                 response: res,
                 apiMessage: msg
               });
@@ -87,7 +124,7 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
               (async () => {
                 if (res.usage) return res.usage.total_tokens;
 
-                const tokens = await Promise.all(chunk.map((item) => countPromptTokens(item)));
+                const tokens = await Promise.all(chunk.map(countInputTokens));
                 return tokens.reduce((sum, item) => sum + item, 0);
               })(),
               Promise.all(
@@ -115,7 +152,8 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
   } catch (error) {
     logger.error('Embedding request failed', {
       model: model.model,
-      inputLengths: formatInput.map((item) => item.length),
+      inputTypes: Array.from(new Set(inputs.map((item) => item.type))),
+      inputCount: inputs.length,
       error
     });
 

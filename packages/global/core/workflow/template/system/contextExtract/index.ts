@@ -11,7 +11,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../../constants';
 import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../../output';
 
 export const ContextExtractModule: FlowNodeTemplateType = {

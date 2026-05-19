@@ -1,6 +1,6 @@
 {
   "Image_Preview": "图片预览",
-  "Image_dataset_requires_VLM_model_to_be_configured": "图片数据集需要配置图片理解模型(VLM)才能使用，请先在模型配置中添加支持图片理解的模型",
+  "Image_dataset_requires_VLM_model_to_be_configured": "图片数据集需要配置图片理解模型或多模态索引模型才能使用，请先在模型配置中添加对应模型",
   "click_to_view_raw_source": "点击查看来源",
   "file_name": "文件名",
   "file_size": "文件大小",

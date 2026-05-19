@@ -6,7 +6,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_UserChatInput } from '../input';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 import { type FlowNodeOutputItemType } from '../../type/io';
 
 export const userFilesInput: FlowNodeOutputItemType = {

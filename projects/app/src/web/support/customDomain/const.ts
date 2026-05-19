@@ -2,7 +2,7 @@ import type {
   ProviderEnum,
   CustomDomainStatusEnum
 } from '@fastgpt/global/support/customDomain/type';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { t } from 'i18next';
 
 export const providerMap = {

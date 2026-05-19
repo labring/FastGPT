@@ -6,7 +6,7 @@ import type {
   RolePerMapType
 } from '../type';
 import { CommonRoleList, CommonPerList } from '../constant';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { sumPer } from '../utils';
 
 export enum TeamPerKeyEnum {

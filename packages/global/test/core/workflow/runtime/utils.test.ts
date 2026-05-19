@@ -802,42 +802,6 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return interactive for agentPlanCheck without confirmation', () => {
-    const interactive = {
-      type: 'agentPlanCheck',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {}
-    } as WorkflowInteractiveResponseType;
-
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
-  });
-
-  it('should return undefined for agentPlanCheck with confirmation', () => {
-    const interactive = {
-      type: 'agentPlanCheck',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: { confirmed: true }
-    } as WorkflowInteractiveResponseType;
-
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
-  });
-
   it('should return interactive for agentPlanAskQuery', () => {
     const interactive = {
       type: 'agentPlanAskQuery',
@@ -856,15 +820,15 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBe(interactive);
   });
 
-  it('should return interactive for agentPlanAskUserSelect without selection', () => {
+  it('should return undefined for answered agentPlanAskQuery', () => {
     const interactive = {
-      type: 'agentPlanAskUserSelect',
+      type: 'agentPlanAskQuery',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: 'Choose',
-        userSelectOptions: []
+        content: 'What do you want?',
+        answer: 'Use the current repository.'
       }
     } as WorkflowInteractiveResponseType;
 
@@ -874,28 +838,8 @@ describe('getLastInteractiveValue', () => {
         value: [{ text: { content: 'response' }, interactive }]
       }
     ];
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
-  });
 
-  it('should return interactive for agentPlanAskUserForm without submission', () => {
-    const interactive = {
-      type: 'agentPlanAskUserForm',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {
-        description: 'Fill form',
-        inputForm: []
-      }
-    } as WorkflowInteractiveResponseType;
-
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
+    expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 });
 

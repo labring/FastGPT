@@ -7,7 +7,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -183,7 +183,7 @@ export const pushDataListToTrainingQueue = async ({
 
   // 大数据量分段事务处理 (避免事务超时)
   const chunkSize = maxBatchesPerTransaction * batchSize; // 10,000 条
-  let start = Date.now();
+  const start = Date.now();
 
   if (data.length > chunkSize) {
     logger.info('Large dataset detected, using chunked transactions', {

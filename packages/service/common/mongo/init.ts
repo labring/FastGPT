@@ -5,7 +5,7 @@ import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-const maxConnecting = Math.max(30, serviceEnv.DB_MAX_LINK);
+const maxConnecting = Math.max(5, serviceEnv.DB_MAX_LINK);
 
 /**
  * connect MongoDB and init data
@@ -50,7 +50,7 @@ export async function connectMongo(props: {
       bufferCommands: true,
       maxConnecting: maxConnecting, // 最大连接数: 防止连接数过多时无法满足需求
       maxPoolSize: maxConnecting, // 最大连接池大小: 防止连接池过大时无法满足需求
-      minPoolSize: 20, // 最小连接数: 20,防止连接数过少时无法满足需求
+      minPoolSize: 1,
       connectTimeoutMS: 60000, // 连接超时: 60秒,防止连接失败时长时间阻塞
       waitQueueTimeoutMS: 60000, // 等待队列超时: 60秒,防止等待队列长时间阻塞
       socketTimeoutMS: 60000, // Socket 超时: 60秒,防止Socket连接失败时长时间阻塞

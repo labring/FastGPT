@@ -262,7 +262,6 @@ const RenderInput = () => {
             onClick={() => {
               handleSubmit((e) => {
                 if (hasHistory) {
-                  console.log(e);
                   onClickNewChat(e);
                 } else {
                   onSubmit(e);

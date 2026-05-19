@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type SystemModelSchemaType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -6,18 +6,11 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 
-export type updateWithJsonQuery = {};
-
 export type updateWithJsonBody = {
   config: string;
 };
 
-export type updateWithJsonResponse = {};
-
-async function handler(
-  req: ApiRequestProps<updateWithJsonBody, updateWithJsonQuery>,
-  res: ApiResponseType<any>
-): Promise<updateWithJsonResponse> {
+async function handler(req: ApiRequestProps<updateWithJsonBody>) {
   await authSystemAdmin({ req });
 
   const { config } = req.body;
@@ -40,6 +33,11 @@ async function handler(
     item.metadata.model = item.model.trim();
     if (!item.metadata.name) {
       item.metadata.name = item.model;
+    }
+    if ('defaultConfig' in item.metadata && typeof item.metadata.defaultConfig !== 'object') {
+      {
+        item.metadata.defaultConfig = {};
+      }
     }
   }
 

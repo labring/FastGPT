@@ -4,10 +4,11 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchFlowResponse } from '../../type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import type { AgentLoopChildrenInteractiveParams } from '../../../../ai/llm/agentLoop';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -31,9 +32,10 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
   toolModel: LLMModelItemType;
-  childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<WorkflowInteractiveResponseType>;
   allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
+  fileUrls?: string[];
 };
 
 export type ToolNodeItemType = {

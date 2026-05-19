@@ -46,7 +46,7 @@ import {
   Input_Template_Stream_MODE,
   Input_Template_UserChatInput
 } from './template/input';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import { type RuntimeUserPromptType, type UserChatItemType } from '../../core/chat/type';
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
@@ -89,7 +89,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const questionGuide: AppQGConfigType =
     typeof questionGuideVal === 'boolean'
       ? { ...defaultQGConfig, open: questionGuideVal }
-      : questionGuideVal ?? defaultQGConfig;
+      : (questionGuideVal ?? defaultQGConfig);
 
   const ttsConfig: AppTTSConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
@@ -463,7 +463,7 @@ export const clientGetWorkflowToolRunUserQuery = ({
   }) => {
     const pluginInputsWithValue = pluginInputs.map((input) => {
       const { key } = input;
-      let value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+      const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
 
       return {
         ...input,

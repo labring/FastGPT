@@ -19,7 +19,8 @@ import {
   getFlatAppResponses,
   checkInteractiveResponseStatus,
   mergeChatResponseData,
-  removeAIResponseCite
+  removeAIResponseCite,
+  hasContextCheckpoint
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
@@ -48,6 +49,38 @@ describe('concatHistories', () => {
     const result = concatHistories(histories1, histories2);
 
     expect(result[0].obj).toBe(ChatRoleEnum.System);
+  });
+});
+
+describe('hasContextCheckpoint', () => {
+  it('should return true only when an AI history contains contextCheckpoint', () => {
+    const history: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        { text: { content: 'regular assistant text' } },
+        { contextCheckpoint: '<context_checkpoint>summary</context_checkpoint>' }
+      ]
+    };
+
+    expect(hasContextCheckpoint(history)).toBe(true);
+  });
+
+  it('should return false for non-AI histories even when contextCheckpoint field exists', () => {
+    const history = {
+      obj: ChatRoleEnum.Human,
+      value: [{ contextCheckpoint: '<context_checkpoint>summary</context_checkpoint>' }]
+    } as any as ChatItemMiniType;
+
+    expect(hasContextCheckpoint(history)).toBe(false);
+  });
+
+  it('should return false when AI history has no contextCheckpoint', () => {
+    const history: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: 'regular assistant text' } }]
+    };
+
+    expect(hasContextCheckpoint(history)).toBe(false);
   });
 });
 
@@ -440,42 +473,6 @@ describe('checkInteractiveResponseStatus', () => {
 
     expect(result).toBe('query');
   });
-
-  it('should return query for agentPlanAskUserForm with invalid JSON', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskUserForm' },
-      input: 'not json'
-    });
-
-    expect(result).toBe('query');
-  });
-
-  it('should return submit for agentPlanAskUserForm with valid JSON', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskUserForm' },
-      input: '{"field": "value"}'
-    });
-
-    expect(result).toBe('submit');
-  });
-
-  it('should return query for agentPlanCheck with non-confirm input', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanCheck' },
-      input: 'some other input'
-    });
-
-    expect(result).toBe('query');
-  });
-
-  it('should return submit for agentPlanCheck with confirm input', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanCheck' },
-      input: 'CONFIRM'
-    });
-
-    expect(result).toBe('submit');
-  });
 });
 
 describe('mergeChatResponseData', () => {
@@ -620,20 +617,22 @@ describe('removeAIResponseCite', () => {
   it('should handle value items without text or reasoning', () => {
     const value: AIChatItemValueItemType[] = [
       {
-        tool: {
-          id: 'tool1',
-          toolName: 'Test Tool',
-          toolAvatar: '',
-          params: '{}',
-          response: 'response',
-          functionName: 'test'
-        }
+        tools: [
+          {
+            id: 'tool1',
+            toolName: 'Test Tool',
+            toolAvatar: '',
+            params: '{}',
+            response: 'response',
+            functionName: 'test'
+          }
+        ]
       }
     ];
 
     const result = removeAIResponseCite(value, false);
 
-    expect(result[0].tool).toBeDefined();
+    expect(result[0].tools).toBeDefined();
   });
 
   it('should remove multiple cites from content', () => {

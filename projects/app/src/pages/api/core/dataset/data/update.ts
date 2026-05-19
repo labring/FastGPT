@@ -1,4 +1,7 @@
-import { updateData2Dataset } from '@/service/core/dataset/data/controller';
+import {
+  updateDatasetDataByIndexes,
+  updateDatasetDataDefaultIndexes
+} from '@/service/core/dataset/data/data';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -7,10 +10,15 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { UpdateDatasetDataBodySchema } from '@fastgpt/global/openapi/core/dataset/data/api';
+import {
+  UpdateDatasetDataBodySchema,
+  UpdateDatasetDataResponseSchema,
+  type UpdateDatasetDataResponse
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 
-async function handler(req: ApiRequestProps) {
-  const { dataId, q, a, indexes = [] } = UpdateDatasetDataBodySchema.parse(req.body);
+async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
+  const { dataId, q, a, indexes } = UpdateDatasetDataBodySchema.parse(req.body);
+  const hasIndexes = Object.hasOwn(req.body, 'indexes');
 
   // auth data permission
   const {
@@ -21,7 +29,8 @@ async function handler(req: ApiRequestProps) {
     },
     teamId,
     tmbId,
-    collection
+    collection,
+    datasetData
   } = await authDatasetData({
     req,
     authToken: true,
@@ -30,36 +39,61 @@ async function handler(req: ApiRequestProps) {
     per: WritePermissionVal
   });
 
-  if (q || a || indexes.length > 0) {
-    const { tokens } = await updateData2Dataset({
+  if (hasIndexes) {
+    const { tokens } = await updateDatasetDataByIndexes({
       dataId,
       q,
       a,
-      indexes,
+      indexes: indexes ?? [],
       model: vectorModel,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
-    pushGenerateVectorUsage({
-      teamId,
-      tmbId,
-      inputTokens: tokens,
-      model: vectorModel
+    if (tokens > 0) {
+      pushGenerateVectorUsage({
+        teamId,
+        tmbId,
+        inputTokens: tokens,
+        model: vectorModel
+      });
+    }
+  } else {
+    const nextQ = q || datasetData.q || '';
+    const nextA = a ?? datasetData.a ?? '';
+
+    const { tokens } = await updateDatasetDataDefaultIndexes({
+      dataId,
+      q: nextQ,
+      a: nextA,
+      model: vectorModel,
+      indexSize: collection.indexSize,
+      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
-    (() => {
-      addAuditLog({
-        tmbId,
+    if (tokens > 0) {
+      pushGenerateVectorUsage({
         teamId,
-        event: AuditEventEnum.UPDATE_DATA,
-        params: {
-          collectionName: collection.name,
-          datasetName: collection.dataset?.name || '',
-          datasetType: getI18nDatasetType(collection.dataset?.type || '')
-        }
+        tmbId,
+        inputTokens: tokens,
+        model: vectorModel
       });
-    })();
+    }
   }
+
+  (() => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_DATA,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
+
+  return UpdateDatasetDataResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

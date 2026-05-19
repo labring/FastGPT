@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
-import { appWorkflow2AgentForm } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
+import {
+  agentForm2AppWorkflow,
+  appWorkflow2AgentForm
+} from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -216,6 +219,8 @@ describe('getAppQGuideCustomURL', () => {
 });
 
 describe('appWorkflow2AgentForm', () => {
+  const mockT = (str: string) => str;
+
   it('should normalize dataset rerank fields from partial datasetParams', () => {
     const result = appWorkflow2AgentForm({
       nodes: [
@@ -238,5 +243,51 @@ describe('appWorkflow2AgentForm', () => {
     expect(result.dataset.usingReRank).toBe(false);
     expect(result.dataset.rerankModel).toBe('');
     expect(result.dataset.rerankWeight).toBe(0.5);
+  });
+
+  it('should roundtrip agent reasoning settings through workflow inputs', () => {
+    const form: AppFormEditFormType = {
+      aiSettings: {
+        [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+        [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
+        maxHistories: 6,
+        [NodeInputKeyEnum.aiChatIsResponseText]: true,
+        [NodeInputKeyEnum.aiChatReasoning]: false,
+        [NodeInputKeyEnum.aiChatReasoningEffort]: 'high'
+      },
+      dataset: {
+        datasets: [],
+        similarity: 0.8,
+        limit: 1500,
+        searchMode: 'embedding',
+        embeddingWeight: 0.7,
+        usingReRank: false,
+        rerankModel: '',
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: false,
+        datasetSearchExtensionModel: '',
+        datasetSearchExtensionBg: ''
+      },
+      selectedTools: [],
+      chatConfig: {}
+    };
+
+    const workflow = agentForm2AppWorkflow(form, mockT);
+    const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+    expect(
+      agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatReasoning)?.value
+    ).toBe(false);
+    expect(
+      agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatReasoningEffort)?.value
+    ).toBe('high');
+
+    const restored = appWorkflow2AgentForm({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+
+    expect(restored.aiSettings.aiChatReasoning).toBe(false);
+    expect(restored.aiSettings.aiChatReasoningEffort).toBe('high');
   });
 });

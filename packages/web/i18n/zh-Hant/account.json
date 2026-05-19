@@ -95,6 +95,7 @@
   "model.vision": "支援圖片識別",
   "model.vision_tag": "視覺",
   "model.vision_tip": "如果模型支援圖片識別，則開啟該開關。",
+  "model.embedding_vision_tip": "開啟後該索引模型可接收圖片輸入，並用於圖片向量索引和圖搜圖。",
   "model.voices": "聲音角色",
   "model.voices_tip": "透過一個陣列設定多個，例如：\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
   "model_provider": "模型提供者",

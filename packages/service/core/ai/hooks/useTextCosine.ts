@@ -3,7 +3,7 @@
   Reference: https://github.com/jina-ai/submodular-optimization
 */
 
-import { getVectorsByText } from '../embedding';
+import { getVectors } from '../embedding';
 import { getEmbeddingModel } from '../model';
 
 class PriorityQueue<T> {
@@ -83,16 +83,28 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
     k: number;
     alpha?: number;
   }) => {
-    const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectorsByText({
+    const query = originalText.trim();
+    const normalizedCandidates = candidates.map((item) => item.trim()).filter(Boolean);
+    if (!query || normalizedCandidates.length === 0 || k <= 0) {
+      return {
+        selectedData: [],
+        embeddingTokens: 0
+      };
+    }
+
+    const { tokens: embeddingTokens, vectors: embeddingVectors } = await getVectors({
       model: vectorModel,
-      input: [originalText, ...candidates],
+      inputs: [query, ...normalizedCandidates].map((text) => ({
+        type: 'text',
+        input: text
+      })),
       type: 'query'
     });
 
     const originalEmbedding = embeddingVectors[0];
     const candidateEmbeddings = embeddingVectors.slice(1);
 
-    const n = candidates.length;
+    const n = normalizedCandidates.length;
     const selected: string[] = [];
     const selectedEmbeddings: number[][] = [];
 
@@ -136,7 +148,7 @@ export const useTextCosine = ({ embeddingModel }: { embeddingModel: string }) =>
       }
 
       if (bestCandidate) {
-        selected.push(candidates[bestCandidate.index]);
+        selected.push(normalizedCandidates[bestCandidate.index]);
         selectedEmbeddings.push(candidateEmbeddings[bestCandidate.index]);
       }
     }

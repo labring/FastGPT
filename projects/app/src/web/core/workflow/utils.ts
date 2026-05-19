@@ -129,8 +129,14 @@ export const storeNode2FlowNode = ({
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
-            if (!dynamicInput) return item;
             const templateInput = template.inputs.find((input) => input.key === item.key);
+
+            if (!dynamicInput) {
+              return {
+                ...item,
+                deprecated: templateInput?.deprecated
+              };
+            }
 
             return {
               ...item,

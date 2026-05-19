@@ -5,11 +5,10 @@ import {
   mockVectorEmbRecall,
   mockVectorInit,
   mockGetVectorDataByTime,
-  mockGetVectorCountByTeamId,
   mockGetVectorCount,
   resetVectorMocks
 } from '@test/mocks/common/vector';
-import { mockGetVectorsByText } from '@test/mocks/core/ai/embedding';
+import { mockGetVectors } from '@test/mocks/core/ai/embedding';
 
 // Import controller functions after mocks are set up
 import {
@@ -65,7 +64,7 @@ describe('VectorDB Controller', () => {
     mockSetRedisCache.mockReset();
     mockDelRedisCache.mockReset();
     mockLoggerWarn.mockReset();
-    mockGetVectorsByText.mockClear();
+    mockGetVectors.mockClear();
   });
 
   afterEach(() => {
@@ -248,7 +247,7 @@ describe('VectorDB Controller', () => {
         [0.1, 0.2],
         [0.3, 0.4]
       ];
-      mockGetVectorsByText.mockResolvedValue({
+      mockGetVectors.mockResolvedValue({
         tokens: 100,
         vectors: mockVectors
       });
@@ -264,9 +263,18 @@ describe('VectorDB Controller', () => {
         model: mockModel as any
       });
 
-      expect(mockGetVectorsByText).toHaveBeenCalledWith({
+      expect(mockGetVectors).toHaveBeenCalledWith({
         model: mockModel,
-        input: ['hello world', 'test text'],
+        inputs: [
+          {
+            type: 'text',
+            input: 'hello world'
+          },
+          {
+            type: 'text',
+            input: 'test text'
+          }
+        ],
         type: 'db'
       });
       expect(mockVectorInsert).toHaveBeenCalledWith({
@@ -282,7 +290,7 @@ describe('VectorDB Controller', () => {
     });
 
     it('should invalidate team vector cache after insert', async () => {
-      mockGetVectorsByText.mockResolvedValue({
+      mockGetVectors.mockResolvedValue({
         tokens: 50,
         vectors: [[0.1]]
       });
@@ -302,7 +310,7 @@ describe('VectorDB Controller', () => {
     });
 
     it('should return insert result when team vector cache invalidation fails', async () => {
-      mockGetVectorsByText.mockResolvedValue({
+      mockGetVectors.mockResolvedValue({
         tokens: 50,
         vectors: [[0.1]]
       });
@@ -332,7 +340,7 @@ describe('VectorDB Controller', () => {
 
     it('should return insert result when team vector cache invalidation times out', async () => {
       vi.useFakeTimers();
-      mockGetVectorsByText.mockResolvedValue({
+      mockGetVectors.mockResolvedValue({
         tokens: 50,
         vectors: [[0.1]]
       });
@@ -363,14 +371,6 @@ describe('VectorDB Controller', () => {
     });
 
     it('should handle empty inputs', async () => {
-      mockGetVectorsByText.mockResolvedValue({
-        tokens: 0,
-        vectors: []
-      });
-      mockVectorInsert.mockResolvedValue({
-        insertIds: []
-      });
-
       const result = await insertDatasetDataVector({
         teamId: 'team_123',
         datasetId: 'dataset_456',
@@ -383,6 +383,9 @@ describe('VectorDB Controller', () => {
         tokens: 0,
         insertIds: []
       });
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(mockVectorInsert).not.toHaveBeenCalled();
+      expect(mockDelRedisCache).not.toHaveBeenCalled();
     });
   });
 

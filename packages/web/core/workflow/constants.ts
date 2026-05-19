@@ -1,5 +1,5 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { i18nT } from '../../i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 

@@ -17,7 +17,7 @@ import { readFileContentByBuffer } from '../../../common/file/read/utils';
 import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../../dataset/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getUserFilesPrompt, injectUserQueryPrompt } from '../../ai/llm/agentLoop/prompt';
+import { getUserFilesPrompt, injectUserQueryPrompt } from '../../ai/llm/prompt';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 
 type GetFileProps = {

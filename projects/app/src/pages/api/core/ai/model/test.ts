@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
+import { getVectors } from '@fastgpt/service/core/ai/embedding';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
@@ -21,14 +21,11 @@ const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 export type testQuery = { model: string; channelId?: number };
 
-export type testBody = {};
+export type testBody = Record<string, never>;
 
 export type testResponse = any;
 
-async function handler(
-  req: ApiRequestProps<testBody, testQuery>,
-  res: ApiResponseType<any>
-): Promise<testResponse> {
+async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
   await authSystemAdmin({ req });
 
   const { model, channelId } = req.query;
@@ -90,15 +87,20 @@ const testEmbeddingModel = async (
   model: EmbeddingModelItemType,
   headers: Record<string, string>
 ) => {
-  return getVectorsByText({
-    input: 'Hi',
+  return getVectors({
     model,
+    inputs: [
+      {
+        type: 'text',
+        input: 'Hi'
+      }
+    ],
     headers
   });
 };
 
 const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
-  const ai = getAIApi({
+  const { ai } = getAIApi({
     timeout: 10000
   });
   await ai.audio.speech.create(

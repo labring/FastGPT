@@ -51,7 +51,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         type="target"
         id={handleId}
         position={Position.Top}
-        isConnectableEnd={showHandle}
+        isConnectableEnd={active}
       >
         <Box
           className="flow-handle"
@@ -65,7 +65,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         />
       </Handle>
     );
-  }, [showHandle, size]);
+  }, [active, showHandle, size]);
 
   return Render;
 };
@@ -130,7 +130,7 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
         </Handle>
       </MyTooltip>
     );
-  }, [onConnect, size, t]);
+  }, [active, onConnect, size, t]);
 
   return Render;
 };

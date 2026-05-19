@@ -505,6 +505,117 @@ describe('getHistories', () => {
   it('should use default empty histories', () => {
     expect(getHistories(1)).toEqual([]);
   });
+
+  it('should keep the latest context checkpoint even when it is outside the recent window', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old question' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'old answer' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          { text: { content: 'before checkpoint' } },
+          { contextCheckpoint: '<context_checkpoint>compressed history</context_checkpoint>' }
+        ]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'recent question 1' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'recent answer 1' } }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'recent question 2' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'recent answer 2' } }]
+      }
+    ];
+
+    expect(getHistories(1, histories)).toEqual([histories[0], ...histories.slice(3)]);
+  });
+
+  it('should ignore non-AI checkpoint-shaped values when applying recent window', () => {
+    const histories = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ contextCheckpoint: '<context_checkpoint>invalid</context_checkpoint>' }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'old answer' } }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'recent question' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'recent answer' } }]
+      }
+    ] as any as ChatItemMiniType[];
+
+    expect(getHistories(1, histories)).toEqual(histories.slice(-2));
+  });
+
+  it('should keep only histories from the latest context checkpoint', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.System,
+        value: [{ text: { content: 'system prompt' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ contextCheckpoint: '<context_checkpoint>first</context_checkpoint>' }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'after first checkpoint' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ contextCheckpoint: '<context_checkpoint>latest</context_checkpoint>' }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'after latest checkpoint' } }]
+      }
+    ];
+
+    expect(getHistories(10, histories)).toEqual([histories[0], ...histories.slice(3)]);
+  });
+
+  it('should keep checkpoint histories when there are no leading system histories', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'old question' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ contextCheckpoint: '<context_checkpoint>latest</context_checkpoint>' }]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'after latest checkpoint' } }]
+      }
+    ];
+
+    expect(getHistories(1, histories)).toEqual(histories.slice(1));
+  });
 });
 
 describe('checkQuoteQAValue', () => {

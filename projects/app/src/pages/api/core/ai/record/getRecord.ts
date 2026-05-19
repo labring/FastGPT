@@ -9,13 +9,13 @@ import {
 } from '@fastgpt/global/openapi/core/ai/api';
 import { addSeconds } from 'date-fns';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export type GetRecordQuery = {
   requestId: string;
 };
 
-export type GetRecordBody = {};
+export type GetRecordBody = Record<string, never>;
 
 export type GetRecordResponse = LLMRequestRecordSchemaType;
 
