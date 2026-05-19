@@ -263,7 +263,19 @@ export const useSystemStore = create<State>()(
         name: 'globalStore',
         partialize: (state) => {
           const stripTrainTaskList = (list: any[]) =>
-            list?.map(({ trainTaskList, ...rest }: any) => rest);
+            list?.map(({ trainTaskList, ...rest }: any) => ({
+              ...rest,
+              trainTaskList:
+                trainTaskList?.map(
+                  ({ status, createTime, baseModelId, datasetIds, creatorName }: any) => ({
+                    status,
+                    createTime,
+                    baseModelId,
+                    datasetIds,
+                    creatorName
+                  })
+                ) || []
+            }));
 
           return {
             gitStar: state.gitStar,
