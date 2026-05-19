@@ -123,7 +123,7 @@ const FolderPath = (props: {
         py={0.5}
         px={1.5}
         borderRadius={'sm'}
-        maxW={['45vw', '250px']}
+        maxW={['45vw', '120px']}
         className={'textEllipsis'}
         {...(isSxfDesign
           ? {

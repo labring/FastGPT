@@ -278,8 +278,8 @@ export const postSearchText = (data: SearchDatasetTestBody) =>
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
   POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/listV2`, data);
-export const getDatasetCollectionPathById = (parentId: string) =>
-  GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
+export const getDatasetCollectionPathById = (sourceId: string) =>
+  GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { sourceId });
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const getDatasetCollectionTrainingDetail = (collectionId: string) =>

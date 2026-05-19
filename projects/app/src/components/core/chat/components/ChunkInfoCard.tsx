@@ -55,93 +55,90 @@ const ChunkInfoCard = ({
         minH={'40px'}
         px={3}
         w={'100%'}
+        bg={'#F4F6F8'}
       >
         <Flex alignItems={'center'} flex={1} gap={2} minW={0}>
-            {/* Toggle Button */}
-            <Box
-              className="toggle-icon"
-              display={'flex'}
-              alignItems={'center'}
-              justifyContent={'center'}
+          {/* Toggle Button */}
+          <Box
+            className="toggle-icon"
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'center'}
+            w={'16px'}
+            h={'16px'}
+            flexShrink={0}
+            color={'myGray.500'}
+          >
+            <MyIcon
+              name={isExpanded ? 'common/solidChevronDown' : 'common/solidChevronRight'}
               w={'16px'}
               h={'16px'}
-              flexShrink={0}
-              color={'myGray.500'}
-            >
-              <MyIcon
-                name={isExpanded ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-                w={'16px'}
-                h={'16px'}
-              />
-            </Box>
+            />
+          </Box>
 
-            {/* Title */}
-            <Box
-              fontSize={'sm'}
-              fontWeight={'500'}
-              lineHeight={'20px'}
-              color={'myGray.900'}
-              flexShrink={0}
-            >
-              {title}
-            </Box>
+          {/* Title */}
+          <Box
+            fontSize={'sm'}
+            fontWeight={'500'}
+            lineHeight={'20px'}
+            color={'myGray.900'}
+            flexShrink={0}
+          >
+            {title}
+          </Box>
 
-            {/* Description List */}
-            {descriptionList.length > 0 && (
-              <Flex alignItems={'center'} gap={4} flexWrap={'nowrap'} ml={2} overflow={'hidden'}>
-                {descriptionList.map((desc, index) => (
-                  <Box
-                    key={index}
-                    fontSize={'xs'}
-                    lineHeight={'16px'}
-                    color={'myGray.500'}
-                    flexShrink={0}
-                    whiteSpace={'nowrap'}
-                  >
-                    {desc}
-                  </Box>
-                ))}
-              </Flex>
-            )}
-          </Flex>
-
-          {/* Link Button */}
-          {linkText && linkUrl && (
-            <Box
-              onClick={(e) => e.stopPropagation()}
-              flexShrink={0}
-              ml={2}
-            >
-              <MyTooltip label={linkText}>
-                <Link
-                  onClick={handleLinkClick}
-                  display={'flex'}
-                  alignItems={'center'}
-                  gap={1}
-                  px={2}
-                  py={'3px'}
-                  borderRadius={'md'}
-                  border={'1px solid'}
-                  borderColor={'borderColor.low'}
+          {/* Description List */}
+          {descriptionList.length > 0 && (
+            <Flex alignItems={'center'} gap={4} flexWrap={'nowrap'} ml={2} overflow={'hidden'}>
+              {descriptionList.map((desc, index) => (
+                <Box
+                  key={index}
                   fontSize={'xs'}
-                  color={'myGray.600'}
+                  lineHeight={'16px'}
+                  color={'myGray.500'}
                   flexShrink={0}
-                  cursor={'pointer'}
-                  maxW={'200px'}
-                  _hover={{
-                    textDecoration: 'none',
-                    bg: 'myGray.05'
-                  }}
+                  whiteSpace={'nowrap'}
                 >
-                  <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-                    {linkText}
-                  </Box>
-                  <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} flexShrink={0} />
-                </Link>
-              </MyTooltip>
-            </Box>
+                  {desc}
+                </Box>
+              ))}
+            </Flex>
           )}
         </Flex>
+
+        {/* Link Button */}
+        {linkText && linkUrl && (
+          <Box onClick={(e) => e.stopPropagation()} flexShrink={0} ml={2}>
+            <MyTooltip label={linkText}>
+              <Link
+                onClick={handleLinkClick}
+                display={'flex'}
+                alignItems={'center'}
+                gap={1}
+                px={2}
+                py={'3px'}
+                borderRadius={'md'}
+                border={'1px solid'}
+                borderColor={'borderColor.low'}
+                fontSize={'xs'}
+                color={'myGray.600'}
+                flexShrink={0}
+                cursor={'pointer'}
+                maxW={'200px'}
+                _hover={{
+                  textDecoration: 'none',
+                  bg: 'myGray.05'
+                }}
+              >
+                <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+                  {linkText}
+                </Box>
+                <MyIcon name={'common/rightArrowLight'} w={'12px'} h={'12px'} flexShrink={0} />
+              </Link>
+            </MyTooltip>
+          </Box>
+        )}
+      </Flex>
 
       {/* Content */}
       {(q || imagePreviewUrl) && (
