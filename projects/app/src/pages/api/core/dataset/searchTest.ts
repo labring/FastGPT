@@ -4,6 +4,7 @@ import {
   deepRagSearch,
   defaultSearchDatasetData
 } from '@fastgpt/service/core/dataset/search/controller';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -82,7 +83,8 @@ async function handler(
     usingReRank,
     rerankModel: rerankModelData,
     rerankMethod: rerankMethodEnum,
-    rerankWeight
+    rerankWeight,
+    lang: getLocale(req)
   };
   const {
     searchRes,

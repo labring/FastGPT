@@ -36,8 +36,6 @@ async function handler(
     throw new Error('Invalid parameters: datasetId and md5Map are required');
   }
 
-  const md5Values = Object.values(md5Map);
-
   // 权限校验（读权限即可）
   await authDataset({
     req,

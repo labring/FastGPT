@@ -751,5 +751,18 @@
   "points_thirty_percent_remain_notify": "積分不足30%通知",
   "points_ten_percent_remain_notify": "積分不足10%通知",
   "lack_of_points_notify": "積分不足通知",
-  "points_insufficient_notify": "積分不足通知"
+  "plan_basic": "基礎版",
+  "plan_advanced": "高級版",
+  "plan_custom": "定製版",
+  "knowledge_base_index_capacity_limit": "知識庫索引容量上限",
+  "qpm": "QPM",
+  "website_sync_per_dataset": "單個知識庫網頁同步數量",
+  "chat_history_store_duration": "對話記錄保存時長（天）",
+  "app_registration_count": "應用備案數量上限",
+  "audit_log_store_duration": "審計日誌保存時間（天）",
+  "ticket_response_time": "工單支持響應時間（小時）",
+  "custom_domain_count": "自定義域名數量",
+  "max_upload_file_size_field": "最大上傳文件大小（MB）",
+  "max_upload_file_count_field": "最大上傳文件數量",
+  "sandbox": "虛擬機"
 }

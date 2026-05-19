@@ -155,7 +155,8 @@ export async function buildAgentTools({
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              llmModel: model
+              llmModel: model,
+              lang: lang
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
             return { response: result.response, usages: result.usages };
