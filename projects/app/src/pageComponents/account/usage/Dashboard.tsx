@@ -85,7 +85,12 @@ const UsageDashboard = ({
       </Flex>
       <Box mt={4}>{Selectors}</Box>
       <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
-        <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} totalInputTokens={totalInputTokens} totalOutputTokens={totalOutputTokens} />
+        <DashboardChart
+          totalPoints={totalPoints}
+          totalUsage={totalUsage}
+          totalInputTokens={totalInputTokens}
+          totalOutputTokens={totalOutputTokens}
+        />
       </MyBox>
       {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
     </>

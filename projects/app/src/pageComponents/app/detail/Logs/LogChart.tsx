@@ -232,7 +232,16 @@ const LogChart = () => {
         sourceCountMap: item.summary.sourceCountMap
       }),
       createDefaultValues(
-        ['userCount', 'newUserCount', 'retentionUserCount', 'points', 'inputTokens', 'outputTokens', 'totalTokens', 'sourceCountMap'],
+        [
+          'userCount',
+          'newUserCount',
+          'retentionUserCount',
+          'points',
+          'inputTokens',
+          'outputTokens',
+          'totalTokens',
+          'sourceCountMap'
+        ],
         {
           sourceCountMap: Object.keys(ChatSourceMap).reduce(
             (acc, key) => ({ ...acc, [key]: 0 }),
@@ -300,7 +309,12 @@ const LogChart = () => {
     };
 
     const cumulative = {
-      ...calculateStats(user, { userCount: 'sum', points: 'sum', inputTokens: 'sum', outputTokens: 'sum' }),
+      ...calculateStats(user, {
+        userCount: 'sum',
+        points: 'sum',
+        inputTokens: 'sum',
+        outputTokens: 'sum'
+      }),
       ...calculateStats(chat, {
         chatItemCount: 'sum',
         chatCount: 'sum',
@@ -533,7 +547,11 @@ const LogChart = () => {
                   ]}
                   HeaderRightChildren={
                     <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
-                      {t('app:logs_total')}: {Math.round(formatChartData.cumulative.inputTokens + formatChartData.cumulative.outputTokens)}
+                      {t('app:logs_total')}:{' '}
+                      {Math.round(
+                        formatChartData.cumulative.inputTokens +
+                          formatChartData.cumulative.outputTokens
+                      )}
                     </Flex>
                   }
                   blur={!feConfigs?.isPlus}

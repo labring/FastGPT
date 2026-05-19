@@ -96,9 +96,16 @@ const DashboardChart = ({
   }, []);
 
   const tokenChartData = useMemo(
-    () => totalPoints.map((d) => ({ ...d, totalTokens: (d.inputTokens || 0) + (d.outputTokens || 0) })),
+    () =>
+      totalPoints.map((d) => ({ ...d, totalTokens: (d.inputTokens || 0) + (d.outputTokens || 0) })),
     [totalPoints]
   );
+
+  const formatTokenYAxis = (value: number): string => {
+    if (value >= 1000000) return `${value / 1000000}M`;
+    if (value >= 1000) return `${value / 1000}K`;
+    return String(value);
+  };
 
   // 加载状态
   if (isLoading) {
@@ -107,7 +114,10 @@ const DashboardChart = ({
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
           <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
+            {t('account_usage:usage_summary', {
+              points: formatNumber(totalUsage),
+              tokens: totalInputTokens + totalOutputTokens
+            })}
           </Box>
         </Flex>
         <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -125,7 +135,10 @@ const DashboardChart = ({
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
           <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
+            {t('account_usage:usage_summary', {
+              points: formatNumber(totalUsage),
+              tokens: totalInputTokens + totalOutputTokens
+            })}
           </Box>
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
@@ -144,7 +157,10 @@ const DashboardChart = ({
       <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
         <Box color={'black'}>{t('account_usage:total_usage')}</Box>
         <Box color={'primary.600'} ml={2}>
-          {t('account_usage:usage_summary', { points: formatNumber(totalUsage), tokens: totalInputTokens + totalOutputTokens })}
+          {t('account_usage:usage_summary', {
+            points: formatNumber(totalUsage),
+            tokens: totalInputTokens + totalOutputTokens
+          })}
         </Box>
       </Flex>
       <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -193,6 +209,7 @@ const DashboardChart = ({
             tickSize={0}
             tickMargin={12}
             tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
+            tickFormatter={formatTokenYAxis}
           />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           <Tooltip
@@ -208,21 +225,56 @@ const DashboardChart = ({
                     borderRadius={'md'}
                     border={'0.5px solid'}
                     borderColor={'myGray.200'}
-                    boxShadow={'0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'}
+                    boxShadow={
+                      '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
+                    }
                   >
-                    <Box fontSize={'mini'} color={'myGray.600'} mb={3}>{data.date}</Box>
-                    <Box fontSize={'14px'} color={'myGray.900'} fontWeight={'medium'}>{`${t('account_usage:total_token_label')}${input + output}`}</Box>
-                    <Box fontSize={'12px'} color={'myGray.600'}>{`${t('account_usage:input_token_label')}${input}`}</Box>
-                    <Box fontSize={'12px'} color={'myGray.600'}>{`${t('account_usage:output_token_label')}${output}`}</Box>
+                    <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
+                      {data.date}
+                    </Box>
+                    <Box
+                      fontSize={'14px'}
+                      color={'myGray.900'}
+                      fontWeight={'medium'}
+                    >{`${t('account_usage:total_token_label')}${input + output}`}</Box>
+                    <Box
+                      fontSize={'12px'}
+                      color={'myGray.600'}
+                    >{`${t('account_usage:input_token_label')}${input}`}</Box>
+                    <Box
+                      fontSize={'12px'}
+                      color={'myGray.600'}
+                    >{`${t('account_usage:output_token_label')}${output}`}</Box>
                   </Box>
                 );
               }
               return null;
             }}
           />
-          <Line type="monotone" dataKey="totalTokens" name={t('account_usage:total_tokens')} stroke="#5E8FFF" strokeWidth={2.5} dot={false} />
-          <Line type="monotone" dataKey="inputTokens" name={t('account_usage:input_tokens')} stroke="#38A169" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="outputTokens" name={t('account_usage:output_tokens')} stroke="#D69E2E" strokeWidth={2} dot={false} />
+          <Line
+            type="monotone"
+            dataKey="totalTokens"
+            name={t('account_usage:total_tokens')}
+            stroke="#5E8FFF"
+            strokeWidth={2.5}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="inputTokens"
+            name={t('account_usage:input_tokens')}
+            stroke="#38A169"
+            strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="outputTokens"
+            name={t('account_usage:output_tokens')}
+            stroke="#D69E2E"
+            strokeWidth={2}
+            dot={false}
+          />
         </LineChart>
       </ResponsiveContainer>
     </>
