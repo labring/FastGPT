@@ -24,6 +24,7 @@ const sandboxAdapterMocks = vi.hoisted(() => {
   const createSandboxMock = vi.fn((provider: string, connectionConfig: any) => ({
     provider,
     connectionConfig,
+    status: { state: 'Running' },
     create: vi.fn(async () => undefined),
     start: vi.fn(async () => undefined),
     stop: stopMock,
@@ -81,10 +82,13 @@ import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import {
   SandboxClient,
+  connectReadySandboxByInstance,
   connectToSandbox,
   disconnectSandbox,
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId,
+  getSandboxCodeServerProxyTarget,
+  getReadySandboxInfo,
   getSandboxClient,
   getSandboxEndpoint
 } from '@fastgpt/service/core/ai/sandbox/controller';
@@ -120,6 +124,219 @@ describe('sandbox runtime helpers', () => {
     expect(sandboxAdapterMocks.ensureRunningMock).toHaveBeenCalledTimes(1);
     expect(sandboxAdapterMocks.waitUntilReadyMock).toHaveBeenCalledTimes(1);
     expect((result as any).connectionConfig.sessionId).toBe('sandbox-1');
+  });
+
+  it('does not probe getInfo before adapter ensureRunning', async () => {
+    const getInfoMock = vi.fn(async () => {
+      throw new Error('Devbox API returned non-JSON response (503): no healthy upstream');
+    });
+    const ensureRunningMock = vi.fn(async () => undefined);
+    const waitUntilReadyMock = vi.fn(async () => undefined);
+
+    sandboxAdapterMocks.createSandboxMock.mockImplementationOnce(
+      (provider: string, connectionConfig: any) => ({
+        provider,
+        connectionConfig,
+        status: { state: 'Running' },
+        create: vi.fn(async () => undefined),
+        start: vi.fn(async () => undefined),
+        stop: vi.fn(async () => undefined),
+        delete: vi.fn(async () => undefined),
+        getInfo: getInfoMock,
+        execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 })),
+        waitUntilReady: waitUntilReadyMock,
+        ensureRunning: ensureRunningMock
+      })
+    );
+
+    await expect(
+      connectToSandbox(
+        {
+          provider: 'sealosdevbox',
+          baseUrl: 'http://sandbox.local',
+          token: 'api-key'
+        },
+        'sandbox-transient-upstream'
+      )
+    ).resolves.toMatchObject({ provider: 'sealosdevbox' });
+
+    expect(getInfoMock).not.toHaveBeenCalled();
+    expect(ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect(waitUntilReadyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits until devbox command channel leaves pending after lifecycle ready', async () => {
+    vi.useFakeTimers();
+    try {
+      const executeMock = vi
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('Command execution failed: devbox pod is not running: Pending'), {
+            commandError: new Error('devbox pod is not running: Pending')
+          })
+        )
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+      const ensureRunningMock = vi.fn(async () => undefined);
+      const waitUntilReadyMock = vi.fn(async () => undefined);
+
+      sandboxAdapterMocks.createSandboxMock.mockImplementationOnce(
+        (provider: string, connectionConfig: any) => ({
+          provider,
+          connectionConfig,
+          id: 'pending-command-sandbox',
+          status: { state: 'Running' },
+          create: vi.fn(async () => undefined),
+          start: vi.fn(async () => undefined),
+          stop: vi.fn(async () => undefined),
+          delete: vi.fn(async () => undefined),
+          getInfo: vi.fn(async () => null),
+          execute: executeMock,
+          waitUntilReady: waitUntilReadyMock,
+          ensureRunning: ensureRunningMock
+        })
+      );
+
+      const connectPromise = connectToSandbox(
+        {
+          provider: 'sealosdevbox',
+          baseUrl: 'http://sandbox.local',
+          token: 'api-key'
+        },
+        'sandbox-pending-command'
+      );
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      await expect(connectPromise).resolves.toMatchObject({ provider: 'sealosdevbox' });
+      expect(ensureRunningMock).toHaveBeenCalledTimes(1);
+      expect(waitUntilReadyMock).toHaveBeenCalledTimes(1);
+      expect(executeMock).toHaveBeenCalledTimes(2);
+      expect(executeMock).toHaveBeenCalledWith('true', { timeoutMs: 5_000 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('waits while devbox exec reports pod is not running with a non-pending phase', async () => {
+    vi.useFakeTimers();
+    try {
+      const executeMock = vi
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(
+            new Error('Command execution failed: devbox pod is not running: Succeeded'),
+            {
+              commandError: new Error('devbox pod is not running: Succeeded')
+            }
+          )
+        )
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+
+      sandboxAdapterMocks.createSandboxMock.mockImplementationOnce(
+        (provider: string, connectionConfig: any) => ({
+          provider,
+          connectionConfig,
+          id: 'succeeded-command-sandbox',
+          status: { state: 'Running' },
+          create: vi.fn(async () => undefined),
+          start: vi.fn(async () => undefined),
+          stop: vi.fn(async () => undefined),
+          delete: vi.fn(async () => undefined),
+          getInfo: vi.fn(async () => null),
+          execute: executeMock,
+          waitUntilReady: vi.fn(async () => undefined),
+          ensureRunning: vi.fn(async () => undefined)
+        })
+      );
+
+      const connectPromise = connectToSandbox(
+        {
+          provider: 'sealosdevbox',
+          baseUrl: 'http://sandbox.local',
+          token: 'api-key'
+        },
+        'sandbox-succeeded-command'
+      );
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      await expect(connectPromise).resolves.toMatchObject({ provider: 'sealosdevbox' });
+      expect(executeMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back when reading ready sandbox info fails after availability check', async () => {
+    const sandbox = {
+      provider: 'sealosdevbox',
+      id: 'provider-sandbox-id',
+      status: { state: 'Running' },
+      getInfo: vi.fn(async () => {
+        throw new Error('Devbox API returned non-JSON response (503): no healthy upstream');
+      })
+    } as any;
+
+    await expect(
+      getReadySandboxInfo(sandbox, {
+        sandboxId: 'stable-session-id',
+        image: { repository: 'fallback-image', tag: 'latest' },
+        entrypoint: [],
+        status: { state: 'Running' },
+        createdAt: new Date('2026-05-19T00:00:00.000Z')
+      })
+    ).resolves.toMatchObject({
+      id: 'provider-sandbox-id',
+      image: { repository: 'fallback-image', tag: 'latest' },
+      status: { state: 'Running' },
+      createdAt: new Date('2026-05-19T00:00:00.000Z')
+    });
+  });
+
+  it('connects ready sandbox by instance even when metadata getInfo is transiently unavailable', async () => {
+    const getInfoMock = vi.fn(async () => {
+      throw new Error('Devbox API returned non-JSON response (503): no healthy upstream');
+    });
+    const ensureRunningMock = vi.fn(async () => undefined);
+    const waitUntilReadyMock = vi.fn(async () => undefined);
+
+    sandboxAdapterMocks.createSandboxMock.mockImplementationOnce(
+      (provider: string, connectionConfig: any) => ({
+        provider,
+        connectionConfig,
+        id: 'provider-sandbox-id',
+        status: { state: 'Running' },
+        create: vi.fn(async () => undefined),
+        start: vi.fn(async () => undefined),
+        stop: vi.fn(async () => undefined),
+        delete: vi.fn(async () => undefined),
+        getInfo: getInfoMock,
+        execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 })),
+        waitUntilReady: waitUntilReadyMock,
+        ensureRunning: ensureRunningMock
+      })
+    );
+
+    await expect(
+      connectReadySandboxByInstance(
+        {
+          provider: 'sealosdevbox',
+          baseUrl: 'http://sandbox.local',
+          token: 'api-key'
+        },
+        { sandboxId: 'stable-session-id' }
+      )
+    ).resolves.toMatchObject({
+      sandboxInfo: {
+        id: 'provider-sandbox-id',
+        status: { state: 'Running' },
+        image: { repository: '' }
+      }
+    });
+
+    expect(ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect(waitUntilReadyMock).toHaveBeenCalledTimes(1);
+    expect(getInfoMock).toHaveBeenCalledTimes(1);
   });
 
   it('waits until sandbox command channel is ready after ensureAvailable', async () => {
@@ -171,6 +388,75 @@ describe('sandbox runtime helpers', () => {
       url: 'https://gateway.example.com/code-server/devbox-new',
       proxyRevision: 'ef0ea93d2c1b7b60'
     });
+  });
+
+  it('retries transient provider failures while resolving endpoint', async () => {
+    vi.useFakeTimers();
+    const getEndpointMock = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error('Devbox API returned non-JSON response (503): no healthy upstream'),
+          {
+            status: 503,
+            rawBody: 'no healthy upstream'
+          }
+        )
+      )
+      .mockResolvedValueOnce({
+        host: 'gateway.example.com',
+        port: 443,
+        protocol: 'https',
+        url: 'https://gateway.example.com/code-server/devbox-retry'
+      });
+
+    const endpointPromise = getSandboxEndpoint({
+      provider: 'sealosdevbox',
+      getEndpoint: getEndpointMock
+    } as any);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(endpointPromise).resolves.toMatchObject({
+      url: 'https://gateway.example.com/code-server/devbox-retry'
+    });
+    expect(getEndpointMock).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it('retries transient provider failures while resolving proxy target', async () => {
+    vi.useFakeTimers();
+    const getProxyTargetMock = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error('Devbox API returned non-JSON response (503): no healthy upstream'),
+          {
+            status: 503,
+            rawBody: 'no healthy upstream'
+          }
+        )
+      )
+      .mockResolvedValueOnce({
+        service: 'code-server',
+        origin: 'https://gateway.example.com',
+        basePath: '/code-server/devbox-retry',
+        auth: 'code-server'
+      });
+
+    const targetPromise = getSandboxCodeServerProxyTarget({
+      provider: 'sealosdevbox',
+      getProxyTarget: getProxyTargetMock
+    } as any);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(targetPromise).resolves.toMatchObject({
+      origin: 'https://gateway.example.com',
+      basePath: '/code-server/devbox-retry'
+    });
+    expect(getProxyTargetMock).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 });
 

@@ -27,6 +27,7 @@ import {
   connectReadySandboxByInstance,
   connectToSandbox,
   disconnectSandbox,
+  getReadySandboxInfo,
   getSandboxEndpoint,
   SandboxClient,
   getSandboxClient
@@ -259,6 +260,15 @@ export async function createEditDebugSandbox(
 
     // getSandboxClient handles volumes internally (via getVolumeManagerConfig) and calls
     // provider.ensureRunning() which creates the container when it doesn't exist
+    const createConfig = buildEditDebugCreateConfig({
+      providerConfig,
+      sessionId,
+      sandboxImage,
+      defaults,
+      entrypoint,
+      skillId,
+      teamId
+    });
     const client = await getSandboxClient(
       {
         appId: skillId,
@@ -266,22 +276,18 @@ export async function createEditDebugSandbox(
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
       },
       {
-        createConfig: buildEditDebugCreateConfig({
-          providerConfig,
-          sessionId,
-          sandboxImage,
-          defaults,
-          entrypoint,
-          skillId,
-          teamId
-        })
+        createConfig
       }
     );
     sandboxClient = client;
     sandbox = client.provider;
 
-    const sandboxInfo = await client.provider.getInfo();
-    if (!sandboxInfo) throw new Error('Failed to get sandbox info after creation');
+    const sandboxInfo = await getReadySandboxInfo(client.provider, {
+      sandboxId: sessionId,
+      image: createConfig.image ?? sandboxImage,
+      entrypoint: createConfig.entrypoint,
+      status: client.provider.status
+    });
 
     // Upload package to sandbox and extract
     const zipPath = `${defaults.workDirectory}/package.zip`;

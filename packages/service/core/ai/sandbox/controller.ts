@@ -42,13 +42,147 @@ type UnionIdType = {
 };
 
 type CodeServerProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
-type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
+export type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
 
 const buildSandboxProxyRevision = (endpoint: SkillSandboxEndpointType): string =>
   hashStr(endpoint.url).slice(0, 16);
 
+const SANDBOX_PROVIDER_RETRY_TIMEOUT_MS = 30_000;
+const SANDBOX_PROVIDER_RETRY_INTERVAL_MS = 1_000;
+const SANDBOX_COMMAND_READY_TIMEOUT_MS = 120_000;
+const SANDBOX_COMMAND_READY_INTERVAL_MS = 1_000;
+const SANDBOX_COMMAND_READY_PROBE_TIMEOUT_MS = 5_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
+}
+
+function isRetryableSandboxProviderError(error: unknown): boolean {
+  let current: unknown = error;
+
+  while (current instanceof Error) {
+    const errorLike = current as Error & {
+      status?: unknown;
+      rawBody?: unknown;
+      cause?: unknown;
+    };
+    const status = typeof errorLike.status === 'number' ? errorLike.status : undefined;
+    const rawBody = typeof errorLike.rawBody === 'string' ? errorLike.rawBody.toLowerCase() : '';
+    const message = errorLike.message.toLowerCase();
+
+    if (
+      (status !== undefined && [502, 503, 504].includes(status)) ||
+      rawBody.includes('no healthy upstream') ||
+      message.includes('no healthy upstream')
+    ) {
+      return true;
+    }
+
+    current = errorLike.cause;
+  }
+
+  return false;
+}
+
+function isSandboxCommandNotRunningError(error: unknown): boolean {
+  const pending: unknown[] = [error];
+
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (!(current instanceof Error)) continue;
+
+    const errorLike = current as Error & {
+      commandError?: unknown;
+      cause?: unknown;
+    };
+    const message = errorLike.message.toLowerCase();
+
+    if (message.includes('pod is not running')) {
+      return true;
+    }
+
+    pending.push(errorLike.commandError, errorLike.cause);
+  }
+
+  return false;
+}
+
+/**
+ * 对 provider 只读探测接口做临时网关错误重试。
+ *
+ * adaptor 已在 ensureRunning 内部处理 getInfo 的 502/503/504；但 endpoint/proxy
+ * 能力也可能读取 provider info。这里限定为只读探测调用，避免重复执行 create/delete 等生命周期变更。
+ */
+async function retrySandboxProviderProbe<T>(
+  operation: string,
+  fn: () => Promise<T>,
+  timeoutMs = SANDBOX_PROVIDER_RETRY_TIMEOUT_MS,
+  intervalMs = SANDBOX_PROVIDER_RETRY_INTERVAL_MS
+): Promise<T> {
+  const startTime = Date.now();
+  let lastError: unknown;
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableSandboxProviderError(error)) {
+        throw error;
+      }
+      await sleep(intervalMs);
+    }
+  }
+
+  logger.warn('Sandbox provider probe retry exhausted', { operation, error: lastError });
+  throw lastError;
+}
+
+/**
+ * 等待 sandbox 的命令通道真正可执行。
+ *
+ * Sealos devbox 的 provider info 可能已经是 Running，但 exec API 仍短暂返回
+ * "pod is not running: Pending"。这里用无副作用的 `true` 命令补齐命令通道 ready
+ * 判定，避免后续 writeFiles/execute 抢跑。
+ */
+async function waitUntilSandboxCommandReady(
+  sandbox: ISandbox,
+  timeoutMs = SANDBOX_COMMAND_READY_TIMEOUT_MS,
+  intervalMs = SANDBOX_COMMAND_READY_INTERVAL_MS
+): Promise<void> {
+  const startTime = Date.now();
+  let lastError: unknown;
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const result = await sandbox.execute('true', {
+        timeoutMs: SANDBOX_COMMAND_READY_PROBE_TIMEOUT_MS
+      });
+      if (result.exitCode === 0) return;
+
+      const error = new Error(result.stderr || result.stdout || 'Sandbox command probe failed');
+      lastError = error;
+      if (!isSandboxCommandNotRunningError(error)) {
+        throw error;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isSandboxCommandNotRunningError(error)) {
+        throw error;
+      }
+    }
+
+    await sleep(intervalMs);
+  }
+
+  logger.warn('Sandbox command channel retry exhausted', {
+    provider: sandbox.provider,
+    sandboxId: sandbox.id,
+    error: lastError
+  });
+  throw lastError;
 }
 
 function toOpenSandboxCreateConfig(
@@ -123,29 +257,52 @@ export async function connectToSandbox(
 /**
  * 确保沙盒不仅处于 provider 的 Running 状态，也已经可以执行命令。
  *
- * 部分 provider 会先把资源状态置为 Running，但底层 Pod/exec 通道仍可能处于 Pending；
- * 如果此时立刻写文件或执行命令，会出现 "pod is not running: Pending" 这类抢跑错误。
+ * 生命周期恢复交给 adapter.ensureRunning 处理，避免外层直接 getInfo 绕过
+ * provider adapter 内部对临时网关错误（如 devbox 503/no healthy upstream）的重试。
+ * Running 状态仍额外等待命令通道 ready，避免底层 Pod/exec 通道未就绪时抢跑。
  */
 export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<void> {
-  const info = await sandbox.getInfo();
-  if (!info) {
-    await sandbox.ensureRunning();
-    await sandbox.waitUntilReady();
-    return;
-  }
-
-  if (info.status.state === 'Stopped' || info.status.state === 'Stopping') {
-    await sandbox.start();
-    await sandbox.waitUntilReady();
-    return;
-  }
-
-  if (['Deleting', 'UnExist', 'Error'].includes(info.status.state)) {
-    throw new Error(`Provider sandbox ${sandbox.id ?? info.id} is ${info.status.state}`);
-  }
-
-  // Running/Creating/Starting 都必须再等命令通道 ready，避免状态与 Pod 实际可执行状态不一致。
+  await sandbox.ensureRunning();
   await sandbox.waitUntilReady();
+  if (sandbox.provider === 'sealosdevbox') {
+    await waitUntilSandboxCommandReady(sandbox);
+  }
+}
+
+/**
+ * 读取 ready 沙盒的 provider metadata；如果 provider info 接口短暂异常，则返回最小可用信息。
+ *
+ * 沙盒是否可用由 ensureRunning/waitUntilReady 保证，getInfo 只用于补写镜像、
+ * 创建时间等展示型 metadata。不能让 devbox 网关的临时 503 再次中断已就绪的主流程。
+ */
+export async function getReadySandboxInfo(
+  sandbox: ISandbox,
+  fallback: {
+    sandboxId: string;
+    image: SandboxInfo['image'];
+    entrypoint?: SandboxInfo['entrypoint'];
+    status?: SandboxInfo['status'];
+    createdAt?: SandboxInfo['createdAt'];
+  }
+): Promise<SandboxInfo> {
+  try {
+    const sandboxInfo = await sandbox.getInfo();
+    if (sandboxInfo) return sandboxInfo;
+  } catch (error) {
+    logger.warn('Failed to read ready sandbox info, using fallback metadata', {
+      provider: sandbox.provider,
+      sandboxId: fallback.sandboxId,
+      error
+    });
+  }
+
+  return {
+    id: sandbox.id ?? fallback.sandboxId,
+    image: fallback.image,
+    entrypoint: fallback.entrypoint ?? [],
+    status: fallback.status ?? sandbox.status,
+    createdAt: fallback.createdAt ?? new Date()
+  };
 }
 
 export async function connectReadySandboxByInstance(
@@ -160,10 +317,11 @@ export async function connectReadySandboxByInstance(
   const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
 
   try {
-    const sandboxInfo = await sandbox.getInfo();
-    if (!sandboxInfo) {
-      throw new Error('Sandbox not found');
-    }
+    const sandboxInfo = await getReadySandboxInfo(sandbox, {
+      sandboxId: instance.sandboxId,
+      image: { repository: '' },
+      status: sandbox.status
+    });
     return {
       sandbox,
       sandboxInfo
@@ -191,7 +349,9 @@ export async function getSandboxEndpoint(sandbox: ISandbox): Promise<SkillSandbo
     );
   }
 
-  const endpoint = await endpointResolver.getEndpoint('code-server');
+  const endpoint = await retrySandboxProviderProbe('get code-server endpoint', () =>
+    endpointResolver.getEndpoint('code-server')
+  );
   return {
     host: endpoint.host,
     port: endpoint.port,
@@ -214,7 +374,9 @@ export async function getSandboxCodeServerProxyTarget(
     );
   }
 
-  return proxyResolver.getProxyTarget('code-server');
+  return retrySandboxProviderProbe('get code-server proxy target', () =>
+    proxyResolver.getProxyTarget('code-server')
+  );
 }
 
 export class SandboxClient {
