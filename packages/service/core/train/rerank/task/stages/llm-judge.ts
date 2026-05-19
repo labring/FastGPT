@@ -6,6 +6,7 @@ import {
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { MongoEvalDatasetData } from '../../../../../core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoDatasetData } from '../../../../../core/dataset/data/schema';
 import { judgeRelevantChunks } from '../../external';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import type { RankingCase } from '../../../common/metrics/rankingMetrics';
@@ -78,18 +79,36 @@ export async function runLLMJudgeStage(task: RerankTrainTaskSchemaType): Promise
   const topK = trainEnv.LLM_JUDGE_TOP_K;
   const defaultModel = getDefaultLLMModel();
 
-  // Build the eval data content lookup
+  // Build the eval data content lookup (retrievalContextsFull now only stores id+score)
   const evalDataContentMap = new Map(
     evalDataItems.map((item: any) => [
       item._id.toString(),
       {
         question: item.userInput ?? '',
-        retrievalContextsFull: (item.retrievalContextsFull || []) as Array<{
-          id: string;
-          q?: string;
-          a?: string;
-        }>
+        candidateIds: (item.retrievalContextsFull || []).map((c: any) => c.id)
       }
+    ])
+  );
+
+  // Collect all IDs that may need q/a lookups (baseline/tuned topK merged for each item)
+  const allNeededIds = new Set<string>();
+  for (const [itemId, baselineIds] of baselineMap) {
+    const tunedIds = tunedMap.get(itemId);
+    if (!tunedIds) continue;
+    const evalContent = evalDataContentMap.get(itemId);
+    if (!evalContent) continue;
+
+    const mergedIds = Array.from(
+      new Set([...baselineIds.slice(0, topK), ...tunedIds.slice(0, topK)])
+    );
+    mergedIds.forEach((id) => allNeededIds.add(id));
+  }
+
+  // Batch fetch q/a text from original dataset data
+  const dataTextMap = new Map<string, { q: string; a: string }>(
+    (await MongoDatasetData.find({ _id: { $in: [...allNeededIds] } }, 'q a').lean()).map((d) => [
+      String(d._id),
+      d as { q: string; a: string }
     ])
   );
 
@@ -114,15 +133,11 @@ export async function runLLMJudgeStage(task: RerankTrainTaskSchemaType): Promise
       new Set([...baselineIds.slice(0, topK), ...tunedIds.slice(0, topK)])
     );
 
-    // Lookup chunk content from retrievalContextsFull
-    const retrievalMap = new Map(
-      evalContent.retrievalContextsFull.map((c) => [c.id, c])
-    );
-
+    // Lookup chunk content from MongoDatasetData (fetched in batch above)
     const retrieval_reference_list = mergedIds
       .map((id) => {
-        const chunk = retrievalMap.get(id);
-        return { id, q: chunk?.q ?? '', a: chunk?.a ?? '' };
+        const doc = dataTextMap.get(id);
+        return { id, q: doc?.q ?? '', a: doc?.a ?? '' };
       })
       .filter((c) => c.q.length > 0 || c.a.length > 0);
 
@@ -160,6 +175,10 @@ export async function runLLMJudgeStage(task: RerankTrainTaskSchemaType): Promise
   );
   const limit = pLimit(concurrency);
 
+  let completedCount = 0;
+  const totalCount = judgeItems.length;
+  const PROGRESS_INTERVAL = Math.max(1, Math.floor(totalCount / 10));
+
   const judgeResults = await Promise.allSettled(
     judgeItems.map((item) =>
       limit(async () => {
@@ -172,6 +191,15 @@ export async function runLLMJudgeStage(task: RerankTrainTaskSchemaType): Promise
             api_key: defaultModel?.requestAuth ?? ''
           }
         });
+
+        completedCount++;
+        if (completedCount % PROGRESS_INTERVAL === 0 || completedCount === totalCount) {
+          addLog.info('LLM judge progress', {
+            taskId: String(task._id),
+            completed: completedCount,
+            total: totalCount
+          });
+        }
 
         if (response.status !== 'success') {
           addLog.warn('LLM judge failed for item', {

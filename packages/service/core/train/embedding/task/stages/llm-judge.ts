@@ -163,6 +163,10 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
   );
   const limit = pLimit(concurrency);
 
+  let completedCount = 0;
+  const totalCount = judgeItems.length;
+  const PROGRESS_INTERVAL = Math.max(1, Math.floor(totalCount / 10));
+
   const judgeResults = await Promise.allSettled(
     judgeItems.map((item) =>
       limit(async () => {
@@ -175,6 +179,15 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
             api_key: defaultModel?.requestAuth ?? ''
           }
         });
+
+        completedCount++;
+        if (completedCount % PROGRESS_INTERVAL === 0 || completedCount === totalCount) {
+          addLog.info('LLM judge progress (embedding)', {
+            taskId: String(task._id),
+            completed: completedCount,
+            total: totalCount
+          });
+        }
 
         if (response.status !== 'success') {
           addLog.warn('LLM judge failed for item (embedding)', {
