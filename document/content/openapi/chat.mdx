@@ -101,6 +101,7 @@ description: FastGPT OpenAPI 对话接口
   - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId唯一，长度小于250，通常可以是自己系统的对话框ID。
 - messages: 结构与[GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
 - responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
+- authProxy: object | undefined 。仅 API Key 鉴权可用，用于指定本次调用代表团队内哪个成员执行。支持 `username` 或 `tmbId`，两者同时传入时必须指向同一成员；传入 `chatId` 续聊时，该成员必须是该对话的归属成员。
 - detail:是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
 - variables: 模块变量，一个对象，会替换模块中，输入框内容里的`[key]`
 </div>
