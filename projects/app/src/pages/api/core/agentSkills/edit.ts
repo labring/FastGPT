@@ -10,6 +10,7 @@ import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
@@ -48,13 +49,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Authenticate user and verify write permission
-    const { teamId, tmbId } = await authSkill({
+    const { teamId, tmbId, skill } = await authSkill({
       req,
       authToken: true,
       authApiKey: true,
       skillId,
       per: WritePermissionVal
     });
+
+    if (skill.creationStatus && skill.creationStatus !== AgentSkillCreationStatusEnum.ready) {
+      sseErrRes(res, skill.creationError || SkillErrEnum.noStorage);
+      res.end();
+      return;
+    }
 
     // Validate optional parameters
     if (image && !image.repository) {

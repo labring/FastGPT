@@ -2,6 +2,7 @@ import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './version/schema';
 import {
   AgentSkillSourceEnum,
+  AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
 import type { AgentSkillSchemaType, SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
@@ -27,6 +28,11 @@ type CreateSkillData = {
   avatar?: string;
   teamId: string;
   tmbId: string;
+  creationStatus?: AgentSkillCreationStatusEnum;
+  creationPayload?: {
+    requirements?: string;
+    model?: string;
+  };
 };
 
 // UpdateSkillData excludes markdown to ensure consistency with version management
@@ -48,6 +54,8 @@ export async function createSkill(data: CreateSkillData, session?: ClientSession
     source: AgentSkillSourceEnum.personal,
     currentVersion: 0,
     versionCount: 0,
+    creationStatus: data.creationStatus ?? AgentSkillCreationStatusEnum.ready,
+    creationPayload: data.creationPayload,
     updateTime: new Date()
   });
   await skill.save({ session });
@@ -91,10 +99,48 @@ export async function updateCurrentStorage(
     size: number;
   },
   session?: ClientSession
-): Promise<void> {
+): Promise<boolean> {
+  const result = await MongoAgentSkills.updateOne(
+    { _id: skillId, deleteTime: null },
+    {
+      $set: {
+        currentStorage: storageInfo,
+        creationStatus: AgentSkillCreationStatusEnum.ready,
+        updateTime: new Date()
+      },
+      $unset: {
+        creationError: '',
+        creationPayload: ''
+      }
+    },
+    { session }
+  );
+
+  return result.matchedCount > 0;
+}
+
+/** Mark an async-created skill as failed while keeping it visible for deletion and diagnosis. */
+export async function updateSkillCreationFailed({
+  skillId,
+  error,
+  session
+}: {
+  skillId: string;
+  error: string;
+  session?: ClientSession;
+}): Promise<void> {
   await MongoAgentSkills.updateOne(
     { _id: skillId, deleteTime: null },
-    { $set: { currentStorage: storageInfo, updateTime: new Date() } },
+    {
+      $set: {
+        creationStatus: AgentSkillCreationStatusEnum.failed,
+        creationError: error,
+        updateTime: new Date()
+      },
+      $unset: {
+        creationPayload: ''
+      }
+    },
     { session }
   );
 }
@@ -402,7 +448,7 @@ export async function getSkillFolderPath(
     return [];
   }
 
-  const targetId = type === 'current' ? skillId : skill.parentId ?? null;
+  const targetId = type === 'current' ? skillId : (skill.parentId ?? null);
   return await getParents(targetId);
 }
 

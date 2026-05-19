@@ -15,7 +15,10 @@ import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/util
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillCreationStatusEnum,
+  SandboxTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   SaveDeploySkillBodySchema,
@@ -54,6 +57,10 @@ async function handler(
     authToken: true,
     authApiKey: true
   });
+
+  if (skill.creationStatus && skill.creationStatus !== AgentSkillCreationStatusEnum.ready) {
+    return Promise.reject(skill.creationError || SkillErrEnum.noStorage);
+  }
 
   // Fetch the edit-debug sandbox
   const providerConfig = getSandboxProviderConfig();

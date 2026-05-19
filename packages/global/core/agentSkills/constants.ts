@@ -83,6 +83,12 @@ export const agentSkillsVersionCollectionName = 'agent_skills_versions';
 
 export const skillSandboxCollectionName = 'skill_sandbox_info';
 
+export enum AgentSkillCreationStatusEnum {
+  creating = 'creating',
+  ready = 'ready',
+  failed = 'failed'
+}
+
 // Agent Skill types
 export enum AgentSkillTypeEnum {
   folder = 'folder',

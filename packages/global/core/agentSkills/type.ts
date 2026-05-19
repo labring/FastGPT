@@ -3,6 +3,7 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum,
+  AgentSkillCreationStatusEnum,
   SandboxProtocolEnum,
   SandboxTypeEnum
 } from './constants';
@@ -17,6 +18,7 @@ const BufferSchema = z.custom<Buffer>(
 export const AgentSkillSourceSchema = z.enum(AgentSkillSourceEnum);
 export const AgentSkillCategorySchema = z.enum(AgentSkillCategoryEnum);
 export const AgentSkillTypeSchema = z.enum(AgentSkillTypeEnum);
+export const AgentSkillCreationStatusSchema = z.enum(AgentSkillCreationStatusEnum);
 export const SandboxProtocolSchema = z.enum(SandboxProtocolEnum);
 export const SandboxTypeSchema = z.enum(SandboxTypeEnum);
 export const SandboxStatusSchema = z.enum([
@@ -76,7 +78,9 @@ export const AgentSkillSchema = z.object({
   deleteTime: z.coerce.date().nullable().optional(),
   currentVersion: z.number(),
   versionCount: z.number(),
-  currentStorage: AgentSkillStorageSchema.optional()
+  currentStorage: AgentSkillStorageSchema.optional(),
+  creationStatus: AgentSkillCreationStatusSchema.optional(),
+  creationError: z.string().optional()
 });
 export type AgentSkillSchemaType = z.infer<typeof AgentSkillSchema>;
 
@@ -91,6 +95,7 @@ export const AgentSkillListItemSchema = z.object({
   author: z.string(),
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
+  creationStatus: AgentSkillCreationStatusSchema.optional(),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
   appCount: z.number().optional(),

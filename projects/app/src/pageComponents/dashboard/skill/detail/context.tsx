@@ -4,7 +4,10 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import type { AgentSkillDetailType } from '@fastgpt/global/core/agentSkills/type';
 import type { SandboxStatusItemType, SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillCreationStatusEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
 import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
@@ -41,6 +44,7 @@ type SkillDetailContextType = {
   sandboxLogs: SandboxLogEntry[];
   sandboxEndpoint: SandboxEndpoint | null;
   sandboxError: string | null;
+  isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
 };
@@ -58,6 +62,7 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxLogs: [],
   sandboxEndpoint: null,
   sandboxError: null,
+  isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {}
 });
@@ -184,6 +189,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
           tmbId: res.tmbId ?? '',
           currentVersion: 0,
           versionCount: 0,
+          creationStatus: res.creationStatus,
+          creationError: res.creationError,
           createTime: new Date(res.createTime),
           updateTime: new Date(res.updateTime),
           appCount: res.appCount ?? 0,
@@ -198,13 +205,35 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
+  const creationStatus = skillDetail?.creationStatus;
+  const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
+  const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
+  const isSkillReady =
+    !!skillDetail && (!creationStatus || creationStatus === AgentSkillCreationStatusEnum.ready);
+  const visibleSandboxState: SandboxState = isSkillCreateFailed ? 'failed' : sandboxState;
+  const visibleSandboxError = isSkillCreateFailed
+    ? skillDetail?.creationError || t('common:create_failed')
+    : sandboxError;
+  const visibleCurrentTab =
+    !isSkillReady && currentTab === TabEnum.preview ? TabEnum.config : currentTab;
+
+  useEffect(() => {
+    if (!isSkillCreating) return;
+
+    const timer = setInterval(() => {
+      refreshSkillDetail();
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [isSkillCreating, refreshSkillDetail]);
+
   // Auto-start sandbox when skillId is ready
   useEffect(() => {
-    if (skillId && !hasStartedRef.current) {
+    if (skillId && isSkillReady && !hasStartedRef.current) {
       hasStartedRef.current = true;
       startSandbox();
     }
-  }, [skillId, startSandbox]);
+  }, [skillId, isSkillReady, startSandbox]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -219,14 +248,15 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       skillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
-      currentTab,
+      currentTab: visibleCurrentTab,
       setCurrentTab,
       showHistories,
       setShowHistories,
-      sandboxState,
+      sandboxState: visibleSandboxState,
       sandboxLogs,
       sandboxEndpoint,
-      sandboxError,
+      sandboxError: visibleSandboxError,
+      isSkillReady,
       startSandbox,
       restartSandbox
     }),
@@ -235,12 +265,13 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       skillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
-      currentTab,
+      visibleCurrentTab,
       showHistories,
-      sandboxState,
+      visibleSandboxState,
       sandboxLogs,
       sandboxEndpoint,
-      sandboxError,
+      visibleSandboxError,
+      isSkillReady,
       startSandbox,
       restartSandbox
     ]

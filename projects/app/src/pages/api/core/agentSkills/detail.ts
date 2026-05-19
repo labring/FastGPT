@@ -12,7 +12,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(
-  req: ApiRequestProps<{}, GetSkillDetailQuery>
+  req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
 ): Promise<GetSkillDetailResponse> {
   const { skillId } = req.query;
 
@@ -54,6 +54,8 @@ async function handler(
     category: skill.category,
     config: skill.config,
     avatar: skill.avatar,
+    creationStatus: skill.creationStatus,
+    creationError: skill.creationError,
     teamId: skill.teamId,
     tmbId: skill.tmbId,
     createTime: skill.createTime?.toISOString() || new Date().toISOString(),

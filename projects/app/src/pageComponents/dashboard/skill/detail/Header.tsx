@@ -35,6 +35,8 @@ const RouteTab = () => {
   const { t } = useTranslation();
   const { currentTab, setCurrentTab } = useContextSelector(SkillDetailContext, (v) => v);
 
+  const isSkillReady = useContextSelector(SkillDetailContext, (v) => v.isSkillReady);
+
   const tabList = [
     { label: t('skill:detail_tab_config'), value: TabEnum.config },
     { label: t('skill:detail_tab_preview'), value: TabEnum.preview }
@@ -61,7 +63,10 @@ const RouteTab = () => {
               }
             : {
                 color: 'myGray.500',
-                onClick: () => setCurrentTab(tab.value)
+                onClick: () => {
+                  if (!isSkillReady && tab.value === TabEnum.preview) return;
+                  setCurrentTab(tab.value);
+                }
               })}
         >
           <Box>{tab.label}</Box>
@@ -75,10 +80,8 @@ const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { skillDetail, refreshSkillDetail, showHistories, setShowHistories } = useContextSelector(
-    SkillDetailContext,
-    (v) => v
-  );
+  const { skillDetail, refreshSkillDetail, showHistories, setShowHistories, isSkillReady } =
+    useContextSelector(SkillDetailContext, (v) => v);
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
@@ -199,25 +202,27 @@ const Header = () => {
       <HStack ml={1} spacing={2}>
         <Avatar src={skillDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
         <Box color={'myGray.900'}>{skillDetail.name}</Box>
-        <MyMenu
-          Button={
-            <IconButton
-              aria-label="Expand"
-              icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
-              w={'34px'}
-              h={'34px'}
-              bg={'white'}
-              border={'1px solid'}
-              borderColor={'myGray.250'}
-              borderRadius={'sm'}
-              boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
-              _hover={{
-                bg: 'myGray.50'
-              }}
-            />
-          }
-          menuList={menuList}
-        />
+        {isSkillReady && (
+          <MyMenu
+            Button={
+              <IconButton
+                aria-label="Expand"
+                icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
+                w={'34px'}
+                h={'34px'}
+                bg={'white'}
+                border={'1px solid'}
+                borderColor={'myGray.250'}
+                borderRadius={'sm'}
+                boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+                _hover={{
+                  bg: 'myGray.50'
+                }}
+              />
+            }
+            menuList={menuList}
+          />
+        )}
       </HStack>
 
       {/* 居中 Tab */}
@@ -228,7 +233,7 @@ const Header = () => {
       <Box flex={1} />
 
       {/* 右侧按钮组（历史版本抽屉打开时隐藏） */}
-      {!showHistories && (
+      {isSkillReady && !showHistories && (
         <HStack spacing={3}>
           <IconButton
             icon={<MyIcon name={'history'} w={'18px'} />}

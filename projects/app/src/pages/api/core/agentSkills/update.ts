@@ -17,7 +17,8 @@ import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   AgentSkillTypeEnum,
-  AgentSkillCategoryEnum
+  AgentSkillCategoryEnum,
+  AgentSkillCreationStatusEnum
 } from '@fastgpt/global/core/agentSkills/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import {
@@ -54,6 +55,10 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     authToken: true,
     authApiKey: true
   });
+
+  if (skill.creationStatus && skill.creationStatus !== AgentSkillCreationStatusEnum.ready) {
+    return Promise.reject(skill.creationError || SkillErrEnum.noStorage);
+  }
 
   if (isMove) {
     // Move operation: check source folder, target folder, and root-level permissions

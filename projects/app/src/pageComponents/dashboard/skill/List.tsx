@@ -16,6 +16,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import {
   AgentSkillSourceEnum,
+  AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
 import {
@@ -310,6 +311,91 @@ const List = ({
           const isFolder = skill.type === AgentSkillTypeEnum.folder;
           const isPersonal = skill.source === AgentSkillSourceEnum.personal;
           const relatedAppsCount = skill.appCount ?? 0;
+          const isSkillReady =
+            isFolder ||
+            (skill.creationStatus ?? AgentSkillCreationStatusEnum.ready) ===
+              AgentSkillCreationStatusEnum.ready;
+          const isSkillCreating = skill.creationStatus === AgentSkillCreationStatusEnum.creating;
+          const isSkillCreateFailed = skill.creationStatus === AgentSkillCreationStatusEnum.failed;
+          const menuList = [
+            ...(isFolder || isSkillReady
+              ? [
+                  {
+                    children: [
+                      {
+                        icon: 'edit',
+                        type: 'grayBg' as const,
+                        label: t('common:dataset.Edit Info'),
+                        onClick: () => {
+                          if (
+                            !isFolder &&
+                            guardSkillSandboxOperation &&
+                            !guardSkillSandboxOperation()
+                          ) {
+                            return;
+                          }
+                          setEditedSkill({
+                            id: skill._id,
+                            avatar:
+                              skill.avatar ??
+                              (isFolder ? 'common/folderFill' : 'core/skill/default'),
+                            name: skill.name,
+                            intro: skill.description
+                          });
+                        }
+                      },
+                      {
+                        icon: 'common/file/move',
+                        type: 'grayBg' as const,
+                        label: t('common:move_to'),
+                        onClick: () => setMoveSkillId(skill._id)
+                      },
+                      {
+                        icon: 'key',
+                        type: 'grayBg' as const,
+                        label: t('skill:permission_settings'),
+                        onClick: () => {
+                          setEditPerSkillId(skill._id);
+                        }
+                      },
+                      ...(!isFolder
+                        ? [
+                            {
+                              icon: 'export',
+                              type: 'grayBg' as const,
+                              label: t('skill:export_config'),
+                              onClick: () => onExportSkill(skill._id, skill.name)
+                            },
+                            {
+                              icon: 'copy',
+                              type: 'grayBg' as const,
+                              label: t('skill:copy_skill'),
+                              onClick: () =>
+                                openConfirmCopy({
+                                  onConfirm: () => onclickCopySkill(skill._id)
+                                })()
+                            }
+                          ]
+                        : [])
+                    ]
+                  }
+                ]
+              : []),
+            {
+              children: [
+                {
+                  type: 'danger' as const,
+                  icon: 'delete',
+                  label: t('common:Delete'),
+                  onClick: () =>
+                    setDeleteTarget({
+                      skillId: skill._id,
+                      refsCount: isFolder ? 0 : relatedAppsCount
+                    })
+                }
+              ]
+            }
+          ];
 
           return (
             <MyBox
@@ -337,7 +423,8 @@ const List = ({
                 if (isFolder) {
                   router.push({ query: { ...router.query, parentId: skill._id } });
                 } else {
-                  if (guardSkillSandboxOperation && !guardSkillSandboxOperation()) return;
+                  if (isSkillReady && guardSkillSandboxOperation && !guardSkillSandboxOperation())
+                    return;
                   router.push(`/skill/detail?skillId=${skill._id}`);
                 }
               }}
@@ -362,6 +449,19 @@ const List = ({
                 <Box className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
                   {skill.name}
                 </Box>
+                {(isSkillCreating || isSkillCreateFailed) && (
+                  <Box
+                    px={2}
+                    py={0.5}
+                    borderRadius={'sm'}
+                    fontSize={'10px'}
+                    color={isSkillCreateFailed ? 'red.600' : 'primary.600'}
+                    bg={isSkillCreateFailed ? 'red.50' : 'primary.50'}
+                    flexShrink={0}
+                  >
+                    {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
+                  </Box>
+                )}
               </Flex>
 
               {/* Description */}
@@ -387,7 +487,7 @@ const List = ({
                     avatarSize="1rem"
                     spacing={1}
                   />
-                  {!isFolder && (
+                  {!isFolder && isSkillReady && (
                     <>
                       {relatedAppsCount > 0 ? (
                         <RelatedAppsPopover skillId={skill._id} count={relatedAppsCount} />
@@ -426,81 +526,7 @@ const List = ({
                             aria-label={''}
                           />
                         }
-                        menuList={[
-                          {
-                            children: [
-                              {
-                                icon: 'edit',
-                                type: 'grayBg' as const,
-                                label: t('common:dataset.Edit Info'),
-                                onClick: () => {
-                                  if (
-                                    !isFolder &&
-                                    guardSkillSandboxOperation &&
-                                    !guardSkillSandboxOperation()
-                                  ) {
-                                    return;
-                                  }
-                                  setEditedSkill({
-                                    id: skill._id,
-                                    avatar:
-                                      skill.avatar ??
-                                      (isFolder ? 'common/folderFill' : 'core/skill/default'),
-                                    name: skill.name,
-                                    intro: skill.description
-                                  });
-                                }
-                              },
-                              {
-                                icon: 'common/file/move',
-                                type: 'grayBg' as const,
-                                label: t('common:move_to'),
-                                onClick: () => setMoveSkillId(skill._id)
-                              },
-                              {
-                                icon: 'key',
-                                type: 'grayBg' as const,
-                                label: t('skill:permission_settings'),
-                                onClick: () => {
-                                  setEditPerSkillId(skill._id);
-                                }
-                              },
-                              ...(!isFolder
-                                ? [
-                                    {
-                                      icon: 'export',
-                                      type: 'grayBg' as const,
-                                      label: t('skill:export_config'),
-                                      onClick: () => onExportSkill(skill._id, skill.name)
-                                    },
-                                    {
-                                      icon: 'copy',
-                                      type: 'grayBg' as const,
-                                      label: t('skill:copy_skill'),
-                                      onClick: () =>
-                                        openConfirmCopy({
-                                          onConfirm: () => onclickCopySkill(skill._id)
-                                        })()
-                                    }
-                                  ]
-                                : [])
-                            ]
-                          },
-                          {
-                            children: [
-                              {
-                                type: 'danger' as const,
-                                icon: 'delete',
-                                label: t('common:Delete'),
-                                onClick: () =>
-                                  setDeleteTarget({
-                                    skillId: skill._id,
-                                    refsCount: isFolder ? 0 : relatedAppsCount
-                                  })
-                              }
-                            ]
-                          }
-                        ]}
+                        menuList={menuList}
                       />
                     </Box>
                   )}

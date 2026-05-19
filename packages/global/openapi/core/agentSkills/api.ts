@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TeamMemberStatusEnum } from '../../../support/user/team/constant';
 import {
   AgentSkillCategorySchema,
+  AgentSkillCreationStatusSchema,
   AgentSkillListItemSchema,
   AgentSkillSourceSchema,
   AgentSkillStorageSchema,
@@ -125,6 +126,8 @@ export const GetSkillDetailResponseSchema = z.object({
   category: z.array(AgentSkillCategorySchema),
   config: AgentSkillConfigSchema,
   avatar: z.string().optional(),
+  creationStatus: AgentSkillCreationStatusSchema.optional(),
+  creationError: z.string().optional(),
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
   createTime: z.string(),

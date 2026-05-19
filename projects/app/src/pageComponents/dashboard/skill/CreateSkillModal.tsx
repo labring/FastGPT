@@ -27,10 +27,9 @@ type FormType = {
 type Props = {
   parentId?: string | null;
   onClose: () => void;
-  onSuccess?: () => void;
 };
 
-const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
+const CreateSkillModal = ({ parentId, onClose }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { defaultModels } = useSystemStore();
@@ -69,11 +68,9 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     },
     {
       onSuccess(skillId) {
-        onSuccess?.();
         onClose();
         router.push(`/skill/detail?skillId=${skillId}`);
       },
-      successToast: t('common:create_success'),
       errorToast: t('common:create_failed')
     }
   );

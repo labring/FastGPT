@@ -7,10 +7,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const SandboxError = () => {
   const { t } = useTranslation();
-  const { sandboxError, startSandbox } = useContextSelector(SkillDetailContext, (v) => ({
-    sandboxError: v.sandboxError,
-    startSandbox: v.startSandbox
-  }));
+  const { sandboxError, isSkillReady, startSandbox } = useContextSelector(
+    SkillDetailContext,
+    (v) => ({
+      sandboxError: v.sandboxError,
+      isSkillReady: v.isSkillReady,
+      startSandbox: v.startSandbox
+    })
+  );
 
   return (
     <Flex h={'100%'} alignItems={'center'} justifyContent={'center'} flexDirection={'column'}>
@@ -23,9 +27,11 @@ const SandboxError = () => {
           {sandboxError}
         </Box>
       )}
-      <Button mt={'20px'} variant={'primary'} size={'sm'} onClick={startSandbox}>
-        {t('skill:sandbox_retry')}
-      </Button>
+      {isSkillReady && (
+        <Button mt={'20px'} variant={'primary'} size={'sm'} onClick={startSandbox}>
+          {t('skill:sandbox_retry')}
+        </Button>
+      )}
     </Flex>
   );
 };

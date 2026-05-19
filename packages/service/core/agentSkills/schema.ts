@@ -3,9 +3,17 @@ import {
   agentSkillsCollectionName as agentSkillsCollectionName,
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
+  AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
+
+export type MongoAgentSkillSchemaType = AgentSkillSchemaType & {
+  creationPayload?: {
+    requirements?: string;
+    model?: string;
+  };
+};
 
 const { Schema } = connectionMongo;
 
@@ -88,6 +96,18 @@ const AgentSkillsSchema = new Schema({
     bucket: String,
     key: String,
     size: Number
+  },
+  creationStatus: {
+    type: String,
+    enum: Object.values(AgentSkillCreationStatusEnum),
+    default: AgentSkillCreationStatusEnum.ready
+  },
+  creationError: {
+    type: String
+  },
+  creationPayload: {
+    requirements: String,
+    model: String
   }
 });
 
@@ -113,7 +133,7 @@ try {
   console.log('AgentSkill index error:', error);
 }
 
-export const MongoAgentSkills = getMongoModel<AgentSkillSchemaType>(
+export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,
   AgentSkillsSchema
 );

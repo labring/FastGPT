@@ -170,11 +170,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
 
       {showCreateModal && (
-        <CreateSkillModal
-          parentId={parentId}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => loadSkills()}
-        />
+        <CreateSkillModal parentId={parentId} onClose={() => setShowCreateModal(false)} />
       )}
 
       {showImportModal && (
