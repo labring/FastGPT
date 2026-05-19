@@ -88,6 +88,7 @@ export type SearchDatasetDataProps = {
   datasetIds: string[];
   reRankQuery: string;
   queries: string[];
+  lang: string;
 
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
@@ -1527,6 +1528,7 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
   /** dispatch 层预计算的 queryExtension 结果，存在时跳过内部 LLM 调用，避免重复执行 */
   preComputedQueryExtension?: Awaited<ReturnType<typeof datasetSearchQueryExtension>>;
+  lang: string;
 };
 export const defaultSearchDatasetData = async ({
   datasetSearchUsingExtensionQuery,
@@ -1537,6 +1539,7 @@ export const defaultSearchDatasetData = async ({
   appId,
   faqAnswerMode,
   preComputedQueryExtension,
+  lang,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   // 同义词检索使用全部知识库 ID（synonymDatasetIds），若未传则降级为分组 ID（props.datasetIds）
@@ -1556,7 +1559,8 @@ export const defaultSearchDatasetData = async ({
       histories,
       isAssistant,
       teamId: props.teamId,
-      datasetIds
+      datasetIds,
+      lang
     }));
 
   // 新增：检索开始计时（问题改写之后）
@@ -1570,13 +1574,15 @@ export const defaultSearchDatasetData = async ({
         reRankQuery: reRankQuery,
         queries: searchQueries,
         datasetIds: props.datasetIds,
-        retrievalStartTime // 传递检索开始时间，确保 correction 和 FAQ 检索时间被计入
+        retrievalStartTime, // 传递检索开始时间，确保 correction 和 FAQ 检索时间被计入
+        lang
       })
     : await searchDatasetData({
         ...props,
         reRankQuery: reRankQuery,
         queries: searchQueries,
-        datasetIds: props.datasetIds
+        datasetIds: props.datasetIds,
+        lang
       });
 
   return {

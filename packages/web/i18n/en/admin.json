@@ -751,5 +751,18 @@
   "points_thirty_percent_remain_notify": "Points Below 30% Notification",
   "points_ten_percent_remain_notify": "Points Below 10% Notification",
   "lack_of_points_notify": "Points Insufficient Notification",
-  "points_insufficient_notify": "Points Insufficient Notification"
+  "plan_basic": "Basic",
+  "plan_advanced": "Advanced",
+  "plan_custom": "Custom",
+  "knowledge_base_index_capacity_limit": "Knowledge base index capacity limit",
+  "qpm": "QPM",
+  "website_sync_per_dataset": "Website sync count per dataset",
+  "chat_history_store_duration": "Chat history retention (days)",
+  "app_registration_count": "App registration limit",
+  "audit_log_store_duration": "Audit log retention (days)",
+  "ticket_response_time": "Ticket response time (hours)",
+  "custom_domain_count": "Custom domain count",
+  "max_upload_file_size_field": "Max upload file size (MB)",
+  "max_upload_file_count_field": "Max upload file count",
+  "sandbox": "Sandbox"
 }

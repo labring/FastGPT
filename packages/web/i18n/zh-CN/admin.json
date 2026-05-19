@@ -751,5 +751,18 @@
   "points_thirty_percent_remain_notify": "积分不足30%通知",
   "points_ten_percent_remain_notify": "积分不足10%通知",
   "lack_of_points_notify": "积分不足通知",
-  "points_insufficient_notify": "积分不足通知"
+  "plan_basic": "基础版",
+  "plan_advanced": "高级版",
+  "plan_custom": "定制版",
+  "knowledge_base_index_capacity_limit": "知识库索引容量上限",
+  "qpm": "QPM",
+  "website_sync_per_dataset": "单个知识库网页同步数量",
+  "chat_history_store_duration": "对话记录保存时长（天）",
+  "app_registration_count": "应用备案数量上限",
+  "audit_log_store_duration": "审计日志保存时间（天）",
+  "ticket_response_time": "工单支持响应时间（小时）",
+  "custom_domain_count": "自定义域名数量",
+  "max_upload_file_size_field": "最大上传文件大小（MB）",
+  "max_upload_file_count_field": "最大上传文件数量",
+  "sandbox": "虚拟机"
 }

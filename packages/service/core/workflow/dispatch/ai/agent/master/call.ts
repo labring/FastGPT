@@ -384,7 +384,8 @@ export const masterCall = async ({
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
-              llmModel: model
+              llmModel: model,
+              lang: props.lang
             });
 
             if (result.nodeResponse) {

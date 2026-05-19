@@ -131,6 +131,7 @@ export async function dispatchDatasetSearch(
     variables,
     node,
     workflowStreamResponse,
+    lang,
     params: {
       datasets = [],
       similarity,
@@ -162,6 +163,9 @@ export async function dispatchDatasetSearch(
       datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
+
+  // API 请求时 lang 可能未设置，通过 detectLang 检测 queryLanguage 兜底
+  const queryLanguage = detectLang(userChatInput);
 
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
@@ -270,9 +274,6 @@ export async function dispatchDatasetSearch(
         }
       | undefined = undefined; // 新增：Reranker 错误信息（仅 reranker 报错时有值）
     let agenticSearchResult: SearchDatasetDataResponse['agenticSearchResult'] = undefined; // 新增：agentic 检索的过程信息（仅 agentic 路径有值）
-
-    // 查询语言检测（eld 60 种语言），所有检索路径（agentic/standard/deepRag）均可利用
-    const queryLanguage = detectLang(userChatInput);
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -475,7 +476,8 @@ export async function dispatchDatasetSearch(
           histories,
           isAssistant: true,
           teamId,
-          datasetIds: commonDatasetIds
+          datasetIds: commonDatasetIds,
+          lang: lang ?? queryLanguage
         });
       }
 
@@ -494,7 +496,8 @@ export async function dispatchDatasetSearch(
         rerankModel: rerankModelData,
         rerankMethod,
         rerankWeight,
-        collectionFilterMatch
+        collectionFilterMatch,
+        lang: lang ?? queryLanguage
       };
 
       // ===== App 级别：校正数据 & FAQ 优先检索 =====
@@ -764,7 +767,8 @@ export async function dispatchDatasetSearch(
                   rerankModel: rerankModelData,
                   rerankMethod,
                   rerankWeight,
-                  collectionFilterMatch
+                  collectionFilterMatch,
+                  lang: lang ?? queryLanguage
                 };
 
                 const result = await defaultSearchDatasetData({
@@ -776,6 +780,7 @@ export async function dispatchDatasetSearch(
                   synonymDatasetIds: datasetIds, // 所有知识库 ID，用于同义词检索；向量检索使用 groupSearchData.datasetIds（分组 ID）
                   appId,
                   faqAnswerMode,
+                  lang: lang ?? queryLanguage,
                   // 传入预计算结果，defaultSearchDatasetData 内部将跳过重复的 LLM 调用
                   preComputedQueryExtension
                 });
