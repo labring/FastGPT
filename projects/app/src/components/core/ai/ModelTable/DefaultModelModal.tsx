@@ -80,7 +80,7 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.embedding?.model}
-              list={embeddingModelList.map((item) => ({
+              list={embeddingModelList.filter((item) => !item.isTuned).map((item) => ({
                 value: item.model,
                 label: item.name
               }))}
@@ -137,7 +137,7 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.rerank?.model}
-              list={reRankModelList.map((item) => ({
+              list={reRankModelList.filter((item) => !item.isTuned).map((item) => ({
                 value: item.model,
                 label: item.name
               }))}
