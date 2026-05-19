@@ -209,6 +209,7 @@ const List = ({
 
   const [deleteTarget, setDeleteTarget] = useState<{
     skillId: string;
+    name: string;
     refsCount: number;
   }>();
 
@@ -390,6 +391,7 @@ const List = ({
                   onClick: () =>
                     setDeleteTarget({
                       skillId: skill._id,
+                      name: skill.name,
                       refsCount: isFolder ? 0 : relatedAppsCount
                     })
                 }
@@ -548,9 +550,10 @@ const List = ({
         }
         onClose={() => setDeleteTarget(undefined)}
         onConfirm={() => (deleteTarget ? onClickDeleteSkill(deleteTarget.skillId) : undefined)}
-        cancelText={t('skill:confirm_delete_cancel')}
+        cancelText={t('common:Cancel')}
         confirmText={t('skill:confirm_delete_action')}
         confirmButtonVariant={'dangerFill'}
+        inputConfirmText={deleteTarget?.name}
       />
       <ConfirmCopyModal />
       {!!editedSkill && (

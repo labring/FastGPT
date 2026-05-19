@@ -1,18 +1,21 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   useDisclosure,
   Button,
   ModalBody,
   ModalFooter,
-  Input,
   VStack,
   Box,
   type ImageProps
 } from '@chakra-ui/react';
-import { Trans, useTranslation } from 'next-i18next';
+import { useTranslation } from 'next-i18next';
 import MyModal from '../components/common/MyModal';
 import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from './useMemoEnhance';
+import DeleteConfirmInput from '../components/common/DeleteConfirmInput';
+
+type ConfirmCallback = () => Promise<unknown> | unknown;
+type CancelCallback = () => void;
 
 export const useConfirm = (props?: {
   title?: string;
@@ -59,8 +62,8 @@ export const useConfirm = (props?: {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const confirmCb = useRef<Function>();
-  const cancelCb = useRef<any>();
+  const confirmCb = useRef<ConfirmCallback>();
+  const cancelCb = useRef<CancelCallback>();
 
   const openConfirm = useMemoizedFn(
     ({
@@ -69,8 +72,8 @@ export const useConfirm = (props?: {
       customContent,
       inputConfirmText
     }: {
-      onConfirm?: Function;
-      onCancel?: any;
+      onConfirm?: ConfirmCallback;
+      onCancel?: CancelCallback;
       customContent?: string | React.ReactNode;
       inputConfirmText?: string;
     }) => {
@@ -139,23 +142,10 @@ export const useConfirm = (props?: {
             {isInputDelete ? (
               <VStack align={'stretch'} spacing={3}>
                 <Box whiteSpace={'pre-wrap'}>{customContent}</Box>
-                <Box>
-                  <Trans
-                    i18nKey={'common:confirm_input_delete_tip'}
-                    values={{ confirmText: customContentInputConfirmText }}
-                    components={{
-                      bold: <Box as={'span'} fontWeight={'bold'} userSelect={'all'} />
-                    }}
-                  />
-                </Box>
-                <Input
-                  size={'sm'}
+                <DeleteConfirmInput
                   value={inputValue}
-                  autoFocus
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={t('common:confirm_input_delete_placeholder', {
-                    confirmText: customContentInputConfirmText
-                  })}
+                  confirmText={customContentInputConfirmText}
+                  onChange={setInputValue}
                 />
               </VStack>
             ) : (
@@ -170,7 +160,9 @@ export const useConfirm = (props?: {
                   variant={'whiteBase'}
                   onClick={() => {
                     onClose();
-                    typeof cancelCb.current === 'function' && cancelCb.current();
+                    if (typeof cancelCb.current === 'function') {
+                      cancelCb.current();
+                    }
                   }}
                   px={5}
                 >
@@ -188,9 +180,11 @@ export const useConfirm = (props?: {
                 onClick={async () => {
                   setRequesting(true);
                   try {
-                    typeof confirmCb.current === 'function' && (await confirmCb.current());
+                    if (typeof confirmCb.current === 'function') {
+                      await confirmCb.current();
+                    }
                     onClose();
-                  } catch (error) {}
+                  } catch {}
                   setRequesting(false);
                 }}
               >

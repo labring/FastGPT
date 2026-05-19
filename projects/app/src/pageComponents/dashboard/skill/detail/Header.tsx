@@ -273,9 +273,10 @@ const Header = () => {
         }
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => (skillDetail ? onClickDeleteSkill(skillDetail._id) : undefined)}
-        cancelText={t('skill:confirm_delete_cancel')}
+        cancelText={t('common:Cancel')}
         confirmText={t('skill:confirm_delete_action')}
         confirmButtonVariant={'dangerFill'}
+        inputConfirmText={skillDetail.name}
       />
 
       {/* 编辑信息弹窗 */}

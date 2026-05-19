@@ -3,6 +3,7 @@ import { Box, Button, Flex, HStack, type ButtonProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import DeleteConfirmInput from '@fastgpt/web/components/common/DeleteConfirmInput';
 
 type Props = {
   isOpen: boolean;
@@ -14,6 +15,7 @@ type Props = {
   cancelText?: React.ReactNode;
   showCancel?: boolean;
   confirmButtonVariant?: ButtonProps['variant'];
+  inputConfirmText?: string;
 };
 
 const ConfirmWarningModal = ({
@@ -25,15 +27,24 @@ const ConfirmWarningModal = ({
   confirmText,
   cancelText,
   showCancel = true,
-  confirmButtonVariant = 'primary'
+  confirmButtonVariant = 'primary',
+  inputConfirmText
 }: Props) => {
   const { t } = useTranslation();
   const [requesting, setRequesting] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const isInputConfirm = !!inputConfirmText;
+  const isInputConfirmValid = !isInputConfirm || inputValue.trim() === inputConfirmText.trim();
+
+  const handleClose = () => {
+    setInputValue('');
+    onClose();
+  };
 
   return (
     <MyModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       isCentered
       size={'sm'}
       contentPx={'32px'}
@@ -64,16 +75,26 @@ const ConfirmWarningModal = ({
           </Box>
         </HStack>
 
-        <Box fontSize={'14px'} lineHeight={'20px'} color={'myGray.900'}>
-          {content}
-        </Box>
+        <Flex direction={'column'} gap={'16px'}>
+          <Box fontSize={'14px'} lineHeight={'20px'} color={'myGray.900'}>
+            {content}
+          </Box>
+          {isInputConfirm && (
+            <DeleteConfirmInput
+              value={inputValue}
+              confirmText={inputConfirmText}
+              placeholder={inputConfirmText}
+              onChange={setInputValue}
+            />
+          )}
+        </Flex>
 
         <HStack spacing={'12px'} justify={'flex-end'}>
           {showCancel && (
             <Button
               size={'sm'}
               variant={'whiteBase'}
-              onClick={onClose}
+              onClick={handleClose}
               isDisabled={requesting}
               px={'14px'}
             >
@@ -83,13 +104,22 @@ const ConfirmWarningModal = ({
           <Button
             size={'sm'}
             variant={confirmButtonVariant}
+            isDisabled={!isInputConfirmValid}
             isLoading={requesting}
             px={'14px'}
+            _disabled={
+              confirmButtonVariant === 'dangerFill'
+                ? {
+                    bg: 'red.600 !important',
+                    opacity: 0.4
+                  }
+                : undefined
+            }
             onClick={async () => {
               setRequesting(true);
               try {
                 await onConfirm?.();
-                onClose();
+                handleClose();
               } catch {}
               setRequesting(false);
             }}
