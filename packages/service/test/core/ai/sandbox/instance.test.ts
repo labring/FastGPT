@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
-import { updateSandboxInstanceEndpoint } from '@fastgpt/service/core/ai/sandbox/instance';
+import {
+  findSandboxResourcesByAppChatTypeExcludeProvider,
+  updateSandboxInstanceEndpoint
+} from '@fastgpt/service/core/ai/sandbox/instance';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -50,5 +53,54 @@ describe('sandbox instance helpers', () => {
       }
     });
     expect(updated?.lastActiveAt.getTime()).toBeGreaterThan(lastActiveAt.getTime());
+  });
+
+  it('finds stale app-chat sandbox records from inactive providers only', async () => {
+    const appId = `instance-helper-${getNanoid()}`;
+    const chatId = 'edit-debug';
+    const oldProviderDoc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: `instance-helper-${getNanoid()}`,
+      appId,
+      userId: getNanoid(),
+      chatId,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        sandboxType: SandboxTypeEnum.editDebug,
+        teamId: getNanoid(),
+        tmbId: getNanoid(),
+        skillId: appId,
+        provider: 'opensandbox',
+        image: { repository: 'old-image' }
+      }
+    });
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: `instance-helper-${getNanoid()}`,
+      appId,
+      userId: getNanoid(),
+      chatId: 'normal-chat',
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        sandboxType: SandboxTypeEnum.sessionRuntime,
+        teamId: getNanoid(),
+        tmbId: getNanoid(),
+        provider: 'opensandbox',
+        image: { repository: 'runtime-image' }
+      }
+    });
+
+    const staleRecords = await findSandboxResourcesByAppChatTypeExcludeProvider({
+      provider: 'sealosdevbox',
+      appId,
+      chatId,
+      sandboxType: SandboxTypeEnum.editDebug
+    });
+
+    expect(staleRecords.map((item) => String(item._id))).toEqual([String(oldProviderDoc._id)]);
   });
 });

@@ -131,7 +131,8 @@ describe('verifyProxyToken', () => {
     const tk = jwt.sign(
       {
         sid: 'abc',
-        svc: 'code-server'
+        svc: 'code-server',
+        rev: 'endpoint-rev-1'
       },
       SECRET,
       {
@@ -141,6 +142,7 @@ describe('verifyProxyToken', () => {
     expect(verifyProxyToken(tk)).toEqual({
       sid: 'abc',
       svc: 'code-server',
+      rev: 'endpoint-rev-1',
       exp: expect.any(Number)
     });
   });

@@ -37,6 +37,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -228,7 +229,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Verify edit-debug sandbox exists for this skill
+    const providerConfig = getSandboxProviderConfig();
     const sandboxInstance = await findSandboxInstanceByAppChatType({
+      provider: providerConfig.provider,
       appId: skillId,
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       sandboxType: SandboxTypeEnum.editDebug

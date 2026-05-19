@@ -27,15 +27,26 @@ const loginBackoff = new LRUCache<string, boolean>({
   ttl: env.csLoginBackoffMs
 });
 
-// Coalesce per-sandboxId so iframe first paint doesn't race N parallel /login attempts.
+// Coalesce per sandbox upstream so iframe first paint doesn't race N parallel /login attempts.
 const inFlight = new Map<string, Promise<CsSession | null>>();
 
 // Common code-server cookie names across versions / forks.
 const COOKIE_RE = /(?:^|;\s*)(code-server-session|coder-session|key)=([^;]+)/i;
 
+const sessionKey = (sandboxId: string, target: string) => `${sandboxId}:${target}`;
+
+const deleteBySandboxIdPrefix = <T>(cache: LRUCache<string, T>, sandboxId: string) => {
+  for (const key of cache.keys()) {
+    if (key.startsWith(`${sandboxId}:`)) cache.delete(key);
+  }
+};
+
 export const evictCsSession = (sandboxId: string) => {
-  sessionCache.delete(sandboxId);
-  loginBackoff.delete(sandboxId);
+  deleteBySandboxIdPrefix(sessionCache, sandboxId);
+  deleteBySandboxIdPrefix(loginBackoff, sandboxId);
+  for (const key of inFlight.keys()) {
+    if (key.startsWith(`${sandboxId}:`)) inFlight.delete(key);
+  }
 };
 
 type ProxyPathMapping = {
@@ -109,11 +120,12 @@ export const isProxyMappedRequestUrl = (url: string, mapping: ProxyPathMapping):
 
 const doCsLogin = async (
   sandboxId: string,
+  key: string,
   target: string,
   password?: string
 ): Promise<CsSession | null> => {
   if (!password) {
-    loginBackoff.set(sandboxId, true);
+    loginBackoff.set(key, true);
     return null;
   }
 
@@ -131,12 +143,12 @@ const doCsLogin = async (
     });
   } catch (e) {
     logger.error(`csLogin fetch sandboxId=${sandboxId}: ${(e as Error).message}`);
-    loginBackoff.set(sandboxId, true);
+    loginBackoff.set(key, true);
     return null;
   }
 
   if (resp.status !== 302 && resp.status !== 301) {
-    loginBackoff.set(sandboxId, true);
+    loginBackoff.set(key, true);
     return null;
   }
 
@@ -165,11 +177,11 @@ const doCsLogin = async (
         `csLogin sandboxId=${sandboxId} 302 carried unrecognised Set-Cookie names=[${cookieNames}]; update COOKIE_RE in csSession.ts if code-server changed its session cookie`
       );
     }
-    loginBackoff.set(sandboxId, true);
+    loginBackoff.set(key, true);
     return null;
   }
 
-  sessionCache.set(sandboxId, session);
+  sessionCache.set(key, session);
   return session;
 };
 
@@ -181,16 +193,17 @@ export const ensureCsSession = async (
   target: string,
   password?: string
 ): Promise<CsSession | null> => {
-  const cached = sessionCache.get(sandboxId);
+  const key = sessionKey(sandboxId, target);
+  const cached = sessionCache.get(key);
   if (cached) return cached;
 
-  if (loginBackoff.has(sandboxId)) return null;
+  if (loginBackoff.has(key)) return null;
 
-  const ongoing = inFlight.get(sandboxId);
+  const ongoing = inFlight.get(key);
   if (ongoing) return ongoing;
 
-  const p = doCsLogin(sandboxId, target, password).finally(() => inFlight.delete(sandboxId));
-  inFlight.set(sandboxId, p);
+  const p = doCsLogin(sandboxId, key, target, password).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
   return p;
 };
 

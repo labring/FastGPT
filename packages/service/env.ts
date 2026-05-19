@@ -267,9 +267,8 @@ export const serviceEnv = createEnv({
       description: '评估任务 worker 并发数'
     }),
 
-    SANDBOX_PROXY_BASE: z.string().optional().meta({
-      description:
-        'Sandbox proxy 访问域名 host[:port]（不含 scheme 和前导点），每个 sandbox 通过 <sid>.<base> 访问'
+    SANDBOX_PROXY_BASEURL: UrlSchema.optional().meta({
+      description: 'Sandbox proxy 完整公开访问 URL，每个 sandbox 通过 <sid>.<host> 访问'
     }),
     SANDBOX_PROXY_SECRET: z.string().min(16).optional().meta({
       description: 'App 与 sandbox-proxy 共享的 JWT 签名密钥，至少 16 个字符'
@@ -277,9 +276,6 @@ export const serviceEnv = createEnv({
     SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(1800).meta({
       description:
         'Sandbox proxy JWT 与 Cookie Max-Age 生命周期（秒），默认 1800；活跃 WebSocket 不会因 token 到期被中断，后续 HTTP 请求或重连需要刷新 token'
-    }),
-    SANDBOX_PROXY_HTTPS: BoolSchema.default(true).meta({
-      description: 'sandbox-proxy 是否通过 HTTPS 服务，用于控制前端 iframe scheme'
     }),
     SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
       description:
@@ -329,8 +325,11 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
   );
 }
 
-if (serviceEnv.SHOW_SKILL && (!serviceEnv.SANDBOX_PROXY_BASE || !serviceEnv.SANDBOX_PROXY_SECRET)) {
+if (
+  serviceEnv.SHOW_SKILL &&
+  (!serviceEnv.SANDBOX_PROXY_BASEURL || !serviceEnv.SANDBOX_PROXY_SECRET)
+) {
   throw new Error(
-    'Invalid environment configuration: SHOW_SKILL=true requires both SANDBOX_PROXY_BASE and SANDBOX_PROXY_SECRET'
+    'Invalid environment configuration: SHOW_SKILL=true requires both SANDBOX_PROXY_BASEURL and SANDBOX_PROXY_SECRET'
   );
 }

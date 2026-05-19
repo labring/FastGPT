@@ -1,11 +1,11 @@
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import {
-  getSandboxProviderConfig,
   connectToSandbox,
   disconnectSandbox,
   getSandboxCodeServerProxyTarget
-} from '@fastgpt/service/core/ai/sandbox/provider';
+} from '@fastgpt/service/core/ai/sandbox/controller';
 import type { SandboxProxyTargetResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 /**
@@ -33,13 +33,14 @@ async function readCodeServerPasswordFromSandbox(
 export async function getSandboxProxyTarget(
   sandboxId: string
 ): Promise<SandboxProxyTargetResponse> {
-  const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+  const providerConfig = getSandboxProviderConfig();
+  const provider = providerConfig.provider;
+  const sandbox = await MongoSandboxInstance.findOne({ provider, sandboxId }).lean();
   if (!sandbox) throw new Error('Sandbox not found');
   if (sandbox.status !== SandboxStatusEnum.running) {
     throw new Error('Sandbox is not running');
   }
 
-  const providerConfig = getSandboxProviderConfig(sandbox.provider);
   const adapter = await connectToSandbox(providerConfig, sandbox.sandboxId);
 
   try {

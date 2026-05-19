@@ -16,27 +16,27 @@ import {
   getEditDebugSandboxId,
   buildEditDebugCreateConfig
 } from './sandboxConfig';
-import {
-  connectReadySandboxByInstance,
-  connectToSandbox,
-  disconnectSandbox,
-  getSandboxEndpoint,
-  getSandboxProviderConfig,
-  validateSandboxConfig,
-  waitForEndpointReady
-} from '../ai/sandbox/provider';
+import { getSandboxProviderConfig, validateSandboxConfig } from '../ai/sandbox/config';
 import type {
   SandboxInstanceSchemaType,
   SandboxImageConfigType,
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { SandboxClient, getSandboxClient } from '../ai/sandbox/controller';
+import {
+  connectReadySandboxByInstance,
+  connectToSandbox,
+  disconnectSandbox,
+  getSandboxEndpoint,
+  SandboxClient,
+  getSandboxClient
+} from '../ai/sandbox/controller';
 import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
   findSandboxInstanceByAppChatType,
   findSandboxInstanceBySandboxIdAndTeam,
+  findSandboxResourcesByAppChatTypeExcludeProvider,
   findSandboxResourceBySandboxIdAndTeam,
   findSkillRelatedSandboxResources,
   updateSandboxInstanceEndpoint,
@@ -134,6 +134,7 @@ export async function createEditDebugSandbox(
 
   // Check for existing sandbox instance by skillId
   const existingInstance = await findSandboxInstanceByAppChatType({
+    provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     sandboxType: SandboxTypeEnum.editDebug
@@ -157,10 +158,6 @@ export async function createEditDebugSandbox(
 
       const endpointInfo = await getSandboxEndpoint(sandbox);
       const sandboxInfo = connected.sandboxInfo;
-
-      // Wait for the HTTP service inside the container to bind its port before
-      // sending the ready SSE event — prevents ECONNREFUSED in the client iframe.
-      await waitForEndpointReady(endpointInfo);
 
       // Update endpoint and sandbox metadata in DB
       await updateSandboxInstanceEndpoint({ instanceId: instance._id, endpoint: endpointInfo });
@@ -196,11 +193,42 @@ export async function createEditDebugSandbox(
     if (reusedSandbox) return reusedSandbox;
   }
 
+  // 当前 provider 没有可复用实例时，旧 provider 的同业务记录会被
+  // { appId, chatId } 唯一索引挡住创建；先清理旧记录再 upsert 当前 provider。
+  const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
+    provider: providerConfig.provider,
+    appId: skillId,
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+    sandboxType: SandboxTypeEnum.editDebug
+  });
+  if (staleProviderInstances.length > 0) {
+    addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
+      skillId,
+      provider: providerConfig.provider,
+      staleProviders: staleProviderInstances.map((item) => item.provider)
+    });
+    await Promise.all(
+      staleProviderInstances.map(async (instance) => {
+        await SandboxClient.deleteResource(instance).catch((error) => {
+          addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
+            sandboxId: instance.sandboxId,
+            provider: instance.provider,
+            error
+          });
+        });
+        await deleteSandboxInstanceRecord(instance._id);
+      })
+    );
+  }
+
   // Check active edit-debug sandbox count limit
   const maxEditDebug =
     global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
   if (maxEditDebug !== undefined) {
-    const activeCount = await countRunningSandboxInstancesByType(SandboxTypeEnum.editDebug);
+    const activeCount = await countRunningSandboxInstancesByType(
+      SandboxTypeEnum.editDebug,
+      providerConfig.provider
+    );
     if (activeCount >= maxEditDebug) {
       const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
       onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
@@ -268,14 +296,11 @@ export async function createEditDebugSandbox(
     // Get code-server endpoint
     const endpointInfo = await getSandboxEndpoint(client.provider);
 
-    // Wait for the HTTP service to accept connections before persisting and emitting ready.
-    // The container may still be initializing even after package extraction completes.
-    await waitForEndpointReady(endpointInfo);
-
     // Enrich the DB record created by getSandboxClient.ensureAvailable() with full skill metadata.
     // Use sessionId (the client-side key) because ensureAvailable() stores the record with
     // sandboxId=sessionId, not with the provider-assigned sandboxInfo.id.
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
+      provider: providerConfig.provider,
       sandboxId: sessionId,
       appId: skillId,
       userId: tmbId,
@@ -348,7 +373,12 @@ export async function getSandboxInfo(
 ): Promise<SandboxInstanceSchemaType> {
   const { sandboxId, teamId } = params;
 
-  const sandbox = await findSandboxInstanceBySandboxIdAndTeam({ sandboxId, teamId });
+  const providerConfig = getSandboxProviderConfig();
+  const sandbox = await findSandboxInstanceBySandboxIdAndTeam({
+    provider: providerConfig.provider,
+    sandboxId,
+    teamId
+  });
 
   if (!sandbox) {
     throw new Error('Sandbox not found or access denied');
@@ -363,7 +393,12 @@ export async function getSandboxInfo(
 export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> {
   const { sandboxId, teamId } = params;
 
-  const instanceDoc = await findSandboxResourceBySandboxIdAndTeam({ sandboxId, teamId });
+  const providerConfig = getSandboxProviderConfig();
+  const instanceDoc = await findSandboxResourceBySandboxIdAndTeam({
+    provider: providerConfig.provider,
+    sandboxId,
+    teamId
+  });
 
   if (!instanceDoc) {
     throw new Error('Sandbox not found or access denied');

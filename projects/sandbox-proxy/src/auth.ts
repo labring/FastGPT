@@ -25,7 +25,8 @@ export const verifyProxyToken = (token: string): VerifiedProxyTokenPayload | nul
     const payload: VerifiedProxyTokenPayload = {
       sid: decoded.sid,
       svc: decoded.svc as (typeof SandboxProxyServiceList)[number],
-      exp: decoded.exp
+      exp: decoded.exp,
+      ...(typeof decoded.rev === 'string' && decoded.rev ? { rev: decoded.rev } : {})
     };
     return payload;
   } catch {

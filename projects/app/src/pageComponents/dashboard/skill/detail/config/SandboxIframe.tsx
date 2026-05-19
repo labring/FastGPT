@@ -24,6 +24,13 @@ const appendToken = (path: string, token: string) => {
   return `${normalized}${separator}_t=${encodeURIComponent(token)}`;
 };
 
+const buildSandboxProxyOrigin = (baseUrl: string, sandboxId: string) => {
+  const url = new URL(baseUrl);
+  url.hostname = `${sandboxId}.${url.hostname}`;
+
+  return url.origin;
+};
+
 function SandboxFrame({
   sandboxId,
   origin,
@@ -63,13 +70,14 @@ function SandboxFrame({
 
 const SandboxIframe = () => {
   const sandboxEndpoint = useContextSelector(SkillDetailContext, (v) => v.sandboxEndpoint);
-  const proxyBase = useSystemStore((s) => s.feConfigs?.sandboxProxy?.base);
-  const proxyScheme = useSystemStore((s) => s.feConfigs?.sandboxProxy?.scheme) ?? 'http';
+  const proxyBaseUrl = useSystemStore((s) => s.feConfigs?.sandboxProxy?.baseUrl);
   const tokenTtl = useSystemStore((s) => s.feConfigs?.sandboxProxy?.tokenTtl) ?? 1800;
   const tokenRefreshInterval = getTokenRefreshInterval(tokenTtl);
   const sandboxId = sandboxEndpoint?.sandboxId;
+  const proxyRevision = sandboxEndpoint?.proxyRevision;
   // 子域用于隔离 code-server 的绝对 URL/WS/cookie；provider path 由 sandbox-proxy 内部解析。
-  const sandboxOrigin = sandboxId && proxyBase ? `${proxyScheme}://${sandboxId}.${proxyBase}` : '';
+  const sandboxOrigin =
+    sandboxId && proxyBaseUrl ? buildSandboxProxyOrigin(proxyBaseUrl, sandboxId) : '';
 
   React.useEffect(() => {
     if (!sandboxOrigin) return;
@@ -87,9 +95,9 @@ const SandboxIframe = () => {
   }, [sandboxOrigin]);
 
   const { data: tokenData } = useQuery({
-    queryKey: ['sandboxProxyToken', sandboxId],
-    queryFn: () => postSandboxProxyToken({ sandboxId: sandboxId! }),
-    enabled: !!sandboxId && !!proxyBase,
+    queryKey: ['sandboxProxyToken', sandboxId, proxyRevision],
+    queryFn: () => postSandboxProxyToken({ sandboxId: sandboxId!, proxyRevision }),
+    enabled: !!sandboxId && !!proxyBaseUrl,
     // 提前过期刷新；新 token 走下面的隐藏 img 写回 cookie，不重载 iframe。
     staleTime: tokenRefreshInterval,
     refetchInterval: tokenRefreshInterval,
@@ -99,7 +107,7 @@ const SandboxIframe = () => {
   });
 
   if (!sandboxEndpoint) return null;
-  if (!proxyBase) {
+  if (!proxyBaseUrl) {
     return (
       <Box
         w={'100%'}
@@ -109,7 +117,7 @@ const SandboxIframe = () => {
         justifyContent="center"
         color="red.500"
       >
-        sandboxProxy.base is not configured
+        sandboxProxy.baseUrl is not configured
       </Box>
     );
   }
@@ -124,7 +132,7 @@ const SandboxIframe = () => {
   return (
     <Box w={'100%'} h={'100%'}>
       <SandboxFrame
-        key={sandboxId}
+        key={`${sandboxId}:${proxyRevision ?? ''}`}
         sandboxId={sandboxId}
         origin={sandboxOrigin}
         token={tokenData.token}

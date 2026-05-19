@@ -73,6 +73,7 @@ export type SandboxStatusItemType = {
     port: number;
     protocol: 'http' | 'https';
     url: string;
+    proxyRevision?: string;
   };
 };
 

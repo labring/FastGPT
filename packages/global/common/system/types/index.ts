@@ -148,10 +148,8 @@ export type FastGPTFeConfigsType = {
   // Beta features
   show_skill?: boolean;
   sandboxProxy?: {
-    /** host[:port] under which sandbox subdomains live, e.g. `localhost:3006`. */
-    base?: string;
-    /** http | https, used to build the iframe URL. */
-    scheme?: 'http' | 'https';
+    /** Public origin URL under which sandbox subdomains live, e.g. `http://localhost:3006`. */
+    baseUrl?: string;
     /** Sandbox proxy token TTL in seconds; used to avoid reusing expired iframe tokens. */
     tokenTtl?: number;
   };

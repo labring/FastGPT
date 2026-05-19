@@ -163,7 +163,8 @@ export const SkillSandboxEndpointSchema = z.object({
   host: z.string(),
   port: z.number(),
   protocol: SandboxProtocolSchema,
-  url: z.string()
+  url: z.string(),
+  proxyRevision: z.string().optional()
 });
 export type SkillSandboxEndpointType = z.infer<typeof SkillSandboxEndpointSchema>;
 

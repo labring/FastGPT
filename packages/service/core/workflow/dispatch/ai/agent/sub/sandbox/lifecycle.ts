@@ -21,14 +21,21 @@ import {
   buildSessionRuntimeCreateConfig
 } from '../../../../../../agentSkills/sandboxConfig';
 import {
-  connectReadySandboxByInstance,
-  disconnectSandbox,
   getSandboxProviderConfig,
   validateSandboxConfig
-} from '../../../../../../ai/sandbox/provider';
+} from '../../../../../../ai/sandbox/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
+import {
+  connectReadySandboxByInstance,
+  disconnectSandbox,
+  SandboxClient,
+  getSandboxClient
+} from '../../../../../../ai/sandbox/controller';
+import {
+  deleteSandboxInstanceRecord,
+  findSandboxResourcesByAppChatTypeExcludeProvider
+} from '../../../../../../ai/sandbox/instance';
 import { serviceEnv } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
@@ -241,6 +248,7 @@ export async function createAgentSandbox(
   // Step 1: Try to reuse an existing session-runtime sandbox
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const sessionRuntimeQuery = {
+    provider: providerConfig.provider,
     sandboxId: sessionId,
     'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
   };
@@ -292,6 +300,7 @@ export async function createAgentSandbox(
     const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
     return {
       sandbox,
+      provider: providerConfig.provider,
       sandboxId: instance.sandboxId,
       sessionId,
       skills: mergedSkills,
@@ -304,6 +313,35 @@ export async function createAgentSandbox(
   if (existingInstance) {
     const reusedSandbox = await reuseSessionRuntimeSandbox(existingInstance);
     if (reusedSandbox) return reusedSandbox;
+  }
+
+  // 当前 provider 没有可复用实例时，旧 provider 的同业务 session-runtime
+  // 记录会被 { appId, chatId } 唯一索引挡住后续 metadata 补写。
+  const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
+    provider: providerConfig.provider,
+    appId: teamId,
+    chatId: sessionId,
+    sandboxType: SandboxTypeEnum.sessionRuntime
+  });
+  if (staleProviderInstances.length > 0) {
+    logger.info('[Agent Sandbox] Removing stale session-runtime records for inactive provider', {
+      teamId,
+      sessionId,
+      provider: providerConfig.provider,
+      staleProviders: staleProviderInstances.map((item) => item.provider)
+    });
+    await Promise.all(
+      staleProviderInstances.map(async (instance) => {
+        await SandboxClient.deleteResource(instance).catch((error) => {
+          logger.error('[Agent Sandbox] Failed to delete stale provider sandbox resource', {
+            sandboxId: instance.sandboxId,
+            provider: instance.provider,
+            error
+          });
+        });
+        await deleteSandboxInstanceRecord(instance._id);
+      })
+    );
   }
 
   // Step 2: Fetch skills and filter deployable ones (skip when no skills configured)
@@ -341,6 +379,7 @@ export async function createAgentSandbox(
     serviceEnv.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
   if (maxSessionRuntime !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
+      provider: providerConfig.provider,
       status: SandboxStatusEnum.running,
       'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
     });
@@ -395,7 +434,7 @@ export async function createAgentSandbox(
     // Use sessionId (the client-side key) because ensureAvailable() stores the record with
     // sandboxId=sessionId, not with the provider-assigned sandboxInfo.id.
     const savedInstance = await MongoSandboxInstance.findOneAndUpdate(
-      { sandboxId: sessionId },
+      { provider: providerConfig.provider, sandboxId: sessionId },
       {
         $set: {
           appId: teamId, // session-runtime uses teamId as appId
@@ -423,6 +462,7 @@ export async function createAgentSandbox(
     onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: false });
     return {
       sandbox: client.provider,
+      provider: providerConfig.provider,
       sandboxId: sessionId,
       sessionId,
       skills: hasSkills
@@ -485,6 +525,7 @@ export async function connectEditDebugSandbox(
   const providerConfig = getSandboxProviderConfig();
 
   const editDebugQuery = {
+    provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     'metadata.sandboxType': SandboxTypeEnum.editDebug
@@ -526,6 +567,7 @@ export async function connectEditDebugSandbox(
 
   return {
     sandbox,
+    provider: providerConfig.provider,
     sandboxId: instanceDoc.sandboxId,
     sessionId: String(instanceDoc._id), // editDebug sandbox uses its own _id as sessionId
     skills: [skill.toJSON()],

@@ -4,6 +4,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import {
   SandboxCheckExistBodySchema,
   type SandboxCheckExistResponse
@@ -34,8 +35,10 @@ async function handler(
   });
 
   // 检查沙盒是否存在
+  const providerConfig = getSandboxProviderConfig();
   const sandboxInstance = await MongoSandboxInstance.findOne(
     {
+      provider: providerConfig.provider,
       appId,
       userId: uid,
       chatId

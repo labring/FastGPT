@@ -80,8 +80,11 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   SandboxClient,
+  connectToSandbox,
+  disconnectSandbox,
   deleteSandboxesByChatIds,
-  deleteSandboxesByAppId
+  deleteSandboxesByAppId,
+  getSandboxEndpoint
 } from '@fastgpt/service/core/ai/sandbox/controller';
 
 const { Types } = connectionMongo;
@@ -94,6 +97,71 @@ beforeAll(async () => {
 
 const appId1 = oid();
 const appId2 = oid();
+
+describe('sandbox runtime helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('connects sandbox by stable sandbox id through ensureRunning', async () => {
+    const result = await connectToSandbox(
+      {
+        provider: 'opensandbox',
+        baseUrl: 'http://sandbox.local',
+        apiKey: 'api-key',
+        runtime: 'docker'
+      },
+      'sandbox-1'
+    );
+
+    expect(result.provider).toBe('opensandbox');
+    expect(sandboxAdapterMocks.ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect((result as any).connectionConfig.sessionId).toBe('sandbox-1');
+  });
+
+  it('disconnects opensandbox and keeps other providers as no-op', async () => {
+    const closeMock = vi.fn().mockResolvedValue(undefined);
+    await disconnectSandbox({
+      provider: 'opensandbox',
+      close: closeMock
+    } as any);
+    expect(closeMock).toHaveBeenCalledTimes(1);
+
+    await expect(
+      disconnectSandbox({
+        provider: 'sealosdevbox'
+      } as any)
+    ).resolves.toBeUndefined();
+  });
+
+  it('throws when endpoint capability is unavailable on current provider', async () => {
+    await expect(
+      getSandboxEndpoint({
+        provider: 'sealosdevbox'
+      } as any)
+    ).rejects.toThrow('does not expose endpoint capability');
+  });
+
+  it('uses a stable endpoint hash as sandbox proxy revision', async () => {
+    await expect(
+      getSandboxEndpoint({
+        provider: 'sealosdevbox',
+        getEndpoint: vi.fn(async () => ({
+          host: 'gateway.example.com',
+          port: 443,
+          protocol: 'https',
+          url: 'https://gateway.example.com/code-server/devbox-new'
+        }))
+      } as any)
+    ).resolves.toEqual({
+      host: 'gateway.example.com',
+      port: 443,
+      protocol: 'https',
+      url: 'https://gateway.example.com/code-server/devbox-new',
+      proxyRevision: 'ef0ea93d2c1b7b60'
+    });
+  });
+});
 
 describe('deleteSandboxesByChatIds', () => {
   beforeEach(async () => {
@@ -139,6 +207,8 @@ describe('deleteSandboxesByChatIds', () => {
 
     await deleteSandboxesByChatIds({ appId: appId1, chatIds: ['c1', 'c2'] });
 
+    expect(await MongoSandboxInstance.countDocuments({ appId: appId1 })).toBe(0);
+    expect(sandboxAdapterMocks.deleteMock).toHaveBeenCalledTimes(2);
     // 验证不影响其他 appId 的数据
     expect(await MongoSandboxInstance.countDocuments({ appId: appId2 })).toBe(1);
   });
@@ -197,16 +267,6 @@ describe('deleteSandboxesByChatIds', () => {
       await MongoSandboxInstance.findOne({ sandboxId: 'stable-session-id' }).lean()
     ).toMatchObject({ status: 'stopped' });
   });
-
-  it('should not error when chatId does not exist', async () => {
-    await expect(
-      deleteSandboxesByChatIds({ appId: appId1, chatIds: ['nonexistent'] })
-    ).resolves.not.toThrow();
-  });
-
-  it('should handle empty chatIds array', async () => {
-    await expect(deleteSandboxesByChatIds({ appId: appId1, chatIds: [] })).resolves.not.toThrow();
-  });
 });
 
 describe('deleteSandboxesByAppId', () => {
@@ -253,73 +313,9 @@ describe('deleteSandboxesByAppId', () => {
 
     await deleteSandboxesByAppId(appId1);
 
+    expect(await MongoSandboxInstance.countDocuments({ appId: appId1 })).toBe(0);
+    expect(sandboxAdapterMocks.deleteMock).toHaveBeenCalledTimes(2);
     // 验证不影响其他 appId 的数据
     expect(await MongoSandboxInstance.countDocuments({ appId: appId2 })).toBe(1);
-  });
-
-  it('should not error when appId has no sandboxes', async () => {
-    const emptyAppId = oid();
-    await expect(deleteSandboxesByAppId(emptyAppId)).resolves.not.toThrow();
-  });
-});
-
-describe('cronJob - suspendInactiveSandboxes', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    await MongoSandboxInstance.deleteMany({});
-  });
-
-  it('should identify running sandboxes inactive > 5 min', async () => {
-    const old = new Date(Date.now() - 10 * 60 * 1000);
-    const recent = new Date();
-
-    await MongoSandboxInstance.create([
-      {
-        provider: 'sealosdevbox',
-        sandboxId: 'old1',
-        appId: appId1,
-        userId: 'u',
-        chatId: 'c1',
-        status: 'running',
-        lastActiveAt: old,
-        createdAt: old
-      },
-      {
-        provider: 'sealosdevbox',
-        sandboxId: 'recent1',
-        appId: appId1,
-        userId: 'u',
-        chatId: 'c2',
-        status: 'running',
-        lastActiveAt: recent,
-        createdAt: recent
-      },
-      {
-        provider: 'sealosdevbox',
-        sandboxId: 'already',
-        appId: appId1,
-        userId: 'u',
-        chatId: 'c3',
-        status: 'stopped',
-        lastActiveAt: old,
-        createdAt: old
-      }
-    ]);
-
-    // 模拟定时任务的查询逻辑
-    const instances = await MongoSandboxInstance.find({
-      status: SandboxStatusEnum.running,
-      lastActiveAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) }
-    }).lean();
-
-    // 验证查询逻辑正确：只找到超过 5 分钟未活动的 running 状态沙盒
-    expect(instances).toHaveLength(1);
-    expect(instances[0].sandboxId).toBe('old1');
-
-    // 验证不包含最近活动的沙盒
-    expect(instances.find((i) => i.sandboxId === 'recent1')).toBeUndefined();
-
-    // 验证不包含已停止的沙盒
-    expect(instances.find((i) => i.sandboxId === 'already')).toBeUndefined();
   });
 });

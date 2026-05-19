@@ -4,7 +4,7 @@ import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type { SkillSandboxEndpointType } from '@fastgpt/global/core/agentSkills/type';
 import { MongoSandboxInstance } from './schema';
-import type { SandboxInstanceSchemaType } from './type';
+import type { SandboxInstanceSchemaType, SandboxProviderType } from './type';
 
 export type SandboxResourceDoc = Pick<SandboxInstanceSchemaType, 'provider' | 'sandboxId'> & {
   _id: unknown;
@@ -15,14 +15,16 @@ export const buildSandboxInstanceLookup = (sandboxId: string) => ({
 });
 
 export async function findSandboxInstanceByAppChatType(params: {
+  provider?: SandboxProviderType;
   appId: string;
   chatId: string;
   sandboxType: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { appId, chatId, sandboxType, status } = params;
+  const { provider, appId, chatId, sandboxType, status } = params;
 
   return MongoSandboxInstance.findOne({
+    ...(provider ? { provider } : {}),
     appId,
     chatId,
     ...(status ? { status } : {}),
@@ -31,21 +33,43 @@ export async function findSandboxInstanceByAppChatType(params: {
 }
 
 export async function findSandboxResourcesByAppChatType(params: {
+  provider?: SandboxProviderType;
   appId: string;
   chatId: string;
   sandboxType: SandboxTypeEnum;
 }) {
-  const { appId, chatId, sandboxType } = params;
+  const { provider, appId, chatId, sandboxType } = params;
 
   return MongoSandboxInstance.find({
+    ...(provider ? { provider } : {}),
     appId,
     chatId,
     'metadata.sandboxType': sandboxType
   }).lean<SandboxResourceDoc[]>();
 }
 
-export async function countRunningSandboxInstancesByType(sandboxType: SandboxTypeEnum) {
+export async function findSandboxResourcesByAppChatTypeExcludeProvider(params: {
+  provider: SandboxProviderType;
+  appId: string;
+  chatId: string;
+  sandboxType: SandboxTypeEnum;
+}) {
+  const { provider, appId, chatId, sandboxType } = params;
+
+  return MongoSandboxInstance.find({
+    provider: { $ne: provider },
+    appId,
+    chatId,
+    'metadata.sandboxType': sandboxType
+  }).lean<SandboxResourceDoc[]>();
+}
+
+export async function countRunningSandboxInstancesByType(
+  sandboxType: SandboxTypeEnum,
+  provider?: SandboxProviderType
+) {
   return MongoSandboxInstance.countDocuments({
+    ...(provider ? { provider } : {}),
     status: SandboxStatusEnum.running,
     'metadata.sandboxType': sandboxType
   });
@@ -74,16 +98,20 @@ export async function deleteSandboxInstanceRecord(instanceId: unknown) {
 }
 
 export async function updateSandboxInstanceRecordBySandboxId(params: {
+  provider?: SandboxProviderType;
   sandboxId: string;
   appId?: string;
   userId?: string;
   chatId?: string;
   metadata?: Record<string, unknown>;
 }) {
-  const { sandboxId, appId, userId, chatId, metadata } = params;
+  const { provider, sandboxId, appId, userId, chatId, metadata } = params;
 
   return MongoSandboxInstance.findOneAndUpdate(
-    { sandboxId },
+    {
+      sandboxId,
+      ...(provider ? { provider } : {})
+    },
     {
       $set: {
         ...(appId !== undefined ? { appId } : {}),
@@ -97,25 +125,29 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
 }
 
 export async function findSandboxInstanceBySandboxIdAndTeam(params: {
+  provider?: SandboxProviderType;
   sandboxId: string;
   teamId: string;
 }) {
-  const { sandboxId, teamId } = params;
+  const { provider, sandboxId, teamId } = params;
 
   return MongoSandboxInstance.findOne({
     ...buildSandboxInstanceLookup(sandboxId),
+    ...(provider ? { provider } : {}),
     'metadata.teamId': teamId
   });
 }
 
 export async function findSandboxResourceBySandboxIdAndTeam(params: {
+  provider?: SandboxProviderType;
   sandboxId: string;
   teamId: string;
 }) {
-  const { sandboxId, teamId } = params;
+  const { provider, sandboxId, teamId } = params;
 
   return MongoSandboxInstance.findOne({
     ...buildSandboxInstanceLookup(sandboxId),
+    ...(provider ? { provider } : {}),
     'metadata.teamId': teamId
   }).lean<SandboxResourceDoc | null>();
 }

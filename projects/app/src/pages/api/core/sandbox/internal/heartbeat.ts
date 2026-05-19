@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   SandboxHeartbeatBodySchema,
@@ -35,9 +36,11 @@ async function handler(
     return res.status(400).json({ error: 'Invalid body', issues: parsed.error.issues });
   }
   const { sandboxId } = parsed.data;
+  const providerConfig = getSandboxProviderConfig();
 
   const result = await MongoSandboxInstance.updateOne(
     {
+      provider: providerConfig.provider,
       sandboxId,
       status: SandboxStatusEnum.running
     },

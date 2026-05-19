@@ -8,8 +8,8 @@ import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/ty
 import { serviceEnv } from '../../env';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
-import type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/provider';
-export type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/provider';
+import type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
+export type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
 
 export const EDIT_DEBUG_SANDBOX_CHAT_ID = 'edit-debug';
 

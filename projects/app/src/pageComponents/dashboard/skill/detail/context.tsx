@@ -25,6 +25,7 @@ export type SandboxLogEntry = {
 export type SandboxEndpoint = {
   sandboxId: string;
   port: number;
+  proxyRevision?: string;
 };
 
 type SkillDetailContextType = {
@@ -140,7 +141,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         if (status.phase === 'ready' && status.endpoint?.port) {
           setSandboxEndpoint({
             sandboxId: status.sandboxId,
-            port: status.endpoint.port
+            port: status.endpoint.port,
+            proxyRevision: status.endpoint.proxyRevision
           });
           setSandboxState('ready');
         } else if (status.phase === 'failed') {

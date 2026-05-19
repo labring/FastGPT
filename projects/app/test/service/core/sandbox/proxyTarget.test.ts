@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const providerMocks = vi.hoisted(() => {
+  const getSandboxProviderConfig = vi.fn((provider = 'opensandbox') => ({
+    provider,
+    baseUrl: 'http://sandbox.local',
+    apiKey: 'api-key',
+    runtime: 'docker'
+  }));
+
   const adapter = {
     provider: 'opensandbox',
     execute: vi.fn(async () => ({
@@ -13,6 +20,7 @@ const providerMocks = vi.hoisted(() => {
 
   return {
     adapter,
+    getSandboxProviderConfig,
     connectToSandbox: vi.fn(async () => adapter),
     disconnectSandbox: vi.fn(async () => undefined),
     getSandboxCodeServerProxyTarget: vi.fn(async () => ({
@@ -20,12 +28,6 @@ const providerMocks = vi.hoisted(() => {
       origin: 'http://sandbox-upstream:44772',
       basePath: '/proxy/8080',
       auth: 'code-server'
-    })),
-    getSandboxProviderConfig: vi.fn((provider = 'opensandbox') => ({
-      provider,
-      baseUrl: 'http://sandbox.local',
-      apiKey: 'api-key',
-      runtime: 'docker'
     }))
   };
 });
@@ -40,7 +42,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/provider', () => providerMocks);
+vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getSandboxProviderConfig: providerMocks.getSandboxProviderConfig
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/controller', () => ({
+  connectToSandbox: providerMocks.connectToSandbox,
+  disconnectSandbox: providerMocks.disconnectSandbox,
+  getSandboxCodeServerProxyTarget: providerMocks.getSandboxCodeServerProxyTarget
+}));
 
 import { getSandboxProxyTarget } from '@/service/core/sandbox/proxy';
 
@@ -70,7 +80,12 @@ describe('getSandboxProxyTarget', () => {
       'Sandbox is not running'
     );
 
-    expect(providerMocks.getSandboxProviderConfig).not.toHaveBeenCalled();
+    expect(schemaMocks.findOne).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: sandboxRecord.sandboxId
+    });
+
+    expect(providerMocks.getSandboxProviderConfig).toHaveBeenCalledWith();
     expect(providerMocks.connectToSandbox).not.toHaveBeenCalled();
     expect(providerMocks.getSandboxCodeServerProxyTarget).not.toHaveBeenCalled();
     expect(providerMocks.disconnectSandbox).not.toHaveBeenCalled();
@@ -84,7 +99,11 @@ describe('getSandboxProxyTarget', () => {
       auth: 'code-server'
     });
 
-    expect(providerMocks.getSandboxProviderConfig).toHaveBeenCalledWith('opensandbox');
+    expect(schemaMocks.findOne).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: sandboxRecord.sandboxId
+    });
+    expect(providerMocks.getSandboxProviderConfig).toHaveBeenCalledWith();
     expect(providerMocks.connectToSandbox).toHaveBeenCalledWith(
       expect.objectContaining({ provider: 'opensandbox' }),
       sandboxRecord.sandboxId

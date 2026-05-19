@@ -165,8 +165,7 @@ export async function initSystemConfig() {
       show_agent_sandbox: hasAgentSandboxConfig(),
       show_skill: serviceEnv.SHOW_SKILL,
       sandboxProxy: {
-        base: serviceEnv.SANDBOX_PROXY_BASE,
-        scheme: serviceEnv.SANDBOX_PROXY_HTTPS ? 'https' : 'http',
+        baseUrl: serviceEnv.SANDBOX_PROXY_BASEURL,
         tokenTtl: serviceEnv.SANDBOX_PROXY_TOKEN_TTL
       },
       payFormUrl: appEnv.PAY_FORM_URL || '',

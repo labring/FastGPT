@@ -100,6 +100,10 @@ export const SandboxProxyTokenBodySchema = z.object({
   sandboxId: z.string().min(1).meta({
     example: '69fc643d541df57f5c556d9c',
     description: 'FastGPT sandbox 实例 ID'
+  }),
+  proxyRevision: z.string().min(1).optional().meta({
+    example: 'ef0ea93d2c1b7b60',
+    description: 'sandbox-proxy 缓存代号，用于区分同一 sandboxId 的不同 provider 实例'
   })
 });
 export type SandboxProxyTokenBody = z.infer<typeof SandboxProxyTokenBodySchema>;

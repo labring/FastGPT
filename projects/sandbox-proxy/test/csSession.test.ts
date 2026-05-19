@@ -191,6 +191,28 @@ describe('ensureCsSession', () => {
     evictCsSession(sid);
   });
 
+  it('does not reuse a cached session across different upstream targets', async () => {
+    const sid = 'sid-target-rotation';
+    fetchMock
+      .mockResolvedValueOnce(mkResponse(302, ['key=first; Path=/; HttpOnly']))
+      .mockResolvedValueOnce(mkResponse(302, ['key=second; Path=/; HttpOnly']));
+
+    await expect(ensureCsSession(sid, 'http://upstream-one:55549', 'p')).resolves.toEqual({
+      name: 'key',
+      value: 'first'
+    });
+    await expect(ensureCsSession(sid, 'http://upstream-two:55549', 'p')).resolves.toEqual({
+      name: 'key',
+      value: 'second'
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://upstream-one:55549/login');
+    expect(fetchMock.mock.calls[1][0]).toBe('http://upstream-two:55549/login');
+
+    evictCsSession(sid);
+  });
+
   it('uses proxy target password directly', async () => {
     const sid = 'sid-target-password';
     fetchMock.mockResolvedValueOnce(mkResponse(302, ['key=direct; Path=/; HttpOnly']));

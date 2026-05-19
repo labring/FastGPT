@@ -13,6 +13,7 @@ import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import { extractSkillMdInfosFromBuffer } from '@fastgpt/service/core/agentSkills/archiveUtils';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -55,7 +56,9 @@ async function handler(
   });
 
   // Fetch the edit-debug sandbox
+  const providerConfig = getSandboxProviderConfig();
   const sandboxInfo = await findSandboxInstanceByAppChatType({
+    provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     status: SandboxStatusEnum.running,

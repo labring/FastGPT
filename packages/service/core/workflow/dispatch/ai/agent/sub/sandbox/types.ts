@@ -1,5 +1,6 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
+import type { SandboxProviderType } from '../../../../../../ai/sandbox/type';
 
 // Info about a single skill directory discovered inside a deployed package.zip
 export type DeployedSkillInfo = {
@@ -14,6 +15,7 @@ export type DeployedSkillInfo = {
 // Sandbox runtime context - shared across the entire agent lifecycle
 export type AgentSandboxContext = {
   sandbox: ISandbox;
+  provider: SandboxProviderType;
   sandboxId: string;
   sessionId: string;
   skills: AgentSkillSchemaType[];

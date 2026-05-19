@@ -75,7 +75,7 @@ const prepareUpstreamRequest = async (
   req: IncomingMessage,
   token: VerifiedProxyTokenPayload
 ): Promise<string | null> => {
-  const target = await resolveProxyTarget(token.sid, token.svc);
+  const target = await resolveProxyTarget(token.sid, token.svc, token.rev);
   if (!target) return null;
 
   const originalUrl = req.url || '/';

@@ -11,20 +11,32 @@ import type { SandboxProxyService } from '@fastgpt/global/core/ai/sandbox/proxyT
 const logger = getLogger(LogCategories.MODULE.SANDBOX_PROXY.SERVER);
 const TARGET_FETCH_TIMEOUT_MS = 8000;
 const TARGET_CACHE_TTL_MS = 30_000;
+const DEFAULT_REVISION = 'default';
 
 const targetCache = new LRUCache<string, SandboxProxyTargetResponse>({
   max: 1000,
-  ttl: TARGET_CACHE_TTL_MS,
-  updateAgeOnGet: true
+  ttl: TARGET_CACHE_TTL_MS
 });
 
 const inFlight = new Map<string, Promise<SandboxProxyTargetResponse | null>>();
 
-const cacheKey = (sandboxId: string, service: SandboxProxyService) => `${sandboxId}:${service}`;
+const cacheKey = (sandboxId: string, service: SandboxProxyService, revision?: string) =>
+  `${sandboxId}:${service}:${revision || DEFAULT_REVISION}`;
 
-export const evictProxyTarget = (sandboxId: string, service?: SandboxProxyService) => {
+export const evictProxyTarget = (
+  sandboxId: string,
+  service?: SandboxProxyService,
+  revision?: string
+) => {
   if (service) {
-    targetCache.delete(cacheKey(sandboxId, service));
+    if (revision) {
+      targetCache.delete(cacheKey(sandboxId, service, revision));
+      return;
+    }
+
+    for (const key of targetCache.keys()) {
+      if (key.startsWith(`${sandboxId}:${service}:`)) targetCache.delete(key);
+    }
     return;
   }
 
@@ -67,9 +79,10 @@ const fetchProxyTargetFromApp = async (
 
 export const resolveProxyTarget = async (
   sandboxId: string,
-  service: SandboxProxyService
+  service: SandboxProxyService,
+  revision?: string
 ): Promise<SandboxProxyTargetResponse | null> => {
-  const key = cacheKey(sandboxId, service);
+  const key = cacheKey(sandboxId, service, revision);
   const cached = targetCache.get(key);
   if (cached) return cached;
 

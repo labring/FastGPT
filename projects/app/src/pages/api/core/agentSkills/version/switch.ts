@@ -12,6 +12,7 @@ import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import {
   type SwitchSkillVersionBody,
   type SwitchSkillVersionResponse
@@ -71,7 +72,9 @@ async function handler(
     }
   });
 
+  const providerConfig = getSandboxProviderConfig();
   const editSandboxes = await findSandboxResourcesByAppChatType({
+    provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     sandboxType: SandboxTypeEnum.editDebug

@@ -4,6 +4,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -15,9 +16,13 @@ import {
 async function handler(req: ApiRequestProps): Promise<SandboxProxyTokenResponse> {
   if (req.method !== 'POST') return Promise.reject('Method not allowed');
 
-  const { sandboxId } = SandboxProxyTokenBodySchema.parse(req.body);
+  const { sandboxId, proxyRevision } = SandboxProxyTokenBodySchema.parse(req.body);
+  const providerConfig = getSandboxProviderConfig();
 
-  const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+  const sandbox = await MongoSandboxInstance.findOne({
+    provider: providerConfig.provider,
+    sandboxId
+  }).lean();
   if (!sandbox) return Promise.reject('Sandbox not found');
 
   const { teamId } =
@@ -44,7 +49,8 @@ async function handler(req: ApiRequestProps): Promise<SandboxProxyTokenResponse>
   // API and caches the resulting code-server cookie.
   const result = signSandboxProxyToken({
     sid: sandboxId,
-    svc: 'code-server'
+    svc: 'code-server',
+    ...(proxyRevision ? { rev: proxyRevision } : {})
   });
 
   return SandboxProxyTokenResponseSchema.parse(result);

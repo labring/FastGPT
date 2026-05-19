@@ -7,8 +7,14 @@ export const SandboxProxyServiceList = ['code-server'] as const;
 export type SandboxProxyService = (typeof SandboxProxyServiceList)[number];
 
 export type ProxyTokenPayload = {
-  /** Sandbox provider id; bound to the iframe's subdomain on every request. */
+  /** Stable FastGPT sandbox id; bound to the iframe's subdomain on every request. */
   sid: string;
   /** Logical service requested through sandbox-proxy. */
   svc: SandboxProxyService;
+  /**
+   * Provider target generation. Edit-debug sandboxes may reuse the same FastGPT
+   * sandbox id while recreating the provider resource; this value separates
+   * sandbox-proxy caches across those generations.
+   */
+  rev?: string;
 };

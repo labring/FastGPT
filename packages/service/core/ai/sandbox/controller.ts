@@ -9,8 +9,11 @@ import {
   createSandbox,
   type ExecuteResult,
   type ISandbox,
+  type OpenSandboxAdapter,
+  type OpenSandboxConfigType,
   type ResourceLimits,
-  type SandboxCreateSpec
+  type SandboxCreateSpec,
+  type SandboxProxyTarget
 } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getOpenSandboxConnectionConfig,
@@ -18,15 +21,18 @@ import {
   buildOpenSandboxCreateConfig,
   getVolumeManagerConfig,
   deleteSessionVolume,
+  getSandboxProviderConfig,
+  type SandboxProviderConfig,
   type VolumeManagerResult
 } from './config';
-import { buildSandboxAdapterForResource, getSandboxProviderConfig } from './provider';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { SandboxResourceDoc } from './instance';
+import type { SkillSandboxEndpointType } from '@fastgpt/global/core/agentSkills/type';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -34,6 +40,174 @@ type UnionIdType = {
   userId: string;
   chatId: string;
 };
+
+type CodeServerProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
+type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
+
+const buildSandboxProxyRevision = (endpoint: SkillSandboxEndpointType): string =>
+  hashStr(endpoint.url).slice(0, 16);
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported sandbox provider: ${String(value)}`);
+}
+
+function toOpenSandboxCreateConfig(
+  createConfig?: SandboxCreateSpec
+): OpenSandboxConfigType | undefined {
+  return createConfig as OpenSandboxConfigType | undefined;
+}
+
+export function buildSandboxAdapter(
+  providerConfig: SandboxProviderConfig,
+  props: {
+    sandboxId: string;
+    createConfig?: SandboxCreateSpec;
+  }
+): ISandbox {
+  switch (providerConfig.provider) {
+    case 'opensandbox':
+      return createSandbox(
+        'opensandbox',
+        {
+          apiKey: providerConfig.apiKey,
+          baseUrl: providerConfig.baseUrl,
+          runtime: providerConfig.runtime,
+          useServerProxy: providerConfig.useServerProxy,
+          replaceDockerInternalWithLocalhost:
+            serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
+          sessionId: props.sandboxId
+        },
+        toOpenSandboxCreateConfig(props.createConfig)
+      );
+
+    case 'sealosdevbox':
+      return createSandbox(
+        'sealosdevbox',
+        {
+          baseUrl: providerConfig.baseUrl,
+          token: providerConfig.token,
+          sandboxId: props.sandboxId
+        },
+        props.createConfig
+      );
+
+    default:
+      return assertNever(providerConfig);
+  }
+}
+
+export function buildSandboxAdapterForResource(
+  providerConfig: SandboxProviderConfig,
+  instance: {
+    sandboxId: string;
+  }
+): ISandbox {
+  return buildSandboxAdapter(providerConfig, {
+    sandboxId: instance.sandboxId
+  });
+}
+
+export async function connectToSandbox(
+  providerConfig: SandboxProviderConfig,
+  sandboxId: string
+): Promise<ISandbox> {
+  const sandbox = buildSandboxAdapter(providerConfig, {
+    sandboxId
+  });
+
+  await sandbox.ensureRunning();
+
+  return sandbox;
+}
+
+export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<void> {
+  const info = await sandbox.getInfo();
+  if (!info) {
+    await sandbox.ensureRunning();
+    return;
+  }
+
+  if (info.status.state === 'Stopped' || info.status.state === 'Stopping') {
+    await sandbox.start();
+    return;
+  }
+
+  if (['Deleting', 'UnExist', 'Error'].includes(info.status.state)) {
+    throw new Error(`Provider sandbox ${sandbox.id ?? info.id} is ${info.status.state}`);
+  }
+
+  await sandbox.waitUntilReady();
+}
+
+export async function connectReadySandboxByInstance(
+  providerConfig: SandboxProviderConfig,
+  instance: {
+    sandboxId: string;
+  }
+): Promise<{
+  sandbox: ISandbox;
+  sandboxInfo: SandboxInfo;
+}> {
+  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
+
+  try {
+    await ensureConnectedSandboxRunning(sandbox);
+    const sandboxInfo = await sandbox.getInfo();
+    if (!sandboxInfo) {
+      throw new Error('Sandbox not found');
+    }
+    return {
+      sandbox,
+      sandboxInfo
+    };
+  } catch (error) {
+    await disconnectSandbox(sandbox).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function disconnectSandbox(sandbox: ISandbox): Promise<void> {
+  if (sandbox.provider === 'opensandbox') {
+    await (sandbox as OpenSandboxAdapter).close();
+  }
+}
+
+export async function getSandboxEndpoint(sandbox: ISandbox): Promise<SkillSandboxEndpointType> {
+  const endpointResolver = sandbox as unknown as {
+    getEndpoint?: (selector: 'code-server') => Promise<SkillSandboxEndpointType>;
+  };
+
+  if (!endpointResolver.getEndpoint) {
+    throw new Error(
+      `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
+    );
+  }
+
+  const endpoint = await endpointResolver.getEndpoint('code-server');
+  return {
+    host: endpoint.host,
+    port: endpoint.port,
+    protocol: endpoint.protocol,
+    url: endpoint.url,
+    proxyRevision: buildSandboxProxyRevision(endpoint)
+  };
+}
+
+export async function getSandboxCodeServerProxyTarget(
+  sandbox: ISandbox
+): Promise<CodeServerProxyTarget> {
+  const proxyResolver = sandbox as unknown as {
+    getProxyTarget?: (service: 'code-server') => Promise<CodeServerProxyTarget>;
+  };
+
+  if (!proxyResolver.getProxyTarget) {
+    throw new Error(
+      `Sandbox provider "${sandbox.provider}" does not expose proxy target capability through @fastgpt/sandbox.`
+    );
+  }
+
+  return proxyResolver.getProxyTarget('code-server');
+}
 
 export class SandboxClient {
   private appId?: string;
@@ -156,13 +330,16 @@ export class SandboxClient {
     await deleteSessionVolume(this.sandboxId).catch((err) => {
       logger.error('Failed to delete sandbox volume', { sandboxId: this.sandboxId, error: err });
     });
-    await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId });
+    await MongoSandboxInstance.deleteOne({
+      provider: this.provider.provider,
+      sandboxId: this.sandboxId
+    });
   }
 
   async stop() {
     await this.provider.stop();
     await MongoSandboxInstance.updateOne(
-      { sandboxId: this.sandboxId },
+      { provider: this.provider.provider, sandboxId: this.sandboxId },
       { $set: { status: SandboxStatusEnum.stopped } }
     );
   }

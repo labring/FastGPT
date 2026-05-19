@@ -2,9 +2,88 @@ import { serviceEnv } from '../../../env';
 import type {
   OpenSandboxConfigType,
   OpenSandboxConnectionConfig,
-  SandboxCreateSpec
+  SandboxCreateSpec,
+  SandboxProviderType
 } from '@fastgpt-sdk/sandbox-adapter';
 import type { SandboxStorageType } from './type';
+
+type SandboxRuntime = 'kubernetes' | 'docker';
+
+type BaseSandboxProviderConfig = {
+  provider: SandboxProviderType;
+  baseUrl: string;
+  runtime: SandboxRuntime;
+};
+
+export type OpenSandboxProviderConfig = BaseSandboxProviderConfig & {
+  provider: 'opensandbox';
+  apiKey?: string;
+  useServerProxy?: boolean;
+};
+
+export type SealosDevboxProviderConfig = BaseSandboxProviderConfig & {
+  provider: 'sealosdevbox';
+  token: string;
+};
+
+export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProviderConfig;
+
+export type SandboxCreateConfig = SandboxCreateSpec;
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported sandbox provider: ${String(value)}`);
+}
+
+export function getSandboxProviderConfig(
+  provider: SandboxProviderType = serviceEnv.AGENT_SANDBOX_PROVIDER
+): SandboxProviderConfig {
+  const runtime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME;
+
+  switch (provider) {
+    case 'opensandbox':
+      return {
+        provider,
+        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+        apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
+        runtime,
+        useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
+      };
+
+    case 'sealosdevbox':
+      return {
+        provider,
+        baseUrl:
+          serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ??
+          '',
+        token:
+          serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ??
+          '',
+        runtime
+      };
+
+    case 'e2b':
+      throw new Error('Sandbox provider "e2b" is not supported');
+
+    default:
+      return assertNever(provider);
+  }
+}
+
+export function validateSandboxConfig(config: SandboxProviderConfig): void {
+  if (!config.baseUrl) {
+    throw new Error('Sandbox provider base URL is required');
+  }
+
+  if (!['kubernetes', 'docker'].includes(config.runtime)) {
+    throw new Error(`Invalid runtime: ${config.runtime}`);
+  }
+
+  if (config.provider === 'sealosdevbox' && !config.token) {
+    throw new Error('Sandbox provider token is required for sealosdevbox');
+  }
+}
 
 // ---- sealosdevbox ----
 export type SealosConnectionConfig = {
