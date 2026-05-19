@@ -234,7 +234,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       provider: providerConfig.provider,
       appId: skillId,
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-      sandboxType: SandboxTypeEnum.editDebug
+      type: SandboxTypeEnum.editDebug
     });
     if (!sandboxInstance) {
       throw new UserError(

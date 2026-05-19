@@ -6,7 +6,10 @@ import type { SkillSandboxEndpointType } from '@fastgpt/global/core/agentSkills/
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from './type';
 
-export type SandboxResourceDoc = Pick<SandboxInstanceSchemaType, 'provider' | 'sandboxId'> & {
+export type SandboxResourceDoc = Pick<
+  SandboxInstanceSchemaType,
+  'provider' | 'sandboxId' | 'type'
+> & {
   _id: unknown;
 };
 
@@ -18,17 +21,17 @@ export async function findSandboxInstanceByAppChatType(params: {
   provider?: SandboxProviderType;
   appId: string;
   chatId: string;
-  sandboxType: SandboxTypeEnum;
+  type: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, appId, chatId, sandboxType, status } = params;
+  const { provider, appId, chatId, type, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     appId,
     chatId,
     ...(status ? { status } : {}),
-    'metadata.sandboxType': sandboxType
+    type
   });
 }
 
@@ -36,15 +39,15 @@ export async function findSandboxResourcesByAppChatType(params: {
   provider?: SandboxProviderType;
   appId: string;
   chatId: string;
-  sandboxType: SandboxTypeEnum;
+  type: SandboxTypeEnum;
 }) {
-  const { provider, appId, chatId, sandboxType } = params;
+  const { provider, appId, chatId, type } = params;
 
   return MongoSandboxInstance.find({
     ...(provider ? { provider } : {}),
     appId,
     chatId,
-    'metadata.sandboxType': sandboxType
+    type
   }).lean<SandboxResourceDoc[]>();
 }
 
@@ -52,26 +55,26 @@ export async function findSandboxResourcesByAppChatTypeExcludeProvider(params: {
   provider: SandboxProviderType;
   appId: string;
   chatId: string;
-  sandboxType: SandboxTypeEnum;
+  type: SandboxTypeEnum;
 }) {
-  const { provider, appId, chatId, sandboxType } = params;
+  const { provider, appId, chatId, type } = params;
 
   return MongoSandboxInstance.find({
     provider: { $ne: provider },
     appId,
     chatId,
-    'metadata.sandboxType': sandboxType
+    type
   }).lean<SandboxResourceDoc[]>();
 }
 
 export async function countRunningSandboxInstancesByType(
-  sandboxType: SandboxTypeEnum,
+  type: SandboxTypeEnum,
   provider?: SandboxProviderType
 ) {
   return MongoSandboxInstance.countDocuments({
     ...(provider ? { provider } : {}),
     status: SandboxStatusEnum.running,
-    'metadata.sandboxType': sandboxType
+    type
   });
 }
 
@@ -103,9 +106,10 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
   appId?: string;
   userId?: string;
   chatId?: string;
+  type?: SandboxTypeEnum;
   metadata?: Record<string, unknown>;
 }) {
-  const { provider, sandboxId, appId, userId, chatId, metadata } = params;
+  const { provider, sandboxId, appId, userId, chatId, type, metadata } = params;
 
   return MongoSandboxInstance.findOneAndUpdate(
     {
@@ -117,6 +121,7 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
         ...(appId !== undefined ? { appId } : {}),
         ...(userId !== undefined ? { userId } : {}),
         ...(chatId !== undefined ? { chatId } : {}),
+        ...(type !== undefined ? { type } : {}),
         ...(metadata !== undefined ? { metadata } : {})
       }
     },

@@ -12,12 +12,12 @@ type SandboxRuntime = 'kubernetes' | 'docker';
 type BaseSandboxProviderConfig = {
   provider: SandboxProviderType;
   baseUrl: string;
-  runtime: SandboxRuntime;
 };
 
 export type OpenSandboxProviderConfig = BaseSandboxProviderConfig & {
   provider: 'opensandbox';
   apiKey?: string;
+  runtime: SandboxRuntime;
   useServerProxy?: boolean;
 };
 
@@ -37,15 +37,13 @@ function assertNever(value: never): never {
 export function getSandboxProviderConfig(
   provider: SandboxProviderType = serviceEnv.AGENT_SANDBOX_PROVIDER
 ): SandboxProviderConfig {
-  const runtime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME;
-
   switch (provider) {
     case 'opensandbox':
       return {
         provider,
         baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
         apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-        runtime,
+        runtime: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
         useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
       };
 
@@ -59,8 +57,7 @@ export function getSandboxProviderConfig(
         token:
           serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN ??
           serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ??
-          '',
-        runtime
+          ''
       };
 
     case 'e2b':
@@ -76,7 +73,7 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
     throw new Error('Sandbox provider base URL is required');
   }
 
-  if (!['kubernetes', 'docker'].includes(config.runtime)) {
+  if (config.provider === 'opensandbox' && !['kubernetes', 'docker'].includes(config.runtime)) {
     throw new Error(`Invalid runtime: ${config.runtime}`);
   }
 

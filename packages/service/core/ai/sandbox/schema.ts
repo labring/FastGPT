@@ -2,7 +2,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from './type';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxLimitSchema, SandboxProviderSchema } from './type';
 
 export const collectionName = 'agent_sandbox_instances';
@@ -22,6 +22,10 @@ const SandboxInstanceSchema = new Schema({
   appId: String,
   userId: String,
   chatId: String,
+  type: {
+    type: String,
+    enum: Object.values(SandboxTypeEnum)
+  },
 
   status: {
     type: String,
@@ -72,12 +76,12 @@ SandboxInstanceSchema.index(
     partialFilterExpression: {
       appId: { $exists: true },
       chatId: { $exists: true },
-      'metadata.sandboxType': { $exists: true }
+      type: { $exists: true }
     }
   }
 );
 SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
-SandboxInstanceSchema.index({ 'metadata.sandboxType': 1, chatId: 1 });
+SandboxInstanceSchema.index({ type: 1, chatId: 1 });
 
 export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,

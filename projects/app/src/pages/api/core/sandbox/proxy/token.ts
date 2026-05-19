@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { signSandboxProxyToken } from '@fastgpt/service/core/sandbox/proxyToken';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
@@ -26,13 +26,13 @@ async function handler(req: ApiRequestProps): Promise<SandboxProxyTokenResponse>
   if (!sandbox) return Promise.reject('Sandbox not found');
 
   const { teamId } =
-    sandbox.metadata?.sandboxType === SandboxTypeEnum.editDebug
+    sandbox.type === SandboxTypeEnum.editDebug
       ? await authSkill({
           req,
           authToken: true,
           authApiKey: true,
           skillId: sandbox.metadata?.skillId ?? sandbox.appId ?? '',
-          per: ReadPermissionVal
+          per: WritePermissionVal
         })
       : await authUserPer({
           req,

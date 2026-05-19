@@ -6,7 +6,6 @@
 
 import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/type';
 import { serviceEnv } from '../../env';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
 export type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
@@ -103,7 +102,6 @@ export function buildSessionRuntimeCreateConfig(params: {
       metadata: {
         teamId,
         tmbId,
-        sandboxType: SandboxTypeEnum.sessionRuntime,
         skillIds: skillIds.join('-'),
         sessionId
       }
@@ -117,7 +115,6 @@ export function buildSessionRuntimeCreateConfig(params: {
     metadata: {
       teamId,
       tmbId,
-      sandboxType: SandboxTypeEnum.sessionRuntime,
       skillIds: skillIds.join('-'),
       sessionId
     }
@@ -144,7 +141,6 @@ export function buildEditDebugCreateConfig(params: {
       metadata: {
         skillId,
         teamId,
-        sandboxType: SandboxTypeEnum.editDebug,
         sessionId
       }
     };
@@ -157,7 +153,6 @@ export function buildEditDebugCreateConfig(params: {
     metadata: {
       skillId,
       teamId,
-      sandboxType: SandboxTypeEnum.editDebug,
       sessionId
     }
   };

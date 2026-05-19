@@ -5,7 +5,12 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { signSandboxProxyToken } from '@fastgpt/service/core/sandbox/proxyToken';
 import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
@@ -36,6 +41,8 @@ describe('sandbox proxy/token', () => {
   let sandboxId: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+
     owner = await getUser(`sandbox-proxy-token-owner-${getNanoid(6)}`);
 
     const skill = await MongoAgentSkills.create({
@@ -54,6 +61,7 @@ describe('sandbox proxy/token', () => {
         appId: getNanoid(),
         userId: getNanoid(),
         chatId: 'edit-debug-old',
+        type: SandboxTypeEnum.editDebug,
         status: SandboxStatusEnum.running,
         lastActiveAt: new Date(),
         createdAt: new Date(),
@@ -73,6 +81,7 @@ describe('sandbox proxy/token', () => {
         appId: skillId,
         userId: owner.tmbId,
         chatId: 'edit-debug',
+        type: SandboxTypeEnum.editDebug,
         status: SandboxStatusEnum.running,
         lastActiveAt: new Date(),
         createdAt: new Date(),
@@ -89,7 +98,7 @@ describe('sandbox proxy/token', () => {
     ]);
   });
 
-  it('signs a token for a user with skill read permission', async () => {
+  it('signs a token for a user with skill write permission', async () => {
     const res = await Call(handler, {
       method: 'POST',
       auth: owner,
@@ -106,6 +115,29 @@ describe('sandbox proxy/token', () => {
       sid: sandboxId,
       svc: 'code-server'
     });
+  });
+
+  it('rejects a read-only collaborator for edit-debug sandbox token', async () => {
+    const collaborator = await getUser(
+      `sandbox-proxy-token-readonly-${getNanoid(6)}`,
+      owner.teamId
+    );
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: owner.teamId,
+      resourceId: skillId,
+      tmbId: collaborator.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const res = await Call(handler, {
+      method: 'POST',
+      auth: collaborator,
+      body: { sandboxId }
+    });
+
+    expect(res.code).not.toBe(200);
+    expect(signSandboxProxyToken).not.toHaveBeenCalled();
   });
 
   it('signs proxy revision into the token payload', async () => {

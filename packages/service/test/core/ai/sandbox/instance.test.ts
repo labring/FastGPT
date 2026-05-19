@@ -21,11 +21,11 @@ describe('sandbox instance helpers', () => {
       appId: getNanoid(),
       userId: getNanoid(),
       chatId: getNanoid(),
+      type: SandboxTypeEnum.editDebug,
       status: SandboxStatusEnum.stopped,
       lastActiveAt,
       createdAt: new Date(),
       metadata: {
-        sandboxType: SandboxTypeEnum.editDebug,
         teamId: getNanoid(),
         tmbId: getNanoid(),
         skillId: getNanoid(),
@@ -64,11 +64,11 @@ describe('sandbox instance helpers', () => {
       appId,
       userId: getNanoid(),
       chatId,
+      type: SandboxTypeEnum.editDebug,
       status: SandboxStatusEnum.running,
       lastActiveAt: new Date(),
       createdAt: new Date(),
       metadata: {
-        sandboxType: SandboxTypeEnum.editDebug,
         teamId: getNanoid(),
         tmbId: getNanoid(),
         skillId: appId,
@@ -82,11 +82,11 @@ describe('sandbox instance helpers', () => {
       appId,
       userId: getNanoid(),
       chatId: 'normal-chat',
+      type: SandboxTypeEnum.sessionRuntime,
       status: SandboxStatusEnum.running,
       lastActiveAt: new Date(),
       createdAt: new Date(),
       metadata: {
-        sandboxType: SandboxTypeEnum.sessionRuntime,
         teamId: getNanoid(),
         tmbId: getNanoid(),
         provider: 'opensandbox',
@@ -98,7 +98,7 @@ describe('sandbox instance helpers', () => {
       provider: 'sealosdevbox',
       appId,
       chatId,
-      sandboxType: SandboxTypeEnum.editDebug
+      type: SandboxTypeEnum.editDebug
     });
 
     expect(staleRecords.map((item) => String(item._id))).toEqual([String(oldProviderDoc._id)]);

@@ -169,7 +169,7 @@ export type GetSandboxInfoQuery = z.infer<typeof GetSandboxInfoQuerySchema>;
 export const GetSandboxInfoResponseSchema = z.object({
   sandboxId: SandboxInstanceKeySchema,
   skillId: z.string(),
-  sandboxType: z.string(),
+  type: z.string(),
   endpoint: SkillSandboxEndpointSchema.optional(),
   status: SandboxProviderStatusSchema.pick({
     state: true,

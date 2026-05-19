@@ -137,7 +137,7 @@ export async function createEditDebugSandbox(
     provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    sandboxType: SandboxTypeEnum.editDebug
+    type: SandboxTypeEnum.editDebug
   });
 
   const reuseExistingEditDebugSandbox = async (
@@ -199,7 +199,7 @@ export async function createEditDebugSandbox(
     provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    sandboxType: SandboxTypeEnum.editDebug
+    type: SandboxTypeEnum.editDebug
   });
   if (staleProviderInstances.length > 0) {
     addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
@@ -305,8 +305,8 @@ export async function createEditDebugSandbox(
       appId: skillId,
       userId: tmbId,
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      type: SandboxTypeEnum.editDebug,
       metadata: {
-        sandboxType: SandboxTypeEnum.editDebug,
         teamId,
         tmbId,
         skillId,

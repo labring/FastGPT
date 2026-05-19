@@ -33,7 +33,7 @@ describe('MongoSandboxInstance schema indexes', () => {
       partialFilterExpression: {
         appId: { $exists: true },
         chatId: { $exists: true },
-        'metadata.sandboxType': { $exists: true }
+        type: { $exists: true }
       }
     });
   });

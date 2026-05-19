@@ -62,7 +62,7 @@ async function handler(
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     status: SandboxStatusEnum.running,
-    sandboxType: SandboxTypeEnum.editDebug
+    type: SandboxTypeEnum.editDebug
   });
 
   if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {

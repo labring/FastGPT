@@ -185,7 +185,7 @@ export const SandboxStorageSchema = AgentSkillStorageSchema.extend({
 });
 
 export const SandboxInstanceDetailSchema = z.object({
-  sandboxType: SandboxTypeSchema,
+  type: SandboxTypeSchema,
   teamId: z.string(),
   tmbId: z.string(),
   skillId: z.string().optional(),

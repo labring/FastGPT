@@ -20,8 +20,7 @@ const loadSkillSandboxConfigModule = async () => {
 const sealosProviderConfig = {
   provider: 'sealosdevbox' as const,
   baseUrl: 'https://devbox.example.com',
-  token: 'sealos-token',
-  runtime: 'docker' as const
+  token: 'sealos-token'
 };
 
 describe('sandbox config helpers', () => {
@@ -50,8 +49,7 @@ describe('sandbox config helpers', () => {
     expect(config).toEqual({
       provider: 'sealosdevbox',
       baseUrl: 'https://devbox.example.com',
-      token: 'sealos-token',
-      runtime: 'docker'
+      token: 'sealos-token'
     });
   });
 
@@ -81,7 +79,6 @@ describe('sandbox config helpers', () => {
       metadata: {
         teamId: 'team-1',
         tmbId: 'member-1',
-        sandboxType: 'session-runtime',
         skillIds: 'skill-1-skill-2',
         sessionId: 'session-1'
       }
@@ -133,7 +130,6 @@ describe('sandbox config helpers', () => {
       metadata: {
         skillId: 'skill-1',
         teamId: 'team-1',
-        sandboxType: 'edit-debug',
         sessionId: 'session-1'
       }
     });
@@ -146,8 +142,7 @@ describe('sandbox config helpers', () => {
       validateSandboxConfig({
         provider: 'sealosdevbox',
         baseUrl: 'https://devbox.example.com',
-        token: '',
-        runtime: 'docker'
+        token: ''
       })
     ).toThrow('Sandbox provider token is required for sealosdevbox');
   });

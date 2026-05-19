@@ -40,7 +40,6 @@ export const SandboxEndpointSchema = z.object({
 });
 
 export const SandboxMetadataSchema = z.object({
-  sandboxType: z.enum(SandboxTypeEnum),
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
 
@@ -61,6 +60,7 @@ export const SandboxInstanceZodSchema = z.object({
   appId: z.string().nullish(),
   userId: z.string().nullish(),
   chatId: z.string().nullish(),
+  type: z.enum(SandboxTypeEnum).nullish(),
   status: SharedSandboxStatusSchema,
   lastActiveAt: z.coerce.date(),
   createdAt: z.coerce.date(),

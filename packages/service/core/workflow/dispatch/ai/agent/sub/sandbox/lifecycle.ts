@@ -250,7 +250,7 @@ export async function createAgentSandbox(
   const sessionRuntimeQuery = {
     provider: providerConfig.provider,
     sandboxId: sessionId,
-    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+    type: SandboxTypeEnum.sessionRuntime
   };
   const existingInstance = await MongoSandboxInstance.findOne(sessionRuntimeQuery);
 
@@ -321,7 +321,7 @@ export async function createAgentSandbox(
     provider: providerConfig.provider,
     appId: teamId,
     chatId: sessionId,
-    sandboxType: SandboxTypeEnum.sessionRuntime
+    type: SandboxTypeEnum.sessionRuntime
   });
   if (staleProviderInstances.length > 0) {
     logger.info('[Agent Sandbox] Removing stale session-runtime records for inactive provider', {
@@ -381,7 +381,7 @@ export async function createAgentSandbox(
     const activeCount = await MongoSandboxInstance.countDocuments({
       provider: providerConfig.provider,
       status: SandboxStatusEnum.running,
-      'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+      type: SandboxTypeEnum.sessionRuntime
     });
     if (activeCount >= maxSessionRuntime) {
       const message = `Active session-runtime sandbox limit reached (${activeCount}/${maxSessionRuntime}). Please try again later.`;
@@ -440,8 +440,8 @@ export async function createAgentSandbox(
           appId: teamId, // session-runtime uses teamId as appId
           userId: tmbId,
           chatId: sessionId,
+          type: SandboxTypeEnum.sessionRuntime,
           metadata: {
-            sandboxType: SandboxTypeEnum.sessionRuntime,
             teamId,
             tmbId,
             sessionId,
@@ -528,7 +528,7 @@ export async function connectEditDebugSandbox(
     provider: providerConfig.provider,
     appId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    'metadata.sandboxType': SandboxTypeEnum.editDebug
+    type: SandboxTypeEnum.editDebug
   };
   const instanceDoc = await MongoSandboxInstance.findOne(editDebugQuery);
 
