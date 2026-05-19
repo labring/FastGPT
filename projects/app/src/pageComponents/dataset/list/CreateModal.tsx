@@ -82,7 +82,9 @@ const CreateModal = ({
   const [syncApiModalOpen, setSyncApiModalOpen] = useState(false);
   const [syncTab, setSyncTab] = useState<'request' | 'params' | 'response'>('request');
 
-  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
+  const filterNotHiddenVectorModelList = embeddingModelList.filter(
+    (item) => !item.hidden && !item.isTuned
+  );
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 

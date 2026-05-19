@@ -17,6 +17,7 @@ type Props = SelectProps & {
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   cacheModel?: boolean;
+  isMultipleRow?: boolean;
 };
 
 const isTestModeModel = (model?: SystemModelItemType) => {
@@ -365,11 +366,6 @@ const MultipleRowSelector = ({
 };
 
 const AIModelSelector = (props: Props) => {
-  return props.list.length > 10 ? (
-    <MultipleRowSelector {...props} />
-  ) : (
-    <OneRowSelector {...props} />
-  );
+  return props?.isMultipleRow ? <MultipleRowSelector {...props} /> : <OneRowSelector {...props} />;
 };
-
 export default AIModelSelector;
