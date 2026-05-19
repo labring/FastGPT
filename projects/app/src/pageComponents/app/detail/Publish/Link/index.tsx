@@ -288,7 +288,7 @@ function EditLinkModal({
   });
 
   const showRunningStatus = watch('showRunningStatus');
-  const showSkillReferences = watch('showSkillReferences');
+  // const showSkillReferences = watch('showSkillReferences'); // TODO: 暂时隐藏 Skill 引用配置
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
@@ -495,7 +495,8 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
-          {feConfigs?.show_skill && (
+          {/* TODO: 暂时隐藏 Skill 引用配置 */}
+          {/* {feConfigs?.show_skill && (
             <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
               <Flex alignItems={'center'}>
                 <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
@@ -512,7 +513,7 @@ function EditLinkModal({
                 isChecked={showSkillReferences}
               />
             </Flex>
-          )}
+          )} */}
         </Box>
       </ModalBody>
 
