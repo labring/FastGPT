@@ -447,7 +447,9 @@ const OrgTreeSelector = ({
             borderRadius={'md'}
             border={'1px solid'}
             borderColor={'myGray.200'}
-            boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'}
+            boxShadow={
+              '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+            }
             zIndex={10}
             overflow={'hidden'}
           >
@@ -488,7 +490,9 @@ const OrgTreeSelector = ({
                   alignItems={'center'}
                   justifyContent={'center'}
                 >
-                  {isSelectAll && <MyIcon name={'common/check'} w={'11px'} h={'11px'} color={'white'} />}
+                  {isSelectAll && (
+                    <MyIcon name={'common/check'} w={'11px'} h={'11px'} color={'white'} />
+                  )}
                 </Box>
                 <Box fontSize={'sm'} color={'myWhite.1000'}>
                   {t('common:All')}
@@ -512,7 +516,10 @@ const OrgTreeSelector = ({
                     treeData={treeData}
                     checkable
                     checkStrictly
-                    checkedKeys={{ checked: isSelectAll ? collectAllLeafKeys(treeData) : value, halfChecked: halfCheckedKeys }}
+                    checkedKeys={{
+                      checked: isSelectAll ? collectAllLeafKeys(treeData) : value,
+                      halfChecked: halfCheckedKeys
+                    }}
                     expandedKeys={expandedKeys}
                     onExpand={(keys) => setExpandedKeys(keys)}
                     loadData={onLoadData}

@@ -171,11 +171,17 @@ const BatchSetTagsModal = ({
           .filter((row) => row.checked && !row.deleteFlag)
           .map((row) => {
             const isDatetime = tagMap.get(row.tagId)?.tagType === 'datetime';
-            return { tagId: row.tagId, value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value };
+            return {
+              tagId: row.tagId,
+              value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value
+            };
           }),
         ...newRows.map((row) => {
           const isDatetime = tagMap.get(row.tagId)?.tagType === 'datetime';
-          return { tagId: row.tagId, value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value };
+          return {
+            tagId: row.tagId,
+            value: isDatetime ? new Date(row.value + 'Z').getTime() : row.value
+          };
         })
       ];
 

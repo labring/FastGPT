@@ -56,12 +56,13 @@ const UsageTable = () => {
   const [memberSearchKey, setMemberSearchKey] = useState('');
 
   // 成员相关
-  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(
-    getTeamMembers,
-    {
-      params: { searchKey: memberSearchKey || undefined }
-    }
-  );
+  const {
+    data: members,
+    ScrollData,
+    total: memberTotal
+  } = useScrollPagination(getTeamMembers, {
+    params: { searchKey: memberSearchKey || undefined }
+  });
   const {
     value: selectTmbIds,
     setValue: setSelectTmbIds,
@@ -128,7 +129,14 @@ const UsageTable = () => {
         setIsSelectAllOrg(true);
       }
     },
-    [setSelectGroupIds, setSelectOrgIds, setSelectTmbIds, setIsSelectAllGroup, setIsSelectAllOrg, setIsSelectAllTmb]
+    [
+      setSelectGroupIds,
+      setSelectOrgIds,
+      setSelectTmbIds,
+      setIsSelectAllGroup,
+      setIsSelectAllOrg,
+      setIsSelectAllTmb
+    ]
   );
 
   const {

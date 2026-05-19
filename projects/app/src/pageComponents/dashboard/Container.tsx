@@ -437,15 +437,11 @@ export const DashboardNavbar = ({
   const settingsItems = useMemo<SettingsItem[]>(
     () => [
       ...(feConfigs?.isPlus
-        ? [
-            { key: 'usage', label: t('common:usage_records'), path: '/account/usage' }
-          ]
+        ? [{ key: 'usage', label: t('common:usage_records'), path: '/account/usage' }]
         : []),
       { key: 'info', label: t('common:personal_information'), path: '/account/info' },
       ...(feConfigs?.isPlus
-        ? [
-            { key: 'team', label: t('common:team'), path: '/account/team' }
-          ]
+        ? [{ key: 'team', label: t('common:team'), path: '/account/team' }]
         : []),
       ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
         ? [{ key: 'bill', label: t('common:bills_and_invoices'), path: '/account/bill' }]
