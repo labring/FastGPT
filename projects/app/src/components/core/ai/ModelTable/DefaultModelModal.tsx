@@ -27,7 +27,6 @@ const DefaultModelModal = ({
   const {
     defaultModels,
     llmModelList,
-    datasetModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
@@ -160,14 +159,14 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.datasetTextLLM?.model}
-              list={datasetModelList.map((item) => ({
+              list={llmModelList.map((item) => ({
                 value: item.model,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetTextLLM: datasetModelList.find((item) => item.model === e)
+                  datasetTextLLM: llmModelList.find((item) => item.model === e)
                 }));
               }}
             />

@@ -239,7 +239,7 @@
   "core.ai.Not deploy rerank model": "未部署重排模型",
   "core.ai.Prompt": "提示词",
   "core.ai.Support tool": "函数调用",
-  "core.ai.model.Dataset Agent Model": "文本理解模型",
+  "core.ai.model.Dataset Agent Model": "知识增强模型",
   "core.ai.model.Vector Model": "向量模型",
   "core.ai.model.doc_index_and_dialog": "文档索引 & 对话索引",
   "core.app.Api request": "API 访问",

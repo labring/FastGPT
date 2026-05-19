@@ -110,7 +110,7 @@
   "image_training_queue": "Image processing queue",
   "images_creating": "Creating",
   "immediate_sync": "Sync now",
-  "import.Auto mode Estimated Price Tips": "Text understanding model call is required, and the consumed AI points ({{price}} points/1K tokens) is high.",
+  "import.Auto mode Estimated Price Tips": "Knowledge Enhancement Model call is required, and the consumed AI points ({{price}} points/1K tokens) is high.",
   "import.Embedding Estimated Price Tips": "Only index model call is required, and the consumed AI points: ({{price}} points / 1K tokens) is low.",
   "import_confirm": "Confirm",
   "import_data_preview": "Preview data",
