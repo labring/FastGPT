@@ -1,7 +1,11 @@
 import type { NextApiRequest } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { type CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api';
-import { getLLMModelById, getEmbeddingModelById, getVlmModelById } from '@fastgpt/service/core/ai/model';
+import {
+  getLLMModelById,
+  getEmbeddingModelById,
+  getVlmModelById
+} from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';

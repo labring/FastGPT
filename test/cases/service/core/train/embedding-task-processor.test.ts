@@ -153,7 +153,10 @@ vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   querySFTTaskStatus: vi.fn(),
   deleteSFTTask: vi.fn(),
   synthesizeEmbeddingEvalData: vi.fn(),
-  judgeRelevantChunks: vi.fn(),
+  judgeRelevantChunks: vi.fn().mockResolvedValue({
+    status: 'success',
+    detected_data_ids: ['507f1f77bcf86cd799439020']
+  }),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -533,7 +536,7 @@ describe('Embedding Train Task Processor', () => {
         EmbeddingTrainTaskStatusEnum.running
       );
 
-      // Verify stage execution order (6 stages)
+      // Verify stage execution order (7 stages)
       expect(updateEmbeddingCheckpointStage).toHaveBeenNthCalledWith(
         1,
         mockTaskId,

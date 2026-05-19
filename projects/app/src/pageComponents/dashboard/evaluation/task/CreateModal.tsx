@@ -125,10 +125,9 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   // 获取推荐维度的函数
   const getRecommendedDimensions = useCallback(
     (hasDatasetSearch: boolean, hasChatNode: boolean): Dimension[] => {
-      const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.model || '';
+      const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.id || '';
       const defaultEvaluationModel =
-        getWebDefaultEvaluationModel(llmModelList.filter((item) => item.useInEvaluation))?.model ||
-        '';
+        getWebDefaultEvaluationModel(llmModelList.filter((item) => item.useInEvaluation))?.id || '';
 
       const recommendedDimensions: Dimension[] = [];
 
@@ -320,8 +319,8 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
         return {
           metric,
           runtimeConfig: {
-            llm: dimension.evaluationModel,
-            embedding: dimension.indexModel
+            llmId: dimension.evaluationModel || undefined,
+            embeddingId: dimension.indexModel || undefined
           }
         };
       });

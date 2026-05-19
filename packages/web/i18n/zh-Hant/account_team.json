@@ -406,5 +406,9 @@
   "user_team_leave_team_failed": "離開團隊失敗",
   "waiting": "待接受",
   "export_app_as_skill": "導出應用為 Skill",
-  "log_export_app_as_skill": "【{{name}}】將名為【{{appName}}】的【{{appType}}】導出為 Skill【{{skillName}}】，API Key: 【{{apiKeyName}}】"
+  "log_export_app_as_skill": "【{{name}}】將名為【{{appName}}】的【{{appType}}】導出為 Skill【{{skillName}}】，API Key: 【{{apiKeyName}}】",
+  "update_model_collaborator": "模型協作者更改",
+  "delete_model_collaborator": "模型協作者刪除",
+  "log_update_model_collaborator": "【{{name}}】將名為【{{modelName}}】的【{{modelType}}】的協作者更新為：組織：【{{orgList}}】，群組：【{{groupList}}】，成員【{{tmbList}}】；權限更新為：讀權限：【{{readPermission}}】，寫權限：【{{writePermission}}】，管理員權限：【{{managePermission}}】",
+  "log_delete_model_collaborator": "【{{name}}】將名為【{{modelName}}】的【{{modelType}}】中名為【{{itemValueName}}】的【{{itemName}}】權限刪除"
 }

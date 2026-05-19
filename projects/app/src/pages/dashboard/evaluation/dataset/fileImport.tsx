@@ -74,7 +74,7 @@ const FileImport = () => {
   const { register, setValue, watch, handleSubmit } = useForm<FileImportFormType>({
     defaultValues: {
       name: '',
-      evaluationModelId: evalModelList[0]?.model || '',
+      evaluationModelId: evalModelList[0]?.id || '',
       files: [],
       autoEvaluation: true
     }

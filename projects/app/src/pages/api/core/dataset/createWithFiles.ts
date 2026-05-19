@@ -17,6 +17,7 @@ import {
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -28,10 +29,12 @@ import {
   getDefaultVLMModel,
   getEmbeddingModelById
 } from '@fastgpt/service/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -70,6 +73,38 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  await Promise.all([
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: vectorModelId!,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+    }),
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: agentModelId!,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.llm });
+    }),
+    vlmModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: vlmModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm, requireVision: true });
+        })
+      : undefined
+  ]);
 
   // check limit
   await checkTeamDatasetLimit(teamId);

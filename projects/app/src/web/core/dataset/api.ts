@@ -34,7 +34,10 @@ import type {
 } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
-import type { DatasetDataItemType, DatasetCollectionsListItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  DatasetDataItemType,
+  DatasetCollectionsListItemType
+} from '@fastgpt/global/core/dataset/type';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';

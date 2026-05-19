@@ -76,7 +76,7 @@ import {
   postChangeCollectionOwner
 } from '@/web/core/dataset/api/collaborator';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import type { DatasetCollectionsListItemType } from '@fastgpt/global/core/dataset/type';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 
 const EmptyCollectionTip = dynamic(() => import('../CollectionCard/EmptyCollectionTip'));

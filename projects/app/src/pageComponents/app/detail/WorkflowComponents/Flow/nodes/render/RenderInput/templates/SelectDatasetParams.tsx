@@ -38,23 +38,23 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.rerank?.model,
+    rerankModelId: defaultModels.rerank?.id,
     rerankMethod: RerankMethodEnum.content,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: defaultModels.llm?.id,
     datasetSearchExtensionBg: '',
-    generateSqlModel: defaultModels.llm?.model,
-    embeddingModel: ''
+    generateSqlModelId: defaultModels.llm?.id,
+    embeddingModelId: ''
   });
 
   const [retrievalMode, setRetrievalMode] = useState<`${DatasetRetrievalModeEnum}`>(
     DatasetRetrievalModeEnum.standard
   );
   const [agenticSearchConfig, setAgenticSearchConfig] = useState({
-    agenticSearchLLMModel: defaultModels.llm?.model || '',
-    embeddingModel: '',
-    agenticSearchRerankModel: defaultModels.rerank?.model || '',
+    agenticSearchLLMModelId: defaultModels.llm?.id || '',
+    embeddingModelId: '',
+    agenticSearchRerankModelId: defaultModels.rerank?.id || '',
     agenticSearchReasoning: true
   });
 
@@ -92,7 +92,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
         ) || knowledgeInfoList.length === 0,
       // 优先取有向量模型的知识库，避免数据库类型排在首位时取到空值
-      datasetVectorModel: knowledgeInfoList.find((d) => d.vectorModel?.model)?.vectorModel?.model
+      datasetVectorModel: knowledgeInfoList.find((d) => d.vectorModel?.id)?.vectorModel?.id
     };
   }, [inputs]);
 
@@ -114,7 +114,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     getNodeList().forEach((item) => {
       if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.agent].includes(item.flowNodeType)) {
         const model =
-          item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
+          item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value || '';
         const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken ?? 0;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
@@ -134,8 +134,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           // @ts-ignore
           next[input.key] = input.value ?? state[input.key];
         }
-        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
-          next.embeddingModel = input.value ?? state.embeddingModel;
+        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModelId) {
+          next.embeddingModelId = input.value ?? state.embeddingModelId;
         }
       });
       return next;
@@ -144,17 +144,17 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     setAgenticSearchConfig((state) => {
       const next = { ...state };
       inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
-          next.embeddingModel = input.value ?? state.embeddingModel;
+        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModelId) {
+          next.embeddingModelId = input.value ?? state.embeddingModelId;
         }
-        if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel) {
-          next.agenticSearchLLMModel = input.value || state.agenticSearchLLMModel;
+        if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModelId) {
+          next.agenticSearchLLMModelId = input.value || state.agenticSearchLLMModelId;
         }
         if (input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning) {
           next.agenticSearchReasoning = input.value ?? state.agenticSearchReasoning;
         }
-        if (input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModel) {
-          next.agenticSearchRerankModel = input.value || state.agenticSearchRerankModel;
+        if (input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModelId) {
+          next.agenticSearchRerankModelId = input.value || state.agenticSearchRerankModelId;
         }
       });
       return next;
@@ -168,15 +168,12 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
     // 新建节点时 input.value 为 undefined，将默认值写入 inputs 确保参数下发
     [
-      { key: NodeInputKeyEnum.datasetSearchExtensionModel, defaultValue: defaultModels.llm?.model },
+      { key: NodeInputKeyEnum.datasetSearchExtensionModelId, defaultValue: defaultModels.llm?.id },
+      { key: NodeInputKeyEnum.datasetAgenticSearchLLMModelId, defaultValue: defaultModels.llm?.id },
+      { key: NodeInputKeyEnum.datasetSearchRerankModelId, defaultValue: defaultModels.rerank?.id },
       {
-        key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
-        defaultValue: defaultModels.llm?.model
-      },
-      { key: NodeInputKeyEnum.datasetSearchRerankModel, defaultValue: defaultModels.rerank?.model },
-      {
-        key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
-        defaultValue: defaultModels.rerank?.model
+        key: NodeInputKeyEnum.datasetAgenticSearchRerankModelId,
+        defaultValue: defaultModels.rerank?.id
       }
     ].forEach(({ key, defaultValue }) => {
       if (!defaultValue) return;
@@ -192,7 +189,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     });
   }, [inputs, nodeId, onChangeNode, defaultModels.rerank?.model, defaultModels.llm?.model]);
 
-  // 知识库变更时同步 embeddingModel：清空则清空；切换则更新为新的向量模型
+  // 知识库变更时同步 embeddingModelId：清空则清空；切换则更新为新的向量模型
   const prevDatasetVectorModelRef = React.useRef<string | undefined>(undefined);
   useEffect(() => {
     const datasetVectorModel = knowledgeTypeConfig.datasetVectorModel;
@@ -202,16 +199,16 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     prevDatasetVectorModelRef.current = datasetVectorModel;
 
     if (!datasetVectorModel) {
-      if (data.embeddingModel) {
-        setData((prev) => ({ ...prev, embeddingModel: '' }));
+      if (data.embeddingModelId) {
+        setData((prev) => ({ ...prev, embeddingModelId: '' }));
         const embeddingModelInput = inputs.find(
-          (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+          (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModelId
         );
         if (embeddingModelInput) {
           onChangeNode({
             nodeId,
             type: 'updateInput',
-            key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+            key: NodeInputKeyEnum.datasetSearchEmbeddingModelId,
             value: { ...embeddingModelInput, value: '' }
           });
         }
@@ -219,29 +216,29 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       return;
     }
 
-    // 知识库从有值A切换为有值B时，更新 embeddingModel 为新的向量模型
+    // 知识库从有值A切换为有值B时，更新 embeddingModelId 为新的向量模型
     // 初次选择知识库（prev === undefined）且 inputs 中 embeddingModel 无已保存值时，也自动配置
-    const currentInputEmbeddingModel = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+    const currentInputEmbeddingModelId = inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModelId
     )?.value;
-    const isFirstSelect = prev === undefined && !currentInputEmbeddingModel;
+    const isFirstSelect = prev === undefined && !currentInputEmbeddingModelId;
     const isSwitchDataset = prev !== undefined && prev !== datasetVectorModel;
 
     if (isFirstSelect || isSwitchDataset) {
-      setData((state) => ({ ...state, embeddingModel: datasetVectorModel }));
+      setData((state) => ({ ...state, embeddingModelId: datasetVectorModel }));
       const embeddingModelInput = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+        (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModelId
       );
       if (embeddingModelInput) {
         onChangeNode({
           nodeId,
           type: 'updateInput',
-          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModelId,
           value: { ...embeddingModelInput, value: datasetVectorModel }
         });
       }
     }
-  }, [knowledgeTypeConfig.datasetVectorModel, data.embeddingModel, inputs, nodeId, onChangeNode]);
+  }, [knowledgeTypeConfig.datasetVectorModel, data.embeddingModelId, inputs, nodeId, onChangeNode]);
 
   const embeddingModelSelectList = useMemo(
     () => getEmbeddingModelSelectList(embeddingModelList, knowledgeTypeConfig.datasetVectorModel),
@@ -304,42 +301,42 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                   });
                 }
 
-                // 切换检索模式时，清空另一模式的字段
-                if (mode !== prevMode) {
-                  if (mode === DatasetRetrievalModeEnum.standard) {
-                    // 标准检索 → 清空多轮智能检索相关字段
-                    setAgenticSearchConfig((prev) => ({
-                      ...prev,
-                      agenticSearchLLMModel: '',
-                      agenticSearchRerankModel: '',
-                      agenticSearchReasoning: false
-                    }));
-                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, '');
-                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, '');
-                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchReasoning, false);
-                  } else {
-                    // 多轮智能检索 → 清空标准检索相关字段
-                    setData((prev) => ({
-                      ...prev,
-                      datasetSearchExtensionModel: '',
-                      rerankModel: ''
-                    }));
-                    updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, '');
-                    updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, '');
-                  }
+              // 切换检索模式时，清空另一模式的字段
+              if (mode !== prevMode) {
+                if (mode === DatasetRetrievalModeEnum.standard) {
+                  // 标准检索 → 清空多轮智能检索相关字段
+                  setAgenticSearchConfig((prev) => ({
+                    ...prev,
+                    agenticSearchLLMModelId: '',
+                    agenticSearchRerankModelId: '',
+                    agenticSearchReasoning: false
+                  }));
+                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModelId, '');
+                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModelId, '');
+                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchReasoning, false);
+                } else {
+                  // 多轮智能检索 → 清空标准检索相关字段
+                  setData((prev) => ({
+                    ...prev,
+                    datasetSearchExtensionModelId: '',
+                    rerankModelId: ''
+                  }));
+                  updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModelId, '');
+                  updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModelId, '');
                 }
+              }
 
-                if (knowledgeTypeConfig.hasDatabaseKnowledge) {
-                  const newAiModel =
-                    mode === DatasetRetrievalModeEnum.agentic
-                      ? agenticSearchConfig.agenticSearchLLMModel
-                      : data.datasetSearchExtensionModel || '';
-                  if (newAiModel) {
-                    updateNodeInput(NodeInputKeyEnum.generateSqlModel, newAiModel);
-                  }
+              if (knowledgeTypeConfig.hasDatabaseKnowledge) {
+                const newAiModel =
+                  mode === DatasetRetrievalModeEnum.agentic
+                    ? agenticSearchConfig.agenticSearchLLMModelId
+                    : data.datasetSearchExtensionModelId || '';
+                if (newAiModel) {
+                  updateNodeInput(NodeInputKeyEnum.generateSqlModelId, newAiModel);
                 }
-              }}
-            />
+              }
+            }}
+          />
           </Box>
         </Flex>
 
@@ -382,20 +379,20 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                     width="100%"
                     value={
                       retrievalMode === DatasetRetrievalModeEnum.agentic
-                        ? agenticSearchConfig.agenticSearchLLMModel
-                        : data.datasetSearchExtensionModel || ''
+                        ? agenticSearchConfig.agenticSearchLLMModelId
+                        : data.datasetSearchExtensionModelId || ''
                     }
-                    list={llmModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    list={llmModelList.map((item) => ({ value: item.id, label: item.name }))}
                     onChange={(val: string) => {
                       if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                        setAgenticSearchConfig((prev) => ({ ...prev, agenticSearchLLMModel: val }));
-                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, val);
+                        setAgenticSearchConfig((prev) => ({ ...prev, agenticSearchLLMModelId: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModelId, val);
                       } else {
-                        setData((prev) => ({ ...prev, datasetSearchExtensionModel: val }));
-                        updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, val);
+                        setData((prev) => ({ ...prev, datasetSearchExtensionModelId: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModelId, val);
                       }
                       if (knowledgeTypeConfig.hasDatabaseKnowledge) {
-                        updateNodeInput(NodeInputKeyEnum.generateSqlModel, val);
+                        updateNodeInput(NodeInputKeyEnum.generateSqlModelId, val);
                       }
                     }}
                   />
@@ -417,17 +414,17 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                     fontWeight="normal"
                     value={
                       retrievalMode === DatasetRetrievalModeEnum.agentic
-                        ? agenticSearchConfig.embeddingModel
-                        : data.embeddingModel
+                        ? agenticSearchConfig.embeddingModelId
+                        : data.embeddingModelId
                     }
                     list={embeddingModelSelectList}
                     onChange={(val: string) => {
                       if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                        setAgenticSearchConfig((prev) => ({ ...prev, embeddingModel: val }));
+                        setAgenticSearchConfig((prev) => ({ ...prev, embeddingModelId: val }));
                       } else {
-                        setData((prev) => ({ ...prev, embeddingModel: val }));
+                        setData((prev) => ({ ...prev, embeddingModelId: val }));
                       }
-                      updateNodeInput(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
+                      updateNodeInput(NodeInputKeyEnum.datasetSearchEmbeddingModelId, val);
                     }}
                   />
                 </Box>
@@ -445,20 +442,20 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                     fontWeight="normal"
                     value={
                       retrievalMode === DatasetRetrievalModeEnum.agentic
-                        ? agenticSearchConfig.agenticSearchRerankModel
-                        : data.rerankModel || ''
+                        ? agenticSearchConfig.agenticSearchRerankModelId
+                        : data.rerankModelId || ''
                     }
-                    list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    list={reRankModelList.map((item) => ({ value: item.id, label: item.name }))}
                     onChange={(val: string) => {
                       if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
                         setAgenticSearchConfig((prev) => ({
                           ...prev,
-                          agenticSearchRerankModel: val
+                          agenticSearchRerankModelId: val
                         }));
-                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, val);
+                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModelId, val);
                       } else {
-                        setData((prev) => ({ ...prev, rerankModel: val }));
-                        updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, val);
+                        setData((prev) => ({ ...prev, rerankModelId: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModelId, val);
                       }
                     }}
                   />
@@ -496,9 +493,9 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     nodeId,
     onChangeNode,
     t,
-    data.embeddingModel,
-    data.rerankModel,
-    data.datasetSearchExtensionModel,
+    data.embeddingModelId,
+    data.rerankModelId,
+    data.datasetSearchExtensionModelId,
     knowledgeTypeConfig.hasDatabaseKnowledge,
     agenticSearchConfig,
     embeddingModelSelectList,

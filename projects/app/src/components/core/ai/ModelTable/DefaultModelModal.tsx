@@ -1,7 +1,6 @@
 import { Button, Box, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateDefaultModels } from '@/web/core/ai/config';
@@ -59,15 +58,15 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.llm?.model}
+              value={defaultData.llm?.id}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  llm: llmModelList.find((item) => item.model === e)
+                  llm: llmModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -78,17 +77,17 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.embedding?.model}
+              value={defaultData.embedding?.id}
               list={embeddingModelList
                 .filter((item) => !item.isTuned)
                 .map((item) => ({
-                  value: item.model,
+                  value: item.id,
                   label: item.name
                 }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  embedding: embeddingModelList.find((item) => item.model === e)
+                  embedding: embeddingModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -99,15 +98,15 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.tts?.model}
+              value={defaultData.tts?.id}
               list={ttsModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  tts: ttsModelList.find((item) => item.model === e)
+                  tts: ttsModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -118,15 +117,15 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.stt?.model}
+              value={defaultData.stt?.id}
               list={sttModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  stt: sttModelList.find((item) => item.model === e)
+                  stt: sttModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -137,17 +136,17 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.rerank?.model}
+              value={defaultData.rerank?.id}
               list={reRankModelList
                 .filter((item) => !item.isTuned)
                 .map((item) => ({
-                  value: item.model,
+                  value: item.id,
                   label: item.name
                 }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  rerank: reRankModelList.find((item) => item.model === e)
+                  rerank: reRankModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -162,15 +161,15 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              value={defaultData.datasetTextLLM?.model}
+              value={defaultData.datasetTextLLM?.id}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetTextLLM: llmModelList.find((item) => item.model === e)
+                  datasetTextLLM: llmModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -184,16 +183,15 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
-              clearable
-              value={defaultData.datasetImageLLM?.model}
+              value={defaultData.datasetImageLLM?.id}
               list={vlmModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetImageLLM: vlmModelList.find((item) => item.model === e)
+                  datasetImageLLM: vlmModelList.find((item) => item.id === e)
                 }));
               }}
             />
@@ -208,17 +206,17 @@ const DefaultModelModal = ({
             <Box flex={1}>
               <AIModelSelector
                 bg="myGray.50"
-                value={defaultData.evaluation?.model}
+                value={defaultData.evaluation?.id}
                 list={llmModelList
                   .filter((item) => item.useInEvaluation)
                   .map((item) => ({
-                    value: item.model,
+                    value: item.id,
                     label: item.name
                   }))}
                 onChange={(e) => {
                   setDefaultData((state) => ({
                     ...state,
-                    evaluation: llmModelList.find((item) => item.model === e)
+                    evaluation: llmModelList.find((item) => item.id === e)
                   }));
                 }}
               />
@@ -234,14 +232,14 @@ const DefaultModelModal = ({
           isLoading={loading}
           onClick={() =>
             runAsync({
-              [ModelTypeEnum.llm]: defaultData.llm?.model,
-              [ModelTypeEnum.embedding]: defaultData.embedding?.model,
-              [ModelTypeEnum.tts]: defaultData.tts?.model,
-              [ModelTypeEnum.stt]: defaultData.stt?.model,
-              [ModelTypeEnum.rerank]: defaultData.rerank?.model,
-              datasetTextLLM: defaultData.datasetTextLLM?.model,
-              datasetImageLLM: defaultData.datasetImageLLM?.model,
-              evaluation: defaultData.evaluation?.model
+              llmId: defaultData.llm?.id,
+              embeddingId: defaultData.embedding?.id,
+              ttsId: defaultData.tts?.id,
+              sttId: defaultData.stt?.id,
+              rerankId: defaultData.rerank?.id,
+              datasetTextLLMId: defaultData.datasetTextLLM?.id,
+              datasetImageLLMId: defaultData.datasetImageLLM?.id,
+              evaluationId: defaultData.evaluation?.id
             })
           }
         >

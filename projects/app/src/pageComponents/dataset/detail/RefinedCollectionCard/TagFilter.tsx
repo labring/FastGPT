@@ -14,7 +14,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
 import { CollectionPageContext } from '../CollectionCard/Context';
-import { type CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import { type CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { useState, useMemo } from 'react';
 import { formatTime2YMDHMUtc } from '@fastgpt/global/common/string/time';
 

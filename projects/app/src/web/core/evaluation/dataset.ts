@@ -56,7 +56,7 @@ export const postImportEvaluationDatasetFile = (data: {
   fileId: string;
   collectionId: string;
   enableQualityEvaluation: boolean;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 }) => POST('/core/evaluation/dataset/data/fileId', data);
 
 // 评测数据集数据列表
@@ -126,7 +126,7 @@ export const generateDataByUploadFile = ({
   percentListen,
   name,
   enableQualityEvaluation,
-  evaluationModel,
+  evaluationModelId,
   collectionId
 }: {
   fileList: File[];
@@ -134,7 +134,7 @@ export const generateDataByUploadFile = ({
   collectionId: string;
   name?: string;
   enableQualityEvaluation: boolean;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 }) => {
   const formData = new FormData();
 
@@ -145,7 +145,7 @@ export const generateDataByUploadFile = ({
 
   const otherParams = {
     ...(name ? { name } : {}),
-    ...(evaluationModel ? { evaluationModel } : {}),
+    ...(evaluationModelId ? { evaluationModelId } : {}),
     enableQualityEvaluation,
     collectionId
   };

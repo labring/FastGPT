@@ -8,7 +8,7 @@ export interface ManualAddDataFormData {
   question: string;
   referenceAnswer: string;
   autoEvaluate: boolean;
-  evaluationModel: string;
+  evaluationModelId: string;
 }
 
 interface DataListContextType {

@@ -24,7 +24,7 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
+import { getSystemModelDefaultConfig, postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import {
   useFieldArray,
@@ -170,6 +170,30 @@ const emptyPriceTier = {
   inputPrice: undefined,
   outputPrice: undefined
 };
+
+export const getNewModelFormData = (
+  defaultModel: SystemModelItemType | undefined,
+  type: ModelTypeEnum
+): SystemModelItemType =>
+  ({
+    ...defaultModel,
+    id: '',
+    model: '',
+    name: '',
+    charsPointsPrice: 0,
+    inputPrice: undefined,
+    outputPrice: undefined,
+    priceTiers: undefined,
+
+    isCustom: true,
+    isActive: true,
+    isDefault: false,
+    isDefaultDatasetTextModel: false,
+    isDefaultDatasetImageModel: false,
+    isDefaultEvaluationModel: false,
+    // @ts-ignore
+    type
+  }) as SystemModelItemType;
 
 const getOptionalNumber = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined;
@@ -839,10 +863,23 @@ export const ModelEditModal = ({
         }
       }
 
-      return putSystemModel({
-        model: data.model,
-        metadata: data
-      }).then(onSuccess);
+      const metadata = { ...data };
+      delete (metadata as Partial<SystemModelItemType>).id;
+      delete (metadata as Partial<SystemModelItemType>).isShared;
+
+      return (
+        modelData.id
+          ? putSystemModel({
+              id: modelData.id,
+              metadata,
+              isShared: data.isShared
+            })
+          : postSystemModel({
+              model: data.model,
+              metadata,
+              isShared: data.isShared
+            })
+      ).then(onSuccess);
     },
     {
       onSuccess: () => {
@@ -859,7 +896,8 @@ export const ModelEditModal = ({
       onSuccess(res) {
         reset({
           ...getValues(),
-          ...res
+          ...res,
+          id: modelData.id || ''
         });
         setTimeout(() => {
           setKey((prev) => prev + 1);
@@ -925,6 +963,12 @@ export const ModelEditModal = ({
                 setValue={setValue}
                 providerList={providerList}
                 t={t}
+              />
+              <SwitchField
+                label={t('common:permission.Public')}
+                tip={t('common:permission.Public Tip')}
+                field={'isShared'}
+                register={register}
               />
             </Grid>
           </Flex>
@@ -1199,7 +1243,7 @@ export const ModelEditModal = ({
             variant={'whiteBase'}
             mr={4}
             size={'md'}
-            onClick={() => loadDefaultConfig(modelData.model)}
+            onClick={() => loadDefaultConfig(modelData.id)}
           >
             {t('account:reset_default')}
           </Button>

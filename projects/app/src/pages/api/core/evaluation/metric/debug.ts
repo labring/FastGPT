@@ -111,7 +111,11 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalLLmConfigRequired);
   }
 
-  if (!llmConfig.modelId || typeof llmConfig.modelId !== 'string' || llmConfig.modelId.trim().length === 0) {
+  if (
+    !llmConfig.modelId ||
+    typeof llmConfig.modelId !== 'string' ||
+    llmConfig.modelId.trim().length === 0
+  ) {
     return Promise.reject(EvaluationErrEnum.evalLLmModelNameRequired);
   }
 

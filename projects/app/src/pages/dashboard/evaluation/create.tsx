@@ -46,7 +46,7 @@ const EvaluationCreating = () => {
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel: llmModelList[0]?.model,
+      evalModel: llmModelList[0]?.id,
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }

@@ -79,7 +79,7 @@ const CreateModal = ({
   const isEditMode = !!editId;
 
   const [isTraining, setIsTraining] = useState(false);
-  const [originalVectorModel, setOriginalVectorModel] = useState<string>();
+  const [originalVectorModelId, setOriginalVectorModel] = useState<string>();
   const [syncApiModalOpen, setSyncApiModalOpen] = useState(false);
   const [syncTab, setSyncTab] = useState<'request' | 'params' | 'response'>('request');
 
@@ -96,10 +96,10 @@ const CreateModal = ({
       avatar: DatasetTypeMap[type].avatar,
       name: '',
       intro: '',
-      vectorModel:
-        defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
-      agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
-      vlmModel: defaultModels.datasetImageLLM?.model,
+      vectorModelId:
+        defaultModels.embedding?.id || getWebDefaultEmbeddingModel(embeddingModelList)?.id,
+      agentModelId: defaultModels.datasetTextLLM?.id || getWebDefaultLLMModel(llmModelList)?.id,
+      vlmModelId: defaultModels.datasetImageLLM?.id,
       websiteConfig: {
         url: '',
         selector: ''
@@ -109,9 +109,9 @@ const CreateModal = ({
   });
   const { register, setValue, handleSubmit, watch, reset } = form;
   const avatar = watch('avatar');
-  const vectorModel = watch('vectorModel');
-  const agentModel = watch('agentModel');
-  const vlmModel = watch('vlmModel');
+  const vectorModelId = watch('vectorModelId');
+  const agentModelId = watch('agentModelId');
+  const vlmModelId = watch('vlmModelId');
   const autoSync = watch('autoSync');
   const permissionSync = watch('apiDatasetServer.apiServer.permissionSync');
 
@@ -129,14 +129,14 @@ const CreateModal = ({
       manual: false,
       onSuccess: (data) => {
         if (!data) return;
-        setOriginalVectorModel(data.vectorModel?.model);
+        setOriginalVectorModel(data.vectorModel?.id);
         reset({
           name: data.name,
           intro: data.intro || '',
           avatar: data.avatar,
-          vectorModel: data.vectorModel?.model,
-          agentModel: data.agentModel?.model,
-          vlmModel: data.vlmModel?.model,
+          vectorModelId: data.vectorModel?.id,
+          agentModelId: data.agentModel?.id,
+          vlmModelId: data.vlmModel?.id,
           websiteConfig: data.websiteConfig || { url: '', selector: '' },
           autoSync: data.autoSync || false,
           apiDatasetServer: data.apiDatasetServer as any
@@ -172,7 +172,9 @@ const CreateModal = ({
     async (data: CreateDatasetParams) => {
       if (isEditMode) {
         const vectorModelChanged =
-          data.vectorModel && originalVectorModel && data.vectorModel !== originalVectorModel;
+          data.vectorModelId &&
+          originalVectorModelId &&
+          data.vectorModelId !== originalVectorModelId;
 
         const updateData = {
           id: editId!,
@@ -180,10 +182,10 @@ const CreateModal = ({
           intro: data.intro,
           avatar: data.avatar,
           // 如果向量模型变了，不在这里更新，由 rebuildEmbedding 负责更新
-          ...(!vectorModelChanged && { vectorModel: data.vectorModel }),
-          agentModel: data.agentModel,
+          ...(!vectorModelChanged && { vectorModelId: data.vectorModelId }),
+          agentModelId: data.agentModelId,
           // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
-          vlmModel: data.vlmModel ?? null,
+          vlmModelId: data.vlmModelId ?? null,
           apiDatasetServer: data.apiDatasetServer,
           ...(isWebsite && { websiteConfig: data.websiteConfig }),
           ...(hasAutoSync && { autoSync: data.autoSync })
@@ -194,7 +196,7 @@ const CreateModal = ({
         if (vectorModelChanged) {
           await postRebuildEmbedding({
             datasetId: editId!,
-            vectorModel: data.vectorModel!
+            vectorModelId: data.vectorModelId!
           });
         }
 
@@ -203,16 +205,16 @@ const CreateModal = ({
         return;
       }
 
-      const { vectorModel, agentModel, vlmModel, ...restData } = {
+      const { vectorModelId, agentModelId, vlmModelId, ...restData } = {
         parentId: data.parentId,
         type: data.type,
         name: data.name,
         intro: data.intro,
         avatar: data.avatar,
-        vectorModel: data.vectorModel,
-        agentModel: data.agentModel,
+        vectorModelId: data.vectorModelId,
+        agentModelId: data.agentModelId,
         // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
-        vlmModel: data.vlmModel ?? null,
+        vlmModelId: data.vlmModelId ?? null,
         apiDatasetServer: data.apiDatasetServer,
         ...(isWebsite && { websiteConfig: data.websiteConfig }),
         ...(hasAutoSync && { autoSync: data.autoSync })
@@ -220,7 +222,7 @@ const CreateModal = ({
 
       const submitData: CreateDatasetBody = isStructureDocument
         ? restData
-        : { vectorModel, agentModel, vlmModel, ...restData };
+        : { vectorModelId, agentModelId, vlmModelId, ...restData };
 
       return await postCreateDataset(submitData);
     },
@@ -434,17 +436,17 @@ const CreateModal = ({
               <Box flex={1}>
                 <AIModelSelector
                   w={'100%'}
-                  value={vectorModel}
+                  value={vectorModelId}
                   list={filterNotHiddenVectorModelList.map((item) => ({
                     label: item.name,
-                    value: item.model
+                    value: item.id
                   }))}
                   disableTip={
                     isEditMode && isTraining
                       ? t('dataset:vector_model_processing_disabled_tip')
                       : undefined
                   }
-                  onChange={(e) => setValue('vectorModel' as const, e)}
+                  onChange={(e) => setValue('vectorModelId' as const, e)}
                 />
               </Box>
             </Flex>
@@ -462,12 +464,12 @@ const CreateModal = ({
               <Box flex={1}>
                 <AIModelSelector
                   w={'100%'}
-                  value={agentModel}
+                  value={agentModelId}
                   list={llmModelList.map((item) => ({
                     label: item.name,
-                    value: item.model
+                    value: item.id
                   }))}
-                  onChange={(e) => setValue('agentModel', e)}
+                  onChange={(e) => setValue('agentModelId', e)}
                 />
               </Box>
             </Flex>
@@ -484,12 +486,12 @@ const CreateModal = ({
                 <AIModelSelector
                   w={'100%'}
                   clearable
-                  value={vlmModel ?? undefined}
+                  value={vlmModelId ?? undefined}
                   list={vllmModelList.map((item) => ({
                     label: item.name,
-                    value: item.model
+                    value: item.id
                   }))}
-                  onChange={(e) => setValue('vlmModel', e)}
+                  onChange={(e) => setValue('vlmModelId', e)}
                 />
               </Box>
             </Flex>

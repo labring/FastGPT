@@ -2,6 +2,8 @@ import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { FilterState, I18nT, ModelRow, ProviderOption } from '../types';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
+import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
 
 type ModelProvider = {
@@ -12,10 +14,15 @@ type ModelProvider = {
 };
 
 type BaseModelItem = {
+  id: string;
   model: string;
   name: string;
   provider: string;
   isTuned?: boolean;
+  isCustom?: boolean;
+  isShared?: boolean;
+  permission: ModelPermission;
+  sourceMember?: SourceMemberType;
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
@@ -221,6 +228,7 @@ export const getFilteredModelList = ({
     .map((item) => {
       const provider = getModelProvider(item.provider, language);
       return {
+        id: item.id,
         model: item.model,
         name: item.name,
         avatar: provider.avatar,
@@ -230,6 +238,10 @@ export const getFilteredModelList = ({
         priceLabel: item.priceLabel,
         order: provider.order,
         tagColor: item.tagColor,
+        isCustom: item.isCustom,
+        isShared: item.isShared,
+        permission: item.permission,
+        sourceMember: item.sourceMember,
         trainableModelType: item.trainableModelType,
         isTuned: item.isTuned,
         trainTaskSummary: item.trainTaskSummary

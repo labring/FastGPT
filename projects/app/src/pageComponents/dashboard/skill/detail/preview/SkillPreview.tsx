@@ -19,17 +19,17 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
   const skillId = useContextSelector(SkillDetailContext, (v) => v.skillId);
 
   const { llmModelList } = useSystemStore();
-  const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.model || '');
+  const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.id || '');
 
   const modelSelectList = useMemo(
-    () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
+    () => llmModelList.map((item) => ({ label: item.name, value: item.id })),
     [llmModelList]
   );
 
   // Agent sandbox lazily initialized; ChatBox always allows send; first message triggers warm-up
   const { ChatContainer } = useSkillChatTest({
     skillId,
-    model: selectedModel,
+    modelId: selectedModel,
     chatId
   });
 

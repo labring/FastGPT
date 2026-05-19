@@ -16,7 +16,15 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
+    create: vi.fn(),
     findOneAndUpdate: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/train/embedding/task/schema', () => ({
+  MongoEmbeddingTrainTask: {
+    findById: vi.fn(),
+    updateOne: vi.fn()
   }
 }));
 
@@ -54,10 +62,15 @@ describe('Embedding Model Config Controller', () => {
   describe('createEmbeddingModelConfig', () => {
     test('should successfully create embedding model configuration', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/schema'
+      );
       const { updatedReloadSystemModel } = await import('@fastgpt/service/core/ai/config/utils');
 
-      // Mock database findOneAndUpdate
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_123' });
+      (MongoEmbeddingTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_123' });
 
       const configId = await createEmbeddingModelConfig({
         name: 'Test Embedding Model',
@@ -69,32 +82,33 @@ describe('Embedding Model Config Controller', () => {
         isActive: true,
         tmbId: 'tmb_test',
         teamId: 'team_test',
-        charsPointsPrice: 1
+        charsPointsPrice: 1,
+        taskId: 'task_123'
       });
 
       expect(configId).toBe('config_123');
-      expect(MongoSystemModel.findOneAndUpdate).toHaveBeenCalledWith(
-        { model: 'test-model' },
-        {
+      expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        model: 'test-model',
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        isShared: false,
+        metadata: expect.objectContaining({
+          provider: 'aicp',
           model: 'test-model',
-          tmbId: 'tmb_test',
-          teamId: 'team_test',
-          isShared: false,
-          metadata: expect.objectContaining({
-            provider: 'aicp',
-            model: 'test-model',
-            name: 'Test Embedding Model',
-            isActive: true,
-            isCustom: true,
-            isTuned: true,
-            type: 'embedding', // Verify type is 'embedding' not 'rerank'
-            charsPointsPrice: 1,
-            instruction: undefined
-          })
-        },
+          name: 'Test Embedding Model',
+          isActive: true,
+          isCustom: true,
+          isTuned: true,
+          type: 'embedding', // Verify type is 'embedding' not 'rerank'
+          charsPointsPrice: 1,
+          instruction: undefined
+        })
+      });
+      expect(MongoEmbeddingTrainTask.updateOne).toHaveBeenCalledWith(
+        { _id: 'task_123' },
         {
-          upsert: true,
-          new: true
+          'checkpoint.data.registering.tunedModelId': 'config_123',
+          updateTime: expect.any(Date)
         }
       );
 
@@ -103,8 +117,14 @@ describe('Embedding Model Config Controller', () => {
 
     test('should verify model type is embedding', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/schema'
+      );
 
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_type' });
+      (MongoEmbeddingTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_type' });
 
       await createEmbeddingModelConfig({
         name: 'Type Check Model',
@@ -116,11 +136,53 @@ describe('Embedding Model Config Controller', () => {
         isActive: true,
         tmbId: 'tmb_test',
         teamId: 'team_test',
-        charsPointsPrice: 1
+        charsPointsPrice: 1,
+        taskId: 'task_type'
       });
 
-      const callArgs = (MongoSystemModel.findOneAndUpdate as any).mock.calls[0];
-      expect(callArgs[1].metadata.type).toBe('embedding');
+      const callArgs = (MongoSystemModel.create as any).mock.calls[0];
+      expect(callArgs[0].metadata.type).toBe('embedding');
+    });
+
+    test('should update existing model config from checkpoint model id', async () => {
+      const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/schema'
+      );
+
+      (MongoEmbeddingTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          checkpoint: { data: { registering: { tunedModelId: 'existing_model_id' } } }
+        })
+      });
+      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'existing_model_id' });
+
+      const configId = await createEmbeddingModelConfig({
+        name: 'Retry Embedding Model',
+        endpoint: {
+          base_url: 'http://example.com/v1',
+          api_key: 'test-key',
+          model: 'retry-model'
+        },
+        isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        taskId: 'task_retry'
+      });
+
+      expect(configId).toBe('existing_model_id');
+      expect(MongoSystemModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: 'existing_model_id' },
+        expect.objectContaining({
+          model: 'retry-model',
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          isShared: false
+        }),
+        { new: true }
+      );
+      expect(MongoSystemModel.create).not.toHaveBeenCalled();
+      expect(MongoEmbeddingTrainTask.updateOne).not.toHaveBeenCalled();
     });
   });
 });

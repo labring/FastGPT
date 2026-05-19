@@ -12,7 +12,11 @@ import {
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModelById, getLLMModelById, getVlmModelById } from '@fastgpt/service/core/ai/model';
+import {
+  getEmbeddingModelById,
+  getLLMModelById,
+  getVlmModelById
+} from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { Types } from '@fastgpt/service/common/mongo';

@@ -48,10 +48,10 @@ const QuickCreateDatasetModal = ({
   const { defaultModels, embeddingModelList, llmModelList } = useSystemStore();
 
   const defaultVectorModel =
-    defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model;
+    defaultModels.embedding?.id || getWebDefaultEmbeddingModel(embeddingModelList)?.id;
   const defaultAgentModel =
-    defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model;
-  const defaultVLLM = defaultModels.datasetImageLLM?.model;
+    defaultModels.datasetTextLLM?.id || getWebDefaultLLMModel(llmModelList)?.id;
+  const defaultVLLM = defaultModels.datasetImageLLM?.id;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
 
@@ -170,9 +170,9 @@ const QuickCreateDatasetModal = ({
           name: data.name.trim(),
           avatar: data.avatar,
           parentId,
-          vectorModel: defaultVectorModel,
-          agentModel: defaultAgentModel,
-          vlmModel: defaultVLLM
+          vectorModelId: defaultVectorModel,
+          agentModelId: defaultAgentModel,
+          vlmModelId: defaultVLLM
         },
         files: selectFiles
           .filter((item) => item.dbFileId && !item.errorMsg)

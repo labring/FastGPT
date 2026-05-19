@@ -108,6 +108,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
   const model = getLLMModelById(body.modelId);
+  if (!model) {
+    return Promise.reject(`Model ${body.modelId} not found`);
+  }
 
   // Messages process
   const requestMessages = await loadRequestMessages({
@@ -703,7 +706,7 @@ type InferCompletionsBody<T> = T extends { stream: true }
     : ChatCompletionCreateParams;
 
 type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
-  modelId: string | LLMModelItemType;
+  modelId: string;
   stop?: string;
   response_format?: {
     type?: string;
@@ -737,10 +740,7 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
 }> => {
   const modelData = getLLMModelById(modelId);
   if (!modelData) {
-    return {
-      requestBody: body as unknown as InferCompletionsBody<T>,
-      modelData
-    };
+    return Promise.reject(`Model ${modelId} not found`);
   }
 
   const response_format = (() => {
@@ -854,9 +854,6 @@ const createChatCompletion = async ({
     }
 > => {
   try {
-    if (!modelData) {
-      return Promise.reject(`${body.model} not found`);
-    }
     body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;

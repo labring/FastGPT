@@ -3,7 +3,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { OwnerRoleVal, PerResourceTypeEnum, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type createQuery = {};

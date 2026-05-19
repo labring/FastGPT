@@ -13,6 +13,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getEmbeddingModelById, getLLMModelById } from '@fastgpt/service/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   generateAndExecuteSQL,
   SearchDatabaseData
@@ -34,6 +35,7 @@ import {
 import { getDuckDBStoreConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 
 async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>
@@ -52,8 +54,28 @@ async function handler(
 
   // auth balance
   await checkTeamAIPoints(teamId);
-  const vectorModel = getEmbeddingModelById(dataset.vectorModelId);
   const sqlLLM = getLLMModelById(modelId);
+  await Promise.all([
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: dataset.vectorModelId,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+    }),
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: sqlLLM.id,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.llm });
+    })
+  ]);
+  const vectorModel = getEmbeddingModelById(dataset.vectorModelId);
 
   // Calculate dynamic limit based on generateSqlModel's maxContext
   const dynamicLimit = calculateDynamicLimit({

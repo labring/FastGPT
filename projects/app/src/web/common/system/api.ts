@@ -1,5 +1,4 @@
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
-import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   CollaboratorListType,
@@ -13,16 +12,14 @@ export const getSystemInitData = (bufferId?: string) =>
 
 // model permissions
 
-export const getModelCollaborators = (model: string) =>
+export const getModelCollaborators = (modelId: string) =>
   GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
-    model
+    modelId
   });
 
-export const updateModelCollaborators = (props: UpdateClbPermissionProps & { models: string[] }) =>
-  POST('/proApi/system/model/collaborator/update', props);
-
-export const getMyModels = (props: GetMyModelsQuery) =>
-  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);
+export const updateModelCollaborators = (
+  props: UpdateClbPermissionProps & { modelIds: string[] }
+) => POST('/proApi/system/model/collaborator/update', props);
 
 /* 活动 banner */
 export const getOperationalAd = () =>

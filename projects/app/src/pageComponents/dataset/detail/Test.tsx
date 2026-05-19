@@ -51,17 +51,17 @@ type FormType = {
   searchParams: {
     searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
-    embeddingModel?: string;
+    embeddingModelId?: string;
 
     usingReRank?: boolean;
-    rerankModel?: string;
+    rerankModelId?: string;
     rerankMethod: `${RerankMethodEnum}`;
     rerankWeight?: number;
 
     similarity?: number;
     limit?: number;
     datasetSearchUsingExtensionQuery?: boolean;
-    datasetSearchExtensionModel?: string;
+    datasetSearchExtensionModelId?: string;
     datasetSearchExtensionBg?: string;
   };
 };
@@ -87,15 +87,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
-        embeddingModel: '',
+        embeddingModelId: '',
         usingReRank: true,
-        rerankModel: defaultModels?.rerank?.model,
+        rerankModelId: defaultModels?.rerank?.id,
         rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: defaultModels.llm?.model,
+        datasetSearchExtensionModelId: defaultModels.llm?.id,
         datasetSearchExtensionBg: ''
       }
     }
@@ -133,7 +133,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           usingReRank: res.usingReRank,
           limit: res.limit,
           similarity: res.similarity,
-          queryExtensionModel: res.queryExtensionModel
+          queryExtensionModel: res.queryExtensionModelId
         };
         pushDatasetTestItem(testItem);
         setDatasetTestItem(testItem);
@@ -146,7 +146,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       postDatasetCollectionSearchTest({
         datasetId,
         query: inputText.trim(),
-        model: searchModel
+        modelId: searchModel
       }),
     {
       onSuccess(res: any, params) {
@@ -186,7 +186,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     setDatasetTestItem(undefined);
   }, [datasetId]);
 
-  const [searchModel, setSearchModel] = useState(llmModelList?.[0]?.name);
+  const [searchModel, setSearchModel] = useState(defaultModels.llm?.id || llmModelList?.[0]?.id);
 
   return (
     <Box h={'100%'} display={['block', 'flex']}>
@@ -258,7 +258,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   onChange={(e) => setSearchModel(e)}
                   list={llmModelList.map((item) => ({
                     label: item.name,
-                    value: item.model
+                    value: item.id
                   }))}
                 />
                 <QuestionTip
@@ -389,7 +389,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <DatasetParamsModal
           {...(searchParams as any)}
           maxTokens={20000}
-          datasetVectorModel={datasetDetail.vectorModel?.model}
+          datasetVectorModel={datasetDetail.vectorModel?.id}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {
             setValue('searchParams', {

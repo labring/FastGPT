@@ -29,8 +29,8 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { assertModelAvailable, authModels } from '@fastgpt/service/support/permission/model/auth';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     body;
 
   // 凭证校验
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -68,22 +68,14 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     intro,
     type,
     modules: await (async () => {
-      if (modules) {
-        const myModels = new Set(
-          await getMyModels({
-            teamId,
-            tmbId,
-            teamPer: { isOwner: isRoot || tmb?.role === 'owner' },
-            isRoot
-          })
-        );
-
-        return removeUnauthModels({
-          modules,
-          allowedModels: myModels
-        });
-      }
-      return [];
+      const modelIds = extractWorkflowModelIds({ modules, chatConfig });
+      const { models } = await authModels({
+        req,
+        authToken: true,
+        modelIds
+      });
+      models.forEach((model) => assertModelAvailable(model));
+      return modules || [];
     })(),
     edges,
     chatConfig,

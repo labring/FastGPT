@@ -90,6 +90,7 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
       lean: vi.fn().mockResolvedValue({
         metadata: {
           charsPointsPrice: 0,
+          maxToken: 8192,
           instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         }
       })
@@ -140,7 +141,10 @@ vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   querySFTTaskStatus: vi.fn(),
   deleteSFTTask: vi.fn(),
   synthesizeRerankEvalData: vi.fn(),
-  judgeRelevantChunks: vi.fn(),
+  judgeRelevantChunks: vi.fn().mockResolvedValue({
+    status: 'success',
+    detected_data_ids: ['data_001']
+  }),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',

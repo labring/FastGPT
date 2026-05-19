@@ -3,6 +3,8 @@ import { useDisclosure } from '@chakra-ui/react';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import type { BaseModelTrainDefaultBaseModel } from '../BaseModelTrainModal';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
+import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 import type {
   FilterState,
   I18nT,
@@ -23,10 +25,15 @@ import {
 
 type ModelProvider = { avatar: string; name: string; id: string; order: number };
 type BaseModelItem = {
+  id: string;
   model: string;
   name: string;
   provider: string;
   isTuned?: boolean;
+  isCustom?: boolean;
+  isShared?: boolean;
+  permission: ModelPermission;
+  sourceMember?: SourceMemberType;
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
@@ -175,11 +182,11 @@ export const useModelTableState = ({
 
   const baseSelectState = useTableMultipleSelect({
     list: baseModelList,
-    getItemId: (item) => item.model
+    getItemId: (item) => item.id
   });
   const customSelectState = useTableMultipleSelect({
     list: customModelList,
-    getItemId: (item) => item.model
+    getItemId: (item) => item.id
   });
 
   const toggleBaseTrainTaskCountSort = useCallback(() => {
@@ -212,8 +219,8 @@ export const useModelTableState = ({
   );
 
   const handleOpenTrainDrawer = useCallback(
-    (type: ModelTypeEnum.embedding | ModelTypeEnum.rerank, model: string) => {
-      setTrainModelData({ type, model });
+    (type: ModelTypeEnum.embedding | ModelTypeEnum.rerank, modelId: string) => {
+      setTrainModelData({ type, modelId });
       onOpenTrainModel();
     },
     [onOpenTrainModel]

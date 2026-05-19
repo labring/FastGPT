@@ -79,10 +79,10 @@ const EditForm = ({
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const datasetVectorModel = useMemo(() => selectDatasets[0]?.vectorModel?.model, [selectDatasets]);
+  const datasetVectorModel = useMemo(() => selectDatasets[0]?.vectorModel?.id, [selectDatasets]);
   const [, startTst] = useTransition();
 
-  // 知识库向量模型切换时，联动重置 embeddingModel
+  // 知识库向量模型切换时，联动重置 embeddingModelId
   const prevDatasetVectorModelRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevDatasetVectorModelRef.current;
@@ -90,7 +90,7 @@ const EditForm = ({
     if (prev === undefined || prev === datasetVectorModel) return;
     setAppForm((state) => ({
       ...state,
-      dataset: { ...state.dataset, embeddingModel: datasetVectorModel || '' }
+      dataset: { ...state.dataset, embeddingModelId: datasetVectorModel || '' }
     }));
   }, [datasetVectorModel, setAppForm]);
 
@@ -118,11 +118,11 @@ const EditForm = ({
               : prevForm.dataset.searchMode === DatasetSearchModeEnum.database
                 ? DatasetSearchModeEnum.embedding
                 : prevForm.dataset.searchMode,
-          generateSqlModel: prevForm.dataset?.generateSqlModel || defaultModels.llm?.model
+          generateSqlModelId: prevForm.dataset?.generateSqlModelId || defaultModels.llm?.id
         }
       };
     });
-  }, [knowledgeTypeConfig, defaultModels.llm?.model]);
+  }, [knowledgeTypeConfig, defaultModels.llm?.id]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -155,7 +155,7 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedModel = getWebLLMModel(appForm.aiSettings.modelId);
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
@@ -183,20 +183,20 @@ const EditForm = ({
   useEffect(() => {
     if (
       appForm.dataset.datasetSearchUsingExtensionQuery &&
-      !appForm.dataset.datasetSearchExtensionModel
+      !appForm.dataset.datasetSearchExtensionModelId
     ) {
       setAppForm((state) => ({
         ...state,
         dataset: {
           ...state.dataset,
-          datasetSearchExtensionModel: defaultModels.llm?.model
+          datasetSearchExtensionModelId: defaultModels.llm?.id
         }
       }));
     }
   }, [
     appForm.dataset.datasetSearchUsingExtensionQuery,
-    appForm.dataset.datasetSearchExtensionModel,
-    defaultModels.llm?.model,
+    appForm.dataset.datasetSearchExtensionModelId,
+    defaultModels.llm?.id,
     setAppForm
   ]);
 
@@ -238,7 +238,7 @@ const EditForm = ({
               <SettingLLMModel
                 bg="myGray.50"
                 defaultData={{
-                  model: appForm.aiSettings.model,
+                  modelId: appForm.aiSettings.modelId,
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
@@ -398,8 +398,8 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
-                generateSqlModel={appForm.dataset.generateSqlModel}
+                queryExtensionModel={appForm.dataset.datasetSearchExtensionModelId}
+                generateSqlModelId={appForm.dataset.generateSqlModelId}
                 {...knowledgeTypeConfig}
               />
             </Box>
@@ -609,7 +609,7 @@ const EditForm = ({
           maxTokens={tokenLimit}
           datasetVectorModel={datasetVectorModel}
           onClose={onCloseDatasetParams}
-          generateSqlModel={appForm.dataset.generateSqlModel}
+          generateSqlModelId={appForm.dataset.generateSqlModelId}
           {...knowledgeTypeConfig}
           onSuccess={(e) => {
             setAppForm((state) => ({

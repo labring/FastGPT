@@ -29,7 +29,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
+      defaultValue: getWebDefaultLLMModel()?.id || ''
     }
   );
 
@@ -62,7 +62,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel) {
+      if (item.key === NodeInputKeyEnum.aiModelId) {
         setDefaultModel(value);
       }
 

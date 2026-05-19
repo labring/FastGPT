@@ -8,12 +8,14 @@ import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/contr
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   RebuildEmbeddingBodySchema,
   RebuildEmbeddingResponseSchema,
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = RebuildEmbeddingBodySchema.parse(req.body);
@@ -30,6 +32,14 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   if (!vectorModelId || dataset.vectorModelId === vectorModelId) {
     return Promise.reject('vectorModelId 不合法');
   }
+  const { model } = await authModel({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelId: vectorModelId,
+    per: ReadPermissionVal
+  });
+  assertModelAvailable(model, { type: ModelTypeEnum.embedding });
 
   // check rebuilding or training
   const [rebuilding, training] = await Promise.all([

@@ -1,4 +1,7 @@
-import { LLMModelItemType, EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  LLMModelItemType,
+  EmbeddingModelItemType
+} from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from 'packages/global/core/ai/constants';
 
 const mockLLMModel: LLMModelItemType = {
@@ -10,6 +13,7 @@ const mockLLMModel: LLMModelItemType = {
   isActive: true,
   isDefault: true,
   isCustom: false,
+  isShared: true,
   requestUrl: undefined,
   requestAuth: undefined,
   defaultSystemChatPrompt: undefined,
@@ -23,6 +27,15 @@ const mockLLMModel: LLMModelItemType = {
   quoteMaxToken: 2048
 };
 
+const mockVLMModel: LLMModelItemType = {
+  ...mockLLMModel,
+  id: 'mock-vlm-id',
+  model: 'gpt-5-vision',
+  name: 'gpt-5-vision',
+  avatar: 'gpt-5-vision',
+  vision: true
+};
+
 const mockEmbeddingModel: EmbeddingModelItemType = {
   id: 'mock-embedding-id',
   type: ModelTypeEnum.embedding,
@@ -32,6 +45,7 @@ const mockEmbeddingModel: EmbeddingModelItemType = {
   isActive: true,
   isDefault: true,
   isCustom: false,
+  isShared: true,
   requestUrl: undefined,
   requestAuth: undefined,
   defaultConfig: undefined,
@@ -50,14 +64,17 @@ export default async function setupModels() {
   global.reRankModelIdMap = new Map<string, any>();
 
   global.llmModelIdMap.set('mock-llm-id', mockLLMModel);
+  global.llmModelIdMap.set('mock-vlm-id', mockVLMModel);
   global.embeddingModelIdMap.set('mock-embedding-id', mockEmbeddingModel);
   global.systemModelIdMap.set('mock-llm-id', mockLLMModel);
+  global.systemModelIdMap.set('mock-vlm-id', mockVLMModel);
   global.systemModelIdMap.set('mock-embedding-id', mockEmbeddingModel);
 
   global.systemDefaultModel = {
     llm: mockLLMModel,
-    embedding: mockEmbeddingModel
+    embedding: mockEmbeddingModel,
+    datasetImageLLM: mockVLMModel
   };
-  global.systemModelList = [mockLLMModel, mockEmbeddingModel];
-  global.systemActiveModelList = [mockLLMModel, mockEmbeddingModel];
+  global.systemModelList = [mockLLMModel, mockVLMModel, mockEmbeddingModel];
+  global.systemActiveModelList = [mockLLMModel, mockVLMModel, mockEmbeddingModel];
 }

@@ -38,7 +38,7 @@ import type {
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
-  model: string;
+  modelId: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
   onResult: (result: string) => void;
   abortController?: AbortController;
@@ -67,7 +67,7 @@ const NodeCopilot = ({
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.model || '');
+  const [selectedModel, setSelectedModel] = useState(defaultModels.llm?.id || '');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const closePopoverRef = useRef<() => void>();
@@ -151,7 +151,7 @@ const NodeCopilot = ({
           </Box>
         </Flex>
       ),
-      value: model.model
+      value: model.id
     }));
   }, [llmModelList]);
 
@@ -201,7 +201,7 @@ const NodeCopilot = ({
 
     await onOptimizeCode({
       optimizerInput: processedInput,
-      model: selectedModel,
+      modelId: selectedModel,
       conversationHistory,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {

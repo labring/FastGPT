@@ -110,11 +110,11 @@ const EditForm = ({
   );
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的知识库，避免数据库类型排在首位时取到空值）
   const datasetVectorModel = useMemo(
-    () => selectDatasets.find((d) => d.vectorModel?.model)?.vectorModel?.model,
+    () => selectDatasets.find((d) => d.vectorModel?.id)?.vectorModel?.id,
     [selectDatasets]
   );
 
-  // 知识库向量模型切换时，联动重置 embeddingModel
+  // 知识库向量模型切换时，联动重置 embeddingModelId
   const prevDatasetVectorModelRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevDatasetVectorModelRef.current;
@@ -122,7 +122,7 @@ const EditForm = ({
     if (prev === undefined || prev === datasetVectorModel) return;
     setAppForm((state) => ({
       ...state,
-      dataset: { ...state.dataset, embeddingModel: datasetVectorModel || '' }
+      dataset: { ...state.dataset, embeddingModelId: datasetVectorModel || '' }
     }));
   }, [datasetVectorModel, setAppForm]);
 
@@ -132,15 +132,15 @@ const EditForm = ({
     [embeddingModelList, datasetVectorModel]
   );
 
-  // 校验并联动更新 embeddingModel
+  // 校验并联动更新 embeddingModelId
   useEffect(() => {
     if (!datasetVectorModel) return;
     setAppForm((state) => {
-      const current = (state.dataset as AppDatasetSearchParamsType).embeddingModel;
+      const current = (state.dataset as AppDatasetSearchParamsType).embeddingModelId;
       const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
       if (current && validIds.has(current)) return state;
       const newModel = validIds.has(datasetVectorModel) ? datasetVectorModel : '';
-      return { ...state, dataset: { ...state.dataset, embeddingModel: newModel } };
+      return { ...state, dataset: { ...state.dataset, embeddingModelId: newModel } };
     });
   }, [datasetVectorModel, embeddingModelSelectList, setAppForm]);
 
@@ -167,10 +167,10 @@ const EditForm = ({
             : prevForm.dataset.searchMode === DatasetSearchModeEnum.database
               ? DatasetSearchModeEnum.embedding
               : prevForm.dataset.searchMode,
-        generateSqlModel: prevForm.dataset?.generateSqlModel || defaultModels.llm?.model
+        generateSqlModelId: prevForm.dataset?.generateSqlModelId || defaultModels.llm?.id
       }
     }));
-  }, [knowledgeTypeConfig, defaultModels.llm?.model, setAppForm]);
+  }, [knowledgeTypeConfig, defaultModels.llm?.id, setAppForm]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -184,7 +184,7 @@ const EditForm = ({
   } = useDisclosure();
 
   // ===== AI 模型 =====
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedModel = getWebLLMModel(appForm.aiSettings.modelId);
   const isReasoningSupported = useMemo(() => selectedModel?.reasoning ?? false, [selectedModel]);
   const tokenLimit = useMemo(() => selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT, [selectedModel?.quoteMaxToken]);
 
@@ -326,7 +326,7 @@ const EditForm = ({
             <Box flex={1}>
               <SettingLLMModel
                 bg="myGray.50"
-                defaultData={{ model: appForm.aiSettings.model }}
+                defaultData={{ modelId: appForm.aiSettings.modelId }}
                 showMaxToken={false}
                 showTemperature={false}
                 showTopP={false}
@@ -340,8 +340,8 @@ const EditForm = ({
                     dataset: {
                       ...state.dataset,
                       ...(state.dataset.retrievalMode === DatasetRetrievalModeEnum.agentic &&
-                      data.model
-                        ? { agenticSearchLLMModel: data.model }
+                      data.modelId
+                        ? { agenticSearchLLMModelId: data.modelId }
                         : {})
                     }
                   }));
@@ -549,12 +549,12 @@ const EditForm = ({
                     ...(mode === DatasetRetrievalModeEnum.agentic
                       ? {
                           agenticSearchReasoning: state.dataset.agenticSearchReasoning ?? true,
-                          agenticSearchLLMModel:
-                            state.dataset.agenticSearchLLMModel || state.aiSettings.model,
-                          agenticSearchRerankModel:
-                            state.dataset.agenticSearchRerankModel ||
-                            state.dataset.rerankModel ||
-                            defaultModels.rerank?.model
+                          agenticSearchLLMModelId:
+                            state.dataset.agenticSearchLLMModelId || state.aiSettings.modelId,
+                          agenticSearchRerankModelId:
+                            state.dataset.agenticSearchRerankModelId ||
+                            state.dataset.rerankModelId ||
+                            defaultModels.rerank?.id
                         }
                       : {})
                   }
@@ -574,7 +574,7 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.embeddingModel}
+                    value={appForm.dataset.embeddingModelId}
                     list={embeddingModelSelectList}
                     placeholder={
                       !datasetVectorModel
@@ -584,7 +584,7 @@ const EditForm = ({
                     onChange={(model) =>
                       setAppForm((state) => ({
                         ...state,
-                        dataset: { ...state.dataset, embeddingModel: model }
+                        dataset: { ...state.dataset, embeddingModelId: model }
                       }))
                     }
                   />
@@ -594,12 +594,12 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.agenticSearchRerankModel || defaultModels.rerank?.model}
-                    list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    value={appForm.dataset.agenticSearchRerankModelId || defaultModels.rerank?.id}
+                    list={reRankModelList.map((item) => ({ value: item.id, label: item.name }))}
                     onChange={(model) =>
                       setAppForm((state) => ({
                         ...state,
-                        dataset: { ...state.dataset, agenticSearchRerankModel: model }
+                        dataset: { ...state.dataset, agenticSearchRerankModelId: model }
                       }))
                     }
                   />
@@ -628,7 +628,7 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.embeddingModel}
+                    value={appForm.dataset.embeddingModelId}
                     list={embeddingModelSelectList}
                     placeholder={
                       !datasetVectorModel
@@ -638,7 +638,7 @@ const EditForm = ({
                     onChange={(model) =>
                       setAppForm((state) => ({
                         ...state,
-                        dataset: { ...state.dataset, embeddingModel: model }
+                        dataset: { ...state.dataset, embeddingModelId: model }
                       }))
                     }
                   />
@@ -648,12 +648,12 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
-                    list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    value={appForm.dataset.rerankModelId || defaultModels.rerank?.id}
+                    list={reRankModelList.map((item) => ({ value: item.id, label: item.name }))}
                     onChange={(model) =>
                       setAppForm((state) => ({
                         ...state,
-                        dataset: { ...state.dataset, rerankModel: model }
+                        dataset: { ...state.dataset, rerankModelId: model }
                       }))
                     }
                   />

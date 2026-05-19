@@ -9,9 +9,10 @@ import {
   createTunedModelChannel,
   waitForChannelAvailable
 } from '../task/helpers/channel';
+import { MongoRerankTrainTask } from '../task/schema';
 
 /**
- * Create rerank model configuration (idempotent)
+ * Create rerank model configuration
  *
  * Architecture: Model config contains metadata only, channel contains access credentials.
  * Order: 1) Create model config, 2) Create channel, 3) Poll until channel is available.
@@ -36,6 +37,7 @@ export async function createRerankModelConfig(params: {
   charsPointsPrice?: number;
   maxToken?: number;
   instruction?: string;
+  taskId: string;
 }): Promise<string> {
   const { name, endpoint, isActive, tmbId, teamId, charsPointsPrice, maxToken, instruction } = params;
   const model = endpoint.model;
@@ -55,26 +57,49 @@ export async function createRerankModelConfig(params: {
     instruction
   };
 
-  const result = await MongoSystemModel.findOneAndUpdate(
-    { model },
-    {
-      model,
-      tmbId,
-      teamId,
-      isShared: false,
-      metadata: modelConfig
-    },
-    {
-      upsert: true,
-      new: true
-    }
-  );
+  const task = await MongoRerankTrainTask.findById(
+    params.taskId,
+    'checkpoint.data.registering.tunedModelId'
+  ).lean();
+  const existingModelId = task?.checkpoint?.data?.registering?.tunedModelId;
+
+  const result = existingModelId
+    ? await MongoSystemModel.findOneAndUpdate(
+        { _id: existingModelId },
+        {
+          model,
+          tmbId,
+          teamId,
+          isShared: false,
+          metadata: modelConfig
+        },
+        {
+          new: true
+        }
+      )
+    : await MongoSystemModel.create({
+        model,
+        tmbId,
+        teamId,
+        isShared: false,
+        metadata: modelConfig
+      });
 
   if (!result) {
     throw new Error('Failed to create or update model config');
   }
 
   const objectId = String(result._id);
+
+  if (!existingModelId) {
+    await MongoRerankTrainTask.updateOne(
+      { _id: params.taskId },
+      {
+        'checkpoint.data.registering.tunedModelId': objectId,
+        updateTime: new Date()
+      }
+    );
+  }
 
   addLog.info('Created or updated rerank model config', {
     model,

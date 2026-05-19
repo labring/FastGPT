@@ -207,7 +207,7 @@ const InputRender = (props: InputRenderProps) => {
         {...commonProps}
         cacheModel={false}
         list={(modelList || llmModelList).map((item) => ({
-          value: item.model,
+          value: item.id,
           label: item.name
         }))}
       />

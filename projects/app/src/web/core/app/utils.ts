@@ -107,11 +107,11 @@ export function form2AppWorkflow(
       version: AiChatModule.version,
       inputs: [
         {
-          key: NodeInputKeyEnum.aiModel,
+          key: NodeInputKeyEnum.aiModelId,
           renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.aiSettings.model
+          value: formData.aiSettings.modelId
         },
         {
           key: NodeInputKeyEnum.aiChatTemperature,
@@ -283,11 +283,11 @@ export function form2AppWorkflow(
           value: formData.dataset.embeddingWeight
         },
         {
-          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.embeddingModel
+          value: formData.dataset.embeddingModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingReRank,
@@ -297,11 +297,11 @@ export function form2AppWorkflow(
           value: formData.dataset.usingReRank
         },
         {
-          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.rerankModel
+          value: formData.dataset.rerankModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchRerankMethod,
@@ -325,11 +325,11 @@ export function form2AppWorkflow(
           value: formData.dataset.datasetSearchUsingExtensionQuery
         },
         {
-          key: NodeInputKeyEnum.datasetSearchExtensionModel,
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.datasetSearchExtensionModel
+          value: formData.dataset.datasetSearchExtensionModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchExtensionBg,
@@ -344,11 +344,11 @@ export function form2AppWorkflow(
           value: question
         },
         {
-          key: NodeInputKeyEnum.generateSqlModel,
+          key: NodeInputKeyEnum.generateSqlModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: i18nT('common:search_model'),
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.generateSqlModel
+          value: formData.dataset.generateSqlModelId
         },
         {
           key: NodeInputKeyEnum.datasetRetrievalMode,
@@ -365,18 +365,18 @@ export function form2AppWorkflow(
           value: formData.dataset.agenticSearchReasoning
         },
         {
-          key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+          key: NodeInputKeyEnum.datasetAgenticSearchRerankModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.rerankModel
+          value: formData.dataset.rerankModelId
         },
         {
-          key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+          key: NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.aiSettings.model
+          value: formData.aiSettings.modelId
         },
         {
           key: NodeInputKeyEnum.collectionFilterMatch,
@@ -732,7 +732,7 @@ export function form2AppWorkflow(
 
     // 当开关关闭时，扩展模型跟随 AI 对话模型；开关开启时保留用户弹窗中的选择
     if (!useSystemStore.getState().feConfigs.show_dataset_search_params) {
-      formData.dataset.datasetSearchExtensionModel = formData.aiSettings.model;
+      formData.dataset.datasetSearchExtensionModelId = formData.aiSettings.modelId;
     }
 
     // 创建回复模式判断节点
@@ -1126,7 +1126,7 @@ export function form2AppWorkflow(
           version: AgentNode.version,
           inputs: [
             {
-              key: NodeInputKeyEnum.aiModel,
+              key: NodeInputKeyEnum.aiModelId,
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference
@@ -1134,7 +1134,7 @@ export function form2AppWorkflow(
               label: 'core.module.input.label.aiModel',
               valueType: WorkflowIOValueTypeEnum.string,
               llmModelType: 'all',
-              value: formData.aiSettings.model
+              value: formData.aiSettings.modelId
             },
             {
               key: 'temperature',
@@ -1351,7 +1351,7 @@ export const calculateDatasetLimit = (nodes: StoreNodeItemType[]): number => {
     ) {
       // 获取模型配置
       const modelInput = node.inputs.find(
-        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.aiModel
+        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.aiModelId
       );
       const modelValue = modelInput?.value;
 
@@ -1435,6 +1435,7 @@ export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): Store
  */
 export function getEmbeddingModelSelectList(
   embeddingModelList: {
+    id: string;
     model: string;
     name: string;
     isTuned?: boolean;
@@ -1445,9 +1446,9 @@ export function getEmbeddingModelSelectList(
   if (!datasetVectorModel) return [];
   return embeddingModelList
     .filter((item) => {
-      if (item.model === datasetVectorModel) return true;
+      if (item.id === datasetVectorModel) return true;
       if (!item.isTuned) return false;
       return (item.trainTaskSummary?.baseModelIds || []).includes(datasetVectorModel);
     })
-    .map((item) => ({ value: item.model, label: item.name }));
+    .map((item) => ({ value: item.id, label: item.name }));
 }

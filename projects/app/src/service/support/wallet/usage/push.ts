@@ -320,12 +320,10 @@ export const pushDatasetTestUsage = ({
       outputTokens: extensionUsage.outputTokens
     });
 
-    const { totalPoints: embeddingPoints } = formatModelChars2Points(
-      {
-        modelId: extensionUsage.embeddingModelId,
-        inputTokens: extensionUsage.embeddingTokens
-      }
-    );
+    const { totalPoints: embeddingPoints } = formatModelChars2Points({
+      modelId: extensionUsage.embeddingModelId,
+      inputTokens: extensionUsage.embeddingTokens
+    });
     points += embeddingPoints;
     list.push({
       moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,

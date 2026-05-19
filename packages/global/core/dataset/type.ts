@@ -18,10 +18,7 @@ import {
   YuqueServerSchema
 } from './apiDataset/type';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
-import type {
-  CollectionStatusEnum,
-  DatasetTrainingStatusEnum
-} from '../../core/dataset/constants';
+import type { CollectionStatusEnum, DatasetTrainingStatusEnum } from '../../core/dataset/constants';
 import { SourceMemberSchema } from '../../support/user/type';
 import { DatasetDataIndexTypeEnum } from './data/constants';
 import { ParentIdSchema } from '../../common/parentFolder/type';
@@ -620,7 +617,7 @@ export type TransformationRecordType = {
 };
 
 export type DatasetCollectionsListItemType = {
-  tableSchemaDescription: DatasetCollectionSchemaType['tableSchema']['description'];
+  tableSchemaDescription?: DatasetCollectionSchemaType['tableSchema']['description'];
   _id: string;
   parentId?: string | null;
   tmbId: DatasetCollectionSchemaType['tmbId'];

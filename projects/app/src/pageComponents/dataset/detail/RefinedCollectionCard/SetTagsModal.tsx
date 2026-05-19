@@ -9,9 +9,11 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { setCollectionTags } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type {
+  CollectionTagValueType,
+  DatasetCollectionsListItemType
+} from '@fastgpt/global/core/dataset/type';
 import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import TagRowsEditor from './TagRowsEditor';
 import TagManageModal from './TagManageModal';
 

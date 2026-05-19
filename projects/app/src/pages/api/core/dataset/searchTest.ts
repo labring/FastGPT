@@ -17,6 +17,8 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
@@ -63,6 +65,51 @@ async function handler(
   });
   // auth balance
   await checkTeamAIPoints(teamId);
+
+  await Promise.all([
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: embeddingModelId || dataset.vectorModelId,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+    }),
+    usingReRank && rerankModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: rerankModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.rerank });
+        })
+      : undefined,
+    datasetSearchUsingExtensionQuery && datasetSearchExtensionModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: datasetSearchExtensionModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined,
+    datasetDeepSearch && datasetDeepSearchModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: datasetDeepSearchModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined
+  ]);
 
   const rerankModelData = getRerankModelById(rerankModelId);
 

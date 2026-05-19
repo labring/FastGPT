@@ -51,25 +51,23 @@ export const downloadFetch = async ({
   }
 };
 
-export const getWebLLMModel = (model?: string) => {
+export const getWebLLMModel = (modelId?: string) => {
   const list = useSystemStore.getState().llmModelList;
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
+  return list.find((item) => item.id === modelId) ?? defaultModels.llm!;
 };
-export const getWebEmbeddingModel = (model?: string) => {
+export const getWebEmbeddingModel = (modelId?: string) => {
   const list = useSystemStore.getState().embeddingModelList;
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return (
-    list.find((item) => item.model === model || item.name === model) ?? defaultModels.embedding!
-  );
+  return list.find((item) => item.id === modelId) ?? defaultModels.embedding!;
 };
 export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
   const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return defaultModels.llm && list.find((item) => item.model === defaultModels.llm?.model)
+  return defaultModels.llm && list.find((item) => item.id === defaultModels.llm?.id)
     ? defaultModels.llm
     : list[0];
 };
@@ -78,8 +76,7 @@ export const getWebDefaultEmbeddingModel = (embeddingList: EmbeddingModelItemTyp
     embeddingList.length > 0 ? embeddingList : useSystemStore.getState().embeddingModelList;
   const defaultModels = useSystemStore.getState().defaultModels;
 
-  return defaultModels.embedding &&
-    list.find((item) => item.model === defaultModels.embedding?.model)
+  return defaultModels.embedding && list.find((item) => item.id === defaultModels.embedding?.id)
     ? defaultModels.embedding
     : list[0];
 };
@@ -90,7 +87,7 @@ export const getWebDefaultEvaluationModel = (llmList: any[] = []) => {
   const evalModelList = list.filter((item) => item.useInEvaluation);
 
   return defaultModels.evaluation &&
-    evalModelList.find((item) => item.model === defaultModels.evaluation?.model)
+    evalModelList.find((item) => item.id === defaultModels.evaluation?.id)
     ? defaultModels.evaluation
     : evalModelList[0];
 };

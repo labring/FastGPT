@@ -19,7 +19,7 @@ const SearchParamsTip = ({
   queryExtensionModel,
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
-  generateSqlModel
+  generateSqlModelId
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
@@ -30,7 +30,7 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
   hasDatabaseKnowledge?: boolean;
   hasOtherKnowledge?: boolean;
-  generateSqlModel?: string;
+  generateSqlModelId?: string;
 }) => {
   const { t } = useTranslation();
   const { reRankModelList } = useSystemStore();
@@ -123,7 +123,7 @@ const SearchParamsTip = ({
             )}
             {hasDatabaseKnowledge && (
               <Td pt={0} pb={2}>
-                {getWebLLMModel(generateSqlModel)?.name || '-'}
+                {getWebLLMModel(generateSqlModelId)?.name || '-'}
               </Td>
             )}
           </Tr>

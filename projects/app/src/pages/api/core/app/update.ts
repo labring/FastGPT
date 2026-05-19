@@ -28,6 +28,8 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
+import { assertModelAvailable, authModels } from '@fastgpt/service/support/permission/model/auth';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -116,6 +118,18 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
     if (!permission.hasWritePer) {
       return Promise.reject(AppErrEnum.unAuthApp);
     }
+  }
+
+  if (nodes || chatConfig) {
+    const { models } = await authModels({
+      req,
+      authToken: true,
+      modelIds: extractWorkflowModelIds({
+        modules: nodes,
+        chatConfig
+      })
+    });
+    models.forEach((model) => assertModelAvailable(model));
   }
 
   const onUpdate = async (session?: ClientSession) => {

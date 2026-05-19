@@ -53,6 +53,15 @@ export function getI18nSkillType(type: AgentSkillTypeEnum | string): string {
   return i18nT('common:UnKnow');
 }
 
+export function getI18nModelType(type: string): string {
+  if (type === 'llm') return i18nT('common:model.type.chat');
+  if (type === 'embedding') return i18nT('common:model.type.embedding');
+  if (type === 'rerank') return i18nT('common:model.type.reRank');
+  if (type === 'tts') return i18nT('common:model.type.tts');
+  if (type === 'stt') return i18nT('common:model.type.stt');
+  return i18nT('common:UnKnow');
+}
+
 export function getI18nInformLevel(level: string): string {
   if (level === 'common') return i18nT('account_team:inform_level_common');
   if (level === 'important') return i18nT('account_team:inform_level_important');

@@ -964,5 +964,30 @@ export const auditLogMap = {
       oldOwnerName: string;
       newOwnerName: string;
     }
+  },
+  //Model
+  [AuditEventEnum.UPDATE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_model_collaborator'),
+    typeLabel: i18nT('account_team:update_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      tmbList: string[];
+      groupList: string[];
+      orgList: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_model_collaborator'),
+    typeLabel: i18nT('account_team:delete_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      itemName: string;
+      itemValueName: string;
+    }
   }
 } as const;

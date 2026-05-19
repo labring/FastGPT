@@ -175,16 +175,16 @@ export const storeNode2FlowNode = ({
 
   // Format output invalid
   const llmList = useSystemStore.getState().llmModelList;
-  const llmModelMap = llmList.reduce(
+  const llmModelIdMap = llmList.reduce(
     (acc, model) => {
-      acc[model.model] = model;
+      acc[model.id] = model;
       return acc;
     },
     {} as Record<string, LLMModelItemType>
   );
   nodeItem.outputs.forEach((output) => {
     if (output.invalidCondition) {
-      output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelMap });
+      output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelIdMap });
     }
   });
 
@@ -885,7 +885,7 @@ export const autoAdjustDatasetNodeLimit = ({
   const { show_dataset_search_params } = useSystemStore.getState().feConfigs;
   const llmModelMap = llmModelList.reduce(
     (acc, model) => {
-      acc[model.model] = model;
+      acc[model.id] = model;
       return acc;
     },
     {} as Record<string, LLMModelItemType>
@@ -909,9 +909,8 @@ export const autoAdjustDatasetNodeLimit = ({
 
     datasetHasDirectChatNode.add(edge.source);
 
-    const modelValue = targetNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value as
-      | string
-      | undefined;
+    const modelValue = targetNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)
+      ?.value as string | undefined;
     if (!modelValue) {
       continue;
     }
@@ -1015,11 +1014,14 @@ export const cleanDatasetSearchParams = (nodes: StoreNodeItemType[]): StoreNodeI
     const keysToClean: string[] =
       retrievalMode === DatasetRetrievalModeEnum.standard
         ? [
-            NodeInputKeyEnum.datasetAgenticSearchLLMModel,
-            NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+            NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
+            NodeInputKeyEnum.datasetAgenticSearchRerankModelId,
             NodeInputKeyEnum.datasetAgenticSearchReasoning
           ]
-        : [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchRerankModel];
+        : [
+            NodeInputKeyEnum.datasetSearchExtensionModelId,
+            NodeInputKeyEnum.datasetSearchRerankModelId
+          ];
 
     let nodeChanged = false;
     const newInputs = node.inputs.map((input) => {

@@ -60,7 +60,9 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
-  const finalEvaluationModel = getEvaluationModelById(evaluationModelId || collection.evaluationModelId);
+  const finalEvaluationModel = getEvaluationModelById(
+    evaluationModelId || collection.evaluationModelId
+  );
 
   if (!finalEvaluationModel) {
     return Promise.reject(EvaluationErrEnum.evaluatorLLmModelNotFound);

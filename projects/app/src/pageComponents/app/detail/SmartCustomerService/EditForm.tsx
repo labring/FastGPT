@@ -109,7 +109,7 @@ const EditForm = ({
 
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的非数据库知识库，避免数据库类型排在首位时取到空值）
   const datasetVectorModel = useMemo(
-    () => selectDatasets.find((d) => d.vectorModel?.model)?.vectorModel?.model,
+    () => selectDatasets.find((d) => d.vectorModel?.id)?.vectorModel?.id,
     [selectDatasets]
   );
 
@@ -119,17 +119,17 @@ const EditForm = ({
     [embeddingModelList, datasetVectorModel]
   );
 
-  // 当知识库向量模型变更时，校验并联动更新 embeddingModel 选中值
+  // 当知识库向量模型变更时，校验并联动更新 embeddingModelId 选中值
   useEffect(() => {
     if (!datasetVectorModel) return;
 
     setAppForm((state) => {
-      const current = (state.dataset as AppDatasetSearchParamsType).embeddingModel;
+      const current = (state.dataset as AppDatasetSearchParamsType).embeddingModelId;
       const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
       // 当前值有效则保留，否则重置为基模（基模不在列表则置空）
       if (current && validIds.has(current)) return state;
       const newModel = validIds.has(datasetVectorModel) ? datasetVectorModel : '';
-      return { ...state, dataset: { ...state.dataset, embeddingModel: newModel } };
+      return { ...state, dataset: { ...state.dataset, embeddingModelId: newModel } };
     });
   }, [datasetVectorModel, embeddingModelSelectList, setAppForm]);
 
@@ -157,11 +157,11 @@ const EditForm = ({
               : prevForm.dataset.searchMode === DatasetSearchModeEnum.database
                 ? DatasetSearchModeEnum.embedding
                 : prevForm.dataset.searchMode,
-          generateSqlModel: prevForm.dataset?.generateSqlModel || defaultModels.llm?.model
+          generateSqlModelId: prevForm.dataset?.generateSqlModelId || defaultModels.llm?.id
         }
       };
     });
-  }, [knowledgeTypeConfig, defaultModels.llm?.model, setAppForm]);
+  }, [knowledgeTypeConfig, defaultModels.llm?.id, setAppForm]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -194,7 +194,7 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedModel = getWebLLMModel(appForm.aiSettings.modelId);
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT;
   }, [selectedModel?.quoteMaxToken]);
@@ -273,9 +273,9 @@ const EditForm = ({
     [setAppForm]
   );
 
-  // 同步 AI 模型到 questionGuide.model
+  // 同步 AI 模型到 questionGuide.modelId
   useEffect(() => {
-    if (appForm.aiSettings.model) {
+    if (appForm.aiSettings.modelId) {
       setAppForm((state) => {
         const currentQG = state.chatConfig.questionGuide;
         return {
@@ -284,14 +284,14 @@ const EditForm = ({
             ...state.chatConfig,
             questionGuide: {
               open: currentQG?.open ?? false,
-              model: appForm.aiSettings.model,
+              modelId: appForm.aiSettings.modelId,
               customPrompt: currentQG?.customPrompt || undefined
             }
           }
         };
       });
     }
-  }, [appForm.aiSettings.model, setAppForm]);
+  }, [appForm.aiSettings.modelId, setAppForm]);
 
   // 优化的聊天配置更新函数
   const updateChatConfig = useCallback(
@@ -460,14 +460,14 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.embeddingModel}
+                    value={appForm.dataset.embeddingModelId}
                     list={embeddingModelSelectList}
                     onChange={(model) => {
                       setAppForm((state) => ({
                         ...state,
                         dataset: {
                           ...state.dataset,
-                          embeddingModel: model
+                          embeddingModelId: model
                         }
                       }));
                     }}
@@ -478,9 +478,9 @@ const EditForm = ({
                 <Box flex={1}>
                   <AIModelSelector
                     h={'32px'}
-                    value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
+                    value={appForm.dataset.rerankModelId || defaultModels.rerank?.id}
                     list={reRankModelList.map((item) => ({
-                      value: item.model,
+                      value: item.id,
                       label: item.name
                     }))}
                     onChange={(model) => {
@@ -488,7 +488,7 @@ const EditForm = ({
                         ...state,
                         dataset: {
                           ...state.dataset,
-                          rerankModel: model
+                          rerankModelId: model
                         }
                       }));
                     }}
@@ -633,12 +633,12 @@ const EditForm = ({
               <Box flex={1}>
                 <AIModelSelector
                   h={'32px'}
-                  value={appForm.aiSettings.model || defaultModels.llm?.model}
+                  value={appForm.aiSettings.modelId || defaultModels.llm?.id}
                   list={llmModelList.map((item) => ({
-                    value: item.model,
+                    value: item.id,
                     label: item.name
                   }))}
-                  onChange={(model) => updateAISettings({ model })}
+                  onChange={(modelId) => updateAISettings({ modelId })}
                 />
               </Box>
             </FormItem>

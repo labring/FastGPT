@@ -1,8 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getModelById } from '@fastgpt/service/core/ai/model';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   type EmbeddingModelItemType,
   type LLMModelItemType,
@@ -18,9 +16,13 @@ import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions'
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = {};
+export type testQuery = {
+  id: string;
+  channelId?: number;
+};
 
 export type testBody = {
   id: string;
@@ -33,27 +35,30 @@ async function handler(
   req: ApiRequestProps<testBody, testQuery>,
   res: ApiResponseType<any>
 ): Promise<testResponse> {
-  await authUserPer({
+  const { id, channelId } = {
+    ...req.query,
+    ...req.body
+  };
+  const { model: rawModelData } = await authModel({
     req,
     authToken: true,
-    per: WritePermissionVal
+    authApiKey: true,
+    modelId: id,
+    per: ReadPermissionVal
   });
-
-  const { id, channelId } = req.body;
-  const modelData = getModelById(id);
-
-  if (!modelData) return Promise.reject('Model not found');
-
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
-  }
 
   const headers: Record<string, string> = channelId
     ? {
         'Aiproxy-Channel': String(channelId)
       }
     : {};
+  const modelData = channelId
+    ? {
+        ...rawModelData,
+        requestUrl: undefined,
+        requestAuth: undefined
+      }
+    : rawModelData;
   logger.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
@@ -80,7 +85,7 @@ export default NextAPI(handler);
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const { answerText } = await createLLMResponse({
     body: {
-      modelId: model.id, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
+      modelId: model.id,
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },

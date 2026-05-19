@@ -82,12 +82,12 @@ export const ChatBoxContext = createContext<useChatStoreType>({
   variableList: [],
   questionGuide: {
     open: false,
-    model: undefined,
+    modelId: undefined,
     customPrompt: undefined
   },
   ttsConfig: {
     type: 'none',
-    model: undefined,
+    modelId: undefined,
     voice: undefined,
     speed: undefined
   },

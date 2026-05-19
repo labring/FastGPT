@@ -60,7 +60,10 @@ export const appWorkflow2Form = ({
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
       node.flowNodeType === FlowNodeTypeEnum.toolCall
     ) {
-      defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.aiSystemPrompt
@@ -121,18 +124,18 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchEmbeddingWeight
       );
-      defaultAppForm.dataset.embeddingModel = findInputValueByKey(
+      defaultAppForm.dataset.embeddingModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetSearchEmbeddingModel
+        NodeInputKeyEnum.datasetSearchEmbeddingModelId
       );
       // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
-      defaultAppForm.dataset.rerankModel = findInputValueByKey(
+      defaultAppForm.dataset.rerankModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetSearchRerankModel
+        NodeInputKeyEnum.datasetSearchRerankModelId
       );
       defaultAppForm.dataset.rerankWeight = findInputValueByKey(
         node.inputs,
@@ -143,9 +146,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingExtensionQuery
       );
-      defaultAppForm.dataset.datasetSearchExtensionModel = findInputValueByKey(
+      defaultAppForm.dataset.datasetSearchExtensionModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetSearchExtensionModel
+        NodeInputKeyEnum.datasetSearchExtensionModelId
       );
       defaultAppForm.dataset.datasetSearchExtensionBg = findInputValueByKey(
         node.inputs,
@@ -160,9 +163,9 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetAgenticSearchReasoning
       );
-      defaultAppForm.dataset.agenticSearchRerankModel = findInputValueByKey(
+      defaultAppForm.dataset.agenticSearchRerankModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetAgenticSearchRerankModel
+        NodeInputKeyEnum.datasetAgenticSearchRerankModelId
       );
       defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
         node.inputs,
@@ -267,11 +270,11 @@ export function form2AppWorkflow(
       version: AiChatModule.version,
       inputs: [
         {
-          key: NodeInputKeyEnum.aiModel,
+          key: NodeInputKeyEnum.aiModelId,
           renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.aiSettings.model
+          value: formData.aiSettings.modelId
         },
         {
           key: NodeInputKeyEnum.aiChatTemperature,
@@ -443,11 +446,11 @@ export function form2AppWorkflow(
           value: formData.dataset.embeddingWeight
         },
         {
-          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.embeddingModel
+          value: formData.dataset.embeddingModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingReRank,
@@ -457,11 +460,11 @@ export function form2AppWorkflow(
           value: formData.dataset.usingReRank
         },
         {
-          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.rerankModel
+          value: formData.dataset.rerankModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchRerankWeight,
@@ -478,11 +481,11 @@ export function form2AppWorkflow(
           value: formData.dataset.datasetSearchUsingExtensionQuery
         },
         {
-          key: NodeInputKeyEnum.datasetSearchExtensionModel,
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.datasetSearchExtensionModel
+          value: formData.dataset.datasetSearchExtensionModelId
         },
         {
           key: NodeInputKeyEnum.datasetSearchExtensionBg,
@@ -511,18 +514,18 @@ export function form2AppWorkflow(
           value: formData.dataset.agenticSearchReasoning
         },
         {
-          key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+          key: NodeInputKeyEnum.datasetAgenticSearchRerankModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.agenticSearchRerankModel
+          value: formData.dataset.agenticSearchRerankModelId
         },
         {
-          key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+          key: NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.aiSettings.model
+          value: formData.aiSettings.modelId
         },
         {
           key: NodeInputKeyEnum.collectionFilterMatch,
@@ -670,14 +673,14 @@ export function form2AppWorkflow(
           version: ToolCallNode.version,
           inputs: [
             {
-              key: NodeInputKeyEnum.aiModel,
+              key: NodeInputKeyEnum.aiModelId,
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference
               ],
               label: t('common:core.module.input.label.aiModel'),
               valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.aiSettings.model
+              value: formData.aiSettings.modelId
             },
             {
               key: NodeInputKeyEnum.aiChatTemperature,

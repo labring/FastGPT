@@ -95,11 +95,11 @@ const HomeChatWindow = () => {
   );
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
+    () => llmModelList.map((model) => ({ value: model.id, label: model.name })),
     [llmModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.model
+    defaultValue: defaultModels.llm?.id
   });
 
   const availableTools = useMemo(
@@ -256,7 +256,7 @@ const HomeChatWindow = () => {
       );
 
       const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
+      formData.aiSettings.modelId = selectedModel;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
 

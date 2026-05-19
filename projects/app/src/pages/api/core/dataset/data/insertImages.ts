@@ -7,7 +7,11 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModelById, getLLMModelById, getVlmModelById } from '@fastgpt/service/core/ai/model';
+import {
+  getEmbeddingModelById,
+  getLLMModelById,
+  getVlmModelById
+} from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';

@@ -31,7 +31,7 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 export type BaseModelTrainDefaultBaseModel = {
   type: ModelTypeEnum.rerank | ModelTypeEnum.embedding;
-  model: string;
+  modelId: string;
 };
 
 type BaseModelTrainModalProps = {
@@ -84,7 +84,7 @@ const BaseModelTrainModal = ({
     () => defaultBaseModel?.type ?? ModelTypeEnum.rerank,
     [defaultBaseModel]
   );
-  const selectedBaseModel = useMemo(() => defaultBaseModel?.model ?? '', [defaultBaseModel]);
+  const selectedBaseModel = useMemo(() => defaultBaseModel?.modelId ?? '', [defaultBaseModel]);
   const [modelName, setModelName] = useState('');
   const hasAutoFilledRef = useRef(false);
 
@@ -99,10 +99,10 @@ const BaseModelTrainModal = ({
 
   // 自动生成模型名称：基座模型名 + 日期 + 随机数，仅首次填入
   useEffect(() => {
-    if (hasAutoFilledRef.current || !defaultBaseModel?.model) return;
+    if (hasAutoFilledRef.current || !defaultBaseModel?.modelId) return;
     hasAutoFilledRef.current = true;
     const allModels = [...availableBaseModelList.rerank, ...availableBaseModelList.embedding];
-    const found = allModels.find((m) => m.model === defaultBaseModel.model);
+    const found = allModels.find((m) => m.id === defaultBaseModel.modelId);
     if (found) {
       const now = new Date();
       const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;

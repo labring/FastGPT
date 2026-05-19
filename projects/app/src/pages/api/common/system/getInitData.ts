@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
@@ -13,11 +12,21 @@ import { resolveEmbeddingTasksByTunedModelId } from '@fastgpt/service/core/train
 import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { Types } from '@fastgpt/service/common/mongo';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getOrgsByTmbId } from '@fastgpt/service/support/permission/org/controllers';
-import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import { ReadPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import type {
+  EmbeddingModelItemType,
+  LLMModelItemType,
+  RerankModelItemType,
+  STTModelType,
+  TTSModelType
+} from '@fastgpt/global/core/ai/model.schema';
+import { getModelListWithPermission } from '@fastgpt/service/support/permission/model/controller';
+import { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
+
+type ModelWithPermission = SystemModelItemType & {
+  permission: ModelPermission;
+};
 
 export type TrainTaskSummary = {
   totalCount: number;
@@ -32,6 +41,7 @@ export type TrainTaskSummary = {
 };
 
 export type ActiveModelListItem = SystemModelItemType & {
+  permission: ModelPermission;
   trainTaskSummary: TrainTaskSummary;
 };
 
@@ -174,7 +184,7 @@ async function resolveCreatorNames(
 }
 
 async function buildActiveModelList(
-  models: SystemModelItemType[],
+  models: ModelWithPermission[],
   teamId: string
 ): Promise<ActiveModelListItem[]> {
   // Separate models by type and tuned status
@@ -231,42 +241,65 @@ async function buildActiveModelList(
 async function filterModelsByPermission({
   teamId,
   tmbId,
-  isRoot
+  isRoot,
+  teamPer
 }: {
   teamId: string;
   tmbId: string;
   isRoot: boolean;
-}): Promise<SystemModelItemType[]> {
-  const sourceList = global.systemActiveDesensitizedModels;
+  teamPer: { isOwner: boolean };
+}): Promise<ModelWithPermission[]> {
+  return getModelListWithPermission({
+    models: global.systemActiveDesensitizedModels,
+    teamId,
+    tmbId,
+    teamPer,
+    isRoot
+  });
+}
 
-  // Root sees all models
-  if (isRoot) return sourceList;
-
-  const [groups, orgs, rps] = await Promise.all([
-    getGroupsByTmbId({ teamId, tmbId }),
-    getOrgsByTmbId({ teamId, tmbId }),
-    MongoResourcePermission.find({
-      teamId,
-      resourceType: PerResourceTypeEnum.model
-    }).lean()
-  ]);
-
-  const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
-  const permissionModelSet = new Set(
-    rps.filter((rp) => myIdSet.has(getCollaboratorId(rp))).map((rp) => String(rp.resourceId))
+function getDefaultModelsByPermission(models: SystemModelItemType[]): SystemDefaultModelType {
+  const modelIdSet = new Set(models.map((model) => model.id));
+  const getVisibleModel = <T extends SystemModelItemType | undefined>(model: T): T | undefined => {
+    if (!model?.id) return undefined;
+    return modelIdSet.has(model.id) ? model : undefined;
+  };
+  const llmModels = models.filter(
+    (model): model is LLMModelItemType => model.type === ModelTypeEnum.llm
+  );
+  const embeddingModels = models.filter(
+    (model): model is EmbeddingModelItemType => model.type === ModelTypeEnum.embedding
+  );
+  const ttsModels = models.filter(
+    (model): model is TTSModelType => model.type === ModelTypeEnum.tts
+  );
+  const sttModels = models.filter(
+    (model): model is STTModelType => model.type === ModelTypeEnum.stt
+  );
+  const rerankModels = models.filter(
+    (model): model is RerankModelItemType => model.type === ModelTypeEnum.rerank
   );
 
-  return sourceList.filter((model) => {
-    // System models (no creator) are only visible if shared by root
-    if (!model.isCustom) return model.isShared === true;
-    // Globally shared custom models
-    if (model.isShared) return true;
-    // Creator's own models
-    if (String(model.tmbId) === String(tmbId)) return true;
-    // Models user has collaborator permission for
-    if (model.id && permissionModelSet.has(model.id)) return true;
-    return false;
-  });
+  return {
+    [ModelTypeEnum.llm]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.llm]) || llmModels[0],
+    datasetTextLLM: getVisibleModel(global.systemDefaultModel.datasetTextLLM) || llmModels[0],
+    datasetImageLLM:
+      getVisibleModel(global.systemDefaultModel.datasetImageLLM) ||
+      llmModels.find((model) => model.vision),
+    evaluation:
+      getVisibleModel(global.systemDefaultModel.evaluation) ||
+      llmModels.find((model) => model.useInEvaluation),
+    helperBotLLM: getVisibleModel(global.systemDefaultModel.helperBotLLM) || llmModels[0],
+    [ModelTypeEnum.embedding]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.embedding]) || embeddingModels[0],
+    [ModelTypeEnum.tts]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.tts]) || ttsModels[0],
+    [ModelTypeEnum.stt]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.stt]) || sttModels[0],
+    [ModelTypeEnum.rerank]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.rerank]) || rerankModels[0]
+  };
 }
 
 async function handler(
@@ -276,7 +309,16 @@ async function handler(
   const { bufferId } = req.query;
 
   try {
-    const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
+    const {
+      teamId,
+      tmbId,
+      isRoot,
+      permission: teamPer
+    } = await authUserPer({
+      req,
+      authToken: true,
+      per: ReadPermissionVal
+    });
     // If bufferId is the same as the current bufferId, return directly
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
@@ -285,7 +327,12 @@ async function handler(
       };
     }
 
-    const userAccessibleModels = await filterModelsByPermission({ teamId, tmbId, isRoot });
+    const userAccessibleModels = await filterModelsByPermission({
+      teamId,
+      tmbId,
+      isRoot,
+      teamPer
+    });
 
     return {
       bufferId: global.systemInitBufferId,
@@ -293,7 +340,7 @@ async function handler(
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: await buildActiveModelList(userAccessibleModels, teamId),
-      defaultModels: global.systemDefaultModel,
+      defaultModels: getDefaultModelsByPermission(userAccessibleModels),
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache
     };
@@ -307,6 +354,7 @@ async function handler(
         aiproxyChannels: global.aiproxyChannelsCache,
         activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
           ...model,
+          permission: new ModelPermission({ role: ReadRoleVal }),
           trainTaskSummary: emptySummary()
         }))
       };

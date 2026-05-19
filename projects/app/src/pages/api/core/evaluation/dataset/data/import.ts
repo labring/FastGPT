@@ -150,7 +150,7 @@ async function createNewCollection(
   evaluationModelId: string | undefined
 ) {
   const defaultEvaluationModel = getDefaultEvaluationModel();
-  const evaluationModelToUse = evaluationModelId || defaultEvaluationModel?.model;
+  const evaluationModelToUse = evaluationModelId || defaultEvaluationModel?.id;
 
   const collectionData = await mongoSessionRun(async (session) => {
     const [collection] = await MongoEvalDatasetCollection.create(

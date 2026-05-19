@@ -83,7 +83,7 @@ async function handler(
   await checkTeamEvalDatasetLimit(teamId);
 
   const defaultEvaluationModel = getDefaultEvaluationModel();
-  const modelToUse = evaluationModelId || defaultEvaluationModel?.model;
+  const modelToUse = evaluationModelId || defaultEvaluationModel?.id;
 
   const datasetId = await mongoSessionRun(async (session) => {
     const [{ _id }] = await MongoEvalDatasetCollection.create(

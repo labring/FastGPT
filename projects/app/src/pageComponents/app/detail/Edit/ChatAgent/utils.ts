@@ -56,7 +56,10 @@ export const appWorkflow2AgentForm = ({
   nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-      defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
@@ -166,11 +169,11 @@ export function agentForm2AppWorkflow(
           version: AgentNode.version,
           inputs: [
             {
-              key: NodeInputKeyEnum.aiModel,
+              key: NodeInputKeyEnum.aiModelId,
               renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
               label: t('common:core.module.input.label.aiModel'),
               valueType: WorkflowIOValueTypeEnum.string,
-              value: data.aiSettings.model
+              value: data.aiSettings.modelId
             },
             {
               key: NodeInputKeyEnum.aiSystemPrompt,
@@ -247,20 +250,20 @@ export function agentForm2AppWorkflow(
                 limit: data.dataset.limit,
                 searchMode: data.dataset.searchMode,
                 embeddingWeight: data.dataset.embeddingWeight,
-                embeddingModel: data.dataset.embeddingModel,
+                embeddingModelId: data.dataset.embeddingModelId,
                 usingReRank: data.dataset.usingReRank,
-                rerankModel: data.dataset.rerankModel,
+                rerankModelId: data.dataset.rerankModelId,
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
-                datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
+                datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
                 generateSqlModel: data.dataset.generateSqlModel,
                 collectionFilterMatch: data.dataset.collectionFilterMatch,
                 authTmbId: data.dataset.authTmbId,
                 retrievalMode: data.dataset.retrievalMode,
-                agenticSearchLLMModel: data.dataset.agenticSearchLLMModel,
+                agenticSearchLLMModelId: data.dataset.agenticSearchLLMModelId,
                 agenticSearchReasoning: data.dataset.agenticSearchReasoning,
-                agenticSearchRerankModel: data.dataset.agenticSearchRerankModel,
+                agenticSearchRerankModelId: data.dataset.agenticSearchRerankModelId,
                 rerankMethod: data.dataset.rerankMethod
               })
             },
@@ -314,7 +317,7 @@ export const getEmptyAgentConfig = (t: any) => {
   return agentForm2AppWorkflow(
     {
       aiSettings: {
-        model: '',
+        modelId: '',
         maxHistories: 6,
         isResponseAnswerText: true
       },

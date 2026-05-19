@@ -407,5 +407,9 @@
   "user_team_invite_member": "邀请成员",
   "user_team_leave_team": "离开团队",
   "user_team_leave_team_failed": "离开团队失败",
-  "waiting": "待接受"
+  "waiting": "待接受",
+  "update_model_collaborator": "模型协作者更改",
+  "delete_model_collaborator": "模型协作者删除",
+  "log_update_model_collaborator": "【{{name}}】将名为【{{modelName}}】的【{{modelType}}】的合作者更新为：组织：【{{orgList}}】，群组：【{{groupList}}】，成员【{{tmbList}}】；权限更新为：读权限：【{{readPermission}}】，写权限：【{{writePermission}}】，管理员权限：【{{managePermission}}】",
+  "log_delete_model_collaborator": "【{{name}}】将名为【{{modelName}}】的【{{modelType}}】中名为【{{itemValueName}}】的【{{itemName}}】权限删除"
 }

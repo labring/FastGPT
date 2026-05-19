@@ -71,7 +71,8 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
       charsPointsPrice: baseMeta.charsPointsPrice,
       maxToken: baseMeta.maxToken,
       instruction:
-        task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
+        task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction,
+      taskId: String(task._id)
     });
 
     addLog.info('Created tuned model config and channel', {

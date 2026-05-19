@@ -44,7 +44,7 @@ const TTSSelect = ({
               <Box>{t(model.name as any)}</Box>
             </HStack>
           ),
-          value: model.model,
+          value: model.id,
           children:
             model.voices?.map((voice) => ({
               label: voice.label,
@@ -64,7 +64,7 @@ const TTSSelect = ({
       return [value.type, undefined];
     }
 
-    return [value.model, value.voice];
+    return [value.modelId, value.voice];
   }, [value]);
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
@@ -98,7 +98,7 @@ const TTSSelect = ({
         onChange({
           ...value,
           type: TTSTypeEnum.model,
-          model: e[0],
+          modelId: e[0],
           voice: e[1]
         });
       }

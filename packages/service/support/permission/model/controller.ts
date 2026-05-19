@@ -1,60 +1,190 @@
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  NullRoleVal,
+  PerResourceTypeEnum,
+  ReadPermissionVal,
+  ReadRoleVal
+} from '@fastgpt/global/support/permission/constant';
+import { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
-import { getOrgsByTmbId } from '../org/controllers';
+import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
 import { MongoResourcePermission } from '../schema';
-import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
+import type { SystemModelItemType } from '../../../core/ai/type';
+import { getTmbPermission } from '../controller';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
-export const getMyModels = async ({
+const getModelCollaboratorRoleMap = async ({
+  teamId,
+  tmbId
+}: {
+  teamId: string;
+  tmbId: string;
+}) => {
+  const [groups, orgIdSet, rps] = await Promise.all([
+    getGroupsByTmbId({
+      teamId,
+      tmbId
+    }),
+    getOrgIdSetWithParentByTmbId({
+      teamId,
+      tmbId
+    }),
+    MongoResourcePermission.find({
+      teamId,
+      resourceType: PerResourceTypeEnum.model
+    }).lean()
+  ]);
+
+  const groupIdSet = new Set(groups.map((g) => String(g._id)));
+  const tmbRoleMap = new Map<string, PermissionValueType>();
+  const groupAndOrgRoleMap = new Map<string, PermissionValueType[]>();
+
+  for (const rp of rps) {
+    const resourceId = String(rp.resourceId);
+    if (rp.tmbId && String(rp.tmbId) === String(tmbId)) {
+      tmbRoleMap.set(resourceId, rp.permission);
+      continue;
+    }
+    if (
+      (rp.groupId && groupIdSet.has(String(rp.groupId))) ||
+      (rp.orgId && orgIdSet.has(String(rp.orgId)))
+    ) {
+      const roles = groupAndOrgRoleMap.get(resourceId) ?? [];
+      roles.push(rp.permission);
+      groupAndOrgRoleMap.set(resourceId, roles);
+    }
+  }
+
+  const permissionMap = new Map<string, PermissionValueType>();
+
+  groupAndOrgRoleMap.forEach((roles, resourceId) => {
+    permissionMap.set(resourceId, sumPer(...roles) ?? NullRoleVal);
+  });
+  tmbRoleMap.forEach((role, resourceId) => {
+    permissionMap.set(resourceId, role);
+  });
+
+  return permissionMap;
+};
+
+const getModelPermissionFromRole = ({
+  model,
+  teamId,
+  tmbId,
+  teamPer,
+  isRoot,
+  collaboratorRole
+}: {
+  model: SystemModelItemType;
+  teamId: string;
+  tmbId: string;
+  teamPer?: { isOwner: boolean };
+  isRoot?: boolean;
+  collaboratorRole?: PermissionValueType;
+}) => {
+  if (isRoot) {
+    return new ModelPermission({ isOwner: true });
+  }
+
+  if (!model.isCustom) {
+    return new ModelPermission({
+      role: model.isShared ? ReadRoleVal : NullRoleVal
+    });
+  }
+
+  const isOwner =
+    String(model.tmbId) === String(tmbId) ||
+    (teamPer?.isOwner && model.teamId && String(model.teamId) === String(teamId));
+
+  if (isOwner) {
+    return new ModelPermission({ isOwner: true });
+  }
+
+  const permission = new ModelPermission({ role: collaboratorRole ?? NullRoleVal });
+
+  if (model.isShared) {
+    permission.addRole(ReadRoleVal);
+  }
+
+  return permission;
+};
+
+export const getModelPermission = async ({
+  model,
+  teamId,
+  tmbId,
+  isRoot,
+  teamPer
+}: {
+  model: SystemModelItemType;
+  teamId: string;
+  tmbId: string;
+  isRoot?: boolean;
+  teamPer?: { isOwner: boolean };
+}) => {
+  if (
+    isRoot ||
+    !model.isCustom ||
+    String(model.tmbId) === String(tmbId) ||
+    (teamPer?.isOwner && model.teamId && String(model.teamId) === String(teamId))
+  ) {
+    return getModelPermissionFromRole({
+      model,
+      teamId,
+      tmbId,
+      isRoot,
+      teamPer
+    });
+  }
+
+  const collaboratorRole = await getTmbPermission({
+    resourceType: PerResourceTypeEnum.model,
+    teamId,
+    tmbId,
+    resourceId: model.id
+  });
+
+  return getModelPermissionFromRole({
+    model,
+    teamId,
+    tmbId,
+    isRoot,
+    teamPer,
+    collaboratorRole
+  });
+};
+
+export const getModelListWithPermission = async ({
+  models,
   teamId,
   tmbId,
   teamPer,
   isRoot
 }: {
+  models: SystemModelItemType[];
   teamId: string;
   tmbId: string;
   teamPer: { isOwner: boolean };
   isRoot?: boolean;
 }) => {
-  // Root sees all active models across all teams
-  if (isRoot) {
-    return global.systemActiveModelList.map((m) => m.id);
-  }
+  const collaboratorRoleMap = isRoot
+    ? new Map<string, PermissionValueType>()
+    : await getModelCollaboratorRoleMap({
+        teamId,
+        tmbId
+      });
 
-  const [groups, orgs] = await Promise.all([
-    getGroupsByTmbId({
-      teamId,
-      tmbId
-    }),
-    getOrgsByTmbId({
-      teamId,
-      tmbId
-    })
-  ]);
-
-  const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
-
-  const rps = await MongoResourcePermission.find({
-    teamId,
-    resourceType: PerResourceTypeEnum.model
-  }).lean();
-
-  const permissionModelSet = new Set(
-    rps.filter((rp) => myIdSet.has(getCollaboratorId(rp))).map((rp) => String(rp.resourceId))
-  );
-
-  return global.systemActiveModelList
-    .filter((m) => {
-      // System models (no creator) are only visible if shared by root
-      if (!m.isCustom) return m.isShared === true;
-      // Globally shared models are visible to all
-      if (m.isShared) return true;
-      // Creator's own models
-      if (String(m.tmbId) === String(tmbId)) return true;
-      // Models user has collaborator permission for (matched by id)
-      if (m.id && permissionModelSet.has(m.id)) return true;
-      // Team owner sees all models belonging to their team
-      if (teamPer.isOwner && m.teamId && String(m.teamId) === String(teamId)) return true;
-      return false;
-    })
-    .map((m) => m.id);
+  return models
+    .map((model) => ({
+      ...model,
+      permission: getModelPermissionFromRole({
+        model,
+        teamId,
+        tmbId,
+        teamPer,
+        isRoot,
+        collaboratorRole: model.id ? collaboratorRoleMap.get(String(model.id)) : NullRoleVal
+      })
+    }))
+    .filter((model) => model.permission.checkPer(ReadPermissionVal));
 };

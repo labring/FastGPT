@@ -351,7 +351,7 @@ async function handler(
       name: dataset.name,
       intro: dataset.intro,
       type: dataset.type,
-      vectorModel: getEmbeddingModelById(dataset.vectorModelId), 
+      vectorModel: getEmbeddingModelById(dataset.vectorModelId),
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,
       updateTime: dataset.updateTime,

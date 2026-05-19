@@ -207,11 +207,11 @@ const InputDataModal = ({
 
   const maxToken = useMemo(() => {
     const vectorModel =
-      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
+      embeddingModelList.find((item) => item.id === collection.dataset.vectorModelId) ||
       defaultModels.embedding;
 
     return vectorModel?.maxToken || 2000;
-  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
+  }, [collection.dataset.vectorModelId, defaultModels.embedding, embeddingModelList]);
 
   const modalTitle = useMemo(
     () => (

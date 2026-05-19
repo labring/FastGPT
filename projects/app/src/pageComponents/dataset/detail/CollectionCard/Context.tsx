@@ -7,7 +7,10 @@ import {
   useMemo,
   useCallback
 } from 'react';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import type {
+  CollectionTagValueType,
+  DatasetCollectionsListItemType
+} from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
@@ -19,7 +22,6 @@ import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 import { getDatasetCollections, postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';

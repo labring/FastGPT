@@ -18,12 +18,12 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 
 export const useSkillChatTest = ({
   skillId,
-  model,
+  modelId,
   chatId,
   isReady = true
 }: {
   skillId: string;
-  model: string;
+  modelId: string;
   chatId: string;
   // Agent sandbox lazily initialized on first message; caller generally does not need to pass
   isReady?: boolean;
@@ -83,7 +83,7 @@ export const useSkillChatTest = ({
           skillId,
           chatId,
           messages: histories,
-          model,
+          modelId,
           responseChatItemId
         },
         onMessage: generatingMessage,

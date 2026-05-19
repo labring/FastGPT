@@ -217,10 +217,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   // 使用结构共享优化的节点更改
   const { llmModelList } = useSystemStore();
-  const llmModelMap = useMemo(() => {
+  const llmModelIdMap = useMemo(() => {
     return llmModelList.reduce(
       (acc, model) => {
-        acc[model.model] = model;
+        acc[model.id] = model;
         return acc;
       },
       {} as Record<string, LLMModelItemType>
@@ -336,7 +336,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             return {
               ...output,
               invalid: output.invalidCondition
-                ? output.invalidCondition({ inputs: updateObj.inputs, llmModelMap })
+                ? output.invalidCondition({ inputs: updateObj.inputs, llmModelIdMap })
                 : undefined
             };
           });
@@ -348,7 +348,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         });
       });
     },
-    [setNodes, toast, t, onDelEdge, llmModelMap]
+    [setNodes, toast, t, onDelEdge, llmModelIdMap]
   );
 
   const contextValue = useMemo(() => {

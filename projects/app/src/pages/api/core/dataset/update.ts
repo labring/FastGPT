@@ -3,7 +3,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
-  PerResourceTypeEnum
+  PerResourceTypeEnum,
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -34,6 +35,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getEmbeddingModelById, getLLMModelById } from '@fastgpt/service/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
 import {
@@ -41,6 +43,7 @@ import {
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -78,6 +81,41 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     datasetId: id,
     per: ManagePermissionVal
   });
+  await Promise.all([
+    agentModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: agentModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined,
+    vectorModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: vectorModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+        })
+      : undefined,
+    vlmModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: vlmModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm, requireVision: true });
+        })
+      : undefined
+  ]);
 
   const isMove = parentId !== undefined && String(parentId) !== String(dataset.parentId ?? '');
 

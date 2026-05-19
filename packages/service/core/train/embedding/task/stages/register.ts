@@ -81,7 +81,10 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
       batchSize: baseMeta.batchSize,
       defaultConfig: baseMeta.defaultConfig,
       instruction:
-        task.trainMethod === EmbeddingTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
+        task.trainMethod === EmbeddingTrainMethodEnum.task_tuning
+          ? undefined
+          : baseMeta.instruction,
+      taskId: String(task._id)
     });
 
     addLog.info('Created tuned embedding model config and channel', {

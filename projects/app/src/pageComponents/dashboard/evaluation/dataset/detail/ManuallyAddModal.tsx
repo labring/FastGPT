@@ -27,7 +27,7 @@ export interface ManuallyAddForm {
   question: string;
   answer: string;
   autoEvaluation: boolean;
-  evaluationModel: string;
+  evaluationModelId: string;
 }
 
 /**
@@ -71,14 +71,14 @@ const ManuallyAddModal = ({
       question: defaultValues?.question || '',
       answer: defaultValues?.answer || '',
       autoEvaluation: defaultValues?.autoEvaluation ?? true,
-      evaluationModel: defaultValues?.evaluationModel || evalModelList[0]?.model || ''
+      evaluationModelId: defaultValues?.evaluationModelId || evalModelList[0]?.id || ''
     }
   });
 
   const questionValue = watch('question');
   const answerValue = watch('answer');
   const autoEvaluationValue = watch('autoEvaluation');
-  const evaluationModelValue = watch('evaluationModel');
+  const evaluationModelValue = watch('evaluationModelId');
 
   const { runAsync: handleAddData, loading } = useRequest(postCreateEvaluationDatasetData, {
     successToast: t('common:add_success')
@@ -105,7 +105,7 @@ const ManuallyAddModal = ({
 
       // 只有当开启自动评测时才传递评测模型
       if (data.autoEvaluation) {
-        submitData.evaluationModel = data.evaluationModel;
+        submitData.evaluationModelId = data.evaluationModelId;
       }
 
       await handleAddData(submitData);
@@ -182,10 +182,10 @@ const ManuallyAddModal = ({
                 bg="myGray.50"
                 value={evaluationModelValue}
                 list={evalModelList.map((item) => ({
-                  value: item.model,
+                  value: item.id,
                   label: item.name
                 }))}
-                onChange={(value) => setValue('evaluationModel', value)}
+                onChange={(value) => setValue('evaluationModelId', value)}
                 placeholder={t('dashboard_evaluation:select_quality_eval_model_placeholder')}
               />
             </Box>

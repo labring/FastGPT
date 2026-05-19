@@ -68,7 +68,7 @@ export const DatasetSelectModal = ({
   } = useDatasetSelect();
 
   // The vector model of the first selected dataset
-  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
+  const activeVectorModel = selectedDatasets[0]?.vectorModel?.id;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
@@ -87,7 +87,7 @@ export const DatasetSelectModal = ({
     }
     return isSmartGenerateScene
       ? isEmptyDatabase(item)
-      : !!activeVectorModel && item.vectorModel && activeVectorModel !== item.vectorModel.model;
+      : !!activeVectorModel && item.vectorModel && activeVectorModel !== item.vectorModel.id;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
@@ -102,14 +102,14 @@ export const DatasetSelectModal = ({
       (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
     );
 
-    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
+    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.id;
     if (!targetModel) {
       return [];
     }
 
     return visibleDatasets.filter(
       (item: DatasetListItemType) =>
-        item.vectorModel?.model === targetModel || item.type === DatasetTypeEnum.structureDocument
+        item.vectorModel?.id === targetModel || item.type === DatasetTypeEnum.structureDocument
     );
   }, [datasets, activeVectorModel]);
 
