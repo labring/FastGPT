@@ -148,10 +148,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         return currentTab;
       }
       // 如果是智能客服类型且有读日志权限，默认显示dashboard页面
-      if (
-        appDetail.type === AppTypeEnum.assistant &&
-        appDetail.permission.hasReadChatLogPer
-      ) {
+      if (appDetail.type === AppTypeEnum.assistant && appDetail.permission.hasReadChatLogPer) {
         return TabEnum.dashboard;
       }
       // 其他情况默认显示appEdit页面

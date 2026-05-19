@@ -420,7 +420,8 @@ const TrainDetailDrawer = ({
       if (before === undefined && after === undefined) return null;
 
       // 先按显示精度四舍五入，再比较，避免因多余小数位导致显示一致但箭头变红
-      const round = (v: number) => (isPercent ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100);
+      const round = (v: number) =>
+        isPercent ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100;
       const roundedBefore = before !== undefined ? round(before) : undefined;
       const roundedAfter = after !== undefined ? round(after) : undefined;
       const isWorse =

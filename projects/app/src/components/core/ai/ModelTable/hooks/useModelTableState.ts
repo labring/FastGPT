@@ -206,7 +206,8 @@ export const useModelTableState = ({
     [baseModelList, baseTrainTaskCountSortOrder]
   );
   const sortedCustomModelList = useMemo(
-    () => getSortedModelList(customModelList, customTrainTaskCountSortOrder, customTrainTimeSortOrder),
+    () =>
+      getSortedModelList(customModelList, customTrainTaskCountSortOrder, customTrainTimeSortOrder),
     [customModelList, customTrainTaskCountSortOrder, customTrainTimeSortOrder]
   );
 
