@@ -18,6 +18,9 @@ import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 
 const TASK_ABORT_SIGNAL_CHECK_INTERVAL = 10 * 1000;
 
+const isSFTBridgeQueueFullError = (errorMsg: string) =>
+  errorMsg.toLowerCase().includes('too many concurrent tasks');
+
 /**
  * Stage 2: Model Finetuning
  *
@@ -93,10 +96,16 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     sftTaskId = createResponse.task_id;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorType = isSFTBridgeQueueFullError(errorMsg)
+      ? RerankTrainErrEnum.rerankFinetuneQueueFull
+      : RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed;
+    const suggestionType = isSFTBridgeQueueFullError(errorMsg)
+      ? RerankTrainSuggestionEnum.rerankFinetuneQueueFull
+      : RerankTrainSuggestionEnum.rerankFinetuneSftBridgeCreateFailed;
     const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed,
-      RerankTrainSuggestionEnum.rerankFinetuneSftBridgeCreateFailed,
+      errorType,
+      suggestionType,
       errorMsg
     );
     throw new TrainTaskRetriableError(enhancedError);
