@@ -28,5 +28,7 @@
     "window.commandCenter": false,
     "workbench.editor.editorActionsLocation": "hidden",
     "workbench.layoutControl.enabled": false,
-    "workbench.secondarySideBar.defaultVisibility": "hidden"
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 50
 }

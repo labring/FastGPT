@@ -14,8 +14,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', async (importOriginal) => {
     getSandboxProviderConfig: vi.fn(() => ({
       provider: 'sealosdevbox',
       baseUrl: 'https://devbox.example.com',
-      token: 'sealos-token',
-      runtime: 'docker'
+      token: 'sealos-token'
     }))
   };
 });
@@ -41,11 +40,11 @@ describe('sandbox internal/heartbeat', () => {
       appId: getNanoid(),
       userId: getNanoid(),
       chatId: getNanoid(),
+      type: SandboxTypeEnum.editDebug,
       status: SandboxStatusEnum.running,
       lastActiveAt,
       createdAt: new Date(),
       metadata: {
-        sandboxType: SandboxTypeEnum.editDebug,
         teamId: getNanoid(),
         tmbId: getNanoid(),
         skillId: getNanoid(),

@@ -1,6 +1,6 @@
 import { buildDebugRuntimeNodes } from '@/pages/api/core/agentSkills/debugChat';
 import * as debugChatApi from '@/pages/api/core/agentSkills/debugChat';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -310,9 +310,9 @@ describe('debugChat handler — parameter validation', () => {
       appId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,
+      type: SandboxTypeEnum.editDebug,
       status: 'running',
       metadata: {
-        sandboxType: 'edit-debug',
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         skillId,
