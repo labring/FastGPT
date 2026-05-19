@@ -31,7 +31,7 @@ import {
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -66,7 +66,7 @@ export const useSkillManager = ({
   /* ===== System tool ===== */
   const { data: systemTools = [] } = useRequest(
     async () => {
-      const data = await getAppToolTemplates({ getAll: true }).catch((err) => {
+      const data = await getAppToolTemplates({ getAll: true }).catch(() => {
         return [];
       });
       const apiTools = data
@@ -100,10 +100,10 @@ export const useSkillManager = ({
         });
       }
 
-      const sandboxToolInfo = systemSubInfo[SANDBOX_TOOL_NAME];
+      const sandboxToolInfo = systemSubInfo[SANDBOX_SHELL_TOOL_NAME];
       if (sandboxToolInfo) {
         apiTools.unshift({
-          id: SANDBOX_TOOL_NAME,
+          id: SANDBOX_SHELL_TOOL_NAME,
           label: parseI18nString(sandboxToolInfo.name, i18n.language),
           icon: sandboxToolInfo.avatar,
           description: sandboxToolInfo.toolDescription,
@@ -306,11 +306,11 @@ export const useSkillManager = ({
     }
 
     // Merge sandbox tool
-    const sandboxToolInfo = systemSubInfo[SANDBOX_TOOL_NAME];
+    const sandboxToolInfo = systemSubInfo[SANDBOX_SHELL_TOOL_NAME];
     if (sandboxToolInfo) {
       tools.push({
-        id: SANDBOX_TOOL_NAME,
-        pluginId: SANDBOX_TOOL_NAME,
+        id: SANDBOX_SHELL_TOOL_NAME,
+        pluginId: SANDBOX_SHELL_TOOL_NAME,
         name: parseI18nString(sandboxToolInfo.name, i18n.language),
         avatar: sandboxToolInfo.avatar,
         intro: sandboxToolInfo.toolDescription,

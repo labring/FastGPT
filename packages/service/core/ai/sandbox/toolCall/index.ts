@@ -1,16 +1,23 @@
-import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/constants';
+import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { toolMap as editFileToolMap } from './editFile.tool';
 import { toolMap as getFileUrlToolMap } from './getFileUrl.tool';
+import { toolMap as readFileToolMap } from './readFile.tool';
+import { toolMap as searchToolMap } from './search.tool';
 import { toolMap as shellToolMap } from './shell.tool';
-import { getSandboxClient } from '../controller';
+import { toolMap as writeFileToolMap } from './writeFile.tool';
+import { getSandboxClient, type SandboxClient } from '../controller';
 import { parseJsonArgs } from '../../utils';
-import { pickOutboundAxios } from '../../../../common/api/axios';
-import type { FileWriteEntry } from '@fastgpt-sdk/sandbox-adapter';
+import { writeUrlFilesToSandbox } from '../files';
 
 const ToolMap = {
+  ...editFileToolMap,
   ...getFileUrlToolMap,
+  ...readFileToolMap,
+  ...searchToolMap,
+  ...writeFileToolMap,
   ...shellToolMap
 };
 
@@ -26,13 +33,15 @@ export const runSandboxTools = async ({
   userId,
   chatId,
   toolName,
-  args
+  args,
+  sandboxClient
 }: {
   appId: string;
   userId: string;
   chatId: string;
   toolName: string;
   args: string;
+  sandboxClient?: SandboxClient;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -59,7 +68,7 @@ export const runSandboxTools = async ({
     };
   }
 
-  const instance = await getSandboxClient({ appId, userId, chatId });
+  const instance = sandboxClient ?? (await getSandboxClient({ appId, userId, chatId }));
   const result = await tool.execute({
     appId,
     userId,
@@ -89,23 +98,7 @@ export const injectSandboxFiles = async ({
 }) => {
   const instance = await getSandboxClient({ appId, userId, chatId });
   await instance.ensureAvailable();
-
-  const writeFilesData = await Promise.all(
-    files
-      .filter((file) => file.path)
-      .map(async ({ path, url }): Promise<FileWriteEntry> => {
-        const response = await pickOutboundAxios(url).get<ArrayBuffer>(url, {
-          responseType: 'arraybuffer'
-        });
-
-        return {
-          path,
-          data: response.data
-        };
-      })
-  );
-
-  await instance.provider.writeFiles(writeFilesData);
+  await writeUrlFilesToSandbox(instance.provider, files);
 };
 
 export const getSandboxToolInfo = (name: string, lang: localeType = LangEnum.en) => {

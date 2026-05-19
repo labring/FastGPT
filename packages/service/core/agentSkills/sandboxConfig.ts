@@ -8,18 +8,12 @@ import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/ty
 import { serviceEnv } from '../../env';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
-export type { SandboxCreateConfig, SandboxProviderConfig } from '../ai/sandbox/config';
+import { type SandboxDefaults } from '../ai/sandbox/config';
 
 export const EDIT_DEBUG_SANDBOX_CHAT_ID = 'edit-debug';
 
 export const getEditDebugSandboxId = (skillId: string) =>
   generateSandboxId(skillId, '', EDIT_DEBUG_SANDBOX_CHAT_ID);
-
-export type SandboxDefaults = {
-  defaultImage: SandboxImageConfigType;
-  workDirectory: string;
-  entrypoint: string;
-};
 
 export type SkillSizeLimits = {
   maxUploadBytes: number; // Compressed upload size limit
@@ -27,32 +21,6 @@ export type SkillSizeLimits = {
   maxDownloadBytes: number; // Download from MinIO/S3
   maxSandboxPackageBytes: number; // Sandbox directory size before zip
 };
-
-/**
- * Get sandbox default settings
- */
-export function getSandboxDefaults(): SandboxDefaults {
-  if (serviceEnv.AGENT_SANDBOX_PROVIDER === 'sealosdevbox') {
-    return {
-      defaultImage: {
-        repository: ''
-      },
-      workDirectory: '/home/devbox/workspace',
-      entrypoint: ''
-    };
-  }
-
-  return {
-    defaultImage: {
-      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    },
-    workDirectory: '/home/sandbox/workspace',
-    // workDirectory: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
-    entrypoint: '/home/sandbox/entrypoint.sh'
-    // entrypoint: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
-  };
-}
 
 /**
  * Get skill size limits from environment variables

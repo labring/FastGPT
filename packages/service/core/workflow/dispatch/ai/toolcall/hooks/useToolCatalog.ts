@@ -2,7 +2,8 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { SANDBOX_SYSTEM_PROMPT, SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';

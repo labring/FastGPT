@@ -35,7 +35,12 @@ const COOKIE_RE = /(?:^|;\s*)(code-server-session|coder-session|key)=([^;]+)/i;
 
 const sessionKey = (sandboxId: string, target: string) => `${sandboxId}:${target}`;
 
-const deleteBySandboxIdPrefix = <T>(cache: LRUCache<string, T>, sandboxId: string) => {
+type SandboxScopedCache = {
+  keys: () => IterableIterator<string>;
+  delete: (key: string) => unknown;
+};
+
+const deleteBySandboxIdPrefix = (cache: SandboxScopedCache, sandboxId: string) => {
   for (const key of cache.keys()) {
     if (key.startsWith(`${sandboxId}:`)) cache.delete(key);
   }

@@ -99,20 +99,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         moduleType: FlowNodeTypeEnum.tool,
         moduleName: 'Search',
         llmRequestIds: ['req_tool_node']
-      },
-      capabilityAssistantResponses: [
-        {
-          skills: [
-            {
-              id: 'skill_1',
-              skillName: 'Skill',
-              skillAvatar: '',
-              description: '',
-              skillMdPath: '/tmp/SKILL.md'
-            }
-          ]
-        }
-      ]
+      }
     }));
     const usagePush = vi.fn();
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
@@ -166,8 +153,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
         llmRequestIds: ['req_tool_node']
       })
     ]);
-    expect(artifacts.capabilityAssistantResponses).toHaveLength(1);
-
     runtime.usageSink?.([
       {
         moduleName: 'llm',

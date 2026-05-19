@@ -131,28 +131,23 @@ describe('buildDebugRuntimeNodes', () => {
       expect(promptInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
     });
 
-    it('skills input should contain exactly the given skillId', () => {
+    it('editSkillId input should contain exactly the given skillId', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const skillsInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.skills);
-      expect(skillsInput).toBeDefined();
-      expect(skillsInput!.value).toEqual([SKILL_ID]);
-      expect(skillsInput!.valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
-      expect(skillsInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
+      const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
+      expect(editSkillInput).toBeDefined();
+      expect(editSkillInput!.value).toBe(SKILL_ID);
+      expect(editSkillInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
+      expect(editSkillInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
     });
 
-    it('useEditDebugSandbox input must be true', () => {
+    it('should not pass session skills or edit debug boolean', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const sandboxInput = agentNode.inputs.find(
-        (i) => i.key === NodeInputKeyEnum.useEditDebugSandbox
-      );
-      expect(sandboxInput).toBeDefined();
-      expect(sandboxInput!.value).toBe(true);
-      expect(sandboxInput!.valueType).toBe(WorkflowIOValueTypeEnum.boolean);
-      expect(sandboxInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
+      expect(agentNode.inputs.some((i) => i.key === NodeInputKeyEnum.skills)).toBe(false);
+      expect(agentNode.inputs.some((i) => i.key === 'useEditDebugSandbox')).toBe(false);
     });
 
     it('should have an answerText output with static type', () => {
@@ -190,13 +185,13 @@ describe('buildDebugRuntimeNodes', () => {
 
   // ── Dynamic input injection ─────────────────
   describe('dynamic value injection', () => {
-    it('should inject different skillIds correctly', () => {
+    it('should inject different edit skill ids correctly', () => {
       const anotherSkillId = '507f1f77bcf86cd799439022';
       const { runtimeNodes } = buildDebugRuntimeNodes(anotherSkillId, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const skillsInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.skills);
-      expect(skillsInput!.value).toEqual([anotherSkillId]);
+      const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
+      expect(editSkillInput!.value).toBe(anotherSkillId);
     });
 
     it('should inject different models correctly', () => {

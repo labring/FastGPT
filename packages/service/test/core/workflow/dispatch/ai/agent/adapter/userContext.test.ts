@@ -8,11 +8,11 @@ import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
 import {
-  type AgentInputFile,
+  type AgentSkillContext,
+  buildAgentSkillsPrompt,
   buildAgentInputFilesPrompt,
-  buildAgentUserContextInput,
   buildAgentUserReminderInput,
-  rewriteAgentUserMessagesWithFiles
+  useUserContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
@@ -88,6 +88,28 @@ const selectedDataset: SelectedDatasetType[] = [
   }
 ];
 
+const getUserContextMessagesForTest = async ({
+  skillInfos,
+  currentWorkingDirectory,
+  ...params
+}: Parameters<typeof useUserContext>[0] & {
+  skillInfos?: AgentSkillContext[];
+  currentWorkingDirectory?: string;
+}) => {
+  const context = await useUserContext(params);
+
+  return {
+    chatHistories: context.chatHistories,
+    queryInput: context.queryInput,
+    filesMap: context.filesMap,
+    ...context.getCurrentMessages({
+      skillInfos,
+      currentWorkingDirectory
+    }),
+    currentFiles: context.currentFiles
+  };
+};
+
 describe('buildAgentInputFilesPrompt', () => {
   it('generates # Input Files XML block with stable ids', () => {
     const result = buildAgentInputFilesPrompt([
@@ -135,19 +157,33 @@ describe('buildAgentUserReminderInput', () => {
   it('builds current turn reminder with files datasets time and original query', () => {
     const result = buildAgentUserReminderInput({
       query: '帮我总结',
-      filePrompt: buildAgentInputFilesPrompt([
+      skillInfos: [
+        {
+          name: 'Skill',
+          description: 'Skill description',
+          skillMdPath: '/workspace/Skill/SKILL.md'
+        }
+      ],
+      filesInfo: [
         {
           id: 'current-0',
           name: 'guide.pdf',
           type: ChatFileTypeEnum.file,
           url: '/guide.pdf'
         }
-      ]),
+      ],
       selectedDataset,
+      currentWorkingDirectory: '/workspace',
       currentTime: '2026-05-14 10:00:00 Thursday'
     });
 
     expect(result).toContain('<system-reminder>');
+    expect(result).toContain('# Sandbox');
+    expect(result).toContain('<pwd>/workspace</pwd>');
+    expect(result).toContain('<agent_skills>');
+    expect(result).toContain('<path>/workspace/Skill/SKILL.md</path>');
+    expect(result.indexOf('# Sandbox')).toBeLessThan(result.indexOf('<agent_skills>'));
+    expect(result.indexOf('<agent_skills>')).toBeLessThan(result.indexOf('# Input Files'));
     expect(result).toContain('# Input Files');
     expect(result).toContain('# Input datasets');
     expect(result).toContain('<id>dataset_1</id>');
@@ -189,6 +225,12 @@ describe('buildAgentUserReminderInput', () => {
     expect(
       buildAgentUserReminderInput({
         query: '',
+        currentWorkingDirectory: '/workspace'
+      })
+    ).toContain(`<pwd>/workspace</pwd>`);
+    expect(
+      buildAgentUserReminderInput({
+        query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toContain(`# Current time
@@ -199,6 +241,8 @@ describe('buildAgentUserReminderInput', () => {
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toBe(`<system-reminder>
+依据以下内容完成任务
+
 # Current time
 2026-05-14 10:00:00 Thursday
 </system-reminder>`);
@@ -215,64 +259,57 @@ describe('buildAgentUserReminderInput', () => {
   it('returns original query when there is no context', () => {
     expect(buildAgentUserReminderInput({ query: 'hello' })).toBe('hello');
     expect(buildAgentUserReminderInput({ query: '' })).toBe('');
+    expect(buildAgentUserReminderInput({ query: 'hello', currentWorkingDirectory: '' })).toBe(
+      'hello'
+    );
   });
-});
 
-describe('rewriteAgentUserMessagesWithFiles', () => {
-  it('only rewrites historical human messages with file context', () => {
-    const history = createHumanMessage({
-      dataId: 'history_1',
-      text: '上一轮文件是什么',
-      files: [{ name: 'old.pdf', url: '/old.pdf' }]
-    });
-    const filesByMessage = new Map<ChatItemMiniType, AgentInputFile[]>([
-      [
-        history,
-        [
-          {
-            id: 'history_1-0',
-            name: 'old.pdf',
-            type: ChatFileTypeEnum.file,
-            url: '/old.pdf'
-          }
-        ]
+  it('keeps skill prompt inside user system-reminder without requiring files or datasets', () => {
+    const result = buildAgentUserReminderInput({
+      query: '执行这个技能',
+      skillInfos: [
+        {
+          name: 'Report',
+          description: 'Write reports',
+          skillMdPath: '/workspace/Report/SKILL.md'
+        }
       ]
+    });
+
+    expect(result).toBe(`<system-reminder>
+依据以下内容完成任务
+
+<agent_skills>
+The following skills are available in the sandbox. When a task matches a skill description, read the SKILL.md path first and execute it with the generic sandbox tools.
+
+<available_skills>
+  <skill>
+    <name>Report</name>
+    <description>Write reports</description>
+    <path>/workspace/Report/SKILL.md</path>
+  </skill>
+</available_skills>
+</agent_skills>
+</system-reminder>
+执行这个技能`);
+  });
+
+  it('escapes XML fields in skill metadata', () => {
+    const result = buildAgentSkillsPrompt([
+      {
+        name: 'Report <R&D>',
+        description: 'Write & review',
+        skillMdPath: '/workspace/Report & Review/SKILL.md'
+      }
     ]);
 
-    const [rewritten] = rewriteAgentUserMessagesWithFiles({
-      messages: [history],
-      filesByMessage
-    });
-    const { text, files } = chatValue2RuntimePrompt(rewritten.value);
-
-    expect(files).toEqual([]);
-    expect(text).toContain('# Input Files');
-    expect(text).toContain('<id>history_1-0</id>');
-    expect(text).not.toContain('# Input datasets');
-    expect(text).not.toContain('# Current time');
-    expect(text).toContain('上一轮文件是什么');
-  });
-
-  it('keeps non-human messages and human messages without file context untouched', () => {
-    const system = createSystemMessage();
-    const ai = createAiMessage('ai_1');
-    const humanWithoutFiles = createHumanMessage({
-      dataId: 'human_1',
-      text: '没有文件'
-    });
-
-    const result = rewriteAgentUserMessagesWithFiles({
-      messages: [system, ai, humanWithoutFiles],
-      filesByMessage: new Map()
-    });
-
-    expect(result[0]).toBe(system);
-    expect(result[1]).toBe(ai);
-    expect(result[2]).toBe(humanWithoutFiles);
+    expect(result).toContain('<name>Report &lt;R&amp;D&gt;</name>');
+    expect(result).toContain('<description>Write &amp; review</description>');
+    expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
   });
 });
 
-describe('buildAgentUserContextInput', () => {
+describe('useUserContext', () => {
   it('rewrites histories and current input while keeping file ids consistent with maps', async () => {
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
@@ -298,7 +335,7 @@ describe('buildAgentUserContextInput', () => {
           text: '历史问题',
           files: [{ name: 'old.pdf', url: '/old.pdf' }]
         });
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [history, createSystemMessage(), createAiMessage('history_ai_1')],
           currentFiles: ['/current.pdf', '/current.png'],
@@ -315,31 +352,15 @@ describe('buildAgentUserContextInput', () => {
             ]
           }),
           selectedDataset,
+          currentWorkingDirectory: '/workspace',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFiles: 20
         });
 
         expect(result.filesMap).toEqual({
-          'history_ai_1-0': '/old.pdf',
+          'history_1-0': '/old.pdf',
           'current_chat_item-0': '/current.pdf'
-        });
-        expect(result.allFilesMap).toEqual({
-          'history_ai_1-0': {
-            name: 'old.pdf',
-            type: ChatFileTypeEnum.file,
-            url: '/old.pdf'
-          },
-          'current_chat_item-0': {
-            name: 'current.pdf',
-            type: ChatFileTypeEnum.file,
-            url: '/current.pdf'
-          },
-          'current_chat_item-1': {
-            name: 'current.png',
-            type: ChatFileTypeEnum.image,
-            url: '/current.png'
-          }
         });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -347,14 +368,62 @@ describe('buildAgentUserContextInput', () => {
           result.currentUserMessage.value
         );
 
-        expect(historyText).toContain('<id>history_ai_1-0</id>');
+        expect(historyText).toContain('<id>history_1-0</id>');
+        expect(historyText).not.toContain('# Sandbox');
         expect(historyText).not.toContain('# Current time');
         expect(currentFiles).toEqual([]);
+        expect(currentText).toContain('# Sandbox');
+        expect(currentText).toContain('<pwd>/workspace</pwd>');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
         expect(currentText).toContain('<id>current_chat_item-1</id>');
         expect(currentText).toContain('# Input datasets');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
+        expect(currentText).toContain('当前问题');
+      }
+    );
+  });
+
+  it('injects skill reminder only into the current user message', async () => {
+    await runWithContextAsync(
+      {
+        queryUrlTypeMap: {
+          '/old.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      async () => {
+        const result = await getUserContextMessagesForTest({
+          history: 6,
+          histories: [
+            createHumanMessage({
+              dataId: 'history_1',
+              text: '历史问题',
+              files: [{ name: 'old.pdf', url: '/old.pdf' }]
+            }),
+            createAiMessage('history_ai_1')
+          ],
+          currentUserInput: '当前问题',
+          currentDataId: 'current_chat_item',
+          skillInfos: [
+            {
+              name: 'Report',
+              description: 'Write reports',
+              skillMdPath: '/workspace/Report/SKILL.md'
+            }
+          ],
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFiles: 20
+        });
+
+        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+
+        expect(historyText).toContain('# Input Files');
+        expect(historyText).not.toContain('<agent_skills>');
+        expect(currentText).toContain('<agent_skills>');
+        expect(currentText).toContain('<path>/workspace/Report/SKILL.md</path>');
         expect(currentText).toContain('当前问题');
       }
     );
@@ -377,7 +446,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 0,
           histories: [],
           currentUserInput: '当前问题',
@@ -431,7 +500,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 0,
           histories: [],
           currentUserInput: '当前问题',
@@ -466,7 +535,7 @@ describe('buildAgentUserContextInput', () => {
     );
   });
 
-  it('falls back to human dataId for orphan historical human messages', async () => {
+  it('uses human dataId for historical human messages', async () => {
     await runWithContextAsync(
       {
         queryUrlTypeMap: {
@@ -475,7 +544,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [
             createHumanMessage({
@@ -507,7 +576,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentFiles: ['https://fastgpt.example.com/current.pdf'],
@@ -532,7 +601,6 @@ describe('buildAgentUserContextInput', () => {
         expect(result.filesMap).toEqual({
           'current_chat_item-0': '/current.pdf'
         });
-        expect(Object.keys(result.allFilesMap)).toEqual(['current_chat_item-0']);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text.match(/<file>/g)).toHaveLength(1);
@@ -541,7 +609,7 @@ describe('buildAgentUserContextInput', () => {
     );
   });
 
-  it('uses message index when historical human has no paired AI dataId or human dataId', async () => {
+  it('uses message index when historical human has no human dataId', async () => {
     await runWithContextAsync(
       {
         queryUrlTypeMap: {
@@ -550,7 +618,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [
             createSystemMessage(),
@@ -561,8 +629,7 @@ describe('buildAgentUserContextInput', () => {
             createHumanMessage({
               dataId: 'next_human',
               text: '下一轮问题'
-            }),
-            createAiMessage('next_ai_should_not_pair')
+            })
           ],
           currentUserInput: '当前问题',
           tmbId: 'tmb_1',
@@ -575,7 +642,6 @@ describe('buildAgentUserContextInput', () => {
         });
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
         expect(text).toContain('<id>1-0</id>');
-        expect(text).not.toContain('next_ai_should_not_pair');
       }
     );
   });
@@ -603,7 +669,7 @@ describe('buildAgentUserContextInput', () => {
           createAiMessage('history_ai')
         ];
 
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: explicitHistory,
           histories: [],
           currentFiles: ['/c.pdf', '/a.pdf'],
@@ -616,15 +682,14 @@ describe('buildAgentUserContextInput', () => {
 
         expect(result.chatHistories).toBe(explicitHistory);
         expect(result.filesMap).toEqual({
-          'history_ai-0': '/a.pdf',
+          'history_human-0': '/a.pdf',
           'current_ai-0': '/c.pdf'
         });
-        expect(Object.keys(result.allFilesMap)).toEqual(['history_ai-0', 'current_ai-0']);
       }
     );
   });
 
-  it('filters invalid urls, keeps data images for sandbox, and excludes images from read_files map', async () => {
+  it('filters invalid urls, keeps data images in reminder, and excludes images from read_files map', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
@@ -634,7 +699,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentFiles: ['not-a-url', 'data:text/plain;base64,AAAA', dataImage, '/doc.pdf'],
@@ -647,18 +712,6 @@ describe('buildAgentUserContextInput', () => {
 
         expect(result.filesMap).toEqual({
           'current_ai-2': '/doc.pdf'
-        });
-        expect(result.allFilesMap).toEqual({
-          'current_ai-1': {
-            name: 'image.png',
-            type: ChatFileTypeEnum.image,
-            url: dataImage
-          },
-          'current_ai-2': {
-            name: 'doc.pdf',
-            type: ChatFileTypeEnum.file,
-            url: '/doc.pdf'
-          }
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -681,7 +734,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentFiles: ['/doc.pdf'],
@@ -694,7 +747,6 @@ describe('buildAgentUserContextInput', () => {
         } as any);
 
         expect(result.filesMap).toEqual({});
-        expect(result.allFilesMap).toEqual({});
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).not.toContain('# Input Files');
@@ -712,7 +764,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentUserInput: '总结报告',
@@ -751,7 +803,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentUserInput: '读取无扩展名文件',
@@ -771,11 +823,6 @@ describe('buildAgentUserContextInput', () => {
           maxFiles: 20
         });
 
-        expect(result.allFilesMap['current_ai-0']).toEqual({
-          name: '/api/file/raw',
-          type: ChatFileTypeEnum.file,
-          url: '/api/file/raw'
-        });
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>/api/file/raw</name>');
       }
@@ -797,7 +844,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
           currentFiles: ['/nameless'],
@@ -808,11 +855,6 @@ describe('buildAgentUserContextInput', () => {
           maxFiles: 20
         });
 
-        expect(result.allFilesMap['current_ai-0']).toEqual({
-          name: '/nameless',
-          type: ChatFileTypeEnum.file,
-          url: '/nameless'
-        });
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>/nameless</name>');
       }
@@ -828,7 +870,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [
             createHumanMessage({
@@ -855,7 +897,6 @@ describe('buildAgentUserContextInput', () => {
         });
 
         expect(result.filesMap).toEqual({});
-        expect(result.allFilesMap).toEqual({});
         expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -872,7 +913,7 @@ describe('buildAgentUserContextInput', () => {
         mcpClientMemory: {}
       },
       async () => {
-        const result = await buildAgentUserContextInput({
+        const result = await getUserContextMessagesForTest({
           history: 0,
           histories: [
             createHumanMessage({
@@ -891,7 +932,6 @@ describe('buildAgentUserContextInput', () => {
         expect(result.rewrittenHistories).toEqual([]);
         expect(result.queryInput).toBe('');
         expect(result.filesMap).toEqual({});
-        expect(result.allFilesMap).toEqual({});
 
         const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(files).toEqual([]);

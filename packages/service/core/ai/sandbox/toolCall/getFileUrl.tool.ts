@@ -5,7 +5,7 @@ import { addHours } from 'date-fns';
 import { defineTool } from './type';
 import { getS3ChatSource } from '../../../../common/s3/sources/chat';
 import { jwtSignS3ObjectKey } from '../../../../common/s3/utils';
-import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())

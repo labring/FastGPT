@@ -10,12 +10,12 @@ import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './version/schema';
 import { downloadSkillPackage } from './storage';
 import {
-  getSandboxDefaults,
   getSkillSizeLimits,
   EDIT_DEBUG_SANDBOX_CHAT_ID,
   getEditDebugSandboxId,
   buildEditDebugCreateConfig
 } from './sandboxConfig';
+import { getSandboxDefaults } from '../ai/sandbox/config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../ai/sandbox/config';
 import type {
   SandboxInstanceSchemaType,
@@ -158,8 +158,15 @@ export async function createEditDebugSandbox(
 
       const endpointInfo = await getSandboxEndpoint(sandbox);
 
-      // Update endpoint and sandbox metadata in DB
+      // Update endpoint and normalize edit-debug root keys in DB.
       await updateSandboxInstanceEndpoint({ instanceId: instance._id, endpoint: endpointInfo });
+      await updateSandboxInstanceRecordBySandboxId({
+        provider: providerConfig.provider,
+        sandboxId: instance.sandboxId,
+        appId: skillId,
+        userId: '',
+        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+      });
 
       onProgress?.({
         sandboxId: instance.sandboxId,
@@ -253,7 +260,11 @@ export async function createEditDebugSandbox(
     // getSandboxClient handles volumes internally (via getVolumeManagerConfig) and calls
     // provider.ensureRunning() which creates the container when it doesn't exist
     const client = await getSandboxClient(
-      { sandboxId: sessionId },
+      {
+        appId: skillId,
+        userId: '',
+        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+      },
       {
         createConfig: buildEditDebugCreateConfig({
           providerConfig,
@@ -302,7 +313,7 @@ export async function createEditDebugSandbox(
       provider: providerConfig.provider,
       sandboxId: sessionId,
       appId: skillId,
-      userId: tmbId,
+      userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       type: SandboxTypeEnum.editDebug,
       metadata: {

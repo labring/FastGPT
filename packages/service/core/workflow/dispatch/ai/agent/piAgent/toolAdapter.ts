@@ -303,8 +303,7 @@ export async function buildAgentTools({
       const {
         response,
         usages = [],
-        nodeResponse,
-        capabilityAssistantResponses = []
+        nodeResponse
       } = await executeTool({
         callId,
         toolId,
@@ -329,9 +328,6 @@ export async function buildAgentTools({
         })();
       appendChildNodeResponse(toolNodeResponse);
       if (usages.length > 0) usagePush(usages);
-      if (capabilityAssistantResponses.length > 0) {
-        assistantResponses.push(...capabilityAssistantResponses);
-      }
       appendAssistantToolResponse(assistantResponses, callId, response);
 
       ctx.streamResponseFn?.({

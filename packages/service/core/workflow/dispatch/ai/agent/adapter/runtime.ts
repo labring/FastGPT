@@ -27,7 +27,6 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
 type WorkflowAgentLoopRuntimeArtifacts = {
   assistantResponses: AIChatItemValueItemType[];
   nodeResponses: ChatHistoryItemResType[];
-  capabilityAssistantResponses: AIChatItemValueItemType[];
 };
 
 type LLMRequestEndEvent = Extract<AgentLoopEvent, { type: 'llm_request_end' }>;
@@ -42,7 +41,6 @@ type MessageCompressNodeResponseInput = Omit<AfterMessageCompressEvent, 'type'>;
  * 1. 前端流式事件：由 eventMapper 把 agentLoop 事件转成 workflowStreamResponse。
  * 2. 聊天内容：assistantResponses 记录可展示/可持久化的交互内容。
  * 3. 运行详情：nodeResponses 平铺记录主模型、工具、plan、压缩模型调用的消耗和 requestId。
- * 4. 能力产物：capabilityAssistantResponses 收集工具额外生成的 AI 消息。
  */
 export const createWorkflowAgentLoopRuntime = ({
   context,
@@ -73,8 +71,7 @@ export const createWorkflowAgentLoopRuntime = ({
   // assistantResponses 和 nodeResponses 允许外部传入，是为了继续复用已有数组并保持引用稳定。
   const artifacts: WorkflowAgentLoopRuntimeArtifacts = {
     assistantResponses,
-    nodeResponses,
-    capabilityAssistantResponses: []
+    nodeResponses
   };
 
   // eventMapper 只负责把 agentLoop 事件翻译成前端可消费的 workflow stream 事件；
@@ -173,10 +170,6 @@ export const createWorkflowAgentLoopRuntime = ({
           usages: result.usages ?? [],
           nodeResponse: result.nodeResponse
         });
-
-        if (result.capabilityAssistantResponses?.length) {
-          artifacts.capabilityAssistantResponses.push(...result.capabilityAssistantResponses);
-        }
 
         return {
           response: result.response,

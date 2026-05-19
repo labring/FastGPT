@@ -285,9 +285,9 @@ export class SandboxClient {
           lastActiveAt: new Date()
         },
         $setOnInsert: {
-          ...(this.appId ? { appId: this.appId } : {}),
-          ...(this.userId ? { userId: this.userId } : {}),
-          ...(this.chatId ? { chatId: this.chatId } : {}),
+          ...(this.appId !== undefined ? { appId: this.appId } : {}),
+          ...(this.userId !== undefined ? { userId: this.userId } : {}),
+          ...(this.chatId !== undefined ? { chatId: this.chatId } : {}),
           storage: this.opts?.vmConfig?.storage,
           ...(this.opts?.resourceLimits && {
             limit: {
@@ -305,6 +305,10 @@ export class SandboxClient {
       { upsert: true }
     );
     await ensureConnectedSandboxRunning(this.provider);
+  }
+
+  getSandboxId() {
+    return this.sandboxId;
   }
 
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {

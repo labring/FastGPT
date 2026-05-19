@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const {
   agentPromptMock,
@@ -14,7 +16,13 @@ const {
   createPiAgentWorkflowRuntimeMock,
   normalizePiAgentMessagesMock,
   buildAgentToolsMock,
-  createPiAgentToolEventHandlerMock
+  createPiAgentToolEventHandlerMock,
+  getSandboxClientMock,
+  getAgentSkillInfosMock,
+  injectAgentSkillFilesToSandboxMock,
+  sandboxWriteFilesMock,
+  sandboxClientExecMock,
+  axiosGetMock
 } = vi.hoisted(() => ({
   agentPromptMock: vi.fn(),
   agentSubscribeMock: vi.fn(),
@@ -23,7 +31,13 @@ const {
   createPiAgentWorkflowRuntimeMock: vi.fn(),
   normalizePiAgentMessagesMock: vi.fn(({ messages }) => messages),
   buildAgentToolsMock: vi.fn(async () => []),
-  createPiAgentToolEventHandlerMock: vi.fn(() => vi.fn())
+  createPiAgentToolEventHandlerMock: vi.fn(() => vi.fn()),
+  getSandboxClientMock: vi.fn(),
+  getAgentSkillInfosMock: vi.fn(),
+  injectAgentSkillFilesToSandboxMock: vi.fn(),
+  sandboxWriteFilesMock: vi.fn(),
+  sandboxClientExecMock: vi.fn(),
+  axiosGetMock: vi.fn()
 }));
 
 vi.mock('@mariozechner/pi-agent-core', () => ({
@@ -60,6 +74,33 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
   getAgentRuntimeTools: vi.fn(async () => [])
 }));
 
+vi.mock('@fastgpt/service/core/agentSkills/runtime', () => ({
+  getAgentSkillInfos: getAgentSkillInfosMock,
+  injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/controller', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/controller')>();
+
+  return {
+    ...original,
+    getSandboxClient: getSandboxClientMock
+  };
+});
+
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  const mockClient = {
+    get: axiosGetMock
+  };
+
+  return {
+    ...original,
+    pickOutboundAxios: () => mockClient
+  };
+});
+
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
   const original = await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>();
   return {
@@ -80,6 +121,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
     filterDatasetsByTmbId: vi.fn(async ({ datasetIds }) => datasetIds)
   };
 });
+
+const originalShowSkill = serviceEnv.SHOW_SKILL;
 
 const createProps = () =>
   ({
@@ -205,8 +248,47 @@ const createProps = () =>
 describe('dispatchPiAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.SHOW_SKILL = true;
+    (global as any).feConfigs = {
+      ...(global as any).feConfigs,
+      show_agent_sandbox: true
+    };
     agentConstructorArgs.length = 0;
     agentPromptMock.mockResolvedValue(undefined);
+    sandboxWriteFilesMock.mockResolvedValue(undefined);
+    sandboxClientExecMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: '/workspace\n',
+      stderr: ''
+    });
+    axiosGetMock.mockResolvedValue({
+      data: new ArrayBuffer(1)
+    });
+    getSandboxClientMock.mockResolvedValue({
+      provider: {
+        writeFiles: sandboxWriteFilesMock
+      },
+      exec: sandboxClientExecMock,
+      getSandboxId: () => 'sandbox_prepared'
+    });
+    getAgentSkillInfosMock.mockResolvedValue([
+      {
+        id: './skills/EditSkill-SKILL.md',
+        name: 'Edit Skill',
+        description: 'Edit skill description',
+        directory: './skills/EditSkill',
+        skillMdPath: './skills/EditSkill/SKILL.md'
+      }
+    ]);
+    injectAgentSkillFilesToSandboxMock.mockResolvedValue([
+      {
+        id: './skills/Report-skill_1/SKILL.md',
+        name: 'Report',
+        description: 'Write reports',
+        directory: './skills/Report-skill_1',
+        skillMdPath: './skills/Report-skill_1/SKILL.md'
+      }
+    ]);
     createPiAgentWorkflowRuntimeMock.mockReturnValue({
       onPayload: vi.fn(),
       handleAgentEvent: vi.fn(),
@@ -215,6 +297,10 @@ describe('dispatchPiAgent user context', () => {
       getAnswerText: vi.fn(() => 'pi answer'),
       appendPendingAgentError: vi.fn()
     });
+  });
+
+  afterEach(() => {
+    serviceEnv.SHOW_SKILL = originalShowSkill;
   });
 
   it('passes the full current system-reminder to agent.prompt', async () => {
@@ -303,5 +389,136 @@ describe('dispatchPiAgent user context', () => {
         }
       }
     ]);
+  });
+
+  it('injects sandbox input files before calling pi agent prompt', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    let sandboxReadyBeforePrompt = false;
+    agentPromptMock.mockImplementationOnce(async () => {
+      sandboxReadyBeforePrompt = sandboxWriteFilesMock.mock.calls.length > 0;
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/old.pdf': ChatFileTypeEnum.file,
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
+    expect(sandboxReadyBeforePrompt).toBe(true);
+    const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
+    expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
+      'user_files/current.pdf'
+    ]);
+    expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('pwd: /workspace');
+    expect(agentPromptMock.mock.calls[0][0]).toContain('<pwd>/workspace</pwd>');
+    expect(buildAgentToolsMock.mock.calls[0][0].ctx.sandboxClient).toBeDefined();
+    expect('sandboxId' in buildAgentToolsMock.mock.calls[0][0].ctx).toBe(false);
+  });
+
+  it('starts sandbox and exposes sandbox tools when selected skills are injected', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.useAgentSandbox = false;
+    props.params.skills = [{ skillId: 'skill_1' }];
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
+    expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      skillIds: ['skill_1'],
+      teamId: 'team_1',
+      workDirectory: '.'
+    });
+    expect(getAgentSkillInfosMock).not.toHaveBeenCalled();
+
+    const completionToolNames = buildAgentToolsMock.mock.calls[0][0].ctx.completionTools.map(
+      (tool: any) => tool.function.name
+    );
+    expect(completionToolNames).toEqual(
+      expect.arrayContaining(SANDBOX_TOOLS.map((tool) => tool.function.name))
+    );
+    expect(buildAgentToolsMock.mock.calls[0][0].ctx.sandboxClient).toBeDefined();
+
+    const prompt = agentPromptMock.mock.calls[0][0];
+    expect(prompt).toContain('<agent_skills>');
+    expect(prompt).toContain('<name>Report</name>');
+    expect(prompt).toContain('<path>./skills/Report-skill_1/SKILL.md</path>');
+    expect(prompt).toContain('<pwd>/workspace</pwd>');
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('## 沙盒能力');
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('sandbox_shell');
+  });
+
+  it('scans existing sandbox skill files for editSkillId without reinjecting packages', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.useAgentSandbox = false;
+    props.params.skills = [];
+    props.params.editSkillId = 'edit_skill_1';
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
+    expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      workDirectory: '.'
+    });
+    expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
+
+    const prompt = agentPromptMock.mock.calls[0][0];
+    expect(prompt).toContain('<agent_skills>');
+    expect(prompt).toContain('<name>Edit Skill</name>');
+    expect(prompt).toContain('<path>./skills/EditSkill/SKILL.md</path>');
   });
 });

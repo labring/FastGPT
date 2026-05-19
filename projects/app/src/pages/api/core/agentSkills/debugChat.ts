@@ -69,7 +69,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
 
 /**
  * Build a minimal two-node runtime workflow for skill debug:
- * workflowStart -> agent (with useEditDebugSandbox=true + skillId)
+ * workflowStart -> agent (with editSkillId)
  */
 export function buildDebugRuntimeNodes(
   skillId: string,
@@ -153,18 +153,11 @@ export function buildDebugRuntimeNodes(
           value: systemPrompt
         },
         {
-          key: NodeInputKeyEnum.skills,
+          key: NodeInputKeyEnum.editSkillId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.arrayString,
-          label: 'Skills',
-          value: [skillId]
-        },
-        {
-          key: NodeInputKeyEnum.useEditDebugSandbox,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.boolean,
-          label: 'Use Edit Debug Sandbox',
-          value: true
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: 'Edit Skill ID',
+          value: skillId
         }
       ],
       outputs: [
@@ -290,7 +283,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         mode: 'test',
         usageSource: UsageSourceEnum.fastgpt,
 
-        uid: tmbId,
+        // Agent sandbox routing always uses appId/userId/chatId. Edit-debug sandboxes are
+        // created with userId='' and the fixed edit-debug chatId, while chat records still
+        // use the request chatId below.
+        uid: '',
 
         runningAppInfo: {
           id: skillId,
@@ -300,7 +296,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
         runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId,
+        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
         responseChatItemId,
         runtimeNodes,
         runtimeEdges,

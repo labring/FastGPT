@@ -3,7 +3,7 @@ import httpProxy from 'http-proxy';
 import type { Socket } from 'net';
 import { env } from './env';
 import { configureLogger, getLogger, LogCategories } from './logger';
-import { buildSetCookie } from './cookie';
+import { buildSetCookie, getProxyCookieOptions } from './cookie';
 import {
   deriveCsLoginTarget,
   ensureCsSession,
@@ -179,7 +179,10 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
 
   // Bootstrap: set cookie on the first `_t` request and forward in the same response.
   if (auth.freshFromQuery) {
-    res.setHeader('Set-Cookie', buildSetCookie(auth.jwt, auth.cookieMaxAgeSeconds));
+    res.setHeader(
+      'Set-Cookie',
+      buildSetCookie(auth.jwt, auth.cookieMaxAgeSeconds, getProxyCookieOptions(req))
+    );
   }
 
   req.url = auth.cleanedUrl;
@@ -240,7 +243,8 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.on('upgrade', (req, socket, head) => {
+server.on('upgrade', (req, rawSocket, head) => {
+  const socket = rawSocket as Socket;
   attachSocketErrorHandler(req, socket, 'client');
 
   handleWsUpgrade(req, socket, head).catch((err) => {
@@ -249,7 +253,8 @@ server.on('upgrade', (req, socket, head) => {
   });
 });
 
-server.on('clientError', (err, socket) => {
+server.on('clientError', (err, rawSocket) => {
+  const socket = rawSocket as Socket;
   logger.warning(`client socket error before request is handled: ${formatSocketError(err)}`);
   destroySocket(socket);
 });

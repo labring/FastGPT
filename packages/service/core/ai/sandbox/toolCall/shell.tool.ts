@@ -1,6 +1,6 @@
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const SandboxShellToolSchema = z.object({
   command: z.string(),
@@ -22,5 +22,5 @@ export const sandboxShellTool = defineTool({
 });
 
 export const toolMap = {
-  [SANDBOX_TOOL_NAME]: sandboxShellTool
+  [SANDBOX_SHELL_TOOL_NAME]: sandboxShellTool
 };

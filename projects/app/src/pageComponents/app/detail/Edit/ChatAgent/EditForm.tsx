@@ -28,7 +28,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSkillManager } from './hooks/useSkillManager';
-import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -134,8 +134,8 @@ const EditForm = ({
     setAppForm
   });
   const tokenLimit = useMemo(() => {
-    return selectedModel?.quoteMaxToken || 3000;
-  }, [selectedModel?.quoteMaxToken]);
+    return selectedModel.quoteMaxToken || 3000;
+  }, [selectedModel.quoteMaxToken]);
 
   // Force close image select when model not support vision
   useEffect(() => {
