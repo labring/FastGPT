@@ -115,20 +115,28 @@ export async function connectToSandbox(
     sandboxId
   });
 
-  await sandbox.ensureRunning();
+  await ensureConnectedSandboxRunning(sandbox);
 
   return sandbox;
 }
 
+/**
+ * 确保沙盒不仅处于 provider 的 Running 状态，也已经可以执行命令。
+ *
+ * 部分 provider 会先把资源状态置为 Running，但底层 Pod/exec 通道仍可能处于 Pending；
+ * 如果此时立刻写文件或执行命令，会出现 "pod is not running: Pending" 这类抢跑错误。
+ */
 export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<void> {
   const info = await sandbox.getInfo();
   if (!info) {
     await sandbox.ensureRunning();
+    await sandbox.waitUntilReady();
     return;
   }
 
   if (info.status.state === 'Stopped' || info.status.state === 'Stopping') {
     await sandbox.start();
+    await sandbox.waitUntilReady();
     return;
   }
 
@@ -136,6 +144,7 @@ export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<
     throw new Error(`Provider sandbox ${sandbox.id ?? info.id} is ${info.status.state}`);
   }
 
+  // Running/Creating/Starting 都必须再等命令通道 ready，避免状态与 Pod 实际可执行状态不一致。
   await sandbox.waitUntilReady();
 }
 
@@ -151,7 +160,6 @@ export async function connectReadySandboxByInstance(
   const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
 
   try {
-    await ensureConnectedSandboxRunning(sandbox);
     const sandboxInfo = await sandbox.getInfo();
     if (!sandboxInfo) {
       throw new Error('Sandbox not found');
@@ -296,7 +304,7 @@ export class SandboxClient {
       },
       { upsert: true }
     );
-    await this.provider.ensureRunning();
+    await ensureConnectedSandboxRunning(this.provider);
   }
 
   async exec(command: string, timeout?: number): Promise<ExecuteResult> {

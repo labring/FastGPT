@@ -157,7 +157,6 @@ export async function createEditDebugSandbox(
       sandbox = connected.sandbox;
 
       const endpointInfo = await getSandboxEndpoint(sandbox);
-      const sandboxInfo = connected.sandboxInfo;
 
       // Update endpoint and sandbox metadata in DB
       await updateSandboxInstanceEndpoint({ instanceId: instance._id, endpoint: endpointInfo });

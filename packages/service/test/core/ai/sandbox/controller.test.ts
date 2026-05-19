@@ -20,6 +20,7 @@ const sandboxAdapterMocks = vi.hoisted(() => {
   const deleteMock = vi.fn(async () => undefined);
   const stopMock = vi.fn(async () => undefined);
   const ensureRunningMock = vi.fn(async () => undefined);
+  const waitUntilReadyMock = vi.fn(async () => undefined);
   const createSandboxMock = vi.fn((provider: string, connectionConfig: any) => ({
     provider,
     connectionConfig,
@@ -29,7 +30,7 @@ const sandboxAdapterMocks = vi.hoisted(() => {
     delete: deleteMock,
     getInfo: vi.fn(async () => null),
     execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 })),
-    waitUntilReady: vi.fn(async () => undefined),
+    waitUntilReady: waitUntilReadyMock,
     ensureRunning: ensureRunningMock
   }));
 
@@ -37,7 +38,8 @@ const sandboxAdapterMocks = vi.hoisted(() => {
     createSandboxMock,
     deleteMock,
     ensureRunningMock,
-    stopMock
+    stopMock,
+    waitUntilReadyMock
   };
 });
 
@@ -77,13 +79,13 @@ vi.mock('@fastgpt-sdk/sandbox-adapter', () => {
 
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   SandboxClient,
   connectToSandbox,
   disconnectSandbox,
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId,
+  getSandboxClient,
   getSandboxEndpoint
 } from '@fastgpt/service/core/ai/sandbox/controller';
 
@@ -116,7 +118,16 @@ describe('sandbox runtime helpers', () => {
 
     expect(result.provider).toBe('opensandbox');
     expect(sandboxAdapterMocks.ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect(sandboxAdapterMocks.waitUntilReadyMock).toHaveBeenCalledTimes(1);
     expect((result as any).connectionConfig.sessionId).toBe('sandbox-1');
+  });
+
+  it('waits until sandbox command channel is ready after ensureAvailable', async () => {
+    const client = await getSandboxClient({ sandboxId: 'sandbox-ready-check' });
+
+    expect(client.provider.provider).toBe('sealosdevbox');
+    expect(sandboxAdapterMocks.ensureRunningMock).toHaveBeenCalledTimes(1);
+    expect(sandboxAdapterMocks.waitUntilReadyMock).toHaveBeenCalledTimes(1);
   });
 
   it('disconnects opensandbox and keeps other providers as no-op', async () => {
