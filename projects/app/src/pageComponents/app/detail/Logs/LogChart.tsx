@@ -46,7 +46,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type HeaderControlProps = {
-  appId: string;
   showSourceSelector?: boolean;
   chatSources: ChatSourceEnum[];
   setChatSources: (value: ChatSourceEnum[]) => void;
@@ -132,9 +131,9 @@ const generateCompleteTimeSeries = (
   return [...new Set(dates)];
 };
 
-const LogChart = () => {
+const LogChart = (props: { appId?: string }) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appId = useContextSelector(AppContext, (v) => v.appId || props.appId);
 
   const { feConfigs } = useSystemStore();
   const dateRange = useContextSelector(LogsContext, (v) => v.dateRange);
@@ -150,7 +149,7 @@ const LogChart = () => {
   const { data: chartData, loading } = useRequest(
     async () => {
       return getAppChartData({
-        appId,
+        appId: appId!,
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
         offset: parseInt(offset),
@@ -822,7 +821,7 @@ const LogChart = () => {
 
 export default React.memo(LogChart);
 
-const HeaderControl = ({
+export const HeaderControl = ({
   chatSources,
   setChatSources,
   isSelectAllSource,
@@ -844,7 +843,7 @@ const HeaderControl = ({
   );
 
   return (
-    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
+    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} px={px}>
       {showSourceSelector && (
         <Flex>
           <MultipleSelect<ChatSourceEnum>
@@ -853,7 +852,7 @@ const HeaderControl = ({
             onSelect={setChatSources}
             isSelectAll={isSelectAllSource}
             setIsSelectAll={setIsSelectAllSource}
-            h={10}
+            h={'36px'}
             w={'226px'}
             bg={'white'}
             rounded={'8px'}
@@ -877,7 +876,7 @@ const HeaderControl = ({
             setDateRange(date);
           }}
           bg={'white'}
-          h={10}
+          h={'36px'}
           w={'240px'}
           rounded={'8px'}
           borderColor={'myGray.200'}
@@ -891,7 +890,7 @@ const HeaderControl = ({
   );
 };
 
-const TotalData = ({ appId }: { appId: string }) => {
+const TotalData = ({ appId }: { appId?: string }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
@@ -906,7 +905,7 @@ const TotalData = ({ appId }: { appId: string }) => {
   } = useRequest(
     async () => {
       if (feConfigs?.isPlus) {
-        return await getAppTotalData({ appId });
+        return await getAppTotalData({ appId: appId! });
       }
       return {
         totalUsers: 455,

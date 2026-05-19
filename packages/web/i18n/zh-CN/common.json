@@ -755,6 +755,7 @@
   "enable_sandbox": "体验虚拟机工具",
   "error.code_error": "验证码错误",
   "error.fileNotFound": "文件找不到了~",
+  "error.unAuthFile": "无文件权限",
   "error.file_upload_disabled": "当前应用未开启文件上传",
   "error.inheritPermissionError": "权限继承错误",
   "error.invalid_params": "参数无效",
