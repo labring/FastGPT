@@ -21,17 +21,24 @@ import {
   createDatasetData,
   deleteDatasetData,
   updateDatasetDataByIndexes,
-  updateDatasetDataDefaultIndexes
+  updateDatasetDataDefaultIndexes,
+  updateDatasetDataGeneratedIndexes
 } from '@/service/core/dataset/data/data';
 
-const { mockDeleteDatasetFileByKey, mockCountPromptTokens } = vi.hoisted(() => ({
-  mockDeleteDatasetFileByKey: vi.fn(),
-  mockCountPromptTokens: vi.fn(async (text: string) => text.length)
-}));
+const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
+  () => ({
+    mockDeleteDatasetFileByKey: vi.fn(),
+    mockGetDatasetBase64Image: vi.fn(
+      async (imageUrl: string) => `data:image/png;base64,${imageUrl}`
+    ),
+    mockCountPromptTokens: vi.fn(async (text: string) => text.length)
+  })
+);
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   getS3DatasetSource: vi.fn(() => ({
-    deleteDatasetFileByKey: mockDeleteDatasetFileByKey
+    deleteDatasetFileByKey: mockDeleteDatasetFileByKey,
+    getDatasetBase64Image: mockGetDatasetBase64Image
   }))
 }));
 
@@ -228,6 +235,47 @@ describe('Dataset data service', () => {
           embeddingModel: 'text-embedding-3-small'
         } as any)
       ).rejects.toBe('q, datasetId, collectionId, embeddingModel is required');
+    });
+
+    it('should use default text for image data without using filename as question text', async () => {
+      const { root, dataset, collection } = await createDatasetContext();
+      const imageId = `dataset/${dataset._id}/黄芪.png`;
+      vi.mocked(getEmbeddingModel).mockReturnValue({
+        ...embeddingModel,
+        vision: true
+      });
+
+      const result = await createDatasetData({
+        teamId: String(root.teamId),
+        tmbId: String(root.tmbId),
+        datasetId: String(dataset._id),
+        collectionId: String(collection._id),
+        q: '',
+        imageId,
+        embeddingModel: 'text-embedding-3-small',
+        indexSize: 50
+      });
+
+      const data = await MongoDatasetData.findById(result.insertId).lean();
+
+      expect(data?.q).toBe('dataset:image_embedding_index_default_desc');
+      expect(data?.q).not.toContain('黄芪');
+      expect(data?.indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: imageId
+          })
+        ])
+      );
+      expect(data?.indexes).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'dataset:image_embedding_index_default_desc'
+          })
+        ])
+      );
     });
   });
 
@@ -459,6 +507,115 @@ describe('Dataset data service', () => {
           model: 'text-embedding-3-small'
         })
       ).rejects.toBe('Data not found');
+    });
+  });
+
+  describe('updateDatasetDataGeneratedIndexes', () => {
+    it('should replace only default and image embedding indexes without touching manual indexes', async () => {
+      vi.mocked(getEmbeddingModel).mockReturnValue({
+        ...embeddingModel,
+        vision: true
+      });
+      const { data } = await createMongoData({
+        q: 'old question',
+        a: '',
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'manual custom',
+            dataId: 'custom_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.question,
+            text: 'manual question',
+            dataId: 'question_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.summary,
+            text: 'manual summary',
+            dataId: 'summary_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.image,
+            text: 'manual image summary',
+            dataId: 'image_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'old question',
+            dataId: 'default_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'dataset/team/old.png',
+            dataId: 'image_embedding_old'
+          }
+        ]
+      });
+      const nextImage = `dataset/${data.datasetId}/new.png`;
+
+      await updateDatasetDataGeneratedIndexes({
+        dataId: String(data._id),
+        q: `new question ![new](${nextImage})`,
+        a: '',
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: nextImage
+          }
+        ],
+        model: 'text-embedding-3-small',
+        indexSize: 50
+      });
+
+      const updatedData = await MongoDatasetData.findById(data._id).lean();
+      expect(updatedData?.indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'manual custom',
+            dataId: 'custom_old'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.question,
+            text: 'manual question',
+            dataId: 'question_old'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.summary,
+            text: 'manual summary',
+            dataId: 'summary_old'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.image,
+            text: 'manual image summary',
+            dataId: 'image_old'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.default,
+            text: `new question ![new](${nextImage})`
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: nextImage
+          })
+        ])
+      );
+      expect(
+        updatedData?.indexes.find(
+          (index) =>
+            index.type === DatasetDataIndexTypeEnum.imageEmbedding &&
+            index.text === 'dataset/team/old.png'
+        )
+      ).toBeUndefined();
+      const deleteCall = mockVectorDelete.mock.calls[0]?.[0];
+      expect(String(deleteCall?.teamId)).toBe(String(data.teamId));
+      expect(deleteCall?.idList).toEqual(['default_old', 'image_embedding_old']);
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          idList: expect.arrayContaining(['custom_old', 'question_old', 'summary_old', 'image_old'])
+        })
+      );
     });
   });
 

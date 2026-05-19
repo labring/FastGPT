@@ -5,6 +5,7 @@ export enum DatasetDataIndexTypeEnum {
   summary = 'summary', // 摘要，系统生成
   question = 'question', // 补全问题，系统生成
   image = 'image', // 图片描述，系统生成
+  imageEmbedding = 'imageEmbedding', // 图片向量，系统生成
   custom = 'custom'
 }
 
@@ -33,6 +34,10 @@ export const DatasetDataIndexMap: Record<
   },
   [DatasetDataIndexTypeEnum.image]: {
     label: i18nT('dataset:data_index_image'),
+    color: 'purple'
+  },
+  [DatasetDataIndexTypeEnum.imageEmbedding]: {
+    label: i18nT('dataset:data_index_image_embedding'),
     color: 'purple'
   }
 };

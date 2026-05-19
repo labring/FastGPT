@@ -22,6 +22,7 @@ import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -59,7 +60,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       num: result.fileMetadata.length
     });
 
-    if (!dataset.vlmModel) {
+    const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
+      vectorModel: dataset.vectorModel,
+      vlmModel: dataset.vlmModel
+    });
+
+    if (!supportVlm && !supportImageEmbedding) {
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
     }
 
@@ -87,7 +93,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         datasetId,
         type: DatasetCollectionTypeEnum.images,
         name: collectionName,
-        trainingType: DatasetCollectionDataProcessModeEnum.imageParse
+        trainingType: supportVlm
+          ? DatasetCollectionDataProcessModeEnum.imageParse
+          : DatasetCollectionDataProcessModeEnum.chunk
       }
     });
   } catch (error) {

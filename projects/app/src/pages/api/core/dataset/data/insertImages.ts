@@ -7,7 +7,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel, getLLMModel, getVlmModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
@@ -21,6 +21,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 
 async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   const filepaths: string[] = [];
@@ -42,6 +44,16 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       authApiKey: true
     });
     const dataset = collection.dataset;
+    const { availableVlmModel, supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability(
+      {
+        vectorModel: dataset.vectorModel,
+        vlmModel: dataset.vlmModel
+      }
+    );
+
+    if (!supportVlm && !supportImageEmbedding) {
+      return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
+    }
 
     const planStatus = await getTeamPlanStatus({ teamId });
     await authFrequencyLimit({
@@ -75,7 +87,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
           billSource: UsageSourceEnum.training,
           vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
           agentModel: getLLMModel(dataset.agentModel)?.name,
-          vllmModel: getVlmModel(dataset.vlmModel)?.name,
+          vllmModel: availableVlmModel?.name,
           session
         });
         return usageId;
@@ -89,9 +101,9 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         agentModel: dataset.agentModel,
         vectorModel: dataset.vectorModel,
         vlmModel: dataset.vlmModel,
-        mode: TrainingModeEnum.imageParse,
+        mode: supportVlm ? TrainingModeEnum.imageParse : TrainingModeEnum.chunk,
         billId: traingBillId,
-        data: imageIds.map((item, index) => ({
+        data: imageIds.map((item) => ({
           imageId: item
         })),
         session

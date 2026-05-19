@@ -8,12 +8,18 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import {
+  isValidImageEmbeddingSource,
+  normalizeImageToBase64
+} from '@fastgpt/service/core/dataset/search/utils';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -29,10 +35,12 @@ export type DatasetDataIndexPatch =
   | {
       type: 'create';
       index: DatasetDataIndexDraft;
+      skipped?: boolean;
     }
   | {
       type: 'update';
       index: DatasetDataIndexItemType;
+      skipped?: boolean;
     }
   | {
       type: 'delete';
@@ -52,6 +60,29 @@ const formatIndexTextWithPrefix = (text: string, indexPrefix?: string) => {
     return `${indexPrefix}\n${text}`;
   }
   return text;
+};
+
+const systemIndexTypes = new Set<DatasetDataIndexTypeEnum>([
+  DatasetDataIndexTypeEnum.default,
+  DatasetDataIndexTypeEnum.imageEmbedding
+]);
+
+const isSystemIndexType = (type?: DatasetDataIndexTypeEnum) =>
+  systemIndexTypes.has(type || DatasetDataIndexTypeEnum.custom);
+
+const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
+  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
+
+const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
+  if (
+    isS3ObjectKey(imageUrl, 'dataset') ||
+    isS3ObjectKey(imageUrl, 'temp') ||
+    isS3ObjectKey(imageUrl, 'chat')
+  ) {
+    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  }
+
+  return normalizeImageToBase64(imageUrl);
 };
 
 /**
@@ -77,8 +108,8 @@ export class DatasetDataIndexOperation {
     return this.getEmbeddingModel().maxToken;
   }
 
-  private getEmbeddingModel() {
-    return typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model!;
+  private getEmbeddingModel(): EmbeddingModelItemType {
+    return (typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model)!;
   }
 
   /**
@@ -189,7 +220,10 @@ export class DatasetDataIndexOperation {
     const checkedIndexes = (
       await Promise.all(
         indexes.map(async (item) => {
-          if (item.type === DatasetDataIndexTypeEnum.default) {
+          if (
+            item.type === DatasetDataIndexTypeEnum.default ||
+            item.type === DatasetDataIndexTypeEnum.imageEmbedding
+          ) {
             return item;
           }
 
@@ -217,7 +251,11 @@ export class DatasetDataIndexOperation {
 
     return indexPrefix
       ? checkedIndexes.map((index) => {
-          if (index.type === DatasetDataIndexTypeEnum.custom) return index;
+          if (
+            index.type === DatasetDataIndexTypeEnum.custom ||
+            index.type === DatasetDataIndexTypeEnum.imageEmbedding
+          )
+            return index;
           return {
             ...index,
             text: formatIndexTextWithPrefix(index.text, indexPrefix)
@@ -341,8 +379,104 @@ export class DatasetDataIndexOperation {
    */
   getWritablePatchIndexes(patchResult: DatasetDataIndexPatch[]) {
     return patchResult
-      .filter((item) => item.type !== 'delete')
+      .filter((item) => item.type !== 'delete' && !('skipped' in item && item.skipped))
       .map((item) => item.index) as DatasetDataIndexItemType[];
+  }
+
+  private async insertIndexVectorIds({
+    indexes,
+    teamId,
+    datasetId,
+    collectionId
+  }: {
+    indexes: DatasetDataIndexDraft[];
+    teamId: string;
+    datasetId: string;
+    collectionId: string;
+  }) {
+    const textIndexes = indexes.filter((index) => !isImageEmbeddingIndex(index));
+    const imageIndexes = indexes.filter(isImageEmbeddingIndex);
+    const embModel = this.getEmbeddingModel();
+
+    const textInsertResult = textIndexes.length
+      ? await insertDatasetDataVector({
+          inputs: textIndexes.map((item) => item.text),
+          model: embModel,
+          teamId,
+          datasetId,
+          collectionId
+        })
+      : { tokens: 0, insertIds: [] as string[] };
+
+    const imageInsertResult = await (async () => {
+      if (!imageIndexes.length || !isImageEmbeddingModel(embModel)) {
+        return {
+          tokens: 0,
+          insertIds: [] as string[],
+          imageIndexes: [] as DatasetDataIndexDraft[]
+        };
+      }
+
+      const normalizedImageIndexes = (
+        await Promise.all(
+          imageIndexes.map(async (index) => {
+            try {
+              if (!isValidImageEmbeddingSource(index.text)) return;
+
+              return {
+                item: index,
+                imageUrl: await normalizeDatasetIndexImageToModelInput(index.text)
+              };
+            } catch {
+              return;
+            }
+          })
+        )
+      ).filter(Boolean) as { item: DatasetDataIndexDraft; imageUrl: string }[];
+
+      if (!normalizedImageIndexes.length) {
+        return {
+          tokens: 0,
+          insertIds: [] as string[],
+          imageIndexes: [] as DatasetDataIndexDraft[]
+        };
+      }
+
+      const result = await insertDatasetDataVector({
+        model: embModel,
+        inputs: normalizedImageIndexes.map((item) => ({
+          type: 'image',
+          input: item.imageUrl
+        })),
+        teamId,
+        datasetId,
+        collectionId
+      });
+
+      return {
+        ...result,
+        imageIndexes: normalizedImageIndexes.map((item) => item.item)
+      };
+    })();
+
+    const insertedIndexIdMap = new WeakMap<DatasetDataIndexDraft, string>();
+    textIndexes.forEach((item, index) => {
+      const dataId = textInsertResult.insertIds[index];
+      if (dataId) {
+        insertedIndexIdMap.set(item, dataId);
+      }
+    });
+    imageInsertResult.imageIndexes.forEach((item, index) => {
+      const dataId = imageInsertResult.insertIds[index];
+      if (dataId) {
+        insertedIndexIdMap.set(item, dataId);
+      }
+    });
+
+    return {
+      tokens: textInsertResult.tokens + imageInsertResult.tokens,
+      insertedIndexIdMap
+    };
   }
 
   /**
@@ -366,19 +500,23 @@ export class DatasetDataIndexOperation {
     );
     if (insertItems.length === 0) return 0;
 
-    const result = await insertDatasetDataVector({
-      inputs: insertItems.map((item) => item.index.text),
-      model: this.getEmbeddingModel(),
+    const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
+      indexes: insertItems.map((item) => item.index),
       teamId,
       datasetId,
       collectionId
     });
 
-    insertItems.forEach((item, index) => {
-      item.index.dataId = result.insertIds[index];
+    insertItems.forEach((item) => {
+      const dataId = insertedIndexIdMap.get(item.index);
+      if (dataId) {
+        item.index.dataId = dataId;
+      } else {
+        item.skipped = true;
+      }
     });
 
-    return result.tokens;
+    return tokens;
   }
 
   /**
@@ -396,9 +534,8 @@ export class DatasetDataIndexOperation {
     datasetId: string;
     collectionId: string;
   }) {
-    const { tokens, insertIds } = await insertDatasetDataVector({
-      inputs: indexes.map((item) => item.text),
-      model: this.getEmbeddingModel(),
+    const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
+      indexes,
       teamId,
       datasetId,
       collectionId
@@ -406,10 +543,16 @@ export class DatasetDataIndexOperation {
 
     return {
       tokens,
-      indexes: indexes.map((item, index) => ({
-        ...item,
-        dataId: insertIds[index]
-      })) as DatasetDataIndexItemType[]
+      indexes: indexes
+        .map((item) => {
+          const dataId = insertedIndexIdMap.get(item);
+          if (!dataId) return;
+          return {
+            ...item,
+            dataId
+          };
+        })
+        .filter(Boolean) as DatasetDataIndexItemType[]
     };
   }
 
@@ -447,7 +590,7 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is required');
     }
 
-    if (type === DatasetDataIndexTypeEnum.default) {
+    if (isSystemIndexType(type)) {
       return Promise.reject('System indexes cannot be saved separately');
     }
 
@@ -550,7 +693,7 @@ export class DatasetDataIndexOperation {
     if (!targetIndex) {
       return Promise.reject('Dataset data index not found');
     }
-    if (targetIndex.type === DatasetDataIndexTypeEnum.default) {
+    if (isSystemIndexType(targetIndex.type)) {
       return Promise.reject('System indexes cannot be deleted separately');
     }
 

@@ -42,6 +42,7 @@ export enum TabEnum {
 let indexClientId = 0;
 const getIndexClientId = () => `dataset-index-${Date.now()}-${indexClientId++}`;
 const clearEditingIndexDelay = 600;
+const imageEmbeddingIndexDefaultDescKey = 'dataset:image_embedding_index_default_desc';
 
 const sortIndexesForDisplay = (indexes: InputDataIndexType[] = []) => {
   const getOrder = (index: InputDataIndexType) => {
@@ -94,10 +95,14 @@ const formatDataForForm = (
     indexes?: DatasetDataIndexItemType[];
   } = {},
   dataId?: string,
-  previousIndexes?: InputDataIndexType[]
+  previousIndexes?: InputDataIndexType[],
+  t?: (key: string) => string
 ): InputDataType & { dataId?: string } => ({
   ...(dataId ? { dataId } : {}),
-  q: data.q || '',
+  q:
+    data.q === imageEmbeddingIndexDefaultDescKey && t
+      ? t(imageEmbeddingIndexDefaultDescKey)
+      : data.q || '',
   a: data.a || '',
   imagePreivewUrl: data.imagePreivewUrl,
   indexes: formatIndexesForForm(data.indexes, previousIndexes)
@@ -260,7 +265,8 @@ export const useInputDataModal = ({
       const refreshedData = formatDataForForm(
         latestData,
         targetDataId,
-        currentIndexes
+        currentIndexes,
+        t
       ) as InputDataType & {
         dataId: string;
       };
@@ -269,7 +275,7 @@ export const useInputDataModal = ({
       reset(refreshedData);
       return refreshedData;
     },
-    [getValues, reset, resetSavedIndexes]
+    [getValues, reset, resetSavedIndexes, t]
   );
 
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
@@ -294,7 +300,7 @@ export const useInputDataModal = ({
           hasAnswer: !!initialData?.a
         })
       );
-      const formData = formatDataForForm(initialData);
+      const formData = formatDataForForm(initialData, undefined, undefined, t);
       resetSavedIndexes(formData.indexes);
       reset(formData);
 
@@ -312,7 +318,7 @@ export const useInputDataModal = ({
 
       const postData: Parameters<typeof postInsertData2Dataset>[0] = {
         collectionId: collection._id,
-        q: e.q,
+        q: e.q === t(imageEmbeddingIndexDefaultDescKey) ? imageEmbeddingIndexDefaultDescKey : e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         indexes: formatIndexesForRequest(e.indexes)
       };
@@ -346,12 +352,23 @@ export const useInputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
-      await putDatasetDataById({
+      const updateResult = await putDatasetDataById({
         dataId,
-        q: e.q,
+        q: e.q === t(imageEmbeddingIndexDefaultDescKey) ? imageEmbeddingIndexDefaultDescKey : e.q,
         a: currentTab === TabEnum.qa ? e.a : ''
       });
-      return refreshDataForm(dataId);
+      if (updateResult.rebuilding) {
+        return {
+          ...e,
+          dataId
+        };
+      }
+      const refreshedData = await refreshDataForm(dataId);
+      return {
+        ...refreshedData,
+        q: updateResult.q ?? refreshedData.q,
+        a: updateResult.a ?? refreshedData.a
+      };
     },
     {
       refreshDeps: [currentTab, refreshDataForm],
@@ -456,6 +473,12 @@ export const useInputDataModal = ({
         if (successData) {
           onSuccess(successData);
         }
+        if (!shouldSaveLatest) {
+          toast({
+            title: t('common:save_success'),
+            status: 'success'
+          });
+        }
       } catch (error) {
         saveError = error;
       } finally {
@@ -476,7 +499,16 @@ export const useInputDataModal = ({
       }
     },
     {
-      refreshDeps: [dataId, findIndexByClientId, getSuccessData, getValues, removeIndexes, setValue]
+      refreshDeps: [
+        dataId,
+        findIndexByClientId,
+        getSuccessData,
+        getValues,
+        removeIndexes,
+        setValue,
+        t,
+        toast
+      ]
     }
   );
 

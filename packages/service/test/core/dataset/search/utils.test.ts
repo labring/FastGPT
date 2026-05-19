@@ -15,6 +15,7 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
 import {
   computeFilterIntersection,
   datasetSearchQueryExtension,
+  isValidImageEmbeddingSource,
   normalizeImageToBase64
 } from '../../../../core/dataset/search/utils';
 
@@ -83,6 +84,21 @@ describe('normalizeImageToBase64', () => {
 
     expect(result).toBe('data:image/png;base64,input');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
+  });
+});
+
+describe('isValidImageEmbeddingSource', () => {
+  it('should accept model-readable image sources', () => {
+    expect(isValidImageEmbeddingSource('data:image/png;base64,input')).toBe(true);
+    expect(isValidImageEmbeddingSource('dataset/team/file.png')).toBe(true);
+    expect(isValidImageEmbeddingSource('temp/team/file.png')).toBe(true);
+    expect(isValidImageEmbeddingSource('chat/app/user/file.png')).toBe(true);
+    expect(isValidImageEmbeddingSource('https://example.com/file.png')).toBe(true);
+  });
+
+  it('should reject empty or local non-url image sources', () => {
+    expect(isValidImageEmbeddingSource('')).toBe(false);
+    expect(isValidImageEmbeddingSource('/local/file.png')).toBe(false);
   });
 });
 

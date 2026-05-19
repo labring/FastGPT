@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import {
+  buildDatasetDataIndexRebuildPlan,
+  getDatasetImageIndexCapability,
+  getDatasetImageTrainingMode,
+  matchDatasetDataMarkdownImageUrls,
+  replaceS3KeyToPreviewUrl
+} from '@fastgpt/service/core/dataset/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   jwtSignS3DownloadToken: vi.fn(
@@ -437,5 +445,194 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('https://google.com');
       expect(result).toContain('# 标题');
     });
+  });
+});
+
+describe('matchDatasetDataMarkdownImageUrls', () => {
+  it('应提取 markdown 图片 URL 并忽略普通链接', () => {
+    const result = matchDatasetDataMarkdownImageUrls(
+      '![a](dataset/team/a.png) [普通链接](https://example.com) ![b](https://img.test/b.jpg)'
+    );
+
+    expect(result).toEqual(['dataset/team/a.png', 'https://img.test/b.jpg']);
+  });
+});
+
+describe('getDatasetImageTrainingMode', () => {
+  it('有 VLM 且是图片数据时应走 imageParse', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: true,
+        supportImageIndex: true,
+        imageId: 'dataset/team/image.png',
+        hasMarkdownImages: false
+      })
+    ).toBe(TrainingModeEnum.imageParse);
+  });
+
+  it('支持图片索引且正文有 markdown 图片时应走 image', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: true,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.image);
+  });
+
+  it('没有图片索引能力时应回退 chunk', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: false,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.chunk);
+  });
+});
+
+describe('getDatasetImageIndexCapability', () => {
+  beforeEach(() => {
+    global.embeddingModelMap.set('vision-embedding-model', {
+      ...global.systemDefaultModel.embedding,
+      model: 'vision-embedding-model',
+      name: 'vision-embedding-model',
+      vision: true
+    });
+    global.llmModelMap.set('dataset-vlm-model', {
+      ...global.systemDefaultModel.llm,
+      model: 'dataset-vlm-model',
+      name: 'dataset-vlm-model',
+      vision: true
+    });
+  });
+
+  it('未配置 VLM 时不应自动回退到默认 VLM', () => {
+    const result = getDatasetImageIndexCapability({
+      vectorModel: 'vision-embedding-model'
+    });
+
+    expect(result.supportVlm).toBe(false);
+    expect(result.supportImageEmbedding).toBe(true);
+    expect(result.supportImageIndex).toBe(true);
+    expect(result.availableVlmModel).toBeUndefined();
+  });
+
+  it('配置 VLM 时应同时返回 VLM 和多模态索引能力', () => {
+    const result = getDatasetImageIndexCapability({
+      vectorModel: 'vision-embedding-model',
+      vlmModel: 'dataset-vlm-model'
+    });
+
+    expect(result.supportVlm).toBe(true);
+    expect(result.supportImageEmbedding).toBe(true);
+    expect(result.supportImageIndex).toBe(true);
+    expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
+  });
+});
+
+describe('buildDatasetDataIndexRebuildPlan', () => {
+  it('更新索引时应只重算多模态索引，并保留其他非默认索引', () => {
+    const result = buildDatasetDataIndexRebuildPlan({
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.default, text: 'old default', dataId: 'default_vector' },
+        { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
+        {
+          type: DatasetDataIndexTypeEnum.question,
+          text: 'old question',
+          dataId: 'question_vector'
+        },
+        { type: DatasetDataIndexTypeEnum.summary, text: 'old summary', dataId: 'summary_vector' },
+        { type: DatasetDataIndexTypeEnum.image, text: 'old image summary', dataId: 'image_vector' }
+      ],
+      existingIndexes: [
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/old.png',
+          dataId: 'old_image_vector'
+        }
+      ],
+      nextQ: 'hello ![cat](dataset/team/cat.png)',
+      supportImageEmbedding: true,
+      imageIndex: true
+    });
+
+    expect(result.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
+      { type: DatasetDataIndexTypeEnum.question, text: 'old question', dataId: 'question_vector' },
+      { type: DatasetDataIndexTypeEnum.summary, text: 'old summary', dataId: 'summary_vector' },
+      { type: DatasetDataIndexTypeEnum.image, text: 'old image summary', dataId: 'image_vector' },
+      { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'dataset/team/cat.png' }
+    ]);
+  });
+
+  it('多模态图片来源不变时应复用已有 dataId', () => {
+    const result = buildDatasetDataIndexRebuildPlan({
+      indexes: [],
+      existingIndexes: [
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/cat.png',
+          dataId: 'image_embedding_vector'
+        }
+      ],
+      nextQ: 'hello ![cat](dataset/team/cat.png)',
+      supportImageEmbedding: true,
+      imageIndex: true
+    });
+
+    expect(result.indexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/team/cat.png',
+        dataId: 'image_embedding_vector'
+      }
+    ]);
+  });
+
+  it('不支持图片向量模型时应移除已有多模态索引并保留其他索引', () => {
+    const result = buildDatasetDataIndexRebuildPlan({
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/cat.png',
+          dataId: 'image_embedding_vector'
+        }
+      ],
+      existingIndexes: [],
+      nextQ: 'hello ![](dataset/team/cat.png)',
+      supportImageEmbedding: false,
+      imageIndex: true
+    });
+
+    expect(result.indexes).toEqual([
+      { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' }
+    ]);
+  });
+
+  it('图片集合应生成主图图片向量索引并复用已有 dataId', () => {
+    const result = buildDatasetDataIndexRebuildPlan({
+      indexes: [],
+      existingIndexes: [
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/main.png',
+          dataId: 'main_vector'
+        }
+      ],
+      supportImageEmbedding: true,
+      imageIndex: false,
+      isImageCollection: true,
+      imageId: 'dataset/team/main.png'
+    });
+
+    expect(result.indexes).toEqual([
+      {
+        type: DatasetDataIndexTypeEnum.imageEmbedding,
+        text: 'dataset/team/main.png',
+        dataId: 'main_vector'
+      }
+    ]);
   });
 });

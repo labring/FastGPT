@@ -53,7 +53,27 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
  * ============================================================================ */
 export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema;
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
-export const UpdateDatasetDataResponseSchema = z.object({});
+export const UpdateDatasetDataResponseSchema = z.object({
+  dataId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
+  }),
+  rebuilding: z.boolean().meta({
+    description: '是否已进入异步重建队列'
+  }),
+  trainingId: ObjectIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a08',
+    description: '异步重建训练任务 ID'
+  }),
+  q: z.string().optional().meta({
+    example: '什么是 FastGPT？',
+    description: '展示态问题/主文本'
+  }),
+  a: z.string().optional().meta({
+    example: 'FastGPT 是一个 AI Agent 构建平台',
+    description: '展示态回答/补充文本'
+  })
+});
 export type UpdateDatasetDataResponse = z.infer<typeof UpdateDatasetDataResponseSchema>;
 
 const DatasetDataIndexContentSchema = z.object({
