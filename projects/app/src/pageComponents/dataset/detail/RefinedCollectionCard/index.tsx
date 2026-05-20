@@ -89,7 +89,7 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, allDatasetTags } = useContextSelector(
+  const { datasetDetail, allDatasetTags } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
@@ -405,12 +405,9 @@ const CollectionCard = () => {
     async () => {
       if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
       getData(pageNum);
-      if (datasetDetail.status !== DatasetStatusEnum.active) {
-        loadDatasetDetail(datasetDetail._id);
-      }
     },
     {
-      retryInterval: 6000,
+      retryInterval: 10000,
       refreshDeps: [hasTrainingData, datasetDetail.status]
     }
   );
