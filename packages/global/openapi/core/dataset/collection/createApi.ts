@@ -164,6 +164,7 @@ export const CreateImageCollectionDataSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   collectionName: z.string().meta({ description: '集合名称' }),
+  overwriteDuplicate: z.boolean().optional().meta({ description: '是否覆盖重名集合' }),
   fileMd5: z.string().optional().meta({ description: '文件内容 MD5（前端 SparkMD5 计算）' })
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;

@@ -26,6 +26,11 @@ import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/cons
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -40,16 +45,21 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     const {
       parentId,
       datasetId,
-      collectionName,
+      collectionName: _collectionName,
+      overwriteDuplicate,
       fileMd5: frontendFileMd5
     } = CreateImageCollectionFormSchema.parse(result.data);
 
-    const { dataset, teamId, tmbId } = parentId
+    let collectionName = _collectionName;
+
+    const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
+
+    const { dataset, teamId, tmbId } = normalizedParentId
       ? await authDatasetCollection({
           req,
           authToken: true,
           authApiKey: true,
-          collectionId: parentId,
+          collectionId: normalizedParentId,
           per: WritePermissionVal
         }).then((res) => {
           if (datasetId && String(res.collection.datasetId) !== String(datasetId)) {
@@ -110,11 +120,105 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       })
     );
 
+    // Handle duplicate collection name (within transaction to avoid TOCTOU)
+    let deletedCollectionId: string | undefined;
+    let overwritten = false;
+
+    await mongoSessionRun(async (session) => {
+      const duplicateQuery: Record<string, any> = {
+        datasetId,
+        name: collectionName,
+        type: DatasetCollectionTypeEnum.images
+      };
+
+      if (normalizedParentId) {
+        duplicateQuery.parentId = normalizedParentId;
+      } else {
+        duplicateQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+      }
+
+      const existingCollection = await MongoDatasetCollection.findOne(duplicateQuery, '_id', {
+        session
+      });
+
+      if (existingCollection) {
+        if (overwriteDuplicate === true) {
+          // Overwrite: delete old collection within the same transaction
+          deletedCollectionId = String(existingCollection._id);
+
+          const collections = await findCollectionAndChild({
+            teamId,
+            datasetId,
+            collectionId: deletedCollectionId,
+            fields: '_id teamId datasetId fileId metadata'
+          });
+
+          await delCollection({
+            collections,
+            delImg: true,
+            delFile: false,
+            session
+          });
+
+          overwritten = true;
+
+          addLog.info(
+            `[ImageImport] Overwritten collection: ${deletedCollectionId}, name: ${collectionName}`
+          );
+        } else {
+          // No overwrite: add suffix to new collection name
+          const lastDotIndex = collectionName.lastIndexOf('.');
+          const nameWithoutExt =
+            lastDotIndex > 0 ? collectionName.substring(0, lastDotIndex) : collectionName;
+          const ext = lastDotIndex > 0 ? collectionName.substring(lastDotIndex) : '';
+
+          // Escape special regex characters
+          const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const escapedBase = escapeRegex(nameWithoutExt);
+          const escapedExt = escapeRegex(ext);
+
+          // Query all existing collections with suffix pattern in the same folder
+          const suffixQuery: Record<string, any> = {
+            datasetId,
+            name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
+            type: DatasetCollectionTypeEnum.images
+          };
+
+          if (normalizedParentId) {
+            suffixQuery.parentId = normalizedParentId;
+          } else {
+            suffixQuery.$or = [{ parentId: null }, { parentId: { $exists: false } }];
+          }
+
+          const existingNames = await MongoDatasetCollection.find(suffixQuery, 'name', {
+            session
+          }).lean();
+
+          // Find max suffix from existing names
+          let maxSuffix = 0;
+          const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
+          for (const doc of existingNames) {
+            const match = doc.name.match(suffixRegex);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > maxSuffix) maxSuffix = num;
+            }
+          }
+
+          collectionName = `${nameWithoutExt}(${maxSuffix + 1})${ext}`;
+
+          addLog.info(
+            `[ImageImport] Renamed duplicate collection from '${_collectionName}' to '${collectionName}'`
+          );
+        }
+      }
+    });
+
     return createCollectionAndInsertData({
       dataset,
       imageIds,
       createCollectionParams: {
-        parentId,
+        parentId: normalizedParentId,
         teamId,
         tmbId,
         datasetId,
