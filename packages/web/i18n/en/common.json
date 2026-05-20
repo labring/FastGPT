@@ -1638,6 +1638,7 @@
   "database_sql_query": "SQL statement",
   "search_result": "Search result",
   "comma": ", ",
+  "enum_quote": "\"{{name}}\"",
   "set_avatar_in_edit_modal": "Click to upload an avatar.",
   "select_time": "Select time",
   "comma_symbol": ",",

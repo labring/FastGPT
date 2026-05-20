@@ -404,7 +404,7 @@ const EditForm = ({
       {/* 检索过滤 */}
       <Box {...BOX_STYLES}>
         <TagFilterSection
-          datasetIds={datasetIds}
+          datasets={selectDatasets}
           value={appForm.dataset.collectionFilterMatch}
           onChange={(v) =>
             setAppForm((state) => ({

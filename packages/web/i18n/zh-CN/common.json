@@ -1262,6 +1262,7 @@
   "code_error.user_error.bin_visitor_guest": "您当前身份为游客，无权操作",
   "code_error.user_error.un_auth_user": "找不到该用户",
   "comma": "、",
+  "enum_quote": "“{{name}}”",
   "comma_symbol": "，",
   "comon.Continue_Adding": "继续添加",
   "copy_link": "复制链接",
