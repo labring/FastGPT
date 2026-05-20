@@ -942,6 +942,76 @@ describe('Embedding Train Task Processor', () => {
       // Status update is handled uniformly by the worker's failed event handler
     });
 
+    test('SFT queue full should map to queue full error', async () => {
+      const { updateEmbeddingCheckpointData, getEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/controller'
+      );
+      const { MongoEmbeddingTrainsetData } = await import(
+        '@fastgpt/service/core/train/embedding/data/schema'
+      );
+      const { createSFTTask } = await import('@fastgpt/service/core/train/embedding/external');
+
+      const mockTask = createMockTask();
+      const checkpointData: any = {};
+
+      (getEmbeddingTrainTask as any).mockImplementation(async (id: string) => {
+        if (id === mockTaskId) {
+          return Promise.resolve({
+            ...mockTask,
+            checkpoint: {
+              ...mockTask.checkpoint,
+              data: { ...checkpointData }
+            }
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      (MongoEmbeddingTrainsetData.find as any).mockReturnValue({
+        cursor: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              _id: 'data_1',
+              trainsetId: 'trainset_1',
+              query: 'test',
+              positiveDocs: ['positive'],
+              negativeDocs: ['negative']
+            };
+          }
+        })
+      });
+
+      (fs.writeFile as any).mockResolvedValue(undefined);
+      (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
+      (updateEmbeddingCheckpointData as any).mockImplementation(
+        async (_taskId: string, stage: string, data: any, merge: boolean = false) => {
+          if (merge) {
+            checkpointData[stage] = { ...checkpointData[stage], ...data };
+          } else {
+            checkpointData[stage] = data;
+          }
+          return Promise.resolve();
+        }
+      );
+      (createSFTTask as any).mockRejectedValue(
+        new Error('SFT Bridge API error: Too many concurrent tasks (max: 3)')
+      );
+
+      try {
+        await embeddingTrainTaskProcessor({
+          data: { taskId: mockTaskId, isRetry: false },
+          attemptsMade: 0,
+          opts: { attempts: 3 }
+        } as any);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskRetriableError);
+        expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
+          EmbeddingTrainErrEnum.embeddingFinetuneQueueFull
+        );
+      }
+    });
+
     test('SFT task failure should throw an error', async () => {
       const {
         updateEmbeddingCheckpointData,

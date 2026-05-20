@@ -1041,6 +1041,52 @@ describe('Rerank Train Task Processor', () => {
       expect(getRerankTrainTask).toHaveBeenCalled();
     });
 
+    test('SFT queue full should map to queue full error', async () => {
+      const { getRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/controller'
+      );
+      const { MongoRerankTrainsetData } = await import(
+        '@fastgpt/service/core/train/rerank/data/schema'
+      );
+      const { createSFTTask } = await import('@fastgpt/service/core/train/rerank/external');
+
+      const mockTask = createMockTask();
+      (getRerankTrainTask as any).mockResolvedValue(mockTask);
+
+      (MongoRerankTrainsetData.find as any).mockReturnValue({
+        cursor: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              _id: 'data_1',
+              id: 'data_1',
+              q: 'test query',
+              a: 'test answer'
+            };
+          }
+        })
+      });
+
+      (fs.writeFile as any).mockResolvedValue(undefined);
+      (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
+      (createSFTTask as any).mockRejectedValue(
+        new Error('SFT Bridge API error: Too many concurrent tasks (max: 3)')
+      );
+
+      try {
+        await rerankTrainTaskProcessor({
+          data: { taskId: mockTaskId, isRetry: false },
+          attemptsMade: 0,
+          opts: { attempts: 3 }
+        } as any);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskRetriableError);
+        expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.rerankFinetuneQueueFull
+        );
+      }
+    });
+
     test('应该处理没有训练数据的情况', async () => {
       const { getRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/controller'
