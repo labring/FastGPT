@@ -22,7 +22,7 @@ import {
   postUpdateSkillCollaborators,
   deleteSkillCollaborator
 } from '@/web/core/skill/collaborator';
-import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/constant';
+import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';

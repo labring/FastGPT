@@ -10,7 +10,7 @@ import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../controller';
 import { parseJsonArgs } from '../../utils';
-import { writeUrlFilesToSandbox } from '../files';
+import { writeUrlFilesToSandbox } from '../service/files';
 
 const ToolMap = {
   ...editFileToolMap,

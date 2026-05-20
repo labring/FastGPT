@@ -4,7 +4,8 @@ const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
-  AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
+  AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
+  AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: process.env.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
 };
 
 const loadSandboxConfigModule = async () => {
@@ -14,7 +15,12 @@ const loadSandboxConfigModule = async () => {
 
 const loadSkillSandboxConfigModule = async () => {
   vi.resetModules();
-  return import('@fastgpt/service/core/agentSkills/sandboxConfig');
+  return import('@fastgpt/service/core/ai/skill/sandbox/config');
+};
+
+const loadSkillEditModule = async () => {
+  vi.resetModules();
+  return import('@fastgpt/service/core/ai/skill/edit/config');
 };
 
 const sealosProviderConfig = {
@@ -33,6 +39,10 @@ describe('sandbox config helpers', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
+    vi.stubEnv(
+      'AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH',
+      originalEnv.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+    );
     vi.unstubAllGlobals();
   });
 
@@ -107,7 +117,7 @@ describe('sandbox config helpers', () => {
   });
 
   it('only enables code-server for sealosdevbox edit-debug create config', async () => {
-    const { buildEditDebugCreateConfig } = await loadSkillSandboxConfigModule();
+    const { buildEditDebugCreateConfig } = await loadSkillEditModule();
 
     const result = buildEditDebugCreateConfig({
       providerConfig: sealosProviderConfig,
@@ -147,9 +157,17 @@ describe('sandbox config helpers', () => {
     ).toThrow('Sandbox provider token is required for sealosdevbox');
   });
 
+  it('uses volume mount path as opensandbox work directory', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH', '/workspace');
+
+    const { getSandboxDefaults } = await loadSandboxConfigModule();
+
+    expect(getSandboxDefaults().workDirectory).toBe('/workspace');
+  });
+
   it('builds edit-debug sandbox id from skill id and edit-debug chat id only', async () => {
-    const { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } =
-      await loadSkillSandboxConfigModule();
+    const { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } = await loadSkillEditModule();
 
     expect(EDIT_DEBUG_SANDBOX_CHAT_ID).toBe('edit-debug');
     expect(getEditDebugSandboxId('skill-1')).toBe(getEditDebugSandboxId('skill-1'));

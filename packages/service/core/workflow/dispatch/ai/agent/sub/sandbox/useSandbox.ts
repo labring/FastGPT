@@ -4,10 +4,12 @@ import { serviceEnv } from '../../../../../../../env';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   getAgentSkillInfos,
+  getSkillsRootPath,
   injectAgentSkillFilesToSandbox,
   type DeployedSkillInfo
-} from '../../../../../../agentSkills/runtime';
+} from '../../../../../../ai/skill/runtime';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
+import { getSandboxDefaults } from '../../../../../../ai/sandbox/config';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 
 type UseSandboxParams = {
@@ -101,11 +103,12 @@ export async function useSandbox({
   const sandboxClient = await getSandboxClient({ appId, userId, chatId });
 
   const getSkillsInfo = async () => {
-    // 编辑模式下复用编辑器已经写入的 skill 文件，只扫描当前 sandbox。
+    // 编辑模式下复用编辑器已经写入 skills 目录的 skill 文件，避免工作区其他 SKILL.md 进入 prompt。
     if (hasEditSkill) {
+      const defaults = getSandboxDefaults();
       return getAgentSkillInfos({
         sandbox: sandboxClient.provider,
-        workDirectory: '.'
+        workDirectory: getSkillsRootPath(defaults.workDirectory)
       });
     } else if (hasAgentSkills) {
       return injectAgentSkillFilesToSandbox({

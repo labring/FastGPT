@@ -1,0 +1,340 @@
+import {
+  getQueue,
+  getWorker,
+  QueueNames,
+  type Job,
+  type Worker
+} from '../../../../../common/bullmq';
+import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
+import { MongoAgentSkills } from '../../model/schema';
+import { updateCurrentStorage, updateSkillCreationFailed } from '../update';
+import { buildSkillMd } from '../../utils/skillMdTemplate';
+import { generateSkillMd } from './skillMdGenerator';
+import { extractSkillFromMarkdown } from '../../utils/skillMarkdown';
+import {
+  createSkillPackage,
+  deleteSkillPackage,
+  type SkillStorageInfo,
+  uploadSkillPackage
+} from '../../package';
+import { createVersion } from '../../version';
+import { getLogger, LogCategories } from '../../../../../common/logger';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { createUsage } from '../../../../../support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
+
+export type AgentSkillCreateJobData = {
+  skillId: string;
+  teamId: string;
+  tmbId: string;
+  name: string;
+  description: string;
+  requirements?: string;
+  model?: string;
+};
+
+const agentSkillCreateQueue = getQueue<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, {
+  defaultJobOptions: {
+    // 初次创建是“先落库 pending，再异步补齐包和版本”的链路。
+    // 失败需要保留在队列一段时间，便于排查；业务上的失败态会写回 skill 行。
+    attempts: 1,
+    removeOnComplete: true,
+    removeOnFail: {
+      age: 30 * 24 * 60 * 60,
+      count: 1000
+    }
+  }
+});
+let hookedWorker: Worker<AgentSkillCreateJobData> | null = null;
+
+/**
+ * 为一个可见的 pending skill 添加幂等的异步创建任务。
+ *
+ * 使用 skillId 作为 BullMQ jobId，使 API 重试、worker 启动恢复、前端重复提交都收敛到
+ * 同一个创建任务。已完成/失败的历史 job 会先删除再重建，因为是否仍需重试以 skill
+ * 数据行为准，而不是以队列里的旧任务状态为准。
+ */
+export const addAgentSkillCreateJob = async (data: AgentSkillCreateJobData) => {
+  const skillId = String(data.skillId);
+  const existingJob = await agentSkillCreateQueue.getJob(skillId);
+  if (existingJob) {
+    const state = await existingJob.getState();
+    if (state !== 'completed' && state !== 'failed') {
+      return existingJob;
+    }
+    await existingJob.remove();
+  }
+
+  return agentSkillCreateQueue.add(skillId, data, {
+    jobId: skillId
+  });
+};
+
+/**
+ * worker 启动时恢复仍处于 creating 的可见 skill。
+ *
+ * 创建 API 会先持久化生成输入，再写入 BullMQ。如果进程刚好在这两步之间退出，
+ * 启动扫描会把 pending 数据重新转成幂等 job，避免详情页永久停留在创建中。
+ */
+async function resumePendingSkillCreationJobs(): Promise<void> {
+  const pendingSkills = await MongoAgentSkills.find(
+    {
+      creationStatus: AgentSkillCreationStatusEnum.creating,
+      deleteTime: null
+    },
+    {
+      _id: 1,
+      teamId: 1,
+      tmbId: 1,
+      name: 1,
+      description: 1,
+      creationPayload: 1
+    }
+  ).lean();
+
+  const results = await Promise.allSettled(
+    pendingSkills.flatMap((skill) => {
+      if (!skill.teamId || !skill.tmbId) {
+        // 老数据或异常数据缺少归属信息时不能安全计费/生成，跳过并留下日志即可。
+        logger.warn('Pending skill missing owner info, skip resume', {
+          skillId: skill._id.toString()
+        });
+        return [];
+      }
+
+      return addAgentSkillCreateJob({
+        skillId: skill._id.toString(),
+        teamId: skill.teamId.toString(),
+        tmbId: skill.tmbId.toString(),
+        name: skill.name,
+        description: skill.description,
+        requirements: skill.creationPayload?.requirements,
+        model: skill.creationPayload?.model
+      });
+    })
+  );
+
+  const failedCount = results.filter((result) => result.status === 'rejected').length;
+  if (pendingSkills.length > 0) {
+    logger.info('Pending skill creation jobs resumed', {
+      total: pendingSkills.length,
+      failed: failedCount
+    });
+  }
+}
+
+/**
+ * 完成一个 pending skill 的初始包生成、上传和 v0 版本绑定。
+ *
+ * API 先创建可见 skill 行，保证详情页拥有稳定 skillId；worker 再执行较慢的
+ * SKILL.md 生成、zip 打包、对象存储上传和版本初始化。失败会写回 skill 行，
+ * 这样刷新页面或后续访问都能看到确定的终态，而不是依赖队列状态。
+ */
+export async function completePendingSkillCreation(data: AgentSkillCreateJobData): Promise<void> {
+  const { skillId, teamId, tmbId, name, description } = data;
+  let uploadedStorageInfo: SkillStorageInfo | undefined;
+
+  const skill = await MongoAgentSkills.findOne({
+    _id: skillId,
+    teamId,
+    deleteTime: null
+  });
+
+  if (!skill) {
+    logger.warn('Pending skill not found, skip creation job', { skillId, teamId });
+    return;
+  }
+
+  if (
+    (!skill.creationStatus || skill.creationStatus === AgentSkillCreationStatusEnum.ready) &&
+    skill.currentStorage
+  ) {
+    // BullMQ 可能重复投递，或 worker 启动恢复时扫到刚完成的数据；已绑定包则直接幂等退出。
+    logger.info('Pending skill already completed, skip duplicate creation job', { skillId });
+    return;
+  }
+
+  try {
+    const requirements = data.requirements ?? skill.creationPayload?.requirements;
+    const model = data.model ?? skill.creationPayload?.model;
+    let skillMd: string;
+    let packageRootName = name;
+
+    if (requirements && model) {
+      // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
+      const [generatedSkillMd, usage] = await generateSkillMd({
+        name,
+        description,
+        requirements: requirements.trim(),
+        model
+      });
+
+      skillMd = generatedSkillMd;
+
+      const { skill: generatedSkill, error: parseError } = extractSkillFromMarkdown(skillMd);
+      if (parseError || !generatedSkill?.name) {
+        // 后续打包目录名依赖 SKILL.md 解析结果，这里失败必须中止，避免上传不可用包。
+        logger.warn('AI generated invalid SKILL.md', {
+          skillId,
+          name,
+          parseError
+        });
+        throw SkillErrEnum.invalidSkillPackage;
+      }
+      packageRootName = generatedSkill.name;
+
+      // 只有模型辅助生成才产生 token 用量；普通模板创建不计入模型消耗。
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      });
+
+      createUsage({
+        teamId,
+        tmbId,
+        appName: i18nT('common:support.wallet.usage.Assist Generate Skill'),
+        totalPoints,
+        source: UsageSourceEnum.assist_generate_skill,
+        list: [
+          {
+            moduleName: i18nT('common:support.wallet.usage.Assist Generate Skill'),
+            amount: totalPoints,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens
+          }
+        ]
+      });
+    } else {
+      skillMd = buildSkillMd({
+        name: packageRootName,
+        description
+      });
+    }
+
+    const zipBuffer = await createSkillPackage({ name: packageRootName, skillMd });
+
+    const storageInfo = await uploadSkillPackage({
+      teamId,
+      skillId,
+      version: 0,
+      zipBuffer
+    });
+    uploadedStorageInfo = storageInfo;
+
+    // storage 与 v0 version 必须在同一个事务里绑定；否则可能出现当前包指向成功但版本列表缺失。
+    const isStorageLinked = await mongoSessionRun(async (session) => {
+      const isUpdated = await updateCurrentStorage(skillId, storageInfo, session);
+      if (!isUpdated) {
+        return false;
+      }
+
+      await createVersion(
+        {
+          skillId,
+          tmbId,
+          version: 0,
+          versionName: 'Initial creation',
+          storage: storageInfo
+        },
+        session
+      );
+
+      return true;
+    });
+
+    if (!isStorageLinked) {
+      uploadedStorageInfo = undefined;
+      // skill 可能在 worker 生成期间被删除。数据库未绑定成功时，刚上传的包不应残留。
+      await deleteSkillPackage(storageInfo).catch((cleanupError) => {
+        logger.error('Failed to clean uploaded package for deleted pending skill', {
+          skillId,
+          cleanupError
+        });
+      });
+      return;
+    }
+
+    uploadedStorageInfo = undefined;
+  } catch (error) {
+    if (uploadedStorageInfo) {
+      // 打包上传已经完成但后续步骤失败时，需要主动清理对象存储，避免形成孤儿包。
+      await deleteSkillPackage(uploadedStorageInfo).catch((cleanupError) => {
+        logger.error('Failed to clean uploaded skill package after creation error', {
+          skillId,
+          cleanupError
+        });
+      });
+    }
+
+    const errorText = getErrText(error, 'Skill creation failed');
+    await updateSkillCreationFailed({
+      skillId,
+      error: errorText
+    });
+    logger.error('Pending skill creation failed', {
+      skillId,
+      teamId,
+      error
+    });
+    throw error;
+  }
+}
+
+export const initAgentSkillCreateWorker = () => {
+  const worker = getWorker<AgentSkillCreateJobData>(
+    QueueNames.agentSkillCreate,
+    async (job: Job<AgentSkillCreateJobData>) => {
+      await completePendingSkillCreation(job.data);
+    },
+    {
+      concurrency: 2
+    }
+  );
+
+  if (hookedWorker !== worker) {
+    // getWorker 可能返回同一个单例 worker；只挂一次 failed 监听，避免重复写失败态和重复日志。
+    worker.on('failed', async (job, error) => {
+      try {
+        const skillId = job?.data.skillId;
+        if (!skillId) return;
+
+        const skill = await MongoAgentSkills.findOne(
+          {
+            _id: skillId,
+            creationStatus: AgentSkillCreationStatusEnum.creating,
+            deleteTime: null
+          },
+          { _id: 1 }
+        ).lean();
+        if (!skill) return;
+
+        // completePendingSkillCreation 内部会优先写失败态；这里兜底处理 worker 级异常。
+        await updateSkillCreationFailed({
+          skillId,
+          error: getErrText(error, 'Skill creation failed')
+        });
+      } catch (failedEventError) {
+        logger.error('Failed to persist skill creation failed event', {
+          skillId: job?.data.skillId,
+          error: failedEventError
+        });
+      }
+    });
+
+    hookedWorker = worker;
+  }
+
+  resumePendingSkillCreationJobs().catch((error) => {
+    logger.error('Failed to resume pending skill creation jobs', { error });
+  });
+
+  return worker;
+};

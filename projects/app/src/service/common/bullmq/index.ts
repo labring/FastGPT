@@ -5,7 +5,7 @@ import { initAppDeleteWorker } from '@fastgpt/service/core/app/delete';
 import { initTeamDeleteWorker } from '@fastgpt/service/support/user/team/delete';
 import { initCollectionUpdateWorker } from '@fastgpt/service/core/dataset/collection/mq';
 import { initWechatPollWorker } from '@fastgpt/service/support/outLink/wechat/mq';
-import { initAgentSkillCreateWorker } from '@fastgpt/service/core/agentSkills/creation';
+import { initAgentSkillCreateWorker } from '@fastgpt/service/core/ai/skill/manage/creation';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 

@@ -8,7 +8,7 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { getHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
-import type { DeployedSkillInfo } from '../../../../../agentSkills/runtime/types';
+import type { DeployedSkillInfo } from '../../../../../ai/skill/runtime/types';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';

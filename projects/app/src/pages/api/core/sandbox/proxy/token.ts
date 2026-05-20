@@ -1,11 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { signSandboxProxyToken } from '@fastgpt/service/core/sandbox/proxyToken';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   SandboxProxyTokenBodySchema,

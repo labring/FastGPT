@@ -1,5 +1,5 @@
 import { serviceEnv } from '../../../env';
-import type { SandboxImageConfigType } from '@fastgpt/global/core/agentSkills/type';
+import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import type {
   OpenSandboxConfigType,
   OpenSandboxConnectionConfig,
@@ -242,9 +242,7 @@ export function getSandboxDefaults(): SandboxDefaults {
       repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
       tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
-    workDirectory: '/home/sandbox/workspace',
-    // workDirectory: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
+    workDirectory: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH,
     entrypoint: '/home/sandbox/entrypoint.sh'
-    // entrypoint: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
 }

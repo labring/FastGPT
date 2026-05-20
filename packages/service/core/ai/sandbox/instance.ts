@@ -1,8 +1,8 @@
 import { isValidObjectId } from 'mongoose';
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import type { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import type { SkillSandboxEndpointType } from '@fastgpt/global/core/agentSkills/type';
+import type { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { SkillSandboxEndpointType } from '@fastgpt/global/core/ai/skill/type';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from './type';
 

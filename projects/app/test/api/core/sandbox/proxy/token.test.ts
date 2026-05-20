@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/core/sandbox/proxy/token';
-import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { signSandboxProxyToken } from '@fastgpt/service/core/sandbox/proxyToken';
-import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   PerResourceTypeEnum,

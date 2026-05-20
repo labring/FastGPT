@@ -2,10 +2,10 @@ import React, { type Dispatch, type ReactNode, type SetStateAction, useState } f
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillList, getSkillFolderPath } from '@/web/core/skill/api';
-import type { ListSkillsResponse } from '@fastgpt/global/core/agentSkills/api';
+import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRouter } from 'next/router';
-import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
+import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],

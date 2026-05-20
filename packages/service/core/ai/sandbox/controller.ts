@@ -3,7 +3,7 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxProtocolEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxProtocolEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { serviceEnv } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -32,7 +32,7 @@ import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { SandboxResourceDoc } from './instance';
-import type { SkillSandboxEndpointType } from '@fastgpt/global/core/agentSkills/type';
+import type { SkillSandboxEndpointType } from '@fastgpt/global/core/ai/skill/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 

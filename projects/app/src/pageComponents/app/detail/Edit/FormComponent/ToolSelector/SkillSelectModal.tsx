@@ -11,8 +11,8 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getSkillList } from '@/web/core/skill/api';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import type { ListSkillsResponse } from '@fastgpt/global/core/agentSkills/api';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import FolderPath from '@/components/common/folder/Path';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 

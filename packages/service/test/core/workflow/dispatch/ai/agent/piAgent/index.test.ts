@@ -7,6 +7,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { serviceEnv } from '@fastgpt/service/env';
+import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/config';
 
 const {
   agentPromptMock,
@@ -74,10 +75,14 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
   getAgentRuntimeTools: vi.fn(async () => [])
 }));
 
-vi.mock('@fastgpt/service/core/agentSkills/runtime', () => ({
-  getAgentSkillInfos: getAgentSkillInfosMock,
-  injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
-}));
+vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/runtime')>();
+  return {
+    ...original,
+    getAgentSkillInfos: getAgentSkillInfosMock,
+    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/sandbox/controller', async (importOriginal) => {
   const original =
@@ -123,6 +128,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
 });
 
 const originalShowSkill = serviceEnv.SHOW_SKILL;
+const getEditSkillsRootPath = () =>
+  `${getSandboxDefaults().workDirectory.replace(/\/+$/, '')}/skills`;
 
 const createProps = () =>
   ({
@@ -512,7 +519,7 @@ describe('dispatchPiAgent user context', () => {
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
-      workDirectory: '.'
+      workDirectory: getEditSkillsRootPath()
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
 

@@ -13,7 +13,7 @@ import {
   buildAgentUserReminderInput,
   useUserContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/agentSkills/runtime/types';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')

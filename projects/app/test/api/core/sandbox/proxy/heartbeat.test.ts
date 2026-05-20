@@ -3,7 +3,7 @@ import handler from '@/pages/api/core/sandbox/internal/heartbeat';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { Call } from '@test/utils/request';
 

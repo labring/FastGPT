@@ -9,7 +9,7 @@ import userErr from './code/user';
 import commonErr from './code/common';
 import s3Err from './code/s3';
 import SystemErrEnum from './code/system';
-import agentSkillErr from './code/agentSkill';
+import agentSkillErr from './code/skill';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {

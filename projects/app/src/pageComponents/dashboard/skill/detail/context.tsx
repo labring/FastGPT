@@ -2,15 +2,15 @@ import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useStat
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import type { AgentSkillDetailType } from '@fastgpt/global/core/agentSkills/type';
+import type { AgentSkillDetailType } from '@fastgpt/global/core/ai/skill/type';
 import type { SandboxStatusItemType, SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
 import {
   AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
-} from '@fastgpt/global/core/agentSkills/constants';
+} from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
-import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
+import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 
 export enum TabEnum {
   config = 'config',

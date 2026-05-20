@@ -18,7 +18,7 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
-} from '@fastgpt/global/core/agentSkills/constants';
+} from '@fastgpt/global/core/ai/skill/constants';
 import {
   deleteSkill,
   exportSkill,
@@ -34,10 +34,10 @@ import {
   postUpdateSkillCollaborators,
   deleteSkillCollaborator
 } from '@/web/core/skill/collaborator';
-import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/constant';
+import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/agentSkills/api';
+import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import type {

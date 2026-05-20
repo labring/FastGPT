@@ -5,7 +5,7 @@ import {
   updateSandboxInstanceEndpoint
 } from '@fastgpt/service/core/ai/sandbox/instance';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 describe('sandbox instance helpers', () => {

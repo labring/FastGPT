@@ -16,7 +16,7 @@ import {
   postSwitchSkillVersion,
   postUpdateSkillVersion
 } from '@/web/core/skill/api';
-import type { SkillVersionListItemType } from '@fastgpt/global/core/agentSkills/api';
+import type { SkillVersionListItemType } from '@fastgpt/global/core/ai/skill/api';
 
 const SkillHistoriesSlider = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
