@@ -17,7 +17,8 @@
     "typecheck": "cd projects/app && tsc --noEmit",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "vitest run",
-    "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts"
+    "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts",
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel build"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

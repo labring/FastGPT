@@ -6,7 +6,12 @@
       "@/*": ["./src/*"],
       "@test/*": ["../../test/*"],
       "@t3-oss/env-core": ["../../packages/service/node_modules/@t3-oss/env-core/dist/index.d.ts"],
-      "@fastgpt/service/*": ["../../packages/service/*"]
+      "@fastgpt/service/*": ["../../packages/service/*"],
+      "@fastgpt-sdk/otel": ["../../sdk/otel/src/index.ts"],
+      "@fastgpt-sdk/otel/logger": ["../../sdk/otel/src/logger-entry.ts"],
+      "@fastgpt-sdk/otel/metrics": ["../../sdk/otel/src/metrics-entry.ts"],
+      "@fastgpt-sdk/otel/tracing": ["../../sdk/otel/src/tracing-entry.ts"],
+      "@fastgpt-sdk/storage": ["../../sdk/storage/src/index.ts"]
     }
   },
   "include": [
