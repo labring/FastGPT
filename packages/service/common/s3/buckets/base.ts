@@ -69,7 +69,7 @@ export class S3BaseBucket {
 
     await this.client.uploadObject({
       key,
-      body: 'ok',
+      body: Buffer.from('ok'),
       contentType: 'text/plain',
       metadata: {
         contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
