@@ -1,6 +1,5 @@
 import { jsonRes } from '../response';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { SpanStatusCode } from '@opentelemetry/api';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
 import { getLogger, LogCategories, withContext } from '../logger';
@@ -8,6 +7,7 @@ import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
 import { getClientIpFromRequest } from '../security/clientIp';
+import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -43,6 +43,18 @@ function getRequestRoute(url: string) {
     .split('/')
     .map((segment) => normalizeRouteSegment(segment))
     .join('/');
+}
+
+function hasApiKeyHeader(headers: NextApiRequest['headers']) {
+  const authorization = headers.authorization;
+  const normalizedAuthorization = Array.isArray(authorization) ? authorization[0] : authorization;
+
+  return Boolean(
+    normalizedAuthorization?.toLowerCase().startsWith('bearer ') ||
+    headers.apikey ||
+    headers['api-key'] ||
+    headers['x-api-key']
+  );
 }
 
 export const NextEntry = ({
@@ -135,19 +147,31 @@ export const NextEntry = ({
 
               span.setAttribute('http.response.status_code', res.statusCode);
             } catch (error) {
-              // Handle Zod validation errors
-              if (error instanceof ZodError) {
-                span.setAttribute('http.response.status_code', 400);
-                span.setStatus({
-                  code: SpanStatusCode.ERROR,
-                  message: 'Data validation error'
-                });
+              // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
+              if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+                const zodParseErrorContext = getZodParseErrorInputSource(error);
+                const isExternalApiRequest = hasApiKeyHeader(req.headers);
+                if (!zodParseErrorContext || !isExternalApiRequest) {
+                  span.setAttribute('http.response.status_code', 500);
+                  setSpanError(span, error);
 
+                  return jsonRes(res, {
+                    code: 500,
+                    error,
+                    url: req.url
+                  });
+                }
+
+                span.setAttribute('http.response.status_code', 400);
                 return jsonRes(res, {
                   code: 400,
                   message: 'Data validation error',
                   error,
-                  url: req.url
+                  url: req.url,
+                  zodParseErrorContext: {
+                    ...zodParseErrorContext,
+                    hasApiKeyHeader: isExternalApiRequest
+                  }
                 });
               }
 

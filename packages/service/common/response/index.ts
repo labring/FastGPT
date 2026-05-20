@@ -7,6 +7,7 @@ import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
+import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -25,6 +26,11 @@ export interface ProcessedError {
   data?: any;
   zodError?: any;
 }
+
+export type ZodParseErrorContext = {
+  inputSource: 'body' | 'query' | 'params';
+  hasApiKeyHeader?: boolean;
+};
 
 /**
  * 业务 JSON `code` 与 HTTP 状态码解耦：多数业务码为 5xxxxx，不能当作 HTTP status。
@@ -67,8 +73,9 @@ export function processError(params: {
   error: any;
   url?: string;
   defaultCode?: number;
+  zodParseErrorContext?: ZodParseErrorContext;
 }): ProcessedError {
-  const { error, url, defaultCode = 500 } = params;
+  const { error, url, defaultCode = 500, zodParseErrorContext } = params;
   let zodError;
 
   const errResponseKey = typeof error === 'string' ? error : error?.message;
@@ -111,13 +118,16 @@ export function processError(params: {
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
     logger.info('Request error', { url, message: msg });
-  } else if (error instanceof ZodError) {
+  } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+    const zodSourceError = getZodError(error);
     zodError = (() => {
       try {
-        return JSON.parse(error.message);
+        return JSON.parse(zodSourceError?.message || error.message);
       } catch (error) {}
     })();
-    logger.error('Zod validation error', { url, data: zodError, error });
+    if (!zodParseErrorContext?.inputSource) {
+      logger.error('Zod validation error', { url, data: zodError, error });
+    }
     msg = error.message;
   } else {
     logger.error('System unexpected error', { url, message: msg, error });
@@ -142,13 +152,14 @@ export const jsonRes = <T = any>(
     data?: T;
     error?: any;
     url?: string;
+    zodParseErrorContext?: ZodParseErrorContext;
   }
 ) => {
-  const { code = 200, message = '', data = null, error, url } = props || {};
+  const { code = 200, message = '', data = null, error, url, zodParseErrorContext } = props || {};
 
   // 如果有错误，使用统一的错误处理逻辑
   if (error) {
-    const processedError = processError({ error, url, defaultCode: code });
+    const processedError = processError({ error, url, defaultCode: code, zodParseErrorContext });
 
     // 如果需要清除 cookie
     if (processedError.shouldClearCookie) {
