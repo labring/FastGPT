@@ -5,9 +5,12 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
 import {
+  findSkillMdKey,
+  getRootPrefix,
   repackFileMapAsZip,
   getSupportedArchiveFormat,
-  extractToFileMap
+  extractToFileMap,
+  stripRootPrefix
 } from '@fastgpt/service/core/ai/skill/package';
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
@@ -110,6 +113,11 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     if (Object.keys(fileMap).length === 0) {
       return Promise.reject(SkillErrEnum.archiveEmpty);
     }
+    const skillMdKey = findSkillMdKey(fileMap);
+    if (!skillMdKey) {
+      return Promise.reject(SkillErrEnum.invalidSkillPackage);
+    }
+    fileMap = stripRootPrefix(fileMap, getRootPrefix(skillMdKey));
 
     // Derive package-level name from caller-supplied value or archive filename
     const pkgName =
