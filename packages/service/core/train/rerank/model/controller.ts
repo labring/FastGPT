@@ -20,6 +20,7 @@ import {
  * @param params.endpoint - Tuned model endpoint (stored in channel, not model config)
  * @param params.isActive - Whether to activate the model immediately
  * @param params.charsPointsPrice - Inherited from base model
+ * @param params.maxToken - Inherited from base model (query + single document token limit)
  * @returns Model configuration object ID
  */
 export async function createRerankModelConfig(params: {
@@ -31,9 +32,10 @@ export async function createRerankModelConfig(params: {
   };
   isActive: boolean;
   charsPointsPrice?: number;
+  maxToken?: number;
   instruction?: string;
 }): Promise<string> {
-  const { name, endpoint, isActive, charsPointsPrice, instruction } = params;
+  const { name, endpoint, isActive, charsPointsPrice, maxToken, instruction } = params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
@@ -46,6 +48,7 @@ export async function createRerankModelConfig(params: {
     isTuned: true,
     type: ModelTypeEnum.rerank,
     charsPointsPrice: charsPointsPrice ?? 0,
+    maxToken,
     instruction
   };
 

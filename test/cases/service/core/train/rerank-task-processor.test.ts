@@ -81,6 +81,7 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
       lean: vi.fn().mockResolvedValue({
         metadata: {
           charsPointsPrice: 0,
+          maxToken: 8192,
           instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         }
       })
@@ -582,6 +583,7 @@ describe('Rerank Train Task Processor', () => {
         },
         isActive: true,
         charsPointsPrice: 0,
+        maxToken: 8192,
         instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
