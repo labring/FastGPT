@@ -5,12 +5,14 @@ import { useBoolean } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import type { AProps } from '../A';
 
+const loadedSrcSet = new Set<string>();
+
 const MdImage = ({
   src,
   ...props
 }: { src?: string } & ImageProps & { chatAuthData?: AProps['chatAuthData'] }) => {
   const { t } = useTranslation();
-  const [isLoaded, { setTrue }] = useBoolean(false);
+  const [isLoaded, { setTrue }] = useBoolean(src ? loadedSrcSet.has(src) : false);
   const [renderSrc, setRenderSrc] = useState(src);
 
   if (src?.includes('base64') && !src.startsWith('data:image')) {
@@ -38,9 +40,11 @@ const MdImage = ({
         my={1}
         mx={'auto'}
         onLoad={() => {
+          if (src) loadedSrcSet.add(src);
           setTrue();
         }}
         onError={() => {
+          if (src) loadedSrcSet.add(src);
           setRenderSrc('/imgs/errImg.png');
           setTrue();
         }}
