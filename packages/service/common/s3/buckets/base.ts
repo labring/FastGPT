@@ -83,10 +83,14 @@ export class S3BaseBucket {
     });
 
     try {
-      await Promise.all([
-        this.client.getObjectMetadata({ key }),
-        this._externalClient?.checkObjectExists({ key })
-      ]);
+      await this.client.getObjectMetadata({ key });
+      if (this._externalClient) {
+        this._externalClient.checkObjectExists({ key }).catch((err) => {
+          logger.warn('External S3 endpoint check failed, using internal only', {
+            error: err?.message || String(err)
+          });
+        });
+      }
     } finally {
       await this.client.deleteObject({ key }).catch((err) => {
         if (isFileNotFoundError(err)) {
