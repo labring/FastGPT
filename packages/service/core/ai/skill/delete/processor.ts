@@ -7,6 +7,7 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { removeImageByPath } from '../../../../common/file/image/controller';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { MongoResourcePermission } from '../../../../support/permission/schema';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { deleteSkillAllPackages } from '../package';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
@@ -96,19 +97,25 @@ export const agentSkillDeleteProcessor: Processor<AgentSkillDeleteJobData> = asy
 
     await deleteSkillExternalData({ teamId, skills });
 
-    await MongoAgentSkillsVersion.deleteMany({
-      skillId: { $in: skillIds }
-    });
+    await mongoSessionRun(async (session) => {
+      await MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds } }, { session });
 
-    await MongoResourcePermission.deleteMany({
-      teamId,
-      resourceType: PerResourceTypeEnum.agentSkill,
-      resourceId: { $in: skillIds }
-    });
+      await MongoResourcePermission.deleteMany(
+        {
+          teamId,
+          resourceType: PerResourceTypeEnum.agentSkill,
+          resourceId: { $in: skillIds }
+        },
+        { session }
+      );
 
-    await MongoAgentSkills.deleteMany({
-      _id: { $in: skillIds },
-      teamId
+      await MongoAgentSkills.deleteMany(
+        {
+          _id: { $in: skillIds },
+          teamId
+        },
+        { session }
+      );
     });
 
     logger.info('Agent skill delete completed', {

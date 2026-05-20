@@ -135,25 +135,25 @@ export async function createEditDebugSandbox(
         [
           `canonical_entry_count=$(find ${shellQuote(
             skillsRootPath
-          )} -mindepth 1 -maxdepth 1 ! -name '.normalize-edit-skill' | wc -l | tr -d ' ')`,
+          )} -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ');`,
           `if [ "$canonical_entry_count" = "0" ] && [ -d ${shellQuote(
             relativeSkillsRootPath
           )} ] && [ ${shellQuote(relativeSkillsRootPath)} != ${shellQuote(skillsRootPath)} ]; then`,
           `find ${shellQuote(
             relativeSkillsRootPath
-          )} -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(`${skillsRootPath}/`)} \\;`,
+          )} -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(`${skillsRootPath}/`)} \\;;`,
           'fi'
         ].join(' '),
         [
           `legacy_edit_dir=$(find ${shellQuote(
             skillsRootPath
-          )} -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`*-${skillId}-edit`)} | head -n 1)`,
+          )} -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`*-${skillId}-edit`)} | head -n 1);`,
           `if [ -n "$legacy_edit_dir" ]; then`,
           `mkdir -p ${shellQuote(targetEditDir)} &&`,
           `find "$legacy_edit_dir" -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(
             `${targetEditDir}/`
           )} \\; &&`,
-          `rm -rf "$legacy_edit_dir"`,
+          `rm -rf "$legacy_edit_dir";`,
           'fi'
         ].join(' '),
         [
@@ -161,9 +161,9 @@ export async function createEditDebugSandbox(
           `mkdir -p ${shellQuote(targetEditDir)} &&`,
           `find ${shellQuote(
             skillsRootPath
-          )} -mindepth 1 -maxdepth 1 ! -name '.normalize-edit-skill' ! -name "${safeName.replace(/"/g, '\\"')}" -exec mv {} ${shellQuote(
+          )} -mindepth 1 -maxdepth 1 ! -name "${safeName.replace(/"/g, '\\"')}" -exec mv {} ${shellQuote(
             `${targetEditDir}/`
-          )} \\;`,
+          )} \\;;`,
           'fi'
         ].join(' ')
       ].join(' && ')
@@ -228,7 +228,15 @@ export async function createEditDebugSandbox(
         error
       });
 
-      await deleteSandboxInstanceRecord(instance._id);
+      try {
+        await SandboxClient.deleteResource(instance);
+      } catch (deleteError) {
+        addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
+          sandboxId: instance.sandboxId,
+          error: deleteError
+        });
+        await deleteSandboxInstanceRecord(instance._id);
+      }
       return null;
     } finally {
       if (sandbox) {
