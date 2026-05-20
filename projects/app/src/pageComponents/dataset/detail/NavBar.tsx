@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Grid, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -96,18 +96,14 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   return (
     <>
       {isPc ? (
-        <Flex h={'16'} alignItems={'center'} flexShrink={0}>
-          {/* 左侧：面包屑路径 */}
-          <Flex
-            alignItems={'center'}
-            py={'0.38rem'}
-            px={2}
-            h={10}
-            ml={0.5}
-            flex={'0 1 auto'}
-            minW={0}
-            overflow={'hidden'}
-          >
+        <Grid
+          h={'16'}
+          alignItems={'center'}
+          flexShrink={0}
+          templateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
+        >
+          {/* 左列：面包屑路径 */}
+          <Flex alignItems={'center'} py={'0.38rem'} pl={2} pr={4} h={10} ml={0.5} minW={0} overflow={'hidden'}>
             {currentTab === TabEnum.dataCard ? (
               <Flex
                 alignItems={'center'}
@@ -169,27 +165,28 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             )}
           </Flex>
 
-          {/* 中间：TabList，mx auto 自动均分两侧剩余空间 */}
-          {showNavTab && (
-            <Box mx={'auto'} flexShrink={0}>
+          {/* 中列：TabList，内容宽度 auto */}
+          <Flex justifyContent={'center'} alignItems={'center'}>
+            {showNavTab && (
               <MyTabs
                 tabs={tabList}
                 value={currentTab}
                 onChange={(val) => setCurrentTab(val as TabEnum)}
               />
-            </Box>
-          )}
+            )}
+          </Flex>
 
-          {/* 右侧：始终占位，不在 collectionCard tab 时隐藏；无 Tab 时自动推到最右 */}
+          {/* 右列：始终占位，不在 collectionCard tab 时隐藏 */}
           <Flex
-            ml={!showNavTab ? 'auto' : undefined}
-            flexShrink={0}
+            justifyContent={'flex-end'}
             alignItems={'center'}
+            pl={4}
+            pr={2}
             visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
           >
             <CollectionNavActions />
           </Flex>
-        </Flex>
+        </Grid>
       ) : (
         <Box mb={2}>
           <LightRowTabs<TabEnum>
