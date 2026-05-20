@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import SaveAndPublishModal from '../../WorkflowComponents/Flow/components/SaveAndPublish';
+import SaveAndPublishModal from '@/components/common/Modal/SaveAndPublishModal';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const SaveButton = ({
@@ -127,7 +127,16 @@ const SaveButton = ({
         <SaveAndPublishModal
           isLoading={isLoading}
           onClose={onSaveAndPublishModalClose}
-          onClickSave={onClickSave}
+          onConfirm={async (versionName) => {
+            await onClickSave({ isPublish: true, versionName });
+            toast({
+              status: 'success',
+              title: t('app:publish_success'),
+              position: 'top-right',
+              isClosable: true
+            });
+            onSaveAndPublishModalClose();
+          }}
         />
       )}
     </Box>

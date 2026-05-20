@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { Trans, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -7,6 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import SaveAndPublishModal from '@/components/common/Modal/SaveAndPublishModal';
 import { SkillDetailContext, TabEnum } from './context';
 import SkillHistoriesSlider from './config/SkillHistoriesSlider';
 import {
@@ -124,16 +125,22 @@ const Header = () => {
   );
 
   const { runAsync: onSaveDeploy, loading: isSaving } = useRequest(
-    (skillId: string) =>
+    ({ skillId, versionName }: { skillId: string; versionName: string }) =>
       postSaveDeploySkill({
         skillId,
-        versionName: formatTime2YMDHMS(new Date())
+        versionName
       }),
     {
       successToast: t('skill:deploy_success'),
       errorToast: t('skill:deploy_failed')
     }
   );
+
+  const {
+    isOpen: isPublishModalOpen,
+    onOpen: onPublishModalOpen,
+    onClose: onPublishModalClose
+  } = useDisclosure();
 
   const menuList = useMemo(
     () => [
@@ -259,7 +266,7 @@ const Header = () => {
             px={'14px'}
             variant={'primary'}
             isLoading={isSaving}
-            onClick={() => onSaveDeploy(skillDetail._id)}
+            onClick={onPublishModalOpen}
           >
             {t('common:Publish')}
           </Button>
@@ -268,6 +275,19 @@ const Header = () => {
 
       {/* 历史版本抽屉 */}
       {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
+
+      {/* 发布确认弹窗 */}
+      {isPublishModalOpen && (
+        <SaveAndPublishModal
+          title={t('common:Publish')}
+          isLoading={isSaving}
+          onClose={onPublishModalClose}
+          onConfirm={async (versionName) => {
+            await onSaveDeploy({ skillId: skillDetail._id, versionName });
+            onPublishModalClose();
+          }}
+        />
+      )}
 
       {/* 删除确认弹窗 */}
       <ConfirmWarningModal
