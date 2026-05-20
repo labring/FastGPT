@@ -123,7 +123,6 @@ const FolderPath = (props: {
         py={0.5}
         px={1.5}
         borderRadius={'sm'}
-        maxW={['45vw', '120px']}
         className={'textEllipsis'}
         {...(isSxfDesign
           ? {
@@ -154,7 +153,11 @@ const FolderPath = (props: {
     );
 
     return (
-      <Flex key={item.parentId || index} alignItems={'center'}>
+      <Flex
+        key={item.parentId || index}
+        alignItems={'center'}
+        {...(isLast ? { flex: 1, minW: 0, overflow: 'hidden' } : { flexShrink: 0 })}
+      >
         {shouldTruncate ? <MyTooltip label={item.parentName}>{pathBox}</MyTooltip> : pathBox}
         {!isLast && <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />}
       </Flex>
@@ -164,7 +167,7 @@ const FolderPath = (props: {
   return paths.length === 0 && !!FirstPathDom ? (
     <>{FirstPathDom}</>
   ) : (
-    <Flex flex={1}>{displayPaths.map((item, index) => renderPathItem(item, index))}</Flex>
+    <Flex flex={1} minW={0} overflow={'hidden'}>{displayPaths.map((item, index) => renderPathItem(item, index))}</Flex>
   );
 };
 

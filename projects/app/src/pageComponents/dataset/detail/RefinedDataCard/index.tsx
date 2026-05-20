@@ -23,7 +23,12 @@ import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useMemoizedFn } from 'ahooks';
-import { delOneDatasetDataById, getDatasetCollectionById } from '@/web/core/dataset/api';
+import {
+  delOneDatasetDataById,
+  getDatasetCollectionById,
+  getDatasetCollectionPathById
+} from '@/web/core/dataset/api';
+import FolderPath from '@/components/common/folder/Path';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -128,6 +133,15 @@ const RefinedDataCard = () => {
     if (!activeDataDetail?.indexes) return [];
     return activeDataDetail.indexes.filter((index) => index.type !== 'default');
   }, [activeDataDetail?.indexes]);
+
+  // Get collection path for breadcrumb
+  const { data: collectionPaths = [] } = useRequest(
+    () => getDatasetCollectionPathById(collectionId),
+    {
+      refreshDeps: [collectionId],
+      manual: false
+    }
+  );
 
   // Get collection info
   const { data: collection, runAsync: reloadCollection } = useRequest(
@@ -496,45 +510,32 @@ const RefinedDataCard = () => {
   return (
     <MyBox py={4} pl={4} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
-        {/* Back Button */}
+        {/* Path breadcrumb */}
         <Flex
           alignItems={'center'}
-          cursor={'pointer'}
           py={'0.38rem'}
           pr={2}
           ml={0}
-          borderRadius={'md'}
-          _hover={{ bg: 'myGray.05' }}
-          fontSize={'sm'}
-          fontWeight={500}
-          w={'fit-content'}
+          flex={'0 1 auto'}
+          minW={0}
+          overflow={'hidden'}
           flexShrink={0}
-          onClick={() => {
-            router.replace({
-              query: {
-                datasetId: router.query.datasetId,
-                parentId: router.query.parentId,
-                currentTab: TabEnum.collectionCard
-              }
-            });
-          }}
         >
-          <IconButton
-            p={2}
-            mr={2}
-            border={'1px solid'}
-            borderColor={'myGray.200'}
-            boxShadow={'1'}
-            icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
-            bg={'white'}
-            size={'xsSquare'}
-            borderRadius={'50%'}
-            aria-label={''}
-            _hover={'none'}
+          <FolderPath
+            paths={collectionPaths}
+            rootName={datasetDetail.name}
+            showReturnIcon
+            forbidLastClick
+            onClick={(id) => {
+              router.replace({
+                query: {
+                  datasetId: router.query.datasetId,
+                  ...(id ? { parentId: id } : {}),
+                  currentTab: TabEnum.collectionCard
+                }
+              });
+            }}
           />
-          <Box fontWeight={'bold'} color={'myGray.600'} fontSize={'sm'}>
-            {collection?.sourceName || ''}
-          </Box>
         </Flex>
 
         {/* Main Content Container */}
@@ -699,21 +700,36 @@ const RefinedDataCard = () => {
                               })}
                         >
                           {item.imagePreviewUrl ? (
-                            <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
-                              <Box flex="1 0 0">
-                                <MyImage
-                                  src={item.imagePreviewUrl}
-                                  alt={''}
-                                  w={'100%'}
-                                  h="100%"
-                                  maxH={'300px'}
-                                  objectFit="contain"
-                                />
+                            isFolded ? (
+                              <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
+                                <Box flex="1 0 0">
+                                  <MyImage
+                                    src={item.imagePreviewUrl}
+                                    alt={''}
+                                    w={'100%'}
+                                    h="100%"
+                                    maxH={'300px'}
+                                    objectFit="contain"
+                                  />
+                                </Box>
+                                <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
+                                  <Markdown source={item.q} />
+                                </Box>
                               </Box>
-                              <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
+                            ) : (
+                              <Box fontSize="sm">
+                                <Box float="left" maxW={'50%'} mr={6} mb={2}>
+                                  <MyImage
+                                    src={item.imagePreviewUrl}
+                                    alt={''}
+                                    maxH={'300px'}
+                                    objectFit="contain"
+                                  />
+                                </Box>
                                 <Markdown source={item.q} />
+                                <Box style={{ clear: 'both' }} />
                               </Box>
-                            </Box>
+                            )
                           ) : (
                             <Box wordBreak={'break-all'}>
                               {!!item.a ? (
