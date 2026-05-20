@@ -92,10 +92,9 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
     // Skill 配置
-    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50 * 1024 * 1024),
-    AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: NumSchema.default(200 * 1024 * 1024),
-    AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.default(200 * 1024 * 1024),
-    AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.default(200 * 1024 * 1024),
+    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50).meta({
+      description: 'Skill 包大小上限（MB），用于上传、解压、下载和 sandbox 打包校验'
+    }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.default(300),
 

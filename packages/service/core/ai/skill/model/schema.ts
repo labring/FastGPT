@@ -1,11 +1,16 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import {
   agentSkillsCollectionName,
+  agentSkillsVersionCollectionName,
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
   AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 
 /**
@@ -59,29 +64,22 @@ const AgentSkillsSchema = new Schema({
     type: String,
     default: ''
   },
-  author: {
-    type: String,
-    default: ''
-  },
-  category: {
-    type: [String],
-    enum: Object.values(AgentSkillCategoryEnum),
-    default: []
-  },
-  config: {
-    type: Object,
-    default: {}
-  },
   avatar: {
     type: String
   },
   teamId: {
     type: Schema.Types.ObjectId,
-    ref: 'team'
+    ref: TeamCollectionName
   },
   tmbId: {
     type: Schema.Types.ObjectId,
-    ref: 'team_members'
+    ref: TeamMemberCollectionName
+  },
+
+  category: {
+    type: [String],
+    enum: Object.values(AgentSkillCategoryEnum),
+    default: []
   },
   createTime: {
     type: Date,
@@ -95,19 +93,10 @@ const AgentSkillsSchema = new Schema({
     type: Date,
     default: null
   },
-  // 当前激活版本快照；完整版本列表与状态流转在 version 模块中维护。
-  currentVersion: {
-    type: Number,
-    default: 0
-  },
-  versionCount: {
-    type: Number,
-    default: 0
-  },
-  currentStorage: {
-    bucket: String,
-    key: String,
-    size: Number
+  // 当前版本指针；version 表只保存历史版本存储记录，不保存当前状态。
+  currentVersionId: {
+    type: Schema.Types.ObjectId,
+    ref: agentSkillsVersionCollectionName
   },
   creationStatus: {
     type: String,
@@ -125,16 +114,16 @@ const AgentSkillsSchema = new Schema({
 
 try {
   // 名称和描述用于列表页搜索。
-  AgentSkillsSchema.index({ name: 'text', description: 'text' });
+  AgentSkillsSchema.index({ teamId: 1, name: 'text', description: 'text' });
   // 列表页按来源、团队、删除状态和创建时间过滤排序。
   AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
   // 分类筛选。
   AgentSkillsSchema.index({ category: 1 });
   // 文件夹树查询。
-  AgentSkillsSchema.index({ parentId: 1, teamId: 1, deleteTime: 1 });
+  AgentSkillsSchema.index({ teamId: 1, parentId: 1, deleteTime: 1 });
   // 同一父目录下的个人 skill/folder 不允许重名，软删除数据不参与唯一约束。
   AgentSkillsSchema.index(
-    { parentId: 1, name: 1, teamId: 1, deleteTime: 1 },
+    { teamId: 1, parentId: 1, name: 1, deleteTime: 1 },
     {
       unique: true,
       partialFilterExpression: { deleteTime: null, source: AgentSkillSourceEnum.personal }

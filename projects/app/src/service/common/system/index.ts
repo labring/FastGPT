@@ -125,6 +125,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
+    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024,
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   },
   scripts: [],

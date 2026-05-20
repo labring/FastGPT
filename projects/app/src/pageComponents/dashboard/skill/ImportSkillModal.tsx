@@ -9,8 +9,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { importSkill } from '@/web/core/skill/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
@@ -35,9 +35,11 @@ const getFileExt = (file: File): string => {
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [skillName, setSkillName] = useState('');
+  const maxUploadBytes = feConfigs?.limit?.agentSkillMaxUploadBytes;
 
   const { File: FileInput, onOpen } = useSelectFile({
     fileType: ACCEPT_TYPES,
@@ -73,16 +75,18 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         });
         return;
       }
-      if (file.size > MAX_SIZE) {
+      if (typeof maxUploadBytes === 'number' && file.size > maxUploadBytes) {
         toast({
           status: 'warning',
-          title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(MAX_SIZE) })
+          title: t('file:some_file_size_exceeds_limit', {
+            maxSize: formatFileSize(maxUploadBytes)
+          })
         });
         return;
       }
       setSelectedFile(file);
     },
-    [t, toast]
+    [maxUploadBytes, t, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -190,12 +194,14 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
               <Box color={'myGray.500'} fontSize={'xs'} mt={1}>
                 {t('skill:import_skill_file_type_tip', { ext: ACCEPT_TYPES.split(',').join(' ') })}
               </Box>
-              <Box color={'myGray.500'} fontSize={'xs'}>
-                {t('skill:import_skill_max_size_tip', {
-                  maxCount: 1,
-                  maxSize: formatFileSize(MAX_SIZE)
-                })}
-              </Box>
+              {typeof maxUploadBytes === 'number' && (
+                <Box color={'myGray.500'} fontSize={'xs'}>
+                  {t('skill:import_skill_max_size_tip', {
+                    maxCount: 1,
+                    maxSize: formatFileSize(maxUploadBytes)
+                  })}
+                </Box>
+              )}
             </Flex>
           )}
           <FileInput onSelect={(files) => files[0] && handleFile(files[0])} />

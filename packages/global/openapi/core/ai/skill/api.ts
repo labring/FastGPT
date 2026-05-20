@@ -5,9 +5,7 @@ import {
   AgentSkillCreationStatusSchema,
   AgentSkillListItemSchema,
   AgentSkillSourceSchema,
-  AgentSkillStorageSchema,
   AgentSkillTypeSchema,
-  AgentSkillConfigSchema,
   ExtractedSkillPackageSchema,
   SandboxImageConfigSchema,
   SandboxProviderStatusSchema,
@@ -67,7 +65,6 @@ export const CreateSkillBodySchema = z.object({
   requirements: z.string().optional().describe('用于 AI 生成技能的需求描述'),
   model: z.string().optional().describe('生成技能时使用的模型'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
-  config: AgentSkillConfigSchema.optional().describe('技能配置'),
   avatar: z.string().optional().describe('技能头像')
 });
 export type CreateSkillBody = z.infer<typeof CreateSkillBodySchema>;
@@ -80,7 +77,6 @@ export const UpdateSkillBodySchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
   category: z.array(AgentSkillCategorySchema).optional(),
-  config: AgentSkillConfigSchema.optional(),
   avatar: z.string().optional(),
   parentId: z
     .string()
@@ -124,14 +120,13 @@ export const GetSkillDetailResponseSchema = z.object({
   inheritPermission: z.boolean().optional(),
   name: z.string(),
   description: z.string(),
-  author: z.string(),
   category: z.array(AgentSkillCategorySchema),
-  config: AgentSkillConfigSchema,
   avatar: z.string().optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   creationError: z.string().optional(),
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
+  currentVersionId: z.string().optional(),
   createTime: z.string(),
   updateTime: z.string(),
   permission: z.any().optional(),
@@ -201,9 +196,9 @@ export type SaveDeploySkillBody = z.infer<typeof SaveDeploySkillBodySchema>;
 
 export const SaveDeploySkillResponseSchema = z.object({
   skillId: z.string(),
-  version: z.number(),
+  versionId: z.string(),
   versionName: z.string(),
-  storage: AgentSkillStorageSchema,
+  storageKey: z.string(),
   createdAt: z.string()
 });
 export type SaveDeploySkillResponse = z.infer<typeof SaveDeploySkillResponseSchema>;
@@ -348,7 +343,7 @@ export const ListSkillVersionsBodySchema = z.object({
   skillId: IdSchema,
   pageNum: z.number().int().positive().optional().describe('页码，从 1 开始'),
   pageSize: z.number().int().positive().describe('每页数量'),
-  isActive: z.boolean().optional().describe('筛选是否为活跃版本')
+  isCurrent: z.boolean().optional().describe('筛选是否为当前版本')
 });
 export type ListSkillVersionsBody = z.infer<typeof ListSkillVersionsBodySchema>;
 
@@ -356,9 +351,8 @@ export const SkillVersionListItemSchema = z.object({
   _id: z.string(),
   skillId: z.string(),
   tmbId: z.string(),
-  version: z.number(),
   versionName: z.string().optional(),
-  isActive: z.boolean(),
+  isCurrent: z.boolean().describe('是否为 skill 主表标记的当前版本'),
   createdAt: z.string()
 });
 export type SkillVersionListItemType = z.infer<typeof SkillVersionListItemSchema>;

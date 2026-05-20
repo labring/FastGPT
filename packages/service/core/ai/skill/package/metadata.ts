@@ -45,10 +45,6 @@ export function validateSkillPackage(data: any): { valid: boolean; error?: strin
     }
   }
 
-  if (skill.config && typeof skill.config !== 'object') {
-    return { valid: false, error: 'Config must be an object' };
-  }
-
   return { valid: true };
 }
 
@@ -97,8 +93,7 @@ export function createSkillTemplate(name: string): SkillPackageType {
     skill: {
       name: name || 'New Skill',
       description: 'Enter a description for your skill',
-      category: [AgentSkillCategoryEnum.other],
-      config: {}
+      category: [AgentSkillCategoryEnum.other]
     }
   };
 }

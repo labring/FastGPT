@@ -1,27 +1,29 @@
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
-import type { ClientSession } from '../../../../common/mongo';
+import { Types } from '../../../../common/mongo';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { uploadSkillPackage } from '../package';
+import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
 import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
-import { updateCurrentStorage } from './update';
+import { updateCurrentVersion } from './update';
 import { checkSkillNameExists } from './query';
 
 /**
  * Import skill from a validated package.
  *
- * Caller owns archive parsing and should call this inside mongoSessionRun.
- * The package is stored as v0 and linked as currentStorage.
+ * Caller owns archive parsing. This function uploads the package before opening the Mongo
+ * transaction, then binds currentVersionId and removes the temporary S3 TTL inside the
+ * transaction. If Mongo fails, the uploaded package keeps its TTL and is cleaned by the shared S3
+ * cleanup flow.
+ * The package is stored as the initial version and linked as currentVersionId.
  */
 export async function importSkill(
   packageData: SkillPackageType,
   teamId: string,
   tmbId: string,
-  userId: string,
   zipBuffer: Buffer,
-  parentId?: string | null,
-  session?: ClientSession
+  parentId?: string | null
 ): Promise<string> {
   const { skill } = packageData;
 
@@ -36,40 +38,41 @@ export async function importSkill(
     source: AgentSkillSourceEnum.personal,
     name: skill.name,
     description: skill.description,
-    author: userId,
     category: skill.category,
-    config: skill.config || {},
     avatar: skill.avatar,
     teamId,
     tmbId,
-    currentVersion: 0,
-    versionCount: 1,
     createTime: new Date(),
     updateTime: new Date()
   });
-  await newSkill.save({ session });
 
   const newSkillId = newSkill._id.toString();
+  const versionId = new Types.ObjectId().toString();
 
   const storageInfo = await uploadSkillPackage({
     teamId,
     skillId: newSkillId,
-    version: 0,
+    packageObjectId: versionId,
     zipBuffer
   });
 
-  await updateCurrentStorage(newSkillId, storageInfo, session);
+  return mongoSessionRun(async (session) => {
+    await newSkill.save({ session });
 
-  await createVersion(
-    {
-      skillId: newSkillId,
-      tmbId,
-      version: 0,
-      versionName: 'Initial import',
-      storage: storageInfo
-    },
-    session
-  );
+    await updateCurrentVersion(newSkillId, versionId, session);
 
-  return newSkillId;
+    await createVersion(
+      {
+        versionId,
+        skillId: newSkillId,
+        tmbId,
+        versionName: 'Initial import',
+        storageKey: storageInfo.key
+      },
+      session
+    );
+    await removeSkillPackageTTL(storageInfo.key, session);
+
+    return newSkillId;
+  });
 }

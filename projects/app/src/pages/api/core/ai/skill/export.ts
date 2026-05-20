@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import type { ExportSkillQuery } from '@fastgpt/global/core/ai/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
@@ -37,13 +38,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 400, error: 'Folders cannot be exported' });
     }
 
-    if (!skill.currentStorage) {
-      return jsonRes(res, { code: 404, error: 'No active version available for download' });
+    if (!skill.currentVersionId) {
+      return jsonRes(res, { code: 404, error: 'No current version available for download' });
     }
 
     logger.debug('Exporting skill', { skillId, skillName: skill.name });
 
-    const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
+    const currentVersion = await MongoAgentSkillsVersion.findOne({
+      _id: skill.currentVersionId,
+      skillId
+    }).lean();
+    if (!currentVersion?.storageKey) {
+      return jsonRes(res, { code: 404, error: 'No current version available for download' });
+    }
+
+    const zipBuffer = await downloadSkillPackage({ storageKey: currentVersion.storageKey });
 
     const filename = `${skill.name}.zip`;
     res.setHeader('Content-Type', 'application/zip');

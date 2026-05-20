@@ -32,6 +32,7 @@ export enum QueueNames {
   // Delete Queue
   datasetDelete = 'datasetDelete',
   appDelete = 'appDelete',
+  agentSkillDelete = 'agentSkillDelete',
   teamDelete = 'teamDelete',
 
   // Publish

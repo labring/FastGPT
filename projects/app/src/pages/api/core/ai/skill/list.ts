@@ -217,7 +217,6 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
         type: skill.type,
         source: skill.source,
         category: skill.category,
-        author: skill.author,
         inheritPermission: skill.inheritPermission,
         creationStatus: skill.creationStatus,
         tmbId: skill.tmbId,

@@ -36,17 +36,17 @@ export const getSkillTargetPath = ({
   workDirectory,
   skillName,
   skillId,
-  version
+  versionId
 }: {
   workDirectory: string;
   skillName: string;
   skillId: string;
-  version: number;
+  versionId: string;
 }) =>
-  // 目录名包含版本号，active version 切换后不会复用旧版本目录。
+  // 目录名包含版本 id，当前版本切换后不会复用旧版本目录。
   `${getSkillsRootPath(workDirectory)}/${getSafeSkillDirectoryName(
     skillName
-  )}-${skillId}-v${version}`;
+  )}-${skillId}-v${versionId}`;
 
 export const getEditSkillTargetPath = ({
   workDirectory,
@@ -139,31 +139,30 @@ export const injectAgentSkillFilesToSandbox = async ({
     throw new Error('No valid skills found');
   }
 
-  const activeVersions = await MongoAgentSkillsVersion.find({
-    skillId: { $in: skills.map((skill) => skill._id) },
-    isActive: true,
-    isDeleted: false
-  }).sort({ version: -1 });
-  const versionMap = new Map<string, (typeof activeVersions)[number]>();
-  // 正常数据下每个 skill 只有一个 active version；这里仍按最高版本兜底，
-  // 避免异常历史数据里多个 active 版本导致运行时选择不确定。
-  for (const version of activeVersions) {
-    const skillId = String(version.skillId);
-    if (!versionMap.has(skillId)) {
-      versionMap.set(skillId, version);
-    }
+  const currentVersionIds = skills
+    .map((skill) => skill.currentVersionId)
+    .filter((id): id is NonNullable<typeof id> => !!id);
+  const currentVersions =
+    currentVersionIds.length > 0
+      ? await MongoAgentSkillsVersion.find({
+          _id: { $in: currentVersionIds }
+        })
+      : [];
+  const versionMap = new Map<string, (typeof currentVersions)[number]>();
+  for (const version of currentVersions) {
+    versionMap.set(String(version.skillId), version);
   }
 
   const deployableSkills = skills.flatMap((skill) => {
     const version = versionMap.get(String(skill._id));
-    if (!version?.storage) return [];
+    if (!version?.storageKey) return [];
 
     const skillId = String(skill._id);
     const targetDir = getSkillTargetPath({
       workDirectory,
       skillName: skill.name,
       skillId,
-      version: version.version
+      versionId: String(version._id)
     });
 
     return [
@@ -176,7 +175,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     ];
   });
   if (deployableSkills.length === 0) {
-    throw new Error('No deployable skills found (missing active versions)');
+    throw new Error('No deployable skills found (missing current versions)');
   }
 
   const skillsRootPath = getSkillsRootPath(workDirectory);
@@ -191,7 +190,7 @@ export const injectAgentSkillFilesToSandbox = async ({
   await Promise.all(
     deployableSkills.map(async ({ skill, version, targetDir, zipPath }) => {
       try {
-        const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
+        const packageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
         const extractCommand = `mkdir -p ${shellQuote(targetDir)} && unzip -o ${shellQuote(
           zipPath
         )} -d ${shellQuote(targetDir)} && rm ${shellQuote(zipPath)}`;

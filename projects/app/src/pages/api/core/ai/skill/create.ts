@@ -44,7 +44,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     requirements,
     model,
     category = [],
-    config = {},
     avatar
   } = CreateSkillBodySchema.parse(req.body);
 
@@ -53,7 +52,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   const requestedRequirements = requirements?.trim() || undefined;
 
   // Authenticate user: if parentId exists, verify parent folder permission
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId } = parentId
     ? await authSkill({
         req,
         skillId: parentId,
@@ -89,10 +88,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   if (category.length > 0 && category.some((c) => !validCategories.includes(c))) {
     return Promise.reject(SkillErrEnum.invalidCategory);
   }
-  if (config && JSON.stringify(config).length > 50_000) {
-    return Promise.reject(SkillErrEnum.invalidConfig);
-  }
-
   // Display name comes from the create modal and remains user-facing.
   const nameExists = await checkSkillNameExists(requestedName, teamId, parentId || null);
   if (nameExists) {
@@ -107,9 +102,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         parentId: parentId || null,
         name: requestedName,
         description: requestedDescription,
-        author: userId || '',
         category: category.length > 0 ? category : [AgentSkillCategoryEnum.other],
-        config,
         avatar,
         teamId,
         tmbId,

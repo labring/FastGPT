@@ -26,39 +26,6 @@ export const SandboxStatusSchema = z.enum([
   SandboxStatusEnum.stopped
 ] as const);
 
-export const AgentSkillConfigParameterSchema = z.object({
-  name: z.string(),
-  type: z.string(),
-  description: z.string(),
-  required: z.boolean().optional(),
-  default: z.any().optional()
-});
-
-export const AgentSkillApiConfigSchema = z.object({
-  url: z.string(),
-  method: z.enum(['GET', 'POST', 'PUT', 'DELETE']),
-  headers: z.record(z.string(), z.string()).optional(),
-  timeout: z.number().optional()
-});
-
-export const AgentSkillConfigSchema = z
-  .object({
-    parameters: z.array(AgentSkillConfigParameterSchema).optional(),
-    api: AgentSkillApiConfigSchema.optional()
-  })
-  .catchall(z.any());
-export type AgentSkillConfigType = z.infer<typeof AgentSkillConfigSchema>;
-
-export const AgentSkillStorageSchema = z.object({
-  bucket: z.string(),
-  key: z.string(),
-  size: z.number()
-});
-
-export const SkillVersionStorageSchema = AgentSkillStorageSchema.extend({
-  checksum: z.string().optional()
-});
-
 export const AgentSkillSchema = z.object({
   _id: z.string(),
   parentId: z.string().nullable().optional(),
@@ -67,18 +34,14 @@ export const AgentSkillSchema = z.object({
   source: AgentSkillSourceSchema,
   name: z.string(),
   description: z.string(),
-  author: z.string(),
   category: z.array(AgentSkillCategorySchema),
-  config: AgentSkillConfigSchema,
   avatar: z.string().optional(),
   teamId: z.string(),
   tmbId: z.string(),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
   deleteTime: z.coerce.date().nullable().optional(),
-  currentVersion: z.number(),
-  versionCount: z.number(),
-  currentStorage: AgentSkillStorageSchema.optional(),
+  currentVersionId: z.string().optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   creationError: z.string().optional()
 });
@@ -92,7 +55,6 @@ export const AgentSkillListItemSchema = z.object({
   inheritPermission: z.boolean().optional(),
   name: z.string(),
   description: z.string(),
-  author: z.string(),
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
@@ -124,12 +86,9 @@ export const AgentSkillsVersionSchema = z.object({
   _id: z.string(),
   skillId: z.string(),
   tmbId: z.string(),
-  version: z.number(),
   versionName: z.string().optional(),
-  storage: SkillVersionStorageSchema,
+  storageKey: z.string(),
   importSource: AgentSkillsVersionImportSourceSchema.optional(),
-  isActive: z.boolean(),
-  isDeleted: z.boolean(),
   createdAt: z.coerce.date()
 });
 export type AgentSkillsVersionSchemaType = z.infer<typeof AgentSkillsVersionSchema>;
@@ -138,7 +97,6 @@ export const SkillPackageSkillSchema = z.object({
   name: z.string(),
   description: z.string(),
   category: z.array(AgentSkillCategorySchema),
-  config: AgentSkillConfigSchema,
   avatar: z.string().optional()
 });
 
@@ -185,7 +143,8 @@ export const SandboxProviderStatusSchema = z.object({
   reason: z.string().optional()
 });
 
-export const SandboxStorageSchema = AgentSkillStorageSchema.extend({
+export const SandboxStorageSchema = z.object({
+  key: z.string(),
   uploadedAt: z.coerce.date()
 });
 

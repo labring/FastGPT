@@ -1,12 +1,28 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/export';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { Types } from '@fastgpt/service/common/mongo';
 import { getRootUser, getUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
 
 const mockJsonRes = vi.mocked(jsonRes);
+
+async function bindCurrentVersion(params: { skillId: string; tmbId: string; storageKey: string }) {
+  const versionId = new Types.ObjectId();
+  await MongoAgentSkillsVersion.create({
+    _id: versionId,
+    skillId: params.skillId,
+    tmbId: params.tmbId,
+    storageKey: params.storageKey
+  });
+  await MongoAgentSkills.updateOne(
+    { _id: params.skillId },
+    { $set: { currentVersionId: versionId } }
+  );
+}
 
 /**
  * Build a chainable mock res object that supports res.status(code).end(data).
@@ -134,13 +150,9 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.personal,
       name: 'test-folder',
       description: '',
-      author: user.userId,
       category: [],
-      config: {},
       teamId: user.teamId,
-      tmbId: user.tmbId,
-      currentVersion: 0,
-      versionCount: 0
+      tmbId: user.tmbId
     });
 
     const res = makeMockRes();
@@ -156,7 +168,7 @@ describe('GET /api/core/ai/skill/export', () => {
     await MongoAgentSkills.deleteOne({ _id: folder._id });
   });
 
-  it('无 currentStorage 的 Skill 应返回 404', async () => {
+  it('无 currentVersionId 的 Skill 应返回 404', async () => {
     const user = await getRootUser();
 
     const skill = await MongoAgentSkills.create({
@@ -164,14 +176,10 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.personal,
       name: 'skill-no-storage',
       description: '',
-      author: user.userId,
       category: [],
-      config: {},
       teamId: user.teamId,
-      tmbId: user.tmbId,
-      currentVersion: 0,
-      versionCount: 0
-      // currentStorage intentionally omitted
+      tmbId: user.tmbId
+      // currentVersionId intentionally omitted
     });
 
     const res = makeMockRes();
@@ -181,7 +189,7 @@ describe('GET /api/core/ai/skill/export', () => {
 
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       code: 404,
-      error: 'No active version available for download'
+      error: 'No current version available for download'
     });
 
     await MongoAgentSkills.deleteOne({ _id: skill._id });
@@ -198,25 +206,10 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.personal,
       name: 'owner-private-skill',
       description: '',
-      author: owner.userId,
       category: [],
-      config: {},
       teamId: owner.teamId,
-      tmbId: owner.tmbId,
-      currentVersion: 0,
-      versionCount: 1
+      tmbId: owner.tmbId
     });
-
-    await MongoAgentSkills.updateOne(
-      { _id: skill._id },
-      {
-        currentStorage: {
-          bucket: 'fastgpt-private',
-          key: `agent-skills/${owner.teamId}/${skill._id}/v0/package.zip`,
-          size: 100
-        }
-      }
-    );
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: stranger, query: { skillId: String(skill._id) } });
@@ -242,13 +235,9 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.personal,
       name: 'my-skill',
       description: '',
-      author: user.userId,
       category: [],
-      config: {},
       teamId: user.teamId,
-      tmbId: user.tmbId,
-      currentVersion: 0,
-      versionCount: 1
+      tmbId: user.tmbId
     });
 
     const skillId = String(skill._id);
@@ -257,11 +246,15 @@ describe('GET /api/core/ai/skill/export', () => {
     const storageInfo = await uploadSkillPackage({
       teamId: user.teamId,
       skillId,
-      version: 0,
+      packageObjectId: 'personal-v0',
       zipBuffer: zipContent
     });
 
-    await MongoAgentSkills.updateOne({ _id: skill._id }, { currentStorage: storageInfo });
+    await bindCurrentVersion({
+      skillId,
+      tmbId: user.tmbId,
+      storageKey: storageInfo.key
+    });
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId } });
@@ -294,13 +287,9 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.personal,
       name: 'skill/with<special>chars',
       description: '',
-      author: user.userId,
       category: [],
-      config: {},
       teamId: user.teamId,
-      tmbId: user.tmbId,
-      currentVersion: 0,
-      versionCount: 1
+      tmbId: user.tmbId
     });
 
     const skillId = String(skill._id);
@@ -309,10 +298,14 @@ describe('GET /api/core/ai/skill/export', () => {
     const storageInfo = await uploadSkillPackage({
       teamId: user.teamId,
       skillId,
-      version: 0,
+      packageObjectId: 'special-name-v0',
       zipBuffer: zipContent
     });
-    await MongoAgentSkills.updateOne({ _id: skill._id }, { currentStorage: storageInfo });
+    await bindCurrentVersion({
+      skillId,
+      tmbId: user.tmbId,
+      storageKey: storageInfo.key
+    });
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId } });
@@ -337,13 +330,9 @@ describe('GET /api/core/ai/skill/export', () => {
       source: AgentSkillSourceEnum.system,
       name: 'system-skill',
       description: '',
-      author: 'system',
       category: [],
-      config: {},
       teamId: user.teamId, // must match requester's team for authSkill to pass
-      tmbId: user.tmbId,
-      currentVersion: 0,
-      versionCount: 1
+      tmbId: user.tmbId
     });
 
     const skillId = String(skill._id);
@@ -352,10 +341,14 @@ describe('GET /api/core/ai/skill/export', () => {
     const storageInfo = await uploadSkillPackage({
       teamId: user.teamId,
       skillId,
-      version: 0,
+      packageObjectId: 'system-v0',
       zipBuffer: zipContent
     });
-    await MongoAgentSkills.updateOne({ _id: skill._id }, { currentStorage: storageInfo });
+    await bindCurrentVersion({
+      skillId,
+      tmbId: user.tmbId,
+      storageKey: storageInfo.key
+    });
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId } });

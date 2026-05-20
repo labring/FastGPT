@@ -1,7 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { deleteSkill } from '@fastgpt/service/core/ai/skill/manage';
+import { markSkillSubtreeDeleted } from '@fastgpt/service/core/ai/skill/manage';
+import { addAgentSkillDeleteJob } from '@fastgpt/service/core/ai/skill/delete';
 import type { DeleteSkillQuery } from '@fastgpt/global/core/ai/skill/api';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
@@ -26,8 +27,10 @@ async function handler(req: ApiRequestProps<Record<string, never>, DeleteSkillQu
   });
 
   await mongoSessionRun(async (session) => {
-    return deleteSkill(skillId, session);
+    return markSkillSubtreeDeleted(skillId, session);
   });
+
+  await addAgentSkillDeleteJob({ teamId, skillId });
 
   (async () => {
     addAuditLog({

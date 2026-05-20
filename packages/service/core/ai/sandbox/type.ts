@@ -48,7 +48,6 @@ export const SandboxMetadataSchema = z.object({
 
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
-  editSkillDir: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
   image: SandboxImageSchema,
   endpoint: SandboxEndpointSchema.optional()

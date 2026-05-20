@@ -30,8 +30,7 @@ async function handler(
 
   const targetVersion = await MongoAgentSkillsVersion.findOne({
     _id: versionId,
-    skillId,
-    isDeleted: false
+    skillId
   }).lean();
 
   if (!targetVersion) {
@@ -39,28 +38,11 @@ async function handler(
   }
 
   await mongoSessionRun(async (session) => {
-    await MongoAgentSkillsVersion.updateMany(
-      { skillId, isActive: true },
-      { isActive: false },
-      { session }
-    );
-
-    await MongoAgentSkillsVersion.updateOne(
-      { _id: versionId, skillId, isDeleted: false },
-      { isActive: true },
-      { session }
-    );
-
     const result = await MongoAgentSkills.updateOne(
       { _id: skillId, deleteTime: null },
       {
         $set: {
-          currentVersion: targetVersion.version,
-          currentStorage: {
-            bucket: targetVersion.storage.bucket,
-            key: targetVersion.storage.key,
-            size: targetVersion.storage.size
-          },
+          currentVersionId: targetVersion._id,
           updateTime: new Date()
         }
       },

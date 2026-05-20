@@ -44,7 +44,6 @@ describe('getAgentSkillInfos', () => {
       {
         name: 'Skill',
         description: '',
-        author: 'test',
         teamId,
         tmbId,
         source: AgentSkillSourceEnum.personal
@@ -52,14 +51,15 @@ describe('getAgentSkillInfos', () => {
       {
         name: 'Skill',
         description: '',
-        author: 'test',
         teamId,
         tmbId,
         source: AgentSkillSourceEnum.personal
       }
     ]);
-    const skill1TargetDir = `/workspace/skills/Skill-${String(skill1._id)}-v0`;
-    const skill2TargetDir = `/workspace/skills/Skill-${String(skill2._id)}-v0`;
+    const skill1VersionId = new Types.ObjectId();
+    const skill2VersionId = new Types.ObjectId();
+    const skill1TargetDir = `/workspace/skills/Skill-${String(skill1._id)}-v${skill1VersionId}`;
+    const skill2TargetDir = `/workspace/skills/Skill-${String(skill2._id)}-v${skill2VersionId}`;
 
     const [skill1Package, skill2Package] = await Promise.all([
       makePackage([
@@ -78,34 +78,40 @@ describe('getAgentSkillInfos', () => {
       uploadSkillPackage({
         teamId,
         skillId: String(skill1._id),
-        version: 0,
+        packageObjectId: 'skill1-v0',
         zipBuffer: skill1Package
       }),
       uploadSkillPackage({
         teamId,
         skillId: String(skill2._id),
-        version: 0,
+        packageObjectId: 'skill2-v0',
         zipBuffer: skill2Package
       })
     ]);
 
     await MongoAgentSkillsVersion.create([
       {
+        _id: skill1VersionId,
         skillId: skill1._id,
         tmbId,
-        version: 0,
-        storage: skill1Storage,
-        isActive: true,
-        isDeleted: false
+        storageKey: skill1Storage.key
       },
       {
+        _id: skill2VersionId,
         skillId: skill2._id,
         tmbId,
-        version: 0,
-        storage: skill2Storage,
-        isActive: true,
-        isDeleted: false
+        storageKey: skill2Storage.key
       }
+    ]);
+    await Promise.all([
+      MongoAgentSkills.updateOne(
+        { _id: skill1._id },
+        { $set: { currentVersionId: skill1VersionId } }
+      ),
+      MongoAgentSkills.updateOne(
+        { _id: skill2._id },
+        { $set: { currentVersionId: skill2VersionId } }
+      )
     ]);
 
     const contentByPath = new Map([
@@ -249,7 +255,7 @@ description: Zeta skill
     );
   });
 
-  it('resets persisted skill directories and injects every selected active version', async () => {
+  it('resets persisted skill directories and injects every selected current version', async () => {
     const teamId = new Types.ObjectId().toHexString();
     const tmbId = new Types.ObjectId().toHexString();
 
@@ -257,7 +263,6 @@ description: Zeta skill
       {
         name: 'Existing',
         description: '',
-        author: 'test',
         teamId,
         tmbId,
         source: AgentSkillSourceEnum.personal
@@ -265,14 +270,19 @@ description: Zeta skill
       {
         name: 'Missing',
         description: '',
-        author: 'test',
         teamId,
         tmbId,
         source: AgentSkillSourceEnum.personal
       }
     ]);
-    const existingSkillTargetDir = `/workspace/skills/Existing-${String(existingSkill._id)}-v0`;
-    const missingSkillTargetDir = `/workspace/skills/Missing-${String(missingSkill._id)}-v0`;
+    const existingSkillVersionId = new Types.ObjectId();
+    const missingSkillVersionId = new Types.ObjectId();
+    const existingSkillTargetDir = `/workspace/skills/Existing-${String(
+      existingSkill._id
+    )}-v${existingSkillVersionId}`;
+    const missingSkillTargetDir = `/workspace/skills/Missing-${String(
+      missingSkill._id
+    )}-v${missingSkillVersionId}`;
 
     const [existingSkillPackage, missingSkillPackage] = await Promise.all([
       makePackage([{ path: 'skill.md', name: 'existing', description: 'Existing skill' }]),
@@ -282,34 +292,40 @@ description: Zeta skill
       uploadSkillPackage({
         teamId,
         skillId: String(existingSkill._id),
-        version: 0,
+        packageObjectId: 'existing-v0',
         zipBuffer: existingSkillPackage
       }),
       uploadSkillPackage({
         teamId,
         skillId: String(missingSkill._id),
-        version: 0,
+        packageObjectId: 'missing-v0',
         zipBuffer: missingSkillPackage
       })
     ]);
 
     await MongoAgentSkillsVersion.create([
       {
+        _id: existingSkillVersionId,
         skillId: existingSkill._id,
         tmbId,
-        version: 0,
-        storage: existingSkillStorage,
-        isActive: true,
-        isDeleted: false
+        storageKey: existingSkillStorage.key
       },
       {
+        _id: missingSkillVersionId,
         skillId: missingSkill._id,
         tmbId,
-        version: 0,
-        storage: missingSkillStorage,
-        isActive: true,
-        isDeleted: false
+        storageKey: missingSkillStorage.key
       }
+    ]);
+    await Promise.all([
+      MongoAgentSkills.updateOne(
+        { _id: existingSkill._id },
+        { $set: { currentVersionId: existingSkillVersionId } }
+      ),
+      MongoAgentSkills.updateOne(
+        { _id: missingSkill._id },
+        { $set: { currentVersionId: missingSkillVersionId } }
+      )
     ]);
 
     const contentByPath = new Map([
@@ -405,58 +421,61 @@ description: Missing skill
     );
   });
 
-  it('uses the highest active version when duplicate active versions exist', async () => {
+  it('uses the version pointed to by skill.currentVersionId', async () => {
     const teamId = new Types.ObjectId().toHexString();
     const tmbId = new Types.ObjectId().toHexString();
 
     const skill = await MongoAgentSkills.create({
       name: 'MultiActive',
       description: '',
-      author: 'test',
       teamId,
       tmbId,
       source: AgentSkillSourceEnum.personal
     });
+    const oldVersionId = new Types.ObjectId();
+    const latestVersionId = new Types.ObjectId();
     const [oldPackage, latestPackage] = await Promise.all([
-      makePackage([{ path: 'skill.md', name: 'old', description: 'Old active skill' }]),
-      makePackage([{ path: 'skill.md', name: 'latest', description: 'Latest active skill' }])
+      makePackage([{ path: 'skill.md', name: 'old', description: 'Old current skill' }]),
+      makePackage([{ path: 'skill.md', name: 'latest', description: 'Latest current skill' }])
     ]);
     const [oldStorage, latestStorage] = await Promise.all([
       uploadSkillPackage({
         teamId,
         skillId: String(skill._id),
-        version: 0,
+        packageObjectId: 'old-current-version',
         zipBuffer: oldPackage
       }),
       uploadSkillPackage({
         teamId,
         skillId: String(skill._id),
-        version: 1,
+        packageObjectId: 'latest-current-version',
         zipBuffer: latestPackage
       })
     ]);
 
     await MongoAgentSkillsVersion.create([
       {
+        _id: oldVersionId,
         skillId: skill._id,
         tmbId,
-        version: 0,
-        storage: oldStorage,
-        isActive: true,
-        isDeleted: false
+        storageKey: oldStorage.key
       },
       {
+        _id: latestVersionId,
         skillId: skill._id,
         tmbId,
-        version: 1,
-        storage: latestStorage,
-        isActive: true,
-        isDeleted: false
+        storageKey: latestStorage.key
       }
     ]);
+    await MongoAgentSkills.updateOne(
+      { _id: skill._id },
+      { $set: { currentVersionId: latestVersionId } }
+    );
 
-    const oldTargetDir = `/workspace/skills/MultiActive-${String(skill._id)}-v0`;
-    const latestTargetDir = `/workspace/skills/MultiActive-${String(skill._id)}-v1`;
+    const oldTargetDir = `/workspace/skills/MultiActive-${String(skill._id)}-v${oldVersionId}`;
+    const latestTargetDir = `/workspace/skills/MultiActive-${String(
+      skill._id
+    )}-v${latestVersionId}`;
     const latestSkillMdPath = `${latestTargetDir}/skill.md`;
     const sandbox = {
       writeFiles: vi.fn(async () => undefined),
@@ -497,7 +516,7 @@ description: Missing skill
           path: latestSkillMdPath,
           content: `---
 name: latest
-description: Latest active skill
+description: Latest current skill
 ---`
         }
       ])
@@ -520,7 +539,7 @@ description: Latest active skill
       {
         id: latestSkillMdPath,
         name: 'latest',
-        description: 'Latest active skill',
+        description: 'Latest current skill',
         directory: latestTargetDir,
         skillMdPath: latestSkillMdPath
       }
@@ -534,7 +553,6 @@ description: Latest active skill
     const skill = await MongoAgentSkills.create({
       name: 'Broken',
       description: '',
-      author: 'test',
       teamId,
       tmbId,
       source: AgentSkillSourceEnum.personal
@@ -545,20 +563,23 @@ description: Latest active skill
     const skillStorage = await uploadSkillPackage({
       teamId,
       skillId: String(skill._id),
-      version: 0,
+      packageObjectId: 'broken-v0',
       zipBuffer: skillPackage
     });
 
+    const skillVersionId = new Types.ObjectId();
     await MongoAgentSkillsVersion.create({
+      _id: skillVersionId,
       skillId: skill._id,
       tmbId,
-      version: 0,
-      storage: skillStorage,
-      isActive: true,
-      isDeleted: false
+      storageKey: skillStorage.key
     });
+    await MongoAgentSkills.updateOne(
+      { _id: skill._id },
+      { $set: { currentVersionId: skillVersionId } }
+    );
 
-    const skillTargetDir = `/workspace/skills/Broken-${String(skill._id)}-v0`;
+    const skillTargetDir = `/workspace/skills/Broken-${String(skill._id)}-v${skillVersionId}`;
     const sandbox = {
       writeFiles: vi.fn(async () => undefined),
       execute: vi.fn(async (command: string) => {

@@ -5,22 +5,22 @@ import {
   type Job,
   type Worker
 } from '../../../../../common/bullmq';
+import { Types } from '../../../../../common/mongo';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
-import { updateCurrentStorage, updateSkillCreationFailed } from '../update';
+import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
 import { buildSkillMd } from '../../utils/skillMdTemplate';
 import { generateSkillMd } from './skillMdGenerator';
-import { extractSkillFromMarkdown } from '../../utils/skillMarkdown';
 import {
   createSkillPackage,
   deleteSkillPackage,
+  removeSkillPackageTTL,
   type SkillStorageInfo,
   uploadSkillPackage
 } from '../../package';
 import { createVersion } from '../../version';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { createUsage } from '../../../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -153,7 +153,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
   if (
     (!skill.creationStatus || skill.creationStatus === AgentSkillCreationStatusEnum.ready) &&
-    skill.currentStorage
+    skill.currentVersionId
   ) {
     // BullMQ 可能重复投递，或 worker 启动恢复时扫到刚完成的数据；已绑定包则直接幂等退出。
     logger.info('Pending skill already completed, skip duplicate creation job', { skillId });
@@ -164,7 +164,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
     const requirements = data.requirements ?? skill.creationPayload?.requirements;
     const model = data.model ?? skill.creationPayload?.model;
     let skillMd: string;
-    let packageRootName = name;
+    const packageRootName = name;
 
     if (requirements && model) {
       // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
@@ -176,18 +176,6 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
       });
 
       skillMd = generatedSkillMd;
-
-      const { skill: generatedSkill, error: parseError } = extractSkillFromMarkdown(skillMd);
-      if (parseError || !generatedSkill?.name) {
-        // 后续打包目录名依赖 SKILL.md 解析结果，这里失败必须中止，避免上传不可用包。
-        logger.warn('AI generated invalid SKILL.md', {
-          skillId,
-          name,
-          parseError
-        });
-        throw SkillErrEnum.invalidSkillPackage;
-      }
-      packageRootName = generatedSkill.name;
 
       // 只有模型辅助生成才产生 token 用量；普通模板创建不计入模型消耗。
       const { totalPoints, modelName } = formatModelChars2Points({
@@ -220,32 +208,33 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
     }
 
     const zipBuffer = await createSkillPackage({ name: packageRootName, skillMd });
+    const versionId = new Types.ObjectId().toString();
 
     const storageInfo = await uploadSkillPackage({
       teamId,
       skillId,
-      version: 0,
+      packageObjectId: versionId,
       zipBuffer
     });
     uploadedStorageInfo = storageInfo;
 
-    // storage 与 v0 version 必须在同一个事务里绑定；否则可能出现当前包指向成功但版本列表缺失。
+    // versionId 必须在同一个事务里绑定；否则可能出现版本列表有记录但当前指针缺失。
     const isStorageLinked = await mongoSessionRun(async (session) => {
-      const isUpdated = await updateCurrentStorage(skillId, storageInfo, session);
+      const isUpdated = await updateCurrentVersion(skillId, versionId, session);
       if (!isUpdated) {
         return false;
       }
-
       await createVersion(
         {
+          versionId,
           skillId,
           tmbId,
-          version: 0,
           versionName: 'Initial creation',
-          storage: storageInfo
+          storageKey: storageInfo.key
         },
         session
       );
+      await removeSkillPackageTTL(storageInfo.key, session);
 
       return true;
     });
@@ -253,7 +242,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
     if (!isStorageLinked) {
       uploadedStorageInfo = undefined;
       // skill 可能在 worker 生成期间被删除。数据库未绑定成功时，刚上传的包不应残留。
-      await deleteSkillPackage(storageInfo).catch((cleanupError) => {
+      await deleteSkillPackage(storageInfo.key).catch((cleanupError) => {
         logger.error('Failed to clean uploaded package for deleted pending skill', {
           skillId,
           cleanupError
@@ -266,7 +255,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
   } catch (error) {
     if (uploadedStorageInfo) {
       // 打包上传已经完成但后续步骤失败时，需要主动清理对象存储，避免形成孤儿包。
-      await deleteSkillPackage(uploadedStorageInfo).catch((cleanupError) => {
+      await deleteSkillPackage(uploadedStorageInfo.key).catch((cleanupError) => {
         logger.error('Failed to clean uploaded skill package after creation error', {
           skillId,
           cleanupError

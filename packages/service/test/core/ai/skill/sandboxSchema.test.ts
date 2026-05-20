@@ -105,9 +105,7 @@ describe('SandboxInstance Schema', () => {
           url: 'http://localhost:8080'
         },
         storage: {
-          bucket: 'skills',
           key: 'test/package.zip',
-          size: 1024,
           uploadedAt: new Date()
         }
       }
@@ -115,7 +113,7 @@ describe('SandboxInstance Schema', () => {
 
     expect(doc.metadata?.endpoint?.host).toBe('localhost');
     expect(doc.metadata?.endpoint?.port).toBe(8080);
-    // expect(doc.storage?.size).toBe(1024);
+    expect(doc.metadata?.storage?.key).toBe('test/package.zip');
   });
 
   it('should support stopped status', async () => {

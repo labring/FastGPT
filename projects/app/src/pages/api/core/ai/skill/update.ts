@@ -34,8 +34,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 async function handler(req: ApiRequestProps<UpdateSkillBody>) {
-  const { skillId, name, description, category, config, avatar, parentId } =
-    req.body as UpdateSkillBody;
+  const { skillId, name, description, category, avatar, parentId } = req.body as UpdateSkillBody;
 
   if (!skillId) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
@@ -131,15 +130,10 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
       }
     }
 
-    if (config !== undefined && JSON.stringify(config).length > 50_000) {
-      return Promise.reject(SkillErrEnum.invalidConfig);
-    }
-
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description.trim();
     if (category !== undefined) updateData.category = category;
-    if (config !== undefined) updateData.config = config;
     if (avatar !== undefined) updateData.avatar = avatar;
 
     if (Object.keys(updateData).length === 0) {

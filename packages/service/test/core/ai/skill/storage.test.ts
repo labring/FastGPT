@@ -2,18 +2,51 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   uploadSkillPackage,
   downloadSkillPackage,
-  deleteSkillPackage,
-  getSkillStorageKey,
-  getSkillStorageInfo
+  deleteSkillPackage
 } from '@fastgpt/service/core/ai/skill/package';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
+import { getS3SkillSource } from '@fastgpt/service/common/s3/sources/skill';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { getSkillSizeLimits } from '@fastgpt/service/core/ai/skill/sandbox/config';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const s3SkillSourceMocks = vi.hoisted(() => {
+  const getSkillPackageKey = ({
+    teamId,
+    skillId,
+    packageObjectId
+  }: {
+    teamId: string;
+    skillId: string;
+    packageObjectId: string;
+  }) => `agent-skills/${teamId}/${skillId}/${packageObjectId}.zip`;
+
+  return {
+    uploadPackageMock: vi.fn().mockImplementation((params) =>
+      Promise.resolve({
+        key: getSkillPackageKey(params),
+        accessUrl: { url: 'mock-url' }
+      })
+    ),
+    removePackageTTLMock: vi.fn().mockResolvedValue(undefined),
+    deleteSkillPackagesByPrefixMock: vi.fn().mockResolvedValue(undefined)
+  };
+});
+
+vi.mock('@fastgpt/service/common/s3/sources/skill', () => ({
+  getS3SkillSource: vi.fn(() => ({
+    bucketName: 'fastgpt-private',
+    uploadPackage: s3SkillSourceMocks.uploadPackageMock,
+    removePackageTTL: s3SkillSourceMocks.removePackageTTLMock,
+    deleteSkillPackagesByPrefix: s3SkillSourceMocks.deleteSkillPackagesByPrefixMock
+  }))
+}));
 
 // Mock the S3 bucket
 vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
   S3PrivateBucket: vi.fn(function (this: any) {
     this.bucketName = 'fastgpt-private';
     this.client = {
-      uploadObject: vi.fn().mockResolvedValue(undefined),
       downloadObject: vi.fn().mockResolvedValue({
         // body must be async-iterable; an array satisfies for-await-of
         body: [Buffer.from('mock zip content')]
@@ -27,28 +60,30 @@ vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
 describe('storage', () => {
   const mockTeamId = 'team-abc123';
   const mockSkillId = 'skill-def456';
-  const mockVersion = 0;
+  const mockVersionId = '665f1f77bcf86cd799439011';
   const mockZipBuffer = Buffer.from('mock zip content');
 
   beforeEach(() => {
     vi.clearAllMocks();
+    s3SkillSourceMocks.uploadPackageMock.mockClear();
   });
 
-  // ==================== getSkillStorageKey ====================
-  describe('getSkillStorageKey', () => {
-    it('should generate correct storage key for v0', () => {
-      const key = getSkillStorageKey(mockTeamId, mockSkillId, 0);
-      expect(key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`);
-    });
+  describe('getSkillSizeLimits', () => {
+    it('should derive all skill size limits from the upload env value in MB', () => {
+      const originalMaxUploadSize = serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE;
 
-    it('should generate correct storage key for higher versions', () => {
-      const key = getSkillStorageKey(mockTeamId, mockSkillId, 5);
-      expect(key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/v5/package.zip`);
-    });
+      serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = 1;
 
-    it('should handle different team and skill IDs', () => {
-      const key = getSkillStorageKey('team-xyz', 'skill-123', 1);
-      expect(key).toBe('agent-skills/team-xyz/skill-123/v1/package.zip');
+      try {
+        expect(getSkillSizeLimits()).toEqual({
+          maxUploadBytes: 1 * 1024 * 1024,
+          maxUncompressedBytes: 1 * 1024 * 1024,
+          maxDownloadBytes: 1 * 1024 * 1024,
+          maxSandboxPackageBytes: 1 * 1024 * 1024
+        });
+      } finally {
+        serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = originalMaxUploadSize;
+      }
     });
   });
 
@@ -58,42 +93,45 @@ describe('storage', () => {
       const result = await uploadSkillPackage({
         teamId: mockTeamId,
         skillId: mockSkillId,
-        version: mockVersion,
+        packageObjectId: mockVersionId,
         zipBuffer: mockZipBuffer
       });
 
       expect(result).toEqual({
-        bucket: 'fastgpt-private',
-        key: `agent-skills/${mockTeamId}/${mockSkillId}/v${mockVersion}/package.zip`,
-        size: mockZipBuffer.length
+        key: `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`
+      });
+      expect(s3SkillSourceMocks.uploadPackageMock).toHaveBeenCalledWith({
+        teamId: mockTeamId,
+        skillId: mockSkillId,
+        packageObjectId: mockVersionId,
+        body: mockZipBuffer
       });
     });
 
-    it('should use S3PrivateBucket for upload', async () => {
+    it('should use S3SkillSource for upload', async () => {
       await uploadSkillPackage({
         teamId: mockTeamId,
         skillId: mockSkillId,
-        version: mockVersion,
+        packageObjectId: mockVersionId,
         zipBuffer: mockZipBuffer
       });
 
-      expect(S3PrivateBucket).toHaveBeenCalled();
+      expect(getS3SkillSource).toHaveBeenCalled();
     });
 
-    it('should generate correct key for different versions', async () => {
+    it('should generate correct key for different version objects', async () => {
       const versions = [0, 1, 5, 10];
 
       for (const version of versions) {
+        const versionId = `version-object-${version}`;
         const result = await uploadSkillPackage({
           teamId: mockTeamId,
           skillId: mockSkillId,
-          version,
+          packageObjectId: versionId,
           zipBuffer: mockZipBuffer
         });
 
-        expect(result.key).toBe(
-          `agent-skills/${mockTeamId}/${mockSkillId}/v${version}/package.zip`
-        );
+        expect(result.key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/${versionId}.zip`);
       }
     });
 
@@ -103,24 +141,43 @@ describe('storage', () => {
       const result = await uploadSkillPackage({
         teamId: mockTeamId,
         skillId: mockSkillId,
-        version: mockVersion,
+        packageObjectId: mockVersionId,
         zipBuffer: largeBuffer
       });
 
-      expect(result.size).toBe(largeBuffer.length);
+      expect(result.key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`);
+    });
+
+    it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
+      const originalMaxUploadSize = serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE;
+      serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = 1;
+
+      try {
+        const { maxUploadBytes } = getSkillSizeLimits();
+        const tooLargeBuffer = Buffer.alloc(maxUploadBytes + 1);
+
+        await expect(
+          uploadSkillPackage({
+            teamId: mockTeamId,
+            skillId: mockSkillId,
+            packageObjectId: mockVersionId,
+            zipBuffer: tooLargeBuffer
+          })
+        ).rejects.toThrow(SkillErrEnum.archiveTooLarge);
+
+        expect(S3PrivateBucket).not.toHaveBeenCalled();
+      } finally {
+        serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = originalMaxUploadSize;
+      }
     });
   });
 
   // ==================== downloadSkillPackage ====================
   describe('downloadSkillPackage', () => {
     it('should download skill package successfully', async () => {
-      const storageInfo = {
-        bucket: 'fastgpt-private',
-        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
-        size: mockZipBuffer.length
-      };
+      const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
 
-      const result = await downloadSkillPackage({ storageInfo });
+      const result = await downloadSkillPackage({ storageKey });
 
       expect(Buffer.isBuffer(result)).toBe(true);
       expect(result.toString()).toBe('mock zip content');
@@ -137,13 +194,9 @@ describe('storage', () => {
         };
       });
 
-      const storageInfo = {
-        bucket: 'fastgpt-private',
-        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
-        size: 0
-      };
+      const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
 
-      await expect(downloadSkillPackage({ storageInfo })).rejects.toThrow(
+      await expect(downloadSkillPackage({ storageKey })).rejects.toThrow(
         'Failed to download skill package'
       );
     });
@@ -152,43 +205,9 @@ describe('storage', () => {
   // ==================== deleteSkillPackage ====================
   describe('deleteSkillPackage', () => {
     it('should delete skill package successfully', async () => {
-      const storageInfo = {
-        bucket: 'fastgpt-private',
-        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
-        size: mockZipBuffer.length
-      };
+      const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
 
-      await expect(deleteSkillPackage(storageInfo)).resolves.not.toThrow();
-    });
-  });
-
-  // ==================== getSkillStorageInfo ====================
-  describe('getSkillStorageInfo', () => {
-    it('should return storage info for existing object', async () => {
-      const result = await getSkillStorageInfo({
-        teamId: mockTeamId,
-        skillId: mockSkillId,
-        version: 0
-      });
-
-      expect(result).toEqual({
-        bucket: 'fastgpt-private',
-        key: `agent-skills/${mockTeamId}/${mockSkillId}/v0/package.zip`,
-        exists: true,
-        size: 0
-      });
-    });
-
-    it('should return size 0 when object exists but metadata fetch fails', async () => {
-      // checkObjectExists returns true but getObjectMetadata is not mocked → catches → size: 0
-      const result = await getSkillStorageInfo({
-        teamId: mockTeamId,
-        skillId: mockSkillId,
-        version: 999
-      });
-
-      expect(result.exists).toBe(true);
-      expect(result.size).toBe(0);
+      await expect(deleteSkillPackage(storageKey)).resolves.not.toThrow();
     });
   });
 });

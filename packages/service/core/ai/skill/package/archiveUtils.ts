@@ -23,7 +23,7 @@ export function getSupportedArchiveFormat(filename: string): ArchiveFormat | nul
  */
 export async function extractToFileMap(
   filePath: string,
-  maxUncompressedBytes = 200 * 1024 * 1024
+  maxUncompressedBytes: number
 ): Promise<ArchiveFileMap> {
   const files = await decompress(filePath);
   const fileMap: ArchiveFileMap = {};
@@ -80,47 +80,4 @@ export function stripRootPrefix(fileMap: ArchiveFileMap, rootPrefix: string): Ar
     if (stripped) result[stripped] = value;
   }
   return result;
-}
-
-/**
- * 多 skill 包内发现的 SKILL.md 内容及其归档内相对路径。
- */
-export type SkillMdInfo = { content: string; relativePath: string };
-
-function normalizeArchivePath(path: string): string {
-  return path
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '')
-    .split('/')
-    .filter((part) => part && part !== '.')
-    .join('/');
-}
-
-function isSafeArchivePath(path: string): boolean {
-  return !!path && !path.split('/').includes('..');
-}
-
-/**
- * 从 ZIP Buffer 递归提取全部 SKILL.md。
- *
- * 返回路径按字典序排序，保证同一个包生成的调试提示词稳定，便于测试和问题复现。
- */
-export async function extractSkillMdInfosFromBuffer(buffer: Buffer): Promise<SkillMdInfo[]> {
-  const files = await decompress(buffer);
-  const result: SkillMdInfo[] = [];
-
-  for (const file of files) {
-    if (file.type === 'directory' || !file.data) continue;
-
-    const relativePath = normalizeArchivePath(file.path);
-    if (!isSafeArchivePath(relativePath)) continue;
-
-    const filename = relativePath.split('/').pop()?.toLowerCase();
-    if (filename !== 'skill.md') continue;
-
-    const content = Buffer.isBuffer(file.data) ? file.data.toString('utf-8') : String(file.data);
-    result.push({ content, relativePath });
-  }
-
-  return result.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }

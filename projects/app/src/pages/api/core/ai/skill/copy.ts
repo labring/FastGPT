@@ -7,10 +7,12 @@ import {
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createSkill, updateCurrentStorage } from '@fastgpt/service/core/ai/skill/manage';
-import { copySkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { createSkill, updateCurrentVersion } from '@fastgpt/service/core/ai/skill/manage';
+import { copySkillPackage, removeSkillPackageTTL } from '@fastgpt/service/core/ai/skill/package';
 import { createVersion } from '@fastgpt/service/core/ai/skill/version';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -51,11 +53,30 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
   // 3. Append " Copy" suffix to the name; duplicate conflicts are handled by E11000 (see app/copy.ts)
   const copyName = `${skill.name} Copy`;
 
-  if (!skill.currentStorage) {
+  if (!skill.currentVersionId) {
     return Promise.reject(SkillErrEnum.noStorage);
   }
 
-  // 4. Transaction: copy avatar → create skill record → copy MinIO package → create version → write owner record
+  const sourceVersion = await MongoAgentSkillsVersion.findOne({
+    _id: skill.currentVersionId,
+    skillId
+  }).lean();
+  if (!sourceVersion?.storageKey) {
+    return Promise.reject(SkillErrEnum.noStorage);
+  }
+
+  const preassignedSkillId = new Types.ObjectId().toString();
+  const versionId = new Types.ObjectId().toString();
+
+  // Copy the ZIP package before opening the Mongo transaction. If the transaction fails, the
+  // temporary S3 TTL remains and the shared S3 cleanup flow removes the orphan package.
+  const storageInfo = await copySkillPackage(sourceVersion.storageKey, {
+    teamId,
+    skillId: preassignedSkillId,
+    packageObjectId: versionId
+  });
+
+  // 4. Transaction: copy avatar → create skill record → create version → write owner record
   const newSkillId = await mongoSessionRun(async (session) => {
     // Copy avatar (handles S3 file / MongoDB image record / emoji safely)
     const avatar = await copyAvatarImage({
@@ -68,12 +89,11 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
     // Create the new skill record
     const newId = await createSkill(
       {
+        skillId: preassignedSkillId,
         parentId: skill.parentId ?? null,
         name: copyName,
         description: skill.description,
-        author: String(skill.author || ''),
         category: skill.category,
-        config: skill.config,
         avatar,
         teamId,
         tmbId
@@ -81,27 +101,21 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
       session
     );
 
-    // Copy the ZIP package in MinIO to the new skill path
-    const storageInfo = await copySkillPackage(skill.currentStorage!, {
-      teamId,
-      skillId: newId,
-      version: 0
-    });
-
-    // Update currentStorage on the new skill
-    await updateCurrentStorage(newId, storageInfo, session);
+    // Point the copied skill to the copied package version.
+    await updateCurrentVersion(newId, versionId, session);
 
     // Create the initial v0 version record
     await createVersion(
       {
+        versionId,
         skillId: newId,
         tmbId,
-        version: 0,
         versionName: 'Copied from ' + skill.name,
-        storage: storageInfo
+        storageKey: storageInfo.key
       },
       session
     );
+    await removeSkillPackageTTL(storageInfo.key, session);
 
     // Write owner record to ResourcePermission
     await MongoResourcePermission.insertOne(

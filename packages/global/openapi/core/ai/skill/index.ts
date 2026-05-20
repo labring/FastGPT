@@ -414,7 +414,7 @@ export const SkillPath: OpenAPIPath = {
   '/core/ai/skill/version/list': {
     post: {
       summary: '获取技能版本列表',
-      description: '分页获取指定技能的版本列表，按版本号倒序排列',
+      description: '分页获取指定技能的版本列表，按创建时间倒序排列',
       tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
@@ -456,8 +456,8 @@ export const SkillPath: OpenAPIPath = {
   },
   '/core/ai/skill/version/switch': {
     post: {
-      summary: '切换技能活跃版本',
-      description: '将指定版本设置为活跃版本，同时取消其他版本的活跃状态',
+      summary: '切换技能当前版本',
+      description: '将 skill 主表的当前版本指向指定版本',
       tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
@@ -468,7 +468,7 @@ export const SkillPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功切换活跃版本'
+          description: '成功切换当前版本'
         }
       }
     }

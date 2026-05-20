@@ -58,10 +58,10 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
     params: { skillId }
   });
 
-  const firstActiveIndex = versionList.findIndex((item) => item.isActive);
+  const firstCurrentIndex = versionList.findIndex((item) => item.isCurrent);
 
   const onChangeVersion = async (item: SkillVersionListItemType) => {
-    if (item.isActive) return;
+    if (item.isCurrent) return;
     await postSwitchSkillVersion({ skillId, versionId: item._id });
     refreshSkillDetail();
     restartSandbox();
@@ -113,7 +113,7 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
                 </Box>
                 <Box>
                   <Box fontSize={'sm'} color={'myGray.900'}>
-                    {t('common:version')} {item.version}
+                    {item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
                   </Box>
                   <Box fontSize={'xs'} mt={2} color={'myGray.500'}>
                     {formatTime2YMDHMS(new Date(item.createdAt))}
@@ -140,14 +140,14 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
                     {item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
                   </Box>
                 </Box>
-                {item.isActive && (
+                {item.isCurrent && (
                   <Tag
                     ml={3}
                     flexShrink={0}
                     type="borderSolid"
-                    colorSchema={index === firstActiveIndex ? 'green' : 'blue'}
+                    colorSchema={index === firstCurrentIndex ? 'green' : 'blue'}
                   >
-                    {index === firstActiveIndex
+                    {index === firstCurrentIndex
                       ? t('app:app.version_current')
                       : t('app:app.version_past')}
                   </Tag>

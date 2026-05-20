@@ -9,26 +9,37 @@ import { checkSkillNameExists } from './query';
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
 /**
- * Recursively find a skill/folder and all its children.
+ * 递归查询一个 skill/folder 及其所有子节点。
+ *
+ * 删除、移动和权限同步都会依赖这个子树快照。传入 session 时，整棵树的读取会参与同一个
+ * Mongo transaction，避免删除流程在事务内写入、事务外读子节点造成不一致。
  */
 export async function findSkillAndAllChildren({
   teamId,
   skillId,
-  fields
+  fields,
+  includeDeleted = false,
+  session
 }: {
   teamId: string;
   skillId: string;
   fields?: string;
+  includeDeleted?: boolean;
+  session?: ClientSession;
 }): Promise<AgentSkillSchemaType[]> {
+  const deleteFilter = includeDeleted ? {} : { deleteTime: null };
+
   const find = async (id: string): Promise<AgentSkillSchemaType[]> => {
-    const children = await MongoAgentSkills.find(
+    const childrenQuery = MongoAgentSkills.find(
       {
         teamId,
         parentId: id,
-        deleteTime: null
+        ...deleteFilter
       },
       fields
-    ).lean();
+    );
+    if (session) childrenQuery.session(session);
+    const children = await childrenQuery.lean();
 
     let skills: AgentSkillSchemaType[] = children as AgentSkillSchemaType[];
 
@@ -40,10 +51,10 @@ export async function findSkillAndAllChildren({
     return skills;
   };
 
-  const [skill, childSkills] = await Promise.all([
-    MongoAgentSkills.findById(skillId, fields).lean(),
-    find(skillId)
-  ]);
+  const skillQuery = MongoAgentSkills.findOne({ _id: skillId, teamId, ...deleteFilter }, fields);
+  if (session) skillQuery.session(session);
+
+  const [skill, childSkills] = await Promise.all([skillQuery.lean(), find(skillId)]);
 
   if (!skill) {
     throw new Error('Skill not found');
@@ -78,13 +89,9 @@ export async function createSkillFolder(
     parentId: parentId || null,
     name,
     description: description || '',
-    author: '',
     category: [],
-    config: {},
     teamId,
     tmbId,
-    currentVersion: 0,
-    versionCount: 0,
     createTime: new Date(),
     updateTime: new Date()
   });

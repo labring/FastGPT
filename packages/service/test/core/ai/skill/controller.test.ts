@@ -3,6 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import {
   createSkill,
+  createSkillFolder,
   updateSkill,
   deleteSkill,
   getSkillById,
@@ -10,10 +11,8 @@ import {
   checkSkillNameExists,
   importSkill
 } from '@fastgpt/service/core/ai/skill/manage';
-import {
-  parseSkillMarkdown,
-  extractSkillFromMarkdown
-} from '@fastgpt/service/core/ai/skill/utils/skillMarkdown';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
+import { parseSkillMarkdown } from '@fastgpt/service/core/ai/skill/utils/skillMarkdown';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
@@ -22,22 +21,28 @@ import {
 describe('AgentSkill Controller', () => {
   let testTeamId: string;
   let testTmbId: string;
-  let testUserId: string;
 
   beforeAll(async () => {
     testTeamId = new Types.ObjectId().toHexString();
     testTmbId = new Types.ObjectId().toHexString();
-    testUserId = new Types.ObjectId().toHexString();
   });
 
   beforeEach(async () => {
     // Clean up test data before each test
-    await MongoAgentSkills.deleteMany({ teamId: testTeamId });
+    const skillIds = await MongoAgentSkills.find({ teamId: testTeamId }, { _id: 1 }).lean();
+    await Promise.all([
+      MongoAgentSkills.deleteMany({ teamId: testTeamId }),
+      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } })
+    ]);
   });
 
   afterAll(async () => {
     // Clean up all test data
-    await MongoAgentSkills.deleteMany({ teamId: testTeamId });
+    const skillIds = await MongoAgentSkills.find({ teamId: testTeamId }, { _id: 1 }).lean();
+    await Promise.all([
+      MongoAgentSkills.deleteMany({ teamId: testTeamId }),
+      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } })
+    ]);
   });
 
   // ==================== Create Skill ====================
@@ -46,9 +51,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Test Skill',
         description: 'A test skill',
-        author: testUserId,
         category: [AgentSkillCategoryEnum.tool],
-        config: { test: true },
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -70,9 +73,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Test Skill No Category',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -91,9 +92,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Get Test Skill',
         description: 'A test skill',
-        author: testUserId,
         category: [AgentSkillCategoryEnum.tool],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -116,9 +115,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Deleted Skill',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -137,9 +134,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Original Name',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -157,9 +152,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Update Test',
         description: 'Original description',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -178,9 +171,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Time Test',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -207,9 +198,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Delete Test',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -229,6 +218,43 @@ describe('AgentSkill Controller', () => {
       expect(skill?.deleteTime).not.toBeNull();
     });
 
+    it('should mark a folder subtree as deleted without changing child version state', async () => {
+      const folder = await createSkillFolder({
+        name: 'Delete Folder',
+        teamId: testTeamId,
+        tmbId: testTmbId
+      });
+      const childSkillId = await createSkill({
+        parentId: folder._id.toString(),
+        name: 'Child Skill',
+        description: 'A child skill',
+        category: [],
+        teamId: testTeamId,
+        tmbId: testTmbId
+      });
+
+      await MongoAgentSkillsVersion.create({
+        skillId: childSkillId,
+        versionName: 'v0',
+        storageKey: 'test-key',
+        tmbId: testTmbId,
+        createdAt: new Date()
+      });
+
+      await deleteSkill(folder._id.toString());
+
+      const [deletedFolder, deletedChild, childVersion] = await Promise.all([
+        MongoAgentSkills.findById(folder._id),
+        MongoAgentSkills.findById(childSkillId),
+        MongoAgentSkillsVersion.findOne({ skillId: childSkillId })
+      ]);
+
+      expect(deletedFolder?.deleteTime).toBeInstanceOf(Date);
+      expect(deletedChild?.deleteTime).toBeInstanceOf(Date);
+      expect(deletedChild?.deleteTime?.getTime()).toBe(deletedFolder?.deleteTime?.getTime());
+      expect(childVersion).toBeDefined();
+    });
+
     it('should throw error when deleting non-existent skill', async () => {
       await expect(deleteSkill('507f1f77bcf86cd799439011')).rejects.toThrow('Skill not found');
     });
@@ -240,9 +266,7 @@ describe('AgentSkill Controller', () => {
           source: AgentSkillSourceEnum.system,
           name: 'System Skill',
           description: 'A system skill',
-          author: 'system',
           category: [],
-          config: {},
           teamId: null,
           tmbId: null,
           createTime: new Date(),
@@ -266,9 +290,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Permission Test',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -283,9 +305,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Permission Test 2',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -302,9 +322,7 @@ describe('AgentSkill Controller', () => {
           source: AgentSkillSourceEnum.system,
           name: 'System Permission Test',
           description: 'A system skill',
-          author: 'system',
           category: [],
-          config: {},
           teamId: null,
           tmbId: null,
           createTime: new Date(),
@@ -327,9 +345,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Existing Name',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -349,9 +365,7 @@ describe('AgentSkill Controller', () => {
       const skillData = {
         name: 'Unique Name',
         description: 'A test skill',
-        author: testUserId,
         category: [],
-        config: {},
         teamId: testTeamId,
         tmbId: testTmbId
       };
@@ -370,21 +384,14 @@ describe('AgentSkill Controller', () => {
         skill: {
           name: 'Imported Skill',
           description: 'An imported skill',
-          category: [AgentSkillCategoryEnum.tool],
-          config: { api: { url: 'https://example.com' } }
+          category: [AgentSkillCategoryEnum.tool]
         }
       };
 
       // Create a mock ZIP buffer
       const mockZipBuffer = Buffer.from('mock zip content');
 
-      const skillId = await importSkill(
-        packageData,
-        testTeamId,
-        testTmbId,
-        testUserId,
-        mockZipBuffer
-      );
+      const skillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
 
       expect(skillId).toBeDefined();
 
@@ -399,20 +406,19 @@ describe('AgentSkill Controller', () => {
         skill: {
           name: 'Duplicate Import',
           description: 'A skill',
-          category: [],
-          config: {}
+          category: []
         }
       };
 
       const mockZipBuffer = Buffer.from('mock zip content');
 
       // First import
-      await importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer);
+      await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
 
       // Second import should fail
-      await expect(
-        importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer)
-      ).rejects.toThrow('skillNameExists');
+      await expect(importSkill(packageData, testTeamId, testTmbId, mockZipBuffer)).rejects.toThrow(
+        'skillNameExists'
+      );
     });
   });
 
@@ -423,7 +429,6 @@ describe('AgentSkill Controller', () => {
 name: web-search
 description: Search the web
 metadata:
-  author: test
   version: "1.0"
   category: search,tool
 ---
@@ -438,7 +443,6 @@ This is the content.`;
       expect(result.frontmatter.name).toBe('web-search');
       expect(result.frontmatter.description).toBe('Search the web');
       expect(result.frontmatter.metadata).toEqual({
-        author: 'test',
         version: '1.0',
         category: 'search,tool' // raw string, not parsed array (parseSkillMarkdown returns raw YAML values)
       });
@@ -500,175 +504,6 @@ metadata:
       expect(result.error).toBeUndefined();
       expect(result.frontmatter.metadata.enabled).toBe(true);
       expect(result.frontmatter.metadata.disabled).toBe(false);
-    });
-  });
-
-  // ==================== Extract Skill from Markdown ====================
-  describe('extractSkillFromMarkdown', () => {
-    it('should extract skill with minimal required fields', () => {
-      const markdown = `---
-name: test-skill
-description: A test skill
----
-
-# Test Skill`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.skill).toBeDefined();
-      expect(result.skill.name).toBe('test-skill');
-      expect(result.skill.description).toBe('A test skill');
-      expect(result.skill.category).toEqual(['other']); // default
-      expect(result.skill.config).toEqual({});
-    });
-
-    it('should extract skill with metadata category', () => {
-      const markdown = `---
-name: web-search
-description: Search the web
-metadata:
-  category: search,tool
----
-
-# Web Search`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.skill.category).toEqual(['search', 'tool']);
-    });
-
-    it('should extract skill with license and compatibility', () => {
-      const markdown = `---
-name: test-skill
-description: A test skill
-license: MIT
-compatibility: Requires Python 3.8+
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.skill.config.license).toBe('MIT');
-      expect(result.skill.config.compatibility).toBe('Requires Python 3.8+');
-    });
-
-    it('should extract metadata fields to config', () => {
-      const markdown = `---
-name: test-skill
-description: A test skill
-metadata:
-  author: test-user
-  version: "1.0.0"
-  apiUrl: https://example.com
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.skill.config.author).toBe('test-user');
-      expect(result.skill.config.version).toBe('1.0.0');
-      expect(result.skill.config.apiUrl).toBe('https://example.com');
-    });
-
-    it('should return error when name is missing', () => {
-      const markdown = `---
-description: A test skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Frontmatter field "name" is required');
-      expect(result.skill).toBeNull();
-    });
-
-    it('should return error when description is missing', () => {
-      const markdown = `---
-name: test-skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Frontmatter field "description" is required');
-      expect(result.skill).toBeNull();
-    });
-
-    it('should return error for invalid name format - uppercase', () => {
-      const markdown = `---
-name: Test-Skill
-description: A test skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Name must contain only lowercase letters');
-      expect(result.skill).toBeNull();
-    });
-
-    it('should return error for invalid name format - starts with hyphen', () => {
-      const markdown = `---
-name: -test-skill
-description: A test skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Name must contain only lowercase letters');
-      expect(result.skill).toBeNull();
-    });
-
-    it('should return error for invalid name format - consecutive hyphens', () => {
-      const markdown = `---
-name: test--skill
-description: A test skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Name must contain only lowercase letters');
-      expect(result.skill).toBeNull();
-    });
-
-    it('should return error for name too long', () => {
-      const markdown = `---
-name: ${'a'.repeat(51)}
-description: A test skill
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toContain('Name must be less than 50 characters');
-    });
-
-    it('should truncate description if too long', () => {
-      const markdown = `---
-name: test-skill
-description: ${'a'.repeat(600)}
----
-
-# Test`;
-
-      const result = extractSkillFromMarkdown(markdown);
-
-      expect(result.error).toBeUndefined();
-      expect(result.skill.description.length).toBe(500); // truncated
     });
   });
 });

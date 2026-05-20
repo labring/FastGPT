@@ -15,8 +15,7 @@ describe('AgentSkill package metadata', () => {
         skill: {
           name: 'Test Skill',
           description: 'A test skill',
-          category: [AgentSkillCategoryEnum.tool],
-          config: { test: true }
+          category: [AgentSkillCategoryEnum.tool]
         },
         markdown: '# Test Skill\n\nDescription'
       };
@@ -135,18 +134,6 @@ describe('AgentSkill package metadata', () => {
       });
       expect(result.valid).toBe(true);
     });
-
-    it('should reject non-object config', () => {
-      const result = validateSkillPackage({
-        skill: {
-          name: 'Test Skill',
-          config: 'invalid'
-        },
-        markdown: '# Test'
-      });
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('Config must be an object');
-    });
   });
 
   // ==================== parseSkillPackage ====================
@@ -156,8 +143,7 @@ describe('AgentSkill package metadata', () => {
         skill: {
           name: 'Test Skill',
           description: 'A test skill',
-          category: [],
-          config: {}
+          category: []
         },
         markdown: '# Test'
       };
@@ -172,8 +158,7 @@ describe('AgentSkill package metadata', () => {
         skill: {
           name: 'Test Skill',
           description: 'A test skill',
-          category: [],
-          config: {}
+          category: []
         },
         markdown: '# Test'
       };
@@ -248,7 +233,6 @@ describe('AgentSkill package metadata', () => {
       const template = createSkillTemplate('Test');
       expect(template.skill.description).toBeDefined();
       expect(template.skill.category).toEqual(['other']);
-      expect(template.skill.config).toEqual({});
     });
   });
 });

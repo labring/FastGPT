@@ -27,6 +27,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -123,7 +124,11 @@ const Header = () => {
   );
 
   const { runAsync: onSaveDeploy, loading: isSaving } = useRequest(
-    (skillId: string) => postSaveDeploySkill({ skillId }),
+    (skillId: string) =>
+      postSaveDeploySkill({
+        skillId,
+        versionName: formatTime2YMDHMS(new Date())
+      }),
     {
       successToast: t('skill:deploy_success'),
       errorToast: t('skill:deploy_failed')

@@ -68,7 +68,7 @@ export type CreateEditDebugSandboxResult = {
 /**
  * 创建或复用一个 skill 编辑态 sandbox。
  *
- * 该流程只服务 edit-debug：下载 active version 包，标准化目录结构，写入并解压到
+ * 该流程只服务 edit-debug：下载当前版本包，标准化目录结构，写入并解压到
  * sandbox 工作目录下的 `skills`，最后返回 code-server endpoint。普通 agent session
  * 的 skill 注入逻辑仍由 runtime/useSandbox 负责，避免编辑态和运行态生命周期互相污染。
  */
@@ -99,18 +99,17 @@ export async function createEditDebugSandbox(
     throw new Error('Skill not found or access denied');
   }
 
-  if (!skill.currentStorage) {
+  if (!skill.currentVersionId) {
     throw new Error('Skill package not found - no current version available');
   }
 
-  const activeVersion = await MongoAgentSkillsVersion.findOne({
-    skillId,
-    isActive: true,
-    isDeleted: false
+  const currentVersion = await MongoAgentSkillsVersion.findOne({
+    _id: skill.currentVersionId,
+    skillId
   });
 
-  if (!activeVersion) {
-    throw new Error('No active version found for skill');
+  if (!currentVersion) {
+    throw new Error('No current version found for skill');
   }
 
   const sessionId = getEditDebugSandboxId(skillId);
@@ -289,7 +288,7 @@ export async function createEditDebugSandbox(
   try {
     onProgress?.({ sandboxId: sessionId, phase: 'downloadingPackage' });
     const packageBuffer = await downloadSkillPackage({
-      storageInfo: activeVersion.storage
+      storageKey: currentVersion.storageKey
     });
 
     const standardizedBuffer = await normalizeSkillPackageZipForSandbox(packageBuffer);
@@ -374,20 +373,17 @@ export async function createEditDebugSandbox(
         tmbId,
         skillId,
         sessionId,
-        editSkillDir: editSkillDir,
         provider: providerConfig.provider,
         image: sandboxInfo.image,
         providerCreatedAt: sandboxInfo.createdAt,
         endpoint: endpointInfo,
         storage: {
-          bucket: activeVersion.storage.bucket,
-          key: activeVersion.storage.key,
-          size: standardizedBuffer.length,
+          key: currentVersion.storageKey,
           uploadedAt: new Date()
         },
         metadata: new Map([
           ['skillName', skill.name],
-          ['version', activeVersion.version.toString()]
+          ['versionId', currentVersion._id.toString()]
         ])
       }
     });

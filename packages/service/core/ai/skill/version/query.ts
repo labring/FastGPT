@@ -1,32 +1,36 @@
 import { MongoAgentSkillsVersion } from './schema';
+import { MongoAgentSkills } from '../model/schema';
 import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/ai/skill/type';
 
 /**
- * Get a specific version by skillId and version number.
+ * Get a specific version by id.
  */
-export async function getVersionBySkillIdAndVersion(
+export async function getVersionById(
   skillId: string,
-  version: number
+  versionId: string
 ): Promise<AgentSkillsVersionSchemaType | null> {
   const versionDoc = await MongoAgentSkillsVersion.findOne({
     skillId,
-    version,
-    isDeleted: false
+    _id: versionId
   }).lean();
 
   return versionDoc as AgentSkillsVersionSchemaType | null;
 }
 
 /**
- * Get the active version for a skill.
+ * Get the current version for a skill.
  */
-export async function getActiveVersion(
+export async function getCurrentVersion(
   skillId: string
 ): Promise<AgentSkillsVersionSchemaType | null> {
+  const skill = await MongoAgentSkills.findOne({ _id: skillId, deleteTime: null })
+    .select('currentVersionId')
+    .lean();
+  if (!skill?.currentVersionId) return null;
+
   const version = await MongoAgentSkillsVersion.findOne({
     skillId,
-    isActive: true,
-    isDeleted: false
+    _id: skill.currentVersionId
   }).lean();
 
   return version as AgentSkillsVersionSchemaType | null;
@@ -38,19 +42,16 @@ export async function getActiveVersion(
 export async function listVersions(
   skillId: string,
   options?: {
-    includeDeleted?: boolean;
     sort?: 'asc' | 'desc';
   }
 ): Promise<AgentSkillsVersionSchemaType[]> {
   const query: Record<string, any> = { skillId };
 
-  if (!options?.includeDeleted) {
-    query.isDeleted = false;
-  }
-
   const sortOrder = options?.sort === 'asc' ? 1 : -1;
 
-  const versions = await MongoAgentSkillsVersion.find(query).sort({ version: sortOrder }).lean();
+  const versions = await MongoAgentSkillsVersion.find(query)
+    .sort({ createdAt: sortOrder, _id: sortOrder })
+    .lean();
 
   return versions as AgentSkillsVersionSchemaType[];
 }
@@ -58,15 +59,6 @@ export async function listVersions(
 /**
  * Count versions for a skill.
  */
-export async function countVersions(
-  skillId: string,
-  options?: { includeDeleted?: boolean }
-): Promise<number> {
-  const query: Record<string, any> = { skillId };
-
-  if (!options?.includeDeleted) {
-    query.isDeleted = false;
-  }
-
-  return MongoAgentSkillsVersion.countDocuments(query);
+export async function countVersions(skillId: string): Promise<number> {
+  return MongoAgentSkillsVersion.countDocuments({ skillId });
 }

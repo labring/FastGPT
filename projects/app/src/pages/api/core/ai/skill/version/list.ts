@@ -16,32 +16,41 @@ export type ListSkillVersionsResponse = PaginationResponse<SkillVersionListItemT
 async function handler(
   req: ApiRequestProps<ListSkillVersionsBody>
 ): Promise<ListSkillVersionsResponse> {
-  const { skillId, isActive } = req.body;
+  const { skillId, isCurrent } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  await authSkill({ skillId, req, per: ReadPermissionVal, authToken: true, authApiKey: true });
+  const { skill } = await authSkill({
+    skillId,
+    req,
+    per: ReadPermissionVal,
+    authToken: true,
+    authApiKey: true
+  });
+
+  if (isCurrent === true && !skill.currentVersionId) {
+    return { total: 0, list: [] };
+  }
 
   const match = {
     skillId,
-    isDeleted: false,
-    ...(isActive !== undefined && { isActive })
+    ...(isCurrent === true && { _id: skill.currentVersionId }),
+    ...(isCurrent === false && skill.currentVersionId && { _id: { $ne: skill.currentVersionId } })
   };
 
   const [list, total] = await Promise.all([
     MongoAgentSkillsVersion.find(match)
-      .sort({ version: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .skip(offset)
       .limit(pageSize)
-      .select('-storage -importSource -isDeleted')
+      .select('-storageKey -importSource')
       .lean()
       .then((versions) =>
         versions.map((item) => ({
           _id: String(item._id),
           skillId: String(item.skillId),
           tmbId: String(item.tmbId),
-          version: item.version,
           versionName: item.versionName,
-          isActive: !!item.isActive,
+          isCurrent: String(item._id) === String(skill.currentVersionId),
           createdAt: item.createdAt.toISOString()
         }))
       ),

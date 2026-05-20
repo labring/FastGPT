@@ -184,11 +184,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         const detail: AgentSkillDetailType = {
           ...res,
           type: AgentSkillTypeEnum.skill,
-          config: res.config ?? {},
           teamId: res.teamId ?? '',
           tmbId: res.tmbId ?? '',
-          currentVersion: 0,
-          versionCount: 0,
+          currentVersionId: res.currentVersionId,
           creationStatus: res.creationStatus,
           creationError: res.creationError,
           createTime: new Date(res.createTime),

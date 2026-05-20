@@ -3,7 +3,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
 import {
   repackFileMapAsZip,
@@ -66,7 +65,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     // Authenticate user and check permission
     let teamId: string;
     let tmbId: string;
-    let userId: string | undefined;
 
     if (body.parentId) {
       // If importing into a folder, check write permission on the parent folder
@@ -79,7 +77,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       });
       teamId = authResult.teamId;
       tmbId = authResult.tmbId;
-      userId = authResult.userId;
     } else {
       // If importing to root, check team-level skill create permission
       const authResult = await authUserPer({
@@ -90,7 +87,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       });
       teamId = authResult.teamId;
       tmbId = authResult.tmbId;
-      userId = authResult.userId;
     }
 
     // Check archive size (multer already enforces the limit, this is a secondary guard)
@@ -131,22 +127,17 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
         name: pkgName,
         description: pkgDescription,
         category: [AgentSkillCategoryEnum.other],
-        config: {},
         avatar: body.avatar
       }
     };
 
     // Create ONE DB record
-    const skillId = await mongoSessionRun(async (session) =>
-      importSkill(
-        skillPackage,
-        teamId,
-        tmbId,
-        userId || '',
-        zipBuffer,
-        body.parentId || null,
-        session
-      )
+    const skillId = await importSkill(
+      skillPackage,
+      teamId,
+      tmbId,
+      zipBuffer,
+      body.parentId || null
     );
 
     // Add audit log

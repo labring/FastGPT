@@ -1,18 +1,13 @@
 export type CreateVersionData = {
+  versionId?: string;
   skillId: string;
   tmbId: string;
-  version: number;
   versionName?: string;
-  storage: {
-    bucket: string;
-    key: string;
-    size: number;
-    checksum?: string;
-  };
+  storageKey: string;
   importSource?: {
     originalFilename: string;
     importedAt: Date;
   };
 };
 
-export type UpdateVersionData = Partial<Omit<CreateVersionData, 'skillId' | 'version'>>;
+export type UpdateVersionData = Partial<Omit<CreateVersionData, 'versionId' | 'skillId'>>;

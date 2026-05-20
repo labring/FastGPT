@@ -14,15 +14,15 @@ import type { CreateSkillData } from './types';
  * import/copy/async creation flows so package storage stays consistent.
  */
 export async function createSkill(data: CreateSkillData, session?: ClientSession): Promise<string> {
+  const { skillId, ...createData } = data;
   const skill = new MongoAgentSkills({
-    ...data,
-    parentId: data.parentId || null,
+    ...(skillId && { _id: skillId }),
+    ...createData,
+    parentId: createData.parentId || null,
     type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
-    currentVersion: 0,
-    versionCount: 0,
-    creationStatus: data.creationStatus ?? AgentSkillCreationStatusEnum.ready,
-    creationPayload: data.creationPayload,
+    creationStatus: createData.creationStatus ?? AgentSkillCreationStatusEnum.ready,
+    creationPayload: createData.creationPayload,
     updateTime: new Date()
   });
   await skill.save({ session });

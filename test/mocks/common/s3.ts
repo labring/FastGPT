@@ -130,6 +130,25 @@ const createMockBucketClass = (defaultName: string) => {
     async putObject(key: string, body: any) {
       await this.client.uploadObject({ key, body });
     }
+    async uploadFileByBody(params: {
+      key: string;
+      body: any;
+      contentType?: string;
+      filename?: string;
+    }) {
+      await this.client.uploadObject({
+        key: params.key,
+        body: params.body,
+        contentType: params.contentType,
+        metadata: {
+          originFilename: encodeURIComponent(params.filename || 'mock-file')
+        }
+      });
+      return {
+        key: params.key,
+        accessUrl: await this.createExternalUrl({ key: params.key })
+      };
+    }
     async getFileStream() {
       return null;
     }
