@@ -26,7 +26,7 @@ import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel, getWebEmbeddingModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 
 type DatasetPageContextType = {
   datasetId: string;
@@ -197,6 +197,20 @@ export const DatasetPageContextProvider = ({
       refreshDeps: [datasetDetail.parentId, datasetDetail.name]
     }
   );
+
+  // Poll datasetDetail when syncing or waiting
+  useEffect(() => {
+    const isPolling =
+      datasetDetail.status === DatasetStatusEnum.syncing ||
+      datasetDetail.status === DatasetStatusEnum.waiting;
+    if (!isPolling || !datasetId) return;
+
+    const timer = setInterval(() => {
+      loadDatasetDetail(datasetId);
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [datasetDetail.status, datasetId, loadDatasetDetail]);
 
   // Handle forceUpdate URL parameter
   useEffect(() => {

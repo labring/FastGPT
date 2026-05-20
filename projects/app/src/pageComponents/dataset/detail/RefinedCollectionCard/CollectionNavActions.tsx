@@ -263,7 +263,7 @@ const CollectionNavActions = () => {
         <>
           {datasetDetail.status === DatasetStatusEnum.active && !hasTrainingData && (
             <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
-              {t('dataset:immediate_sync')}
+              {t('dataset:sync')}
             </Button>
           )}
           {datasetDetail.status === DatasetStatusEnum.syncing && (
@@ -298,6 +298,17 @@ const CollectionNavActions = () => {
           )}
         </>
       )}
+
+      {/* websiteDataset immediate_sync 按钮 */}
+      {isWebSite &&
+        datasetDetail.permission.hasWritePer &&
+        feConfigs?.isPlus &&
+        datasetDetail.status === DatasetStatusEnum.active &&
+        !hasTrainingData && (
+          <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
+            {t('dataset:sync')}
+          </Button>
+        )}
 
       {/* website 状态 Tag */}
       {isWebSite && (
@@ -404,7 +415,7 @@ const CollectionNavActions = () => {
       {isApiDataset &&
         datasetDetail.permission.hasWritePer &&
         datasetDetail.status === DatasetStatusEnum.active && (
-          <Button onClick={() => setShowAPIFileSelectModal(true)}>{t('dataset:add_file')}</Button>
+          <Button onClick={() => setShowAPIFileSelectModal(true)}>{t('dataset:add')}</Button>
         )}
 
       {/* 配置按钮（database） */}
