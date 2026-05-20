@@ -358,9 +358,13 @@ const List = ({
                         onClick: () => {
                           setEditPerSkillId(skill._id);
                         }
-                      },
-                      ...(!isFolder
-                        ? [
+                      }
+                    ]
+                  },
+                  ...(!isFolder
+                    ? [
+                        {
+                          children: [
                             {
                               icon: 'export',
                               type: 'grayBg' as const,
@@ -377,9 +381,9 @@ const List = ({
                                 })()
                             }
                           ]
-                        : [])
-                    ]
-                  }
+                        }
+                      ]
+                    : [])
                 ]
               : []),
             {

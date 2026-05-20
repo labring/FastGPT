@@ -87,7 +87,7 @@ function isRetryableSandboxProviderError(error: unknown): boolean {
   return false;
 }
 
-function isSandboxCommandNotRunningError(error: unknown): boolean {
+function isSandboxCommandChannelNotReadyError(error: unknown): boolean {
   const pending: unknown[] = [error];
 
   while (pending.length > 0) {
@@ -100,7 +100,11 @@ function isSandboxCommandNotRunningError(error: unknown): boolean {
     };
     const message = errorLike.message.toLowerCase();
 
-    if (message.includes('pod is not running')) {
+    if (
+      message.includes('pod is not running') ||
+      message.includes('exec command timeout') ||
+      message.includes('command execution failed: exec command timeout')
+    ) {
       return true;
     }
 
@@ -145,8 +149,8 @@ async function retrySandboxProviderProbe<T>(
  * 等待 sandbox 的命令通道真正可执行。
  *
  * Sealos devbox 的 provider info 可能已经是 Running，但 exec API 仍短暂返回
- * "pod is not running: Pending"。这里用无副作用的 `true` 命令补齐命令通道 ready
- * 判定，避免后续 writeFiles/execute 抢跑。
+ * "pod is not running: Pending" 或 exec 超时。这里用无副作用的 `true` 命令补齐
+ * 命令通道 ready 判定，避免后续 writeFiles/execute 抢跑。
  */
 async function waitUntilSandboxCommandReady(
   sandbox: ISandbox,
@@ -165,12 +169,12 @@ async function waitUntilSandboxCommandReady(
 
       const error = new Error(result.stderr || result.stdout || 'Sandbox command probe failed');
       lastError = error;
-      if (!isSandboxCommandNotRunningError(error)) {
+      if (!isSandboxCommandChannelNotReadyError(error)) {
         throw error;
       }
     } catch (error) {
       lastError = error;
-      if (!isSandboxCommandNotRunningError(error)) {
+      if (!isSandboxCommandChannelNotReadyError(error)) {
         throw error;
       }
     }

@@ -267,6 +267,57 @@ describe('sandbox runtime helpers', () => {
     }
   });
 
+  it('retries devbox command probe when exec channel times out during startup', async () => {
+    vi.useFakeTimers();
+    try {
+      const executeMock = vi
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('Command execution failed: exec command timeout'), {
+            command: 'true',
+            commandError: Object.assign(new Error('exec command timeout'), {
+              command: 'true'
+            })
+          })
+        )
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+
+      sandboxAdapterMocks.createSandboxMock.mockImplementationOnce(
+        (provider: string, connectionConfig: any) => ({
+          provider,
+          connectionConfig,
+          id: 'timeout-command-sandbox',
+          status: { state: 'Running' },
+          create: vi.fn(async () => undefined),
+          start: vi.fn(async () => undefined),
+          stop: vi.fn(async () => undefined),
+          delete: vi.fn(async () => undefined),
+          getInfo: vi.fn(async () => null),
+          execute: executeMock,
+          waitUntilReady: vi.fn(async () => undefined),
+          ensureRunning: vi.fn(async () => undefined)
+        })
+      );
+
+      const connectPromise = connectToSandbox(
+        {
+          provider: 'sealosdevbox',
+          baseUrl: 'http://sandbox.local',
+          token: 'api-key'
+        },
+        'sandbox-timeout-command'
+      );
+
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      await expect(connectPromise).resolves.toMatchObject({ provider: 'sealosdevbox' });
+      expect(executeMock).toHaveBeenCalledTimes(2);
+      expect(executeMock).toHaveBeenCalledWith('true', { timeoutMs: 5_000 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('falls back when reading ready sandbox info fails after availability check', async () => {
     const sandbox = {
       provider: 'sealosdevbox',

@@ -43,6 +43,7 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -79,6 +80,11 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const [deleteTarget, setDeleteTarget] = useState<{
+    appId: string;
+    name: string;
+    content: string;
+  }>();
 
   const editPerApp = useMemo(
     () =>
@@ -103,10 +109,6 @@ const List = () => {
     onDrop: (dragId: string, targetId: string) => {
       openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
     }
-  });
-
-  const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete'
   });
 
   const { lastChatAppId, setLastChatAppId } = useChatStore();
@@ -187,7 +189,7 @@ const List = () => {
           alignItems={'stretch'}
         >
           {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
-          {myApps.map((app, index) => {
+          {myApps.map((app) => {
             const isAgent = AppTypeList.includes(app.type);
             const isTool = ToolTypeList.includes(app.type);
             const isFolder = AppFolderTypeList.includes(app.type);
@@ -421,21 +423,21 @@ const List = () => {
                                     {
                                       children: [
                                         {
-                                          type: 'danger' as 'danger',
+                                          type: 'danger' as const,
                                           icon: 'delete',
                                           label: t('common:Delete'),
                                           onClick: () =>
-                                            openConfirmDel({
-                                              onConfirm: () => onclickDelApp(app._id),
-                                              inputConfirmText: app.name,
-                                              customContent: (() => {
+                                            setDeleteTarget({
+                                              appId: app._id,
+                                              name: app.name,
+                                              content: (() => {
                                                 if (isFolder)
                                                   return t('app:confirm_delete_folder_tip');
                                                 if (isAgent) return t('app:confirm_del_app_tip');
                                                 if (isTool) return t('app:confirm_del_tool_tip');
                                                 return t('app:confirm_del_app_tip');
                                               })()
-                                            })()
+                                            })
                                         }
                                       ]
                                     }
@@ -453,7 +455,15 @@ const List = () => {
           })}
         </Grid>
       )}
-      <DelConfirmModal />
+      <ConfirmWarningModal
+        isOpen={!!deleteTarget}
+        title={t('common:delete_warning')}
+        content={deleteTarget?.content ?? ''}
+        onClose={() => setDeleteTarget(undefined)}
+        onConfirm={() => (deleteTarget ? onclickDelApp(deleteTarget.appId) : undefined)}
+        confirmButtonVariant={'dangerFill'}
+        inputConfirmText={deleteTarget?.name}
+      />
       <ConfirmCopyModal />
       {!!editedApp && (
         <EditResourceModal

@@ -153,7 +153,11 @@ const Header = () => {
             type: 'grayBg' as const,
             label: t('skill:permission_settings'),
             onClick: () => setShowPermModal(true)
-          },
+          }
+        ]
+      },
+      {
+        children: [
           {
             icon: 'export' as const,
             type: 'grayBg' as const,

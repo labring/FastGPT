@@ -107,14 +107,6 @@ const ConfirmWarningModal = ({
             isDisabled={!isInputConfirmValid}
             isLoading={requesting}
             px={'14px'}
-            _disabled={
-              confirmButtonVariant === 'dangerFill'
-                ? {
-                    bg: 'red.600 !important',
-                    opacity: 0.4
-                  }
-                : undefined
-            }
             onClick={async () => {
               setRequesting(true);
               try {
