@@ -33,6 +33,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -42,7 +43,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     name,
     description,
     requirements,
-    model,
     category = [],
     avatar
   } = CreateSkillBodySchema.parse(req.body);
@@ -77,7 +77,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   if (requestedDescription.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);
   }
-  if (requestedRequirements && !model) {
+  if (requestedRequirements && !getDefaultLLMModel()?.model) {
     return Promise.reject(SkillErrEnum.missingModel);
   }
   if (requestedRequirements && requestedRequirements.length > 8000) {
@@ -107,9 +107,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         teamId,
         tmbId,
         creationStatus: AgentSkillCreationStatusEnum.creating,
-        creationPayload: requestedRequirements
-          ? { requirements: requestedRequirements, model }
-          : undefined
+        creationPayload: requestedRequirements ? { requirements: requestedRequirements } : undefined
       },
       session
     );
@@ -136,8 +134,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     tmbId,
     name: requestedName,
     description: requestedDescription,
-    requirements: requestedRequirements,
-    model
+    requirements: requestedRequirements
   };
 
   try {

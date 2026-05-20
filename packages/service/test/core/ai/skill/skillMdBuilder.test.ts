@@ -305,12 +305,12 @@ describe('skillMd utilities', () => {
         usage: { inputTokens: 100, outputTokens: 50 }
       } as any);
 
-      const result = await getSkillGuidance(
-        'summarize-doc',
-        'Summarize documents',
-        'Create a skill that summarizes documents into 200 words max',
-        'gpt-4o'
-      );
+      const result = await getSkillGuidance({
+        name: 'summarize-doc',
+        description: 'Summarize documents',
+        requirements: 'Create a skill that summarizes documents into 200 words max',
+        model: 'gpt-4o'
+      });
 
       expect(result.guidance.goal).toBe('Summarize documents');
       expect(result.guidance.workflow).toBe('1. Read input\n2. Summarize');
@@ -326,12 +326,12 @@ describe('skillMd utilities', () => {
         usage: { inputTokens: 80, outputTokens: 20 }
       } as any);
 
-      const result = await getSkillGuidance(
-        'test-skill',
-        'My description',
-        'Some requirements',
-        'gpt-4o'
-      );
+      const result = await getSkillGuidance({
+        name: 'test-skill',
+        description: 'My description',
+        requirements: 'Some requirements',
+        model: 'gpt-4o'
+      });
 
       expect(result.guidance.goal).toBe('My description');
       expect(result.guidance.workflow).toBe('Step 1');
@@ -343,7 +343,12 @@ describe('skillMd utilities', () => {
         usage: { inputTokens: 50, outputTokens: 10 }
       } as any);
 
-      const result = await getSkillGuidance('fallback-skill', '', 'Some requirements', 'gpt-4o');
+      const result = await getSkillGuidance({
+        name: 'fallback-skill',
+        description: '',
+        requirements: 'Some requirements',
+        model: 'gpt-4o'
+      });
 
       expect(result.guidance.goal).toBe('fallback-skill');
     });
@@ -354,12 +359,12 @@ describe('skillMd utilities', () => {
         usage: { inputTokens: 60, outputTokens: 15 }
       } as any);
 
-      const result = await getSkillGuidance(
-        'test-skill',
-        'Test description',
-        'Test requirements',
-        'gpt-4o'
-      );
+      const result = await getSkillGuidance({
+        name: 'test-skill',
+        description: 'Test description',
+        requirements: 'Test requirements',
+        model: 'gpt-4o'
+      });
 
       // Falls back to using description as goal, and keeps requirements
       expect(result.guidance.goal).toBe('Test description');
@@ -373,7 +378,12 @@ describe('skillMd utilities', () => {
         usage: { inputTokens: 40, outputTokens: 10 }
       } as any);
 
-      const result = await getSkillGuidance('skill', 'desc', 'reqs', 'gpt-4o');
+      const result = await getSkillGuidance({
+        name: 'skill',
+        description: 'desc',
+        requirements: 'reqs',
+        model: 'gpt-4o'
+      });
 
       expect(result.guidance.goal).toBe('Only goal');
       expect(result.guidance.workflow).toBeUndefined();

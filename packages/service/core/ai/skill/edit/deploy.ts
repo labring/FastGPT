@@ -2,8 +2,8 @@ import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { Types } from '../../../../common/mongo';
 import { updateCurrentVersion } from '../manage';
 import {
-  normalizeSkillPackageZipForSandbox,
   removeSkillPackageTTL,
+  standardizeSkillPackageBySkillMdName,
   uploadSkillPackage
 } from '../package';
 import { packageSkillInSandbox } from './sandbox';
@@ -59,7 +59,7 @@ export async function saveDeploySkillFromSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: getSkillsRootPath(defaults.workDirectory)
     });
-    packageBuffer = await normalizeSkillPackageZipForSandbox(packageBuffer);
+    packageBuffer = (await standardizeSkillPackageBySkillMdName(packageBuffer)).buffer;
   } catch (error: any) {
     return Promise.reject(
       new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)

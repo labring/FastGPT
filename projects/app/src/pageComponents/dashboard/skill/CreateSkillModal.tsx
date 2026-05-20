@@ -13,7 +13,6 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
 import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
@@ -32,7 +31,6 @@ type Props = {
 const CreateSkillModal = ({ parentId, onClose }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels } = useSystemStore();
 
   const { register, setValue, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -56,13 +54,17 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
   const { runAsync: onCreate, loading: isCreating } = useRequest(
     async ({ avatar, name, intro, requirement }: FormType) => {
       const trimmedRequirement = requirement.trim();
-      const defaultModel = defaultModels.llm?.model;
+      const defaultRequirement = t('skill:skill_requirement_default').trim();
+      const resolvedRequirement =
+        trimmedRequirement && trimmedRequirement !== defaultRequirement
+          ? trimmedRequirement
+          : undefined;
+
       return postCreateSkill({
         parentId: parentId ?? null,
         name: name.trim(),
         description: intro?.trim() || undefined,
-        requirements: trimmedRequirement || undefined,
-        model: trimmedRequirement && defaultModel ? defaultModel : undefined,
+        requirements: resolvedRequirement,
         avatar: avatar || undefined
       });
     },

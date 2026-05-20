@@ -20,6 +20,7 @@ export type SkillGuidance = {
 export type SkillMdGenerationUsage = {
   inputTokens: number;
   outputTokens: number;
+  usedUserOpenAIKey: boolean;
 };
 
 /**
@@ -139,7 +140,15 @@ Rules:
 /**
  * 生成 requirements 结构化提取的 user prompt。
  */
-const getSkillGuidanceUserPrompt = (name: string, description: string, requirements: string) => {
+const getSkillGuidanceUserPrompt = ({
+  name,
+  description,
+  requirements
+}: {
+  name: string;
+  description: string;
+  requirements: string;
+}) => {
   let prompt = `Please analyze the following skill requirements and extract structured design information:
 
 ## Skill Name
@@ -166,12 +175,12 @@ ${requirements}`;
  * 如果模型返回无法解析的 JSON，会保守回退到 description/requirements/name，
  * 让创建流程可以继续生成一个基本可用的 SKILL.md。
  */
-export async function getSkillGuidance(
-  name: string,
-  description: string,
-  requirements: string,
-  model: string
-): Promise<{
+export async function getSkillGuidance({
+  name,
+  description,
+  requirements,
+  model
+}: GenerateSkillParam): Promise<{
   guidance: SkillGuidance;
   usage: SkillMdGenerationUsage;
 }> {
@@ -182,7 +191,11 @@ export async function getSkillGuidance(
     },
     {
       role: 'user',
-      content: getSkillGuidanceUserPrompt(name, description, requirements)
+      content: getSkillGuidanceUserPrompt({
+        name,
+        description,
+        requirements
+      })
     }
   ];
 
@@ -190,9 +203,8 @@ export async function getSkillGuidance(
     body: {
       model,
       messages,
-      temperature: 0,
       max_tokens: 1000,
-      stream: false
+      stream: true
     }
   });
 
@@ -229,12 +241,12 @@ export async function generateSkillMd(
 ): Promise<[string, SkillMdGenerationUsage]> {
   const model = params.model;
 
-  const { guidance, usage: guidanceUsage } = await getSkillGuidance(
-    params.name,
-    params.description,
-    params.requirements,
+  const { guidance, usage: guidanceUsage } = await getSkillGuidance({
+    name: params.name,
+    description: params.description,
+    requirements: params.requirements,
     model
-  );
+  });
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -256,9 +268,7 @@ export async function generateSkillMd(
     body: {
       model,
       messages,
-      temperature: 0.1,
-      max_tokens: 4000,
-      stream: false
+      stream: true
     }
   });
 
@@ -266,7 +276,8 @@ export async function generateSkillMd(
     answerText,
     {
       inputTokens: guidanceUsage.inputTokens + generateUsage.inputTokens,
-      outputTokens: guidanceUsage.outputTokens + generateUsage.outputTokens
+      outputTokens: guidanceUsage.outputTokens + generateUsage.outputTokens,
+      usedUserOpenAIKey: guidanceUsage.usedUserOpenAIKey && generateUsage.usedUserOpenAIKey
     }
   ];
 }

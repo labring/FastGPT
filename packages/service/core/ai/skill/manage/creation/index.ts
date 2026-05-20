@@ -9,7 +9,7 @@ import { Types } from '../../../../../common/mongo';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
 import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
-import { buildSkillMd } from '../../utils/skillMdTemplate';
+import { buildSkillMd, extractSkillNameFromSkillMd } from '../../utils/skillMdTemplate';
 import { generateSkillMd } from './skillMdGenerator';
 import {
   createSkillPackage,
@@ -22,10 +22,8 @@ import { createVersion } from '../../version';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { createUsage } from '../../../../../support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
+import { getDefaultLLMModel } from '../../../model';
+import { createSkillGenerationUsage } from './usage';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -36,7 +34,6 @@ export type AgentSkillCreateJobData = {
   name: string;
   description: string;
   requirements?: string;
-  model?: string;
 };
 
 const agentSkillCreateQueue = getQueue<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, {
@@ -114,8 +111,7 @@ async function resumePendingSkillCreationJobs(): Promise<void> {
         tmbId: skill.tmbId.toString(),
         name: skill.name,
         description: skill.description,
-        requirements: skill.creationPayload?.requirements,
-        model: skill.creationPayload?.model
+        requirements: skill.creationPayload?.requirements
       });
     })
   );
@@ -159,12 +155,11 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
   try {
     const requirements = data.requirements ?? skill.creationPayload?.requirements;
-    const model = data.model ?? skill.creationPayload?.model;
     let skillMd: string;
-    const packageRootName = name;
 
-    if (requirements && model) {
+    if (requirements) {
       // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
+      const model = getDefaultLLMModel().model;
       const [generatedSkillMd, usage] = await generateSkillMd({
         name,
         description,
@@ -175,35 +170,20 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
       skillMd = generatedSkillMd;
 
       // 只有模型辅助生成才产生 token 用量；普通模板创建不计入模型消耗。
-      const { totalPoints, modelName } = formatModelChars2Points({
-        model,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
-      });
-
-      createUsage({
+      await createSkillGenerationUsage({
         teamId,
         tmbId,
-        appName: i18nT('common:support.wallet.usage.Assist Generate Skill'),
-        totalPoints,
-        source: UsageSourceEnum.assist_generate_skill,
-        list: [
-          {
-            moduleName: i18nT('common:support.wallet.usage.Assist Generate Skill'),
-            amount: totalPoints,
-            model: modelName,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
-          }
-        ]
+        model,
+        usage
       });
     } else {
       skillMd = buildSkillMd({
-        name: packageRootName,
+        name,
         description
       });
     }
 
+    const packageRootName = extractSkillNameFromSkillMd(skillMd);
     const zipBuffer = await createSkillPackage({ name: packageRootName, skillMd });
     const versionId = new Types.ObjectId().toString();
 

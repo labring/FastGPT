@@ -45,7 +45,12 @@ const Loading = ({
         />
       )}
       {text && (
-        <Box mt={2} color="primary.600" fontWeight={'bold'}>
+        <Box
+          mt={variant === 'particle' ? '20px' : 2}
+          color={variant === 'particle' ? 'myGray.500' : 'primary.600'}
+          fontSize={variant === 'particle' ? 'sm' : undefined}
+          fontWeight={variant === 'particle' ? 'normal' : 'bold'}
+        >
           {text}
         </Box>
       )}

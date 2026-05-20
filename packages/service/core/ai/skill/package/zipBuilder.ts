@@ -14,6 +14,7 @@
  */
 
 import JSZip from 'jszip';
+import { extractSkillNameFromSkillMd } from '../utils/skillMdTemplate';
 
 // 测试用例需要直接构造 ZIP，因此这里保留 JSZip 的再导出。
 export { JSZip };
@@ -259,6 +260,37 @@ export async function standardizeSkillPackage(
     buffer: standardizedBuffer,
     skillMd,
     assets
+  };
+}
+
+/**
+ * 将编辑区打出的 ZIP 标准化为 `{SKILL.md:name}/...` 结构。
+ *
+ * 编辑发布时数据库里的 skill.name 只是产品展示名，真实可执行 skill 目录必须跟随
+ * SKILL.md frontmatter.name，否则下次打开编辑器会重新出现展示名目录包住真实 skill 的错位结构。
+ */
+export async function standardizeSkillPackageBySkillMdName(
+  zipBuffer: Buffer
+): Promise<{ buffer: Buffer; skillMd: string; assets: Record<string, Buffer>; name: string }> {
+  const extractResult = await extractSkillPackage(zipBuffer);
+
+  if (!extractResult.success || !extractResult.skillMd) {
+    throw new Error(extractResult.error || 'Invalid skill package');
+  }
+
+  const { skillMd, assets = {} } = extractResult;
+  const name = extractSkillNameFromSkillMd(skillMd);
+  const buffer = await createSkillPackage({
+    name,
+    skillMd,
+    assets
+  });
+
+  return {
+    buffer,
+    skillMd,
+    assets,
+    name
   };
 }
 

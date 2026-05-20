@@ -12,7 +12,6 @@ export type CreateSkillData = {
   creationStatus?: AgentSkillCreationStatusEnum;
   creationPayload?: {
     requirements?: string;
-    model?: string;
   };
 };
 

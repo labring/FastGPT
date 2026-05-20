@@ -26,7 +26,7 @@
   "skill_requirement_tooltip": "TODO",
   "skill_requirement_tooltip_title": "Example:",
   "skill_requirement_tooltip_example": "Goal:\nAutomatically generate meeting minutes from meeting notes.\n\nProcess:\n1. Identify the meeting topic and participants\n2. Extract key discussion points\n3. Organize clear conclusions and decisions\n4. Extract follow-up action items and note the responsible person (if any)\n\nRequirements:\n1. Output in structured format\n2. Include: meeting topic, participants, discussion points, decisions, action items\n3. Content should be concise and clear, avoiding redundancy",
-  "skill_requirement_default": "Goal:\nProcess:\nRequirements:",
+  "skill_requirement_default": "## Goal\n\n## Process\n\n## Requirements",
   "ai_optimize": "AI Optimize",
   "import_skill": "Import Skill",
   "import_skill_file_type_tip": "Supports {{ext}} formats",
@@ -85,6 +85,7 @@
   "sandbox_failed": "Sandbox creation failed: {{message}}",
   "sandbox_retry": "Retry",
   "sandbox_error_title": "Sandbox Creation Failed",
+  "no_current_version": "No available Skill version yet. Recreate or import the Skill before editing.",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",
   "permission.des.manage": "Can manage Agent Skill and collaborators"

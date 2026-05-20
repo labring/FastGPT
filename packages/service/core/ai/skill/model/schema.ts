@@ -22,7 +22,6 @@ import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 export type MongoAgentSkillSchemaType = AgentSkillSchemaType & {
   creationPayload?: {
     requirements?: string;
-    model?: string;
   };
 };
 
@@ -107,8 +106,7 @@ const AgentSkillsSchema = new Schema({
     type: String
   },
   creationPayload: {
-    requirements: String,
-    model: String
+    requirements: String
   }
 });
 

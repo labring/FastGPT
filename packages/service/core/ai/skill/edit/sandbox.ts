@@ -1,7 +1,7 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage, normalizeSkillPackageZipForSandbox } from '../package';
+import { downloadSkillPackage } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
 import {
   EDIT_DEBUG_SANDBOX_CHAT_ID,
@@ -38,12 +38,7 @@ import {
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import {
-  getSafeSkillDirectoryName,
-  getSkillsRootPath,
-  joinSandboxPath,
-  shellQuote
-} from '../runtime';
+import { getSkillsRootPath, joinSandboxPath, shellQuote } from '../runtime';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -124,11 +119,9 @@ export async function createEditDebugSandbox(
    * 只有这个旧 wrapper，启动时顺手展开一层，避免每次加载继续制造
    * skills/<edit-dir>/<real-skill>/SKILL.md 这种嵌套结构。
    */
-  const ensureEditSkillDirectory = async (sandbox: ISandbox, skillName: string) => {
+  const ensureEditSkillDirectory = async (sandbox: ISandbox) => {
     const { skillsRootPath } = getEditSkillSandboxPaths();
     const relativeSkillsRootPath = getSkillsRootPath('.');
-    const safeName = getSafeSkillDirectoryName(skillName);
-    const targetEditDir = joinSandboxPath(skillsRootPath, safeName);
     const migrateResult = await sandbox.execute(
       [
         `mkdir -p ${shellQuote(skillsRootPath)}`,
@@ -149,22 +142,44 @@ export async function createEditDebugSandbox(
             skillsRootPath
           )} -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`*-${skillId}-edit`)} | head -n 1);`,
           `if [ -n "$legacy_edit_dir" ]; then`,
-          `mkdir -p ${shellQuote(targetEditDir)} &&`,
           `find "$legacy_edit_dir" -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(
-            `${targetEditDir}/`
+            `${skillsRootPath}/`
           )} \\; &&`,
           `rm -rf "$legacy_edit_dir";`,
           'fi'
         ].join(' '),
         [
-          `if [ -f ${shellQuote(joinSandboxPath(skillsRootPath, 'SKILL.md'))} ] || [ -f ${shellQuote(joinSandboxPath(skillsRootPath, 'skill.md'))} ]; then`,
-          `mkdir -p ${shellQuote(targetEditDir)} &&`,
+          `root_skill_md_path=$(find ${shellQuote(
+            skillsRootPath
+          )} -maxdepth 1 -iname "SKILL.md" | head -n 1);`,
+          `if [ -n "$root_skill_md_path" ]; then`,
+          `frontmatter_name=$(awk 'BEGIN{in_fm=0} /^---[[:space:]]*$/ { if (in_fm == 0) { in_fm=1; next } else { exit } } in_fm == 1 && /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); gsub(/^["'\\'' ]+|["'\\'' ]+$/, ""); print; exit }' "$root_skill_md_path");`,
+          `if [ -n "$frontmatter_name" ]; then`,
+          `target_dir=${shellQuote(skillsRootPath)}/$frontmatter_name;`,
+          `mkdir -p "$target_dir" &&`,
           `find ${shellQuote(
             skillsRootPath
-          )} -mindepth 1 -maxdepth 1 ! -name "${safeName.replace(/"/g, '\\"')}" -exec mv {} ${shellQuote(
-            `${targetEditDir}/`
-          )} \\;;`,
-          'fi'
+          )} -mindepth 1 -maxdepth 1 ! -name "$frontmatter_name" -exec mv {} "$target_dir/" \\;;`,
+          `fi;`,
+          `fi;`
+        ].join(' '),
+        [
+          `single_dir=$(find ${shellQuote(
+            skillsRootPath
+          )} -mindepth 1 -maxdepth 1 -type d | head -n 1);`,
+          `single_dir_count=$(find ${shellQuote(
+            skillsRootPath
+          )} -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ');`,
+          `if [ "$single_dir_count" = "1" ]; then`,
+          `skill_md_path=$(find "$single_dir" -maxdepth 1 -iname "SKILL.md" | head -n 1);`,
+          `if [ -n "$skill_md_path" ]; then`,
+          `frontmatter_name=$(awk 'BEGIN{in_fm=0} /^---[[:space:]]*$/ { if (in_fm == 0) { in_fm=1; next } else { exit } } in_fm == 1 && /^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, ""); gsub(/^["'\\'' ]+|["'\\'' ]+$/, ""); print; exit }' "$skill_md_path");`,
+          `if [ -n "$frontmatter_name" ]; then`,
+          `target_dir=${shellQuote(skillsRootPath)}/$frontmatter_name;`,
+          `if [ "$single_dir" != "$target_dir" ] && [ ! -e "$target_dir" ]; then mv "$single_dir" "$target_dir"; fi;`,
+          `fi;`,
+          `fi;`,
+          `fi`
         ].join(' ')
       ].join(' && ')
     );
@@ -172,8 +187,6 @@ export async function createEditDebugSandbox(
     if (migrateResult.exitCode !== 0) {
       throw new Error(`Failed to prepare edit skill directory: ${migrateResult.stderr}`);
     }
-
-    return targetEditDir;
   };
 
   const existingInstance = await findSandboxInstanceByAppChatType({
@@ -198,7 +211,7 @@ export async function createEditDebugSandbox(
 
       const connected = await connectReadySandboxByInstance(providerConfig, instance);
       sandbox = connected.sandbox;
-      await ensureEditSkillDirectory(sandbox, skill.name);
+      await ensureEditSkillDirectory(sandbox);
 
       const endpointInfo = await getSandboxEndpoint(sandbox);
 
@@ -299,8 +312,6 @@ export async function createEditDebugSandbox(
       storageKey: currentVersion.storageKey
     });
 
-    const standardizedBuffer = await normalizeSkillPackageZipForSandbox(packageBuffer);
-
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
 
     const createConfig = buildEditDebugCreateConfig({
@@ -333,7 +344,6 @@ export async function createEditDebugSandbox(
     });
 
     const { skillsRootPath } = getEditSkillSandboxPaths();
-    const editSkillDir = joinSandboxPath(skillsRootPath, getSafeSkillDirectoryName(skill.name));
     const zipPath = joinSandboxPath(defaults.workDirectory, 'package.zip');
 
     const prepareWorkDirectoryResult = await client.provider.execute(
@@ -349,16 +359,16 @@ export async function createEditDebugSandbox(
     await client.provider.writeFiles([
       {
         path: zipPath,
-        data: standardizedBuffer
+        data: packageBuffer
       }
     ]);
 
     onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
     const extractResult = await client.provider.execute(
       [
-        `rm -rf ${shellQuote(editSkillDir)}`,
-        `mkdir -p ${shellQuote(editSkillDir)}`,
-        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(editSkillDir)}`,
+        `rm -rf ${shellQuote(skillsRootPath)}`,
+        `mkdir -p ${shellQuote(skillsRootPath)}`,
+        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(skillsRootPath)}`,
         `rm ${shellQuote(zipPath)}`
       ].join(' && ')
     );

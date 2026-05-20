@@ -6,6 +6,7 @@ import {
   validateZipStructure,
   extractSkillPackage,
   normalizeSkillPackageZipForSandbox,
+  standardizeSkillPackageBySkillMdName,
   JSZip
 } from '@fastgpt/service/core/ai/skill/package';
 
@@ -346,6 +347,34 @@ ${largeMarkdown}`;
       );
       expect(files).not.toContain('1/test/SKILL.md');
       expect(files).not.toContain('1/test2/SKILL.md');
+    });
+  });
+
+  describe('standardizeSkillPackageBySkillMdName', () => {
+    it('uses SKILL.md frontmatter name as package root instead of the existing directory name', async () => {
+      const zip = new JSZip();
+      const skillMd = `---
+name: real-runtime-skill
+description: Real runtime skill
+---
+
+# Real runtime skill`;
+
+      zip.file('database-display-name/SKILL.md', skillMd);
+      zip.file('database-display-name/src/main.ts', 'export default 1;');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await standardizeSkillPackageBySkillMdName(buffer);
+      const standardizedZip = await JSZip.loadAsync(result.buffer);
+      const files = Object.keys(standardizedZip.files).filter(
+        (path) => !standardizedZip.files[path].dir
+      );
+
+      expect(result.name).toBe('real-runtime-skill');
+      expect(files).toEqual(
+        expect.arrayContaining(['real-runtime-skill/SKILL.md', 'real-runtime-skill/src/main.ts'])
+      );
+      expect(files).not.toContain('database-display-name/SKILL.md');
     });
   });
 });

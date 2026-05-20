@@ -199,21 +199,32 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [skillId]
+      refreshDeps: [skillId],
+      errorToast: '',
+      onError() {
+        router.replace('/dashboard/skill');
+      }
     }
   );
 
   const creationStatus = skillDetail?.creationStatus;
   const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
   const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
+  const isSkillNoCurrentVersion =
+    !!skillDetail &&
+    creationStatus === AgentSkillCreationStatusEnum.ready &&
+    !skillDetail.currentVersionId;
   const isSkillReady =
     !!skillDetail &&
     creationStatus === AgentSkillCreationStatusEnum.ready &&
     !!skillDetail.currentVersionId;
-  const visibleSandboxState: SandboxState = isSkillCreateFailed ? 'failed' : sandboxState;
-  const visibleSandboxError = isSkillCreateFailed
-    ? skillDetail?.creationError || t('common:create_failed')
-    : sandboxError;
+  const visibleSandboxState: SandboxState =
+    isSkillCreateFailed || isSkillNoCurrentVersion ? 'failed' : sandboxState;
+  const visibleSandboxError = (() => {
+    if (isSkillCreateFailed) return skillDetail?.creationError || t('common:create_failed');
+    if (isSkillNoCurrentVersion) return t('skill:no_current_version');
+    return sandboxError;
+  })();
   const visibleCurrentTab =
     !isSkillReady && currentTab === TabEnum.preview ? TabEnum.config : currentTab;
 
