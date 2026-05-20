@@ -76,7 +76,7 @@ export const ChatCompletionContentPartFileSchema = z.object({
 // FastGPT 自定义扩展：外链文件
 export const ChatCompletionContentPartFileTypeSchema = z.object({
   type: z.literal('file_url'),
-  name: z.string(),
+  name: z.string().optional(),
   url: z.string(),
   key: z.string().optional()
 });
