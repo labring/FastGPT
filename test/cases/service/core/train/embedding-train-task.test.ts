@@ -66,6 +66,14 @@ vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   deleteSFTTask: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/train/embedding/task/mq', () => ({
+  removeEmbeddingTrainTaskJob: vi.fn().mockResolvedValue({})
+}));
+
+vi.mock('@fastgpt/service/core/train/common/task-abort-signal', () => ({
+  setTrainTaskAbortSignal: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
     findOne: vi.fn()
@@ -203,11 +211,26 @@ describe('Embedding Train Task Controller', () => {
       const { MongoEmbeddingTrainTask } = await import(
         '@fastgpt/service/core/train/embedding/task/schema'
       );
+      const { setTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
 
+      (MongoEmbeddingTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: 'task_123',
+          status: EmbeddingTrainTaskStatusEnum.running,
+          result: {}
+        })
+      });
       (MongoEmbeddingTrainTask.deleteOne as any).mockResolvedValue({ deletedCount: 1 });
 
       await deleteEmbeddingTrainTask('task_123');
 
+      expect(setTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'embedding',
+        taskId: 'task_123',
+        reason: 'deleted'
+      });
       expect(MongoEmbeddingTrainTask.deleteOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
         { session: undefined }
@@ -220,11 +243,25 @@ describe('Embedding Train Task Controller', () => {
       const { MongoEmbeddingTrainTask } = await import(
         '@fastgpt/service/core/train/embedding/task/schema'
       );
+      const { setTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
 
+      (MongoEmbeddingTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: 'task_123',
+          status: EmbeddingTrainTaskStatusEnum.pending
+        })
+      });
       (MongoEmbeddingTrainTask.updateOne as any).mockResolvedValue({ modifiedCount: 1 });
 
       await cancelEmbeddingTrainTask('task_123');
 
+      expect(setTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'embedding',
+        taskId: 'task_123',
+        reason: 'cancelled'
+      });
       expect(MongoEmbeddingTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
         expect.objectContaining({

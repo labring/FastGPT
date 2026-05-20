@@ -44,11 +44,22 @@ vi.mock('@fastgpt/service/core/train/rerank/task/controller', () => ({
   deleteRerankTrainTask: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/train/common/task-abort-signal', () => ({
+  setTrainTaskAbortSignal: vi.fn(),
+  getTrainTaskAbortSignal: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/train/rerank/data/schema', () => ({
   MongoRerankTrainsetData: {
     find: vi.fn().mockReturnValue({
       cursor: vi.fn()
     })
+  }
+}));
+
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: {
+    find: vi.fn()
   }
 }));
 
@@ -118,7 +129,9 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
+  deleteSFTTask: vi.fn(),
   synthesizeRerankEvalData: vi.fn(),
+  judgeRelevantChunks: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -264,6 +277,32 @@ describe('Rerank Train Task Processor', () => {
         a: 'mock answer 2'
       }
     ]);
+    const { MongoDatasetData } = await import('@fastgpt/service/core/dataset/data/schema');
+    (MongoDatasetData.find as any).mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: '507f1f77bcf86cd799439020',
+          q: 'Test question 1',
+          a: 'Test answer 1'
+        },
+        {
+          _id: '507f1f77bcf86cd799439021',
+          q: 'Test question 2',
+          a: 'Test answer 2'
+        }
+      ])
+    });
+
+    const { judgeRelevantChunks } = await import('@fastgpt/service/core/train/rerank/external');
+    (judgeRelevantChunks as any).mockResolvedValue({
+      status: 'success',
+      detected_data_ids: ['507f1f77bcf86cd799439020']
+    });
+
+    const { getTrainTaskAbortSignal } = await import(
+      '@fastgpt/service/core/train/common/task-abort-signal'
+    );
+    (getTrainTaskAbortSignal as any).mockResolvedValue(null);
   });
 
   describe('rerankTrainTaskProcessor', () => {
@@ -362,16 +401,17 @@ describe('Rerank Train Task Processor', () => {
       (MongoEvalDatasetData.find as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue([
           {
+            _id: 'eval_data_123',
             userInput: 'Test eval question',
             retrievalContextsFull: [
               {
-                id: 'data_001',
+                id: '507f1f77bcf86cd799439020',
                 q: 'Test question 1',
                 a: 'Test answer 1',
                 score: [{ type: 'fullText', value: 1.5, index: 0 }]
               }
             ],
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
           }
         ])
       });
@@ -397,18 +437,26 @@ describe('Rerank Train Task Processor', () => {
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          rerank_top10_ndcg: 0.85,
-          rerank_top10_mrr: 0.9,
-          rerank_top10_precision: 0.82,
-          rerank_top10_recall: 0.78
+        evalResult: {
+          detailed_results: {
+            rerank_top10_ndcg: 0.85,
+            rerank_top10_mrr: 0.9,
+            rerank_top10_precision: 0.82,
+            rerank_top10_recall: 0.78
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['507f1f77bcf86cd799439020']
+          }
+        ]
       });
 
       // Mock dataset search
@@ -419,7 +467,7 @@ describe('Rerank Train Task Processor', () => {
         data: {
           quoteQA: [
             {
-              id: 'data_001',
+              id: '507f1f77bcf86cd799439020',
               q: 'Test question 1',
               a: 'Test answer 1',
               score: [{ type: 'embedding', value: 0.95, index: 0 }]
@@ -505,7 +553,12 @@ describe('Rerank Train Task Processor', () => {
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateRerankCheckpointStage).toHaveBeenCalledTimes(6);
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
+        7,
+        mockTaskId,
+        RerankTaskCheckpointStageEnum.llm_judge
+      );
+      expect(updateRerankCheckpointStage).toHaveBeenCalledTimes(7);
 
       // Verify data preparation stage
       expect(fs.createWriteStream).toHaveBeenCalled();
@@ -697,24 +750,23 @@ describe('Rerank Train Task Processor', () => {
       ]);
 
       // Mock MongoEvalDatasetData.find for eval stage
-      if (!(MongoEvalDatasetData.find as any).mock) {
-        (MongoEvalDatasetData.find as any).mockReturnValue({
-          lean: vi.fn().mockResolvedValue([
-            {
-              userInput: 'Test eval question',
-              retrievalContextsFull: [
-                {
-                  id: 'data_001',
-                  q: 'Test question 1',
-                  a: 'Test answer 1',
-                  score: [{ type: 'fullText', value: 1.5, index: 0 }]
-                }
-              ],
-              expectedContextIds: ['data_001']
-            }
-          ])
-        });
-      }
+      (MongoEvalDatasetData.find as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          {
+            _id: 'eval_data_123',
+            userInput: 'Test eval question',
+            retrievalContextsFull: [
+              {
+                id: '507f1f77bcf86cd799439020',
+                q: 'Test question 1',
+                a: 'Test answer 1',
+                score: [{ type: 'fullText', value: 1.5, index: 0 }]
+              }
+            ],
+            expectedContextIds: ['507f1f77bcf86cd799439020']
+          }
+        ])
+      });
 
       // Mock getRerankModel
       const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
@@ -738,18 +790,26 @@ describe('Rerank Train Task Processor', () => {
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          rerank_top10_ndcg: 0.85,
-          rerank_top10_mrr: 0.9,
-          rerank_top10_precision: 0.82,
-          rerank_top10_recall: 0.78
+        evalResult: {
+          detailed_results: {
+            rerank_top10_ndcg: 0.85,
+            rerank_top10_mrr: 0.9,
+            rerank_top10_precision: 0.82,
+            rerank_top10_recall: 0.78
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['507f1f77bcf86cd799439020']
+          }
+        ]
       });
 
       await rerankTrainTaskProcessor({
@@ -780,6 +840,10 @@ describe('Rerank Train Task Processor', () => {
       expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
+      );
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
+        mockTaskId,
+        RerankTaskCheckpointStageEnum.llm_judge
       );
 
       // Verify final result saving
@@ -902,13 +966,13 @@ describe('Rerank Train Task Processor', () => {
             userInput: 'Test question',
             retrievalContextsFull: [
               {
-                id: 'data_001',
+                id: '507f1f77bcf86cd799439020',
                 q: 'Test q',
                 a: 'Test a',
                 score: [{ type: 'embedding', value: 0.9, index: 0 }]
               }
             ],
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
           }
         ])
       });
@@ -924,13 +988,21 @@ describe('Rerank Train Task Processor', () => {
         '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model'
       );
       (evaluateRerankModelHelper as any).mockResolvedValue({
-        detailed_results: { overall_ndcg: 0.8, overall_mrr: 0.85, overall_precision: 0.82 },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        evalResult: {
+          detailed_results: { overall_ndcg: 0.8, overall_mrr: 0.85, overall_precision: 0.82 },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
+        },
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['507f1f77bcf86cd799439020']
+          }
+        ]
       });
 
       // Mock SFT operations to fail at finetuning stage
@@ -1137,24 +1209,23 @@ describe('Rerank Train Task Processor', () => {
       ]);
 
       // Mock MongoEvalDatasetData.find for eval stage
-      if (!(MongoEvalDatasetData.find as any).mock) {
-        (MongoEvalDatasetData.find as any).mockReturnValue({
-          lean: vi.fn().mockResolvedValue([
-            {
-              userInput: 'Test eval question',
-              retrievalContextsFull: [
-                {
-                  id: 'data_001',
-                  q: 'Test question 1',
-                  a: 'Test answer 1',
-                  score: [{ type: 'fullText', value: 1.5, index: 0 }]
-                }
-              ],
-              expectedContextIds: ['data_001']
-            }
-          ])
-        });
-      }
+      (MongoEvalDatasetData.find as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          {
+            _id: 'eval_data_123',
+            userInput: 'Test eval question',
+            retrievalContextsFull: [
+              {
+                id: '507f1f77bcf86cd799439020',
+                q: 'Test question 1',
+                a: 'Test answer 1',
+                score: [{ type: 'fullText', value: 1.5, index: 0 }]
+              }
+            ],
+            expectedContextIds: ['507f1f77bcf86cd799439020']
+          }
+        ])
+      });
 
       // Mock getRerankModel
       const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
@@ -1178,18 +1249,26 @@ describe('Rerank Train Task Processor', () => {
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          rerank_top10_ndcg: 0.85,
-          rerank_top10_mrr: 0.9,
-          rerank_top10_precision: 0.82,
-          rerank_top10_recall: 0.78
+        evalResult: {
+          detailed_results: {
+            rerank_top10_ndcg: 0.85,
+            rerank_top10_mrr: 0.9,
+            rerank_top10_precision: 0.82,
+            rerank_top10_recall: 0.78
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['507f1f77bcf86cd799439020']
+          }
+        ]
       });
 
       // Note: getRerankTrainTask is already mocked above with data evolution pattern
@@ -1385,6 +1464,115 @@ describe('Rerank Train Task Processor', () => {
       );
     });
 
+    test('SFT polling should stop when task is deleted during finetuning', async () => {
+      const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
+      const { createRerankModelConfig } = await import(
+        '@fastgpt/service/core/train/rerank/model/controller'
+      );
+      const { createSFTTask, querySFTTaskStatus } = await import(
+        '@fastgpt/service/core/train/rerank/external'
+      );
+      const { getTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
+
+      const checkpointData: any = {
+        generate_trainset: {
+          trainDatasetId: 'trainset_123',
+          trainDatasetFilePath: '/tmp/test.jsonl'
+        },
+        generate_evaldataset: {
+          evalDatasetId: 'eval_dataset_123',
+          autoGenerated: true
+        },
+        eval_basemodel: {
+          baseModelEvalResult: { detailed_results: {} },
+          rankingResults: []
+        }
+      };
+      const mockTask = createMockTask(
+        RerankTrainTaskStatusEnum.running,
+        RerankTaskCheckpointStageEnum.eval_basemodel,
+        checkpointData
+      );
+      let sftTaskCreated = false;
+
+      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
+        if (id !== mockTaskId) return Promise.resolve(null);
+
+        return Promise.resolve({
+          ...mockTask,
+          checkpoint: {
+            ...mockTask.checkpoint,
+            data: { ...checkpointData }
+          }
+        });
+      });
+
+      (updateRerankCheckpointData as any).mockImplementation(
+        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
+          checkpointData[stage] = merge ? { ...checkpointData[stage], ...data } : data;
+        }
+      );
+
+      (createSFTTask as any).mockImplementation(async () => {
+        sftTaskCreated = true;
+        return { task_id: 'sft_task_123' };
+      });
+      (getTrainTaskAbortSignal as any).mockImplementation(async () =>
+        sftTaskCreated ? 'deleted' : null
+      );
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
+        status: 'running'
+      });
+      try {
+        await rerankTrainTaskProcessor({
+          data: {
+            taskId: mockTaskId,
+            isRetry: false
+          },
+          attemptsMade: 0,
+          opts: {
+            attempts: 3
+          }
+        } as any);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          RerankTrainErrEnum.rerankTaskNotExist
+        );
+      }
+
+      expect(updateRerankCheckpointData).not.toHaveBeenCalledWith(
+        mockTaskId,
+        'finetuning',
+        expect.anything(),
+        expect.anything()
+      );
+      expect(querySFTTaskStatus).not.toHaveBeenCalled();
+      expect(getTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'rerank',
+        taskId: mockTaskId
+      });
+      expect(createRerankModelConfig).not.toHaveBeenCalled();
+      expect(updateRerankCheckpointStage).not.toHaveBeenCalledWith(
+        mockTaskId,
+        RerankTaskCheckpointStageEnum.finetuning
+      );
+      expect(MongoRerankTrainTask.updateOne).not.toHaveBeenCalledWith(
+        { _id: mockTaskId },
+        expect.objectContaining({
+          status: RerankTrainTaskStatusEnum.completed
+        })
+      );
+    });
+
     test('评测阶段失败应该抛出错误', async () => {
       const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
         await import('@fastgpt/service/core/train/rerank/task/controller');
@@ -1545,7 +1733,7 @@ describe('Rerank Train Task Processor', () => {
         data: {
           quoteQA: [
             {
-              id: 'context_001',
+              id: '507f1f77bcf86cd799439020',
               q: 'Test question 1',
               a: 'Test answer 1',
               score: [{ type: 'embedding', value: 0.95, index: 0 }]
@@ -1570,15 +1758,11 @@ describe('Rerank Train Task Processor', () => {
       // Verify results
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
-        id: 'context_001',
-        q: 'Test question 1',
-        a: 'Test answer 1',
+        id: '507f1f77bcf86cd799439020',
         score: [{ type: 'embedding', value: 0.95, index: 0 }]
       });
       expect(results[1]).toEqual({
         id: 'context_002',
-        q: 'Test question 2',
-        a: 'Test answer 2',
         score: [{ type: 'rerank', value: 0.88, index: 1 }]
       });
 
@@ -1682,7 +1866,7 @@ describe('Rerank Train Task Processor', () => {
         data: {
           quoteQA: [
             {
-              id: 'data_001',
+              id: '507f1f77bcf86cd799439020',
               q: 'Sample question 1',
               a: 'Sample answer 1',
               score: [{ type: 'embedding', value: 0.9, index: 0 }]
@@ -1802,7 +1986,7 @@ describe('Rerank Train Task Processor', () => {
         data: {
           quoteQA: [
             {
-              id: 'data_001',
+              id: '507f1f77bcf86cd799439020',
               q: 'Sample question 1',
               a: 'Sample answer 1',
               score: [{ type: 'embedding', value: 0.9, index: 0 }]

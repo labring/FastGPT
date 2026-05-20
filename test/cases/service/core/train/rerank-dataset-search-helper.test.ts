@@ -125,14 +125,10 @@ describe('Dataset Search Helper', () => {
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
         id: 'result1',
-        q: 'Question 1',
-        a: 'Answer 1',
         score: [{ type: 'embedding', value: 0.9, index: 0 }]
       });
       expect(results[1]).toEqual({
         id: 'result2',
-        q: 'Question 2',
-        a: 'Answer 2',
         score: [{ type: 'rerank', value: 0.8, index: 1 }]
       });
     });

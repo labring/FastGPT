@@ -14,6 +14,9 @@ import {
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
+
+const TASK_ABORT_SIGNAL_CHECK_INTERVAL = 10 * 1000;
 
 /**
  * Stage 2: Model Finetuning
@@ -68,6 +71,12 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
+  await ensureTaskActiveBeforeSFTCreation({ taskId: String(task._id) });
+  await ensureTaskNotAborted({
+    taskId: String(task._id),
+    sftTaskId: undefined
+  });
+
   let sftTaskId: string;
   try {
     const createResponse = await createSFTTask({
@@ -120,21 +129,11 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   let pollCount = 0;
 
   while (!completed && pollCount < maxPolls) {
-    const currentTask = await getRerankTrainTask(String(task._id));
-    if (currentTask?.status === RerankTrainTaskStatusEnum.cancelled) {
-      addLog.warn('SFT task polling cancelled by user', {
-        taskId: String(task._id),
-        sftTaskId
-      });
-      const enhancedError = createRerankEnhancedError(
-        RerankTaskCheckpointStageEnum.finetuning,
-        RerankTrainErrEnum.rerankFinetuneCancelled,
-        RerankTrainSuggestionEnum.rerankFinetuneCancelled
-      );
-      throw new TrainTaskUnrecoverableError(enhancedError);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    await waitForNextSFTPoll({
+      taskId: String(task._id),
+      sftTaskId,
+      pollInterval
+    });
 
     const statusResponse = await querySFTTaskStatus({
       taskId: sftTaskId
@@ -210,4 +209,91 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     sftTaskId,
     tunedModelEndpoint: endpoint
   };
+}
+
+async function ensureTaskActiveBeforeSFTCreation({ taskId }: { taskId: string }) {
+  const currentTask = await getRerankTrainTask(taskId);
+  if (!currentTask) {
+    addLog.warn('SFT task creation skipped because task was deleted', { taskId });
+    throwTaskDeletedError();
+  }
+
+  if (currentTask.status === RerankTrainTaskStatusEnum.cancelled) {
+    addLog.warn('SFT task creation skipped because task was cancelled', { taskId });
+    throwTaskCancelledError();
+  }
+}
+
+async function ensureTaskNotAborted({ taskId, sftTaskId }: { taskId: string; sftTaskId?: string }) {
+  let abortReason: Awaited<ReturnType<typeof getTrainTaskAbortSignal>>;
+  try {
+    abortReason = await getTrainTaskAbortSignal({ type: 'rerank', taskId });
+  } catch (error) {
+    addLog.warn('Failed to check rerank train task abort signal', {
+      taskId,
+      sftTaskId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return;
+  }
+
+  if (abortReason === 'deleted') {
+    addLog.warn('SFT task polling stopped because task was deleted', {
+      taskId,
+      sftTaskId
+    });
+    throwTaskDeletedError();
+  }
+
+  if (abortReason === 'cancelled') {
+    addLog.warn('SFT task polling cancelled by user', {
+      taskId,
+      sftTaskId
+    });
+    throwTaskCancelledError();
+  }
+}
+
+function throwTaskDeletedError(): never {
+  const enhancedError = createRerankEnhancedError(
+    RerankTaskCheckpointStageEnum.finetuning,
+    RerankTrainErrEnum.rerankTaskNotExist,
+    RerankTrainSuggestionEnum.rerankTaskNotExist
+  );
+  throw new TrainTaskUnrecoverableError(enhancedError);
+}
+
+function throwTaskCancelledError(): never {
+  const enhancedError = createRerankEnhancedError(
+    RerankTaskCheckpointStageEnum.finetuning,
+    RerankTrainErrEnum.rerankFinetuneCancelled,
+    RerankTrainSuggestionEnum.rerankFinetuneCancelled
+  );
+  throw new TrainTaskUnrecoverableError(enhancedError);
+}
+
+async function waitForNextSFTPoll({
+  taskId,
+  sftTaskId,
+  pollInterval
+}: {
+  taskId: string;
+  sftTaskId: string;
+  pollInterval: number;
+}) {
+  await ensureTaskNotAborted({ taskId, sftTaskId });
+
+  const checkInterval = Math.min(TASK_ABORT_SIGNAL_CHECK_INTERVAL, pollInterval);
+  if (checkInterval <= 0) {
+    return;
+  }
+
+  let waited = 0;
+  while (waited < pollInterval) {
+    const waitMs = Math.min(checkInterval, pollInterval - waited);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    waited += waitMs;
+
+    await ensureTaskNotAborted({ taskId, sftTaskId });
+  }
 }

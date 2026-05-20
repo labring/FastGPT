@@ -104,9 +104,7 @@ const FileInfo: React.FC<FileInfoProps> = ({
   const { userInfo } = useUserStore();
   const isFailedUpload = isUploadedFile && uploadStatus === 'failed';
 
-  const uploaderLabel = isUploadedFile
-    ? userInfo?.team?.memberName || '-'
-    : uploaderName || '-';
+  const uploaderLabel = isUploadedFile ? userInfo?.team?.memberName || '-' : uploaderName || '-';
 
   return (
     <VStack spacing={2} alignItems="stretch" w={'100%'}>
@@ -142,15 +140,21 @@ const FileInfo: React.FC<FileInfoProps> = ({
               <HStack gap="40px" mt={2} alignItems="center">
                 <Flex alignItems="center" gap={1}>
                   <MyIcon name="common/list" color="#9CA0A6" w="16px" h="16px" />
-                  <Text fontSize="12px" color="#666666">{size}</Text>
+                  <Text fontSize="12px" color="#666666">
+                    {size}
+                  </Text>
                 </Flex>
                 <Flex alignItems="center" gap={1}>
                   <MyIcon name="common/user" color="#9CA0A6" w="16px" h="16px" />
-                  <Text fontSize="12px" color="#666666">{uploaderLabel}</Text>
+                  <Text fontSize="12px" color="#666666">
+                    {uploaderLabel}
+                  </Text>
                 </Flex>
                 <Flex alignItems="center" gap={1}>
                   <MyIcon name="history" color="#9CA0A6" w="16px" h="16px" />
-                  <Text fontSize="12px" color="#666666">{uploadTime.toLocaleString()}</Text>
+                  <Text fontSize="12px" color="#666666">
+                    {uploadTime.toLocaleString()}
+                  </Text>
                 </Flex>
               </HStack>
             </Flex>
@@ -534,13 +538,7 @@ const SynonymTab = () => {
         <Flex gap="80px" alignItems="flex-start">
           {/* 左侧说明区域 */}
           <Box w="380px">
-            <Text
-              h="22px"
-              fontSize="16px"
-              fontWeight={600}
-              color="#333333"
-              lineHeight="22px"
-            >
+            <Text h="22px" fontSize="16px" fontWeight={600} color="#333333" lineHeight="22px">
               {t('dataset:synonym_empty_title')}
             </Text>
 
@@ -634,7 +632,12 @@ const SynonymTab = () => {
 
             {/* 下载模板按钮 */}
             <Box mt="8px">
-              <Button variant="link" fontSize="12px" color="#156AD9" onClick={handleDownloadTemplate}>
+              <Button
+                variant="link"
+                fontSize="12px"
+                color="#156AD9"
+                onClick={handleDownloadTemplate}
+              >
                 {t('dataset:synonym_download_template')}
               </Button>
             </Box>

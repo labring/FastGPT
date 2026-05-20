@@ -168,21 +168,21 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </MyTooltip>
           </Box>
           {datasetDetail.permission.hasManagePer && (
-          <MyIcon
-            pl={1.5}
-            name={'edit'}
-            _hover={{ color: 'primary.600' }}
-            w={'0.875rem'}
-            cursor={'pointer'}
-            onClick={() =>
-              setEditedDataset({
-                id: datasetDetail._id,
-                name: datasetDetail.name,
-                avatar: datasetDetail.avatar,
-                intro: datasetDetail.intro
-              })
-            }
-          />
+            <MyIcon
+              pl={1.5}
+              name={'edit'}
+              _hover={{ color: 'primary.600' }}
+              w={'0.875rem'}
+              cursor={'pointer'}
+              onClick={() =>
+                setEditedDataset({
+                  id: datasetDetail._id,
+                  name: datasetDetail.name,
+                  avatar: datasetDetail.avatar,
+                  intro: datasetDetail.intro
+                })
+              }
+            />
           )}
         </Flex>
         {DatasetTypeMap[datasetDetail.type] && (

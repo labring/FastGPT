@@ -21,6 +21,7 @@ import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalData
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
 import { deleteSFTTask } from '../../common/external/sftbridge';
 import { removeEmbeddingTrainTaskJob } from './mq';
+import { setTrainTaskAbortSignal, type TrainTaskAbortReason } from '../../common/task-abort-signal';
 
 /**
  * Create embedding training task
@@ -242,7 +243,8 @@ export async function deleteEmbeddingTrainTask(
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskNotExist);
   }
 
-  // 1. Remove BullMQ job first to stop worker before any data cleanup
+  // 1. Signal active worker, then remove BullMQ job before any data cleanup
+  await setEmbeddingTrainTaskAbortSignal(taskId, 'deleted');
   await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   const tempFilePath = task.result?.trainDatasetFilePath;
@@ -373,7 +375,8 @@ export async function cancelEmbeddingTrainTask(taskId: string): Promise<void> {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskCannotCancel);
   }
 
-  // Remove BullMQ job (force clean if active)
+  // Signal active worker, then remove BullMQ job (force clean if active)
+  await setEmbeddingTrainTaskAbortSignal(taskId, 'cancelled');
   await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   // Cancel SFT task if finetuning has started (async non-blocking)
@@ -431,6 +434,21 @@ export async function cleanupEmbeddingTempFiles(filePath?: string, taskId?: stri
       filePath,
       taskId,
       error: (error as Error).message
+    });
+  }
+}
+
+async function setEmbeddingTrainTaskAbortSignal(
+  taskId: string,
+  reason: TrainTaskAbortReason
+): Promise<void> {
+  try {
+    await setTrainTaskAbortSignal({ type: 'embedding', taskId, reason });
+  } catch (error) {
+    addLog.warn('Failed to set embedding train task abort signal', {
+      taskId,
+      reason,
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 }
