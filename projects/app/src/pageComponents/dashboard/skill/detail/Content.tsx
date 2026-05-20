@@ -1,32 +1,18 @@
 import React from 'react';
-import { Flex, Box } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext, TabEnum } from './context';
-import BuildingAnimation from './config/BuildingAnimation';
-import SandboxTerminal from './config/SandboxTerminal';
-import SandboxIframe from './config/SandboxIframe';
-import SandboxError from './config/SandboxError';
+import AgentSkillEditor from './config/AgentSkillEditor';
 import SkillPreview from './preview/SkillPreview';
 
-const SkillBuilding = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Flex h={'100%'} alignItems={'center'} justifyContent={'center'} flexDirection={'column'}>
-      <BuildingAnimation />
-      <Box mt={'20px'} color={'myGray.500'} fontSize={'sm'}>
-        {t('skill:generating')}
-      </Box>
-    </Flex>
-  );
-};
-
 const Content = () => {
-  const { currentTab, sandboxState } = useContextSelector(SkillDetailContext, (v) => ({
+  const { currentTab, skillId, skillDetail } = useContextSelector(SkillDetailContext, (v) => ({
     currentTab: v.currentTab,
-    sandboxState: v.sandboxState
+    skillId: v.skillId,
+    skillDetail: v.skillDetail
   }));
+
+  const canWrite = Boolean(skillDetail?.permission?.hasWritePer);
 
   return (
     <Box
@@ -36,12 +22,11 @@ const Content = () => {
       border={'1px solid #EBEDF0'}
       overflow={'hidden'}
     >
+      {/* Config Tab: AgentSkillEditor 直接读写 MinIO，与 sandbox 状态解耦 */}
       <Box h={'100%'} display={currentTab === TabEnum.config ? 'block' : 'none'}>
-        {sandboxState === 'idle' && <SkillBuilding />}
-        {sandboxState === 'loading' && <SandboxTerminal />}
-        {sandboxState === 'ready' && <SandboxIframe />}
-        {sandboxState === 'failed' && <SandboxError />}
+        {skillId && <AgentSkillEditor skillId={skillId} canWrite={canWrite} />}
       </Box>
+      {/* Preview Tab: 走 session-runtime sandbox（懒初始化，首次发消息触发 warm-up） */}
       <Box h={'100%'} display={currentTab === TabEnum.preview ? 'block' : 'none'}>
         <SkillPreview />
       </Box>

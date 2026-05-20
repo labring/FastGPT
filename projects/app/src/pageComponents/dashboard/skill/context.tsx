@@ -60,7 +60,10 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
           ...item,
           createTime: new Date(item.createTime),
           updateTime: new Date(item.updateTime),
-          permission: new SkillPermission({ role: item.permission ?? 0 })
+          permission: new SkillPermission({
+            role: item.permission?.role ?? 0,
+            isOwner: !!item.permission?.isOwner
+          })
         }))
       ),
     {

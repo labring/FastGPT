@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
+import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -10,12 +10,10 @@ import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { SkillDetailContext, TabEnum } from './context';
-import SkillHistoriesSlider from './config/SkillHistoriesSlider';
 import {
   deleteSkill,
   postUpdateSkill,
   exportSkill,
-  postSaveDeploySkill,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -48,10 +46,7 @@ const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { skillDetail, refreshSkillDetail, showHistories, setShowHistories } = useContextSelector(
-    SkillDetailContext,
-    (v) => v
-  );
+  const { skillDetail, refreshSkillDetail } = useContextSelector(SkillDetailContext, (v) => v);
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
@@ -91,14 +86,6 @@ const Header = () => {
     {
       successToast: t('skill:export_success'),
       errorToast: t('skill:export_failed')
-    }
-  );
-
-  const { runAsync: onSaveDeploy, loading: isSaving } = useRequest(
-    (skillId: string) => postSaveDeploySkill({ skillId }),
-    {
-      successToast: t('skill:deploy_success'),
-      errorToast: t('skill:deploy_failed')
     }
   );
 
@@ -204,34 +191,6 @@ const Header = () => {
       </Box>
 
       <Box flex={1} />
-
-      {/* 右侧按钮组（历史版本抽屉打开时隐藏） */}
-      {!showHistories && (
-        <HStack spacing={3}>
-          <IconButton
-            icon={<MyIcon name={'history'} w={'18px'} />}
-            aria-label={''}
-            size={'sm'}
-            w={'34px'}
-            h={'34px'}
-            variant={'whitePrimary'}
-            onClick={() => setShowHistories(true)}
-          />
-          <Button
-            size={'sm'}
-            h={'34px'}
-            px={'14px'}
-            variant={'primary'}
-            isLoading={isSaving}
-            onClick={() => onSaveDeploy(skillDetail._id)}
-          >
-            {t('common:Save')}
-          </Button>
-        </HStack>
-      )}
-
-      {/* 历史版本抽屉 */}
-      {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
 
       {/* 删除确认弹窗 */}
       <DelConfirmModal />

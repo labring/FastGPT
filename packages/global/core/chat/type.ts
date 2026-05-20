@@ -53,7 +53,7 @@ export type SandboxStatusPhase =
   | 'connecting' // warm-start: reusing existing container
   | 'fetchSkills' // cold-start: fetching skill metadata from DB
   | 'creatingContainer' // cold-start: creating container, waiting ready (up to 60s)
-  // Skill deployment phases (used in both session-runtime and edit-debug)
+  // Skill deployment phases
   | 'deployingSkills' // announcing which skill is about to be deployed
   | 'downloadingPackage' // downloading skill package from MinIO
   | 'uploadingPackage' // uploading package into sandbox container
@@ -72,14 +72,14 @@ export type SandboxStatusItemType = {
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
-  // Present on 'ready' phase for edit-debug sandboxes
+  // Present on 'ready' phase for sandboxes with HTTP service
   endpoint?: {
     host: string;
     port: number;
     protocol: 'http' | 'https';
     url: string;
   };
-  providerSandboxId?: string; // present on 'ready' for edit-debug
+  providerSandboxId?: string; // present on 'ready'
 };
 
 /* Skill module response */

@@ -7,12 +7,9 @@ import { useSystemStore } from './useSystemStore';
 export const clientInitData = async (
   retry = 3,
   options?: { forceRefresh?: boolean }
-): Promise<{  feConfigs: FastGPTFeConfigsType;
-}> => {
+): Promise<{ feConfigs: FastGPTFeConfigsType }> => {
   try {
-    const bufferId = options?.forceRefresh
-      ? undefined
-      : useSystemStore.getState().initDataBufferId;
+    const bufferId = options?.forceRefresh ? undefined : useSystemStore.getState().initDataBufferId;
     const res = await getSystemInitData(bufferId);
     useSystemStore.getState().initStaticData(res);
 

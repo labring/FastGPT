@@ -28,6 +28,7 @@ export const env = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
+    AGENT_SANDBOX_OPENSANDBOX_REQUEST_TIMEOUT: z.number().default(60),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: z.string().url().optional(),
@@ -39,7 +40,6 @@ export const env = createEnv({
     AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.optional(),
     AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.optional(),
 
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.optional(),
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.optional(),
 
     // 对象存储

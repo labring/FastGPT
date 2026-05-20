@@ -15,12 +15,7 @@ import {
   SANDBOX_GET_FILE_URL_TOOL_NAME,
   SandboxGetFileUrlToolSchema
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import {
-  createAgentSandbox,
-  releaseAgentSandbox,
-  connectEditDebugSandbox,
-  disconnectEditDebugSandbox
-} from '../sub/sandbox';
+import { createAgentSandbox, releaseAgentSandbox } from '../sub/sandbox';
 import { buildSkillsContextPrompt } from '../sub/sandbox/prompt';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import {
@@ -58,7 +53,6 @@ type SandboxSkillsCapabilityParams = {
   teamId: string;
   tmbId: string;
   sessionId: string;
-  mode: 'sessionRuntime' | 'editDebug';
   workflowStreamResponse?: WorkflowResponseType; // SSE stream for lifecycle and skill events
   showSkillReferences: boolean;
   allFilesMap: Record<string, { url: string; name: string; type: string }>;
@@ -210,7 +204,6 @@ export async function createSandboxSkillsCapability(
     teamId,
     tmbId,
     sessionId,
-    mode,
     workflowStreamResponse,
     showSkillReferences,
     allFilesMap,
@@ -219,64 +212,14 @@ export async function createSandboxSkillsCapability(
     userId,
     chatId
   } = params;
-  const isEditDebug = mode === 'editDebug';
-  // Only chat-mode session-runtime can serve `sandbox_get_file_url` because the file
-  // upload S3 key requires appId/userId/chatId. editDebug mode is excluded by design.
-  const canExposeGetFileUrl = !!exposeGetFileUrl && !isEditDebug && !!appId && !!userId && !!chatId;
+  // Only chat-mode can serve sandbox_get_file_url because the file
+  // upload S3 key requires appId/userId/chatId.
+  const canExposeGetFileUrl = !!exposeGetFileUrl && !!appId && !!userId && !!chatId;
   const sessionCompletionTools = canExposeGetFileUrl
     ? [...allSandboxTools, SANDBOX_GET_FILE_URL_TOOL]
     : allSandboxTools;
   const defaults = getSandboxDefaults();
   const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-
-  // editDebug: keep existing immediate-connect behavior
-  if (isEditDebug) {
-    if (skillIds.length !== 1) {
-      throw new Error('useEditDebugSandbox only supports a single skill');
-    }
-    const sandboxContext = await connectEditDebugSandbox({
-      skillId: skillIds[0],
-      teamId
-    });
-
-    const systemPrompt = buildSkillsContextPrompt(
-      sandboxContext.deployedSkills,
-      sandboxContext.workDirectory
-    );
-
-    return {
-      id: 'sandbox-skills',
-      systemPrompt,
-      completionTools: allSandboxTools,
-      handleToolCall: async (toolId, args, toolCallId) => {
-        if (!(Object.values(SandboxToolIds) as string[]).includes(toolId)) return null;
-        const result = await buildEditDebugHandler(
-          toolId,
-          args,
-          sandboxContext,
-          allFilesMap,
-          workflowStreamResponse,
-          showSkillReferences,
-          toolCallId
-        );
-        if (result !== null) {
-          // Fire-and-forget: renew sandbox expiration after successful execution
-          MongoSandboxInstance.updateOne(
-            { sandboxId: sandboxContext.providerSandboxId },
-            { lastActiveAt: new Date() }
-          ).catch((err) =>
-            logger.error('[Agent Sandbox] Failed to renew lastActiveAt', { error: err })
-          );
-        }
-        return result;
-      },
-      dispose: async () => {
-        disconnectEditDebugSandbox(sandboxContext).catch((err) => {
-          logger.error('[Agent Sandbox] Disconnect failed', { error: err });
-        });
-      }
-    };
-  }
 
   // Session-runtime: preload skill metadata with sandbox paths from ZIP (no container creation)
   const skillsMeta =
@@ -407,65 +350,6 @@ export async function createSandboxSkillsCapability(
 }
 
 // --- Handler builders ---
-
-async function buildEditDebugHandler(
-  toolId: string,
-  args: string,
-  sandboxContext: AgentSandboxContext,
-  allFilesMap: Record<string, { url: string; name: string; type: string }>,
-  workflowStreamResponse?: WorkflowResponseType,
-  showSkillReferences = false,
-  toolCallId = ''
-): Promise<SandboxToolResult | null> {
-  const handlers: Record<string, () => Promise<SandboxToolResult>> = {
-    [SandboxToolIds.readFile]: async () => {
-      const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-
-      const assistantResponses = collectSkillReferenceResponses({
-        paths: parsed.data.paths,
-        sandboxContext,
-        workflowStreamResponse,
-        showSkillReferences,
-        toolCallId
-      });
-
-      return {
-        ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
-        ...(assistantResponses.length > 0 && { assistantResponses })
-      };
-    },
-    [SandboxToolIds.writeFile]: async () => {
-      const parsed = SandboxWriteFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-      return dispatchSandboxWriteFile(sandboxContext, parsed.data);
-    },
-    [SandboxToolIds.editFile]: async () => {
-      const parsed = SandboxEditFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-      return dispatchSandboxEditFile(sandboxContext, parsed.data);
-    },
-    [SandboxToolIds.execute]: async () => {
-      const parsed = SandboxExecuteSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-      return dispatchSandboxExecute(sandboxContext, parsed.data);
-    },
-    [SandboxToolIds.search]: async () => {
-      const parsed = SandboxSearchSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-      return dispatchSandboxSearch(sandboxContext, parsed.data);
-    },
-    [SandboxToolIds.fetchUserFile]: async () => {
-      const parsed = SandboxFetchUserFileSchema.safeParse(parseJsonArgs(args));
-      if (!parsed.success) return { response: parsed.error.message, usages: [] };
-      return dispatchSandboxFetchUserFile(sandboxContext, parsed.data, allFilesMap);
-    }
-  };
-
-  const handler = handlers[toolId];
-  if (!handler) return null;
-  return handler();
-}
 
 async function buildSessionHandler(
   toolId: string,

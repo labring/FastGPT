@@ -341,8 +341,6 @@
   "custom_pdf_parse_timeout_tip": "Please enter an integer between 0 and 120",
   "export_interval_minutes": "Export interval (minutes)",
   "site_sync_interval_minutes": "Site sync usage interval (minutes)",
-  "agent_sandbox_max_edit_debug": "Max active edit-debug sandboxes",
-  "agent_sandbox_max_edit_debug_desc": "No limit if not set",
   "agent_sandbox_max_session_runtime": "Max active session-runtime sandboxes",
   "agent_sandbox_max_session_runtime_desc": "No limit if not set",
   "mobile_sidebar_location": "On mobile devices, the sidebar items are displayed in Account > Profile.",

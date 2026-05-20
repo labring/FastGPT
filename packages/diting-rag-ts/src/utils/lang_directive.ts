@@ -252,14 +252,22 @@ export class LanguageTracker {
         log('user-lang-disconnect', result);
         return result;
       }
-      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: false, shouldPush: false };
+      const result: LangGuidanceResult = {
+        guidance: null,
+        suppressEarlyStop: false,
+        shouldPush: false
+      };
       log('normal', result);
       return result;
     }
 
     // 语言不匹配 — 检查是否是跨语言 embedding 生效
     if (isRelevant) {
-      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: false, shouldPush: false };
+      const result: LangGuidanceResult = {
+        guidance: null,
+        suppressEarlyStop: false,
+        shouldPush: false
+      };
       log('cross-lingual-relevant', result);
       return result;
     }
@@ -267,7 +275,11 @@ export class LanguageTracker {
     // 异常：语言不匹配且相关性低
     const anomalyKey = `${last.queryLang}→${resultDominant}`;
     if (this.activeAnomaly === anomalyKey) {
-      const result: LangGuidanceResult = { guidance: null, suppressEarlyStop: true, shouldPush: false };
+      const result: LangGuidanceResult = {
+        guidance: null,
+        suppressEarlyStop: true,
+        shouldPush: false
+      };
       log('anomaly-dup', result);
       return result;
     }

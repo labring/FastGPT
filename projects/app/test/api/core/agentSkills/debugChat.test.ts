@@ -13,7 +13,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -140,19 +139,6 @@ describe('buildDebugRuntimeNodes', () => {
       expect(skillsInput!.value).toEqual([SKILL_ID]);
       expect(skillsInput!.valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
       expect(skillsInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
-    });
-
-    it('useEditDebugSandbox input must be true', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const sandboxInput = agentNode.inputs.find(
-        (i) => i.key === NodeInputKeyEnum.useEditDebugSandbox
-      );
-      expect(sandboxInput).toBeDefined();
-      expect(sandboxInput!.value).toBe(true);
-      expect(sandboxInput!.valueType).toBe(WorkflowIOValueTypeEnum.boolean);
-      expect(sandboxInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
     });
 
     it('should have an answerText output with static type', () => {
@@ -286,7 +272,7 @@ describe('debugChat handler — parameter validation', () => {
     expect(err?.message ?? err).toMatch(/messages/i);
   });
 
-  it('should call sseErrRes when edit-debug sandbox does not exist', async () => {
+  it('should validate all required parameters before processing', async () => {
     await Call(debugChatApi.default, {
       auth: testUser,
       body: {
@@ -297,45 +283,15 @@ describe('debugChat handler — parameter validation', () => {
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/sandbox/i);
-  });
-
-  it('should NOT call sseErrRes with sandbox error when edit-debug sandbox exists', async () => {
-    // Create sandbox instance
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getNanoid(),
-      appId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      status: 'running',
-      metadata: {
-        sandboxType: 'edit-debug',
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        skillId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
-      }
-    });
-
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      body: {
-        skillId,
-        chatId: getNanoid(),
-        responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hi' }]
-      }
-    });
-
-    // sseErrRes must NOT be called with a sandbox-not-found error
+    // With valid params and an existing skill, the handler should proceed
+    // past validation (no sseErrRes for missing skillId/chatId/messages)
     const calls = getSseErrResMock().mock.calls;
-    const hasSandboxError = calls.some(([, err]) => /sandbox/i.test(err?.message ?? ''));
-    expect(hasSandboxError).toBe(false);
+    const hasValidationError = calls.some(
+      ([, err]) =>
+        /skillId/i.test(err?.message ?? '') ||
+        /chatId/i.test(err?.message ?? '') ||
+        /messages/i.test(err?.message ?? '')
+    );
+    expect(hasValidationError).toBe(false);
   });
 });

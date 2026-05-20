@@ -91,9 +91,8 @@ export enum AgentSkillTypeEnum {
 
 export const AgentSkillFolderTypeList = [AgentSkillTypeEnum.folder];
 
-// Sandbox types
+// Sandbox type
 export enum SandboxTypeEnum {
-  editDebug = 'edit-debug',
   sessionRuntime = 'session-runtime'
 }
 

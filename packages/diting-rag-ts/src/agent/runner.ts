@@ -101,13 +101,15 @@ function mapNodeUpdateToEvent(
 ): AgentEvent[] {
   switch (nodeName) {
     case 'route_playbook':
-      return [{
-        step: AGENT_EVENTS.PLAYBOOK_SELECTED,
-        detail: `Playbook selected: ${nodeOutput.playbook ?? 'general'}`,
-        playbook: nodeOutput.playbook ?? 'general',
-        extra: { analysis: nodeOutput.analysis ?? '' },
-        timestamp: Date.now()
-      }];
+      return [
+        {
+          step: AGENT_EVENTS.PLAYBOOK_SELECTED,
+          detail: `Playbook selected: ${nodeOutput.playbook ?? 'general'}`,
+          playbook: nodeOutput.playbook ?? 'general',
+          extra: { analysis: nodeOutput.analysis ?? '' },
+          timestamp: Date.now()
+        }
+      ];
 
     case 'agent':
     case 'native_agent':
@@ -121,18 +123,22 @@ function mapNodeUpdateToEvent(
       // 注意：search 的 SEARCHING 事件由 tools 节点在执行时发射，
       // 避免 shouldContinue 早停时用户看到未实际执行的搜索文本
       if (toolNames.includes('query_rewrite')) {
-        return [{
-          step: AGENT_EVENTS.REWRITING,
-          detail: 'Rewriting query',
-          timestamp: Date.now()
-        }];
+        return [
+          {
+            step: AGENT_EVENTS.REWRITING,
+            detail: 'Rewriting query',
+            timestamp: Date.now()
+          }
+        ];
       }
       if (toolNames.includes('summary')) {
-        return [{
-          step: AGENT_EVENTS.GENERATING,
-          detail: 'Generating answer',
-          timestamp: Date.now()
-        }];
+        return [
+          {
+            step: AGENT_EVENTS.GENERATING,
+            detail: 'Generating answer',
+            timestamp: Date.now()
+          }
+        ];
       }
       // 未识别的 tool call（如 assess 等内部决策工具），不产生用户可见事件
       return [];
@@ -165,20 +171,24 @@ function mapNodeUpdateToEvent(
         return [searchDoneEvent];
       }
       if (lastPath.includes('query_rewrite')) {
-        return [{
-          step: AGENT_EVENTS.REWRITE_DONE,
-          detail: `Rewritten to ${nodeOutput.rewriteQueries?.length ?? 0} queries`,
-          timestamp: Date.now(),
-          extra: { queries: nodeOutput.rewriteQueries ?? [] }
-        }];
+        return [
+          {
+            step: AGENT_EVENTS.REWRITE_DONE,
+            detail: `Rewritten to ${nodeOutput.rewriteQueries?.length ?? 0} queries`,
+            timestamp: Date.now(),
+            extra: { queries: nodeOutput.rewriteQueries ?? [] }
+          }
+        ];
       }
       if (lastPath.includes('summary') || nodeOutput.answer) {
-        return [{
-          step: AGENT_EVENTS.ANSWER_DONE,
-          detail: `Answer generated (confidence: ${nodeOutput.confidence ?? 0})`,
-          timestamp: Date.now(),
-          extra: { confidence: nodeOutput.confidence }
-        }];
+        return [
+          {
+            step: AGENT_EVENTS.ANSWER_DONE,
+            detail: `Answer generated (confidence: ${nodeOutput.confidence ?? 0})`,
+            timestamp: Date.now(),
+            extra: { confidence: nodeOutput.confidence }
+          }
+        ];
       }
       return [];
     }

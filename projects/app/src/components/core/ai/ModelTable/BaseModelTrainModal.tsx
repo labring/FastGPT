@@ -79,9 +79,10 @@ const BaseModelTrainModal = ({
   const { t } = useTranslation();
   const { embeddingModelList, reRankModelList } = useSystemStore();
 
-  const baseModelType = useMemo<
-    ModelTypeEnum.rerank | ModelTypeEnum.embedding | ''
-  >(() => defaultBaseModel?.type ?? ModelTypeEnum.rerank, [defaultBaseModel]);
+  const baseModelType = useMemo<ModelTypeEnum.rerank | ModelTypeEnum.embedding | ''>(
+    () => defaultBaseModel?.type ?? ModelTypeEnum.rerank,
+    [defaultBaseModel]
+  );
   const selectedBaseModel = useMemo(() => defaultBaseModel?.model ?? '', [defaultBaseModel]);
   const [modelName, setModelName] = useState('');
   const hasAutoFilledRef = useRef(false);

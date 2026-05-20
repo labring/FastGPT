@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authSandboxAccess } from '@/service/support/permission/auth/chat';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
@@ -24,13 +24,13 @@ async function handler(
   const { appId, chatId, outLinkAuthData } = body;
 
   // 统一鉴权
-  const { uid } = await authChatCrud({
+  const { uid } = await authSandboxAccess({
     req,
     authToken: true,
     authApiKey: true,
     appId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
 
   // Check for both generic sandbox (by appId/userId/chatId) and sessionRuntime sandbox (by chatId)

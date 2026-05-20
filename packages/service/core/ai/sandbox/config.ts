@@ -37,7 +37,8 @@ export const getOpenSandboxConnectionConfig = ({
     useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
     baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
     apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-    runtime: env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
+    runtime: env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
+    requestTimeoutSeconds: env.AGENT_SANDBOX_OPENSANDBOX_REQUEST_TIMEOUT
   };
 };
 

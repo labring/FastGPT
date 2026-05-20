@@ -55,7 +55,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       fileUrlList: fileLinksInput,
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
-      useEditDebugSandbox,
       useAgentSandbox = false,
       aiChatVision
     }
@@ -97,23 +96,16 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
     if (env.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
-      // sandbox_get_file_url is available whenever the agent runs against a session-runtime
-      // sandbox (chat / app-test / workflow-debug). It is NOT exposed in single-skill
-      // editDebug mode, where the sandbox lives elsewhere and chat-scoped S3 ownership
-      // does not apply.
-      const exposeGetFileUrl = !useEditDebugSandbox;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
         teamId: runningAppInfo.teamId,
         tmbId: runningAppInfo.tmbId,
         sessionId: sandboxSessionId,
-        mode: sandboxMode,
         workflowStreamResponse,
         showSkillReferences: showSkillReferences === true,
         allFilesMap,
-        exposeGetFileUrl,
+        exposeGetFileUrl: true,
         appId: runningAppInfo.id,
         userId: props.uid,
         chatId

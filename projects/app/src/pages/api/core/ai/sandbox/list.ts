@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authSandboxAccess } from '@/service/support/permission/auth/chat';
 import { getSandboxClientByChat } from '@fastgpt/service/core/ai/sandbox/controller';
 import {
   SandboxListBodySchema,
@@ -15,13 +15,13 @@ async function handler(
 ): Promise<SandboxListResponse> {
   const { appId, chatId, path, outLinkAuthData } = SandboxListBodySchema.parse(req.body);
 
-  const { uid } = await authChatCrud({
+  const { uid } = await authSandboxAccess({
     req,
     authToken: true,
     authApiKey: true,
     appId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
 
   const sandbox = await getSandboxClientByChat({ appId, userId: uid, chatId });

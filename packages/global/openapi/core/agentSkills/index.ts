@@ -2,8 +2,6 @@ import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import {
   AppsBySkillIdItemSchema,
-  CreateEditDebugSandboxBodySchema,
-  CreateEditDebugSandboxResponseSchema,
   CreateSkillBodySchema,
   CreateSkillFolderBodySchema,
   CreateSkillFolderResponseSchema,
@@ -248,34 +246,10 @@ export const AgentSkillsPath: OpenAPIPath = {
       }
     }
   },
-  '/core/agentSkills/edit': {
-    post: {
-      summary: '创建编辑调试沙盒',
-      description: '为技能创建 edit-debug 沙盒，返回 SSE sandboxStatus 事件流',
-      tags: [TagsMap.aiSkill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: CreateEditDebugSandboxBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '返回 text/event-stream 事件流',
-          content: {
-            'text/event-stream': {
-              schema: CreateEditDebugSandboxResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
   '/core/agentSkills/save-deploy': {
     post: {
       summary: '保存并发布技能',
-      description: '从 edit-debug 沙盒打包当前技能并创建新版本',
+      description: '从沙箱打包当前技能并创建新版本',
       tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
@@ -299,7 +273,7 @@ export const AgentSkillsPath: OpenAPIPath = {
   '/core/agentSkills/debugChat': {
     post: {
       summary: '技能调试对话',
-      description: '基于 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
+      description: '发起技能调试对话，返回 SSE 流',
       tags: [TagsMap.aiSkill],
       requestBody: {
         content: {
