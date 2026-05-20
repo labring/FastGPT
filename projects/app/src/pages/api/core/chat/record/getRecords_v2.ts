@@ -15,6 +15,7 @@ import {
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetRecordsV2BodySchema,
   type GetRecordsV2ResponseType
@@ -96,7 +97,7 @@ async function handler(
     nextId,
     prevId,
     includeDeleted = false
-  } = GetRecordsV2BodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetRecordsV2BodySchema }).body;
 
   if (!appId || !chatId) {
     return {

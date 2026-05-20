@@ -9,9 +9,10 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
-  const { id: datasetId } = GetDatasetDetailQuerySchema.parse(req.query);
+  const { id: datasetId } = parseApiInput({ req, querySchema: GetDatasetDetailQuerySchema }).query;
 
   // 凭证校验
   const { dataset, permission } = await authDataset({

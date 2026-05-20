@@ -6,6 +6,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteDatasetDataQuerySchema,
   DeleteDatasetDataResponseSchema,
@@ -13,7 +14,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataResponse> {
-  const { id: dataId } = DeleteDatasetDataQuerySchema.parse(req.query);
+  const { id: dataId } = parseApiInput({ req, querySchema: DeleteDatasetDataQuerySchema }).query;
 
   // 凭证校验
   const { datasetData, tmbId, teamId, collection } = await authDatasetData({

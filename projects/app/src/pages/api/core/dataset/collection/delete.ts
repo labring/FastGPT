@@ -9,14 +9,15 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(req: ApiRequestProps) {
-  const { id } = DeleteCollectionQuerySchema.parse(req.query);
-  const { collectionIds } = DeleteCollectionBodySchema.parse(req.body);
+  const { id } = parseApiInput({ req, querySchema: DeleteCollectionQuerySchema }).query;
+  const { collectionIds } = parseApiInput({ req, bodySchema: DeleteCollectionBodySchema }).body;
 
   const deletedIds = id ? [id] : collectionIds;
 

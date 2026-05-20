@@ -9,6 +9,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ReadCollectionSourceBodySchema,
   ReadCollectionSourceResponseSchema,
@@ -17,7 +18,7 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
   const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
-    ReadCollectionSourceBodySchema.parse(req.body);
+    parseApiInput({ req, bodySchema: ReadCollectionSourceBodySchema }).body;
 
   const { collection } = await (async () => {
     if (!appId || !chatId || !chatItemDataId) {

@@ -7,6 +7,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateUserFeedbackBodySchema,
   UpdateUserFeedbackResponseSchema,
@@ -17,8 +18,10 @@ async function handler(
   req: ApiRequestProps,
   res: NextApiResponse
 ): Promise<UpdateUserFeedbackResponseType> {
-  const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } =
-    UpdateUserFeedbackBodySchema.parse(req.body);
+  const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } = parseApiInput({
+    req,
+    bodySchema: UpdateUserFeedbackBodySchema
+  }).body;
 
   const { teamId } = await authChatCrud({
     req,

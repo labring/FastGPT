@@ -10,9 +10,10 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { deleteSandboxesByChatIds } from '@fastgpt/service/core/ai/sandbox/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId, chatIds } = ChatBatchDeleteBodySchema.parse(req.body);
+  const { appId, chatIds } = parseApiInput({ req, bodySchema: ChatBatchDeleteBodySchema }).body;
 
   await authApp({
     req,

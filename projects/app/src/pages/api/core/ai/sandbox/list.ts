@@ -8,12 +8,16 @@ import {
   type SandboxListResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { listSandboxDirectory } from '@/service/core/sandbox/fileService';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<SandboxListResponse>
 ): Promise<SandboxListResponse> {
-  const { appId, chatId, path, outLinkAuthData } = SandboxListBodySchema.parse(req.body);
+  const { appId, chatId, path, outLinkAuthData } = parseApiInput({
+    req,
+    bodySchema: SandboxListBodySchema
+  }).body;
 
   const { uid } = await authChatCrud({
     req,

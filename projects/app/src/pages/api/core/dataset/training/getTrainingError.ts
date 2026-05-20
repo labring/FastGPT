@@ -5,6 +5,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetTrainingErrorBodySchema,
   GetTrainingErrorResponseSchema,
@@ -12,7 +13,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingErrorResponse> {
-  const { collectionId } = GetTrainingErrorBodySchema.parse(req.body);
+  const { collectionId } = parseApiInput({ req, bodySchema: GetTrainingErrorBodySchema }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const { collection } = await authDatasetCollection({

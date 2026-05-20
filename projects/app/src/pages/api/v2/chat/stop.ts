@@ -9,9 +9,12 @@ import {
   StopV2ChatSchema,
   type StopV2ChatResponse
 } from '@fastgpt/global/openapi/core/chat/controler/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV2ChatResponse> {
-  const { appId, chatId, outLinkAuthData } = StopV2ChatSchema.parse(req.body);
+  const {
+    body: { appId, chatId, outLinkAuthData }
+  } = parseApiInput({ req, bodySchema: StopV2ChatSchema });
 
   await authChatCrud({
     req,

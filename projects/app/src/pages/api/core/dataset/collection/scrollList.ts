@@ -12,16 +12,19 @@ import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/cor
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { ScrollCollectionsBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps
 ): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
-  const { datasetId, parentId, searchText, selectFolder, filterTags, simple } =
-    ScrollCollectionsBodySchema.parse(req.body);
-  let { offset, pageSize } = parsePaginationRequest(req);
+  const { datasetId, parentId, searchText, selectFolder, filterTags, simple } = parseApiInput({
+    req,
+    bodySchema: ScrollCollectionsBodySchema
+  }).body;
+  const { offset, pageSize: rawPageSize } = parsePaginationRequest(req);
 
   const regexText = searchText ? replaceRegChars(searchText) : '';
-  pageSize = Math.min(pageSize, 30);
+  const pageSize = Math.min(rawPageSize, 30);
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({

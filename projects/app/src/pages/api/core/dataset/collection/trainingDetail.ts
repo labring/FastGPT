@@ -9,6 +9,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { Types } from '@fastgpt/service/common/mongo';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
@@ -25,7 +26,10 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
-  const { collectionId } = GetCollectionTrainingDetailQuerySchema.parse(req.query);
+  const { collectionId } = parseApiInput({
+    req,
+    querySchema: GetCollectionTrainingDetailQuerySchema
+  }).query;
 
   const { collection } = await authDatasetCollection({
     req,

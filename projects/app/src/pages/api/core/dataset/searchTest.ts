@@ -20,6 +20,7 @@ import {
   type SearchDatasetTestBody,
   type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export async function handler(
   req: ApiRequestProps<SearchDatasetTestBody>
@@ -45,7 +46,7 @@ export async function handler(
     datasetDeepSearchModel,
     datasetDeepSearchMaxTimes,
     datasetDeepSearchBg
-  } = SearchDatasetTestBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: SearchDatasetTestBodySchema }).body;
 
   const start = Date.now();
 

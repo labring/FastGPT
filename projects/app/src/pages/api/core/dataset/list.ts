@@ -17,13 +17,17 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
-  const { parentId, type, searchKey } = GetDatasetListBodySchema.parse(req.body);
+  const { parentId, type, searchKey } = parseApiInput({
+    req,
+    bodySchema: GetDatasetListBodySchema
+  }).body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([

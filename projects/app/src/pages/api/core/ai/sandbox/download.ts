@@ -5,6 +5,7 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
   getSandboxFileContent,
@@ -12,7 +13,10 @@ import {
 } from '@/service/core/sandbox/fileService';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { appId, chatId, path, outLinkAuthData } = SandboxDownloadBodySchema.parse(req.body);
+  const { appId, chatId, path, outLinkAuthData } = parseApiInput({
+    req,
+    bodySchema: SandboxDownloadBodySchema
+  }).body;
 
   const { uid } = await authChatCrud({
     req,

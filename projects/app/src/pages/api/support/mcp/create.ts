@@ -5,6 +5,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   McpCreateBodySchema,
   McpCreateResponseSchema,
@@ -25,7 +26,7 @@ async function handler(
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  const { name, apps } = McpCreateBodySchema.parse(req.body);
+  const { name, apps } = parseApiInput({ req, bodySchema: McpCreateBodySchema }).body;
 
   // Count mcp length
   const totalMcp = await MongoMcpKey.countDocuments({ teamId });

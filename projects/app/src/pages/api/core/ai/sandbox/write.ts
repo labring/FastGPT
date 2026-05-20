@@ -8,12 +8,16 @@ import {
   type SandboxWriteResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { writeSandboxFile } from '@/service/core/sandbox/fileService';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<SandboxWriteResponse>
 ): Promise<SandboxWriteResponse> {
-  const { appId, chatId, path, content, outLinkAuthData } = SandboxWriteBodySchema.parse(req.body);
+  const { appId, chatId, path, content, outLinkAuthData } = parseApiInput({
+    req,
+    bodySchema: SandboxWriteBodySchema
+  }).body;
 
   const { uid } = await authChatCrud({
     req,

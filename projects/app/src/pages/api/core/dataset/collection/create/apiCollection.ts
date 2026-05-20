@@ -5,9 +5,13 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from './apiCollectionV2';
 import { CreateApiCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps) {
-  const { apiFileId, ...body } = CreateApiCollectionBodySchema.parse(req.body);
+  const { apiFileId, ...body } = parseApiInput({
+    req,
+    bodySchema: CreateApiCollectionBodySchema
+  }).body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

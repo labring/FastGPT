@@ -5,6 +5,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetTrainingQueueQuerySchema,
   GetDatasetTrainingQueueResponseSchema,
@@ -12,7 +13,10 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueResponse> {
-  const { datasetId } = GetDatasetTrainingQueueQuerySchema.parse(req.query);
+  const { datasetId } = parseApiInput({
+    req,
+    querySchema: GetDatasetTrainingQueueQuerySchema
+  }).query;
 
   const { teamId } = await authDataset({
     req,

@@ -10,6 +10,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateDatasetDataBodySchema,
   UpdateDatasetDataResponseSchema,
@@ -17,7 +18,10 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
-  const { dataId, q, a, indexes } = UpdateDatasetDataBodySchema.parse(req.body);
+  const { dataId, q, a, indexes } = parseApiInput({
+    req,
+    bodySchema: UpdateDatasetDataBodySchema
+  }).body;
   const hasIndexes = Object.hasOwn(req.body, 'indexes');
 
   // auth data permission

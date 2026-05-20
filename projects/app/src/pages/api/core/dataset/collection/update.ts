@@ -19,6 +19,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 // Set folder collection children forbid status
 const updateFolderChildrenForbid = async ({
@@ -67,8 +68,17 @@ const updateFolderChildrenForbid = async ({
 };
 
 async function handler(req: ApiRequestProps) {
-  let { datasetId, externalFileId, id, parentId, name, tags, forbid, createTime } =
-    UpdateDatasetCollectionBodySchema.parse(req.body);
+  const {
+    datasetId,
+    externalFileId,
+    id: parsedCollectionId,
+    parentId,
+    name,
+    tags,
+    forbid,
+    createTime
+  } = parseApiInput({ req, bodySchema: UpdateDatasetCollectionBodySchema }).body;
+  let id = parsedCollectionId;
 
   // 通过 externalFileId 查找 collection：先鉴权 dataset，再查询
   if (datasetId && externalFileId) {

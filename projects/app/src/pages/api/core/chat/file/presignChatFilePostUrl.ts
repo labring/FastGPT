@@ -10,10 +10,13 @@ import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { serviceEnv } from '@fastgpt/service/env';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } =
-    PresignChatFilePostUrlSchema.parse(req.body);
+  const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } = parseApiInput({
+    req,
+    bodySchema: PresignChatFilePostUrlSchema
+  }).body;
 
   const { teamId, uid } = await authChatCrud({
     req,

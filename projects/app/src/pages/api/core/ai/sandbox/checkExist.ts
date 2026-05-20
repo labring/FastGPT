@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   SandboxCheckExistBodySchema,
   type SandboxCheckExistResponse
@@ -19,7 +20,7 @@ async function handler(
   }
 
   // 解析请求体
-  const body = SandboxCheckExistBodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: SandboxCheckExistBodySchema }).body;
   const { appId, chatId, outLinkAuthData } = body;
 
   // 统一鉴权

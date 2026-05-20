@@ -74,10 +74,12 @@ import {
   ChatGenerateStatusEnum,
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let {
+  const completionBody = parseApiInput({ req, bodySchema: CompletionsPropsSchema }).body;
+  const {
     chatId,
     appId,
     customUid,
@@ -89,14 +91,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamToken,
 
     stream,
-    detail,
-    retainDatasetCite,
     showSkillReferences,
     messages,
-    variables,
     responseChatItemId,
     metadata
-  } = CompletionsPropsSchema.parse(req.body);
+  } = completionBody;
+  let { detail, retainDatasetCite, variables } = completionBody;
 
   const originIp = getIpFromRequest(req);
 

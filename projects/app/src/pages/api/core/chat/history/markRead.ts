@@ -4,10 +4,11 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /** 将对话标为已读（例如用户在本页看完流式回复后） */
 export async function handler(req: ApiRequestProps, _res: ApiResponseType): Promise<void> {
-  const body = MarkChatReadBodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: MarkChatReadBodySchema }).body;
 
   await authChatCrud({
     req,

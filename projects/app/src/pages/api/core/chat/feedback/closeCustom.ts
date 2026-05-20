@@ -5,6 +5,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CloseCustomFeedbackBodySchema,
   CloseCustomFeedbackResponseSchema,
@@ -15,7 +16,10 @@ async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType<any>
 ): Promise<CloseCustomFeedbackResponseType> {
-  const { appId, chatId, dataId, index } = CloseCustomFeedbackBodySchema.parse(req.body);
+  const { appId, chatId, dataId, index } = parseApiInput({
+    req,
+    bodySchema: CloseCustomFeedbackBodySchema
+  }).body;
 
   await authChatCrud({
     req,

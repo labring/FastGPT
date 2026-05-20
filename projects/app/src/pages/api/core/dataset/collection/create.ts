@@ -6,6 +6,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateCollectionBodySchema,
   CreateCollectionResponseSchema,
@@ -13,7 +14,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseType> {
-  const body = CreateCollectionBodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: CreateCollectionBodySchema }).body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

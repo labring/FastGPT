@@ -13,6 +13,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { z } from 'zod';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const BodySchema = z.object({
   pageNum: z.number().int().min(1).default(1),
@@ -27,7 +28,7 @@ const BodySchema = z.object({
 
 async function handler(req: NextApiRequest) {
   const { pageNum, pageSize, datasetId, parentId, searchText, selectFolder, filterTags, simple } =
-    BodySchema.parse(req.body);
+    parseApiInput({ req, bodySchema: BodySchema }).body;
   const regexText = searchText ? replaceRegChars(searchText) : '';
 
   // auth dataset and get my role

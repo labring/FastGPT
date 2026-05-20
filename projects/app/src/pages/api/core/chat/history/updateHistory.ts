@@ -5,10 +5,14 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* update chat history: title, customTitle, top */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId, chatId, title, customTitle, top } = UpdateHistoryBodySchema.parse(req.body);
+  const { appId, chatId, title, customTitle, top } = parseApiInput({
+    req,
+    bodySchema: UpdateHistoryBodySchema
+  }).body;
   await authChatCrud({
     req,
     authToken: true,

@@ -5,6 +5,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addHours } from 'date-fns';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
   GetSearchTestImagePreviewUrlsResponseSchema,
@@ -15,7 +16,10 @@ import {
 async function handler(
   req: ApiRequestProps<GetSearchTestImagePreviewUrlsBody>
 ): Promise<GetSearchTestImagePreviewUrlsResponse> {
-  const { datasetId, keys } = GetSearchTestImagePreviewUrlsBodySchema.parse(req.body);
+  const { datasetId, keys } = parseApiInput({
+    req,
+    bodySchema: GetSearchTestImagePreviewUrlsBodySchema
+  }).body;
   const { teamId } = await authDataset({
     datasetId,
     per: ReadPermissionVal,

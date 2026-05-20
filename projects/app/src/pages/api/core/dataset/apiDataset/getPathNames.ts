@@ -6,6 +6,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetApiDatasetPathNamesBodySchema,
   GetApiDatasetPathNamesResponseSchema,
@@ -38,7 +39,7 @@ async function handler(
     datasetId,
     parentId,
     apiDatasetServer: bodyApiDatasetServer
-  } = GetApiDatasetPathNamesBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetApiDatasetPathNamesBodySchema }).body;
 
   if (!parentId) return GetApiDatasetPathNamesResponseSchema.parse('');
 

@@ -3,6 +3,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetApiDatasetFileListBodySchema,
   GetApiDatasetFileListResponseSchema,
@@ -13,7 +14,11 @@ import {
 async function handler(
   req: ApiRequestProps<GetApiDatasetFileListBody>
 ): Promise<GetApiDatasetFileListResponse> {
-  const { datasetId, searchKey = '', parentId } = GetApiDatasetFileListBodySchema.parse(req.body);
+  const {
+    datasetId,
+    searchKey = '',
+    parentId
+  } = parseApiInput({ req, bodySchema: GetApiDatasetFileListBodySchema }).body;
 
   const { dataset } = await authDataset({
     req,

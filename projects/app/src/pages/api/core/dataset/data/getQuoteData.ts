@@ -9,6 +9,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetQuoteDataBodySchema,
   GetQuoteDataResponseSchema,
@@ -16,7 +17,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
-  const body = GetQuoteDataBodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: GetQuoteDataBodySchema }).body;
   const { id: dataId } = body;
 
   // Auth

@@ -79,6 +79,7 @@ export const createImageCaptionChildNodeResponse = ({
   queries: string[];
 }) =>
   createDatasetSearchChildNodeResponse({
+    requestId: requestIds?.[0],
     requestIds,
     usage,
     seconds,

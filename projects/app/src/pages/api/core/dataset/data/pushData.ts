@@ -18,9 +18,10 @@ import { getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
-  const body = PushDataBodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: PushDataBodySchema }).body;
   // Adapter 4.9.0: support legacy trainingMode field
   body.trainingType = body.trainingType || body.trainingMode;
 

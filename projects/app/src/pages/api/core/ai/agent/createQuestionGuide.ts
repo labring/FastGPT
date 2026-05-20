@@ -21,12 +21,13 @@ import {
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<CreateQuestionGuideResponseType> {
-  const { messages } = CreateQuestionGuideBodySchema.parse(req.body);
+  const { messages } = parseApiInput({ req, bodySchema: CreateQuestionGuideBodySchema }).body;
 
   const { tmbId, teamId } = await authChatCert({
     req,
