@@ -29,7 +29,6 @@ export interface ProcessedError {
 
 export type ZodParseErrorContext = {
   inputSource: 'body' | 'query' | 'params';
-  hasApiKeyHeader?: boolean;
 };
 
 /**

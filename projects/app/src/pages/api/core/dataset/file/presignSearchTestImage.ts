@@ -9,6 +9,7 @@ import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   PresignSearchTestImageBodySchema,
   PresignSearchTestImageResponseSchema,
@@ -19,7 +20,10 @@ import {
 async function handler(
   req: ApiRequestProps<PresignSearchTestImageBody>
 ): Promise<PresignSearchTestImageResponse> {
-  const { datasetId, filename } = PresignSearchTestImageBodySchema.parse(req.body);
+  const { datasetId, filename } = parseApiInput({
+    req,
+    bodySchema: PresignSearchTestImageBodySchema
+  }).body;
   const { teamId, userId } = await authDataset({
     datasetId,
     per: ReadPermissionVal,

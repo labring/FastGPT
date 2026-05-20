@@ -16,6 +16,7 @@ import {
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetPaginationRecordsBodySchema,
   GetPaginationRecordsResponseSchema,
@@ -32,7 +33,7 @@ export async function handler(
     loadCustomFeedbacks = false,
     type = GetChatTypeEnum.normal,
     ...authProps
-  } = GetPaginationRecordsBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetPaginationRecordsBodySchema }).body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
 

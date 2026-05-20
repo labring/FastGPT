@@ -7,13 +7,16 @@ import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { GetResDataQuerySchema } from '@fastgpt/global/openapi/core/chat/record/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export async function handler(
   req: ApiRequestProps,
   res: ApiResponseType<any>
 ): Promise<ChatHistoryItemResType[]> {
-  const { appId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } =
-    GetResDataQuerySchema.parse(req.query);
+  const { appId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } = parseApiInput({
+    req,
+    querySchema: GetResDataQuerySchema
+  }).query;
   if (!appId || !chatId || !dataId) {
     return [];
   }

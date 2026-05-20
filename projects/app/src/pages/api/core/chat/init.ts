@@ -15,9 +15,10 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
-  const { appId, chatId } = InitChatQuerySchema.parse(req.query);
+  const { appId, chatId } = parseApiInput({ req, querySchema: InitChatQuerySchema }).query;
 
   try {
     // auth app permission

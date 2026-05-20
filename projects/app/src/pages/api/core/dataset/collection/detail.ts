@@ -13,13 +13,14 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { GetCollectionDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetCollectionDetailQuerySchema,
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionDetailResponseType> {
-  const { id } = GetCollectionDetailQuerySchema.parse(req.query);
+  const { id } = parseApiInput({ req, querySchema: GetCollectionDetailQuerySchema }).query;
 
   // 凭证校验
   const { collection, permission } = await authDatasetCollection({

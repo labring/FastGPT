@@ -5,9 +5,13 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import { SandboxReadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { appId, chatId, path, outLinkAuthData } = SandboxReadBodySchema.parse(req.body);
+  const { appId, chatId, path, outLinkAuthData } = parseApiInput({
+    req,
+    bodySchema: SandboxReadBodySchema
+  }).body;
 
   const { uid } = await authChatCrud({
     req,

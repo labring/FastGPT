@@ -12,14 +12,17 @@ import {
 } from '@fastgpt/global/openapi/core/chat/history/api';
 import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* Batch get chatGenerateStatus / hasBeenRead for sidebar sync */
 export async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType
 ): Promise<GetHistoryStatusResponseType> {
-  const { appId, chatIds, shareId, outLinkUid, teamId, teamToken } =
-    GetHistoryStatusBodySchema.parse(req.body);
+  const { appId, chatIds, shareId, outLinkUid, teamId, teamToken } = parseApiInput({
+    req,
+    bodySchema: GetHistoryStatusBodySchema
+  }).body;
 
   const match = await (async () => {
     if (shareId && outLinkUid) {

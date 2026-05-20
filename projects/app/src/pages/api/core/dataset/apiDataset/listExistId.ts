@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetApiDatasetFileListExistIdQuerySchema,
   GetApiDatasetFileListExistIdResponseSchema,
@@ -13,7 +14,10 @@ import {
 async function handler(
   req: ApiRequestProps<unknown, GetApiDatasetFileListExistIdQuery>
 ): Promise<GetApiDatasetFileListExistIdResponse> {
-  const { datasetId } = GetApiDatasetFileListExistIdQuerySchema.parse(req.query);
+  const { datasetId } = parseApiInput({
+    req,
+    querySchema: GetApiDatasetFileListExistIdQuerySchema
+  }).query;
 
   const { dataset } = await authDataset({
     req,

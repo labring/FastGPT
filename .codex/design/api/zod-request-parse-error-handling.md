@@ -13,18 +13,15 @@
    - `parseApiInput({ req, bodySchema: SomeSchema })`
    - `parseApiInput({ req, querySchema: SomeSchema })`
    - `parseApiInput({ req, paramsSchema: SomeSchema })`
-3. 只有“有显式 API 入参标记”且“请求头携带 api key 信号”时才降级。
-4. 没有显式标记，或不是外部 API 请求时，按内部错误处理，避免把系统 bug 静默降级。
-5. 是否外部 API 请求使用请求头 api key 信号判断：
-   - 入参 parse 可能发生在鉴权前，此时无法读取鉴权结果。
-   - 因此这里判断“是否携带 api key 形态的请求头”，而不是判断 api key 是否已经鉴权成功。
-   - 支持 `Authorization: Bearer ...`、`apikey`、`api-key`、`x-api-key`。
+3. 只要错误是 `parseApiInput` 抛出的 `ApiRequestInputParseError`，就视为客户端请求入参错误并降级。
+4. 不使用 api key header 作为降级条件。入参 parse 通常发生在鉴权前，调用方漏传 api key 时也可能先触发 body/query/params 校验失败；如果继续依赖 header，会把这类客户端错误误上报为系统异常。
+5. 没有显式标记的普通 `ZodError` 按内部错误处理，避免把系统 bug 静默降级。
 
 ## 使用方法
 
 ### API 路由入参 parse
 
-外部 API 路由需要校验 `req.body`、`req.query`、`req.params` 时，使用 `parseApiInput`，不要直接写 `Schema.parse(req.body)`。
+API 路由需要校验 `req.body`、`req.query`、`req.params` 时，使用 `parseApiInput`，不要直接写 `Schema.parse(req.body)`。
 
 ```ts
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -53,10 +50,9 @@ export async function handler(req: ApiRequestProps<SearchDatasetTestBody>) {
 
 ### 降级条件
 
-`NextEntry` 只在以下两个条件同时满足时，将错误视为外部 API 入参错误：
+`NextEntry` 只在以下条件满足时，将错误视为 API 入参错误：
 
 1. 错误是 `parseApiInput` 抛出的 `ApiRequestInputParseError`
-2. 请求头存在 api key 信号：`Authorization: Bearer ...`、`apikey`、`api-key` 或 `x-api-key`
 
 满足时返回 400，不调用 `setSpanError`，`processError` 不调用 logger。否则走内部错误路径：HTTP 500、`setSpanError`、error 日志。
 
@@ -78,17 +74,16 @@ const runtimeConfig = RuntimeConfigSchema.parse(configFromDb);
 - `/api/v2/chat/stop`
 - 数据集搜索测试等开放 API 入口
 
-纯 Web 控制台内部接口可以暂不迁移；即使迁移，只要请求不带 api key 头，也不会触发降级。
+纯 Web 控制台内部接口可以暂不迁移；一旦迁移到 `parseApiInput`，该接口的入参错误就会被视为客户端请求错误并返回 400，不再触发错误级 Otel。
 
 ## 错误行为示例
 
-### 外部 API 入参错误
+### API 入参错误
 
 请求满足以下条件时：
 
 - API 路由使用 `parseApiInput({ req, bodySchema })`
 - `bodySchema` 校验失败
-- 请求头携带 `Authorization: Bearer ...`、`apikey`、`api-key` 或 `x-api-key`
 
 处理结果：
 
@@ -117,16 +112,6 @@ const runtimeConfig = RuntimeConfigSchema.parse(configFromDb);
 ```
 
 该场景没有 logger 结构化日志。若后续需要排查调用方参数问题，应优先使用客户端收到的 400 响应体，或在专门的非 Otel 采样渠道中另行设计。
-
-### 未携带 api key 的入参错误
-
-如果同样是 `parseApiInput` 抛出的 `ApiRequestInputParseError`，但请求头没有 api key 信号：
-
-- HTTP：返回 500
-- Otel：调用 `setSpanError`，按系统异常记录
-- 日志：`logger.error('Zod validation error', { url, data: zodError, error })`
-
-这样可以避免 Web 控制台内部调用、未鉴权调用等场景被误判为外部 API 参数噪音。
 
 ### 内部 ZodError
 
@@ -168,7 +153,7 @@ logger.error('Zod validation error', {
    - 提供 `getZodParseErrorInputSource(error)` 供统一入口读取。
 2. 调整 `NextEntry`：
    - 捕获 `ZodError` 后先调用分类器。
-   - 若确认为外部 API 请求入参错误：返回 400，不调用 `setSpanError`，span 状态保持非 error，仅设置 `http.response.status_code=400`。
+   - 若确认为 API 请求入参错误：返回 400，不调用 `setSpanError`，span 状态保持非 error，仅设置 `http.response.status_code=400`。
    - 若不是请求入参错误：走 500 + `setSpanError`，保留内部 bug 告警语义。
 3. 调整 `jsonRes/processError`：
    - 支持传入 `zodParseErrorContext`。

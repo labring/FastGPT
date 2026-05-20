@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   SyncCollectionBodySchema,
   SyncCollectionResponseSchema,
@@ -18,7 +19,7 @@ import {
   5. Delete old collection
 */
 async function handler(req: ApiRequestProps): Promise<SyncCollectionResponseType> {
-  const { collectionId } = SyncCollectionBodySchema.parse(req.body);
+  const { collectionId } = parseApiInput({ req, bodySchema: SyncCollectionBodySchema }).body;
 
   const { collection } = await authDatasetCollection({
     req,

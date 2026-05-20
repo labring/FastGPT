@@ -11,11 +11,15 @@ import {
   type PresignDatasetFilePostUrlBody
 } from '@fastgpt/global/openapi/core/dataset/file/api';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<PresignDatasetFilePostUrlBody>
 ): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, datasetId } = PresignDatasetFilePostUrlBodySchema.parse(req.body);
+  const { filename, datasetId } = parseApiInput({
+    req,
+    bodySchema: PresignDatasetFilePostUrlBodySchema
+  }).body;
 
   const { teamId, userId } = await authDataset({
     datasetId,

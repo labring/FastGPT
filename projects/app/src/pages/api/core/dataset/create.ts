@@ -31,6 +31,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -43,7 +44,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     agentModel = getDatasetModel()?.model,
     vlmModel = getDefaultVLMModel()?.model,
     apiDatasetServer
-  } = CreateDatasetBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
   const { teamId, tmbId, userId } = parentId

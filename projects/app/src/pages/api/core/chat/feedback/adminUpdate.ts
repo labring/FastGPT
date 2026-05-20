@@ -2,6 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminUpdateFeedbackBodySchema,
   AdminUpdateFeedbackResponseSchema,
@@ -12,8 +13,10 @@ async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType<any>
 ): Promise<AdminUpdateFeedbackResponseType> {
-  const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } =
-    AdminUpdateFeedbackBodySchema.parse(req.body);
+  const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } = parseApiInput({
+    req,
+    bodySchema: AdminUpdateFeedbackBodySchema
+  }).body;
 
   await authChatCrud({
     req,

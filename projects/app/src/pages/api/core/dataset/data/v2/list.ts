@@ -17,12 +17,16 @@ import {
   type GetDatasetDataListResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
-  const { searchText = '', collectionId } = GetDatasetDataListBodySchema.parse(req.body);
-  let { offset, pageSize } = parsePaginationRequest(req);
+  const { searchText = '', collectionId } = parseApiInput({
+    req,
+    bodySchema: GetDatasetDataListBodySchema
+  }).body;
+  const { offset, pageSize: rawPageSize } = parsePaginationRequest(req);
 
-  pageSize = Math.min(pageSize, 30);
+  const pageSize = Math.min(rawPageSize, 30);
 
   const { teamId, collection } = await authDatasetCollection({
     req,

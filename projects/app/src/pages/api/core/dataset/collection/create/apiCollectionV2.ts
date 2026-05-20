@@ -20,9 +20,10 @@ import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
-  const body = CreateApiCollectionV2BodySchema.parse(req.body);
+  const body = parseApiInput({ req, bodySchema: CreateApiCollectionV2BodySchema }).body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

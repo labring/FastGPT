@@ -45,18 +45,6 @@ function getRequestRoute(url: string) {
     .join('/');
 }
 
-function hasApiKeyHeader(headers: NextApiRequest['headers']) {
-  const authorization = headers.authorization;
-  const normalizedAuthorization = Array.isArray(authorization) ? authorization[0] : authorization;
-
-  return Boolean(
-    normalizedAuthorization?.toLowerCase().startsWith('bearer ') ||
-    headers.apikey ||
-    headers['api-key'] ||
-    headers['x-api-key']
-  );
-}
-
 export const NextEntry = ({
   beforeCallback = []
 }: {
@@ -150,8 +138,7 @@ export const NextEntry = ({
               // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
               if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
                 const zodParseErrorContext = getZodParseErrorInputSource(error);
-                const isExternalApiRequest = hasApiKeyHeader(req.headers);
-                if (!zodParseErrorContext || !isExternalApiRequest) {
+                if (!zodParseErrorContext) {
                   span.setAttribute('http.response.status_code', 500);
                   setSpanError(span, error);
 
@@ -168,10 +155,7 @@ export const NextEntry = ({
                   message: 'Data validation error',
                   error,
                   url: req.url,
-                  zodParseErrorContext: {
-                    ...zodParseErrorContext,
-                    hasApiKeyHeader: isExternalApiRequest
-                  }
+                  zodParseErrorContext
                 });
               }
 

@@ -11,9 +11,10 @@ import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps) {
-  const { id: datasetId } = DeleteDatasetQuerySchema.parse(req.query);
+  const { id: datasetId } = parseApiInput({ req, querySchema: DeleteDatasetQuerySchema }).query;
 
   // auth owner
   const { teamId, tmbId, dataset } = await authDataset({

@@ -11,9 +11,13 @@ import {
   type GetTrainingDataDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
-  const { datasetId, collectionId, dataId } = GetTrainingDataDetailBodySchema.parse(req.body);
+  const { datasetId, collectionId, dataId } = parseApiInput({
+    req,
+    bodySchema: GetTrainingDataDetailBodySchema
+  }).body;
 
   const { teamId } = await authDatasetCollection({
     req,

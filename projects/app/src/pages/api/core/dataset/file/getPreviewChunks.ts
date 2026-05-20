@@ -16,6 +16,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
@@ -35,7 +36,7 @@ async function handler(
     datasetId,
     externalFileId,
     ...chunkSettings
-  } = GetPreviewChunksBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetPreviewChunksBodySchema }).body;
 
   if (!sourceId) {
     throw new Error('sourceId is empty');

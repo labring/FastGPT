@@ -10,9 +10,13 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataIndexResponse> {
-  const { dataId, indexDataId } = DeleteDatasetDataIndexBodySchema.parse(req.body);
+  const { dataId, indexDataId } = parseApiInput({
+    req,
+    bodySchema: DeleteDatasetDataIndexBodySchema
+  }).body;
 
   const { datasetData, tmbId, teamId, collection } = await authDatasetData({
     req,

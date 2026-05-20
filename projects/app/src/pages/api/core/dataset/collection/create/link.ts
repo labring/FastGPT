@@ -9,9 +9,10 @@ import {
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
-  const { link, ...body } = CreateLinkCollectionBodySchema.parse(req.body);
+  const { link, ...body } = parseApiInput({ req, bodySchema: CreateLinkCollectionBodySchema }).body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

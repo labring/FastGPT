@@ -12,6 +12,7 @@ import {
   type SkillDebugRecordsBody
 } from '@fastgpt/global/core/agentSkills/api';
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
 
@@ -19,8 +20,10 @@ async function handler(
   req: ApiRequestProps<SkillDebugRecordsBody>,
   _res: ApiResponseType<any>
 ): Promise<GetRecordsV2ResponseType> {
-  const { skillId, chatId, pageSize, initialId, nextId, prevId } =
-    SkillDebugRecordsBodySchema.parse(req.body);
+  const { skillId, chatId, pageSize, initialId, nextId, prevId } = parseApiInput({
+    req,
+    bodySchema: SkillDebugRecordsBodySchema
+  }).body;
 
   if (!skillId) throw new UserError('skillId is required');
   if (!chatId) throw new UserError('chatId is required');

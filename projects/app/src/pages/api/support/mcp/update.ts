@@ -4,6 +4,7 @@ import { authMcp } from '@fastgpt/service/support/permission/mcp/auth';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   McpUpdateBodySchema,
   McpUpdateResponseSchema,
@@ -14,7 +15,7 @@ async function handler(
   req: ApiRequestProps,
   res: ApiResponseType<any>
 ): Promise<McpUpdateResponseType> {
-  const { id: mcpId, name, apps } = McpUpdateBodySchema.parse(req.body);
+  const { id: mcpId, name, apps } = parseApiInput({ req, bodySchema: McpUpdateBodySchema }).body;
   const { tmbId } = await authMcp({
     req,
     authToken: true,

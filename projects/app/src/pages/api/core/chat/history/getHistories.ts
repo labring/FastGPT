@@ -14,6 +14,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* get chat histories list */
 export async function handler(
@@ -31,7 +32,7 @@ export async function handler(
     endCreateTime,
     startUpdateTime,
     endUpdateTime
-  } = GetHistoriesBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetHistoriesBodySchema }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const match = await (async () => {

@@ -11,6 +11,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListCollectionV2BodySchema,
   ListCollectionV2ResponseSchema,
@@ -18,21 +19,21 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
-  let {
+  const {
     datasetId,
     parentId,
-    searchText,
+    searchText: rawSearchText,
     selectFolder,
     filterTags,
     simple,
     pageSize: rawPageSize,
     offset: rawOffset,
     pageNum: rawPageNum
-  } = ListCollectionV2BodySchema.parse(req.body);
-  let pageSize = Math.min(Number(rawPageSize ?? 10), 100);
-  let offset =
+  } = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
+  const pageSize = Math.min(Number(rawPageSize ?? 10), 100);
+  const offset =
     rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
-  searchText = searchText?.replace(/'/g, '');
+  const searchText = rawSearchText?.replace(/'/g, '');
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({

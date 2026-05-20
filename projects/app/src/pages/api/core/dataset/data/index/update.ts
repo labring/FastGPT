@@ -11,9 +11,13 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
-  const { dataId, indexDataId, type, text } = UpdateDatasetDataIndexBodySchema.parse(req.body);
+  const { dataId, indexDataId, type, text } = parseApiInput({
+    req,
+    bodySchema: UpdateDatasetDataIndexBodySchema
+  }).body;
 
   const { datasetData, tmbId, teamId, collection } = await authDatasetData({
     req,

@@ -12,9 +12,13 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
-  const { fileId, customPdfParse, ...body } = CreateCollectionByFileIdBodySchema.parse(req.body);
+  const { fileId, customPdfParse, ...body } = parseApiInput({
+    req,
+    bodySchema: CreateCollectionByFileIdBodySchema
+  }).body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,

@@ -43,8 +43,24 @@ describe('processError zod logging', () => {
       url: '/api/test',
       defaultCode: 400,
       zodParseErrorContext: {
-        inputSource: 'body',
-        hasApiKeyHeader: true
+        inputSource: 'body'
+      }
+    });
+
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.zodError).toBeTruthy();
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('does not require an api key header context to suppress request input ZodError logs', () => {
+    const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'query' });
+    const processed = processError({
+      error,
+      url: '/api/test',
+      defaultCode: 400,
+      zodParseErrorContext: {
+        inputSource: 'query'
       }
     });
 

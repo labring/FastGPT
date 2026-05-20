@@ -40,9 +40,13 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
-  const { datasetParams, files } = CreateDatasetWithFilesBodySchema.parse(req.body);
+  const { datasetParams, files } = parseApiInput({
+    req,
+    bodySchema: CreateDatasetWithFilesBodySchema
+  }).body;
   const {
     parentId,
     name,
