@@ -11,9 +11,13 @@ import {
   SkillDebugSessionStopResponseSchema,
   type SkillDebugSessionStopResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<SkillDebugSessionStopResponse> {
-  const { skillId, chatId } = SkillDebugSessionControlBodySchema.parse(req.body);
+  const { skillId, chatId } = parseApiInput({
+    req,
+    bodySchema: SkillDebugSessionControlBodySchema
+  }).body;
 
   await authSkill({
     req,

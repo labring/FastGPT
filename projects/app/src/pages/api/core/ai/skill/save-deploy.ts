@@ -14,6 +14,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /**
  * 从编辑态 sandbox 保存并发布 skill。
@@ -24,7 +25,10 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 async function handler(
   req: ApiRequestProps<SaveDeploySkillBody>
 ): Promise<SaveDeploySkillResponse> {
-  const { skillId, versionName } = SaveDeploySkillBodySchema.parse(req.body);
+  const { skillId, versionName } = parseApiInput({
+    req,
+    bodySchema: SaveDeploySkillBodySchema
+  }).body;
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);

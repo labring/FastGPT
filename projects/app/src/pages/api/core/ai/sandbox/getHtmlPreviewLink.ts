@@ -9,6 +9,7 @@ import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 // 在 <head> 中注入 CSP，禁止外部脚本加载，仅允许 inline（沙箱预览场景）
 function injectCspMetaTag(html: string): string {
@@ -23,9 +24,10 @@ function injectCspMetaTag(html: string): string {
 }
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { appId, chatId, filePath, outLinkAuthData } = SandboxGetHtmlPreviewLinkBodySchema.parse(
-    req.body
-  );
+  const { appId, chatId, filePath, outLinkAuthData } = parseApiInput({
+    req,
+    bodySchema: SandboxGetHtmlPreviewLinkBodySchema
+  }).body;
 
   // 1. 鉴权
   const { teamId, uid } = await authChatCrud({

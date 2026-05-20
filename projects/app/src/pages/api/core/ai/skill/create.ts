@@ -34,6 +34,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -45,7 +46,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     requirements,
     category = [],
     avatar
-  } = CreateSkillBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: CreateSkillBodySchema }).body;
 
   const requestedName = name.trim();
   const requestedDescription = description?.trim() || '';
