@@ -19,11 +19,13 @@ import {
 import { useTranslation } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAllTags } from '@/web/core/dataset/api';
 import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   type ConditionRow,
   operatorsByType,
@@ -34,7 +36,7 @@ import {
 } from '@/web/core/dataset/tagFilterUtils';
 
 type Props = {
-  datasetIds: string[];
+  datasets: { datasetId: string; name: string }[];
   value: string | undefined;
   onChange: (v: string | undefined) => void;
   authTmbId?: boolean;
@@ -44,7 +46,7 @@ type Props = {
 type FilterMode = 'closed' | 'manual';
 
 const TagFilterSection = ({
-  datasetIds,
+  datasets,
   value,
   onChange,
   authTmbId = false,
@@ -52,25 +54,40 @@ const TagFilterSection = ({
 }: Props) => {
   const { t } = useTranslation();
 
+  const datasetIds = useMemo(() => datasets.map((d) => d.datasetId), [datasets]);
+
   const [mode, setMode] = useState<FilterMode>(() => (value ? 'manual' : 'closed'));
   const [rows, setRows] = useState<ConditionRow[]>(() => deserializeFilter(value));
   const [allTags, setAllTags] = useState<DatasetTagType[]>([]);
+  const [unAuthDatasetNames, setUnAuthDatasetNames] = useState<string[]>([]);
 
   // 加载所有关联知识库的标签定义（合并去重，按 tag 名称去重保留第一个）
+  // unAuthDataset 错误静默处理，不弹 toast，收集无权限知识库名称后展示提示图标
   useRequest(
     async () => {
-      if (datasetIds.length === 0) return [];
-      const results = await Promise.all(datasetIds.map((id) => getAllTags(id).then((r) => r.list)));
+      if (mode !== 'manual' || datasetIds.length === 0) return [];
+      const results = await Promise.allSettled(
+        datasets.map((dataset) => getAllTags(dataset.datasetId).then((r) => r.list))
+      );
+      const unAuthNames: string[] = [];
       const nameMap = new Map<string, DatasetTagType>();
-      results.flat().forEach((tag) => {
-        if (!nameMap.has(tag.tag)) nameMap.set(tag.tag, tag);
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          result.value.forEach((tag) => {
+            if (!nameMap.has(tag.tag)) nameMap.set(tag.tag, tag);
+          });
+        } else if (result.reason?.statusText === DatasetErrEnum.unAuthDataset) {
+          unAuthNames.push(datasets[i].name);
+        }
       });
+      setUnAuthDatasetNames(unAuthNames);
       return Array.from(nameMap.values());
     },
     {
       manual: false,
-      refreshDeps: [datasetIds.join(',')],
-      onSuccess: setAllTags
+      refreshDeps: [mode, datasetIds.join(',')],
+      onSuccess: setAllTags,
+      errorToast: ''
     }
   );
 
@@ -206,6 +223,15 @@ const TagFilterSection = ({
                     {logic}
                     <MyIcon ml={1} boxSize={5} name="change" />
                   </Flex>
+                )}
+                {unAuthDatasetNames.length > 0 && (
+                  <MyTooltip
+                    label={t('workflow:tag_filter_unauth_datasets', {
+                      names: unAuthDatasetNames.map((n) => t('common:enum_quote', { name: n })).join(t('common:comma'))
+                    })}
+                  >
+                    <MyIcon name="common/circleAlert" boxSize={4} color={'orange.400'} />
+                  </MyTooltip>
                 )}
               </Flex>
             </Flex>

@@ -302,6 +302,7 @@
   "tag_filter_select_op": "Select condition",
   "tag_filter_no_dataset": "Please select a dataset first",
   "tag_filter_no_tags": "No tags available in the selected dataset, please create tags in the dataset first",
+  "tag_filter_unauth_datasets": "No permission for dataset(s) {{names}}, unable to retrieve their tags",
   "tag_filter_value_number": "Enter number",
   "tag_filter_auto_tip": "Auto filter (auto-generate filter conditions based on user query, coming soon)",
   "tag_filter_op_string_eq": "Is",

@@ -1248,6 +1248,7 @@
   "code_error.user_error.bin_visitor_guest": "您目前身份為訪客，無權操作",
   "code_error.user_error.un_auth_user": "找不到此使用者",
   "comma": "、",
+  "enum_quote": "「{{name}}」",
   "comma_symbol": "，",
   "comon.Continue_Adding": "繼續新增",
   "core.Chat": "對話",

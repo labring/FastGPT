@@ -525,7 +525,7 @@ const EditForm = ({
         <Box h="1px" bg="myGray.200" mx="16px" />
         <Box px="25px" py="16px">
           <TagFilterSection
-            datasetIds={datasetIds}
+            datasets={selectDatasets}
             value={appForm.dataset.collectionFilterMatch}
             onChange={(v) =>
               setAppForm((state) => ({
