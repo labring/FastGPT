@@ -57,6 +57,7 @@ export const AgentSkillListItemSchema = z.object({
   description: z.string(),
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
+  currentVersionId: z.string().optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),

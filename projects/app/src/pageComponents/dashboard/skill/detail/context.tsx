@@ -207,7 +207,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
   const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
   const isSkillReady =
-    !!skillDetail && (!creationStatus || creationStatus === AgentSkillCreationStatusEnum.ready);
+    !!skillDetail &&
+    creationStatus === AgentSkillCreationStatusEnum.ready &&
+    !!skillDetail.currentVersionId;
   const visibleSandboxState: SandboxState = isSkillCreateFailed ? 'failed' : sandboxState;
   const visibleSandboxError = isSkillCreateFailed
     ? skillDetail?.creationError || t('common:create_failed')

@@ -151,10 +151,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
     return;
   }
 
-  if (
-    (!skill.creationStatus || skill.creationStatus === AgentSkillCreationStatusEnum.ready) &&
-    skill.currentVersionId
-  ) {
+  if (skill.creationStatus === AgentSkillCreationStatusEnum.ready && skill.currentVersionId) {
     // BullMQ 可能重复投递，或 worker 启动恢复时扫到刚完成的数据；已绑定包则直接幂等退出。
     logger.info('Pending skill already completed, skip duplicate creation job', { skillId });
     return;

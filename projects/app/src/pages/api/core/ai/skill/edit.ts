@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       per: WritePermissionVal
     });
 
-    if (skill.creationStatus && skill.creationStatus !== AgentSkillCreationStatusEnum.ready) {
+    if (skill.creationStatus !== AgentSkillCreationStatusEnum.ready || !skill.currentVersionId) {
       sseErrRes(res, skill.creationError || SkillErrEnum.noStorage);
       res.end();
       return;

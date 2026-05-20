@@ -314,8 +314,8 @@ const List = ({
           const relatedAppsCount = skill.appCount ?? 0;
           const isSkillReady =
             isFolder ||
-            (skill.creationStatus ?? AgentSkillCreationStatusEnum.ready) ===
-              AgentSkillCreationStatusEnum.ready;
+            (skill.creationStatus === AgentSkillCreationStatusEnum.ready &&
+              !!skill.currentVersionId);
           const isSkillCreating = skill.creationStatus === AgentSkillCreationStatusEnum.creating;
           const isSkillCreateFailed = skill.creationStatus === AgentSkillCreationStatusEnum.failed;
           const menuList = [
