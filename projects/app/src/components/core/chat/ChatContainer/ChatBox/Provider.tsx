@@ -278,7 +278,11 @@ const Provider = ({
       appId={appId}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
-      runtimeFileSelectConfig={chatType === ChatTypeEnumValue.test ? fileSelectConfig : undefined}
+      runtimeFileSelectConfig={
+        [ChatTypeEnumValue.test, ChatTypeEnumValue.home].includes(chatType)
+          ? fileSelectConfig
+          : undefined
+      }
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>
