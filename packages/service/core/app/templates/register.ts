@@ -1,4 +1,4 @@
-import { isProduction } from '@fastgpt/global/common/system/constants';
+import { isProduction, EXCLUDED_TEMPLATE_IDS } from '@fastgpt/global/common/system/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
@@ -11,12 +11,14 @@ const getFileTemplates = async (locale?: string): Promise<AppTemplateSchemaType[
 
 const getAppTemplates = async (locale?: string) => {
   const originCommunityTemplates = await getFileTemplates(locale);
-  const communityTemplates = originCommunityTemplates.map((template) => {
-    return {
-      ...template,
-      templateId: `${AppToolSourceEnum.community}-${template.templateId.split('.')[0]}`
-    };
-  });
+  const communityTemplates = originCommunityTemplates
+    .filter((template) => !EXCLUDED_TEMPLATE_IDS.includes(template.templateId))
+    .map((template) => {
+      return {
+        ...template,
+        templateId: `${AppToolSourceEnum.community}-${template.templateId.split('.')[0]}`
+      };
+    });
 
   const dbTemplates = await MongoAppTemplate.find().lean();
 
