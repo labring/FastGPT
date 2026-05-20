@@ -587,7 +587,7 @@ export const GPTMessages2Chats = ({
               value.push({
                 file: {
                   type: ChatFileTypeEnum.file,
-                  name: item.name,
+                  name: item.name || '',
                   url: item.url,
                   key: item.key
                 }

@@ -1581,6 +1581,22 @@ describe('GPTMessages2Chats', () => {
     expect(fileValue.file?.name).toBe('document.pdf');
   });
 
+  it('should convert user message with file_url content without name', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: [{ type: 'file_url', url: 'http://example.com/doc.pdf', key: 'key1' }]
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages });
+
+    expect(result).toHaveLength(1);
+    const fileValue = result[0].value[0] as { file?: { type: string; name: string } };
+    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(fileValue.file?.name).toBe('');
+  });
+
   it('should convert system message with array content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
