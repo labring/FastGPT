@@ -23,6 +23,7 @@ import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -90,6 +91,7 @@ const Chat = () => {
 
 type ChatPageProps = {
   appId: string;
+  teamId: string;
   isStandalone?: string;
   showRunningStatus: boolean;
   showSkillReferences: boolean;
@@ -100,7 +102,7 @@ type ChatPageProps = {
 };
 
 const ChatContent = (props: ChatPageProps) => {
-  const { appId, isStandalone } = props;
+  const { appId, isStandalone, teamId } = props;
   const { chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -143,7 +145,7 @@ const ChatContent = (props: ChatPageProps) => {
       <>
         <NextHead title={feConfigs?.systemTitle}></NextHead>
 
-        <LoginModal onSuccess={loginSuccess} />
+        <LoginModal onSuccess={loginSuccess} teamId={teamId} />
       </>
     );
   }
@@ -200,9 +202,21 @@ export async function getServerSideProps(context: any) {
     }
   })();
 
+  const teamId = await (async () => {
+    try {
+      if (!appId) return '';
+      const app = await MongoApp.findById(appId, 'teamId').lean();
+      return app?.teamId ? String(app.teamId) : '';
+    } catch (error) {
+      logger.error('getServerSideProps failed', { error, appId });
+      return '';
+    }
+  })();
+
   return {
     props: {
       appId,
+      teamId,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
       showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
       showCite: chatQuoteReaderConfig?.showCite ?? true,

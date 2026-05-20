@@ -10,6 +10,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -24,7 +25,7 @@ async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = LoginByPasswordBodySchema.parse(req.body);
+  const { username, password, code, language, teamId } = LoginByPasswordBodySchema.parse(req.body);
 
   // Auth prelogin code
   await authCode({
@@ -51,8 +52,17 @@ async function handler(
     }
   }
 
+  // 如果提供了 teamId，使用该团队下用户的 tmbId
+  let targetTmbId = user?.lastLoginTmbId;
+  if (teamId) {
+    const member = await MongoTeamMember.findOne({ userId: user._id, teamId }).lean();
+    if (member) {
+      targetTmbId = member._id;
+    }
+  }
+
   const userDetail = await getUserDetail({
-    tmbId: user?.lastLoginTmbId,
+    tmbId: targetTmbId,
     userId: user._id
   });
 
