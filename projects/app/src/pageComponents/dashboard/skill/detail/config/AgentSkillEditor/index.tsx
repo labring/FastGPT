@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Flex,
   Center,
@@ -7,7 +7,9 @@ import {
   ModalFooter,
   Input,
   FormControl,
-  Button
+  Button,
+  Box,
+  Text
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -23,6 +25,7 @@ import EditorContent from './components/EditorContent';
 import { useFileTree } from './hooks/useFileTree';
 import { useFileOperations } from './hooks/useFileOperations';
 import { useAutoSave } from './hooks/useAutoSave';
+import { checkSkillPackageVersion } from './api';
 
 export type Props = {
   skillId: string;
@@ -34,6 +37,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
   const editorRef = useRef<EditorInstance>();
   const isUpdatingRef = useRef(false);
   const flushAllPendingRef = useContextSelector(SkillDetailContext, (v) => v.flushAllPendingRef);
+  const [staleDetected, setStaleDetected] = useState(false);
 
   const tree = useFileTree({ skillId });
   const {
@@ -42,11 +46,44 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
     flushAllPending,
     cancelPendingForPath,
     closeFile: closeFileFlush,
-    setOpenedFilesRef
+    setOpenedFilesRef,
+    packageVersionRef
   } = useAutoSave({ skillId });
 
   // Expose flushAllPending so the preview tab can flush pending saves before sandbox sync
   flushAllPendingRef.current = flushAllPending;
+
+  // Poll for changes from other replicas/sessions every 30 s
+  useEffect(() => {
+    if (!skillId) return;
+
+    const poll = async () => {
+      try {
+        const result = await checkSkillPackageVersion({
+          skillId,
+          knownVersion: packageVersionRef.current
+        });
+        if (result.changed) {
+          setStaleDetected(true);
+        }
+      } catch {
+        // Polling errors are non-critical — silently skip
+      }
+    };
+
+    const interval = setInterval(poll, 30_000);
+
+    // Poll on focus as well, to catch changes made while this tab was backgrounded
+    const onFocus = () => {
+      void poll();
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [skillId]);
   const ops = useFileOperations({
     skillId,
     closeFileFlush,
@@ -73,6 +110,26 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
 
   return (
     <Flex h="full" w="full" direction="column">
+      {staleDetected && (
+        <Box px={4} py={2} bg="blue.50" borderBottom="1px solid" borderColor="blue.200">
+          <Flex align="center" justify="space-between">
+            <Text fontSize="sm" color="blue.700">
+              Files were updated by another session. Refresh to see the latest content.
+            </Text>
+            <Button
+              size="xs"
+              variant="outline"
+              colorScheme="blue"
+              onClick={() => {
+                setStaleDetected(false);
+                tree.reloadRoot();
+              }}
+            >
+              Refresh
+            </Button>
+          </Flex>
+        </Box>
+      )}
       <MyBox
         isLoading={tree.loadingRoot && tree.fileTree.length === 0}
         display={'flex'}

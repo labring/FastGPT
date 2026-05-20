@@ -11,6 +11,7 @@ type UseAutoSaveParams = {
 export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
   const pendingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const openedFilesRef = useRef<OpenedFile[]>([]);
+  const packageVersionRef = useRef<number>(0);
 
   const setOpenedFilesRef = useCallback((files: OpenedFile[]) => {
     openedFilesRef.current = files;
@@ -18,7 +19,8 @@ export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
 
   const writeFile = useCallback(
     async (path: string, content: string) => {
-      await writeSkillPackageFile({ skillId, path, content });
+      const result = await writeSkillPackageFile({ skillId, path, content });
+      packageVersionRef.current = result.packageVersion;
     },
     [skillId]
   );
@@ -108,7 +110,9 @@ export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
         clearTimeout(timer);
         const file = openedFilesRef.current?.find((f) => f.path === p);
         if (file && !file.isBinary && !file.isUnknown) {
-          void writeSkillPackageFile({ skillId, path: p, content: file.content }).catch(() => {});
+          void writeSkillPackageFile({ skillId, path: p, content: file.content }).catch((err) => {
+            console.error(`Failed to auto-save file ${p} during cleanup:`, err);
+          });
         }
       });
       pendingTimersRef.current.clear();
@@ -127,6 +131,7 @@ export const useAutoSave = ({ skillId }: UseAutoSaveParams) => {
     flushAllPending,
     cancelPendingForPath,
     closeFile,
-    setOpenedFilesRef
+    setOpenedFilesRef,
+    packageVersionRef
   };
 };

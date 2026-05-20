@@ -26,6 +26,7 @@ import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { tryBecomeLeader } from './cronLeader';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -42,7 +43,7 @@ export class SandboxClient {
   readonly provider: ISandbox;
 
   constructor(
-    private readonly props: {
+    props: {
       sandboxId: string;
       appId?: string;
       userId?: string;
@@ -251,8 +252,13 @@ export const deleteSandboxesByAppId = async (appId: string) => {
 };
 
 // 5 分钟检查一遍，暂停
+// Uses leader election to prevent N replicas from all running the same cleanup.
+const CRON_LEADER_KEY = 'sandbox_idle_cleanup';
+
 export const cronJob = async () => {
   setCron('*/5 * * * *', async () => {
+    if (!(await tryBecomeLeader(CRON_LEADER_KEY))) return;
+
     const instances = await MongoSandboxInstance.find({
       status: SandboxStatusEnum.running,
       lastActiveAt: { $lt: subMinutes(new Date(), SANDBOX_SUSPEND_MINUTES) }

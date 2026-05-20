@@ -11,8 +11,8 @@
  *
  * AGENT_NODE_ID must stay in sync with debugChat.ts:66.
  *
- * Uses withSkillEditLock (shared with packageEditor) to avoid reading a stale
- * storage key that was just overwritten by a concurrent edit.
+ * Uses acquireSkillEditLock (shared with packageEditor) to avoid reading a stale
+ * storage key that was just overwritten by a concurrent edit across replicas.
  */
 import JSZip from 'jszip';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -21,7 +21,8 @@ import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { getSandboxClient } from '../ai/sandbox/controller';
 import { downloadSkillPackage } from './storage';
 import { getSandboxDefaults } from './sandboxConfig';
-import { withSkillEditLock, listZipDirectory } from './packageEditor';
+import { listZipDirectory } from './packageEditor';
+import { acquireSkillEditLock, releaseSkillEditLock } from './editLock';
 import { MongoAgentSkills } from './schema';
 import { getLogger, LogCategories } from '../../common/logger';
 
@@ -62,7 +63,8 @@ export async function syncSkillSandbox(params: {
     return { synced: false, reason: 'noSandbox' };
   }
 
-  return withSkillEditLock(skillId, async () => {
+  const lockHandle = await acquireSkillEditLock(skillId);
+  try {
     // Re-read inside lock to get latest currentStorage
     const skill = await MongoAgentSkills.findOne({
       _id: skillId,
@@ -121,5 +123,7 @@ export async function syncSkillSandbox(params: {
     });
 
     return { synced: true, reason: 'pushed' };
-  });
+  } finally {
+    await releaseSkillEditLock(lockHandle);
+  }
 }

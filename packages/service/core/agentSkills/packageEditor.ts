@@ -2,10 +2,11 @@
  * Skill Package Editor
  *
  * Direct zip CRUD on MinIO `package.zip` via JSZip in-memory mutate pipeline.
- * Each mutate call = download full zip → JSZip modify → re-upload to same key.
+ * Each mutate call = download full zip -> JSZip modify -> re-upload to same key.
  *
- * Concurrency: single-process serialized by withSkillEditLock per skillId.
- * Cross-process: last-write-wins (S3 PutObject is atomic).
+ * Concurrency:
+ * - In-process: serialized by withSkillEditLock per skillId.
+ * - Cross-process: serialized by MongoDB-based editLock (acquireSkillEditLock).
  */
 import JSZip from 'jszip';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -13,6 +14,8 @@ import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type
 import { downloadSkillPackage, uploadSkillPackage } from './storage';
 import { updateCurrentStorage } from './controller';
 import { MongoAgentSkillsVersion } from './version/schema';
+import { MongoAgentSkills } from './schema';
+import { acquireSkillEditLock, releaseSkillEditLock, renewSkillEditLock } from './editLock';
 
 export type PackageFileItem = {
   name: string;
@@ -213,7 +216,7 @@ export async function withSkillEditLock<T>(skillId: string, fn: () => Promise<T>
 // Generic mutate pipeline
 // =========================================================================
 
-export type EditCurrentPackageResult = { success: true; size: number };
+export type EditCurrentPackageResult = { success: true; size: number; packageVersion: number };
 
 export async function editCurrentPackage(params: {
   skill: AgentSkillSchemaType;
@@ -229,28 +232,62 @@ export async function editCurrentPackage(params: {
   }
 
   return withSkillEditLock(skillId, async () => {
-    const oldBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage! });
-    const newBuffer = await mutateZip(oldBuffer, mutator);
+    // Acquire distributed lock for cross-replica protection
+    const lockHandle = await acquireSkillEditLock(skillId);
 
-    const storage = await uploadSkillPackage({
-      teamId,
-      skillId,
-      version,
-      zipBuffer: newBuffer
-    });
+    try {
+      // Re-read skill inside lock to get the latest currentStorage
+      const freshSkill = await MongoAgentSkills.findOne({
+        _id: skillId,
+        teamId,
+        deleteTime: null
+      });
 
-    await updateCurrentStorage(skillId, storage);
-    await MongoAgentSkillsVersion.updateOne(
-      { skillId, version },
-      {
-        $set: {
-          'storage.size': storage.size,
-          'storage.key': storage.key,
-          'storage.bucket': storage.bucket
-        }
+      if (!freshSkill || !freshSkill.currentStorage || !freshSkill.currentStorage.key) {
+        throw new UserError('Skill has no active version');
       }
-    );
 
-    return { success: true, size: storage.size };
+      const oldBuffer = await downloadSkillPackage({ storageInfo: freshSkill.currentStorage });
+
+      // Renew lock before mutation (download may have been slow)
+      await renewSkillEditLock(lockHandle);
+
+      const newBuffer = await mutateZip(oldBuffer, mutator);
+
+      // Renew lock before upload (mutation may have been slow for large ZIPs)
+      await renewSkillEditLock(lockHandle);
+
+      const storage = await uploadSkillPackage({
+        teamId,
+        skillId,
+        version,
+        zipBuffer: newBuffer
+      });
+
+      await updateCurrentStorage(skillId, storage);
+      await MongoAgentSkillsVersion.updateOne(
+        { skillId, version },
+        {
+          $set: {
+            'storage.size': storage.size,
+            'storage.key': storage.key,
+            'storage.bucket': storage.bucket
+          }
+        }
+      );
+
+      // Bump packageVersion and read back the new value.
+      // packageVersion is a Mongoose-only field not present in the Zod-derived type.
+      const updated = await MongoAgentSkills.findOneAndUpdate(
+        { _id: skillId },
+        { $inc: { packageVersion: 1 } } as any,
+        { new: true, projection: { packageVersion: 1 } }
+      );
+      const newPackageVersion = (updated as any)?.packageVersion ?? 0;
+
+      return { success: true, size: storage.size, packageVersion: newPackageVersion };
+    } finally {
+      await releaseSkillEditLock(lockHandle);
+    }
   });
 }

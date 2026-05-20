@@ -88,6 +88,12 @@ const AgentSkillsSchema = new Schema({
     bucket: String,
     key: String,
     size: Number
+  },
+  // Monotonically increasing counter incremented on every editCurrentPackage
+  // call. Used by the frontend to detect stale state (P2 conflict awareness).
+  packageVersion: {
+    type: Number,
+    default: 0
   }
 });
 

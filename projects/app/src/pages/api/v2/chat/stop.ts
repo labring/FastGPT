@@ -14,7 +14,7 @@ import { authSkillByTmbId } from '@fastgpt/service/support/permission/agentSkill
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV2ChatResponse> {
+async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<StopV2ChatResponse> {
   const { appId, chatId, outLinkAuthData } = StopV2ChatSchema.parse(req.body);
 
   try {

@@ -9,7 +9,9 @@ import type {
   MkdirPackageBody,
   MutatePackageResponse,
   SyncSkillSandboxBody,
-  SyncSkillSandboxResponse
+  SyncSkillSandboxResponse,
+  CheckPackageVersionBody,
+  CheckPackageVersionResponse
 } from '@fastgpt/global/openapi/core/agentSkills/package/api';
 import { POST } from '@/web/common/api/request';
 
@@ -89,15 +91,19 @@ export const uploadSkillPackageFile = async (params: {
     throw new Error(text || `Upload failed: ${response.status}`);
   }
 
-  const json = JSON.parse(text) as {
-    code: number;
-    data: MutatePackageResponse;
-    message?: string;
-  };
-  if (json.code < 200 || json.code >= 400) {
-    throw new Error(json.message || 'Upload failed');
+  try {
+    const json = JSON.parse(text) as {
+      code: number;
+      data: MutatePackageResponse;
+      message?: string;
+    };
+    if (json.code < 200 || json.code >= 400) {
+      throw new Error(json.message || 'Upload failed');
+    }
+    return json.data;
+  } catch {
+    throw new Error('Failed to parse response as JSON');
   }
-  return json.data;
 };
 
 /**
@@ -105,3 +111,10 @@ export const uploadSkillPackageFile = async (params: {
  */
 export const syncSkillSandbox = (data: SyncSkillSandboxBody) =>
   POST<SyncSkillSandboxResponse>('/core/agentSkills/package/sandbox/sync', data);
+
+/**
+ * 检查 Skill 包的 packageVersion 是否自 knownVersion 后发生变化。
+ * 用于前端轮询检测来自其他副本/会话的编辑。
+ */
+export const checkSkillPackageVersion = (data: CheckPackageVersionBody) =>
+  POST<CheckPackageVersionResponse>('/core/agentSkills/package/checkVersion', data);

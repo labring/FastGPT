@@ -103,7 +103,8 @@ export const UploadPackageFileMultipartRequestSchema = z.object({
 
 export const MutatePackageResponseSchema = z.object({
   success: z.literal(true),
-  size: z.number().describe('New zip byte count after mutation')
+  size: z.number().describe('New zip byte count after mutation'),
+  packageVersion: z.number().describe('Monotonically increasing version counter')
 });
 export type MutatePackageResponse = z.infer<typeof MutatePackageResponseSchema>;
 
@@ -121,3 +122,16 @@ export const SyncSkillSandboxResponseSchema = z.object({
     )
 });
 export type SyncSkillSandboxResponse = z.infer<typeof SyncSkillSandboxResponseSchema>;
+
+// ============ checkVersion ============
+
+export const CheckPackageVersionBodySchema = SkillPackageBaseSchema.extend({
+  knownVersion: z.number().int().min(0).describe('Client-side known packageVersion')
+});
+export type CheckPackageVersionBody = z.infer<typeof CheckPackageVersionBodySchema>;
+
+export const CheckPackageVersionResponseSchema = z.object({
+  currentVersion: z.number().describe('Latest packageVersion in DB'),
+  changed: z.boolean().describe('Whether the version changed since knownVersion')
+});
+export type CheckPackageVersionResponse = z.infer<typeof CheckPackageVersionResponseSchema>;

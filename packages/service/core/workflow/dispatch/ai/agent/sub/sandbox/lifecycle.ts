@@ -174,9 +174,9 @@ async function deploySkillsToSandbox(
 /**
  * 创建或复用 session-runtime 沙箱。
  *
- * 优先查询 MongoDB 中是否有相同 sessionId 的活跃容器：
- * - 有 → connect 复用，无冷启动
- * - 无 → 创建新容器，挂载会话 Volume，持久化到 MongoDB
+ * Uses findOneAndUpdate with upsert to atomically check-and-reserve the
+ * session slot, preventing two replicas from creating duplicate containers
+ * for the same chatId + sandboxType combination.
  */
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
@@ -188,17 +188,42 @@ export async function createAgentSandbox(
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
-  // Step 1: Try to reuse an existing session-runtime sandbox
+  // Step 1: Atomically reserve or find an existing session-runtime sandbox.
+  // Uses the unique partial index on (appId, chatId, metadata.sandboxType)
+  // so that only one replica can claim the slot.
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
-  const existingInstance = await MongoSandboxInstance.findOne({
-    chatId,
-    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
-  });
+  const reservation = await MongoSandboxInstance.findOneAndUpdate(
+    {
+      chatId,
+      'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+    },
+    {
+      $setOnInsert: {
+        sandboxId: sessionId,
+        provider: providerConfig.provider,
+        chatId,
+        appId: teamId,
+        userId: tmbId,
+        status: SandboxStatusEnum.running,
+        lastActiveAt: new Date(),
+        createdAt: new Date(),
+        metadata: {
+          sandboxType: SandboxTypeEnum.sessionRuntime,
+          sessionId,
+          teamId,
+          tmbId,
+          skillIds: [],
+          provider: providerConfig.provider
+        }
+      }
+    },
+    { upsert: true, new: false }
+  ).lean();
 
-  if (existingInstance) {
+  if (reservation) {
     logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
       sessionId,
-      providerSandboxId: existingInstance.sandboxId
+      providerSandboxId: reservation.sandboxId
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
@@ -206,7 +231,7 @@ export async function createAgentSandbox(
     // getSandboxClient internally calls ensureAvailable():
     //   - updates DB status=running, lastActiveAt
     //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
-    const client = await getSandboxClient({ sandboxId: existingInstance.sandboxId });
+    const client = await getSandboxClient({ sandboxId: reservation.sandboxId });
 
     // Fetch skills for current skillIds and discover what's deployed
     const { skills, versionMap } = await fetchSkillsWithVersionMap(skillIds, teamId);
@@ -272,7 +297,7 @@ export async function createAgentSandbox(
       if (skillIdsToAdd.length > 0 || staleDeployed.length > 0) {
         needsRediscover = true;
         await MongoSandboxInstance.updateOne(
-          { sandboxId: existingInstance.sandboxId },
+          { sandboxId: reservation.sandboxId },
           { $set: { 'metadata.skillIds': skillIds } }
         );
       }
@@ -296,7 +321,7 @@ export async function createAgentSandbox(
       }
       needsRediscover = true;
       await MongoSandboxInstance.updateOne(
-        { sandboxId: existingInstance.sandboxId },
+        { sandboxId: reservation.sandboxId },
         { $set: { 'metadata.skillIds': [] } }
       );
     }
@@ -312,7 +337,7 @@ export async function createAgentSandbox(
     );
     return {
       sandbox: client.provider,
-      providerSandboxId: existingInstance.sandboxId,
+      providerSandboxId: reservation.sandboxId,
       sessionId,
       skills: mergedSkills,
       deployedSkills: finalDeployedSkills,

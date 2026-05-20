@@ -11,7 +11,7 @@ import { writeSandboxFile } from '@/service/core/sandbox/fileService';
 
 async function handler(
   req: ApiRequestProps,
-  res: NextApiResponse<SandboxWriteResponse>
+  _res: NextApiResponse<SandboxWriteResponse>
 ): Promise<SandboxWriteResponse> {
   const { appId, chatId, path, content, outLinkAuthData } = SandboxWriteBodySchema.parse(req.body);
 
@@ -26,14 +26,18 @@ async function handler(
         outLinkAuthData
       });
     } catch (_tokenError) {
-      return await authSandboxAccess({
-        req,
-        authToken: false,
-        authApiKey: true,
-        appId,
-        chatId,
-        outLinkAuthData
-      });
+      try {
+        return await authSandboxAccess({
+          req,
+          authToken: false,
+          authApiKey: true,
+          appId,
+          chatId,
+          outLinkAuthData
+        });
+      } catch (_apiKeyError) {
+        throw new Error('Authentication failed: both token and API key auth rejected');
+      }
     }
   })();
   const { uid } = result;
