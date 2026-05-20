@@ -114,7 +114,7 @@ export class CosStorageAdapter implements IStorage {
       );
     });
 
-    let metadata: StorageObjectMetadata = {};
+    const metadata: StorageObjectMetadata = {};
     if (result.headers) {
       Object.entries(result.headers).forEach(([key, val]) => {
         if (key.startsWith('x-cos-meta-')) {
@@ -387,7 +387,7 @@ export class CosStorageAdapter implements IStorage {
   }
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
-    const { key, expiredSeconds } = params;
+    const { key, expiredSeconds, responseContentType } = params;
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
     const url = await new Promise<string>((resolve, reject) => {
@@ -398,7 +398,10 @@ export class CosStorageAdapter implements IStorage {
           Key: key,
           Expires: expiresIn,
           Sign: true,
-          Method: 'GET'
+          Method: 'GET',
+          ...(responseContentType
+            ? { Query: { 'response-content-type': responseContentType } }
+            : {})
         },
         (err, data) => {
           if (err) {

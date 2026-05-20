@@ -105,7 +105,7 @@ export class AwsS3StorageAdapter implements IStorage {
       })
     );
 
-    let metadata: StorageObjectMetadata = {};
+    const metadata: StorageObjectMetadata = {};
     if (result.Metadata) {
       for (const [k, v] of Object.entries(result.Metadata)) {
         if (!k) continue;
@@ -136,7 +136,7 @@ export class AwsS3StorageAdapter implements IStorage {
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
 
-    let meta: StorageObjectMetadata = {};
+    const meta: StorageObjectMetadata = {};
     if (metadata) {
       for (const [k, v] of Object.entries(metadata)) {
         if (!k) continue;
@@ -240,7 +240,7 @@ export class AwsS3StorageAdapter implements IStorage {
       throw new Error('Prefix is required');
     }
 
-    let fails: StorageObjectKey[] = [];
+    const fails: StorageObjectKey[] = [];
     let isTruncated = false;
     let continuationToken: string | undefined = undefined;
 
@@ -339,7 +339,7 @@ export class AwsS3StorageAdapter implements IStorage {
   }
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
-    const { key, expiredSeconds } = params;
+    const { key, expiredSeconds, responseContentType } = params;
 
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
@@ -347,7 +347,8 @@ export class AwsS3StorageAdapter implements IStorage {
       this.client,
       new GetObjectCommand({
         Bucket: this.options.bucket,
-        Key: key
+        Key: key,
+        ResponseContentType: responseContentType
       }),
       {
         expiresIn

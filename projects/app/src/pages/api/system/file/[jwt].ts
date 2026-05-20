@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { jwtVerifyS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { ensureTextContentTypeCharset } from '@fastgpt/service/common/s3/utils/mime';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import path from 'path';
@@ -43,7 +44,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (metadata?.contentType) {
-          res.setHeader('Content-Type', metadata.contentType);
+          res.setHeader(
+            'Content-Type',
+            ensureTextContentTypeCharset({
+              contentType: metadata.contentType,
+              filename: metadata.filename
+            })
+          );
         }
         if (metadata?.contentLength) {
           res.setHeader('Content-Length', metadata.contentLength);

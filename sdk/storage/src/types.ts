@@ -240,6 +240,8 @@ export type PresignedGetUrlParams = {
   key: StorageObjectKey;
   /** 过期时间（秒），可选，默认 1800 秒。 */
   expiredSeconds?: number;
+  /** 覆盖下载响应的 Content-Type。 */
+  responseContentType?: string;
 };
 
 /**

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { jwtVerifyS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
+import { ensureTextContentTypeCharset } from '@fastgpt/service/common/s3/utils/mime';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import path from 'path';
 
@@ -46,7 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (metadata?.contentType) {
-      res.setHeader('Content-Type', metadata.contentType);
+      res.setHeader(
+        'Content-Type',
+        ensureTextContentTypeCharset({
+          contentType: metadata.contentType,
+          filename: metadata.filename
+        })
+      );
     }
     if (metadata?.contentLength) {
       res.setHeader('Content-Length', metadata.contentLength);

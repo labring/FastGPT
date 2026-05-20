@@ -86,7 +86,7 @@ export class OssStorageAdapter implements IStorage {
 
     const result = await this.client.head(key);
 
-    let metadata: StorageObjectMetadata = {};
+    const metadata: StorageObjectMetadata = {};
     if (result.meta) {
       for (const [k, v] of Object.entries(result.meta)) {
         if (!k) continue;
@@ -131,7 +131,7 @@ export class OssStorageAdapter implements IStorage {
     if (contentLength !== undefined) headers['Content-Length'] = String(contentLength);
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
 
-    let meta = {} as StorageObjectMetadata & OSS.UserMeta;
+    const meta = {} as StorageObjectMetadata & OSS.UserMeta;
     if (metadata) {
       for (const [k, v] of Object.entries(metadata)) {
         if (!k) continue;
@@ -268,12 +268,19 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
-    const { key, expiredSeconds } = params;
+    const { key, expiredSeconds, responseContentType } = params;
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
     const url = this.client.signatureUrl(key, {
       method: 'GET',
-      expires: expiresIn
+      expires: expiresIn,
+      ...(responseContentType
+        ? {
+            response: {
+              'content-type': responseContentType
+            }
+          }
+        : {})
     });
 
     return {

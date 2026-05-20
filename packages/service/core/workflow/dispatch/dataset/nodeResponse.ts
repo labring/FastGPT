@@ -22,7 +22,7 @@ const createDatasetSearchChildNodeResponse = ({
   textOutput?: string;
 }): ChatHistoryItemResType => {
   const llmRequestIds = requestIds?.length ? requestIds : requestId ? [requestId] : undefined;
-  const id = requestId || getNanoid();
+  const id = requestId || llmRequestIds?.[0] || getNanoid();
 
   return {
     id,
