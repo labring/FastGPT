@@ -17,7 +17,7 @@ import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSch
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 
-/* 
+/*
   检查chat的权限：
   1. 无 chatId，仅校验 cookie、shareChat、teamChat 秘钥是否合法
   2. 有 chatId，校验用户是否有权限操作该 chat

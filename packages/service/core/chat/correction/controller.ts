@@ -19,7 +19,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 type SubmitChatCorrectionProps = {
   teamId: string;
   tmbId: string;
-  userId: string;
   appId: string;
   chatId: string;
   dataId: string;
@@ -50,7 +49,6 @@ type ProcessAnnotateModeProps = {
 export async function submitChatCorrection({
   teamId,
   tmbId,
-  userId,
   appId,
   chatId,
   dataId,
@@ -58,7 +56,7 @@ export async function submitChatCorrection({
   modelName
 }: SubmitChatCorrectionProps): Promise<string> {
   // Validate required parameters
-  if (!teamId || !tmbId || !userId || !appId || !chatId || !dataId) {
+  if (!teamId || !tmbId || !appId || !chatId || !dataId) {
     throw new Error('Missing required parameters for submitChatCorrection');
   }
 
@@ -137,7 +135,6 @@ export async function submitChatCorrection({
             dataId,
             teamId: new Types.ObjectId(teamId),
             tmbId: new Types.ObjectId(tmbId),
-            userId: new Types.ObjectId(userId),
             chatId,
             appId: new Types.ObjectId(appId),
             correctionData
