@@ -41,10 +41,7 @@ describe('processError zod logging', () => {
     const processed = processError({
       error,
       url: '/api/test',
-      defaultCode: 400,
-      zodParseErrorContext: {
-        inputSource: 'body'
-      }
+      defaultCode: 400
     });
 
     expect(processed.httpStatus).toBe(400);
@@ -58,10 +55,7 @@ describe('processError zod logging', () => {
     const processed = processError({
       error,
       url: '/api/test',
-      defaultCode: 400,
-      zodParseErrorContext: {
-        inputSource: 'query'
-      }
+      defaultCode: 400
     });
 
     expect(processed.httpStatus).toBe(400);

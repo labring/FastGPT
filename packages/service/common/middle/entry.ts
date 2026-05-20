@@ -137,8 +137,8 @@ export const NextEntry = ({
             } catch (error) {
               // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
               if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
-                const zodParseErrorContext = getZodParseErrorInputSource(error);
-                if (!zodParseErrorContext) {
+                const requestInputErrorContext = getZodParseErrorInputSource(error);
+                if (!requestInputErrorContext) {
                   span.setAttribute('http.response.status_code', 500);
                   setSpanError(span, error);
 
@@ -154,8 +154,7 @@ export const NextEntry = ({
                   code: 400,
                   message: 'Data validation error',
                   error,
-                  url: req.url,
-                  zodParseErrorContext
+                  url: req.url
                 });
               }
 
