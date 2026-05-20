@@ -256,7 +256,7 @@ const Header = () => {
             isLoading={isSaving}
             onClick={() => onSaveDeploy(skillDetail._id)}
           >
-            {t('common:Save')}
+            {t('common:Publish')}
           </Button>
         </HStack>
       )}

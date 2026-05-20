@@ -38,7 +38,12 @@ import {
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import { getSkillsRootPath, joinSandboxPath, shellQuote } from '../runtime';
+import {
+  getSafeSkillDirectoryName,
+  getSkillsRootPath,
+  joinSandboxPath,
+  shellQuote
+} from '../runtime';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -120,10 +125,11 @@ export async function createEditDebugSandbox(
    * 只有这个旧 wrapper，启动时顺手展开一层，避免每次加载继续制造
    * skills/<edit-dir>/<real-skill>/SKILL.md 这种嵌套结构。
    */
-  const ensureEditSkillDirectory = async (sandbox: ISandbox) => {
+  const ensureEditSkillDirectory = async (sandbox: ISandbox, skillName: string) => {
     const { skillsRootPath } = getEditSkillSandboxPaths();
     const relativeSkillsRootPath = getSkillsRootPath('.');
-    const normalizeTmpDir = joinSandboxPath(skillsRootPath, '.normalize-edit-skill');
+    const safeName = getSafeSkillDirectoryName(skillName);
+    const targetEditDir = joinSandboxPath(skillsRootPath, safeName);
     const migrateResult = await sandbox.execute(
       [
         `mkdir -p ${shellQuote(skillsRootPath)}`,
@@ -140,22 +146,25 @@ export async function createEditDebugSandbox(
           'fi'
         ].join(' '),
         [
-          `root_entry_count=$(find ${shellQuote(
-            skillsRootPath
-          )} -mindepth 1 -maxdepth 1 ! -name '.normalize-edit-skill' | wc -l | tr -d ' ')`,
           `legacy_edit_dir=$(find ${shellQuote(
             skillsRootPath
           )} -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`*-${skillId}-edit`)} | head -n 1)`,
-          `if [ "$root_entry_count" = "1" ] && [ -n "$legacy_edit_dir" ]; then`,
-          `tmp_dir=${shellQuote(normalizeTmpDir)} &&`,
-          `rm -rf "$tmp_dir" &&`,
-          `mkdir -p "$tmp_dir" &&`,
-          `find "$legacy_edit_dir" -mindepth 1 -maxdepth 1 -exec mv {} "$tmp_dir/" \\; &&`,
-          `rm -rf "$legacy_edit_dir" &&`,
-          `find "$tmp_dir" -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(
-            `${skillsRootPath}/`
+          `if [ -n "$legacy_edit_dir" ]; then`,
+          `mkdir -p ${shellQuote(targetEditDir)} &&`,
+          `find "$legacy_edit_dir" -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(
+            `${targetEditDir}/`
           )} \\; &&`,
-          `rm -rf "$tmp_dir"`,
+          `rm -rf "$legacy_edit_dir"`,
+          'fi'
+        ].join(' '),
+        [
+          `if [ -f ${shellQuote(joinSandboxPath(skillsRootPath, 'SKILL.md'))} ] || [ -f ${shellQuote(joinSandboxPath(skillsRootPath, 'skill.md'))} ]; then`,
+          `mkdir -p ${shellQuote(targetEditDir)} &&`,
+          `find ${shellQuote(
+            skillsRootPath
+          )} -mindepth 1 -maxdepth 1 ! -name '.normalize-edit-skill' ! -name "${safeName.replace(/"/g, '\\"')}" -exec mv {} ${shellQuote(
+            `${targetEditDir}/`
+          )} \\;`,
           'fi'
         ].join(' ')
       ].join(' && ')
@@ -165,7 +174,7 @@ export async function createEditDebugSandbox(
       throw new Error(`Failed to prepare edit skill directory: ${migrateResult.stderr}`);
     }
 
-    return skillsRootPath;
+    return targetEditDir;
   };
 
   const existingInstance = await findSandboxInstanceByAppChatType({
@@ -190,7 +199,7 @@ export async function createEditDebugSandbox(
 
       const connected = await connectReadySandboxByInstance(providerConfig, instance);
       sandbox = connected.sandbox;
-      await ensureEditSkillDirectory(sandbox);
+      await ensureEditSkillDirectory(sandbox, skill.name);
 
       const endpointInfo = await getSandboxEndpoint(sandbox);
 
@@ -317,6 +326,7 @@ export async function createEditDebugSandbox(
     });
 
     const { skillsRootPath } = getEditSkillSandboxPaths();
+    const editSkillDir = joinSandboxPath(skillsRootPath, getSafeSkillDirectoryName(skill.name));
     const zipPath = joinSandboxPath(defaults.workDirectory, 'package.zip');
 
     const prepareWorkDirectoryResult = await client.provider.execute(
@@ -339,9 +349,9 @@ export async function createEditDebugSandbox(
     onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
     const extractResult = await client.provider.execute(
       [
-        `rm -rf ${shellQuote(skillsRootPath)}`,
-        `mkdir -p ${shellQuote(skillsRootPath)}`,
-        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(skillsRootPath)}`,
+        `rm -rf ${shellQuote(editSkillDir)}`,
+        `mkdir -p ${shellQuote(editSkillDir)}`,
+        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(editSkillDir)}`,
         `rm ${shellQuote(zipPath)}`
       ].join(' && ')
     );
@@ -364,7 +374,7 @@ export async function createEditDebugSandbox(
         tmbId,
         skillId,
         sessionId,
-        editSkillDir: skillsRootPath,
+        editSkillDir: editSkillDir,
         provider: providerConfig.provider,
         image: sandboxInfo.image,
         providerCreatedAt: sandboxInfo.createdAt,
