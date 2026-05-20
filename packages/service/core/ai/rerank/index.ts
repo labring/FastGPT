@@ -7,6 +7,14 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { text2Chunks } from '../../../worker/function';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
+const DEFAULT_RERANK_MAX_TOKEN = 8000;
+
+export function resolveRerankMaxToken(maxToken: RerankModelItemType['maxToken']): number {
+  const numericMaxToken = Number(maxToken);
+  return Number.isFinite(numericMaxToken) && numericMaxToken > 0
+    ? numericMaxToken
+    : DEFAULT_RERANK_MAX_TOKEN;
+}
 
 export function formatRerankQuery(
   query: string,
@@ -70,7 +78,7 @@ export async function reRankRecall({
   // Document max token = ModelMaxToken - QueryTokens
   const { query: formattedQuery } = formatRerankQuery(query, [], model.instruction);
   const queryTokens = await countPromptTokens(formattedQuery);
-  const rerankMaxToken = model.maxToken ?? 8000;
+  const rerankMaxToken = resolveRerankMaxToken(model.maxToken);
   const docBudget = rerankMaxToken - queryTokens;
   if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));

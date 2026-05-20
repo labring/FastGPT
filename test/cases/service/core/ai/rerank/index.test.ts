@@ -314,6 +314,40 @@ describe('reRankRecall', () => {
     expect(mockPOST).toHaveBeenCalledOnce();
   });
 
+  it('maxToken 未配置时使用默认 token 上限，不按 0 处理', async () => {
+    mockPOST.mockResolvedValueOnce({
+      id: 'r1',
+      results: [{ index: 0, relevance_score: 0.5 }],
+      meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
+    });
+
+    const result = await reRankRecall({
+      model: { ...mockModel, maxToken: undefined },
+      query: 'q',
+      documents: [{ id: 'doc1', text: 'hello' }]
+    });
+
+    expect(result.results).toHaveLength(1);
+    expect(mockPOST).toHaveBeenCalledOnce();
+  });
+
+  it('maxToken 为空字符串时使用默认 token 上限，不触发 query 过长', async () => {
+    mockPOST.mockResolvedValueOnce({
+      id: 'r1',
+      results: [{ index: 0, relevance_score: 0.5 }],
+      meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
+    });
+
+    const result = await reRankRecall({
+      model: { ...mockModel, maxToken: '' } as any,
+      query: 'q',
+      documents: [{ id: 'doc1', text: 'hello' }]
+    });
+
+    expect(result.results).toHaveLength(1);
+    expect(mockPOST).toHaveBeenCalledOnce();
+  });
+
   it('API 请求失败时，reject 并传递原始错误', async () => {
     mockPOST.mockRejectedValueOnce(new Error('Network error'));
 
