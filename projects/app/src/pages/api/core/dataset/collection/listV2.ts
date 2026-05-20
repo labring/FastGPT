@@ -173,7 +173,9 @@ async function computeFolderMatchingStatuses(
         $group: {
           _id: '$collectionId',
           count: { $sum: 1 },
-          hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+          hasError: {
+            $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $eq: ['$retryCount', 0] }] }
+          },
           hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
           allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
         }
@@ -650,7 +652,9 @@ async function handleFieldSort({
             $group: {
               _id: '$collectionId',
               count: { $sum: 1 },
-              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+              hasError: {
+                $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $eq: ['$retryCount', 0] }] }
+              },
               hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
               allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
             }
@@ -822,7 +826,9 @@ async function handleFieldSort({
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+            hasError: {
+              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $eq: ['$retryCount', 0] }] }
+            },
             hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
             allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
           }
@@ -1045,7 +1051,9 @@ async function handleDataAmountSortOrStatusFilter({
             $group: {
               _id: null,
               count: { $sum: 1 },
-              hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+              hasError: {
+                $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $eq: ['$retryCount', 0] }] }
+              },
               hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
               allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
             }
@@ -1301,7 +1309,9 @@ async function handleStatusFilterWithMemoryPagination({
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } },
+            hasError: {
+              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $eq: ['$retryCount', 0] }] }
+            },
             hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
             allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
           }
