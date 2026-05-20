@@ -17,16 +17,16 @@ export const SystemToolBaseSchema = z.object({
 
 export const SystemToolRuntimeSchema = z
   .object({
-    minPods: z.number().nonnegative().optional(),
-    maxPods: z.number().positive().optional(),
-    idleTimeout: z.number().positive().optional(),
-    podTimeout: z.number().positive().optional(),
-    maxRequestsPerPod: z.number().nonnegative().optional(),
-    maxConcurrentRequestsPerPod: z.number().positive().optional(),
-    maxQueueSize: z.number().positive().optional(),
-    queueTimeout: z.number().nonnegative().optional()
+    minPods: z.number().int().nonnegative(),
+    maxPods: z.number().int().positive(),
+    podTimeout: z.number().int().positive(),
+    maxConcurrentRequestsPerPod: z.number().int().positive()
   })
-  .catchall(z.unknown());
+  .strict()
+  .refine((config) => config.minPods <= config.maxPods, {
+    message: 'minPods cannot be greater than maxPods',
+    path: ['minPods']
+  });
 
 export type SystemToolRuntimeConfigType = z.infer<typeof SystemToolRuntimeSchema>;
 

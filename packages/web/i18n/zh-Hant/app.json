@@ -429,6 +429,7 @@
   "toolkit_runtime_config": "執行階段配置",
   "toolkit_runtime_config_idle_timeout": "節點閒置時間（ms）",
   "toolkit_runtime_config_idle_timeout_tip": "工作節點閒置超過該時間後可被回收",
+  "toolkit_runtime_config_invalid_integer": "{{label}} 需要填寫整數",
   "toolkit_runtime_config_invalid_number": "{{label}} 需要填寫有效數字",
   "toolkit_runtime_config_max_concurrent_requests_per_pod": "每節點最大並發數",
   "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "單個工作節點可同時處理的最大請求數",

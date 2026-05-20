@@ -440,6 +440,7 @@
   "toolkit_runtime_config": "Runtime Configuration",
   "toolkit_runtime_config_idle_timeout": "Node idle timeout (ms)",
   "toolkit_runtime_config_idle_timeout_tip": "Worker nodes can be recycled after being idle for this duration",
+  "toolkit_runtime_config_invalid_integer": "{{label}} must be an integer",
   "toolkit_runtime_config_invalid_number": "{{label}} must be a valid number",
   "toolkit_runtime_config_max_concurrent_requests_per_pod": "Max concurrent requests per node",
   "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "Maximum number of requests a single worker node can process at the same time",

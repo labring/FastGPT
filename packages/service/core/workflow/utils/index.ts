@@ -56,14 +56,17 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     fallbackLatestVersion: true
   });
 
+  console.log(tool.children);
   if (!tool.children) return [];
 
   const runtimeVersion = tool.version || toolSetNode.version;
   const nodes = tool.children?.map((child) => {
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
-      inputs: toolsetInputConfig ? [toolsetInputConfig, ...(tool.inputs ?? [])] : tool.inputs ?? [],
-      outputs: tool.outputs ?? [],
+      inputs: toolsetInputConfig
+        ? [toolsetInputConfig, ...(child.inputs ?? [])]
+        : child.inputs ?? [],
+      outputs: child.outputs ?? [],
       name: child.name,
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,

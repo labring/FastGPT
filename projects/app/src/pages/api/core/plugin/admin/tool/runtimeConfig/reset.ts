@@ -19,7 +19,7 @@ async function handler(
 
   const { pluginId } = req.body;
 
-  await pluginClient.setPluginRuntimeConfig(getToolRawId(pluginId), {});
+  await pluginClient.resetPluginRuntimeConfig(getToolRawId(pluginId));
 
   return {};
 }

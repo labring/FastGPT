@@ -26,7 +26,10 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
     });
     filepaths.push(result.fileMetadata.path);
 
-    const filename = decodeURIComponent(result.fileMetadata.originalname || 'file-' + getNanoid());
+    const filename =
+      req.body.fileName ??
+      (decodeURIComponent(result.fileMetadata.originalname) || `file-${getNanoid()}`);
+
     const uploadResult = await InvokeProcessor.getInstanceFromToken(token).handleFileUpload({
       filename,
       body: result.getReadStream(),

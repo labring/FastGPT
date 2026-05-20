@@ -73,40 +73,16 @@ const RUNTIME_CONFIG_FIELDS = [
     min: 1
   },
   {
-    key: 'idleTimeout',
-    labelKey: 'app:toolkit_runtime_config_idle_timeout',
-    tipKey: 'app:toolkit_runtime_config_idle_timeout_tip',
-    min: 1
-  },
-  {
     key: 'podTimeout',
     labelKey: 'app:toolkit_runtime_config_pod_timeout',
     tipKey: 'app:toolkit_runtime_config_pod_timeout_tip',
     min: 1
   },
   {
-    key: 'maxRequestsPerPod',
-    labelKey: 'app:toolkit_runtime_config_max_requests_per_pod',
-    tipKey: 'app:toolkit_runtime_config_max_requests_per_pod_tip',
-    min: 0
-  },
-  {
     key: 'maxConcurrentRequestsPerPod',
     labelKey: 'app:toolkit_runtime_config_max_concurrent_requests_per_pod',
     tipKey: 'app:toolkit_runtime_config_max_concurrent_requests_per_pod_tip',
     min: 1
-  },
-  {
-    key: 'maxQueueSize',
-    labelKey: 'app:toolkit_runtime_config_max_queue_size',
-    tipKey: 'app:toolkit_runtime_config_max_queue_size_tip',
-    min: 1
-  },
-  {
-    key: 'queueTimeout',
-    labelKey: 'app:toolkit_runtime_config_queue_timeout',
-    tipKey: 'app:toolkit_runtime_config_queue_timeout_tip',
-    min: 0
   }
 ] as const;
 
@@ -312,10 +288,10 @@ const SystemToolConfigModal = ({
   };
 
   const buildRuntimeConfig = () => {
-    const config = { ...runtimeConfig };
+    const config = {} as Record<RuntimeConfigFieldKey, number>;
 
     for (const field of RUNTIME_CONFIG_FIELDS) {
-      const value = config[field.key];
+      const value = runtimeConfig[field.key];
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         return Promise.reject(
           t('app:toolkit_runtime_config_invalid_number', {
@@ -331,9 +307,17 @@ const SystemToolConfigModal = ({
           })
         );
       }
+      if (!Number.isInteger(value)) {
+        return Promise.reject(
+          t('app:toolkit_runtime_config_invalid_integer', {
+            label: t(field.labelKey)
+          })
+        );
+      }
+      config[field.key] = value;
     }
 
-    if (Number(config.minPods) > Number(config.maxPods)) {
+    if (config.minPods > config.maxPods) {
       return Promise.reject(t('app:toolkit_runtime_config_min_pods_over_max_pods'));
     }
 
