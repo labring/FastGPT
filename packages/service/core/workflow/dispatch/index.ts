@@ -1643,7 +1643,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             workflowSpan.setAttribute('langfuse.session.id', data.chatId || '');
             workflowSpan.setAttribute('langfuse.user.id', String(data.runningUserInfo.tmbId));
             workflowSpan.setAttribute(
-              'langfuse.trace.metadata.appId',
+              'langfuse.trace.metadata.app_id',
               String(data.runningAppInfo.id)
             );
             workflowSpan.setAttribute('langfuse.trace.metadata.appName', data.runningAppInfo.name);
