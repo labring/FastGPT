@@ -429,7 +429,7 @@ const ErrorView = ({
           <Tbody>
             {errorList.map((item, index) => (
               <Tr key={index}>
-                <Td>{item.chunkIndex + 1}</Td>
+                <Td>{item.chunkIndex}</Td>
                 <Td>{TrainingText[item.mode]}</Td>
                 <Td maxW={50}>
                   <MyTooltip shouldWrapChildren={false} placement={'auto'} label={t(item.errorMsg)}>
