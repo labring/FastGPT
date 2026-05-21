@@ -31,18 +31,10 @@ const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
 // Cookies Modal Component
 const CookiesModal = () => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-
   const cookieVersion = '1';
   const [localCookieVersion, setLocalCookieVersion] =
     useLocalStorageState<string>('localCookieVersion');
-
-  useEffect(() => {
-    // Check if user has agreed to current cookie version
-    if (localCookieVersion !== cookieVersion) {
-      setIsOpen(true);
-    }
-  }, [localCookieVersion, cookieVersion]);
+  const [isOpen, setIsOpen] = useState(() => localCookieVersion !== cookieVersion);
 
   const handleAgree = () => {
     setLocalCookieVersion(cookieVersion);
@@ -102,30 +94,30 @@ const ChineseRedirectModal = () => {
   });
 
   // IP detection without cache
-  const checkIpInChina = useCallback(async () => {
-    try {
-      const res = await GET<any>(ipDetectURL);
-      const country = res?.country;
-      const isChina =
-        country === '中国' &&
-        res.prov !== '中国香港' &&
-        res.prov !== '中国澳门' &&
-        res.prov !== '中国台湾';
-
-      if (isChina) {
-        setIsOpen(true);
-      }
-    } catch (error) {
-      console.log('IP detection failed:', error);
-    }
-  }, []);
-
   useEffect(() => {
     // Only check IP if redirect URL is provided and user hasn't disabled it
-    if (chineseRedirectUrl && showRedirect) {
-      checkIpInChina();
-    }
-  }, [chineseRedirectUrl, showRedirect, checkIpInChina]);
+    if (!chineseRedirectUrl || !showRedirect) return;
+
+    const checkIpInChina = async () => {
+      try {
+        const res = await GET<any>(ipDetectURL);
+        const country = res?.country;
+        const isChina =
+          country === '中国' &&
+          res.prov !== '中国香港' &&
+          res.prov !== '中国澳门' &&
+          res.prov !== '中国台湾';
+
+        if (isChina) {
+          setIsOpen(true);
+        }
+      } catch (error) {
+        console.log('IP detection failed:', error);
+      }
+    };
+
+    checkIpInChina();
+  }, [chineseRedirectUrl, showRedirect]);
 
   const handleRedirect = () => {
     if (chineseRedirectUrl) {
@@ -188,7 +180,7 @@ export const LoginContainer = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { setLastChatAppId } = useChatStore();
+  const { resetChatCache } = useChatStore();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
@@ -204,8 +196,8 @@ export const LoginContainer = ({
   // initialization logic
   useEffect(() => {
     // reset chat state
-    setLastChatAppId('');
-  }, [feConfigs?.oauth?.wechat, setLastChatAppId]);
+    resetChatCache();
+  }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   // dynamic component based on page type
   const DynamicComponent = useMemo(() => {

@@ -22,6 +22,8 @@ type State = {
 
   outLinkAuthData: OutLinkChatAuthProps;
   setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
+
+  resetChatCache: () => any;
 };
 
 const createCustomStorage = () => {
@@ -85,10 +87,6 @@ export const useChatStore = create<State>()(
               state.chatId = getNanoid(24);
             }
 
-            if (!state.appId && state.lastChatAppId) {
-              state.appId = state.lastChatAppId;
-            }
-
             state.source = e;
           });
         },
@@ -126,6 +124,17 @@ export const useChatStore = create<State>()(
         setOutLinkAuthData(e) {
           set((state) => {
             state.outLinkAuthData = e;
+          });
+        },
+        resetChatCache() {
+          set((state) => {
+            state.source = undefined;
+            state.appId = '';
+            state.lastChatAppId = '';
+            state.chatId = '';
+            state.lastChatId = '';
+            state.lastPane = ChatSidebarPaneEnum.HOME;
+            state.outLinkAuthData = {};
           });
         }
       })),

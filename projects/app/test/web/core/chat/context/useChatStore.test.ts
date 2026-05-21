@@ -155,7 +155,7 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().lastChatId).toBe(`${ChatSourceEnum.api}-test-generated-id`);
   });
 
-  it('should set appId from lastChatAppId if not set', () => {
+  it('should not set appId from lastChatAppId when source changes', () => {
     useChatStore.setState({
       appId: '',
       lastChatAppId: 'last-app-id',
@@ -167,7 +167,36 @@ describe('useChatStore', () => {
     });
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.api);
-    expect(useChatStore.getState().appId).toBe('last-app-id');
+    expect(useChatStore.getState().appId).toBe('');
+    expect(useChatStore.getState().lastChatAppId).toBe('last-app-id');
+  });
+
+  it('should reset chat cache', () => {
+    const store = useChatStore.getState();
+    useChatStore.setState({
+      source: ChatSourceEnum.share,
+      appId: 'app-id',
+      lastChatAppId: 'last-app-id',
+      chatId: 'chat-id',
+      lastChatId: `${ChatSourceEnum.share}-chat-id`,
+      lastPane: ChatSidebarPaneEnum.RECENTLY_USED_APPS,
+      outLinkAuthData: {
+        shareId: 'share-id',
+        outLinkUid: 'outlink-uid'
+      }
+    });
+
+    store.resetChatCache();
+
+    expect(useChatStore.getState()).toMatchObject({
+      source: undefined,
+      appId: '',
+      lastChatAppId: '',
+      chatId: '',
+      lastChatId: '',
+      lastPane: ChatSidebarPaneEnum.HOME,
+      outLinkAuthData: {}
+    });
   });
 
   it('should set lastPane to undefined by default', () => {
