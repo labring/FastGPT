@@ -748,6 +748,7 @@
   "enable_sandbox": "體驗虛擬機器工具",
   "error.code_error": "驗證碼錯誤",
   "error.fileNotFound": "找不到檔案",
+  "error.unAuthFile": "無檔案權限",
   "error.file_upload_disabled": "當前應用未開啟文件上傳",
   "error.inheritPermissionError": "繼承權限錯誤",
   "error.invalid_params": "參數無效",

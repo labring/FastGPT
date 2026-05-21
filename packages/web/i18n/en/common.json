@@ -756,6 +756,7 @@
   "enable_sandbox": "Experience Sandbox Tool",
   "error.code_error": "The verification code is incorrect.",
   "error.fileNotFound": "File not found.",
+  "error.unAuthFile": "No file permission",
   "error.file_upload_disabled": "File upload is disabled for the current app",
   "error.inheritPermissionError": "Permission inheritance error.",
   "error.invalid_params": "Invalid parameter.",
