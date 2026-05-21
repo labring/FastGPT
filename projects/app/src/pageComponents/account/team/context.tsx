@@ -14,6 +14,7 @@ import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/suppor
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
@@ -52,6 +53,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo } = useUserStore();
+  const { resetChatCache } = useChatStore();
 
   const {
     data: myTeams = [],
@@ -70,6 +72,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest(
     async (teamId: string) => {
       await putSwitchTeam(teamId);
+      resetChatCache();
       return initUserInfo();
     },
     {

@@ -8,6 +8,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const TeamSelector = ({
   showManage,
@@ -23,6 +24,7 @@ const TeamSelector = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { setLoading } = useSystemStore();
+  const { resetChatCache } = useChatStore();
 
   const { data: myTeams = [] } = useRequest(() => getTeamList(TeamMemberStatusEnum.active), {
     manual: false,
@@ -33,6 +35,7 @@ const TeamSelector = ({
     async (teamId: string) => {
       setLoading(true);
       await putSwitchTeam(teamId);
+      resetChatCache();
     },
     {
       onFinally: () => {
