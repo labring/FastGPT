@@ -427,6 +427,7 @@
   "toolkit_open_marketplace": "打开插件市场",
   "toolkit_outputs": "输出参数",
   "toolkit_params_description": "参数说明",
+  "toolkit_search_placeholder": "搜索工具名称",
   "toolkit_id": "ID",
   "toolkit_no_runtime_config": "暂无运行时配置",
   "toolkit_plugin_config": "插件配置",

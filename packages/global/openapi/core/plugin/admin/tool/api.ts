@@ -10,8 +10,20 @@ import {
   AdminSystemToolListItemSchema
 } from '../../../../../core/app/tool/systemTool/type';
 
-// Admin tool list
-export const GetAdminSystemToolsQuery = z.object({});
+/* ============================================================================
+ * API: 获取系统工具列表
+ * Route: GET /api/core/plugin/admin/tool/list
+ * Method: GET
+ * Description: 获取系统工具列表，支持按工具名称关键字搜索
+ * Tags: ['PluginToolAdmin', 'Read']
+ * ============================================================================ */
+
+export const GetAdminSystemToolsQuery = z.object({
+  searchKey: z.string().max(100).optional().meta({
+    example: 'search',
+    description: '工具名称搜索关键字'
+  })
+});
 export type GetAdminSystemToolsQueryType = z.infer<typeof GetAdminSystemToolsQuery>;
 export const GetAdminSystemToolsResponseSchema = z.array(AdminSystemToolListItemSchema);
 export type GetAdminSystemToolsResponseType = z.infer<typeof GetAdminSystemToolsResponseSchema>;

@@ -6,6 +6,7 @@ import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -20,6 +21,7 @@ import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
+import { useDebounce } from 'ahooks';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
@@ -35,6 +37,9 @@ const ToolProvider = () => {
 
   const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);
   const [editingToolId, setEditingToolId] = useState<string>();
+  const [searchKey, setSearchKey] = useState('');
+  const debouncedSearchKey = useDebounce(searchKey, { wait: 300 });
+  const requestSearchKey = debouncedSearchKey.trim();
 
   const {
     isOpen: isOpenTagModal,
@@ -48,13 +53,14 @@ const ToolProvider = () => {
   } = useDisclosure();
 
   const { runAsync: refreshTools, loading: loadingTools } = useRequest(
-    () => getAdminSystemTools({}),
+    () => getAdminSystemTools({ searchKey: requestSearchKey || undefined }),
     {
       onSuccess: (data) => {
         if (data) {
           setLocalTools(data);
         }
       },
+      refreshDeps: [requestSearchKey],
       manual: false
     }
   );
@@ -65,6 +71,14 @@ const ToolProvider = () => {
       <Flex alignItems={'center'}>
         <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
           {t('common:navbar.plugin')}
+        </Box>
+        <Box w={'260px'} mr={2}>
+          <SearchInput
+            value={searchKey}
+            onChange={(e) => setSearchKey(e.target.value)}
+            placeholder={t('app:toolkit_search_placeholder')}
+            bg={'white'}
+          />
         </Box>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
           {t('app:toolkit_tags_manage')}
@@ -165,7 +179,12 @@ const ToolProvider = () => {
                 ref={provided.innerRef}
               >
                 {localTools.map((item, index) => (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                  <Draggable
+                    key={item.id}
+                    draggableId={item.id}
+                    index={index}
+                    isDragDisabled={!!searchKey.trim()}
+                  >
                     {(provided, snapshot) => (
                       <ToolRow
                         key={item.id}

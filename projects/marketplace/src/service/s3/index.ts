@@ -279,6 +279,10 @@ export const deleteObjectsByPrefixFromS3 = async (prefix: string) => {
   return getPublicStorage().deleteObjectsByPrefix({ prefix });
 };
 
+export const deleteObjectFromS3 = async (key: string) => {
+  return getPublicStorage().deleteObject({ key });
+};
+
 export const uploadPkgToS3 = async (params: {
   objectKey: string;
   buffer: Buffer;

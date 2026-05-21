@@ -6,6 +6,8 @@ import {
   MarketplaceToolsResponseSchema,
   UploadMarketplacePkgBodySchema,
   UploadMarketplacePkgResponseSchema,
+  DeleteMarketplacePkgBodySchema,
+  DeleteMarketplacePkgResponseSchema,
   GetMarketplaceToolTagsResponseSchema,
   GetMarketplaceToolVersionsQuerySchema,
   GetMarketplaceToolVersionsResponseSchema
@@ -105,6 +107,31 @@ export const MarketplacePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UploadMarketplacePkgResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/admin/pkg/delete': {
+    post: {
+      summary: '删除 marketplace 插件 pkg',
+      tags: [TagsMap.pluginMarketplace],
+      requestBody: {
+        description: '指定 pluginId、version 与来源删除某个插件版本',
+        required: true,
+        content: {
+          'application/json': {
+            schema: DeleteMarketplacePkgBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '删除 marketplace 插件 pkg 成功',
+          content: {
+            'application/json': {
+              schema: DeleteMarketplacePkgResponseSchema
             }
           }
         }

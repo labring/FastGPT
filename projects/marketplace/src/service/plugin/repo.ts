@@ -7,6 +7,7 @@ import {
   type MarketplaceToolManifestSchemaType
 } from '../mongo/models/tool';
 import {
+  deleteObjectFromS3,
   deleteObjectsByPrefixFromS3,
   downloadBufferFromS3,
   getPkgFilename,
@@ -30,6 +31,16 @@ type ToolIndexFilter = {
 
 type ToolListParams = ToolIndexFilter & {
   latestOnly?: boolean;
+};
+
+const getSourceFilter = (source: string) => {
+  if (source === MarketplaceOfficialSource) {
+    return {
+      $or: [{ source }, { source: { $exists: false } }, { source: null }]
+    };
+  }
+
+  return { source };
 };
 
 declare global {
@@ -106,6 +117,76 @@ export class PluginRepo {
     }).lean();
 
     return index ? MarketplaceToolIndexZodSchema.parse(index) : null;
+  }
+
+  async deleteToolVersion({
+    pluginId,
+    version,
+    source = MarketplaceOfficialSource
+  }: {
+    pluginId: string;
+    version: string;
+    source?: string;
+  }) {
+    const index = await MongoMarketplaceTool.findOne({
+      type: 'tool',
+      pluginId,
+      version,
+      ...getSourceFilter(source)
+    }).lean();
+
+    if (!index) {
+      throw new Error(`Marketplace tool not found: ${pluginId}@${version}`);
+    }
+
+    const parsedIndex = MarketplaceToolIndexZodSchema.parse(index);
+    const manifestObjectKey = getToolManifestObjectKey(parsedIndex);
+    const pkgObjectKey = getPkgObjectKey(parsedIndex);
+
+    await MongoMarketplaceTool.deleteOne({
+      type: 'tool',
+      pluginId,
+      version,
+      ...getSourceFilter(source)
+    });
+
+    await Promise.all([
+      deleteObjectFromS3(manifestObjectKey).catch((error) => {
+        logger.error('Delete marketplace tool manifest failed', {
+          pluginId,
+          version,
+          source,
+          objectKey: manifestObjectKey,
+          error
+        });
+      }),
+      deleteObjectFromS3(pkgObjectKey).catch((error) => {
+        logger.error('Delete marketplace tool pkg failed', {
+          pluginId,
+          version,
+          source,
+          objectKey: pkgObjectKey,
+          error
+        });
+      }),
+      this.deleteToolAssets({
+        source: parsedIndex.source,
+        pluginId,
+        version,
+        etag: parsedIndex.etag
+      })
+    ]);
+
+    this.invalidateToolCache({
+      pluginId,
+      version
+    });
+
+    return {
+      pluginId,
+      version,
+      source
+    };
   }
 
   private async ensureNonOfficialToolIdAvailable(record: MarketplaceToolManifestSchemaType) {

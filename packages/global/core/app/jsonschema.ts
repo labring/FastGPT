@@ -58,7 +58,9 @@ export const JsonSchemaPropertiesItemSchema = z.object({
   examples: z.array(z.any()).optional(), // 示例
 
   // 自定义扩展（FastGPT 专用）
-  'x-tool-description': z.string().optional() // 工具描述
+  'x-tool-description': z.string().optional(), // 工具描述
+  toolDescription: z.string().optional(), // 工具描述 for System Tool
+  isSecret: z.boolean().optional() // System Tool
 });
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
@@ -157,7 +159,12 @@ export const jsonSchema2NodeInput = ({
     label: value.title || key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: schemaType === 'http' ? value['x-tool-description'] : value.description || key,
+    toolDescription:
+      schemaType === 'http'
+        ? value['x-tool-description']
+        : schemaType === 'systemTool'
+          ? value['toolDescription']
+          : value.description || key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));
@@ -289,7 +296,7 @@ export const jsonSchema2SecretInput = ({
     });
     // inputType => inputConfig 里面的 inputType
     const inputType = (() => {
-      if (value.format === 'secret') return InputConfigInputTypeEnum.secret;
+      if (value?.isSecret === true) return InputConfigInputTypeEnum.secret;
       switch (workflowInputType) {
         case WorkflowIOValueTypeEnum.string:
           return InputConfigInputTypeEnum.input;

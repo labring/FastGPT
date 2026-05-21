@@ -427,6 +427,7 @@
   "toolkit_open_marketplace": "Open Marketplace",
   "toolkit_outputs": "Output Parameters",
   "toolkit_params_description": "Parameters",
+  "toolkit_search_placeholder": "Search tool names",
   "toolkit_id": "ID",
   "toolkit_no_runtime_config": "No runtime configuration",
   "toolkit_plugin_config": "Plugin Configuration",

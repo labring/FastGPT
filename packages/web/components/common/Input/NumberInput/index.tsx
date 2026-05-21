@@ -65,7 +65,8 @@ const MyNumberInput = (props: Props) => {
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : Number(e);
+        const numE =
+          e === '' ? '' : e.endsWith('.') || /^[1-9]\d*\.0+$/.test(e) ? e : Number(e);
         if (onChange) {
           if (numE === '') {
             // @ts-ignore

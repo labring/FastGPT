@@ -66,6 +66,42 @@ export const UploadMarketplacePkgResponseSchema = z.object({
 });
 export type UploadMarketplacePkgResponseType = z.infer<typeof UploadMarketplacePkgResponseSchema>;
 
+/* ============================================================================
+ * API: 删除 marketplace 插件
+ * Route: POST /marketplace/api/admin/pkg/delete
+ * Method: POST
+ * Description: 手动删除指定来源下某个插件版本的 marketplace 记录及存储文件
+ * Tags: ['Plugin', 'Marketplace', 'Admin', 'Delete']
+ * ============================================================================ */
+
+export const DeleteMarketplacePkgBodySchema = z.object({
+  pluginId: z.string().trim().min(1).meta({
+    example: 'fastgpt-tool',
+    description: '插件 ID'
+  }),
+  version: z.string().trim().min(1).meta({
+    example: '1.0.0',
+    description: '插件版本'
+  }),
+  source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource).meta({
+    example: MarketplaceOfficialSource,
+    description: '插件来源, 默认 official'
+  })
+});
+export type DeleteMarketplacePkgBodyType = z.infer<typeof DeleteMarketplacePkgBodySchema>;
+
+export const DeleteMarketplacePkgResponseSchema = z.object({
+  pluginId: z.string().meta({ example: 'fastgpt-tool', description: '插件 ID' }),
+  version: z.string().meta({ example: '1.0.0', description: '插件版本' }),
+  source: MarketplacePkgSourceSchema.meta({
+    example: MarketplaceOfficialSource,
+    description: '插件来源'
+  })
+});
+export type DeleteMarketplacePkgResponseType = z.infer<
+  typeof DeleteMarketplacePkgResponseSchema
+>;
+
 // Tags
 export const GetMarketplaceToolTagsResponseSchema = z.array(PluginToolTagSchema);
 export type GetMarketplaceToolTagsResponseType = z.infer<

@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const modelMocks = vi.hoisted(() => ({
   find: vi.fn(),
   findOne: vi.fn(),
-  updateOne: vi.fn()
+  updateOne: vi.fn(),
+  deleteOne: vi.fn()
 }));
 
 const s3Mocks = vi.hoisted(() => ({
+  deleteObjectFromS3: vi.fn(),
   deleteObjectsByPrefixFromS3: vi.fn(),
   downloadBufferFromS3: vi.fn(),
   getPkgDownloadURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
@@ -118,6 +120,7 @@ describe('PluginRepo', () => {
     modelMocks.find.mockReset();
     modelMocks.findOne.mockReset();
     modelMocks.updateOne.mockReset();
+    modelMocks.deleteOne.mockReset();
     Object.values(s3Mocks).forEach((mock) => {
       if (typeof mock === 'function' && 'mockClear' in mock) {
         mock.mockClear();
@@ -299,5 +302,98 @@ describe('PluginRepo', () => {
     });
     expect(s3Mocks.uploadJsonToS3).not.toHaveBeenCalled();
     expect(modelMocks.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('deletes a tool version record, manifest, pkg and assets by source', async () => {
+    const index = createIndex({
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      etag: 'etag-1',
+      source: 'official',
+      filename: 'tool-a@1.0.0@etag-1.pkg'
+    });
+    modelMocks.findOne.mockReturnValue(mockLean(index));
+    modelMocks.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    s3Mocks.deleteObjectFromS3.mockResolvedValue(undefined);
+    s3Mocks.deleteObjectsByPrefixFromS3.mockResolvedValue({ keys: [] });
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+    const repo = new PluginRepo();
+    const result = await repo.deleteToolVersion({
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      source: 'official'
+    });
+
+    expect(modelMocks.findOne).toHaveBeenCalledWith({
+      type: 'tool',
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      $or: [{ source: 'official' }, { source: { $exists: false } }, { source: null }]
+    });
+    expect(modelMocks.deleteOne).toHaveBeenCalledWith({
+      type: 'tool',
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      $or: [{ source: 'official' }, { source: { $exists: false } }, { source: null }]
+    });
+    expect(s3Mocks.deleteObjectFromS3).toHaveBeenCalledWith(
+      'marketplace/tools/official/tool-a/1.0.0.json'
+    );
+    expect(s3Mocks.deleteObjectFromS3).toHaveBeenCalledWith(
+      'pkgs/official/tool-a@1.0.0@etag-1.pkg'
+    );
+    expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith(
+      'official/tool-a/1.0.0/etag-1/'
+    );
+    expect(result).toEqual({
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      source: 'official'
+    });
+  });
+
+  it('rejects deleting a missing tool version before touching storage', async () => {
+    modelMocks.findOne.mockReturnValue(mockLean(null));
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+
+    await expect(
+      new PluginRepo().deleteToolVersion({
+        pluginId: 'tool-a',
+        version: '9.9.9',
+        source: 'official'
+      })
+    ).rejects.toThrow('Marketplace tool not found: tool-a@9.9.9');
+
+    expect(modelMocks.deleteOne).not.toHaveBeenCalled();
+    expect(s3Mocks.deleteObjectFromS3).not.toHaveBeenCalled();
+    expect(s3Mocks.deleteObjectsByPrefixFromS3).not.toHaveBeenCalled();
+  });
+
+  it('uses legacy asset prefix when deleting an official record without source', async () => {
+    const index = createIndex({
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      etag: 'etag-1'
+    });
+    modelMocks.findOne.mockReturnValue(mockLean(index));
+    modelMocks.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    s3Mocks.deleteObjectFromS3.mockResolvedValue(undefined);
+    s3Mocks.deleteObjectsByPrefixFromS3.mockResolvedValue({ keys: [] });
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+    await new PluginRepo().deleteToolVersion({
+      pluginId: 'tool-a',
+      version: '1.0.0',
+      source: 'official'
+    });
+
+    expect(s3Mocks.deleteObjectFromS3).toHaveBeenCalledWith(
+      'marketplace/tools/tool-a/1.0.0.json'
+    );
+    expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith(
+      'assets/tool-a/1.0.0/etag-1/'
+    );
   });
 });
