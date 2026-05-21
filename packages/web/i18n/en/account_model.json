@@ -107,6 +107,7 @@
   "train": "Train",
   "train_model_generate_new": "Train Model (Generate New Model)",
   "train_new_model_name": "New Model Name",
+  "dataset_still_processing_tip": "Still processing, training not supported yet",
   "train_data": "Training Data",
   "train_select_base_model_first": "Please select a base model first",
   "please_select": "Please select",

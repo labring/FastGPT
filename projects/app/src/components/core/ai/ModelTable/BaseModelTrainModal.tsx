@@ -19,6 +19,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -254,6 +255,7 @@ const BaseModelTrainModal = ({
   const getFolderCheckState = useCallback(
     (folderId: string) => {
       const leafItems = treeState.leafDescendantMap.get(folderId) || [];
+      const selectableItems = leafItems.filter((item) => !(item.processingCount && item.processingCount > 0));
       if (leafItems.length === 0) {
         return {
           isChecked: selectedEmptyFolderIds.has(folderId),
@@ -261,14 +263,18 @@ const BaseModelTrainModal = ({
         };
       }
 
-      const selectedCount = leafItems.reduce(
+      if (selectableItems.length === 0) {
+        return { isChecked: false, isIndeterminate: false };
+      }
+
+      const selectedCount = selectableItems.reduce(
         (count, item) => count + (selectedDatasetIdSet.has(item._id) ? 1 : 0),
         0
       );
 
       return {
-        isChecked: selectedCount === leafItems.length,
-        isIndeterminate: selectedCount > 0 && selectedCount < leafItems.length
+        isChecked: selectedCount === selectableItems.length,
+        isIndeterminate: selectedCount > 0 && selectedCount < selectableItems.length
       };
     },
     [selectedDatasetIdSet, selectedEmptyFolderIds, treeState.leafDescendantMap]
@@ -296,7 +302,10 @@ const BaseModelTrainModal = ({
         if (checked) {
           const existedIds = new Set(prev.map((item) => item.datasetId));
           const additions = leafItems
-            .filter((item) => !existedIds.has(item._id))
+            .filter(
+              (item) =>
+                !existedIds.has(item._id) && !((item.processingCount ?? 0) > 0)
+            )
             .map((item) => toSelectedDataset(item));
           return [...prev, ...additions];
         }
@@ -320,9 +329,12 @@ const BaseModelTrainModal = ({
   }, []);
 
   const isAllSelected = useMemo(() => {
-    if (treeState.allLeafItems.length === 0 && treeState.emptyFolderIds.size === 0) return false;
+    const selectableLeafItems = treeState.allLeafItems.filter(
+      (item) => !((item.processingCount ?? 0) > 0)
+    );
+    if (selectableLeafItems.length === 0 && treeState.emptyFolderIds.size === 0) return false;
 
-    const allLeavesSelected = treeState.allLeafItems.every((item) =>
+    const allLeavesSelected = selectableLeafItems.every((item) =>
       selectedDatasetIdSet.has(item._id)
     );
     const allEmptyFoldersSelected = [...treeState.emptyFolderIds].every((id) =>
@@ -335,7 +347,11 @@ const BaseModelTrainModal = ({
   const handleSelectAll = useCallback(
     (checked: boolean) => {
       if (checked) {
-        setSelectedDatasets(treeState.allLeafItems.map(toSelectedDataset));
+        setSelectedDatasets(
+          treeState.allLeafItems
+            .filter((item) => !((item.processingCount ?? 0) > 0))
+            .map(toSelectedDataset)
+        );
         setSelectedEmptyFolderIds(new Set(treeState.emptyFolderIds));
       } else {
         setSelectedDatasets([]);
@@ -460,6 +476,7 @@ const BaseModelTrainModal = ({
                 )}
                 {visibleNodes.map((node) => {
                   const { item, id, level, isFolder, childrenIds } = node;
+                  const isProcessing = !isFolder && (item.processingCount ?? 0) > 0;
                   const folderCheckState = isFolder
                     ? getFolderCheckState(id)
                     : {
@@ -469,78 +486,87 @@ const BaseModelTrainModal = ({
                   const isExpanded = searchKey ? true : expandedFolderIds.has(id);
 
                   return (
-                    <Box key={id} userSelect={'none'}>
-                      <Flex
-                        align={'center'}
-                        pr={2}
-                        pl={3 + level * 20}
-                        py={1.5}
-                        borderRadius={'md'}
-                        _hover={{ bg: 'myGray.50' }}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          if (isFolder) {
-                            if (!searchKey) {
-                              setExpandedFolderIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(id)) {
-                                  next.delete(id);
-                                } else {
-                                  next.add(id);
-                                }
-                                return next;
-                              });
+                    <MyTooltip
+                      key={id}
+                      label={isProcessing ? t('account_model:dataset_still_processing_tip') : undefined}
+                    >
+                      <Box userSelect={'none'}>
+                        <Flex
+                          align={'center'}
+                          pr={2}
+                          pl={3 + level * 20}
+                          py={1.5}
+                          borderRadius={'md'}
+                          _hover={{ bg: isProcessing ? 'transparent' : 'myGray.50' }}
+                          cursor={isProcessing ? 'not-allowed' : 'pointer'}
+                          opacity={isProcessing ? 0.5 : 1}
+                          onClick={() => {
+                            if (isProcessing) return;
+                            if (isFolder) {
+                              if (!searchKey) {
+                                setExpandedFolderIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(id)) {
+                                    next.delete(id);
+                                  } else {
+                                    next.add(id);
+                                  }
+                                  return next;
+                                });
+                              }
+                              return;
                             }
-                            return;
-                          }
-                          onSelectDataset(item, !selectedDatasetIdSet.has(id));
-                        }}
-                      >
-                        <Box
-                          w={5}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                            onSelectDataset(item, !selectedDatasetIdSet.has(id));
                           }}
                         >
-                          <Checkbox
-                            isChecked={folderCheckState.isChecked}
-                            isIndeterminate={folderCheckState.isIndeterminate}
-                            onChange={(e) => {
-                              if (isFolder) {
-                                toggleFolderSelection(id, e.target.checked);
-                              } else {
-                                onSelectDataset(item, e.target.checked);
-                              }
-                            }}
-                            colorScheme={'blue'}
-                            size={'sm'}
-                          />
-                        </Box>
-                        <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} ml={2} mr={2.5} />
-                        <Box flex={1} minW={0}>
-                          <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
-                            {item.name}
-                          </Box>
-                          <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
-                            {isFolder ? t('common:Folder') : item.vectorModel?.name}
-                          </Box>
-                        </Box>
-                        {isFolder && childrenIds.length > 0 && (
                           <Box
-                            display={'flex'}
-                            alignItems={'center'}
-                            justifyContent={'center'}
-                            color={'myGray.500'}
+                            w={5}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
-                            {isExpanded ? (
-                              <ChevronDownIcon w={5} h={5} />
-                            ) : (
-                              <ChevronRightIcon w={5} h={5} />
-                            )}
+                            <Checkbox
+                              isChecked={folderCheckState.isChecked}
+                              isIndeterminate={folderCheckState.isIndeterminate}
+                              isDisabled={isProcessing}
+                              onChange={(e) => {
+                                if (isProcessing) return;
+                                if (isFolder) {
+                                  toggleFolderSelection(id, e.target.checked);
+                                } else {
+                                  onSelectDataset(item, e.target.checked);
+                                }
+                              }}
+                              colorScheme={'blue'}
+                              size={'sm'}
+                            />
                           </Box>
-                        )}
-                      </Flex>
-                    </Box>
+                          <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} ml={2} mr={2.5} />
+                          <Box flex={1} minW={0}>
+                            <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
+                              {item.name}
+                            </Box>
+                            <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
+                              {isFolder ? t('common:Folder') : item.vectorModel?.name}
+                            </Box>
+                          </Box>
+                          {isFolder && childrenIds.length > 0 && (
+                            <Box
+                              display={'flex'}
+                              alignItems={'center'}
+                              justifyContent={'center'}
+                              color={'myGray.500'}
+                            >
+                              {isExpanded ? (
+                                <ChevronDownIcon w={5} h={5} />
+                              ) : (
+                                <ChevronRightIcon w={5} h={5} />
+                              )}
+                            </Box>
+                          )}
+                        </Flex>
+                      </Box>
+                    </MyTooltip>
                   );
                 })}
               </VStack>

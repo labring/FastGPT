@@ -342,7 +342,8 @@ export const DatasetListItemSchema = z.object({
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' }),
   dataCount: z.number().optional().meta({ description: '数据数量' }),
   appCount: z.number().optional().meta({ description: '关联应用数量' }),
-  fileCount: z.number().optional().meta({ description: '文件数量' })
+  fileCount: z.number().optional().meta({ description: '文件数量' }),
+  processingCount: z.number().optional().meta({ description: '处理中的文件数量' })
 });
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 
