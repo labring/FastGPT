@@ -589,7 +589,8 @@ const RefinedDataCard = () => {
                   setSearchText(e.target.value);
                 }}
               />
-              {canWrite && (
+              {canWrite &&
+                collection?.trainingType !== DatasetCollectionDataProcessModeEnum.imageParse && (
                 <Button
                   ml={2}
                   variant={'whiteBase'}
@@ -615,8 +616,12 @@ const RefinedDataCard = () => {
               ) : (
                 <Flex flexDir={'column'} gap={2}>
                   {datasetDataList.map((item, index) => {
+                    const isImageType =
+                      collection?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
                     const isFolded =
-                      foldedCards[item._id] !== undefined ? foldedCards[item._id] : true;
+                      foldedCards[item._id] !== undefined
+                        ? foldedCards[item._id]
+                        : !(isImageType && index === 0);
                     return (
                       <Card
                         key={item._id}
@@ -700,36 +705,16 @@ const RefinedDataCard = () => {
                               })}
                         >
                           {item.imagePreviewUrl ? (
-                            isFolded ? (
-                              <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
-                                <Box flex="1 0 0">
-                                  <MyImage
-                                    src={item.imagePreviewUrl}
-                                    alt={''}
-                                    w={'100%'}
-                                    h="100%"
-                                    maxH={'300px'}
-                                    objectFit="contain"
-                                  />
-                                </Box>
-                                <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                                  <Markdown source={item.q} />
-                                </Box>
-                              </Box>
-                            ) : (
-                              <Box fontSize="sm">
-                                <Box float="left" maxW={'50%'} mr={6} mb={2}>
-                                  <MyImage
-                                    src={item.imagePreviewUrl}
-                                    alt={''}
-                                    maxH={'300px'}
-                                    objectFit="contain"
-                                  />
-                                </Box>
-                                <Markdown source={item.q} />
-                                <Box style={{ clear: 'both' }} />
-                              </Box>
-                            )
+                            <Box fontSize="sm">
+                              <MyImage
+                                src={item.imagePreviewUrl}
+                                alt={''}
+                                maxH={'300px'}
+                                objectFit="contain"
+                                mb={4}
+                              />
+                              <Markdown source={item.q} />
+                            </Box>
                           ) : (
                             <Box wordBreak={'break-all'}>
                               {!!item.a ? (
