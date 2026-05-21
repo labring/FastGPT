@@ -138,12 +138,16 @@ const DatasetSchema = new Schema({
     default: null // null表示未删除，有值表示删除时间
   },
 
-  // abandoned
   autoSync: Boolean,
+  /** @deprecated */
   externalReadUrl: String,
+  /** @deprecated */
   defaultPermission: Number,
+  /** @deprecated */
   apiServer: Object,
+  /** @deprecated */
   feishuServer: Object,
+  /** @deprecated */
   yuqueServer: Object
 });
 

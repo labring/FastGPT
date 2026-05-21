@@ -94,7 +94,7 @@ export const DatasetSchema = z
 
     deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),
 
-    autoSync: z.boolean().optional().meta({ description: '自动同步', deprecated: true }),
+    autoSync: z.boolean().optional().meta({ description: '自动同步' }),
     externalReadUrl: z.string().optional().meta({ description: '外部读取 URL', deprecated: true }),
     defaultPermission: z.number().optional().meta({ description: '默认权限', deprecated: true }),
     apiServer: APIFileServerSchema.optional().meta({

@@ -13,6 +13,7 @@ export enum TimerIdEnum {
   recordTeamQPM = 'recordTeamQPM',
   auditLogCleanup = 'auditLogCleanup',
   chatHistoryCleanup = 'chatHistoryCleanup',
+  datasetSyncSchedulerReconcile = 'datasetSyncSchedulerReconcile',
   /** 纠正长时间卡在 generating 的会话状态 */
   cleanStaleGeneratingChat = 'cleanStaleGeneratingChat'
 }
