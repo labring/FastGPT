@@ -139,7 +139,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       if (res.error) {
         // 适配旧版：旧版本没有catchError，部分工具会正常返回 error 字段作为响应。
-        if (catchError === undefined && typeof res.error === 'object') {
+        if (catchError === undefined && typeof res.error === 'object' && 'error' in res.error) {
           return {
             data: res.error,
             [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -151,21 +151,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           };
         }
 
-        // String error(Common error, not custom)
-        if (typeof res.error === 'string') {
-          throw new Error(res.error);
-        }
-
-        // Custom error field
-        return {
-          error: res.error,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            toolInput,
-            error: res.error,
-            moduleLogo: avatar
-          },
-          [DispatchNodeResponseKeyEnum.toolResponses]: res.error
-        };
+        throw res.error;
       }
 
       const usagePoints = (() => {

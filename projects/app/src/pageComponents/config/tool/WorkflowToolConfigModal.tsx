@@ -98,9 +98,11 @@ const WorkflowToolConfigModal = ({
           intro: res.intro,
           tags: res.tags || [],
           userGuide: res.userGuide || '',
-          author: res.author
+          author: res.author,
+          associatedPluginId: res.associatedPluginId
         };
         setSelectedTags(res.tags || []);
+        setSearchKey(res.associatedPluginId || '');
         return form;
       }
       return defaultForm;

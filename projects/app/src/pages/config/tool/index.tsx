@@ -72,12 +72,14 @@ const ToolProvider = () => {
         <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
           {t('common:navbar.plugin')}
         </Box>
-        <Box w={'260px'} mr={2}>
+        <Box mr={2}>
           <SearchInput
+            maxW={['auto', '250px']}
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
             placeholder={t('app:toolkit_search_placeholder')}
             bg={'white'}
+            maxLength={30}
           />
         </Box>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>

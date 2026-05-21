@@ -190,9 +190,10 @@ export class SystemToolRepo {
         hideTags: dbTool.hideTags ?? [],
         promoteTags: dbTool.promoteTags ?? [],
         source: 'system',
-        isLatestVersion: isLatest
-        // TODO: courseUrl support
-        // courseUrl: dbTool.customConfig.courseUrl ?? '',
+        isLatestVersion: isLatest,
+        associatedPluginId: dbTool.customConfig.associatedPluginId ?? undefined,
+        originCost: dbTool.originCost ?? 0,
+        userGuide: dbTool.customConfig.userGuide ?? undefined
       } satisfies SystemToolDetailType;
     }
 
