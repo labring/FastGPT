@@ -192,6 +192,10 @@ export const createWorkflowAgentLoopEventMapper = ({
     assistantText?: string;
     reasoningText?: string;
   }) => {
+    // 没有可见 assistantText 时，不在 request end 阶段回填 reasoning 到已有 tool。
+    // reasoning 的归属需要按流式顺序附着到后续 content/tool，避免误挂到上一轮工具。
+    if (!assistantText) return;
+
     const runtimeToolCalls = toolCalls.filter((call) => {
       const functionName = call.function.name;
       return (
@@ -201,21 +205,22 @@ export const createWorkflowAgentLoopEventMapper = ({
         !isInternalTool(functionName, internalToolNames)
       );
     });
-    if (!runtimeToolCalls.length || (!assistantText && !reasoningText)) return;
+    if (!runtimeToolCalls.length) return;
 
     const runtimeToolCallIds = new Set(runtimeToolCalls.map((call) => call.id));
-    const existingIndexes = assistantResponses
-      .map((item, index) =>
-        item.tools?.some((tool) => runtimeToolCallIds.has(tool.id)) ? index : -1
-      )
-      .filter((index) => index >= 0);
-    const insertIndex = existingIndexes.length
-      ? Math.min(...existingIndexes)
-      : assistantResponses.length;
+    const existingIndex = assistantResponses.findIndex((item) =>
+      item.tools?.some((tool) => runtimeToolCallIds.has(tool.id))
+    );
+    const insertIndex = existingIndex >= 0 ? existingIndex : assistantResponses.length;
 
     const assistantValue: AIChatItemValueItemType = {
-      ...(assistantText ? { text: { content: assistantText } } : {}),
-      ...(reasoningText ? { reasoning: { content: reasoningText } } : {})
+      text: { content: assistantText },
+      ...(reasoningText
+        ? {
+            reasoning: { content: reasoningText },
+            ...(!showReasoning ? { hideReason: true } : {})
+          }
+        : {})
     };
     assistantResponses.splice(insertIndex, 0, assistantValue);
   };

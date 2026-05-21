@@ -332,26 +332,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         : result.status === 'aborted'
           ? i18nT('chat:completion_finish_error')
           : undefined;
-
-    if (result.reasoningText) {
-      assistantResponses.push({
-        reasoning: {
-          content: result.reasoningText
-        },
-        ...(aiChatReasoning === false ? { hideInUI: true } : {})
-      });
-    }
-
-    if (result.answerText) {
-      assistantResponses.push({
-        text: {
-          content: result.answerText
+    const reasoningValue = result.reasoningText
+      ? {
+          reasoning: {
+            content: result.reasoningText
+          },
+          ...(aiChatReasoning === false ? { hideReason: true } : {})
         }
-      });
-    } else if (errorText) {
+      : {};
+    const finalText = result.answerText || errorText;
+
+    if (finalText) {
       assistantResponses.push({
+        ...reasoningValue,
         text: {
-          content: errorText
+          content: finalText
         }
       });
     }

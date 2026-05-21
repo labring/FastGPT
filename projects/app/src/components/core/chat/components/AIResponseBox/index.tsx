@@ -43,7 +43,7 @@ const AIResponseBox = ({
 
   const responseBlocks: React.ReactNode[] = [];
 
-  if ('reasoning' in value && value.reasoning) {
+  if ('reasoning' in value && value.reasoning && !value.hideReason) {
     responseBlocks.push(
       <RenderReasoningContent
         key="reasoning"

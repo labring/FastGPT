@@ -180,17 +180,31 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           }
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+            const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
+              ...item,
+              value: [
+                ...item.value.slice(0, updateIndex),
+                nextValue,
+                ...item.value.slice(updateIndex + 1)
+              ]
+            });
+
             if (reasoningText) {
               if ('reasoning' in updateValue && updateValue.reasoning) {
-                updateValue.reasoning.content += reasoningText;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
-                };
+                return replaceUpdateValue({
+                  ...updateValue,
+                  reasoning: {
+                    ...updateValue.reasoning,
+                    content: updateValue.reasoning.content + reasoningText
+                  }
+                });
+              } else if ('text' in updateValue && updateValue.text && !updateValue.text.content) {
+                return replaceUpdateValue({
+                  ...updateValue,
+                  reasoning: {
+                    content: reasoningText
+                  }
+                });
               } else {
                 const val: AIChatItemValueItemType = {
                   reasoning: {
@@ -205,15 +219,20 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
             }
             if (text) {
               if ('text' in updateValue && updateValue.text) {
-                updateValue.text.content += text;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
-                };
+                return replaceUpdateValue({
+                  ...updateValue,
+                  text: {
+                    ...updateValue.text,
+                    content: updateValue.text.content + text
+                  }
+                });
+              } else if ('reasoning' in updateValue && updateValue.reasoning) {
+                return replaceUpdateValue({
+                  ...updateValue,
+                  text: {
+                    content: text
+                  }
+                });
               } else {
                 const newValue: AIChatItemValueItemType = {
                   text: {
@@ -258,7 +277,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       }
 
       const chatItemDataId = getNanoid(24);
-      let newChatList: HelperBotChatItemSiteType[] = [
+      const newChatList: HelperBotChatItemSiteType[] = [
         ...chatRecords,
         // 用户消息
         {
