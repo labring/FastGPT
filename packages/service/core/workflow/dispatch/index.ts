@@ -1193,15 +1193,16 @@ export class WorkflowQueue {
       if (assistantResponses) {
         this.chatAssistantResponse = this.chatAssistantResponse.concat(assistantResponses);
       } else {
-        if (reasoningText) {
-          this.chatAssistantResponse.push({
-            reasoning: {
-              content: reasoningText
-            }
-          });
-        }
+        // reasoning 不能独立落历史；只有存在可见文本时才附着保存。
         if (answerText) {
           this.chatAssistantResponse.push({
+            ...(reasoningText
+              ? {
+                  reasoning: {
+                    content: reasoningText
+                  }
+                }
+              : {}),
             text: {
               content: answerText
             }

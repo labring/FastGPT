@@ -147,7 +147,7 @@ const completions = async ({
     body: {
       model: cqModel.model,
       temperature: 0.01,
-      messages: chats2GPTMessages({ messages, reserveId: false }),
+      messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
     userKey: externalProvider.openaiAccount

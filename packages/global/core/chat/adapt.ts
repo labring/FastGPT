@@ -30,10 +30,18 @@ export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.Tool]: ChatRoleEnum.AI
 };
 
+/**
+ * 将 OpenAI/GPT message role 映射为 FastGPT 内部聊天角色。
+ * function/tool message 是 assistant 工具上下文的一部分，因此统一归到 AI 角色。
+ */
 export function adaptRole_Message2Chat(role: `${ChatCompletionRequestMessageRoleEnum}`) {
   return GPT2Chat[role];
 }
 
+/**
+ * 压缩用户 content part：纯文本保持旧版 string，多模态或多段内容保留数组。
+ * 这样既兼容历史文本上下文，也不会丢失图片、文件等结构化输入。
+ */
 export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
   if (content.length === 1 && content[0].type === 'text') {
     return content[0].text;
@@ -41,18 +49,194 @@ export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
   return content;
 };
 
+/**
+ * 规整 assistant 拆分字段消息。
+ *
+ * FastGPT 历史可能把 reasoning、text、tools 拆成多个 value；转成 GPT message 时需要
+ * 重新合并成 provider 能接受的 assistant payload：
+ * - reasoning 不能作为孤立 assistant message 发送，必须附着到后续 text/tool/function。
+ * - 连续 reasoning 使用空行拼接，再附着到同一轮的后续载体上。
+ * - dataId/hideInUI 不同表示不同上下文边界，不能跨边界合并。
+ * - 没有可附着目标的孤立 reasoning 会被丢弃，避免生成非法上下文。
+ */
+export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam[]) => {
+  type AssistantToolCallMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }> & {
+    tool_calls: ChatCompletionMessageToolCall[];
+  };
+
+  type ToolMessage = Extract<ChatCompletionMessageParam, { role: 'tool' }> & {
+    tool_call_id: string;
+  };
+
+  // 多段 reasoning 属于同一个待发送 payload 时，用空行拼接，便于上下文阅读。
+  const appendSeparatedText = (current: string | undefined, next: string) => {
+    if (!next) return current;
+    return current ? `${current}\n\n${next}` : next;
+  };
+
+  const hasAssistantToolCalls = (message: ChatCompletionMessageParam) =>
+    message.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+    Array.isArray(message.tool_calls) &&
+    message.tool_calls.length > 0;
+
+  const hasAssistantFunctionCall = (message: ChatCompletionMessageParam) =>
+    message.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+    Boolean(message.function_call);
+
+  const isAssistantFieldMessage = (message?: ChatCompletionMessageParam) => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    return (
+      !message.tool_calls &&
+      (typeof message.content === 'string' || typeof message.reasoning_content === 'string')
+    );
+  };
+
+  const isAssistantToolCallMessage = (
+    message?: ChatCompletionMessageParam
+  ): message is AssistantToolCallMessage => {
+    if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
+
+    const hasNoAssistantText =
+      message.content === undefined || message.content === null || message.content === '';
+
+    return (
+      hasAssistantToolCalls(message) &&
+      hasNoAssistantText &&
+      typeof message.reasoning_content !== 'string'
+    );
+  };
+
+  const isToolResponseForToolCalls = (
+    message: ChatCompletionMessageParam | undefined,
+    toolCallIds: Set<string>
+  ): message is ToolMessage =>
+    message?.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+    toolCallIds.has(message.tool_call_id || '');
+
+  const hasSameAssistantContext = (
+    message: ChatCompletionMessageParam | undefined,
+    assistantMessage: ChatCompletionMessageParam
+  ) =>
+    (message?.hideInUI ?? false) === (assistantMessage.hideInUI ?? false) &&
+    message?.dataId === assistantMessage.dataId;
+
+  const mergedMessages: ChatCompletionMessageParam[] = [];
+
+  for (let index = 0; index < messages.length; index++) {
+    const currentMessage = messages[index];
+    if (!isAssistantFieldMessage(currentMessage)) {
+      mergedMessages.push(currentMessage);
+      continue;
+    }
+
+    const assistantMessage: ChatCompletionMessageParam = { ...currentMessage };
+    let cursor = index + 1;
+
+    // 先消费同一上下文内连续的 assistant 字段消息，例如 reasoning -> reasoning -> text。
+    while (isAssistantFieldMessage(messages[cursor])) {
+      const nextMessage = messages[cursor];
+      if (!hasSameAssistantContext(nextMessage, assistantMessage)) break;
+
+      const nextReasoning =
+        typeof nextMessage.reasoning_content === 'string' ? nextMessage.reasoning_content : '';
+      const nextContent = typeof nextMessage.content === 'string' ? nextMessage.content : '';
+
+      // text 后再次出现 reasoning 通常已经是下一段思考，不能挂回前一个 answer。
+      if (nextReasoning && typeof assistantMessage.content === 'string') {
+        break;
+      }
+
+      if (nextReasoning) {
+        assistantMessage.reasoning_content = appendSeparatedText(
+          typeof assistantMessage.reasoning_content === 'string'
+            ? assistantMessage.reasoning_content
+            : undefined,
+          nextReasoning
+        );
+      }
+
+      if (typeof nextMessage.content === 'string') {
+        if (typeof assistantMessage.content === 'string') {
+          assistantMessage.content += nextContent;
+        } else {
+          assistantMessage.content = nextContent;
+        }
+      }
+
+      cursor++;
+    }
+
+    const toolCalls: ChatCompletionMessageToolCall[] = [];
+    const toolResponses: ChatCompletionMessageParam[] = [];
+
+    // 再消费紧随其后的 tool_calls 与对应 tool response，恢复为一个 assistant payload。
+    let assistantToolMessage: ChatCompletionMessageParam | undefined = messages[cursor];
+    while (isAssistantToolCallMessage(assistantToolMessage)) {
+      if (!hasSameAssistantContext(assistantToolMessage, assistantMessage)) break;
+
+      const currentToolCalls = assistantToolMessage.tool_calls;
+      const currentToolCallIds = new Set(currentToolCalls.map((toolCall) => toolCall.id));
+      const currentToolResponses: ChatCompletionMessageParam[] = [];
+      let responseCursor = cursor + 1;
+
+      // 只消费属于当前 tool_calls 的 response，防止把下一轮工具结果串进来。
+      while (isToolResponseForToolCalls(messages[responseCursor], currentToolCallIds)) {
+        currentToolResponses.push(messages[responseCursor]);
+        responseCursor++;
+      }
+
+      toolCalls.push(...currentToolCalls);
+      toolResponses.push(...currentToolResponses);
+      cursor = responseCursor;
+      assistantToolMessage = messages[cursor];
+    }
+
+    if (!toolCalls.length) {
+      // 孤立 reasoning 没有合法载体；只有 text/function_call 才能保留。
+      if (
+        typeof assistantMessage.content === 'string' ||
+        hasAssistantFunctionCall(assistantMessage)
+      ) {
+        mergedMessages.push(assistantMessage);
+      }
+      index = cursor - 1;
+      continue;
+    }
+
+    mergedMessages.push({
+      ...assistantMessage,
+      tool_calls: toolCalls
+    } as ChatCompletionMessageParam);
+    mergedMessages.push(...toolResponses);
+    index = cursor - 1;
+  }
+
+  return mergedMessages;
+};
+
+/**
+ * 将 FastGPT 内部 ChatItem 历史转换为 GPT request messages。
+ *
+ * 关键约定：
+ * - reserveTool=false 时只保留自然语言上下文，不把历史工具调用带入分类/普通对话。
+ * - reserveReason=false 时去掉 reasoning_content，适用于问题分类、内容提取等不需要思考过程的节点。
+ * - 输出前会调用 mergeAssistantFieldMessages，保证 reasoning 不以独立 assistant message 出现。
+ */
 export const chats2GPTMessages = ({
   messages,
   reserveId,
-  reserveTool = false
+  reserveTool = false,
+  reserveReason = true
 }: {
   messages: ChatItemMiniType[];
   reserveId: boolean;
   reserveTool?: boolean;
+  reserveReason?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
 
-  messages.forEach((item, index) => {
+  messages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -106,7 +290,7 @@ export const chats2GPTMessages = ({
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
 
-      item.value.forEach((value, i) => {
+      item.value.forEach((value) => {
         /* Plan agent 产生的上下文都需要合并到一个 toolCall 里。
           Plan agent 产生的上下文都会携带 planId
           value.plan 代表的是 plan 的具体内容，根据这个值去转化成 toolcall
@@ -115,7 +299,7 @@ export const chats2GPTMessages = ({
 
         const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
 
-        if (typeof value.reasoning?.content === 'string') {
+        if (reserveReason && typeof value.reasoning?.content === 'string') {
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -123,6 +307,18 @@ export const chats2GPTMessages = ({
           });
         }
 
+        // 同一个 value 同时有 text/tool 时，text 必须先入队，后续 merge 才能还原成
+        // assistant(content + tool_calls) 的合法结构。
+        if (typeof value.text?.content === 'string') {
+          if (!value.text.content && item.value.length > 1) {
+            return;
+          }
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: value.text.content
+          });
+        }
         if (reserveTool && (hasTools || value.tool)) {
           const tools = hasTools ? value.tools! : [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
@@ -143,43 +339,13 @@ export const chats2GPTMessages = ({
             });
           });
 
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult &&
-            lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            lastResult.reasoning_content
-          ) {
-            lastResult.tool_calls = tool_calls;
-          } else {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              tool_calls
-            });
-          }
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            tool_calls
+          });
 
           aiResults.push(...toolResponse);
-        }
-        if (typeof value.text?.content === 'string') {
-          if (!value.text.content && item.value.length > 1) {
-            return;
-          }
-          // Concat text
-          const lastResult = aiResults[aiResults.length - 1];
-          if (
-            lastResult?.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-            typeof lastResult?.content === 'string'
-          ) {
-            lastResult.content += value.text.content;
-          } else if (lastResult?.reasoning_content) {
-            lastResult.content = value.text.content;
-          } else {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: value.text.content
-            });
-          }
         }
         if (value.plan) {
           // 查找该 Plan 产生的上下文，组成一个 toolcall
@@ -224,14 +390,20 @@ export const chats2GPTMessages = ({
         }
       });
 
-      // Auto add empty assistant message
-      results = results.concat(aiResults);
+      results = results.concat(mergeAssistantFieldMessages(aiResults));
     }
   });
 
   return results;
 };
 
+/**
+ * 将 GPT messages 转回 FastGPT ChatItem。
+ *
+ * GPTMessages2Chats 只恢复当前 message 已经聚合好的结构，不跨 message 追踪 reasoning。
+ * reasoning_content 必须和 content/tool_calls/function_call 在同一个 assistant message 上才会恢复；
+ * 孤立 reasoning 会被过滤，避免把下一轮或未知归属的思考误挂到后续消息。
+ */
 export const GPTMessages2Chats = ({
   messages,
   reserveTool = true,
@@ -326,28 +498,14 @@ export const GPTMessages2Chats = ({
         item.role === ChatCompletionRequestMessageRoleEnum.Assistant
       ) {
         const value: AIChatItemValueItemType[] = [];
+        const assistantValue: AIChatItemValueItemType = {};
 
-        if (typeof item.reasoning_content === 'string' && item.reasoning_content && reserveReason) {
-          value.push({
-            reasoning: {
-              content: item.reasoning_content
-            }
-          });
-        }
         if (typeof item.content === 'string' && item.content) {
-          const lastValue = value[value.length - 1];
-          if (lastValue && lastValue.text) {
-            lastValue.text.content += item.content;
-          } else {
-            value.push({
-              text: {
-                content: item.content
-              }
-            });
-          }
+          assistantValue.text = {
+            content: item.content
+          };
         }
         if (item.tool_calls && reserveTool) {
-          // save tool calls
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
@@ -377,9 +535,7 @@ export const GPTMessages2Chats = ({
               }
             ];
           });
-          value.push({
-            tools
-          });
+          assistantValue.tools = tools;
         }
         if (item.function_call && reserveTool) {
           const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
@@ -390,17 +546,28 @@ export const GPTMessages2Chats = ({
           ) as ChatCompletionFunctionMessageParam;
 
           if (functionResponse) {
-            value.push({
-              tool: {
-                id: functionCall.id || '',
-                toolName: functionCall.toolName || '',
-                toolAvatar: functionCall.toolAvatar || '',
-                functionName: functionCall.name,
-                params: functionCall.arguments,
-                response: functionResponse.content || ''
-              }
-            });
+            assistantValue.tool = {
+              id: functionCall.id || '',
+              toolName: functionCall.toolName || '',
+              toolAvatar: functionCall.toolAvatar || '',
+              functionName: functionCall.name,
+              params: functionCall.arguments,
+              response: functionResponse.content || ''
+            };
           }
+        }
+        if (
+          typeof item.reasoning_content === 'string' &&
+          item.reasoning_content &&
+          reserveReason &&
+          (assistantValue.text || assistantValue.tools || assistantValue.tool)
+        ) {
+          assistantValue.reasoning = {
+            content: item.reasoning_content
+          };
+        }
+        if (assistantValue.text || assistantValue.tools || assistantValue.tool) {
+          value.push(assistantValue);
         }
         if (item.interactive) {
           value.push({
@@ -425,7 +592,7 @@ export const GPTMessages2Chats = ({
     })
     .filter((item) => item.value.length > 0);
 
-  // Merge data with the same dataId（Sequential obj merging）
+  // 相邻同 dataId/obj 的记录归并，保持一轮 AI 多个 value 在同一个 ChatItem 中展示。
   const result = chatMessages.reduce((result: ChatItemMiniType[], currentItem) => {
     const lastItem = result[result.length - 1];
 
@@ -442,6 +609,9 @@ export const GPTMessages2Chats = ({
   return result;
 };
 
+/**
+ * 将聊天 value 提取成运行时用户输入。文件保留结构，文本按展示顺序拼接。
+ */
 export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): RuntimeUserPromptType => {
   const prompt: RuntimeUserPromptType = {
     files: [],
@@ -457,6 +627,9 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   return prompt;
 };
 
+/**
+ * 将运行时 prompt 恢复为用户聊天 value，主要用于调试/重放入口。
+ */
 export const runtimePrompt2ChatsValue = (prompt: {
   files?: UserChatItemFileItemType[];
   text?: string;
@@ -479,6 +652,9 @@ export const runtimePrompt2ChatsValue = (prompt: {
   return value;
 };
 
+/**
+ * 用一条 System ChatItem 包装系统提示词，便于统一走 ChatItem -> GPT message 转换链。
+ */
 export const getSystemPrompt_ChatItemType = (prompt?: string): ChatItemMiniType[] => {
   if (!prompt) return [];
   return [
