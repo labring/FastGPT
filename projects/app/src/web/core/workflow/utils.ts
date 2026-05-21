@@ -42,33 +42,29 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 /* ====== node ======= */
 /**
- * 兼容旧知识库搜索节点：旧字段 userChatInput 已废弃，但老数据可能只保存了它。
- * 新字段 datasetSearchInput 是数组类型，打开老工作流时把旧“用户问题”引用迁移进去，
- * 避免工作流校验因为新必填字段为空而失败。
+ * 适配从数据库读取出的节点输入。
+ * 旧知识库搜索节点使用 userChatInput；当前节点改为 datasetSearchInput 数组。
+ * 这里仅处理旧字段到新字段的 key 和 valueType 迁移。
  */
-const getDatasetSearchInputValue = ({
-  storeNode,
-  storeInput
-}: {
-  storeNode: StoreNodeItemType;
-  storeInput: FlowNodeInputItemType;
-}) => {
-  if (
-    storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode ||
-    storeInput.key !== NodeInputKeyEnum.datasetSearchInput
-  ) {
-    return storeInput.value;
+export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
+    return storeNode.inputs;
   }
 
-  if (Array.isArray(storeInput.value) && storeInput.value.length > 0) {
-    return storeInput.value;
-  }
+  return storeNode.inputs.map((input) => {
+    if (input.key !== NodeInputKeyEnum.userChatInput) return input;
 
-  const legacyUserChatInputValue = storeNode.inputs.find(
-    (input) => input.key === NodeInputKeyEnum.userChatInput
-  )?.value;
+    const isReferenceValue = isValidReferenceValueFormat(input.value);
 
-  return legacyUserChatInputValue ? [legacyUserChatInputValue] : storeInput.value;
+    return {
+      ...input,
+      key: NodeInputKeyEnum.datasetSearchInput,
+      label: 'workflow:search_query',
+      value: isReferenceValue ? [input.value] : input.value,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      selectedTypeIndex: isReferenceValue ? 0 : 1
+    };
+  });
 };
 
 export const nodeTemplate2FlowNode = ({
@@ -130,6 +126,7 @@ export const storeNode2FlowNode = ({
   const dynamicInput = template.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
+  const adaptedStoreInputs = adaptStoreNodeInputs(storeNode);
 
   // replace item data
   const nodeItem: FlowNodeItemType = {
@@ -143,7 +140,7 @@ export const storeNode2FlowNode = ({
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
-          storeNode.inputs.find((item) => item.key === templateInput.key) || templateInput;
+          adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
 
         return {
           ...storeInput,
@@ -151,15 +148,12 @@ export const storeNode2FlowNode = ({
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
-          value: getDatasetSearchInputValue({
-            storeNode,
-            storeInput
-          })
+          value: storeInput.value
         };
       })
       .concat(
         // 合并 store 中有，template 中没有的输入
-        storeNode.inputs
+        adaptedStoreInputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
             const templateInput = template.inputs.find((input) => input.key === item.key);
