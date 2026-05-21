@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/train/embedding/constants';
 import { createSFTTask, querySFTTaskStatus, SFTTaskStatus } from '../../external';
 import { addLog } from '../../../../../common/system/log';
-import { getEmbeddingTrainTask } from '../controller';
+import { getEmbeddingTrainTask, updateEmbeddingCheckpointData } from '../controller';
 import { trainEnv } from '../../../common/env';
 import { createEmbeddingEnhancedError } from '../../utils';
 import {
@@ -44,79 +44,94 @@ export async function runFinetuneStage(task: EmbeddingTrainTaskSchemaType): Prom
   addLog.info('Run finetune stage (embedding)', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
-  if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.finetuning,
-      EmbeddingTrainErrEnum.embeddingFinetuneDataPathNotFound,
-      EmbeddingTrainSuggestionEnum.embeddingFinetuneDataPathNotFound
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+  let sftTaskId = checkpointData.finetuning?.sftTaskId;
 
-  if (!task.baseModelEndpoint.model) {
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.finetuning,
-      EmbeddingTrainErrEnum.embeddingFinetuneModelConfigInvalid,
-      EmbeddingTrainSuggestionEnum.embeddingFinetuneModelConfigInvalid
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+  if (sftTaskId) {
+    addLog.info('Reuse existing SFT task from checkpoint for embedding', {
+      taskId: String(task._id),
+      sftTaskId
+    });
+  } else {
+    if (!task.baseModelEndpoint.model) {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        EmbeddingTrainErrEnum.embeddingFinetuneModelConfigInvalid,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneModelConfigInvalid
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  let datasetFile: Buffer;
-  try {
-    datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.finetuning,
-      EmbeddingTrainErrEnum.embeddingFinetuneDataFileNotFound,
-      EmbeddingTrainSuggestionEnum.embeddingFinetuneDataFileNotFound,
-      errorMsg
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+    if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        EmbeddingTrainErrEnum.embeddingFinetuneDataPathNotFound,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneDataPathNotFound
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  await ensureTaskActiveBeforeSFTCreation({ taskId: String(task._id) });
-  await ensureTaskNotAborted({
-    taskId: String(task._id),
-    sftTaskId: undefined
-  });
+    let datasetFile: Buffer;
+    try {
+      datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        EmbeddingTrainErrEnum.embeddingFinetuneDataFileNotFound,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneDataFileNotFound,
+        errorMsg
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  let sftTaskId: string;
-  try {
-    const createResponse = await createSFTTask({
-      datasetFile,
-      taskType: 'embed', // Key difference from rerank (SFT Bridge uses 'embed' for embedding)
-      trainMethod: task.trainMethod || 'lora',
-      parameters: {
-        learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
-        epochs: 3,
-        batch_size: 32
-      }
+    await ensureTaskActiveBeforeSFTCreation({ taskId: String(task._id) });
+    await ensureTaskNotAborted({
+      taskId: String(task._id),
+      sftTaskId: undefined
     });
 
-    sftTaskId = createResponse.task_id;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const errorType = isSFTBridgeQueueFullError(errorMsg)
-      ? EmbeddingTrainErrEnum.embeddingFinetuneQueueFull
-      : EmbeddingTrainErrEnum.embeddingFinetuneSftBridgeCreateFailed;
-    const suggestionType = isSFTBridgeQueueFullError(errorMsg)
-      ? EmbeddingTrainSuggestionEnum.embeddingFinetuneQueueFull
-      : EmbeddingTrainSuggestionEnum.embeddingFinetuneSftBridgeCreateFailed;
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.finetuning,
-      errorType,
-      suggestionType,
-      errorMsg
-    );
-    throw new TrainTaskRetriableError(enhancedError);
-  }
+    let createResponse: Awaited<ReturnType<typeof createSFTTask>>;
+    try {
+      createResponse = await createSFTTask({
+        datasetFile,
+        taskType: 'embed', // Key difference from rerank (SFT Bridge uses 'embed' for embedding)
+        trainMethod: task.trainMethod || 'lora',
+        parameters: {
+          learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
+          epochs: 3,
+          batch_size: 32
+        }
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorType = isSFTBridgeQueueFullError(errorMsg)
+        ? EmbeddingTrainErrEnum.embeddingFinetuneQueueFull
+        : EmbeddingTrainErrEnum.embeddingFinetuneSftBridgeCreateFailed;
+      const suggestionType = isSFTBridgeQueueFullError(errorMsg)
+        ? EmbeddingTrainSuggestionEnum.embeddingFinetuneQueueFull
+        : EmbeddingTrainSuggestionEnum.embeddingFinetuneSftBridgeCreateFailed;
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        errorType,
+        suggestionType,
+        errorMsg
+      );
+      throw new TrainTaskRetriableError(enhancedError);
+    }
 
-  addLog.info('Created SFT task for embedding', {
-    taskId: String(task._id),
-    sftTaskId
-  });
+    sftTaskId = createResponse.task_id;
+    await updateEmbeddingCheckpointData(
+      String(task._id),
+      EmbeddingTaskCheckpointStageEnum.finetuning,
+      { sftTaskId },
+      true
+    );
+
+    addLog.info('Created SFT task for embedding', {
+      taskId: String(task._id),
+      sftTaskId
+    });
+  }
 
   let completed = false;
   let endpoint:

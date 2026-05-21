@@ -1270,10 +1270,18 @@ describe('Embedding Train Task Processor', () => {
         );
       }
 
+      expect(updateEmbeddingCheckpointData).toHaveBeenCalledWith(
+        mockTaskId,
+        'finetuning',
+        { sftTaskId: 'sft_task_123' },
+        true
+      );
       expect(updateEmbeddingCheckpointData).not.toHaveBeenCalledWith(
         mockTaskId,
         'finetuning',
-        expect.anything(),
+        expect.objectContaining({
+          tunedModelEndpoint: expect.anything()
+        }),
         expect.anything()
       );
       expect(querySFTTaskStatus).not.toHaveBeenCalled();
@@ -1292,6 +1300,50 @@ describe('Embedding Train Task Processor', () => {
           status: EmbeddingTrainTaskStatusEnum.completed
         })
       );
+    });
+
+    test('should reuse checkpoint SFT task when embedding finetuning resumes', async () => {
+      const { runFinetuneStage } = await import(
+        '@fastgpt/service/core/train/embedding/task/stages/finetune'
+      );
+      const { createSFTTask, querySFTTaskStatus } = await import(
+        '@fastgpt/service/core/train/embedding/external'
+      );
+      const { updateEmbeddingCheckpointData, getEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/controller'
+      );
+      const fsPromises = await import('fs/promises');
+
+      const mockTask = createMockTask(
+        EmbeddingTrainTaskStatusEnum.running,
+        EmbeddingTaskCheckpointStageEnum.eval_basemodel,
+        {
+          finetuning: {
+            sftTaskId: 'sft_task_from_checkpoint'
+          }
+        }
+      ) as EmbeddingTrainTaskSchemaType;
+
+      (getEmbeddingTrainTask as any).mockResolvedValue(mockTask);
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_from_checkpoint',
+        status: 'completed',
+        endpoint: {
+          base_url: 'http://sft-bridge.com/v1',
+          model: 'tuned-model',
+          api_key: 'sft-bridge-key'
+        }
+      });
+
+      const result = await runFinetuneStage(mockTask);
+
+      expect(result.sftTaskId).toBe('sft_task_from_checkpoint');
+      expect(createSFTTask).not.toHaveBeenCalled();
+      expect(fsPromises.readFile).not.toHaveBeenCalled();
+      expect(updateEmbeddingCheckpointData).not.toHaveBeenCalled();
+      expect(querySFTTaskStatus).toHaveBeenCalledWith({
+        taskId: 'sft_task_from_checkpoint'
+      });
     });
 
     test('评测阶段失败应该抛出错误', async () => {

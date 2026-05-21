@@ -202,12 +202,16 @@ export type EmbeddingTrainTaskSchemaType = {
       eval_basemodel?: {
         baseModelEvalResult: EmbeddingEvalResult;
         /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
-        rankingResults?: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
+        rankingResults?: Array<{
+          itemId: string;
+          rankedIds: string[];
+          chunks: Array<{ id: string; q: string; a: string }>;
+        }>;
       };
 
       finetuning?: {
         sftTaskId: string;
-        tunedModelEndpoint: {
+        tunedModelEndpoint?: {
           base_url: string;
           api_key: string;
           model: string;
@@ -221,7 +225,11 @@ export type EmbeddingTrainTaskSchemaType = {
       eval_tunedmodel?: {
         tunedModelEvalResult: EmbeddingEvalResult;
         /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
-        rankingResults?: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
+        rankingResults?: Array<{
+          itemId: string;
+          rankedIds: string[];
+          chunks: Array<{ id: string; q: string; a: string }>;
+        }>;
       };
 
       llm_judge?: {
