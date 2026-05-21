@@ -1,0 +1,19 @@
+{
+  "phase1_done": true,
+  "context_file": "doc/kb/.kb-context.json",
+  "docs": {
+    "08-仓库架构": {"status": "done", "output": "doc/kb/仓库架构.md"},
+    "02-仓库依赖": {"status": "done", "output": "doc/kb/仓库依赖.md"},
+    "06-数据结构": {"status": "done", "output": "doc/kb/技术知识库/数据结构.md"},
+    "03-核心业务领域": {"status": "done", "output": "doc/kb/业务知识库/核心业务领域.md"},
+    "04-API文档": {"status": "done", "output": "doc/kb/技术知识库/API索引.md"},
+    "10-业务流程索引": {"status": "done", "output": "doc/kb/业务知识库/业务流程索引.md"},
+    "09-业务流程详解": {"status": "done", "output": "doc/kb/业务知识库/业务流程详解.md"},
+    "05-代码编写指南": {"status": "done", "output": "doc/kb/技术知识库/代码编写指南.md"},
+    "07-单元测试": {"status": "done", "output": "doc/kb/测试知识库/单元测试.md"},
+    "11-外部接入指南": {"status": "done", "output": "doc/kb/外部接入指南.md"},
+    "12-排障指南": {"status": "done", "output": "doc/kb/技术知识库/排障指南.md"},
+    "13-基于git记录优化": {"status": "done", "output": "doc/kb/（已优化3个文档）"},
+    "01-仓库概览": {"status": "done", "output": "doc/kb/仓库概览.md"}
+  }
+}

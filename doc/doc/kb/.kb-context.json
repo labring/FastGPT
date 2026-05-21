@@ -1,0 +1,32 @@
+{
+  "project_directory": "FastGPT",
+  "is_library": false,
+  "has_api": true,
+  "primary_language": "TypeScript",
+  "frameworks": ["Next.js", "React", "Node.js", "Chakra UI", "TypeORM", "MongoDB", "PostgreSQL", "Milvus", "LangGraph", "ModelContextProtocol"],
+  "input_dirs": ["D:/code/code/FastGPT"],
+  "output_dir": "doc/kb",
+  "focus_dirs": [
+    "projects/app/src/pages/api",
+    "projects/app/src/components",
+    "packages/service/core",
+    "packages/global/core",
+    "packages/web/components"
+  ],
+  "ignore_dirs": [
+    "node_modules",
+    ".git",
+    "dist",
+    ".next",
+    "coverage",
+    "test"
+  ],
+  "core_flows": [],
+  "business_context": "FastGPT 是一个 AI Agent 构建平台，通过可视化工作流编排、知识库（RAG）能力和插件系统，帮助用户快速构建基于大语言模型的应用程序。支持多模型接入，提供 OpenAI 兼容的 API 接口。",
+  "path_rules": {
+    "format": "相对路径",
+    "separator": "正斜杠(/)",
+    "base": "项目目录",
+    "example": "FastGPT/projects/app/src/pages/api/v1/chat.ts"
+  }
+}
