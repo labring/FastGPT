@@ -1,5 +1,4 @@
 ---
-globs: '.frieren/agent-tasks/TD/**'
 description: TD修复完成后的收尾流程
 ---
 
