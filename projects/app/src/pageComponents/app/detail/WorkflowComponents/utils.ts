@@ -39,14 +39,7 @@ export const uiWorkflow2StoreWorkflow = ({
     catchError: item.data.catchError
   }));
 
-  // get all handle
-  const reactFlowViewport = document.querySelector('.react-flow__viewport');
-  // Gets the value of data-handleid on all elements below it whose data-handleid is not empty
-  const handleList =
-    reactFlowViewport?.querySelectorAll('[data-handleid]:not([data-handleid=""])') || [];
-  const handleIdList = Array.from(handleList).map(
-    (item) => item.getAttribute('data-handleid') || ''
-  );
+  const nodeIdSet = new Set(nodes.map((node) => node.data.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
     .map((item) => ({
       source: item.source,
@@ -54,18 +47,13 @@ export const uiWorkflow2StoreWorkflow = ({
       sourceHandle: item.sourceHandle || '',
       targetHandle: item.targetHandle || ''
     }))
-    .filter((item) => item.sourceHandle && item.targetHandle)
+    // 保存时不能依赖 DOM handle 是否已渲染，否则动态节点还未挂载时会把合法连线误删。
     .filter(
-      // Filter out edges that do not have both sourceHandle and targetHandle
-      (item) => {
-        if (!reactFlowViewport) return true;
-        const currentSourceNode = nodes.find((node) => node.data.nodeId === item.source);
-
-        if (currentSourceNode?.data.isFolded) return true;
-
-        // Not in react flow page
-        return handleIdList.includes(item.sourceHandle) && handleIdList.includes(item.targetHandle);
-      }
+      (item) =>
+        item.sourceHandle !== '' &&
+        item.targetHandle !== '' &&
+        nodeIdSet.has(item.source) &&
+        nodeIdSet.has(item.target)
     );
 
   return {
