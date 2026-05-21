@@ -6,6 +6,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   PushDataBodySchema,
@@ -17,7 +18,6 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
@@ -36,7 +36,13 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     per: WritePermissionVal
   });
 
-  const mode = getTrainingModeByCollection(collection);
+  const mode = getTrainingModeByCollection({
+    ...collection,
+    supportImageIndex: getDatasetImageIndexCapability({
+      vectorModel: collection.dataset.vectorModel,
+      vlmModel: collection.dataset.vlmModel
+    }).supportImageIndex
+  });
 
   // auth dataset limit
   await checkDatasetIndexLimit({

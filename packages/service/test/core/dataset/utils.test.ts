@@ -9,7 +9,11 @@ import {
   matchDatasetDataMarkdownImageUrls,
   uniqueDatasetDataMarkdownImageUrls
 } from '@fastgpt/service/core/dataset/data/utils';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   jwtSignS3DownloadToken: vi.fn(
@@ -503,7 +507,7 @@ describe('getDatasetImageTrainingMode', () => {
     ).toBe(TrainingModeEnum.imageParse);
   });
 
-  it('支持图片索引且正文有 markdown 图片时应走 image', () => {
+  it('有图片索引能力且正文有 markdown 图片时应走 image', () => {
     expect(
       getDatasetImageTrainingMode({
         supportVlm: false,
@@ -519,6 +523,33 @@ describe('getDatasetImageTrainingMode', () => {
         supportVlm: false,
         supportImageIndex: false,
         hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.chunk);
+  });
+});
+
+describe('getTrainingModeByCollection', () => {
+  beforeEach(() => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: true
+    };
+  });
+
+  it('图片自动索引有 VLM 或原生 embedding 图片索引能力时进入 image 队列', () => {
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+        imageIndex: true,
+        supportImageIndex: true
+      })
+    ).toBe(TrainingModeEnum.image);
+
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+        imageIndex: true,
+        supportImageIndex: false
       })
     ).toBe(TrainingModeEnum.chunk);
   });

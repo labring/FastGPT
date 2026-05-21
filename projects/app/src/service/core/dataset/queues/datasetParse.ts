@@ -23,6 +23,7 @@ import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils'
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -150,7 +151,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           return {
             data
           };
-        } catch (error) {
+        } catch {
           return {
             error: true
           };
@@ -197,7 +198,11 @@ export const datasetParseQueue = async (): Promise<any> => {
         const trainingMode = getTrainingModeByCollection({
           trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk,
           autoIndexes: collection.autoIndexes,
-          imageIndex: collection.imageIndex
+          imageIndex: collection.imageIndex,
+          supportImageIndex: getDatasetImageIndexCapability({
+            vectorModel: dataset.vectorModel,
+            vlmModel: dataset.vlmModel
+          }).supportImageIndex
         });
 
         // 1. Parse rawtext

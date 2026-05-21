@@ -17,7 +17,6 @@ import {
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addHours } from 'date-fns';
 

@@ -97,7 +97,7 @@ export const pushDataListToTrainingQueue = async ({
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
-        if (isImageEmbeddingModel(vectorModelData)) {
+        if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
           return {
             maxToken: Infinity,
             model: vectorModelData.model,

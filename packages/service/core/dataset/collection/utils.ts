@@ -3,7 +3,6 @@ import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionSyncResultEnum,
@@ -216,11 +215,13 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 export const getTrainingModeByCollection = ({
   trainingType,
   autoIndexes,
-  imageIndex
+  imageIndex,
+  supportImageIndex = false
 }: {
   trainingType?: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
+  supportImageIndex?: boolean;
 }) => {
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
@@ -235,6 +236,7 @@ export const getTrainingModeByCollection = ({
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
     imageIndex &&
+    supportImageIndex &&
     global.feConfigs?.isPlus
   ) {
     return TrainingModeEnum.image;

@@ -72,7 +72,8 @@ export const LogCategories = {
       IMAGE_PARSE: ['dataset', 'training', 'image-parse'],
       IMAGE_INDEX: ['dataset', 'training', 'image-index'],
       INDEX_EXTEND: ['dataset', 'training', 'index-extend'],
-      LLM_PARGRAPH: ['dataset', 'training', 'llm-pargraph']
+      LLM_PARGRAPH: ['dataset', 'training', 'llm-pargraph'],
+      WEB_SYNC: ['dataset', 'webSync']
     }),
     AI: Object.assign(['ai'], {
       AGENT: ['ai', 'agent'],
