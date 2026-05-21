@@ -64,11 +64,7 @@ describe('ChatSettingModelSchema', () => {
       appId: '507f1f77bcf86cd799439012',
       teamId: '507f1f77bcf86cd799439013',
       slogan: '你好👋，我是 FastGPT !',
-      dialogTips: '你可以问我任何问题',
       enableHome: true,
-      homeTabTitle: 'FastGPT',
-      wideLogoUrl: '/logo-wide.png',
-      squareLogoUrl: '/logo-square.png',
       quickAppIds: ['507f1f77bcf86cd799439014'],
       selectedTools: [
         {
@@ -99,7 +95,6 @@ describe('ChatSettingModelSchema', () => {
       appId: '507f1f77bcf86cd799439012',
       teamId: '507f1f77bcf86cd799439013',
       slogan: undefined,
-      dialogTips: undefined,
       enableHome: undefined,
       quickAppIds: [],
       selectedTools: [],

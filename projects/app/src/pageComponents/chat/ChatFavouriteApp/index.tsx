@@ -40,10 +40,7 @@ const ChatFavouriteApp = () => {
   const { userInfo } = useUserStore();
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
-
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
-  const wideLogoUrl = useContextSelector(ChatPageContext, (v) => v.chatSettings?.wideLogoUrl);
-  const homeTabTitle = useContextSelector(ChatPageContext, (v) => v.chatSettings?.homeTabTitle);
 
   const tags = useContextSelector(ChatPageContext, (v) => v.chatSettings?.favouriteTags || []);
   const tagCache = useMemo(() => {
@@ -115,7 +112,7 @@ const ChatFavouriteApp = () => {
 
   return (
     <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
-      <NextHead title={homeTabTitle} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
 
       {!isPc && (
         <Flex
@@ -148,7 +145,6 @@ const ChatFavouriteApp = () => {
           <ChatSliderMobileDrawer
             showList={false}
             showMenu={false}
-            banner={wideLogoUrl}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </Flex>

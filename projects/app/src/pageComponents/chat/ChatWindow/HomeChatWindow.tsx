@@ -411,7 +411,7 @@ const HomeChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {/* show history slider */}
       {isPc ? (
@@ -423,7 +423,6 @@ const HomeChatWindow = () => {
         </SideBar>
       ) : (
         <ChatSliderMobileDrawer
-          banner={chatSettings?.wideLogoUrl}
           menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
       )}
@@ -471,8 +470,6 @@ const HomeChatWindow = () => {
             chatType={ChatTypeEnum.home}
             slogan={chatSettings?.slogan}
             outLinkAuthData={outLinkAuthData}
-            wideLogo={chatSettings?.wideLogoUrl}
-            dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
             quickAppList={chatSettings?.quickAppList || []}

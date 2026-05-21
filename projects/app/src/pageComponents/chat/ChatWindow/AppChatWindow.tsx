@@ -158,7 +158,6 @@ const AppChatWindow = () => {
         </SideBar>
       ) : (
         <ChatSliderMobileDrawer
-          banner={chatSettings?.wideLogoUrl}
           menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
       )}

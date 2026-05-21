@@ -69,7 +69,6 @@ const ChatInput = ({
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
-  const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
   const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
 
   const fileCtrl = useFieldArray({
@@ -159,10 +158,7 @@ const ChatInput = ({
             _focusVisible={{
               border: 'none'
             }}
-            placeholder={
-              dialogTips ||
-              (isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone'))
-            }
+            placeholder={t('common:core.chat.Type a message')}
             resize={'none'}
             rows={1}
             height={[5, 6]}
@@ -254,7 +250,6 @@ const ChatInput = ({
     [
       fileList.length,
       TextareaDom,
-      dialogTips,
       isPc,
       t,
       inputValue,
