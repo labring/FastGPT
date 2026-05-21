@@ -225,10 +225,41 @@ const ChatContextProvider = ({
 
   const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
   const historiesRef = useRef(histories);
+  const prevHistoryAppIdRef = useRef<string | null>(null);
+  const pendingAppChatRestoreRef = useRef(false);
 
   useEffect(() => {
     historiesRef.current = histories;
   }, [histories]);
+
+  /** 切换应用后，若当前 chatId 无效则恢复该应用上次会话或最近一条历史 */
+  useEffect(() => {
+    if (prevHistoryAppIdRef.current === null) {
+      prevHistoryAppIdRef.current = historyAppId;
+      return;
+    }
+    if (prevHistoryAppIdRef.current !== historyAppId) {
+      pendingAppChatRestoreRef.current = true;
+      prevHistoryAppIdRef.current = historyAppId;
+    }
+  }, [historyAppId]);
+
+  useEffect(() => {
+    if (!pendingAppChatRestoreRef.current || isPaginationLoading || !historyAppId) return;
+
+    pendingAppChatRestoreRef.current = false;
+
+    const { chatId: currentChatId } = useChatStore.getState();
+    const scopedHistories = histories.filter((item) => item.appId === historyAppId);
+
+    if (scopedHistories.some((item) => item.chatId === currentChatId)) {
+      return;
+    }
+
+    if (scopedHistories.length > 0) {
+      onChangeChatId(scopedHistories[0].chatId, true);
+    }
+  }, [historyAppId, histories, isPaginationLoading, onChangeChatId]);
 
   /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
   const hasGeneratingInSidebar = useMemo(

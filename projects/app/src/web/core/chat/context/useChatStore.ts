@@ -16,6 +16,8 @@ type State = {
   lastChatId: string;
   chatId: string;
   setChatId: (e?: string) => any;
+  /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
+  appChatIdMap: Record<string, string>;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
@@ -95,12 +97,16 @@ export const useChatStore = create<State>()(
           if (!e) return;
 
           set((state) => {
-            // 切换应用时重置 chatId，避免上一应用的会话泄漏到其他应用的历史列表
             if (state.appId !== e) {
-              const newChatId = getNanoid(24);
-              state.chatId = newChatId;
+              // 离开当前应用前，记住该应用最近一次会话
+              if (state.appId && state.chatId) {
+                state.appChatIdMap[state.appId] = state.chatId;
+              }
+              // 切换到目标应用：优先恢复该应用上次的 chatId，否则临时生成（待历史列表加载后再对齐）
+              const restoredChatId = state.appChatIdMap[e];
+              state.chatId = restoredChatId || getNanoid(24);
               if (state.source) {
-                state.lastChatId = `${state.source}-${newChatId}`;
+                state.lastChatId = `${state.source}-${state.chatId}`;
               }
             }
             state.appId = e;
@@ -109,11 +115,15 @@ export const useChatStore = create<State>()(
         },
         lastChatId: '',
         chatId: '',
+        appChatIdMap: {},
         setChatId(e) {
           const id = e || getNanoid(24);
           set((state) => {
             state.chatId = id;
             state.lastChatId = `${state.source}-${id}`;
+            if (state.appId) {
+              state.appChatIdMap[state.appId] = id;
+            }
           });
         },
         lastChatAppId: '',
@@ -141,6 +151,7 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = '';
             state.chatId = '';
             state.lastChatId = '';
+            state.appChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.outLinkAuthData = {};
           });
@@ -155,7 +166,8 @@ export const useChatStore = create<State>()(
           appId: state.appId,
           lastChatId: state.lastChatId,
           lastChatAppId: state.lastChatAppId,
-          lastPane: state.lastPane
+          lastPane: state.lastPane,
+          appChatIdMap: state.appChatIdMap
         })
       }
     )
