@@ -109,6 +109,7 @@
   "train_new_model_name": "New Model Name",
   "dataset_still_processing_tip": "Still processing, training not supported yet",
   "train_data": "Training Data",
+  "train_dataset_vector_model_mismatch": "The vector model of this knowledge base differs from the current model and is not supported for training",
   "train_select_base_model_first": "Please select a base model first",
   "please_select": "Please select",
   "last_train_time": "Last Train Time",

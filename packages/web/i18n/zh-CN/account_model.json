@@ -96,6 +96,7 @@
   "train_new_model_name": "新模型名称",
   "dataset_still_processing_tip": "仍在处理中，暂不支持训练",
   "train_data": "训练数据",
+  "train_dataset_vector_model_mismatch": "该知识库的向量模型与本模型不同，不支持训练",
   "train_select_base_model_first": "请先选择基座模型",
   "please_select": "请选择",
   "last_train_time": "最近训练时间",
