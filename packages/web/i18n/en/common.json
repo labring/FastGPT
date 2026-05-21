@@ -736,7 +736,7 @@
   "dataset_data_input_chunk_content": "Content",
   "dataset_data_input_q": "Question",
   "dataset_data_input_qa": "Q&A mode",
-  "dataset_text_model_tip": "Used for preprocessing knowledge base text, such as automatic supplemental index generation and Q&A pair extraction.",
+  "dataset_text_model_tip": "Generates enhanced indexes based on knowledge content, such as questions and summaries, which is essential for improving retrieval recall.",
   "date_12_months": "12 months",
   "date_1_month": "1 month",
   "date_3_months": "3 months",

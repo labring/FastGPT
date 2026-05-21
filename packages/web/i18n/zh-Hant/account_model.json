@@ -90,7 +90,7 @@
   "view_chart": "圖表",
   "view_table": "表格",
   "vlm_model": "圖片理解模型",
-  "vlm_model_tip": "用於知識庫中對文件中的圖片進行額外的索引生成",
+  "vlm_model_tip": "當知識中存在圖片時，可配置圖片解析模型，用於識別其中的文字和結構資訊（如表格、流程圖等）。",
   "volunme_of_failed_calls": "調用失敗量",
   "waiting_test": "等待測試",
   "evaluation_model": "評測模型",
