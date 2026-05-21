@@ -1,0 +1,43 @@
+{
+  "name": "@fastgpt-sdk/sandbox-adapter",
+  "version": "0.0.40-beta.6",
+  "description": "Unified abstraction layer for cloud sandbox providers with adapter pattern and feature polyfilling",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build",
+    "test": "vitest run --config ./vitest.config.ts"
+  },
+  "dependencies": {
+    "@alibaba-group/opensandbox": "^0.1.5",
+    "@e2b/code-interpreter": "^2.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@vitest/coverage-v8": "catalog:"
+  }
+}

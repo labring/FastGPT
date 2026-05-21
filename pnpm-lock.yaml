@@ -447,8 +447,8 @@ importers:
         specifier: workspace:*
         version: link:../../sdk/otel
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.40-beta.6
-        version: 0.0.40-beta.6
+        specifier: workspace:*
+        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1710,6 +1710,31 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  sdk/sandbox-adapter:
+    dependencies:
+      '@alibaba-group/opensandbox':
+        specifier: ^0.1.5
+        version: 0.1.6
+      '@e2b/code-interpreter':
+        specifier: ^2.3.3
+        version: 2.4.0
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.17.24
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.5(vitest@4.1.5)
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.10(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   sdk/storage:
     dependencies:
@@ -3520,10 +3545,6 @@ packages:
 
   '@fastgpt-sdk/plugin@0.6.1':
     resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
-
-  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.6':
-    resolution: {integrity: sha512-kENbszdiK9rdT1E145w5uJWN+BcD0CCScbPy/8QC7zleVdEtQkKkqfitYUmT2drvFQ+gdv75hVW18WIIkHNyLw==}
-    engines: {node: '>=18'}
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17640,11 +17661,6 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.40-beta.6':
-    dependencies:
-      '@alibaba-group/opensandbox': 0.1.6
-      '@e2b/code-interpreter': 2.4.0
-
   '@fidm/asn1@1.0.4': {}
 
   '@fidm/x509@1.2.1':
@@ -27942,7 +27958,7 @@ snapshots:
       got: 12.6.1
       registry-auth-token: 5.1.0
       registry-url: 6.0.1
-      semver: 7.7.4
+      semver: 7.8.0
 
   packrup@0.1.2: {}
 
@@ -28497,7 +28513,7 @@ snapshots:
       '@vueuse/core': 10.11.1(vue@3.5.22(typescript@5.9.3))
       '@vueuse/shared': 10.11.1(vue@3.5.22(typescript@5.9.3))
       aria-hidden: 1.2.4
-      defu: 6.1.4
+      defu: 6.1.7
       fast-deep-equal: 3.1.3
       nanoid: 5.1.5
       vue: 3.5.22(typescript@5.9.3)
@@ -30419,7 +30435,7 @@ snapshots:
       picomatch: 4.0.4
       rolldown: 1.0.0-rc.17
       rolldown-plugin-dts: 0.23.2(rolldown@1.0.0-rc.17)(typescript@5.9.3)
-      semver: 7.7.4
+      semver: 7.8.0
       tinyexec: 1.1.2
       tinyglobby: 0.2.16
       tree-kill: 1.2.2
