@@ -100,6 +100,7 @@
   "train": "訓練",
   "train_model_generate_new": "訓練模型（生成新模型）",
   "train_new_model_name": "新模型名稱",
+  "dataset_still_processing_tip": "仍在處理中，暫不支援訓練",
   "train_data": "訓練數據",
   "train_select_base_model_first": "請先選擇基座模型",
   "please_select": "請選擇",

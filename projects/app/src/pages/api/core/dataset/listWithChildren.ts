@@ -1,7 +1,9 @@
+import { Types } from 'mongoose';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -239,8 +241,11 @@ async function handler(
 
   const appCountMap = new Map<string, number>();
   const fileCountMap = new Map<string, number>();
+  const processingCountMap = new Map<string, number>();
   if (uniqueNonFolderDatasets.length > 0) {
-    const [appCounts, fileCounts] = await Promise.all([
+    // find() post-hook converts _id to string, so we need to re-wrap for aggregate $in
+    const datasetObjectIds = uniqueNonFolderDatasets.map((d) => new Types.ObjectId(d._id));
+    const [appCounts, fileCounts, processingAgg] = await Promise.all([
       Promise.all(
         uniqueNonFolderDatasets.map((dataset) =>
           MongoApp.countDocuments({
@@ -266,12 +271,19 @@ async function handler(
             deleteTime: null
           })
         )
-      )
+      ),
+      MongoDatasetTraining.aggregate<{ _id: string; count: number }>([
+        { $match: { datasetId: { $in: datasetObjectIds } } },
+        { $group: { _id: { $toString: '$datasetId' }, count: { $sum: 1 } } }
+      ])
     ]);
     uniqueNonFolderDatasets.forEach((dataset, index) => {
       appCountMap.set(String(dataset._id), appCounts[index]);
       fileCountMap.set(String(dataset._id), fileCounts[index]);
     });
+    for (const item of processingAgg) {
+      processingCountMap.set(item._id, item.count);
+    }
   }
 
   const formatDataset = (dataset: (typeof myDatasets)[0]): DatasetListItemType => {
@@ -327,7 +339,8 @@ async function handler(
         }),
       ...(dataset.type !== DatasetTypeEnum.folder && {
         appCount: appCountMap.get(String(dataset._id)) ?? 0,
-        fileCount: fileCountMap.get(String(dataset._id)) ?? 0
+        fileCount: fileCountMap.get(String(dataset._id)) ?? 0,
+        processingCount: processingCountMap.get(String(dataset._id)) ?? 0
       })
     };
   };
