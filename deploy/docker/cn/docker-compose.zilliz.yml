@@ -134,7 +134,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.19 
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.20 
     ports:
       - 3000:3000
     networks:
@@ -213,7 +213,7 @@ services:
       - ./config.json:/app/data/config.json
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.19
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.20
     networks:
       - codesandbox
     restart: always
@@ -262,7 +262,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.19
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.20
     networks:
       - app
     ports:
