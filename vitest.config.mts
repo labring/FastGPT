@@ -10,6 +10,11 @@ export default defineConfig({
     alias: {
       '@': resolve('projects/app/src'),
       '@fastgpt': resolve('packages'),
+      '@fastgpt-sdk/otel/logger': resolve('sdk/otel/src/logger-entry.ts'),
+      '@fastgpt-sdk/otel/metrics': resolve('sdk/otel/src/metrics-entry.ts'),
+      '@fastgpt-sdk/otel/tracing': resolve('sdk/otel/src/tracing-entry.ts'),
+      '@fastgpt-sdk/otel': resolve('sdk/otel/src/index.ts'),
+      '@fastgpt-sdk/storage': resolve('sdk/storage/src/index.ts'),
       '@test': resolve('test'),
       'diting-rag-ts': resolve('packages/diting-rag-ts/src')
     }

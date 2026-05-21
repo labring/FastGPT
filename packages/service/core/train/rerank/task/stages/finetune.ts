@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/train/rerank/constants';
 import { createSFTTask, querySFTTaskStatus, SFTTaskStatus } from '../../external';
 import { addLog } from '../../../../../common/system/log';
-import { getRerankTrainTask } from '../controller';
+import { getRerankTrainTask, updateRerankCheckpointData } from '../controller';
 import { trainEnv } from '../../../common/env';
 import { createRerankEnhancedError } from '../../utils';
 import {
@@ -42,79 +42,94 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   addLog.info('Run finetune stage', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
-  if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
-    const enhancedError = createRerankEnhancedError(
-      RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.rerankFinetuneDataPathNotFound,
-      RerankTrainSuggestionEnum.rerankFinetuneDataPathNotFound
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+  let sftTaskId = checkpointData.finetuning?.sftTaskId;
 
-  if (!task.baseModelEndpoint.model) {
-    const enhancedError = createRerankEnhancedError(
-      RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.rerankFinetuneModelConfigInvalid,
-      RerankTrainSuggestionEnum.rerankFinetuneModelConfigInvalid
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+  if (sftTaskId) {
+    addLog.info('Reuse existing SFT task from checkpoint', {
+      taskId: String(task._id),
+      sftTaskId
+    });
+  } else {
+    if (!task.baseModelEndpoint.model) {
+      const enhancedError = createRerankEnhancedError(
+        RerankTaskCheckpointStageEnum.finetuning,
+        RerankTrainErrEnum.rerankFinetuneModelConfigInvalid,
+        RerankTrainSuggestionEnum.rerankFinetuneModelConfigInvalid
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  let datasetFile: Buffer;
-  try {
-    datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createRerankEnhancedError(
-      RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.rerankFinetuneDataFileNotFound,
-      RerankTrainSuggestionEnum.rerankFinetuneDataFileNotFound,
-      errorMsg
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+    if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
+      const enhancedError = createRerankEnhancedError(
+        RerankTaskCheckpointStageEnum.finetuning,
+        RerankTrainErrEnum.rerankFinetuneDataPathNotFound,
+        RerankTrainSuggestionEnum.rerankFinetuneDataPathNotFound
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  await ensureTaskActiveBeforeSFTCreation({ taskId: String(task._id) });
-  await ensureTaskNotAborted({
-    taskId: String(task._id),
-    sftTaskId: undefined
-  });
+    let datasetFile: Buffer;
+    try {
+      datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const enhancedError = createRerankEnhancedError(
+        RerankTaskCheckpointStageEnum.finetuning,
+        RerankTrainErrEnum.rerankFinetuneDataFileNotFound,
+        RerankTrainSuggestionEnum.rerankFinetuneDataFileNotFound,
+        errorMsg
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
 
-  let sftTaskId: string;
-  try {
-    const createResponse = await createSFTTask({
-      datasetFile,
-      taskType: 'rerank',
-      trainMethod: task.trainMethod || 'lora',
-      parameters: {
-        learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
-        epochs: 3,
-        batch_size: 32
-      }
+    await ensureTaskActiveBeforeSFTCreation({ taskId: String(task._id) });
+    await ensureTaskNotAborted({
+      taskId: String(task._id),
+      sftTaskId: undefined
     });
 
-    sftTaskId = createResponse.task_id;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const errorType = isSFTBridgeQueueFullError(errorMsg)
-      ? RerankTrainErrEnum.rerankFinetuneQueueFull
-      : RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed;
-    const suggestionType = isSFTBridgeQueueFullError(errorMsg)
-      ? RerankTrainSuggestionEnum.rerankFinetuneQueueFull
-      : RerankTrainSuggestionEnum.rerankFinetuneSftBridgeCreateFailed;
-    const enhancedError = createRerankEnhancedError(
-      RerankTaskCheckpointStageEnum.finetuning,
-      errorType,
-      suggestionType,
-      errorMsg
-    );
-    throw new TrainTaskRetriableError(enhancedError);
-  }
+    let createResponse: Awaited<ReturnType<typeof createSFTTask>>;
+    try {
+      createResponse = await createSFTTask({
+        datasetFile,
+        taskType: 'rerank',
+        trainMethod: task.trainMethod || 'lora',
+        parameters: {
+          learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
+          epochs: 3,
+          batch_size: 32
+        }
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorType = isSFTBridgeQueueFullError(errorMsg)
+        ? RerankTrainErrEnum.rerankFinetuneQueueFull
+        : RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed;
+      const suggestionType = isSFTBridgeQueueFullError(errorMsg)
+        ? RerankTrainSuggestionEnum.rerankFinetuneQueueFull
+        : RerankTrainSuggestionEnum.rerankFinetuneSftBridgeCreateFailed;
+      const enhancedError = createRerankEnhancedError(
+        RerankTaskCheckpointStageEnum.finetuning,
+        errorType,
+        suggestionType,
+        errorMsg
+      );
+      throw new TrainTaskRetriableError(enhancedError);
+    }
 
-  addLog.info('Created SFT task', {
-    taskId: String(task._id),
-    sftTaskId
-  });
+    sftTaskId = createResponse.task_id;
+    await updateRerankCheckpointData(
+      String(task._id),
+      RerankTaskCheckpointStageEnum.finetuning,
+      { sftTaskId },
+      true
+    );
+
+    addLog.info('Created SFT task', {
+      taskId: String(task._id),
+      sftTaskId
+    });
+  }
 
   let completed = false;
   let endpoint:

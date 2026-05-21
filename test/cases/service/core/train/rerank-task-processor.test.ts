@@ -1044,7 +1044,7 @@ describe('Rerank Train Task Processor', () => {
     });
 
     test('SFT queue full should map to queue full error', async () => {
-      const { getRerankTrainTask } = await import(
+      const { updateRerankCheckpointData, getRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/controller'
       );
       const { MongoRerankTrainsetData } = await import(
@@ -1053,16 +1053,30 @@ describe('Rerank Train Task Processor', () => {
       const { createSFTTask } = await import('@fastgpt/service/core/train/rerank/external');
 
       const mockTask = createMockTask();
-      (getRerankTrainTask as any).mockResolvedValue(mockTask);
+      const checkpointData: any = {};
+
+      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
+        if (id === mockTaskId) {
+          return Promise.resolve({
+            ...mockTask,
+            checkpoint: {
+              ...mockTask.checkpoint,
+              data: { ...checkpointData }
+            }
+          });
+        }
+        return Promise.resolve(null);
+      });
 
       (MongoRerankTrainsetData.find as any).mockReturnValue({
         cursor: vi.fn().mockReturnValue({
           async *[Symbol.asyncIterator]() {
             yield {
               _id: 'data_1',
-              id: 'data_1',
-              q: 'test query',
-              a: 'test answer'
+              trainsetId: 'trainset_1',
+              query: 'test',
+              positiveDocs: ['positive'],
+              negativeDocs: ['negative']
             };
           }
         })
@@ -1070,6 +1084,16 @@ describe('Rerank Train Task Processor', () => {
 
       (fs.writeFile as any).mockResolvedValue(undefined);
       (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
+      (updateRerankCheckpointData as any).mockImplementation(
+        async (_taskId: string, stage: string, data: any, merge: boolean = false) => {
+          if (merge) {
+            checkpointData[stage] = { ...checkpointData[stage], ...data };
+          } else {
+            checkpointData[stage] = data;
+          }
+          return Promise.resolve();
+        }
+      );
       (createSFTTask as any).mockRejectedValue(
         new Error('SFT Bridge API error: Too many concurrent tasks (max: 3)')
       );
@@ -1597,10 +1621,18 @@ describe('Rerank Train Task Processor', () => {
         );
       }
 
+      expect(updateRerankCheckpointData).toHaveBeenCalledWith(
+        mockTaskId,
+        'finetuning',
+        { sftTaskId: 'sft_task_123' },
+        true
+      );
       expect(updateRerankCheckpointData).not.toHaveBeenCalledWith(
         mockTaskId,
         'finetuning',
-        expect.anything(),
+        expect.objectContaining({
+          tunedModelEndpoint: expect.anything()
+        }),
         expect.anything()
       );
       expect(querySFTTaskStatus).not.toHaveBeenCalled();
@@ -1619,6 +1651,50 @@ describe('Rerank Train Task Processor', () => {
           status: RerankTrainTaskStatusEnum.completed
         })
       );
+    });
+
+    test('should reuse checkpoint SFT task when rerank finetuning resumes', async () => {
+      const { runFinetuneStage } = await import(
+        '@fastgpt/service/core/train/rerank/task/stages/finetune'
+      );
+      const { createSFTTask, querySFTTaskStatus } = await import(
+        '@fastgpt/service/core/train/rerank/external'
+      );
+      const { updateRerankCheckpointData, getRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/controller'
+      );
+      const fsPromises = await import('fs/promises');
+
+      const mockTask = createMockTask(
+        RerankTrainTaskStatusEnum.running,
+        RerankTaskCheckpointStageEnum.eval_basemodel,
+        {
+          finetuning: {
+            sftTaskId: 'sft_task_from_checkpoint'
+          }
+        }
+      ) as RerankTrainTaskSchemaType;
+
+      (getRerankTrainTask as any).mockResolvedValue(mockTask);
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_from_checkpoint',
+        status: 'completed',
+        endpoint: {
+          base_url: 'http://sft-bridge.com/v1',
+          model: 'tuned-model',
+          api_key: 'sft-bridge-key'
+        }
+      });
+
+      const result = await runFinetuneStage(mockTask);
+
+      expect(result.sftTaskId).toBe('sft_task_from_checkpoint');
+      expect(createSFTTask).not.toHaveBeenCalled();
+      expect(fsPromises.readFile).not.toHaveBeenCalled();
+      expect(updateRerankCheckpointData).not.toHaveBeenCalled();
+      expect(querySFTTaskStatus).toHaveBeenCalledWith({
+        taskId: 'sft_task_from_checkpoint'
+      });
     });
 
     test('评测阶段失败应该抛出错误', async () => {
