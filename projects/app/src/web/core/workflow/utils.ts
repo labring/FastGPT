@@ -866,7 +866,7 @@ export const compareSnapshot = (
 /* ====== Dataset Auto Adjust ======= */
 /**
  * 若知识库搜索节点直接连接到 AI 对话节点，则将搜索节点的 limit（datasetMaxTokens）
- * 自动设为所有直连 chatNode 所用模型 maxContext 的最小值。
+ * 自动设为所有直连 chatNode 所用模型 quoteMaxToken 的最小值。
  * 若知识库搜索节点不再直连任何 AI 对话节点（例如中间插入了非大模型节点），
  * 则将 limit 恢复为默认值 5000，避免 limit 残留在之前适配的高值上。
  * 仅作用于 store 输出数据，不修改 UI 状态。
@@ -892,12 +892,12 @@ export const autoAdjustDatasetNodeLimit = ({
 
   const nodeMap = new Map(nodes.map((n) => [n.nodeId, n]));
 
-  // 记录直连 chatNode 的知识库节点 → 取其模型 maxContext 的最小值
+  // 记录直连 chatNode 的知识库节点 → 取其模型 quoteMaxToken 的最小值
   const datasetLimitMap = new Map<string, number>();
   // 独立标记哪些知识库节点仍有直连 chatNode 的边，用于区分「有直连但模型信息不全」和「无直连」
   const datasetHasDirectChatNode = new Set<string>();
 
-  // 第一遍扫描：找出所有直连 chatNode 的知识库节点，计算最小 maxContext
+  // 第一遍扫描：找出所有直连 chatNode 的知识库节点，计算最小 quoteMaxToken
   for (const edge of edges) {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
@@ -961,7 +961,7 @@ export const autoAdjustDatasetNodeLimit = ({
       };
     }
 
-    // 知识库直连 chatNode，按模型 maxContext 调整限值
+    // 知识库直连 chatNode，按模型 quoteMaxToken 调整限值
     if (newLimit === undefined) return node;
 
     hasChanges = true;

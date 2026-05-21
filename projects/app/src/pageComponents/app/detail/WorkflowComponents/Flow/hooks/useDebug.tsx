@@ -5,7 +5,11 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
-import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
+import {
+  checkWorkflowNodeAndConnection,
+  autoAdjustDatasetNodeLimit,
+  cleanDatasetSearchParams
+} from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
@@ -98,6 +102,9 @@ export const useDebug = () => {
     if (!checkResults) {
       onRemoveError();
       const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+      if (storeNodes) {
+        storeNodes.nodes = cleanDatasetSearchParams(autoAdjustDatasetNodeLimit(storeNodes));
+      }
 
       return JSON.stringify(storeNodes);
     } else {
