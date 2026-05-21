@@ -10,8 +10,3 @@ export const DEFAULT_USER_AVATAR = '/imgs/avatar/BlueAvatar.svg';
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isProduction = process.env.NODE_ENV === 'production';
 export const isTestEnv = process.env.NODE_ENV === 'test';
-
-export const EXCLUDED_TEMPLATE_IDS = (process.env.EXCLUDED_TEMPLATE_IDS || 'assistant')
-  .split(',')
-  .map((id) => id.trim())
-  .filter(Boolean);

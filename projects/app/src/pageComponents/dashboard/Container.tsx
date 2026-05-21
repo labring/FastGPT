@@ -714,7 +714,14 @@ const DashboardContainer = ({
       refreshDeps: [currentTab]
     }
   );
-  const templateList = templateData?.list || [];
+  const templateList = useMemo(() => {
+    const list = templateData?.list || [];
+    // 前端隐藏指定模板，仅隐藏展示，接口正常返回
+    const EXCLUDED_TEMPLATE_IDS = ['assistant'];
+    return list.filter(
+      (item) => !EXCLUDED_TEMPLATE_IDS.some((id) => item.templateId.endsWith(`-${id}`))
+    );
+  }, [templateData?.list]);
 
   const MenuIcon = useMemo(
     () => (
