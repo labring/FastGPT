@@ -46,6 +46,19 @@ describe('WorkflowComponents utils', () => {
             catchError: false
           },
           position: { x: 100, y: 100 }
+        },
+        {
+          data: {
+            nodeId: '2',
+            name: 'Node 2',
+            intro: 'Intro 2',
+            avatar: 'avatar2',
+            flowNodeType: FlowNodeTypeEnum.userInput,
+            showStatus: true,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 300, y: 100 }
         }
       ];
 
@@ -78,6 +91,129 @@ describe('WorkflowComponents utils', () => {
         sourceHandle: 'source1',
         targetHandle: 'target1'
       });
+    });
+
+    it('should keep valid edges when ReactFlow handles have not mounted yet', () => {
+      const mockQuerySelector = vi.fn().mockReturnValue({
+        querySelectorAll: () => []
+      });
+
+      global.document = {
+        querySelector: mockQuerySelector
+      } as any;
+
+      const nodes = [
+        {
+          data: {
+            nodeId: 'sourceNode',
+            name: 'Source',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            showStatus: true,
+            inputs: [],
+            outputs: [],
+            isFolded: false
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'targetNode',
+            name: 'Target',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            showStatus: true,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+
+      const edges = [
+        {
+          source: 'sourceNode',
+          target: 'targetNode',
+          sourceHandle: 'sourceNode-source-right',
+          targetHandle: 'targetNode-target-left'
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+      expect(result.edges).toEqual([
+        {
+          source: 'sourceNode',
+          target: 'targetNode',
+          sourceHandle: 'sourceNode-source-right',
+          targetHandle: 'targetNode-target-left'
+        }
+      ]);
+    });
+
+    it('should filter malformed edges that cannot be restored', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'sourceNode',
+            name: 'Source',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            showStatus: true,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        },
+        {
+          data: {
+            nodeId: 'targetNode',
+            name: 'Target',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            showStatus: true,
+            inputs: [],
+            outputs: []
+          },
+          position: { x: 300, y: 0 }
+        }
+      ];
+
+      const edges = [
+        {
+          source: 'sourceNode',
+          target: 'targetNode',
+          sourceHandle: '',
+          targetHandle: 'targetNode-target-left'
+        },
+        {
+          source: 'sourceNode',
+          target: 'missingNode',
+          sourceHandle: 'sourceNode-source-right',
+          targetHandle: 'missingNode-target-left'
+        },
+        {
+          source: 'sourceNode',
+          target: 'targetNode',
+          sourceHandle: 'sourceNode-source-right',
+          targetHandle: 'targetNode-target-left'
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+      expect(result.edges).toEqual([
+        {
+          source: 'sourceNode',
+          target: 'targetNode',
+          sourceHandle: 'sourceNode-source-right',
+          targetHandle: 'targetNode-target-left'
+        }
+      ]);
     });
   });
 

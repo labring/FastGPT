@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import type { RenderInputProps } from '../type';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
@@ -8,9 +8,11 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { llmModelList } = useSystemStore();
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
@@ -44,9 +46,43 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
     [inputs, nodeId, onChangeNode, setDefaultModel]
   );
 
+  const { aiModelInput, model } = useMemoEnhance(() => {
+    const aiModelInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
+    const inputModel = aiModelInput?.value as string | undefined;
+    const modelSet = new Set(llmModelList.map((item) => item.model));
+    const defaultLLMModel = getWebDefaultLLMModel(llmModelList)?.model || '';
+    const validDefaultModel = defaultModel && modelSet.has(defaultModel) ? defaultModel : '';
+    const fallbackModel = validDefaultModel || defaultLLMModel;
+
+    return {
+      aiModelInput,
+      model: inputModel || fallbackModel
+    };
+  }, [defaultModel, inputs, llmModelList]);
+
+  /**
+   * settingLLMModel 会用本地缓存模型作为选择器展示值。
+   * 当节点本身还没有 model 时,需要把这个展示兜底值同步写回节点,
+   * 避免后端运行时收到空 model 后回退到系统默认模型。
+   */
+  useEffect(() => {
+    if (!aiModelInput || aiModelInput.value || !model) return;
+
+    setDefaultModel(model);
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: aiModelInput.key,
+      value: {
+        ...aiModelInput,
+        value: model
+      }
+    });
+  }, [aiModelInput, model, nodeId, onChangeNode, setDefaultModel]);
+
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
-      model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? defaultModel,
+      model,
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
       temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(
@@ -67,7 +103,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
       aiChatJsonSchema: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatJsonSchema)
         ?.value
     }),
-    [inputs, defaultModel]
+    [inputs, model]
   );
 
   return <SettingLLMModel defaultData={llmModelData} onChange={onChangeModel} />;

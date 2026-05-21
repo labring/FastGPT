@@ -174,7 +174,7 @@ services:
       retries: 3
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.19
+    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.20
     ports:
       - 3002:3000
     networks:
@@ -220,7 +220,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.19
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.20
     ports:
       - 3003:3000
     networks:
