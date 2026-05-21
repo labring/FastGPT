@@ -163,6 +163,7 @@ const formatIndexes = async ({
  * 3. create mongo data
  */
 export async function insertData2Dataset({
+  id,
   teamId,
   tmbId,
   datasetId,
@@ -251,6 +252,7 @@ export async function insertData2Dataset({
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
+        ...(id && { _id: id }),
         teamId,
         tmbId,
         datasetId,
