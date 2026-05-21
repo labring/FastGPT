@@ -532,7 +532,8 @@ export async function dispatchDatasetSearch(
         const { vectors: queryVectors, tokens: corrFaqTokens } = await getVectorsByText({
           model: vectorModel,
           input: embedInputs,
-          type: 'query'
+          type: 'query',
+          useInstruction: false
         });
 
         // === 校正数据优先检索 ===
