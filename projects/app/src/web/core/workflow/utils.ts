@@ -41,6 +41,36 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 /* ====== node ======= */
+/**
+ * 兼容旧知识库搜索节点：旧字段 userChatInput 已废弃，但老数据可能只保存了它。
+ * 新字段 datasetSearchInput 是数组类型，打开老工作流时把旧“用户问题”引用迁移进去，
+ * 避免工作流校验因为新必填字段为空而失败。
+ */
+const getDatasetSearchInputValue = ({
+  storeNode,
+  storeInput
+}: {
+  storeNode: StoreNodeItemType;
+  storeInput: FlowNodeInputItemType;
+}) => {
+  if (
+    storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode ||
+    storeInput.key !== NodeInputKeyEnum.datasetSearchInput
+  ) {
+    return storeInput.value;
+  }
+
+  if (Array.isArray(storeInput.value) && storeInput.value.length > 0) {
+    return storeInput.value;
+  }
+
+  const legacyUserChatInputValue = storeNode.inputs.find(
+    (input) => input.key === NodeInputKeyEnum.userChatInput
+  )?.value;
+
+  return legacyUserChatInputValue ? [legacyUserChatInputValue] : storeInput.value;
+};
+
 export const nodeTemplate2FlowNode = ({
   template,
   position,
@@ -121,7 +151,10 @@ export const storeNode2FlowNode = ({
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
-          value: storeInput.value
+          value: getDatasetSearchInputValue({
+            storeNode,
+            storeInput
+          })
         };
       })
       .concat(
