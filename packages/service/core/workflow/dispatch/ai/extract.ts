@@ -209,7 +209,11 @@ const toolChoice = async (props: ActionProps) => {
       ]
     }
   ];
-  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+  const adaptMessages = chats2GPTMessages({
+    messages,
+    reserveId: false,
+    reserveReason: false
+  });
   const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
     maxContext: extractModel.maxContext
@@ -317,7 +321,7 @@ const completions = async (props: ActionProps) => {
     body: {
       model: extractModel.model,
       temperature: 0.01,
-      messages: chats2GPTMessages({ messages, reserveId: false }),
+      messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
     userKey: externalProvider.openaiAccount

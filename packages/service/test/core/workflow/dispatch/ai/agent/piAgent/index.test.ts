@@ -265,4 +265,43 @@ describe('dispatchPiAgent user context', () => {
       }
     ]);
   });
+
+  it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.aiChatReasoning = false;
+    createPiAgentWorkflowRuntimeMock.mockReturnValueOnce({
+      onPayload: vi.fn(),
+      handleAgentEvent: vi.fn(),
+      appendChildNodeResponse: vi.fn(),
+      getReasoningText: vi.fn(() => 'hidden thinking'),
+      getAnswerText: vi.fn(() => 'pi answer'),
+      appendPendingAgentError: vi.fn()
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+      {
+        reasoning: {
+          content: 'hidden thinking'
+        },
+        hideReason: true,
+        text: {
+          content: 'pi answer'
+        }
+      }
+    ]);
+  });
 });

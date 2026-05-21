@@ -1,7 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 import { ChatRoleEnum } from '../constants';
-import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
+import { UserChatItemSchema, SystemChatItemSchema } from '../type';
 import { UserInputInteractiveSchema } from '../../workflow/template/system/interactive/type';
 
 export enum HelperBotTypeEnum {
@@ -21,18 +21,27 @@ export const HelperBotChatSchema = z.object({
 });
 export type HelperBotChatType = z.infer<typeof HelperBotChatSchema>;
 
+const AIChatContentValueSchema = z
+  .object({
+    text: z
+      .object({
+        content: z.string()
+      })
+      .optional(),
+    reasoning: z
+      .object({
+        content: z.string()
+      })
+      .optional(),
+    hideReason: z.boolean().optional()
+  })
+  .refine((value) => value.text || value.reasoning, {
+    message: 'HelperBot AI content value requires text or reasoning'
+  });
+
 // AI schema
 export const AIChatItemValueItemSchema = z.union([
-  z.object({
-    text: z.object({
-      content: z.string()
-    })
-  }),
-  z.object({
-    reasoning: z.object({
-      content: z.string()
-    })
-  }),
+  AIChatContentValueSchema,
   z.object({
     collectionForm: UserInputInteractiveSchema
   }),

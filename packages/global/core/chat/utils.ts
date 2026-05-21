@@ -152,27 +152,25 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
     return removeDatasetCiteText(value, false) as T;
   }
 
-  return value.map<AIChatItemValueItemType>((item) => {
-    if (item.text?.content) {
-      return {
-        ...item,
-        text: {
-          ...item.text,
-          content: removeDatasetCiteText(item.text.content, false)
+  return value.map<AIChatItemValueItemType>((item) => ({
+    ...item,
+    ...(item.text?.content
+      ? {
+          text: {
+            ...item.text,
+            content: removeDatasetCiteText(item.text.content, false)
+          }
         }
-      };
-    }
-    if (item.reasoning?.content) {
-      return {
-        ...item,
-        reasoning: {
-          ...item.reasoning,
-          content: removeDatasetCiteText(item.reasoning.content, false)
+      : {}),
+    ...(item.reasoning?.content
+      ? {
+          reasoning: {
+            ...item.reasoning,
+            content: removeDatasetCiteText(item.reasoning.content, false)
+          }
         }
-      };
-    }
-    return item;
-  }) as T;
+      : {})
+  })) as T;
 };
 
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {

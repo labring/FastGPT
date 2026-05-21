@@ -47,6 +47,22 @@ describe('AIChatItemValueItemSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('should validate merged text and hidden reasoning content', () => {
+    const result = AIChatItemValueItemSchema.safeParse({
+      reasoning: { content: 'Hidden thinking' },
+      hideReason: true,
+      text: { content: 'Visible answer' }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject content value without text or reasoning', () => {
+    const result = AIChatItemValueItemSchema.safeParse({
+      hideReason: true
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('should validate planHint', () => {
     const result = AIChatItemValueItemSchema.safeParse({
       planHint: { type: 'generation' }

@@ -225,6 +225,7 @@ export const AIChatItemValueSchema = z.object({
   agentStopGate: AgentLoopStopGateSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
+  hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()
 });
 

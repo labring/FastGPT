@@ -456,17 +456,24 @@ const ChatBox = ({
             };
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+            const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
+              ...item,
+              value: [
+                ...item.value.slice(0, updateIndex),
+                nextValue,
+                ...item.value.slice(updateIndex + 1)
+              ]
+            });
+
             if (reasoningText) {
               if (updateValue?.reasoning) {
                 updateValue.reasoning.content += reasoningText;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
+                return replaceUpdateValue(updateValue);
+              } else if (updateValue?.text && !updateValue.text.content) {
+                updateValue.reasoning = {
+                  content: reasoningText
                 };
+                return replaceUpdateValue(updateValue);
               } else {
                 const val: AIChatItemValueItemType = {
                   id: responseValueId,
@@ -483,14 +490,12 @@ const ChatBox = ({
             if (text) {
               if (updateValue?.text) {
                 updateValue.text.content += text;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
+                return replaceUpdateValue(updateValue);
+              } else if (updateValue?.reasoning) {
+                updateValue.text = {
+                  content: text
                 };
+                return replaceUpdateValue(updateValue);
               } else {
                 const newValue: AIChatItemValueItemType = {
                   id: responseValueId,

@@ -20,15 +20,14 @@ export const formatAIResponse = ({
 }): AIChatItemValueItemType[] => {
   const result: AIChatItemValueItemType[] = [];
 
-  if (reasoning) {
-    result.push({
-      reasoning: {
-        content: reasoning
-      }
-    });
-  }
-
   result.push({
+    ...(reasoning
+      ? {
+          reasoning: {
+            content: reasoning
+          }
+        }
+      : {}),
     text: {
       content: text
     }

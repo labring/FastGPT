@@ -228,4 +228,42 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
   });
+
+  it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.aiChatReasoning = false;
+    runUnifiedAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      answerText: 'ok',
+      reasoningText: 'hidden thinking',
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+      {
+        reasoning: {
+          content: 'hidden thinking'
+        },
+        hideReason: true,
+        text: {
+          content: 'ok'
+        }
+      }
+    ]);
+  });
 });

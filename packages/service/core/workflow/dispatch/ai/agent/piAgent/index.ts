@@ -80,19 +80,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   const appendFinalAssistantResponses = () => {
     const reasoningText = piRuntime?.getReasoningText() || '';
     const answerText = piRuntime?.getAnswerText() || '';
-    const showReasoning = aiChatReasoning !== false;
-
-    if (reasoningText) {
-      assistantResponses.push({
-        reasoning: {
-          content: reasoningText
-        },
-        ...(!showReasoning ? { hideInUI: true } : {})
-      });
-    }
 
     if (answerText) {
       assistantResponses.push({
+        ...(reasoningText
+          ? {
+              reasoning: {
+                content: reasoningText
+              },
+              ...(aiChatReasoning === false ? { hideReason: true } : {})
+            }
+          : {}),
         text: {
           content: answerText
         }

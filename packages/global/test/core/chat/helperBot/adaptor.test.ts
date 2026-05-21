@@ -115,6 +115,27 @@ describe('helperChats2GPTMessages', () => {
     expect(result[0].content).toBe('Hello, how can I help?');
   });
 
+  it('should convert merged AI reasoning and text value with visible text', () => {
+    const messages = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            reasoning: { content: 'Hidden thinking' },
+            hideReason: true,
+            text: { content: 'Visible answer' }
+          }
+        ]
+      }
+    ] as HelperBotChatItemType[];
+
+    const result = helperChats2GPTMessages({ messages });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
+    expect(result[0].content).toBe('Visible answer');
+  });
+
   it('should concat multiple AI text values', () => {
     const messages = [
       {

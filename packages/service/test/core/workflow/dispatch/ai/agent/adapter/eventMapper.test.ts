@@ -97,6 +97,81 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
   });
 
+  it('hides reasoning stream but persists reasoning with hideReason', () => {
+    const workflowStreamResponse = vi.fn();
+    const mapper = createWorkflowAgentLoopEventMapper({
+      workflowStreamResponse,
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set(),
+      showReasoning: false
+    });
+
+    mapper.emitEvent({
+      type: 'reasoning_delta',
+      text: 'hidden'
+    });
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
+
+    mapper.emitEvent({
+      type: 'tool_call',
+      call: {
+        id: 'call_search',
+        type: 'function',
+        function: {
+          name: 'search',
+          arguments: '{}'
+        }
+      }
+    });
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_search',
+      finishReason: 'tool_calls',
+      answerText: 'Need to search.',
+      reasoningText: 'hidden thinking',
+      toolCalls: [
+        {
+          id: 'call_search',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{}'
+          }
+        }
+      ]
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        text: {
+          content: 'Need to search.'
+        },
+        reasoning: {
+          content: 'hidden thinking'
+        },
+        hideReason: true
+      },
+      {
+        id: 'call_search',
+        tools: [
+          {
+            id: 'call_search',
+            toolName: 'search',
+            toolAvatar: '',
+            functionName: 'search',
+            params: '{}'
+          }
+        ]
+      }
+    ]);
+  });
+
   it('filters internal tool calls and streams runtime tool lifecycle events', () => {
     const workflowStreamResponse = vi.fn();
     const mapper = createWorkflowAgentLoopEventMapper({
