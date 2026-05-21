@@ -52,6 +52,33 @@ describe('useChatStore', () => {
     expect(newState.lastChatAppId).toBe('test-app-id');
   });
 
+  it('should reset chatId when switching to a different appId', () => {
+    const store = useChatStore.getState();
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('chat-from-app-a');
+
+    store.setAppId('app-b');
+
+    const newState = useChatStore.getState();
+    expect(newState.appId).toBe('app-b');
+    expect(newState.chatId).toBe('test-generated-id');
+    expect(newState.chatId).not.toBe('chat-from-app-a');
+    expect(newState.lastChatId).toBe(`${ChatSourceEnum.online}-test-generated-id`);
+  });
+
+  it('should keep chatId when setting the same appId', () => {
+    const store = useChatStore.getState();
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('stable-chat-id');
+
+    store.setAppId('app-a');
+
+    const newState = useChatStore.getState();
+    expect(newState.chatId).toBe('stable-chat-id');
+  });
+
   it('should set and get chatId', () => {
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.share);

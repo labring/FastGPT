@@ -95,6 +95,14 @@ export const useChatStore = create<State>()(
           if (!e) return;
 
           set((state) => {
+            // 切换应用时重置 chatId，避免上一应用的会话泄漏到其他应用的历史列表
+            if (state.appId !== e) {
+              const newChatId = getNanoid(24);
+              state.chatId = newChatId;
+              if (state.source) {
+                state.lastChatId = `${state.source}-${newChatId}`;
+              }
+            }
             state.appId = e;
             state.lastChatAppId = e;
           });

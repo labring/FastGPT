@@ -84,7 +84,8 @@ const ChatContextProvider = ({
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
-  const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
+  const { chatId, setChatId, outLinkAuthData } = useChatStore();
+  const historyAppId = String(params.appId ?? '');
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
@@ -140,7 +141,7 @@ const ChatContextProvider = ({
   const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
-        appId,
+        appId: historyAppId,
         ...data,
         ...outLinkAuthData
       }),
@@ -165,7 +166,7 @@ const ChatContextProvider = ({
             : updatedHistories;
         });
       },
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [outLinkAuthData, historyAppId],
       errorToast: undefined
     }
   );
@@ -173,7 +174,7 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        appId: appId,
+        appId: historyAppId,
         chatId,
         ...outLinkAuthData
       }),
@@ -182,18 +183,18 @@ const ChatContextProvider = ({
         const chatId = params[0];
         setHistories((old) => old.filter((i) => i.chatId !== chatId));
       },
-      refreshDeps: [outLinkAuthData, appId]
+      refreshDeps: [outLinkAuthData, historyAppId]
     }
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        appId: appId,
+        appId: historyAppId,
         ...outLinkAuthData
       }),
     {
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [outLinkAuthData, historyAppId],
       onSuccess() {
         setHistories([]);
       },
@@ -205,10 +206,13 @@ const ChatContextProvider = ({
 
   const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
+      const { chatId: currentChatId } = useChatStore.getState();
+      if (chatId !== currentChatId) return;
+
       setHistories((state) =>
         upsertHistoryTitle({
           histories: state,
-          appId,
+          appId: historyAppId,
           chatId,
           title: newTitle,
           fallbackTitle: '新对话'
@@ -216,7 +220,7 @@ const ChatContextProvider = ({
       );
       loadHistories({ init: true });
     },
-    [appId, loadHistories, setHistories]
+    [historyAppId, loadHistories, setHistories]
   );
 
   const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
@@ -240,7 +244,7 @@ const ChatContextProvider = ({
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
       getChatHistoryStatus({
-        ...(appId ? { appId } : {}),
+        ...(historyAppId ? { appId: historyAppId } : {}),
         chatIds,
         ...outLinkAuthData
       })
@@ -291,7 +295,7 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [appId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
+  }, [historyAppId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

@@ -18,7 +18,7 @@ const ChatSliderList = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
-  const { chatId: activeChatId } = useChatStore();
+  const { chatId: activeChatId, appId } = useChatStore();
 
   const histories = useContextSelector(ChatContext, (v) => v.histories);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
@@ -30,6 +30,8 @@ const ChatSliderList = () => {
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
+    const scopedHistories = histories.filter((item) => item.appId === appId);
+
     const formatHistories: {
       id: string;
       title: string;
@@ -38,7 +40,7 @@ const ChatSliderList = () => {
       updateTime: Date;
       chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
-    }[] = histories.map((item) => {
+    }[] = scopedHistories.map((item) => {
       const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
 
       return {
@@ -73,13 +75,20 @@ const ChatSliderList = () => {
         chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
       hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
     };
-    const activeChat = histories.find((item) => item.chatId === activeChatId);
+    const activeChat = scopedHistories.find((item) => item.chatId === activeChatId);
+    const shouldPrependActiveChat =
+      chatBoxData.appId === appId &&
+      chatBoxData.chatId === activeChatId &&
+      !activeChat &&
+      !!activeChatId;
 
-    return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
+    return shouldPrependActiveChat ? [newChat].concat(formatHistories) : formatHistories;
   }, [
     activeChatId,
+    appId,
     histories,
     t,
+    chatBoxData.appId,
     chatBoxData.chatId,
     chatBoxData.title,
     chatBoxData.chatGenerateStatus,
