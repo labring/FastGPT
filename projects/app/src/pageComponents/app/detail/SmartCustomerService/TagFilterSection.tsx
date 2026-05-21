@@ -244,12 +244,6 @@ const TagFilterSection = ({
                   const tagType = tagDef?.tagType || 'string';
                   const ops = operatorsByType[tagType] || operatorsByType.string;
                   const hideValue = noValueOps.has(row.op);
-                  const selectedTagIds = new Set(
-                    rows
-                      .filter((_, i) => i !== index)
-                      .map((r) => r.tagId)
-                      .filter(Boolean)
-                  );
 
                   return (
                     <HStack key={index} mb={2} spacing={1} align={'center'}>
@@ -264,8 +258,7 @@ const TagFilterSection = ({
                         placeholder={t('workflow:tag_filter_select_tag')}
                         list={allTags.map((tag) => ({
                           label: tag.tag,
-                          value: tag._id,
-                          isDisabled: selectedTagIds.has(tag._id)
+                          value: tag._id
                         }))}
                         onChange={(val) => {
                           const newTagDef = tagMap.get(val);

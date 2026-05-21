@@ -152,12 +152,6 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
         const tagType = tagDef?.tagType || 'string';
         const ops = operatorsByType[tagType] || operatorsByType.string;
         const hideValue = noValueOps.has(row.op);
-        const selectedTagIds = new Set(
-          rows
-            .filter((_, i) => i !== index)
-            .map((r) => r.tagId)
-            .filter(Boolean)
-        );
         const noTagSelected = !row.tagId;
 
         // 根据标签类型过滤可选引用变量
@@ -190,8 +184,7 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
               placeholder={t('workflow:tag_filter_select_tag')}
               list={allTags.map((tag) => ({
                 label: tag.tag,
-                value: tag._id,
-                isDisabled: selectedTagIds.has(tag._id)
+                value: tag._id
               }))}
               onChange={(val) => {
                 const newTagDef = tagMap.get(val);
