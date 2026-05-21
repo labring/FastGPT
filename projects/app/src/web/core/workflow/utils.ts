@@ -915,14 +915,14 @@ export const autoAdjustDatasetNodeLimit = ({
       continue;
     }
 
-    const maxContext = llmModelMap[modelValue]?.maxContext;
-    if (!maxContext) {
+    const quoteMaxToken = llmModelMap[modelValue]?.quoteMaxToken;
+    if (!quoteMaxToken) {
       continue;
     }
 
     const current = datasetLimitMap.get(edge.source);
-    if (current === undefined || maxContext < current) {
-      datasetLimitMap.set(edge.source, maxContext);
+    if (current === undefined || quoteMaxToken < current) {
+      datasetLimitMap.set(edge.source, quoteMaxToken);
     }
   }
 
