@@ -523,19 +523,6 @@ const EditForm = ({
           </Grid>
         </Box>
         <Box h="1px" bg="myGray.200" mx="16px" />
-        <Box px="25px" py="16px">
-          <TagFilterSection
-            datasets={selectDatasets}
-            value={appForm.dataset.collectionFilterMatch}
-            onChange={(v) =>
-              setAppForm((state) => ({
-                ...state,
-                dataset: { ...state.dataset, collectionFilterMatch: v }
-              }))
-            }
-          />
-        </Box>
-        <Box h="1px" bg="myGray.200" mx="16px" />
         <AccordionSection title={<Box py={2}>{t('app:retrieval_config')}</Box>} defaultIndex={[0]}>
           {/* 检索方式 */}
           <FormItem
@@ -673,6 +660,19 @@ const EditForm = ({
             </FormItem>
           )}
         </AccordionSection>
+        <Box h="1px" bg="myGray.200" mx="16px" />
+        <Box px="25px" py="16px">
+          <TagFilterSection
+            datasets={selectDatasets}
+            value={appForm.dataset.collectionFilterMatch}
+            onChange={(v) =>
+              setAppForm((state) => ({
+                ...state,
+                dataset: { ...state.dataset, collectionFilterMatch: v }
+              }))
+            }
+          />
+        </Box>
       </SectionCard>
 
       {/* 模块四：问答配置 */}

@@ -173,47 +173,51 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
         const isRowUI = renderType === FlowNodeInputTypeEnum.switch;
 
         return (
-          <Box
-            key={input.key}
-            _notLast={{ mb }}
-            position={'relative'}
-            display={isRowUI ? 'flex' : 'block'}
-            alignItems={'center'}
-            justifyContent={'space-between'}
-          >
-            {!!input.label && !hideLabelTypeList.includes(renderType) && (
-              <InputLabel
-                nodeId={nodeId}
-                input={input}
-                RightComponent={RenderComponent?.LableRightComponent}
-                AfterSwitchComponent={RenderComponent?.LableAfterSwitchComponent}
-              />
+          <React.Fragment key={input.key}>
+            {input.dividerBefore && (
+              <Box borderTop="1px solid #EBEDF0" mb="20px" />
             )}
+            <Box
+              _notLast={{ mb }}
+              position={'relative'}
+              display={isRowUI ? 'flex' : 'block'}
+              alignItems={'center'}
+              justifyContent={input.followLabel ? undefined : 'space-between'}
+            >
+              {!!input.label && !hideLabelTypeList.includes(renderType) && (
+                <InputLabel
+                  nodeId={nodeId}
+                  input={input}
+                  RightComponent={RenderComponent?.LableRightComponent}
+                  AfterSwitchComponent={RenderComponent?.LableAfterSwitchComponent}
+                />
+              )}
 
-            {/* tmp */}
-            {input.key === NodeInputKeyEnum.useAgentSandbox ? (
-              showSandbox ? (
-                enableSandbox ? (
-                  <Flex alignItems={'center'} gap={1}>
-                    <SandboxTipTag />
-                    {RenderComponent!.Component}
-                  </Flex>
+              {/* tmp */}
+              {input.key === NodeInputKeyEnum.useAgentSandbox ? (
+                showSandbox ? (
+                  enableSandbox ? (
+                    <Flex alignItems={'center'} gap={1}>
+                      <SandboxTipTag />
+                      {RenderComponent!.Component}
+                    </Flex>
+                  ) : (
+                    <SandboxNotSupportTip type="freeDisable" />
+                  )
                 ) : (
-                  <SandboxNotSupportTip type="freeDisable" />
+                  <SandboxNotSupportTip type="systemDisable" />
                 )
               ) : (
-                <SandboxNotSupportTip type="systemDisable" />
-              )
-            ) : (
-              <>
-                {!!RenderComponent && (
-                  <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
-                    {RenderComponent.Component}
-                  </Box>
-                )}
-              </>
-            )}
-          </Box>
+                <>
+                  {!!RenderComponent && (
+                    <Box mt={isRowUI ? 0 : 2} ml={input.followLabel ? 2 : 0} className={'nodrag'}>
+                      {RenderComponent.Component}
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          </React.Fragment>
         );
       })}
     </>

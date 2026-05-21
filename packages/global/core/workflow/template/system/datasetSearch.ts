@@ -50,11 +50,17 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueDesc: datasetSelectValueDesc
     },
     {
+      ...Input_Template_UserChatInput,
+      toolDescription: i18nT('workflow:content_to_search'),
+      dividerBefore: true
+    },
+    {
       key: NodeInputKeyEnum.datasetSimilarity,
       renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
       label: '',
       value: 0.4,
-      valueType: WorkflowIOValueTypeEnum.number
+      valueType: WorkflowIOValueTypeEnum.number,
+      dividerBefore: true
     },
     // setting from modal
     {
@@ -133,18 +139,15 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       value: ''
     },
-
-    {
-      ...Input_Template_UserChatInput,
-      toolDescription: i18nT('workflow:content_to_search')
-    },
     {
       key: NodeInputKeyEnum.authTmbId,
       renderTypeList: [FlowNodeInputTypeEnum.switch],
       label: i18nT('workflow:permission_filter_label'),
       description: i18nT('workflow:permission_filter_tooltip'),
       valueType: WorkflowIOValueTypeEnum.boolean,
-      value: false
+      value: false,
+      followLabel: true,
+      dividerBefore: true
     },
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
