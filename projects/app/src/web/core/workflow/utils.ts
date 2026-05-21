@@ -41,6 +41,32 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 /* ====== node ======= */
+/**
+ * 适配从数据库读取出的节点输入。
+ * 旧知识库搜索节点使用 userChatInput；当前节点改为 datasetSearchInput 数组。
+ * 这里仅处理旧字段到新字段的 key 和 valueType 迁移。
+ */
+export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
+    return storeNode.inputs;
+  }
+
+  return storeNode.inputs.map((input) => {
+    if (input.key !== NodeInputKeyEnum.userChatInput) return input;
+
+    const isReferenceValue = isValidReferenceValueFormat(input.value);
+
+    return {
+      ...input,
+      key: NodeInputKeyEnum.datasetSearchInput,
+      label: 'workflow:search_query',
+      value: isReferenceValue ? [input.value] : input.value,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      selectedTypeIndex: isReferenceValue ? 0 : 1
+    };
+  });
+};
+
 export const nodeTemplate2FlowNode = ({
   template,
   position,
@@ -100,6 +126,7 @@ export const storeNode2FlowNode = ({
   const dynamicInput = template.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
+  const adaptedStoreInputs = adaptStoreNodeInputs(storeNode);
 
   // replace item data
   const nodeItem: FlowNodeItemType = {
@@ -113,7 +140,7 @@ export const storeNode2FlowNode = ({
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
-          storeNode.inputs.find((item) => item.key === templateInput.key) || templateInput;
+          adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
 
         return {
           ...storeInput,
@@ -126,7 +153,7 @@ export const storeNode2FlowNode = ({
       })
       .concat(
         // 合并 store 中有，template 中没有的输入
-        storeNode.inputs
+        adaptedStoreInputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
             const templateInput = template.inputs.find((input) => input.key === item.key);

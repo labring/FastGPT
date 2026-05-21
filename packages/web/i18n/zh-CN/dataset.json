@@ -50,6 +50,8 @@
   "data_amount": "{{dataAmount}} 组数据, {{indexAmount}} 组索引",
   "data_error_amount": "{{errorAmount}} 组训练异常",
   "data_index_image": "图片索引",
+  "data_index_image_embedding": "多模态图片索引",
+  "image_embedding_index_default_desc": "已通过多模态模型生成图片向量，支持以图搜图",
   "data_parsing": "数据解析中",
   "data_uploading": "数据上传中: {{num}}%",
   "dataset.Chunk_Number": "分块号",

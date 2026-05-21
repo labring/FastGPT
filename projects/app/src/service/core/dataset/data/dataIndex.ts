@@ -8,12 +8,20 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import {
+  isValidImageEmbeddingSource,
+  normalizeImageToBase64
+} from '@fastgpt/service/core/dataset/search/utils';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -29,10 +37,12 @@ export type DatasetDataIndexPatch =
   | {
       type: 'create';
       index: DatasetDataIndexDraft;
+      skipped?: boolean;
     }
   | {
       type: 'update';
       index: DatasetDataIndexItemType;
+      skipped?: boolean;
     }
   | {
       type: 'delete';
@@ -54,11 +64,26 @@ const formatIndexTextWithPrefix = (text: string, indexPrefix?: string) => {
   return text;
 };
 
+const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
+  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
+
+const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
+  if (
+    isS3ObjectKey(imageUrl, 'dataset') ||
+    isS3ObjectKey(imageUrl, 'temp') ||
+    isS3ObjectKey(imageUrl, 'chat')
+  ) {
+    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  }
+
+  return normalizeImageToBase64(imageUrl);
+};
+
 /**
  * 数据索引变更的共享操作类。
  *
  * 这里集中维护索引的完整生命周期：
- * - 根据 Q/A 文本生成默认索引
+ * - 根据数据内容生成系统索引
  * - 在向量化前规范化并切分自定义索引
  * - 对比当前索引和下一版索引，生成 patch
  * - 写入或删除向量记录
@@ -77,25 +102,60 @@ export class DatasetDataIndexOperation {
     return this.getEmbeddingModel().maxToken;
   }
 
-  private getEmbeddingModel() {
-    return typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model!;
+  private getEmbeddingModel(): EmbeddingModelItemType {
+    return (typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model)!;
   }
 
   /**
-   * 根据数据的 question 和 answer 生成系统维护的默认索引。
+   * 从数据正文中收集需要生成图片向量的图片源。
    *
-   * 默认索引由数据内容重新生成，不允许用户单独编辑。question 和 answer 都可能
-   * 被切成多个 chunk，确保每条向量输入不会超过 embedding 模型限制。
+   * 主图片 `imageId` 是图片数据自身的内容，只要模型支持图片向量就会生成；
+   * markdown 图片受 collection 的 imageIndex 开关控制，避免未开启图片索引的普通文本
+   * 数据被隐式生成额外图片向量。
    */
-  async getDefaultIndexes({
+  getImageEmbeddingSources({
+    q = '',
+    a = '',
+    imageId, // 纯图数据
+    imageIndex // 文本数据，是否需要提取图片
+  }: {
+    q?: string;
+    a?: string;
+    imageId?: string;
+    imageIndex?: boolean;
+  }) {
+    if (!isImageEmbeddingModel(this.getEmbeddingModel())) return [];
+
+    const sources = [
+      ...(imageId ? [imageId] : []),
+      ...(imageIndex ? uniqueDatasetDataMarkdownImageUrls([q, a]) : [])
+    ];
+
+    return Array.from(new Set(sources.filter(isValidImageEmbeddingSource)));
+  }
+
+  /**
+   * 根据数据内容生成系统维护的索引。
+   *
+   * 系统索引包含：
+   * - `default`：由 question/answer 切分出的文本向量索引；
+   * - `imageEmbedding`：由主图片和 markdown 图片源生成的图片向量索引。
+   *
+   * 这些索引由数据内容重新生成，不允许用户单独编辑。
+   */
+  async getSystemIndexes({
     q = '',
     a,
+    imageId,
+    imageIndex,
     indexSize,
     maxIndexSize,
     indexPrefix
   }: {
     q?: string;
     a?: string;
+    imageId?: string;
+    imageIndex?: boolean;
     indexSize: number;
     maxIndexSize?: number;
     indexPrefix?: string;
@@ -125,6 +185,15 @@ export class DatasetDataIndexOperation {
       ...aChunks.map((text) => ({
         text: formatIndexTextWithPrefix(text, indexPrefix),
         type: DatasetDataIndexTypeEnum.default
+      })),
+      ...this.getImageEmbeddingSources({
+        q,
+        a,
+        imageId,
+        imageIndex
+      }).map((text) => ({
+        text,
+        type: DatasetDataIndexTypeEnum.imageEmbedding
       }))
     ];
   }
@@ -132,13 +201,15 @@ export class DatasetDataIndexOperation {
   /**
    * 在对比或写入向量前，规范化所有索引草稿。
    *
-   * 该流程会保留自定义索引、根据 Q/A 重新生成默认索引、按文本去重，并切分过长的
-   * 自定义索引。文本未变化时会沿用已有 dataId，避免重复重建向量。
+   * 该流程会保留外部索引、根据数据内容重新生成系统索引、按文本去重，并切分过长的
+   * 外部文本索引。文本未变化时会沿用已有 dataId，避免重复重建向量。
    */
   async formatIndexes({
     indexes = [],
     q,
     a = '',
+    imageId,
+    imageIndex,
     indexSize,
     maxIndexSize,
     indexPrefix
@@ -146,6 +217,8 @@ export class DatasetDataIndexOperation {
     indexes?: DatasetDataIndexDraft[];
     q: string;
     a?: string;
+    imageId?: string;
+    imageIndex?: boolean;
     indexSize: number;
     maxIndexSize?: number;
     indexPrefix?: string;
@@ -156,40 +229,59 @@ export class DatasetDataIndexOperation {
       dataId: item.dataId
     }));
 
-    const defaultIndexes = await this.getDefaultIndexes({
+    const systemIndexes = await this.getSystemIndexes({
       q,
       a,
+      imageId,
+      imageIndex,
       indexSize,
       maxIndexSize: maxIndexSize ?? this.maxToken,
       indexPrefix
     });
 
-    // 把 dataId 合并到旧的 index 上，避免重复生成
-    const concatDefaultIndexes = defaultIndexes.map((item) => {
-      const oldIndex = indexes.find((index) => index.text === item.text);
-      if (oldIndex) {
-        return {
-          type: DatasetDataIndexTypeEnum.default,
-          text: item.text,
-          dataId: oldIndex.dataId
-        };
-      }
-      return item;
+    // 系统索引由当前数据内容重新生成；传入 indexes 里的系统索引只用于复用旧 dataId。
+    let systemIndexesWithExistingIds = this.mergeExistingSystemIndexIds({
+      currentIndexes: indexes,
+      nextSystemIndexes: systemIndexes
     });
 
-    // 筛选掉重复索引：不是默认的，文案相同的
+    const systemTextIndexTexts = new Set(
+      systemIndexesWithExistingIds
+        .filter((item) => item.type !== DatasetDataIndexTypeEnum.imageEmbedding)
+        .map((item) => item.text)
+    );
+    const externalIndexes = indexes.filter((item) => !isDatasetDataSystemIndexType(item.type));
+
+    // 若一个普通文本索引被系统 default 覆盖掉，可以复用它的文本向量 id；
+    // imageEmbedding 不能复用文本向量，必须按图片输入重新生成。
+    systemIndexesWithExistingIds = systemIndexesWithExistingIds.map((item) => {
+      if (item.dataId || item.type !== DatasetDataIndexTypeEnum.default) return item;
+
+      const sameTextIndex = externalIndexes.find(
+        (index) => index.text === item.text && !!index.dataId
+      );
+
+      return sameTextIndex?.dataId
+        ? {
+            ...item,
+            dataId: sameTextIndex.dataId
+          }
+        : item;
+    });
+
     indexes = indexes.filter(
       (item, index, self) =>
-        item.type !== DatasetDataIndexTypeEnum.default &&
-        !concatDefaultIndexes.find((t) => t.text === item.text) &&
-        index === self.findIndex((t) => t.text === item.text)
+        !isDatasetDataSystemIndexType(item.type) &&
+        !systemTextIndexTexts.has(item.text) &&
+        index ===
+          self.findIndex((t) => !isDatasetDataSystemIndexType(t.type) && t.text === item.text)
     );
-    indexes.push(...concatDefaultIndexes);
+    indexes.push(...systemIndexesWithExistingIds);
 
     const checkedIndexes = (
       await Promise.all(
         indexes.map(async (item) => {
-          if (item.type === DatasetDataIndexTypeEnum.default) {
+          if (item.type === DatasetDataIndexTypeEnum.imageEmbedding) {
             return item;
           }
 
@@ -217,7 +309,13 @@ export class DatasetDataIndexOperation {
 
     return indexPrefix
       ? checkedIndexes.map((index) => {
-          if (index.type === DatasetDataIndexTypeEnum.custom) return index;
+          // 自定义索引与图片向量索引不需要添加前缀
+          if (
+            index.type === DatasetDataIndexTypeEnum.custom ||
+            index.type === DatasetDataIndexTypeEnum.imageEmbedding
+          ) {
+            return index;
+          }
           return {
             ...index,
             text: formatIndexTextWithPrefix(index.text, indexPrefix)
@@ -227,26 +325,30 @@ export class DatasetDataIndexOperation {
   }
 
   /**
-   * 默认索引重新生成后，重新挂回当前默认索引的 dataId。
+   * 系统索引重新生成后，重新挂回当前系统索引的 dataId。
    *
-   * 默认索引来自内容，调用方通常会先生成没有 id 的草稿。这里按文本匹配，让未变化的
-   * 默认索引继续指向已有向量记录。
+   * 系统索引来自内容，调用方通常会先生成没有 id 的草稿。这里按类型和文本匹配，
+   * 让未变化的系统索引继续指向已有向量记录。
    */
-  mergeExistingDefaultIndexIds({
+  mergeExistingSystemIndexIds({
     currentIndexes,
-    nextDefaultIndexes
+    nextSystemIndexes
   }: {
-    currentIndexes: DatasetDataIndexItemType[];
-    nextDefaultIndexes: DatasetDataIndexDraft[];
+    currentIndexes: DatasetDataIndexDraft[];
+    nextSystemIndexes: DatasetDataIndexDraft[];
   }) {
-    const existingDefaultMap = new Map(
+    const getIndexKey = (index: Pick<DatasetDataIndexDraft, 'type' | 'text'>) =>
+      `${index.type || DatasetDataIndexTypeEnum.custom}:${index.text}`;
+    const existingSystemIndexMap = new Map(
       currentIndexes
-        .filter((index) => index.type === DatasetDataIndexTypeEnum.default)
-        .map((index) => [index.text, index])
+        .filter((index) => isDatasetDataSystemIndexType(index.type))
+        .map((index) => [getIndexKey(index), index])
     );
 
-    return nextDefaultIndexes.map((index) => {
-      const existingIndex = existingDefaultMap.get(index.text);
+    return nextSystemIndexes.map((index) => {
+      const existingIndex = isDatasetDataSystemIndexType(index.type)
+        ? existingSystemIndexMap.get(getIndexKey(index))
+        : undefined;
       return {
         ...index,
         ...(existingIndex?.dataId && { dataId: existingIndex.dataId })
@@ -257,7 +359,7 @@ export class DatasetDataIndexOperation {
   /**
    * 对比已存索引和下一版索引，生成需要执行的向量操作。
    *
-   * 可选 filter 用于数据级更新时只 patch 默认索引，避免影响人工维护的自定义索引。
+   * 可选 filter 用于数据级更新时只 patch 系统索引，避免影响人工维护的自定义索引。
    * 可选 comparator 用于让调用方决定除文本外的字段变化是否需要重建向量。
    */
   buildPatch({
@@ -341,8 +443,76 @@ export class DatasetDataIndexOperation {
    */
   getWritablePatchIndexes(patchResult: DatasetDataIndexPatch[]) {
     return patchResult
-      .filter((item) => item.type !== 'delete')
+      .filter((item) => item.type !== 'delete' && !('skipped' in item && item.skipped))
       .map((item) => item.index) as DatasetDataIndexItemType[];
+  }
+
+  private async insertIndexVectorIds({
+    indexes,
+    teamId,
+    datasetId,
+    collectionId
+  }: {
+    indexes: DatasetDataIndexDraft[];
+    teamId: string;
+    datasetId: string;
+    collectionId: string;
+  }) {
+    const embModel = this.getEmbeddingModel();
+    const vectorInputItems = (
+      await Promise.all(
+        indexes.map(async (index) => {
+          if (!isImageEmbeddingIndex(index)) {
+            return {
+              item: index,
+              input: index.text
+            };
+          }
+
+          if (!isImageEmbeddingModel(embModel) || !isValidImageEmbeddingSource(index.text)) {
+            return;
+          }
+
+          try {
+            return {
+              item: index,
+              input: {
+                type: 'image' as const,
+                input: await normalizeDatasetIndexImageToModelInput(index.text)
+              }
+            };
+          } catch {
+            return;
+          }
+        })
+      )
+    ).filter(Boolean) as {
+      item: DatasetDataIndexDraft;
+      input: string | { type: 'image'; input: string };
+    }[];
+
+    const insertResult = vectorInputItems.length
+      ? await insertDatasetDataVector({
+          inputs: vectorInputItems.map((item) => item.input),
+          model: embModel,
+          teamId,
+          datasetId,
+          collectionId
+        })
+      : { tokens: 0, insertIds: [] as string[] };
+
+    const insertedIndexIdMap = new WeakMap<DatasetDataIndexDraft, string>();
+    vectorInputItems.forEach(({ item }, index) => {
+      const dataId = insertResult.insertIds[index];
+      if (dataId) {
+        insertedIndexIdMap.set(item, dataId);
+      }
+    });
+
+    return {
+      tokens: insertResult.tokens,
+      insertedIndexIdMap
+    };
   }
 
   /**
@@ -366,19 +536,23 @@ export class DatasetDataIndexOperation {
     );
     if (insertItems.length === 0) return 0;
 
-    const result = await insertDatasetDataVector({
-      inputs: insertItems.map((item) => item.index.text),
-      model: this.getEmbeddingModel(),
+    const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
+      indexes: insertItems.map((item) => item.index),
       teamId,
       datasetId,
       collectionId
     });
 
-    insertItems.forEach((item, index) => {
-      item.index.dataId = result.insertIds[index];
+    insertItems.forEach((item) => {
+      const dataId = insertedIndexIdMap.get(item.index);
+      if (dataId) {
+        item.index.dataId = dataId;
+      } else {
+        item.skipped = true;
+      }
     });
 
-    return result.tokens;
+    return tokens;
   }
 
   /**
@@ -396,9 +570,8 @@ export class DatasetDataIndexOperation {
     datasetId: string;
     collectionId: string;
   }) {
-    const { tokens, insertIds } = await insertDatasetDataVector({
-      inputs: indexes.map((item) => item.text),
-      model: this.getEmbeddingModel(),
+    const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
+      indexes,
       teamId,
       datasetId,
       collectionId
@@ -406,10 +579,16 @@ export class DatasetDataIndexOperation {
 
     return {
       tokens,
-      indexes: indexes.map((item, index) => ({
-        ...item,
-        dataId: insertIds[index]
-      })) as DatasetDataIndexItemType[]
+      indexes: indexes
+        .map((item) => {
+          const dataId = insertedIndexIdMap.get(item);
+          if (!dataId) return;
+          return {
+            ...item,
+            dataId
+          };
+        })
+        .filter(Boolean) as DatasetDataIndexItemType[]
     };
   }
 
@@ -447,7 +626,7 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is required');
     }
 
-    if (type === DatasetDataIndexTypeEnum.default) {
+    if (isDatasetDataSystemIndexType(type)) {
       return Promise.reject('System indexes cannot be saved separately');
     }
 
@@ -550,7 +729,7 @@ export class DatasetDataIndexOperation {
     if (!targetIndex) {
       return Promise.reject('Dataset data index not found');
     }
-    if (targetIndex.type === DatasetDataIndexTypeEnum.default) {
+    if (isDatasetDataSystemIndexType(targetIndex.type)) {
       return Promise.reject('System indexes cannot be deleted separately');
     }
 

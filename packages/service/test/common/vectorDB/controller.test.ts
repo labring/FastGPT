@@ -289,6 +289,51 @@ describe('VectorDB Controller', () => {
       });
     });
 
+    it('should pass explicit image inputs to embedding generation', async () => {
+      const mockVectors = [[0.1, 0.2]];
+      mockGetVectors.mockResolvedValue({
+        tokens: 1,
+        vectors: mockVectors
+      });
+      mockVectorInsert.mockResolvedValue({
+        insertIds: ['image_id']
+      });
+
+      const result = await insertDatasetDataVector({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        inputs: [
+          {
+            type: 'image',
+            input: 'data:image/png;base64,image'
+          }
+        ],
+        model: mockModel as any
+      });
+
+      expect(mockGetVectors).toHaveBeenCalledWith({
+        model: mockModel,
+        inputs: [
+          {
+            type: 'image',
+            input: 'data:image/png;base64,image'
+          }
+        ],
+        type: 'db'
+      });
+      expect(mockVectorInsert).toHaveBeenCalledWith({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        vectors: mockVectors
+      });
+      expect(result).toEqual({
+        tokens: 1,
+        insertIds: ['image_id']
+      });
+    });
+
     it('should invalidate team vector cache after insert', async () => {
       mockGetVectors.mockResolvedValue({
         tokens: 50,

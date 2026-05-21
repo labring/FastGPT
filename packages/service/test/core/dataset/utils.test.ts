@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import {
+  getDatasetImageIndexCapability,
+  getDatasetImageTrainingMode,
+  replaceS3KeyToPreviewUrl
+} from '@fastgpt/service/core/dataset/utils';
+import {
+  matchDatasetDataMarkdownImages,
+  matchDatasetDataMarkdownImageUrls,
+  uniqueDatasetDataMarkdownImageUrls
+} from '@fastgpt/service/core/dataset/data/utils';
+import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   jwtSignS3DownloadToken: vi.fn(
@@ -437,5 +451,146 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('https://google.com');
       expect(result).toContain('# 标题');
     });
+  });
+});
+
+describe('matchDatasetDataMarkdownImageUrls', () => {
+  it('应提取统一的 markdown 图片节点结构', () => {
+    const result = matchDatasetDataMarkdownImages(
+      '文字 ![猫]( dataset/team/cat.png ) 和 ![dog](https://example.com/dog.png)'
+    );
+
+    expect(result).toEqual([
+      {
+        raw: '![猫]( dataset/team/cat.png )',
+        alt: '猫',
+        url: 'dataset/team/cat.png',
+        index: expect.any(Number)
+      },
+      {
+        raw: '![dog](https://example.com/dog.png)',
+        alt: 'dog',
+        url: 'https://example.com/dog.png',
+        index: expect.any(Number)
+      }
+    ]);
+  });
+
+  it('应提取 markdown 图片 URL 并忽略普通链接', () => {
+    const result = matchDatasetDataMarkdownImageUrls(
+      '![a](dataset/team/a.png) [普通链接](https://example.com) ![b](https://img.test/b.jpg)'
+    );
+
+    expect(result).toEqual(['dataset/team/a.png', 'https://img.test/b.jpg']);
+  });
+
+  it('应从多个文本字段按首次出现顺序去重图片 URL', () => {
+    const result = uniqueDatasetDataMarkdownImageUrls([
+      'new ![a](dataset/team/a.png) ![a again](dataset/team/a.png)',
+      undefined,
+      'old ![b](https://example.com/b.jpg)'
+    ]);
+
+    expect(result).toEqual(['dataset/team/a.png', 'https://example.com/b.jpg']);
+  });
+});
+
+describe('getDatasetImageTrainingMode', () => {
+  it('有 VLM 且是图片数据时应走 imageParse', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: true,
+        supportImageIndex: true,
+        imageId: 'dataset/team/image.png',
+        hasMarkdownImages: false
+      })
+    ).toBe(TrainingModeEnum.imageParse);
+  });
+
+  it('有图片索引能力且正文有 markdown 图片时应走 image', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: true,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.image);
+  });
+
+  it('没有图片索引能力时应回退 chunk', () => {
+    expect(
+      getDatasetImageTrainingMode({
+        supportVlm: false,
+        supportImageIndex: false,
+        hasMarkdownImages: true
+      })
+    ).toBe(TrainingModeEnum.chunk);
+  });
+});
+
+describe('getTrainingModeByCollection', () => {
+  beforeEach(() => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: true
+    };
+  });
+
+  it('图片自动索引有 VLM 或原生 embedding 图片索引能力时进入 image 队列', () => {
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+        imageIndex: true,
+        supportImageIndex: true
+      })
+    ).toBe(TrainingModeEnum.image);
+
+    expect(
+      getTrainingModeByCollection({
+        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+        imageIndex: true,
+        supportImageIndex: false
+      })
+    ).toBe(TrainingModeEnum.chunk);
+  });
+});
+
+describe('getDatasetImageIndexCapability', () => {
+  beforeEach(() => {
+    global.embeddingModelMap.set('vision-embedding-model', {
+      ...global.systemDefaultModel.embedding,
+      model: 'vision-embedding-model',
+      name: 'vision-embedding-model',
+      vision: true
+    });
+    global.llmModelMap.set('dataset-vlm-model', {
+      ...global.systemDefaultModel.llm,
+      model: 'dataset-vlm-model',
+      name: 'dataset-vlm-model',
+      vision: true
+    });
+  });
+
+  it('未配置 VLM 时不应自动回退到默认 VLM', () => {
+    const result = getDatasetImageIndexCapability({
+      vectorModel: 'vision-embedding-model'
+    });
+
+    expect(result.supportVlm).toBe(false);
+    expect(result.supportImageEmbedding).toBe(true);
+    expect(result.supportImageIndex).toBe(true);
+    expect(result.availableVlmModel).toBeUndefined();
+  });
+
+  it('配置 VLM 时应同时返回 VLM 和多模态索引能力', () => {
+    const result = getDatasetImageIndexCapability({
+      vectorModel: 'vision-embedding-model',
+      vlmModel: 'dataset-vlm-model'
+    });
+
+    expect(result.supportVlm).toBe(true);
+    expect(result.supportImageEmbedding).toBe(true);
+    expect(result.supportImageIndex).toBe(true);
+    expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
   });
 });

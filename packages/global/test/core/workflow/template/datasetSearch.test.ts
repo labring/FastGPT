@@ -3,7 +3,7 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 
 describe('DatasetSearchModule', () => {
-  it('should deprecate legacy user question input and add array search input', () => {
+  it('should use array search input without legacy user question input', () => {
     const legacyUserQuestionInput = DatasetSearchModule.inputs.find(
       (input) => input.key === NodeInputKeyEnum.userChatInput
     );
@@ -11,8 +11,7 @@ describe('DatasetSearchModule', () => {
       (input) => input.key === NodeInputKeyEnum.datasetSearchInput
     );
 
-    expect(legacyUserQuestionInput?.valueType).toBe(WorkflowIOValueTypeEnum.string);
-    expect(legacyUserQuestionInput?.deprecated).toBe(true);
+    expect(legacyUserQuestionInput).toBeUndefined();
     expect(searchInput?.valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
   });
 });

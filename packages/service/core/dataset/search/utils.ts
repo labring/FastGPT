@@ -5,6 +5,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { serviceEnv } from '../../../env';
+import { isS3ObjectKey } from '../../../common/s3/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -23,6 +24,19 @@ export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
     const set = new Set(list);
     return acc.filter((id) => set.has(id));
   });
+};
+
+export const isValidImageEmbeddingSource = (imageUrl?: string) => {
+  const url = imageUrl?.trim();
+  if (!url) return false;
+
+  if (url.startsWith('data:image/')) return true;
+  if (isS3ObjectKey(url, 'dataset')) return true;
+  if (isS3ObjectKey(url, 'temp')) return true;
+  if (isS3ObjectKey(url, 'chat')) return true;
+  if (/^https?:\/\//i.test(url)) return true;
+
+  return false;
 };
 
 /**

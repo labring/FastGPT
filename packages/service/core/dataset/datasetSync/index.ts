@@ -1,10 +1,14 @@
-import { type Processor } from 'bullmq';
+import { type JobSchedulerJson, type Processor } from 'bullmq';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoDataset } from '../schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export type DatasetSyncJobData = {
   datasetId: string;
 };
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 export const datasetSyncQueue = getQueue<DatasetSyncJobData>(QueueNames.datasetSync, {
   defaultJobOptions: {
@@ -99,3 +103,55 @@ export const getDatasetSyncJobScheduler = (datasetId: string) => {
 export const removeDatasetSyncJobScheduler = (datasetId: string) => {
   return datasetSyncQueue.removeJobScheduler(String(datasetId));
 };
+
+export type DatasetSyncSchedulerReconcileResult = {
+  autoSyncDatasetCount: number;
+  schedulerCount: number;
+  createdSchedulerCount: number;
+  createdDatasetIds: string[];
+};
+
+/**
+ * 以 Mongo `autoSync=true` 作为期望态，补齐缺失的 BullMQ datasetSync scheduler。
+ *
+ * 该函数只增加缺失 scheduler，不修改 Mongo `autoSync`，也不移除 Redis 中已有 scheduler/job。
+ */
+export const reconcileDatasetSyncSchedulers =
+  async (): Promise<DatasetSyncSchedulerReconcileResult> => {
+    const autoSyncDatasets = await MongoDataset.find(
+      {
+        autoSync: true,
+        $or: [{ deleteTime: null }, { deleteTime: { $exists: false } }]
+      },
+      '_id'
+    ).lean();
+    const autoSyncDatasetIds = new Set(autoSyncDatasets.map((dataset) => String(dataset._id)));
+
+    const schedulers = (await datasetSyncQueue.getJobSchedulers(
+      0,
+      -1,
+      true
+    )) as JobSchedulerJson<DatasetSyncJobData>[];
+    const schedulerIds = new Set(
+      schedulers.map((scheduler) => String(scheduler.key)).filter(Boolean)
+    );
+
+    const createdDatasetIds: string[] = [];
+
+    for (const datasetId of autoSyncDatasetIds) {
+      if (schedulerIds.has(datasetId)) continue;
+
+      await upsertDatasetSyncJobScheduler({ datasetId });
+      createdDatasetIds.push(datasetId);
+    }
+
+    const result = {
+      autoSyncDatasetCount: autoSyncDatasetIds.size,
+      schedulerCount: schedulers.length,
+      createdSchedulerCount: createdDatasetIds.length,
+      createdDatasetIds
+    };
+
+    logger.info('Dataset sync scheduler reconcile finished', result);
+    return result;
+  };

@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel, isImageEmbeddingModel } from '../../ai/model';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
@@ -79,7 +79,7 @@ export const pushDataListToTrainingQueue = async ({
     return Promise.reject(i18nT('common:error_llm_not_config'));
   }
 
-  const { model, maxToken, weight } = await (async () => {
+  const { maxToken, weight } = await (async () => {
     if (mode === TrainingModeEnum.chunk) {
       return {
         maxToken: Infinity,
@@ -97,6 +97,13 @@ export const pushDataListToTrainingQueue = async ({
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
+        if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
+          return {
+            maxToken: Infinity,
+            model: vectorModelData.model,
+            weight: vectorModelData.weight
+          };
+        }
         return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {

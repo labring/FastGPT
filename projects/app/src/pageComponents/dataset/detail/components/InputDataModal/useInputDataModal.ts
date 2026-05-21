@@ -16,6 +16,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type InputDataType = {
@@ -45,8 +46,8 @@ const clearEditingIndexDelay = 600;
 
 const sortIndexesForDisplay = (indexes: InputDataIndexType[] = []) => {
   const getOrder = (index: InputDataIndexType) => {
-    // Keep the editable custom indexes before the generated default index.
-    if (index.type === DatasetDataIndexTypeEnum.default) return 1;
+    // Keep editable indexes before the generated system indexes.
+    if (isDatasetDataSystemIndexType(index.type)) return 1;
     return 0;
   };
 
@@ -82,7 +83,7 @@ const formatIndexesForForm = (
 
 const formatIndexesForRequest = (indexes: InputDataType['indexes'] = []) =>
   indexes
-    .filter((item) => !!item.text?.trim())
+    .filter((item) => !isDatasetDataSystemIndexType(item.type) && !!item.text?.trim())
     .map((item) => ({
       // Strip UI-only fields before submitting to the import API.
       type: item.type,
@@ -346,12 +347,17 @@ export const useInputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:error.unKnow'));
 
-      await putDatasetDataById({
+      const updateResult = await putDatasetDataById({
         dataId,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : ''
       });
-      return refreshDataForm(dataId);
+      const refreshedData = await refreshDataForm(dataId);
+      return {
+        ...refreshedData,
+        q: updateResult.q ?? refreshedData.q,
+        a: updateResult.a ?? refreshedData.a
+      };
     },
     {
       refreshDeps: [currentTab, refreshDataForm],
@@ -377,7 +383,7 @@ export const useInputDataModal = ({
       const text = targetIndex?.text?.trim() || '';
       const type = targetIndex?.type || DatasetDataIndexTypeEnum.custom;
 
-      if (type === DatasetDataIndexTypeEnum.default) {
+      if (isDatasetDataSystemIndexType(type)) {
         return;
       }
 
@@ -456,6 +462,12 @@ export const useInputDataModal = ({
         if (successData) {
           onSuccess(successData);
         }
+        if (!shouldSaveLatest) {
+          toast({
+            title: t('common:save_success'),
+            status: 'success'
+          });
+        }
       } catch (error) {
         saveError = error;
       } finally {
@@ -476,7 +488,16 @@ export const useInputDataModal = ({
       }
     },
     {
-      refreshDeps: [dataId, findIndexByClientId, getSuccessData, getValues, removeIndexes, setValue]
+      refreshDeps: [
+        dataId,
+        findIndexByClientId,
+        getSuccessData,
+        getValues,
+        removeIndexes,
+        setValue,
+        t,
+        toast
+      ]
     }
   );
 

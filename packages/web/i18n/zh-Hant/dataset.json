@@ -50,6 +50,8 @@
   "data_amount": "{{dataAmount}} 組資料，{{indexAmount}} 組索引",
   "data_error_amount": "{{errorAmount}} 組訓練異常",
   "data_index_image": "圖片索引",
+  "data_index_image_embedding": "多模態圖片索引",
+  "image_embedding_index_default_desc": "已透過多模態模型生成圖片向量，支援以圖搜圖",
   "data_parsing": "數據解析中",
   "data_uploading": "數據上傳中: {{num}}%",
   "dataset.Chunk_Number": "分塊號",

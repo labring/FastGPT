@@ -1,6 +1,6 @@
 import {
-  updateDatasetDataByIndexes,
-  updateDatasetDataDefaultIndexes
+  updateDatasetDataSystemIndexes,
+  updateDatasetDataByIndexes
 } from '@/service/core/dataset/data/data';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
@@ -16,6 +16,9 @@ import {
   UpdateDatasetDataResponseSchema,
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { addHours } from 'date-fns';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
   const { dataId, q, a, indexes } = parseApiInput({
@@ -26,11 +29,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   // auth data permission
   const {
-    collection: {
-      dataset: { vectorModel },
-      name,
-      indexPrefixTitle
-    },
+    collection: { name, indexPrefixTitle },
     teamId,
     tmbId,
     collection,
@@ -43,13 +42,38 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     per: WritePermissionVal
   });
 
+  const dataset = collection.dataset;
+  const vectorModel = dataset.vectorModel;
+  const nextQ = q ?? datasetData.q ?? '';
+  const nextA = a ?? datasetData.a ?? '';
+  const pushUpdateDataAuditLog = () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_DATA,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  };
+
   if (hasIndexes) {
+    // 兼容旧 API：调用方显式传 indexes 时仍按完整索引更新。
+    // imageEmbedding 是系统索引，不能被外部 indexes 覆盖，统一由 dataIndex 根据数据内容重建。
+    const manualIndexes = indexes?.filter(
+      (index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding
+    );
     const { tokens } = await updateDatasetDataByIndexes({
       dataId,
-      q,
-      a,
-      indexes: indexes ?? [],
+      q: nextQ,
+      a: nextA,
+      imageId: datasetData.imageId,
+      imageIndex: !!collection.imageIndex,
+      indexes: manualIndexes || [],
       model: vectorModel,
+      indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
@@ -61,14 +85,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         model: vectorModel
       });
     }
-  } else {
-    const nextQ = q || datasetData.q || '';
-    const nextA = a ?? datasetData.a ?? '';
-
-    const { tokens } = await updateDatasetDataDefaultIndexes({
+  } else if (!!nextQ || !!datasetData.imageId) {
+    const { tokens } = await updateDatasetDataSystemIndexes({
       dataId,
       q: nextQ,
       a: nextA,
+      imageId: datasetData.imageId,
+      imageIndex: !!collection.imageIndex,
       model: vectorModel,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
@@ -84,20 +107,12 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     }
   }
 
-  (() => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_DATA,
-      params: {
-        collectionName: collection.name,
-        datasetName: collection.dataset?.name || '',
-        datasetType: getI18nDatasetType(collection.dataset?.type || '')
-      }
-    });
-  })();
+  pushUpdateDataAuditLog();
 
-  return UpdateDatasetDataResponseSchema.parse({});
+  return UpdateDatasetDataResponseSchema.parse({
+    q: replaceS3KeyToPreviewUrl(nextQ, addHours(new Date(), 1)),
+    a: nextA ? replaceS3KeyToPreviewUrl(nextA, addHours(new Date(), 1)) : undefined
+  });
 }
 
 export default NextAPI(handler);

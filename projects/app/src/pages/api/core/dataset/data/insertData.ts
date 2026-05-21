@@ -47,6 +47,8 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     {
       dataset: { _id: datasetId, vectorModel },
       indexPrefixTitle,
+      imageIndex,
+      indexSize,
       name
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
@@ -76,8 +78,10 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     q: formatQ,
     a: formatA,
     chunkIndex: 0,
+    indexSize,
     indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
     embeddingModel: vectorModelData.model,
+    imageIndex: !!imageIndex,
     indexes: formatIndexes
   });
 

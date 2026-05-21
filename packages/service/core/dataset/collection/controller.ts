@@ -25,6 +25,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
+import { getDatasetImageIndexCapability } from '../utils';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize
@@ -77,7 +78,11 @@ export const createCollectionAndInsertData = async ({
   const trainingMode = getTrainingModeByCollection({
     trainingType: trainingType,
     autoIndexes: formatCreateCollectionParams.autoIndexes,
-    imageIndex: formatCreateCollectionParams.imageIndex
+    imageIndex: formatCreateCollectionParams.imageIndex,
+    supportImageIndex: getDatasetImageIndexCapability({
+      vectorModel: dataset.vectorModel,
+      vlmModel: dataset.vlmModel
+    }).supportImageIndex
   });
 
   if (

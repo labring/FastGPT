@@ -53,7 +53,16 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
  * ============================================================================ */
 export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema;
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
-export const UpdateDatasetDataResponseSchema = z.object({});
+export const UpdateDatasetDataResponseSchema = z.object({
+  q: z.string().optional().meta({
+    example: '![image.png](/api/system/file/download/xxx?filename=image.png)',
+    description: '展示态问题/主文本，内部 S3 图片会替换为签名访问地址'
+  }),
+  a: z.string().optional().meta({
+    example: 'FastGPT 是一个 AI Agent 构建平台',
+    description: '展示态回答/补充文本，内部 S3 图片会替换为签名访问地址'
+  })
+});
 export type UpdateDatasetDataResponse = z.infer<typeof UpdateDatasetDataResponseSchema>;
 
 const DatasetDataIndexContentSchema = z.object({

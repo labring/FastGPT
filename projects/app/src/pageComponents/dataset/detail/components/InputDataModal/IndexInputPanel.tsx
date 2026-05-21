@@ -11,6 +11,7 @@ import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import type { InputDataType } from './useInputDataModal';
 
 type IndexField = UseFieldArrayReturn<InputDataType, 'indexes'>['fields'][number];
@@ -91,10 +92,14 @@ const IndexInputPanel = ({
             const canFoldIndex = indexes.length > 1;
             const hasIndexDataId = !!index.dataId;
             const isDeletingCurrentIndex = deletingIndexClientId === index.clientId;
-            const isDefaultIndex = index.type === DatasetDataIndexTypeEnum.default;
+            const isSystem = isDatasetDataSystemIndexType(index.type);
             const canDeleteIndex =
-              canWrite && !isDefaultIndex && hasIndexDataId && !isDeletingCurrentIndex;
+              canWrite && !isSystem && hasIndexDataId && !isDeletingCurrentIndex;
             const canToggleFold = canFoldIndex && !isDeletingCurrentIndex;
+            const isImageEmbeddingIndex = index.type === DatasetDataIndexTypeEnum.imageEmbedding;
+            const indexText = isImageEmbeddingIndex
+              ? t('dataset:image_embedding_index_default_desc')
+              : index.text;
 
             return (
               <MyBox
@@ -152,11 +157,11 @@ const IndexInputPanel = ({
                   )}
                 </Flex>
                 <DataIndexTextArea
-                  disabled={!canWrite || isDefaultIndex}
+                  disabled={!canWrite || isSystem}
                   canClickMark={hasIndexDataId}
                   autoFocus={focusIndexClientId === index.clientId}
                   index={i}
-                  value={index.text}
+                  value={indexText}
                   isFolder={index.fold && canFoldIndex}
                   maxToken={maxToken}
                   register={register}

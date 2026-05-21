@@ -4,6 +4,7 @@ import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
 import { isS3ObjectKey, jwtSignS3DownloadToken } from '../../../common/s3/utils';
 import { S3Buckets } from '../../../common/s3/config/constants';
+import { matchDatasetDataMarkdownImages } from './utils';
 
 export const formatDatasetDataValue = ({
   q,
@@ -24,15 +25,23 @@ export const formatDatasetDataValue = ({
   if (imageDescMap) {
     // Helper function to replace image markdown with description
     const replaceImageMarkdown = (text: string): string => {
-      return text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, altText, url) => {
-        const description = imageDescMap[url];
+      const matches = matchDatasetDataMarkdownImages(text);
+      let content = text;
+
+      for (const item of matches.slice().reverse()) {
+        const description = imageDescMap[item.url];
         if (description) {
           // Add description to alt text, keeping original if exists
-          const newAltText = altText ? `${altText} - ${description}` : description;
-          return `![${newAltText.replace(/\n/g, '')}](${url})`;
+          const newAltText = item.alt ? `${item.alt} - ${description}` : description;
+          const replacement = `![${newAltText.replace(/\n/g, '')}](${item.url})`;
+          content =
+            content.slice(0, item.index) +
+            replacement +
+            content.slice(item.index + item.raw.length);
         }
-        return match; // Return original if no description found
-      });
+      }
+
+      return content;
     };
 
     // Apply replacement to both q and a

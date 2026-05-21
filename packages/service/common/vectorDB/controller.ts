@@ -4,6 +4,7 @@ import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
 import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectors } from '../../core/ai/embedding';
+import type { GetVectorsProps } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
@@ -103,12 +104,21 @@ export const initVectorStore = Vector.init;
 export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
   retryFn(() => Vector.embRecall(props));
 
+type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
+
+/**
+ * 统一写入知识库索引向量。
+ *
+ * `inputs` 的 text/image 类型只用于告诉 embedding 模型如何生成向量；
+ * 进入向量库时已经统一成 number[][]，向量库本身不区分文本向量或图片向量。
+ * 传入 string 时保持旧行为，默认按文本生成 embedding。
+ */
 export const insertDatasetDataVector = async ({
   model,
   inputs,
   ...props
 }: Omit<InsertVectorControllerPropsType, 'vectors'> & {
-  inputs: string[];
+  inputs: DatasetVectorInput[];
   model: EmbeddingModelItemType;
 }) => {
   if (inputs.length === 0) {
@@ -118,12 +128,17 @@ export const insertDatasetDataVector = async ({
     };
   }
 
+  const embeddingInputs = inputs.map((input) =>
+    typeof input === 'string'
+      ? {
+          type: 'text' as const,
+          input
+        }
+      : input
+  );
   const { vectors, tokens } = await getVectors({
     model,
-    inputs: inputs.map((text) => ({
-      type: 'text',
-      input: text
-    })),
+    inputs: embeddingInputs,
     type: 'db'
   });
   const { insertIds } = await retryFn(() =>
