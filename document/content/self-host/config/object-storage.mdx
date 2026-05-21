@@ -32,18 +32,17 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ### 自部署的 MinIO 和 AWS S3
 
-> MinIO 这类产品对 AWS S3 协议支持比较完整，因此使用 Minio 和AWS S3 配置几乎可以是相同的，只是因为服务商提供和自部署的区别，会有额外的配置。
-> 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
+> MinIO 这类产品对 AWS S3 协议支持比较完整，因此使用 Minio 和 AWS S3 配置几乎可以是相同的，只是因为服务商提供和自部署的区别，会有额外的配置。> 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
 
-- `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 id 连接，比如 `http://fastgpt-minio:9000`
+- `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 ID 连接，比如 `http://fastgpt-minio:9000`
 - `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。配置后，默认下载模式会自动切换为 `presigned`。
-- `STORAGE_S3_CDN_ENDPOINT` 【可选】S3/MinIO 预签名下载与预览访问的 CDN 地址。仅在当前下载走 `presigned` 模式时，FastGPT 会在生成文件访问 URL 后把地址替换成该 CDN 地址；该变量不会改变默认下载模式。上传仍走 FastGPT 后端代理，不会使用 CDN。
-- `STORAGE_S3_FORCE_PATH_STYLE` 【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
-- `STORAGE_S3_MAX_RETRIES` 【可选】请求最大尝试次数，默认为 3 次
+- `STORAGE_S3_CDN_ENDPOINT`【可选】S3/MinIO 预签名下载与预览访问的 CDN 地址。仅在当前下载走 `presigned` 模式时，FastGPT 会在生成文件访问 URL 后把地址替换成该 CDN 地址；该变量不会改变默认下载模式。上传仍走 FastGPT 后端代理，不会使用 CDN。
+- `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
+- `STORAGE_S3_MAX_RETRIES`【可选】请求最大尝试次数，默认为 3 次
 
 **完整示例**
 
-> 如果使用的是 Sealos 的对象存储服务请将 `STORAGE_VENDOR` 填写为 `aws-s3`
+> 如果使用的是 Sealos 的对象存储服务请将 `STORAGE_VENDOR` 填写为 `minio`
 
 ```dotenv
 STORAGE_VENDOR=minio
@@ -66,7 +65,7 @@ STORAGE_S3_MAX_RETRIES=3
 - `STORAGE_OSS_ENDPOINT` 阿里云对象存储连接主机名，厂商提供的默认值一般都是 `{地区}.aliyuncs.com`，如 `oss-cn-hangzhou.aliyuncs.com`；注意，如果配置了自定义域名的话也填在这里，比如 `your-domain.com`
 - `STORAGE_OSS_CNAME` 是否开启自定义域名
 - `STORAGE_OSS_SECURE` 是否开启了 TLS，如果域名没有认证证书的话，请关闭该选项
-- `STORAGE_OSS_INTERNAL` 【可选】是否开启内网访问，如果你的服务也在阿里云的话可以开启并节省流量，默认关闭
+- `STORAGE_OSS_INTERNAL`【可选】是否开启内网访问，如果你的服务也在阿里云的话可以开启并节省流量，默认关闭
 
 **完整示例**
 
@@ -88,9 +87,9 @@ STORAGE_OSS_INTERNAL=false
 > - [跨域配置](https://cloud.tencent.com/document/product/436/13318)
 
 - `STORAGE_COS_PROTOCOL` 枚举可选值 `https:`、`http:`，注意不要忘记 `:`；如果自定义域名没有上传证书的话，请不要设置为 `https:`
-- `STORAGE_COS_USE_ACCELERATE` 【可选】是否启用全球加速域名，默认为 false。若改为 true，需要存储桶开启全球加速功能
-- `STORAGE_COS_CNAME_DOMAIN` 【可选】自定义域名，如 `your-domain.com`
-- `STORAGE_COS_PROXY` 【可选】代理服务器，如 `http://localhost:7897`
+- `STORAGE_COS_USE_ACCELERATE`【可选】是否启用全球加速域名，默认为 false。若改为 true，需要存储桶开启全球加速功能
+- `STORAGE_COS_CNAME_DOMAIN`【可选】自定义域名，如 `your-domain.com`
+- `STORAGE_COS_PROXY`【可选】代理服务器，如 `http://localhost:7897`
 
 **完整示例**
 
