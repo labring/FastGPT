@@ -25,12 +25,6 @@ export type SandboxLogEntry = {
   phase: SandboxStatusPhase;
 };
 
-export type SandboxEndpoint = {
-  sandboxId: string;
-  port: number;
-  proxyRevision?: string;
-};
-
 type SkillDetailContextType = {
   skillId: string;
   skillDetail: AgentSkillDetailType | undefined;
@@ -42,11 +36,11 @@ type SkillDetailContextType = {
   setShowHistories: (v: boolean) => void;
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
-  sandboxEndpoint: SandboxEndpoint | null;
   sandboxError: string | null;
   isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
+  saveAllRef: React.MutableRefObject<(() => Promise<void>) | undefined>;
 };
 
 export const SkillDetailContext = createContext<SkillDetailContextType>({
@@ -60,11 +54,11 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   setShowHistories: () => {},
   sandboxState: 'idle',
   sandboxLogs: [],
-  sandboxEndpoint: null,
   sandboxError: null,
   isSkillReady: false,
   startSandbox: () => {},
-  restartSandbox: () => {}
+  restartSandbox: () => {},
+  saveAllRef: { current: undefined }
 });
 
 const formatTimestamp = () => {
@@ -85,10 +79,10 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   // Sandbox states
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
-  const [sandboxEndpoint, setSandboxEndpoint] = useState<SandboxEndpoint | null>(null);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const hasStartedRef = useRef(false);
+  const saveAllRef = useRef<() => Promise<void>>();
 
   const phaseToMessage = useCallback(
     (status: SandboxStatusItemType): string => {
@@ -122,7 +116,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
     setSandboxState('idle');
     setSandboxLogs([]);
-    setSandboxEndpoint(null);
     setSandboxError(null);
 
     let hasReceivedFirstEvent = false;
@@ -143,12 +136,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         };
         setSandboxLogs((prev) => [...prev, entry]);
 
-        if (status.phase === 'ready' && status.endpoint?.port) {
-          setSandboxEndpoint({
-            sandboxId: status.sandboxId,
-            port: status.endpoint.port,
-            proxyRevision: status.endpoint.proxyRevision
-          });
+        if (status.phase === 'ready') {
           setSandboxState('ready');
         } else if (status.phase === 'failed') {
           setSandboxError(status.message || t('skill:sandbox_error_title'));
@@ -265,11 +253,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       setShowHistories,
       sandboxState: visibleSandboxState,
       sandboxLogs,
-      sandboxEndpoint,
       sandboxError: visibleSandboxError,
       isSkillReady,
       startSandbox,
-      restartSandbox
+      restartSandbox,
+      saveAllRef
     }),
     [
       skillId,
@@ -280,7 +268,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       showHistories,
       visibleSandboxState,
       sandboxLogs,
-      sandboxEndpoint,
       visibleSandboxError,
       isSkillReady,
       startSandbox,

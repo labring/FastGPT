@@ -16,7 +16,7 @@
     "test": "pnpm test:workspace",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",
-    "test:workspace": "turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/sandbox-proxy",
+    "test:workspace": "turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service",
     "test:app": "turbo run test --filter=@fastgpt/app",
     "test:admin": "turbo run test --filter=@fastgpt/admin",
     "test:global": "turbo run test --filter=@fastgpt/global",

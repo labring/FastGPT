@@ -13,17 +13,13 @@ import {
   getSandboxProviderConfig,
   validateSandboxConfig
 } from '../../sandbox/config';
-import type {
-  SandboxImageConfigType,
-  SkillSandboxEndpointType
-} from '@fastgpt/global/core/ai/skill/type';
+import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
   disconnectSandbox,
   getReadySandboxInfo,
-  getSandboxEndpoint,
   SandboxClient,
   getSandboxClient
 } from '../../sandbox/controller';
@@ -32,7 +28,6 @@ import {
   deleteSandboxInstanceRecord,
   findSandboxInstanceByAppChatType,
   findSandboxResourcesByAppChatTypeExcludeProvider,
-  updateSandboxInstanceEndpoint,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -53,7 +48,6 @@ export type CreateEditDebugSandboxParams = {
 
 export type CreateEditDebugSandboxResult = {
   sandboxId: string;
-  endpoint: SkillSandboxEndpointType;
   status: {
     state: string;
     message?: string;
@@ -134,7 +128,7 @@ export async function createEditDebugSandbox(
           )} ] && [ ${shellQuote(relativeSkillsRootPath)} != ${shellQuote(skillsRootPath)} ]; then`,
           `find ${shellQuote(
             relativeSkillsRootPath
-          )} -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(`${skillsRootPath}/`)} \\;;`,
+          )} -mindepth 1 -maxdepth 1 -exec mv {} ${shellQuote(`${skillsRootPath}/`)} \\; ;`,
           'fi'
         ].join(' '),
         [
@@ -159,9 +153,9 @@ export async function createEditDebugSandbox(
           `mkdir -p "$target_dir" &&`,
           `find ${shellQuote(
             skillsRootPath
-          )} -mindepth 1 -maxdepth 1 ! -name "$frontmatter_name" -exec mv {} "$target_dir/" \\;;`,
+          )} -mindepth 1 -maxdepth 1 ! -name "$frontmatter_name" -exec mv {} "$target_dir/" \\; ;`,
           `fi;`,
-          `fi;`
+          `fi`
         ].join(' '),
         [
           `single_dir=$(find ${shellQuote(
@@ -181,7 +175,7 @@ export async function createEditDebugSandbox(
           `fi;`,
           `fi`
         ].join(' ')
-      ].join(' && ')
+      ].join('; ')
     );
 
     if (migrateResult.exitCode !== 0) {
@@ -213,26 +207,23 @@ export async function createEditDebugSandbox(
       sandbox = connected.sandbox;
       await ensureEditSkillDirectory(sandbox);
 
-      const endpointInfo = await getSandboxEndpoint(sandbox);
-
-      await updateSandboxInstanceEndpoint({ instanceId: instance._id, endpoint: endpointInfo });
+      const existingMetadata = instance.metadata || {};
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
         appId: skillId,
         userId: '',
-        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+        metadata: existingMetadata
       });
 
       onProgress?.({
         sandboxId: instance.sandboxId,
-        phase: 'ready',
-        endpoint: endpointInfo
+        phase: 'ready'
       });
 
       return {
         sandboxId: instance.sandboxId,
-        endpoint: endpointInfo,
         status: { state: 'Running' }
       };
     } catch (error) {
@@ -377,8 +368,6 @@ export async function createEditDebugSandbox(
       throw new Error(`Failed to extract package: ${extractResult.stderr}`);
     }
 
-    const endpointInfo = await getSandboxEndpoint(client.provider);
-
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: sessionId,
@@ -394,7 +383,6 @@ export async function createEditDebugSandbox(
         provider: providerConfig.provider,
         image: sandboxInfo.image,
         providerCreatedAt: sandboxInfo.createdAt,
-        endpoint: endpointInfo,
         storage: {
           key: currentVersion.storageKey,
           uploadedAt: new Date()
@@ -410,13 +398,11 @@ export async function createEditDebugSandbox(
 
     onProgress?.({
       sandboxId: sessionId,
-      phase: 'ready',
-      endpoint: endpointInfo
+      phase: 'ready'
     });
 
     return {
       sandboxId: sessionId,
-      endpoint: endpointInfo,
       status: {
         state: sandboxInfo.status.state,
         message: sandboxInfo.status.message

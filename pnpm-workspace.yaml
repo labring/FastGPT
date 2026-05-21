@@ -5,7 +5,6 @@ packages:
   - projects/code-sandbox
   - projects/marketplace
   - projects/mcp_server
-  - projects/sandbox-proxy
   - pro/admin
   - pro/sso
 
@@ -13,9 +12,16 @@ packages:
   - scripts/icon
   - sdk/*
 
-catalogMode: prefer
-
 catalog:
+  '@chakra-ui/anatomy': ^2
+  '@chakra-ui/icons': ^2
+  '@chakra-ui/next-js': ^2
+  '@chakra-ui/react': ^2
+  '@chakra-ui/styled-system': ^2
+  '@chakra-ui/system': ^2
+  '@dnd-kit/core': ^6.3.1
+  '@emotion/react': ^11
+  '@emotion/styled': ^11
   '@modelcontextprotocol/sdk': ^1
   '@node-rs/jieba': 2.0.1
   '@svgr/webpack': ^6.5.1
@@ -26,31 +32,23 @@ catalog:
   '@types/lodash': ^4
   '@types/mime-types': ^3.0.1
   '@types/node': ^20
+  '@types/proxy-addr': 2.0.3
   '@types/react': ^18
   '@types/react-dom': ^18
   '@types/request-ip': ^0.0.38
-  '@types/proxy-addr': 2.0.3
   '@vitest/coverage-v8': ^4.1.5
-  '@chakra-ui/anatomy': ^2
-  '@chakra-ui/icons': ^2
-  '@chakra-ui/next-js': ^2
-  '@chakra-ui/react': ^2
-  '@chakra-ui/styled-system': ^2
-  '@chakra-ui/system': ^2
-  '@emotion/react': ^11
-  '@emotion/styled': ^11
   ahooks: ^3.9.5
   axios: ^1.16.0
-  ipaddr.js: ^2.4.0
   chalk: ^5.6.2
   date-fns: ^3.6.0
   dayjs: 1.11.19
   express: ^4
   file-type: 21.3.0
   i18next: 23.16.8
+  ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
-  jsonwebtoken: ^9.0.3
   json5: ^2.2.3
+  jsonwebtoken: ^9.0.3
   lodash: 4.17.23
   mime: ^4.1.0
   mime-types: 3.0.2
@@ -75,6 +73,8 @@ catalog:
   typescript: ^5.9.3
   vitest: ^4.1.5
   zod: ^4
+
+catalogMode: prefer
 
 catalogs:
   lint:

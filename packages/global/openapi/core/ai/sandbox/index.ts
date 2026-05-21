@@ -13,12 +13,8 @@ import {
   SandboxCheckExistResponseSchema,
   SandboxGetHtmlPreviewLinkBodySchema,
   SandboxGetHtmlPreviewLinkResponseSchema,
-  SandboxProxyTokenBodySchema,
-  SandboxProxyTokenResponseSchema,
-  SandboxHeartbeatBodySchema,
-  SandboxHeartbeatResponseSchema,
-  SandboxProxyTargetBodySchema,
-  SandboxProxyTargetResponseSchema
+  SandboxFileOpBodySchema,
+  SandboxFileOpResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
@@ -170,74 +166,24 @@ export const SandboxPath: OpenAPIPath = {
     }
   },
 
-  '/core/sandbox/proxy/token': {
+  '/core/ai/sandbox/fileOp': {
     post: {
-      summary: '签发 sandbox-proxy 访问 token',
-      description: '为已授权用户签发访问 sandbox-proxy 指定 sandbox 服务的短期 JWT',
+      summary: '文件系统操作',
+      description: '在沙盒中执行创建目录、删除、移动和复制等文件系统操作',
       tags: [TagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxProxyTokenBodySchema
+            schema: SandboxFileOpBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: 'sandbox-proxy token',
+          description: '操作成功',
           content: {
             'application/json': {
-              schema: SandboxProxyTokenResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
-  '/core/sandbox/internal/heartbeat': {
-    post: {
-      summary: '更新 sandbox 活跃时间',
-      description: 'sandbox-proxy 内部接口，在 code-server websocket 存活时刷新 sandbox 活跃时间',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxHeartbeatBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '刷新结果',
-          content: {
-            'application/json': {
-              schema: SandboxHeartbeatResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
-  '/core/sandbox/internal/proxyTarget': {
-    post: {
-      summary: '获取 sandbox-proxy 上游目标',
-      description: 'sandbox-proxy 内部接口，根据 sandboxId 和服务名解析 provider 上游目标',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxProxyTargetBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: 'sandbox-proxy 上游目标',
-          content: {
-            'application/json': {
-              schema: SandboxProxyTargetResponseSchema
+              schema: SandboxFileOpResponseSchema
             }
           }
         }

@@ -4,20 +4,8 @@
 WORKDIR="${FASTGPT_WORKDIR:-/home/sandbox}"
 mkdir -p "${WORKDIR}"
 
-# Capture the flag before unsetting, then clear all FastGPT runtime vars
-_ENABLE_CODE_SERVER="${FASTGPT_ENABLE_CODE_SERVER}"
-unset FASTGPT_SESSION_ID FASTGPT_WORKDIR FASTGPT_ENABLE_CODE_SERVER
+# Clear all FastGPT runtime vars for security
+unset FASTGPT_SESSION_ID FASTGPT_WORKDIR
 
-# Start code-server or sleep forever
-if [ "${_ENABLE_CODE_SERVER}" = "true" ]; then
-  exec code-server \
-       --disable-telemetry \
-       --disable-update-check \
-       --disable-workspace-trust \
-       --disable-getting-started-override \
-       --app-name "Skills" \
-       --user-data-dir /home/sandbox/.local/share/code-server \
-       "${WORKDIR}"
-else
-  exec sleep infinity
-fi
+# Keep the sandbox running so backend can execute commands
+exec sleep infinity

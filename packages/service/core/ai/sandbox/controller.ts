@@ -3,7 +3,6 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxProtocolEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { serviceEnv } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -13,8 +12,7 @@ import {
   type OpenSandboxAdapter,
   type OpenSandboxConfigType,
   type ResourceLimits,
-  type SandboxCreateSpec,
-  type SandboxProxyTarget
+  type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getOpenSandboxConnectionConfig,
@@ -32,8 +30,6 @@ import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { SandboxResourceDoc } from './instance';
-import type { SkillSandboxEndpointType } from '@fastgpt/global/core/ai/skill/type';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -42,11 +38,7 @@ type UnionIdType = {
   chatId: string;
 };
 
-type CodeServerProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
 export type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
-
-const buildSandboxProxyRevision = (endpoint: SkillSandboxEndpointType): string =>
-  hashStr(endpoint.url).slice(0, 16);
 
 const SANDBOX_PROVIDER_RETRY_TIMEOUT_MS = 30_000;
 const SANDBOX_PROVIDER_RETRY_INTERVAL_MS = 1_000;
@@ -343,43 +335,6 @@ export async function disconnectSandbox(sandbox: ISandbox): Promise<void> {
   }
 }
 
-export async function getSandboxEndpoint(sandbox: ISandbox): Promise<SkillSandboxEndpointType> {
-  if (typeof sandbox.getEndpoint !== 'function') {
-    throw new Error(
-      `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
-    );
-  }
-
-  const endpoint = await retrySandboxProviderProbe('get code-server endpoint', () =>
-    sandbox.getEndpoint('code-server')
-  );
-  const skillEndpoint: SkillSandboxEndpointType = {
-    host: endpoint.host,
-    port: endpoint.port,
-    protocol: endpoint.protocol === 'https' ? SandboxProtocolEnum.https : SandboxProtocolEnum.http,
-    url: endpoint.url
-  };
-
-  return {
-    ...skillEndpoint,
-    proxyRevision: buildSandboxProxyRevision(skillEndpoint)
-  };
-}
-
-export async function getSandboxCodeServerProxyTarget(
-  sandbox: ISandbox
-): Promise<CodeServerProxyTarget> {
-  if (typeof sandbox.getProxyTarget !== 'function') {
-    throw new Error(
-      `Sandbox provider "${sandbox.provider}" does not expose proxy target capability through @fastgpt/sandbox.`
-    );
-  }
-
-  return retrySandboxProviderProbe('get code-server proxy target', () =>
-    sandbox.getProxyTarget('code-server')
-  );
-}
-
 export class SandboxClient {
   private appId?: string;
   private userId?: string;
@@ -569,10 +524,12 @@ export const getSandboxClient = async (
   const sandboxId = (() => {
     if ('sandboxId' in props) {
       return props.sandboxId;
-    } else {
-      return generateSandboxId(props.appId, props.userId, props.chatId);
     }
+
+    const sandboxUserId = props.chatId === 'edit-debug' ? '' : props.userId;
+    return generateSandboxId(props.appId, sandboxUserId, props.chatId);
   })();
+
   const vmConfig = await getVolumeManagerConfig(sandboxId);
 
   const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });

@@ -20,12 +20,16 @@ export const useSandboxEditor = ({
   appId,
   chatId,
   outLinkAuthData,
-  afterClose
+  afterClose,
+  showFileOps = false,
+  showDownload = true
 }: {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   afterClose?: () => void;
+  showFileOps?: boolean;
+  showDownload?: boolean;
 }) => {
   const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
 
@@ -45,9 +49,19 @@ export const useSandboxEditor = ({
         appId={appId}
         chatId={chatId}
         outLinkAuthData={outLinkAuthData}
+        showFileOps={showFileOps}
+        showDownload={showDownload}
       />
     ) : null;
-  }, [sandboxModalOpen, onCloseSandboxModal, appId, chatId, outLinkAuthData]);
+  }, [
+    sandboxModalOpen,
+    onCloseSandboxModal,
+    appId,
+    chatId,
+    outLinkAuthData,
+    showFileOps,
+    showDownload
+  ]);
 
   return {
     SandboxEditorModal: SandboxEditorModalDom,
@@ -137,7 +151,7 @@ export const useSandboxStatus = ({
             icon={<MyIcon name={'core/app/sandbox/file'} w={'16px'} />}
             onClick={onOpen}
             {...props}
-            aria-label="Sandbox Entry"
+            aria-label={t('chat:sandbox_entry_tooltip')}
           />
         </MyTooltip>
       );

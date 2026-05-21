@@ -81,16 +81,14 @@ vi.mock('@fastgpt-sdk/sandbox-adapter', () => {
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import {
-  SandboxClient,
-  connectReadySandboxByInstance,
   connectToSandbox,
   disconnectSandbox,
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId,
-  getSandboxCodeServerProxyTarget,
   getReadySandboxInfo,
   getSandboxClient,
-  getSandboxEndpoint
+  SandboxClient,
+  connectReadySandboxByInstance
 } from '@fastgpt/service/core/ai/sandbox/controller';
 
 const { Types } = connectionMongo;
@@ -411,149 +409,6 @@ describe('sandbox runtime helpers', () => {
         provider: 'sealosdevbox'
       } as any)
     ).resolves.toBeUndefined();
-  });
-
-  it('throws when endpoint capability is unavailable on current provider', async () => {
-    await expect(
-      getSandboxEndpoint({
-        provider: 'sealosdevbox'
-      } as any)
-    ).rejects.toThrow('does not expose endpoint capability');
-  });
-
-  it('throws when proxy target capability is unavailable on current provider', async () => {
-    await expect(
-      getSandboxCodeServerProxyTarget({
-        provider: 'sealosdevbox'
-      } as any)
-    ).rejects.toThrow('does not expose proxy target capability');
-  });
-
-  it('uses a stable endpoint hash as sandbox proxy revision', async () => {
-    await expect(
-      getSandboxEndpoint({
-        provider: 'sealosdevbox',
-        getEndpoint: vi.fn(async () => ({
-          host: 'gateway.example.com',
-          port: 443,
-          protocol: 'https',
-          url: 'https://gateway.example.com/code-server/devbox-new'
-        }))
-      } as any)
-    ).resolves.toEqual({
-      host: 'gateway.example.com',
-      port: 443,
-      protocol: 'https',
-      url: 'https://gateway.example.com/code-server/devbox-new',
-      proxyRevision: 'ef0ea93d2c1b7b60'
-    });
-  });
-
-  it('keeps sandbox method context while resolving endpoint', async () => {
-    const sandbox = {
-      provider: 'opensandbox',
-      endpoint: {
-        host: 'gateway.example.com',
-        port: 443,
-        protocol: 'https',
-        url: 'https://gateway.example.com/code-server/context-bound'
-      },
-      async getEndpoint(this: any, selector: 'code-server') {
-        expect(selector).toBe('code-server');
-        return this.endpoint;
-      }
-    };
-
-    await expect(getSandboxEndpoint(sandbox as any)).resolves.toMatchObject({
-      url: sandbox.endpoint.url
-    });
-  });
-
-  it('retries transient provider failures while resolving endpoint', async () => {
-    vi.useFakeTimers();
-    const getEndpointMock = vi
-      .fn()
-      .mockRejectedValueOnce(
-        Object.assign(
-          new Error('Devbox API returned non-JSON response (503): no healthy upstream'),
-          {
-            status: 503,
-            rawBody: 'no healthy upstream'
-          }
-        )
-      )
-      .mockResolvedValueOnce({
-        host: 'gateway.example.com',
-        port: 443,
-        protocol: 'https',
-        url: 'https://gateway.example.com/code-server/devbox-retry'
-      });
-
-    const endpointPromise = getSandboxEndpoint({
-      provider: 'sealosdevbox',
-      getEndpoint: getEndpointMock
-    } as any);
-
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    await expect(endpointPromise).resolves.toMatchObject({
-      url: 'https://gateway.example.com/code-server/devbox-retry'
-    });
-    expect(getEndpointMock).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
-  });
-
-  it('keeps sandbox method context while resolving proxy target', async () => {
-    const sandbox = {
-      provider: 'sealosdevbox',
-      target: {
-        service: 'code-server',
-        origin: 'https://gateway.example.com',
-        basePath: '/code-server/context-bound',
-        auth: 'code-server'
-      },
-      async getProxyTarget(this: any, service: 'code-server') {
-        expect(service).toBe('code-server');
-        return this.target;
-      }
-    };
-
-    await expect(getSandboxCodeServerProxyTarget(sandbox as any)).resolves.toEqual(sandbox.target);
-  });
-
-  it('retries transient provider failures while resolving proxy target', async () => {
-    vi.useFakeTimers();
-    const getProxyTargetMock = vi
-      .fn()
-      .mockRejectedValueOnce(
-        Object.assign(
-          new Error('Devbox API returned non-JSON response (503): no healthy upstream'),
-          {
-            status: 503,
-            rawBody: 'no healthy upstream'
-          }
-        )
-      )
-      .mockResolvedValueOnce({
-        service: 'code-server',
-        origin: 'https://gateway.example.com',
-        basePath: '/code-server/devbox-retry',
-        auth: 'code-server'
-      });
-
-    const targetPromise = getSandboxCodeServerProxyTarget({
-      provider: 'sealosdevbox',
-      getProxyTarget: getProxyTargetMock
-    } as any);
-
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    await expect(targetPromise).resolves.toMatchObject({
-      origin: 'https://gateway.example.com',
-      basePath: '/code-server/devbox-retry'
-    });
-    expect(getProxyTargetMock).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
   });
 });
 

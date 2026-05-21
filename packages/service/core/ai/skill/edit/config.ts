@@ -30,9 +30,7 @@ export function buildEditDebugCreateConfig(params: {
 
   if (providerConfig.provider === 'sealosdevbox') {
     return {
-      env: {
-        CODE_SERVER_ENABLED: 'true'
-      },
+      env: {},
       workingDir: defaults.workDirectory,
       metadata: {
         skillId,
@@ -47,8 +45,7 @@ export function buildEditDebugCreateConfig(params: {
     entrypoint: [entrypoint ?? defaults.entrypoint],
     env: {
       FASTGPT_SESSION_ID: sessionId,
-      FASTGPT_WORKDIR: defaults.workDirectory,
-      FASTGPT_ENABLE_CODE_SERVER: 'true'
+      FASTGPT_WORKDIR: defaults.workDirectory
     },
     metadata: {
       skillId,

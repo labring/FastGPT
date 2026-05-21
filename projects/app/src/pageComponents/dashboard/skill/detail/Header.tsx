@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBackButton from '@fastgpt/web/components/common/MyBackButton';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -28,7 +29,6 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -82,8 +82,30 @@ const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { skillDetail, refreshSkillDetail, showHistories, setShowHistories, isSkillReady } =
-    useContextSelector(SkillDetailContext, (v) => v);
+  const {
+    skillDetail,
+    refreshSkillDetail,
+    showHistories,
+    setShowHistories,
+    isSkillReady,
+    saveAllRef
+  } = useContextSelector(SkillDetailContext, (v) => v);
+
+  const [savingAll, setSavingAll] = useState(false);
+
+  const handlePublishClick = async () => {
+    try {
+      setSavingAll(true);
+      if (saveAllRef && saveAllRef.current) {
+        await saveAllRef.current();
+      }
+      onPublishModalOpen();
+    } catch (error) {
+      console.error('Save all before publish failed:', error);
+    } finally {
+      setSavingAll(false);
+    }
+  };
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
@@ -195,7 +217,7 @@ const Header = () => {
         ]
       }
     ],
-    [t, skillDetail, onExportSkill]
+    [t, skillDetail, onExportSkill, setEditedSkill, setShowPermModal, setDeleteOpen]
   );
 
   if (!skillDetail) return null;
@@ -203,16 +225,7 @@ const Header = () => {
   return (
     <Flex flexShrink={0} h={'64px'} alignItems={'center'} position={'relative'} userSelect={'none'}>
       {/* 返回按钮 */}
-      <Box _hover={{ bg: 'myGray.200' }} p={0.5} borderRadius={'sm'}>
-        <IconButton
-          icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
-          aria-label={'back'}
-          size={'xs'}
-          w={'1rem'}
-          variant={'ghost'}
-          onClick={() => router.push('/dashboard/skill')}
-        />
-      </Box>
+      <MyBackButton onClick={() => router.push('/dashboard/skill')} />
 
       {/* Skill 信息 */}
       <HStack ml={1} spacing={2}>
@@ -265,8 +278,8 @@ const Header = () => {
             h={'34px'}
             px={'14px'}
             variant={'primary'}
-            isLoading={isSaving}
-            onClick={onPublishModalOpen}
+            isLoading={isSaving || savingAll}
+            onClick={handlePublishClick}
           >
             {t('common:Publish')}
           </Button>

@@ -148,12 +148,6 @@ export type FastGPTFeConfigsType = {
   agentSandboxFree?: boolean;
   // Beta features
   show_skill?: boolean;
-  sandboxProxy?: {
-    /** Public origin URL under which sandbox subdomains live, e.g. `http://localhost:3006`. */
-    baseUrl?: string;
-    /** Sandbox proxy token TTL in seconds; used to avoid reusing expired iframe tokens. */
-    tokenTtl?: number;
-  };
 };
 
 export type SystemEnvType = {

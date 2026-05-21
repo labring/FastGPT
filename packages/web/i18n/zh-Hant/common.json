@@ -284,6 +284,7 @@
   "core.app.feedback.Custom feedback": "自訂回饋",
   "core.app.feedback.close custom feedback": "關閉回饋",
   "core.app.have_saved": "已儲存",
+  "core.app.saving": "儲存中",
   "core.app.no_app": "還沒有應用程式，快來建立一個吧！",
   "core.app.not_saved": "未儲存",
   "core.app.outLink.Can Drag": "圖示可拖曳",

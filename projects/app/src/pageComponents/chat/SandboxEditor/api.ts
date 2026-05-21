@@ -8,10 +8,18 @@ import type {
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
   SandboxGetHtmlPreviewLinkBody,
-  SandboxGetHtmlPreviewLinkResponse
+  SandboxGetHtmlPreviewLinkResponse,
+  SandboxFileOpBody,
+  SandboxFileOpResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
+
+/**
+ * 文件系统操作
+ */
+export const fileOpSandbox = async (data: SandboxFileOpBody) =>
+  POST<SandboxFileOpResponse>('/core/ai/sandbox/fileOp', data);
 
 /**
  * 列出目录文件

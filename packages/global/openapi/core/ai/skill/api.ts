@@ -10,7 +10,6 @@ import {
   SandboxImageConfigSchema,
   SandboxProviderStatusSchema,
   SkillPackageSchema,
-  SkillSandboxEndpointSchema,
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
 
@@ -152,7 +151,6 @@ export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBo
 
 export const CreateEditDebugSandboxResponseSchema = z.object({
   sandboxId: z.string().describe('FastGPT sandbox instance key'),
-  endpoint: SkillSandboxEndpointSchema,
   status: SandboxProviderStatusSchema.pick({
     state: true,
     message: true
@@ -169,7 +167,6 @@ export const GetSandboxInfoResponseSchema = z.object({
   sandboxId: SandboxInstanceKeySchema,
   skillId: z.string(),
   type: z.string(),
-  endpoint: SkillSandboxEndpointSchema.optional(),
   status: SandboxProviderStatusSchema.pick({
     state: true,
     message: true

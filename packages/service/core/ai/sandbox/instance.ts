@@ -2,7 +2,6 @@ import { isValidObjectId } from 'mongoose';
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { SkillSandboxEndpointType } from '@fastgpt/global/core/ai/skill/type';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from './type';
 
@@ -78,24 +77,6 @@ export async function countRunningSandboxInstancesByType(
   });
 }
 
-export async function updateSandboxInstanceEndpoint(params: {
-  instanceId: unknown;
-  endpoint: SkillSandboxEndpointType;
-}) {
-  const { instanceId, endpoint } = params;
-
-  return MongoSandboxInstance.updateOne(
-    { _id: instanceId },
-    {
-      $set: {
-        status: SandboxStatusEnum.running,
-        lastActiveAt: new Date(),
-        'metadata.endpoint': endpoint
-      }
-    }
-  );
-}
-
 export async function deleteSandboxInstanceRecord(instanceId: unknown) {
   return MongoSandboxInstance.deleteOne({ _id: instanceId });
 }
@@ -108,7 +89,7 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
   chatId?: string;
   type?: SandboxTypeEnum;
   metadata?: Record<string, unknown>;
-}) {
+}): Promise<SandboxInstanceSchemaType | null> {
   const { provider, sandboxId, appId, userId, chatId, type, metadata } = params;
 
   return MongoSandboxInstance.findOneAndUpdate(

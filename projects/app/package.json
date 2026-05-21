@@ -35,6 +35,7 @@
     "@chakra-ui/styled-system": "catalog:",
     "@chakra-ui/system": "catalog:",
     "@dagrejs/dagre": "^1.1.4",
+    "@dnd-kit/core": "catalog:",
     "@emotion/react": "catalog:",
     "@emotion/styled": "catalog:",
     "@fastgpt-sdk/otel": "workspace:*",
@@ -115,8 +116,8 @@
     "eslint-config-next": "catalog:lint",
     "tailwindcss": "^3",
     "tsx": "catalog:",
-    "typescript-eslint": "catalog:lint",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:lint",
     "vitest": "catalog:"
   }
 }

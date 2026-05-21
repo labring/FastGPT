@@ -10,6 +10,9 @@ import {
 import { listSandboxDirectory } from '@/service/core/sandbox/fileService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+
 async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<SandboxListResponse>
@@ -19,18 +22,30 @@ async function handler(
     bodySchema: SandboxListBodySchema
   }).body;
 
-  const { uid } = await authChatCrud({
-    req,
-    authToken: true,
-    authApiKey: true,
-    appId,
-    chatId,
-    ...outLinkAuthData
-  });
+  let uid: string;
+  if (chatId === 'edit-debug') {
+    const authResult = await authSkill({
+      req,
+      authToken: true,
+      authApiKey: true,
+      skillId: appId,
+      per: ReadPermissionVal
+    });
+    uid = authResult.tmbId;
+  } else {
+    const authResult = await authChatCrud({
+      req,
+      authToken: true,
+      authApiKey: true,
+      appId,
+      chatId,
+      ...outLinkAuthData
+    });
+    uid = authResult.uid;
+  }
 
   const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
   await sandbox.ensureAvailable();
-
   const files = await listSandboxDirectory(sandbox, path);
   return { files };
 }

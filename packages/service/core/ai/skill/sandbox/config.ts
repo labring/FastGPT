@@ -48,13 +48,11 @@ export function getSkillSizeLimits(): SkillSizeLimits {
  */
 export function buildBaseContainerEnv(
   sessionId: string,
-  workDirectory: string,
-  enableCodeServer: boolean
+  workDirectory: string
 ): Record<string, string> {
   return {
     FASTGPT_SESSION_ID: sessionId,
-    FASTGPT_WORKDIR: workDirectory,
-    FASTGPT_ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
+    FASTGPT_WORKDIR: workDirectory
   };
 }
 
@@ -74,7 +72,7 @@ export function buildSessionRuntimeCreateConfig(params: {
   if (providerConfig.provider === 'sealosdevbox') {
     return {
       ...(image ? { image } : {}),
-      env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+      env: buildBaseContainerEnv(sessionId, defaults.workDirectory),
       workingDir: defaults.workDirectory,
       metadata: {
         teamId,
@@ -88,7 +86,7 @@ export function buildSessionRuntimeCreateConfig(params: {
   return {
     image: image ?? defaults.defaultImage,
     entrypoint: [entrypoint ?? defaults.entrypoint],
-    env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+    env: buildBaseContainerEnv(sessionId, defaults.workDirectory),
     metadata: {
       teamId,
       tmbId,

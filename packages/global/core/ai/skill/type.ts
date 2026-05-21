@@ -123,15 +123,6 @@ export const ExtractedSkillPackageSchema = z.object({
 });
 export type ExtractedSkillPackage = z.infer<typeof ExtractedSkillPackageSchema>;
 
-export const SkillSandboxEndpointSchema = z.object({
-  host: z.string(),
-  port: z.number(),
-  protocol: SandboxProtocolSchema,
-  url: z.string(),
-  proxyRevision: z.string().optional()
-});
-export type SkillSandboxEndpointType = z.infer<typeof SkillSandboxEndpointSchema>;
-
 export const SandboxImageConfigSchema = z.object({
   repository: z.string(),
   tag: z.string().optional()
@@ -159,7 +150,6 @@ export const SandboxInstanceDetailSchema = z.object({
   provider: z.string(),
   image: SandboxImageConfigSchema,
   providerCreatedAt: z.coerce.date(),
-  endpoint: SkillSandboxEndpointSchema.optional(),
   storage: SandboxStorageSchema.optional(),
   metadata: z.union([z.map(z.string(), z.any()), LooseObjectSchema]).optional()
 });

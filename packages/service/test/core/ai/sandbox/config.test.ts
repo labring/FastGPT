@@ -82,8 +82,7 @@ describe('sandbox config helpers', () => {
     expect(result).toEqual({
       env: {
         FASTGPT_SESSION_ID: 'session-1',
-        FASTGPT_WORKDIR: '/home/devbox/workspace',
-        FASTGPT_ENABLE_CODE_SERVER: 'false'
+        FASTGPT_WORKDIR: '/home/devbox/workspace'
       },
       workingDir: '/home/devbox/workspace',
       metadata: {
@@ -116,7 +115,7 @@ describe('sandbox config helpers', () => {
     expect(result.entrypoint).toBeUndefined();
   });
 
-  it('only enables code-server for sealosdevbox edit-debug create config', async () => {
+  it('builds correct create config for sealosdevbox edit-debug', async () => {
     const { buildEditDebugCreateConfig } = await loadSkillEditModule();
 
     const result = buildEditDebugCreateConfig({
@@ -133,9 +132,7 @@ describe('sandbox config helpers', () => {
     });
 
     expect(result).toEqual({
-      env: {
-        CODE_SERVER_ENABLED: 'true'
-      },
+      env: {},
       workingDir: '/home/devbox/workspace',
       metadata: {
         skillId: 'skill-1',

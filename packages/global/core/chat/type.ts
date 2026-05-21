@@ -67,14 +67,6 @@ export type SandboxStatusItemType = {
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
-  // Present on 'ready' phase for edit-debug sandboxes
-  endpoint?: {
-    host: string;
-    port: number;
-    protocol: 'http' | 'https';
-    url: string;
-    proxyRevision?: string;
-  };
 };
 
 /* Skill module response */
