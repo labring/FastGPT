@@ -274,6 +274,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           <RetrievalModeSelector
             value={retrievalMode}
             onChange={(mode) => {
+              const prevMode = retrievalMode;
               setRetrievalMode(mode);
               const item = inputs.find(
                 (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
@@ -286,6 +287,35 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                   value: { ...item, value: mode }
                 });
               }
+
+              // 切换检索模式时，清空另一模式的字段
+              if (mode !== prevMode) {
+                if (mode === DatasetRetrievalModeEnum.standard) {
+                  // 标准检索 → 清空多轮智能检索相关字段
+                  setAgenticSearchConfig((prev) => ({
+                    ...prev,
+                    agenticSearchLLMModel: '',
+                    agenticSearchRerankModel: '',
+                    agenticSearchReasoning: false
+                  }));
+                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, '');
+                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, '');
+                  updateNodeInput(
+                    NodeInputKeyEnum.datasetAgenticSearchReasoning,
+                    false
+                  );
+                } else {
+                  // 多轮智能检索 → 清空标准检索相关字段
+                  setData((prev) => ({
+                    ...prev,
+                    datasetSearchExtensionModel: '',
+                    rerankModel: ''
+                  }));
+                  updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, '');
+                  updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, '');
+                }
+              }
+
               if (knowledgeTypeConfig.hasDatabaseKnowledge) {
                 const newAiModel =
                   mode === DatasetRetrievalModeEnum.agentic

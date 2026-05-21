@@ -37,6 +37,7 @@ import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { DatasetRetrievalModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* ====== node ======= */
 export const nodeTemplate2FlowNode = ({
@@ -859,13 +860,172 @@ export const compareSnapshot = (
   const node1 = formatNodes(clone1.nodes);
   const node2 = formatNodes(clone2.nodes);
 
-  node1.forEach((node, i) => {
-    if (!isEqual(node, node2[i])) {
-      console.log('node not equal');
+  return isEqual(node1, node2);
+};
+
+/* ====== Dataset Auto Adjust ======= */
+/**
+ * 若知识库搜索节点直接连接到 AI 对话节点，则将搜索节点的 limit（datasetMaxTokens）
+ * 自动设为所有直连 chatNode 所用模型 maxContext 的最小值。
+ * 若知识库搜索节点不再直连任何 AI 对话节点（例如中间插入了非大模型节点），
+ * 则将 limit 恢复为默认值 5000，避免 limit 残留在之前适配的高值上。
+ * 仅作用于 store 输出数据，不修改 UI 状态。
+ */
+export const autoAdjustDatasetNodeLimit = ({
+  nodes,
+  edges
+}: {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+}): StoreNodeItemType[] => {
+  // 与 datasetSearch 模板中的默认值保持一致
+  const DEFAULT_DATASET_MAX_TOKENS = 5000;
+
+  const llmModelList = useSystemStore.getState().llmModelList;
+  const llmModelMap = llmModelList.reduce(
+    (acc, model) => {
+      acc[model.model] = model;
+      return acc;
+    },
+    {} as Record<string, LLMModelItemType>
+  );
+
+  const nodeMap = new Map(nodes.map((n) => [n.nodeId, n]));
+
+  // 记录直连 chatNode 的知识库节点 → 取其模型 maxContext 的最小值
+  const datasetLimitMap = new Map<string, number>();
+  // 独立标记哪些知识库节点仍有直连 chatNode 的边，用于区分「有直连但模型信息不全」和「无直连」
+  const datasetHasDirectChatNode = new Set<string>();
+
+  // 第一遍扫描：找出所有直连 chatNode 的知识库节点，计算最小 maxContext
+  for (const edge of edges) {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+
+    if (!sourceNode || !targetNode) continue;
+    if (sourceNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) continue;
+    if (targetNode.flowNodeType !== FlowNodeTypeEnum.chatNode) continue;
+
+    datasetHasDirectChatNode.add(edge.source);
+
+    const modelValue = targetNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value as
+      | string
+      | undefined;
+    if (!modelValue) {
+      continue;
     }
+
+    const maxContext = llmModelMap[modelValue]?.maxContext;
+    if (!maxContext) {
+      continue;
+    }
+
+    const current = datasetLimitMap.get(edge.source);
+    if (current === undefined || maxContext < current) {
+      datasetLimitMap.set(edge.source, maxContext);
+    }
+  }
+
+  // 第二遍扫描：收集所有知识库节点（不限于有直连的），对无直连的恢复默认值
+  const allDatasetNodeIds = new Set<string>();
+  for (const node of nodes) {
+    if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      allDatasetNodeIds.add(node.nodeId);
+    }
+  }
+
+  if (allDatasetNodeIds.size === 0) {
+    return nodes;
+  }
+
+  let hasChanges = false;
+
+  const result = nodes.map((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return node;
+
+    const newLimit = datasetLimitMap.get(node.nodeId);
+    const shouldReset = !datasetHasDirectChatNode.has(node.nodeId);
+
+    // 知识库不再直连任何 chatNode（中间插入了其他节点），恢复默认值
+    if (shouldReset) {
+      const limitInput = node.inputs.find((i) => i.key === NodeInputKeyEnum.datasetMaxTokens);
+      if (limitInput?.value === DEFAULT_DATASET_MAX_TOKENS) return node;
+      hasChanges = true;
+      return {
+        ...node,
+        inputs: node.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetMaxTokens
+            ? { ...input, value: DEFAULT_DATASET_MAX_TOKENS }
+            : input
+        )
+      };
+    }
+
+    // 知识库直连 chatNode，按模型 maxContext 调整限值
+    if (newLimit === undefined) return node;
+
+    hasChanges = true;
+    return {
+      ...node,
+      inputs: node.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.datasetMaxTokens ? { ...input, value: newLimit } : input
+      )
+    };
   });
 
-  return isEqual(node1, node2);
+  if (!hasChanges) return nodes;
+  return result;
+};
+
+/* ====== Dataset Params Clean ======= */
+/**
+ * 数据层兜底：根据 retrievalMode 清理不匹配模式的字段，
+ * 确保保存/发布/调试时数据一致，不依赖 UI onChange 是否触发。
+ * - 标准检索 → 清空 agenticSearchLLMModel / agenticSearchRerankModel / agenticSearchReasoning
+ * - 多轮智能检索 → 清空 datasetSearchExtensionModel / rerankModel
+ */
+export const cleanDatasetSearchParams = (nodes: StoreNodeItemType[]): StoreNodeItemType[] => {
+  let globalChanged = false;
+
+  const result = nodes.map((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return node;
+
+    const retrievalMode = node.inputs.find((i) => i.key === NodeInputKeyEnum.datasetRetrievalMode)
+      ?.value as string | undefined;
+
+    if (
+      retrievalMode !== DatasetRetrievalModeEnum.standard &&
+      retrievalMode !== DatasetRetrievalModeEnum.agentic
+    ) {
+      return node;
+    }
+
+    const keysToClean: string[] =
+      retrievalMode === DatasetRetrievalModeEnum.standard
+        ? [
+            NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+            NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+            NodeInputKeyEnum.datasetAgenticSearchReasoning
+          ]
+        : [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchRerankModel];
+
+    let nodeChanged = false;
+    const newInputs = node.inputs.map((input) => {
+      if (!keysToClean.includes(input.key)) return input;
+
+      const emptyValue = input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning ? false : '';
+      if (input.value === emptyValue) return input;
+
+      nodeChanged = true;
+      globalChanged = true;
+      return { ...input, value: emptyValue };
+    });
+
+    return nodeChanged ? { ...node, inputs: newInputs } : node;
+  });
+
+  if (!globalChanged) return nodes;
+  return result;
 };
 
 /* ====== Adapt ======= */
