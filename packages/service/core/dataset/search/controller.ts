@@ -113,6 +113,8 @@ export type SearchDatasetDataProps = {
     }
   */
   collectionFilterMatch?: string;
+  /** 权限过滤：用户无读权限的 collection ID，将合并到 forbidCollectionIdList */
+  authForbidCollectionIds?: string[];
 };
 
 export type SearchDatabaseDataProps = {
@@ -123,6 +125,7 @@ export type SearchDatabaseDataProps = {
   queries: string[];
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.searchColumnslLimitRatio]?: number; // default 0.3
+  authForbidCollectionIds?: string[]; // 权限过滤：用户无权限的 collection ID
 };
 
 export type SearchDatasetDataResponse = {
@@ -294,6 +297,191 @@ export const filterDatasetDataByMaxTokens = async (
   return filterMaxTokensResult;
 };
 
+export async function filterCollectionByNewTagFormat({
+  teamId,
+  datasetIds,
+  andConditions,
+  orConditions
+}: {
+  teamId: string;
+  datasetIds: string[];
+  andConditions?: Record<string, Record<string, any>>[];
+  orConditions?: Record<string, Record<string, any>>[];
+}): Promise<string[]> {
+  if (!andConditions?.length && !orConditions?.length) return [];
+
+  // 收集所有条件中的 tag 名称
+  const allTagNames = [
+    ...(andConditions || []).map((cond) => Object.keys(cond)[0]),
+    ...(orConditions || []).map((cond) => Object.keys(cond)[0])
+  ].filter(Boolean);
+
+  // 按 dataset 批量查询 tag 名称 → tagId + tagType
+  const tagDocs = await MongoDatasetCollectionTags.find(
+    {
+      teamId,
+      datasetId: { $in: datasetIds },
+      tag: { $in: allTagNames }
+    },
+    '_id datasetId tag tagType',
+    { ...readFromSecondary }
+  ).lean();
+
+  // 按 datasetId 分组：{ datasetId → Map<tagName, { id, type }> }
+  const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
+  tagDocs.forEach((doc) => {
+    const dsId = String(doc.datasetId);
+    if (!datasetTagMap.has(dsId)) {
+      datasetTagMap.set(dsId, new Map());
+    }
+    datasetTagMap.get(dsId)!.set(doc.tag, {
+      id: String(doc._id),
+      type: (doc as any).tagType || 'string'
+    });
+  });
+
+  // 应用层 value 比较
+  const checkValue = (
+    opObj: Record<string, any>,
+    storedVal: string | number,
+    tagType: string
+  ): boolean => {
+    const op = Object.keys(opObj)[0];
+    const target = opObj[op];
+
+    if (op === '$empty') return storedVal === '' || storedVal === null || storedVal === undefined;
+    if (op === '$notEmpty')
+      return storedVal !== '' && storedVal !== null && storedVal !== undefined;
+    if (target === null) return false;
+
+    if (tagType === 'number') {
+      const sv = Number(storedVal);
+      const tv = Number(target);
+      if (isNaN(sv) || isNaN(tv)) return false;
+      switch (op) {
+        case '$eq':
+          return sv === tv;
+        case '$ne':
+          return sv !== tv;
+        case '$gt':
+          return sv > tv;
+        case '$lt':
+          return sv < tv;
+        case '$gte':
+          return sv >= tv;
+        case '$lte':
+          return sv <= tv;
+      }
+    } else if (tagType === 'datetime') {
+      const sv = typeof storedVal === 'number' ? storedVal : new Date(storedVal).getTime();
+      const tv = new Date(target).getTime();
+      if (isNaN(sv) || isNaN(tv)) return false;
+      switch (op) {
+        case '$eq':
+          return sv === tv;
+        case '$ne':
+          return sv !== tv;
+        case '$gt':
+          return sv > tv;
+        case '$lt':
+          return sv < tv;
+        case '$gte':
+          return sv >= tv;
+        case '$lte':
+          return sv <= tv;
+      }
+    } else {
+      const sv = String(storedVal);
+      const tv = String(target);
+      switch (op) {
+        case '$eq':
+          return sv === tv;
+        case '$ne':
+          return sv !== tv;
+        case '$contains':
+          return sv.toLowerCase().includes(tv.toLowerCase());
+        case '$notContains':
+          return !sv.toLowerCase().includes(tv.toLowerCase());
+        case '$startsWith':
+          return sv.toLowerCase().startsWith(tv.toLowerCase());
+        case '$endsWith':
+          return sv.toLowerCase().endsWith(tv.toLowerCase());
+        case '$regex':
+          try {
+            return new RegExp(tv, 'i').test(sv);
+          } catch {
+            return false;
+          }
+      }
+    }
+    return false;
+  };
+
+  // 针对每个 dataset 分别构建查询（同名 tag 在不同 dataset 中 id 不同）
+  const collectionIds: string[] = [];
+
+  for (const [datasetId, tagMap] of datasetTagMap) {
+    const andTagIds = (andConditions || [])
+      .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
+      .filter(Boolean) as string[];
+
+    const orTagIds = (orConditions || [])
+      .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
+      .filter(Boolean) as string[];
+
+    if (andTagIds.length === 0 && orTagIds.length === 0) continue;
+
+    // Step1: MongoDB 按 tagId 过滤（走 tags.tagId 索引）
+    // AND：所有 tagId 必须存在；纯 OR：任一 tagId 存在即可
+    const tagIdQuery: any =
+      andTagIds.length > 0
+        ? { 'tags.tagId': { $all: andTagIds } }
+        : { 'tags.tagId': { $in: orTagIds } };
+
+    const candidates = await MongoDatasetCollection.find(
+      { teamId, datasetId, ...tagIdQuery },
+      '_id tags',
+      { ...readFromSecondary }
+    ).lean();
+
+    // Step2: 应用层按 value 条件筛选
+    for (const col of candidates) {
+      const tagsArr = ((col.tags || []) as any[]).filter(
+        (t) => typeof t === 'object' && t !== null && t.tagId
+      );
+
+      // AND 条件：每个条件都要满足
+      const andOk = (andConditions || []).every((cond) => {
+        const tagName = Object.keys(cond)[0];
+        const tagInfo = tagMap.get(tagName);
+        if (!tagInfo) return false;
+        const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
+        if (!tv) return false;
+        return checkValue(cond[tagName], tv.value, tagInfo.type);
+      });
+
+      if (!andOk) continue;
+
+      // OR 条件：至少一个满足（若无 OR 条件直接通过）
+      if (orConditions?.length) {
+        const orOk = orConditions.some((cond) => {
+          const tagName = Object.keys(cond)[0];
+          const tagInfo = tagMap.get(tagName);
+          if (!tagInfo) return false;
+          const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
+          if (!tv) return false;
+          return checkValue(cond[tagName], tv.value, tagInfo.type);
+        });
+        if (!orOk) continue;
+      }
+
+      collectionIds.push(String(col._id));
+    }
+  }
+
+  return collectionIds;
+}
+
 export async function searchDatasetData(
   props: SearchDatasetDataProps
 ): Promise<SearchDatasetDataResponse> {
@@ -311,7 +499,8 @@ export async function searchDatasetData(
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
-    collectionFilterMatch
+    collectionFilterMatch,
+    authForbidCollectionIds
   } = props;
 
   /* init params */
@@ -362,193 +551,6 @@ export async function searchDatasetData(
     1. and 先生效
     2. and 标签和 null 不能共存，否则返回空数组
   */
-
-  // 新格式标签过滤：{ [tagName]: { $op: value } }[]
-  // key 为 tag 名称（跨 dataset 通用），后端按名称在每个 dataset 中分别查询 tagId + tagType
-  const filterCollectionByNewTagFormat = async ({
-    teamId,
-    datasetIds,
-    andConditions,
-    orConditions
-  }: {
-    teamId: string;
-    datasetIds: string[];
-    andConditions?: Record<string, Record<string, any>>[];
-    orConditions?: Record<string, Record<string, any>>[];
-  }): Promise<string[]> => {
-    if (!andConditions?.length && !orConditions?.length) return [];
-
-    // 收集所有条件中的 tag 名称
-    const allTagNames = [
-      ...(andConditions || []).map((cond) => Object.keys(cond)[0]),
-      ...(orConditions || []).map((cond) => Object.keys(cond)[0])
-    ].filter(Boolean);
-
-    // 按 dataset 批量查询 tag 名称 → tagId + tagType
-    const tagDocs = await MongoDatasetCollectionTags.find(
-      {
-        teamId,
-        datasetId: { $in: datasetIds },
-        tag: { $in: allTagNames }
-      },
-      '_id datasetId tag tagType',
-      { ...readFromSecondary }
-    ).lean();
-
-    // 按 datasetId 分组：{ datasetId → Map<tagName, { id, type }> }
-    const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
-    tagDocs.forEach((doc) => {
-      const dsId = String(doc.datasetId);
-      if (!datasetTagMap.has(dsId)) {
-        datasetTagMap.set(dsId, new Map());
-      }
-      datasetTagMap.get(dsId)!.set(doc.tag, {
-        id: String(doc._id),
-        type: (doc as any).tagType || 'string'
-      });
-    });
-
-    // 应用层 value 比较
-    const checkValue = (
-      opObj: Record<string, any>,
-      storedVal: string | number,
-      tagType: string
-    ): boolean => {
-      const op = Object.keys(opObj)[0];
-      const target = opObj[op];
-
-      if (op === '$empty') return storedVal === '' || storedVal === null || storedVal === undefined;
-      if (op === '$notEmpty')
-        return storedVal !== '' && storedVal !== null && storedVal !== undefined;
-      if (target === null) return false;
-
-      if (tagType === 'number') {
-        const sv = Number(storedVal);
-        const tv = Number(target);
-        if (isNaN(sv) || isNaN(tv)) return false;
-        switch (op) {
-          case '$eq':
-            return sv === tv;
-          case '$ne':
-            return sv !== tv;
-          case '$gt':
-            return sv > tv;
-          case '$lt':
-            return sv < tv;
-          case '$gte':
-            return sv >= tv;
-          case '$lte':
-            return sv <= tv;
-        }
-      } else if (tagType === 'datetime') {
-        const sv = typeof storedVal === 'number' ? storedVal : new Date(storedVal).getTime();
-        const tv = new Date(target).getTime();
-        if (isNaN(sv) || isNaN(tv)) return false;
-        switch (op) {
-          case '$eq':
-            return sv === tv;
-          case '$ne':
-            return sv !== tv;
-          case '$gt':
-            return sv > tv;
-          case '$lt':
-            return sv < tv;
-          case '$gte':
-            return sv >= tv;
-          case '$lte':
-            return sv <= tv;
-        }
-      } else {
-        const sv = String(storedVal);
-        const tv = String(target);
-        switch (op) {
-          case '$eq':
-            return sv === tv;
-          case '$ne':
-            return sv !== tv;
-          case '$contains':
-            return sv.toLowerCase().includes(tv.toLowerCase());
-          case '$notContains':
-            return !sv.toLowerCase().includes(tv.toLowerCase());
-          case '$startsWith':
-            return sv.toLowerCase().startsWith(tv.toLowerCase());
-          case '$endsWith':
-            return sv.toLowerCase().endsWith(tv.toLowerCase());
-          case '$regex':
-            try {
-              return new RegExp(tv, 'i').test(sv);
-            } catch {
-              return false;
-            }
-        }
-      }
-      return false;
-    };
-
-    // 针对每个 dataset 分别构建查询（同名 tag 在不同 dataset 中 id 不同）
-    const collectionIds: string[] = [];
-
-    for (const [datasetId, tagMap] of datasetTagMap) {
-      const andTagIds = (andConditions || [])
-        .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
-        .filter(Boolean) as string[];
-
-      const orTagIds = (orConditions || [])
-        .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
-        .filter(Boolean) as string[];
-
-      if (andTagIds.length === 0 && orTagIds.length === 0) continue;
-
-      // Step1: MongoDB 按 tagId 过滤（走 tags.tagId 索引）
-      // AND：所有 tagId 必须存在；纯 OR：任一 tagId 存在即可
-      const tagIdQuery: any =
-        andTagIds.length > 0
-          ? { 'tags.tagId': { $all: andTagIds } }
-          : { 'tags.tagId': { $in: orTagIds } };
-
-      const candidates = await MongoDatasetCollection.find(
-        { teamId, datasetId, ...tagIdQuery },
-        '_id tags',
-        { ...readFromSecondary }
-      ).lean();
-
-      // Step2: 应用层按 value 条件筛选
-      for (const col of candidates) {
-        const tagsArr = ((col.tags || []) as any[]).filter(
-          (t) => typeof t === 'object' && t !== null && t.tagId
-        );
-
-        // AND 条件：每个条件都要满足
-        const andOk = (andConditions || []).every((cond) => {
-          const tagName = Object.keys(cond)[0];
-          const tagInfo = tagMap.get(tagName);
-          if (!tagInfo) return false;
-          const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
-          if (!tv) return false;
-          return checkValue(cond[tagName], tv.value, tagInfo.type);
-        });
-
-        if (!andOk) continue;
-
-        // OR 条件：至少一个满足（若无 OR 条件直接通过）
-        if (orConditions?.length) {
-          const orOk = orConditions.some((cond) => {
-            const tagName = Object.keys(cond)[0];
-            const tagInfo = tagMap.get(tagName);
-            if (!tagInfo) return false;
-            const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
-            if (!tv) return false;
-            return checkValue(cond[tagName], tv.value, tagInfo.type);
-          });
-          if (!orOk) continue;
-        }
-
-        collectionIds.push(String(col._id));
-      }
-    }
-
-    return collectionIds;
-  };
 
   const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
     const getAllCollectionIds = async ({
@@ -1322,6 +1324,11 @@ export async function searchDatasetData(
       filterCollectionByMetadata()
     ]);
 
+    // Merge permission-based forbidden collections
+    const mergedForbidList = authForbidCollectionIds?.length
+      ? [...new Set([...forbidCollectionIdList, ...authForbidCollectionIds])]
+      : forbidCollectionIdList;
+
     const useMilvusHybrid = (() => {
       if (!MILVUS_ADDRESS) return false;
       if (PG_ADDRESS || OCEANBASE_ADDRESS) return false;
@@ -1337,7 +1344,7 @@ export async function searchDatasetData(
         queries,
         model,
         limit: Math.max(embeddingLimit, fullTextLimit),
-        forbidCollectionIdList,
+        forbidCollectionIdList: mergedForbidList,
         filterCollectionIdList
       });
 
@@ -1356,7 +1363,7 @@ export async function searchDatasetData(
       embeddingRecallLocal({
         queries,
         limit: embeddingLimit,
-        forbidCollectionIdList,
+        forbidCollectionIdList: mergedForbidList,
         filterCollectionIdList
       }),
       (async () => {
@@ -1366,7 +1373,7 @@ export async function searchDatasetData(
           queries,
           limit: fullTextLimit,
           filterCollectionIdList,
-          forbidCollectionIdList,
+          forbidCollectionIdList: mergedForbidList,
           customWords: synonymWords
         });
       })()
@@ -1612,7 +1619,16 @@ export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler
 export const SearchDatabaseData = async (
   props: SearchDatabaseDataProps
 ): Promise<SearchDatabaseDataResponse> => {
-  let { histories, teamId, model, datasetIds, queries, limit = 50, searchRatio = 0.3 } = props;
+  let {
+    histories,
+    teamId,
+    model,
+    datasetIds,
+    queries,
+    limit = 50,
+    searchRatio = 0.3,
+    authForbidCollectionIds
+  } = props;
   const desLimit = Math.floor(limit * (1 - searchRatio));
   try {
     const forbidCollections = await MongoDatasetCollection.find(
@@ -1629,6 +1645,10 @@ export const SearchDatabaseData = async (
     const columnValueRecallResultList: DatabaseEmbeddingRecallItemType[] = [];
 
     const forbidCollectionIdList = forbidCollections.map((item: any) => String(item._id));
+    // Merge permission-based forbidden collections
+    const mergedForbidList = authForbidCollectionIds?.length
+      ? [...new Set([...forbidCollectionIdList, ...authForbidCollectionIds])]
+      : forbidCollectionIdList;
     await Promise.all(
       queries.map(async (query: string) => {
         const { tokens, vectors } = await getVectorsByText({
@@ -1645,7 +1665,7 @@ export const SearchDatabaseData = async (
           datasetIds,
           vector: q_vector,
           limit: desLimit,
-          forbidCollectionIdList
+          forbidCollectionIdList: mergedForbidList
         });
 
         const columnValueResults = await columnValueRecall({
@@ -1653,7 +1673,7 @@ export const SearchDatabaseData = async (
           datasetIds,
           vector: q_vector,
           limit: limit - desLimit,
-          forbidCollectionIdList
+          forbidCollectionIdList: mergedForbidList
         });
 
         columnDescriptionRecallResList.push(...columnDescriptionResults);
@@ -1992,12 +2012,16 @@ export async function searchFAQData({
   teamId,
   datasetIds,
   queryVector,
-  embeddingTokens
+  embeddingTokens,
+  authForbidCollectionIds,
+  collectionFilterMatch
 }: {
   teamId: string;
   datasetIds: string[];
   queryVector: number[];
   embeddingTokens: number;
+  authForbidCollectionIds?: string[];
+  collectionFilterMatch?: string;
 }): Promise<(SearchDataResponseItemType & { embeddingTokens: number }) | null> {
   const startTime = Date.now();
   const faqThreshold = global.systemEnv?.faqSimilarityThreshold ?? 0.95;
@@ -2031,6 +2055,76 @@ export async function searchFAQData({
 
     const faqCollectionIds = faqCollections.map((c) => String(c._id));
 
+    // 排除权限禁止的 collection
+    const authForbiddenSet = new Set(authForbidCollectionIds ?? []);
+    const allowedFaqCollectionIds = faqCollectionIds.filter((id) => !authForbiddenSet.has(id));
+
+    if (allowedFaqCollectionIds.length === 0) {
+      addLog.debug('FAQ Search - All FAQ collections forbidden by auth', {
+        teamId,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
+    // 标签过滤（新格式）：FAQ collections ∩ tag-filtered collections
+    let tagFilteredCollectionIds: string[] | undefined;
+    if (collectionFilterMatch && global.feConfigs.isPlus) {
+      try {
+        const jsonMatch =
+          typeof collectionFilterMatch === 'object'
+            ? collectionFilterMatch
+            : json5.parse(collectionFilterMatch);
+
+        const andTags = jsonMatch?.tags?.$and as
+          | (string | null | Record<string, any>)[]
+          | undefined;
+        const orTags = jsonMatch?.tags?.$or as (string | null | Record<string, any>)[] | undefined;
+
+        const isNewTagFormat =
+          (Array.isArray(andTags) &&
+            andTags.length > 0 &&
+            typeof andTags[0] === 'object' &&
+            andTags[0] !== null) ||
+          (Array.isArray(orTags) &&
+            orTags.length > 0 &&
+            typeof orTags[0] === 'object' &&
+            orTags[0] !== null);
+
+        if (isNewTagFormat) {
+          const andConditions = (andTags || []).filter(
+            (item): item is Record<string, Record<string, any>> =>
+              typeof item === 'object' && item !== null
+          );
+          const orConditions = (orTags || []).filter(
+            (item): item is Record<string, Record<string, any>> =>
+              typeof item === 'object' && item !== null
+          );
+
+          tagFilteredCollectionIds = await filterCollectionByNewTagFormat({
+            teamId,
+            datasetIds,
+            andConditions: andConditions.length > 0 ? andConditions : undefined,
+            orConditions: orConditions.length > 0 ? orConditions : undefined
+          });
+        }
+      } catch (error) {}
+    }
+
+    // FAQ collections ∩ tag-filtered collections
+    const effectiveFaqCollectionIds = tagFilteredCollectionIds
+      ? allowedFaqCollectionIds.filter((id) => tagFilteredCollectionIds!.includes(id))
+      : allowedFaqCollectionIds;
+
+    if (effectiveFaqCollectionIds.length === 0) {
+      addLog.debug('FAQ Search - No FAQ collections after tag filter', {
+        teamId,
+        tagFilteredCount: tagFilteredCollectionIds?.length ?? 0,
+        duration: `${Date.now() - startTime}ms`
+      });
+      return null;
+    }
+
     // 2. 全局向量检索（不传 filterCollectionIdList），取 top 100
     // 方案A：全局搜索 + MongoDB 后过滤
     // 原因：FAQ 阈值极高（0.95），真正命中的 FAQ 向量在全局排名中几乎必然位居前列；
@@ -2041,7 +2135,8 @@ export async function searchFAQData({
       datasetIds,
       vector: queryVector,
       limit: 100,
-      forbidCollectionIdList: []
+      forbidCollectionIdList: authForbidCollectionIds ?? [],
+      ...(tagFilteredCollectionIds ? { filterCollectionIdList: effectiveFaqCollectionIds } : {})
       // 不传 filterCollectionIdList，即不限制 collection（传 [] 会被向量存储当作"过滤到空集"，直接返回空结果）
     });
 
@@ -2072,7 +2167,7 @@ export async function searchFAQData({
       {
         teamId,
         'indexes.dataId': { $in: Array.from(thresholdDataIds) },
-        collectionId: { $in: Array.from(faqCollectionIds) }, // 后过滤：只保留 FAQ collection 的数据
+        collectionId: { $in: Array.from(effectiveFaqCollectionIds) }, // 后过滤：只保留 FAQ collection 的数据（排除权限禁止的 & 标签过滤的）
         a: { $exists: true, $ne: '' }
       },
       '_id datasetId collectionId updateTime q a chunkIndex indexes'

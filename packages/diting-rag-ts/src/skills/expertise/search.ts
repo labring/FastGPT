@@ -19,6 +19,7 @@ export interface SearchOptions {
   topK?: number;
   retrieveLimit?: number;
   originalQuery?: string; // 用户原始问题，rerank 时优先使用（比改写后的子查询更准确）
+  forbidCollectionIds?: string[]; // 权限过滤：用户无权访问的 collection ID 列表
 }
 
 /**
@@ -56,7 +57,8 @@ export class SearchSkill extends BaseSkill {
       enableRerank = true,
       topK = DEFAULT_SEARCH_CONFIG.RERANK_TOP_K,
       retrieveLimit = DEFAULT_SEARCH_CONFIG.RETRIEVE_LIMIT,
-      originalQuery
+      originalQuery,
+      forbidCollectionIds
     } = input as unknown as SearchOptions;
 
     if (!this.retrieveSkill) {
@@ -72,7 +74,8 @@ export class SearchSkill extends BaseSkill {
             queries: [query],
             datasetIds,
             limit: retrieveLimit,
-            searchMode: 'mixedRecall'
+            searchMode: 'mixedRecall',
+            forbidCollectionIds
           })
         )
       );

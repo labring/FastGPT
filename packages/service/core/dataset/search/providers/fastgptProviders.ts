@@ -438,7 +438,7 @@ export function createFastGPTVectorSearchProvider(
           queries: [], // Provider 场景由外部传入 vectors，precomputedVectors 已提供
           model: config.embedModel,
           limit: options.limit || 10,
-          forbidCollectionIdList: [],
+          forbidCollectionIdList: options.filter?.forbidCollectionIds || [],
           precomputedVectors: vectors
         });
 
@@ -513,7 +513,8 @@ export function createFastGPTFullTextSearchProvider(
           model: config.embedModel,
           datasetIds,
           queries: [query],
-          limit: options.limit || 10
+          limit: options.limit || 10,
+          forbidCollectionIdList: options.filter?.forbidCollectionIds || []
         });
 
         const chunks: ChunkResult[] = result.results.map((r: any) => {
@@ -654,7 +655,8 @@ export function createFastGPTMixedSearchProvider(
           embeddingWeight: options.vectorWeight ?? 0.5,
           usingReRank: false,
           similarity: 0,
-          rerankWeight: 0.5
+          rerankWeight: 0.5,
+          forbidCollectionIdList: options.filter?.forbidCollectionIds || []
         });
 
         addLog.info(`[MixedSearchProvider] mixedRecall done: results=${result.results.length}`);

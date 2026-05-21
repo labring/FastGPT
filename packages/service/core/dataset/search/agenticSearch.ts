@@ -14,6 +14,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SearchDatasetDataProps } from './controller';
 import { getDefaultLLMModel, getDefaultRerankModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
+import { MongoDatasetCollection } from '../collection/schema';
 import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 import type { WorkflowResponseType } from '../../../core/workflow/dispatch/type';
@@ -183,6 +184,18 @@ export async function agenticSearchDispatch(
       prefix: 'agentic-search'
     });
 
+    // 合并 forbidCollectionIds：系统级 forbid + 权限级 forbid
+    const systemForbiddenCols = await MongoDatasetCollection.find(
+      { datasetId: { $in: datasetIds }, forbid: true },
+      '_id'
+    ).lean();
+    const mergedForbidCollectionIds = (() => {
+      const ids = new Set<string>();
+      systemForbiddenCols.forEach((c) => ids.add(String(c._id)));
+      props.authForbidCollectionIds?.forEach((id) => ids.add(id));
+      return ids.size > 0 ? Array.from(ids) : undefined;
+    })();
+
     // 创建 Agentic Search
     const agent = createAgenticSearch({
       providers: {
@@ -198,7 +211,8 @@ export async function agenticSearchDispatch(
       config: {
         searchMode: 'mixedRecall',
         tokenBudget: maxTokens || 5000,
-        searchOnly: true // FastGPT 自己有 AI 对话节点，diting-rag-ts 只负责多轮检索+chunk选择
+        searchOnly: true, // FastGPT 自己有 AI 对话节点，diting-rag-ts 只负责多轮检索+chunk选择
+        forbidCollectionIds: mergedForbidCollectionIds
       }
     });
 

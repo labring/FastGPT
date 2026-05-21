@@ -52,7 +52,7 @@ import { MongoDataset } from '../../../dataset/schema';
 import { MongoDatasetCollection } from '../../../dataset/collection/schema';
 import { i18nT } from '../../../../../global/common/i18n/utils';
 import { addLog } from '../../../../common/system/log';
-import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { filterCollectionsByTmbId, filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
@@ -215,6 +215,24 @@ export async function dispatchDatasetSearch(
     if (datasetIds.length === 0) {
       return emptyResult;
     }
+
+    // Collection-level permission filtering
+    let authForbidCollectionIds: string[] | undefined;
+    if (authTmbId) {
+      const collectionFilterResult = await filterCollectionsByTmbId({
+        datasetIds,
+        tmbId,
+        teamId
+      });
+      if (!collectionFilterResult.allPass) {
+        if (collectionFilterResult.forbiddenIds.length === 0) {
+          // Safety: allPass=false but empty forbiddenIds shouldn't happen, treat as all pass
+        } else {
+          authForbidCollectionIds = collectionFilterResult.forbiddenIds;
+        }
+      }
+    }
+
     const useVectorModelDataset = datasets.find(
       (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
@@ -351,7 +369,8 @@ export async function dispatchDatasetSearch(
               queries: [userChatInput],
               model: vectorModel!.model,
               limit: dynamicLimit,
-              datasetIds: [datasetId]
+              datasetIds: [datasetId],
+              authForbidCollectionIds
             });
 
             if (singleResult) {
@@ -497,7 +516,8 @@ export async function dispatchDatasetSearch(
         rerankMethod,
         rerankWeight,
         collectionFilterMatch,
-        lang: lang ?? queryLanguage
+        lang: lang ?? queryLanguage,
+        authForbidCollectionIds
       };
 
       // ===== App 级别：校正数据 & FAQ 优先检索 =====
@@ -624,7 +644,9 @@ export async function dispatchDatasetSearch(
                 teamId,
                 datasetIds: commonDatasetIds,
                 queryVector: vec,
-                embeddingTokens: corrFaqTokens
+                embeddingTokens: corrFaqTokens,
+                authForbidCollectionIds,
+                collectionFilterMatch
               })
             )
           );
@@ -768,7 +790,8 @@ export async function dispatchDatasetSearch(
                   rerankMethod,
                   rerankWeight,
                   collectionFilterMatch,
-                  lang: lang ?? queryLanguage
+                  lang: lang ?? queryLanguage,
+                  authForbidCollectionIds
                 };
 
                 const result = await defaultSearchDatasetData({
