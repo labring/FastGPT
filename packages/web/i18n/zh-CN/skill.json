@@ -87,6 +87,7 @@
   "editor_upload_failed": "上传失败",
   "editor_rename_failed": "重命名失败",
   "editor_delete_failed": "删除失败",
+  "editor_stale_detected": "文件已被其他会话更新，刷新以查看最新内容。",
   "preview_sync_failed_title": "同步沙箱失败，本次预览可能基于旧版文件",
   "search_skill": "搜索",
   "select_skill": "选择 Skill",

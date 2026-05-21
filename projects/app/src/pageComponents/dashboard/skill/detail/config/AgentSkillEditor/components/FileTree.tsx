@@ -281,7 +281,7 @@ const FileTree = ({
               size="xs"
               variant="whiteBase"
               aria-label="Upload"
-              icon={<MyIcon name="common/uploadFileFill" w="12px" />}
+              icon={<MyIcon name="file/uploadFile" w="14px" />}
               onClick={handleUploadClick}
             />
           </Tooltip>
@@ -337,7 +337,7 @@ const FileTree = ({
                 onClick={() => handleContextMenuAction('newFolder', contextMenu.node)}
               />
               <ContextMenuItem
-                icon="common/uploadFileFill"
+                icon="file/uploadFile"
                 label={t('skill:editor_upload')}
                 onClick={() => handleContextMenuAction('upload', contextMenu.node)}
               />

@@ -26,6 +26,7 @@ type UseFileOperationsParams = {
   flushPendingForPath: (prefix: string) => Promise<void>;
   cancelPendingForPath: (prefix: string) => void;
   refreshDir: (dirPath: string) => Promise<void>;
+  packageVersionRef: React.MutableRefObject<number>;
 };
 
 export const useFileOperations = ({
@@ -33,7 +34,8 @@ export const useFileOperations = ({
   closeFileFlush,
   flushPendingForPath,
   cancelPendingForPath,
-  refreshDir
+  refreshDir,
+  packageVersionRef
 }: UseFileOperationsParams) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -161,7 +163,8 @@ export const useFileOperations = ({
       if (!name) return;
       const fullPath = parentDir ? `${parentDir}/${name}` : name;
       try {
-        await writeSkillPackageFile({ skillId, path: fullPath, content: '' });
+        const result = await writeSkillPackageFile({ skillId, path: fullPath, content: '' });
+        packageVersionRef.current = result.packageVersion;
         await refreshDir(parentDir);
         openFile(fullPath);
       } catch (err) {
@@ -181,7 +184,8 @@ export const useFileOperations = ({
       if (!name) return;
       const fullPath = parentDir ? `${parentDir}/${name}` : name;
       try {
-        await mkdirSkillPackageEntry({ skillId, path: fullPath });
+        const result = await mkdirSkillPackageEntry({ skillId, path: fullPath });
+        packageVersionRef.current = result.packageVersion;
         await refreshDir(parentDir);
       } catch (err) {
         toast({
@@ -197,9 +201,13 @@ export const useFileOperations = ({
   const handleUploadFiles = useCallback(
     async (parentDir: string, files: File[]) => {
       try {
+        let uploadResult: { packageVersion: number } | undefined;
         for (const file of files) {
           const fullPath = parentDir ? `${parentDir}/${file.name}` : file.name;
-          await uploadSkillPackageFile({ skillId, path: fullPath, file });
+          uploadResult = await uploadSkillPackageFile({ skillId, path: fullPath, file });
+        }
+        if (uploadResult) {
+          packageVersionRef.current = uploadResult.packageVersion;
         }
         toast({ status: 'success', title: t('skill:editor_upload_success') });
         await refreshDir(parentDir);
@@ -236,7 +244,8 @@ export const useFileOperations = ({
       }
 
       try {
-        await renameSkillPackageEntry({ skillId, fromPath: node.path, toPath });
+        const result = await renameSkillPackageEntry({ skillId, fromPath: node.path, toPath });
+        packageVersionRef.current = result.packageVersion;
         setOpenedFiles((prev) =>
           prev.filter((f) => f.path !== node.path && !f.path.startsWith(node.path + '/'))
         );
@@ -266,11 +275,12 @@ export const useFileOperations = ({
         onConfirm: async () => {
           try {
             cancelPendingForPath(node.path);
-            await deleteSkillPackageEntry({
+            const result = await deleteSkillPackageEntry({
               skillId,
               path: node.path,
               recursive: node.type === 'directory'
             });
+            packageVersionRef.current = result.packageVersion;
             setOpenedFiles((prev) =>
               prev.filter((f) => f.path !== node.path && !f.path.startsWith(node.path + '/'))
             );

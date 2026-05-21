@@ -89,7 +89,8 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
     closeFileFlush,
     flushPendingForPath,
     cancelPendingForPath,
-    refreshDir: tree.refreshDir
+    refreshDir: tree.refreshDir,
+    packageVersionRef
   });
 
   // Keep useAutoSave's openedFilesRef in sync with useFileOperations' openedFiles
@@ -114,7 +115,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
         <Box px={4} py={2} bg="blue.50" borderBottom="1px solid" borderColor="blue.200">
           <Flex align="center" justify="space-between">
             <Text fontSize="sm" color="blue.700">
-              Files were updated by another session. Refresh to see the latest content.
+              {t('skill:editor_stale_detected')}
             </Text>
             <Button
               size="xs"
@@ -125,7 +126,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
                 tree.reloadRoot();
               }}
             >
-              Refresh
+              {t('common:refresh')}
             </Button>
           </Flex>
         </Box>
