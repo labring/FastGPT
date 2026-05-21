@@ -13,10 +13,8 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
-import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 
 const MyApps = () => {
   const { t } = useTranslation();
@@ -28,8 +26,6 @@ const MyApps = () => {
     AppListContext,
     (v) => v
   );
-
-  const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
@@ -61,7 +57,7 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
 
       {!isPc && (
         <Flex
@@ -91,7 +87,6 @@ const MyApps = () => {
           <ChatSliderMobileDrawer
             showList={false}
             showMenu={false}
-            banner={chatSettings?.wideLogoUrl}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </Flex>

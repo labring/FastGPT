@@ -6,24 +6,26 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'react-i18next';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 type Props = {
   title?: string;
-  banner?: string;
 };
 
-const ChatSliderHeader = ({ title, banner }: Props) => {
+const ChatSliderHeader = ({ title }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { setChatId } = useChatStore();
+  const { feConfigs } = useSystemStore();
 
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
@@ -58,7 +60,13 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   ) : (
     <>
       <Flex align={'center'} justify={'flex-start'} p={2}>
-        <Image src={banner || DEFAULT_LOGO_BANNER_URL} alt="banner" w="60%" />
+        <MyImage
+          src={feConfigs?.systemLogo || LOGO_ICON}
+          alt="logo"
+          w="32px"
+          h="32px"
+          borderRadius="8px"
+        />
       </Flex>
 
       <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />

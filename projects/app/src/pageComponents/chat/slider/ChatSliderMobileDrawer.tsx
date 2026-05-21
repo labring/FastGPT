@@ -11,7 +11,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 type Props = {
   title?: string;
-  banner?: string;
   menuConfirmButtonText?: string;
   showHeader?: boolean;
   showFooter?: boolean;
@@ -21,7 +20,6 @@ type Props = {
 
 const ChatSliderMobileDrawer = ({
   title,
-  banner,
   menuConfirmButtonText,
   showHeader = true,
   showFooter = true,
@@ -53,7 +51,7 @@ const ChatSliderMobileDrawer = ({
           borderRight={['', theme.borders.base]}
           whiteSpace={'nowrap'}
         >
-          {showHeader && <ChatSliderHeader title={title} banner={banner} />}
+          {showHeader && <ChatSliderHeader title={title} />}
 
           {showMenu && <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />}
           {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}

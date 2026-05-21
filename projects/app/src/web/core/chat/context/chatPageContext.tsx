@@ -32,7 +32,6 @@ export type ChatPageContextValue = {
   // Chat settings
   chatSettings: ChatSettingType | undefined;
   refreshChatSetting: () => Promise<ChatSettingType | undefined>;
-  logos: { wideLogoUrl?: string; squareLogoUrl?: string };
 
   // User & apps
   isInitedUser: boolean;
@@ -47,7 +46,6 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   collapse: defaultCollapseStatus,
   onTriggerCollapse: () => {},
   chatSettings: undefined,
-  logos: { wideLogoUrl: '', squareLogoUrl: '' },
   refreshChatSetting: function (): Promise<ChatSettingType | undefined> {
     throw new Error('Function not implemented.');
   },
@@ -172,14 +170,6 @@ export const ChatPageContextProvider = ({
     }
   }, [pane]);
 
-  const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
-    () => ({
-      wideLogoUrl: chatSettings?.wideLogoUrl,
-      squareLogoUrl: chatSettings?.squareLogoUrl
-    }),
-    [chatSettings?.squareLogoUrl, chatSettings?.wideLogoUrl]
-  );
-
   const onTriggerCollapse = useCallback(() => {
     setCollapse(collapse === 0 ? 1 : 0);
   }, [collapse]);
@@ -192,7 +182,6 @@ export const ChatPageContextProvider = ({
       onTriggerCollapse,
       chatSettings,
       refreshChatSetting,
-      logos,
       isInitedUser,
       userInfo,
       myApps,
@@ -205,7 +194,6 @@ export const ChatPageContextProvider = ({
       onTriggerCollapse,
       chatSettings,
       refreshChatSetting,
-      logos,
       isInitedUser,
       userInfo,
       myApps,

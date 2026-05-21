@@ -37,8 +37,6 @@ export type ChatProviderProps = {
   InputLeftComponent?: React.ReactNode;
 
   chatType: ChatTypeEnum;
-  dialogTips?: string;
-  wideLogo?: string;
   slogan?: string;
 
   currentQuickAppId?: string;

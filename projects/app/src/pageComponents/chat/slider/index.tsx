@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Flex, Box, HStack, Image } from '@chakra-ui/react';
+import { Flex, Box, HStack } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -11,10 +11,10 @@ import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import {
-  ChatSidebarPaneEnum,
-  DEFAULT_LOGO_BANNER_COLLAPSED_URL,
-  DEFAULT_LOGO_BANNER_URL
+  ChatSidebarPaneEnum
 } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
@@ -149,14 +149,13 @@ const AnimatedText: React.FC<AnimatedTextProps> = ({ show, children, className, 
 
 const LogoSection = () => {
   const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
-  const logos = useContextSelector(ChatPageContext, (v) => v.logos);
   const isHomeActive = useContextSelector(
     ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
   const onTriggerCollapse = useContextSelector(ChatPageContext, (v) => v.onTriggerCollapse);
-  const wideLogoSrc = logos.wideLogoUrl;
-  const squareLogoSrc = logos.squareLogoUrl;
+  const { feConfigs } = useSystemStore();
+  const logoSrc = feConfigs?.systemLogo || LOGO_ICON;
 
   return (
     <MotionFlex
@@ -168,24 +167,24 @@ const LogoSection = () => {
       justifyContent={isCollapsed ? 'center' : 'space-between'}
     >
       <AnimatedSection show={!isCollapsed}>
-        <Image
-          w="135px"
-          h="33px"
+        <MyImage
+          w="32px"
+          h="32px"
+          src={logoSrc}
+          alt="logo"
+          borderRadius="8px"
           loading="eager"
-          alt="FastGPT slogan"
-          src={wideLogoSrc || DEFAULT_LOGO_BANNER_URL}
-          fallbackSrc={DEFAULT_LOGO_BANNER_URL}
         />
       </AnimatedSection>
 
       <AnimatedSection show={isCollapsed}>
         <Flex justifyContent="center" w="100%">
-          <Image
+          <MyImage
             w="33px"
             h="33px"
-            src={squareLogoSrc || DEFAULT_LOGO_BANNER_COLLAPSED_URL}
-            fallbackSrc={DEFAULT_LOGO_BANNER_COLLAPSED_URL}
-            alt="FastGPT logo"
+            src={logoSrc}
+            alt="logo"
+            borderRadius="8px"
             loading="eager"
           />
         </Flex>

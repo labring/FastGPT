@@ -25,20 +25,7 @@ export const ChatSettingModelSchema = z.object({
     .string()
     .optional()
     .meta({ example: '你好👋，我是 FastGPT ! 请问有什么可以帮你？', description: 'Slogan' }),
-  dialogTips: z
-    .string()
-    .optional()
-    .meta({ example: '你可以问我任何问题', description: '对话提示' }),
   enableHome: z.boolean().optional().meta({ example: true, description: '是否启用首页' }),
-  homeTabTitle: z.string().optional().meta({ example: 'FastGPT', description: '首页标签' }),
-  wideLogoUrl: z.string().optional().meta({
-    example: '/api/system/img/avatar/68ad85a7463006c963799a05/79183cf9face95d336816f492409ed29',
-    description: '宽 LOGO'
-  }),
-  squareLogoUrl: z.string().optional().meta({
-    example: '/api/system/img/avatar/68ad85a7463006c963799a05/79183cf9face95d336816f492409ed29',
-    description: '方 LOGO'
-  }),
   quickAppIds: z
     .array(ObjectIdSchema)
     .meta({ example: ['68ad85a7463006c963799a05'], description: '快捷应用 ID 列表' }),

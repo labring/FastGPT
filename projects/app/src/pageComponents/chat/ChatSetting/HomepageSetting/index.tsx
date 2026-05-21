@@ -9,14 +9,11 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import MyInput from '@/components/MyInput';
 import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { updateChatSetting } from '@/web/core/chat/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import ImageUpload from '@/pageComponents/chat/ChatSetting/ImageUpload';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolSelectModal from '@/pageComponents/chat/ChatSetting/ToolSelectModal';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -24,11 +21,6 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMount } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import {
-  DEFAULT_LOGO_BANNER_COLLAPSED_URL,
-  DEFAULT_LOGO_BANNER_URL
-} from '@/pageComponents/chat/constants';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
@@ -38,13 +30,10 @@ const AddQuickAppModal = dynamic(
 
 type Props = {
   Header: React.FC<{ children?: React.ReactNode }>;
-  onDiagramShow: (show: boolean) => void;
 };
 
-const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
-  const { isPc } = useSystem();
+const HomepageSetting = ({ Header }: Props) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const refreshChatSetting = useContextSelector(ChatPageContext, (v) => v.refreshChatSetting);
@@ -54,11 +43,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       return {
         enableHome: data?.enableHome,
         slogan: data?.slogan || t('chat:setting.home.slogan.default'),
-        dialogTips: data?.dialogTips || t('chat:setting.home.dialogue_tips.default'),
-        homeTabTitle: data?.homeTabTitle || 'FastGPT',
         selectedTools: data?.selectedTools || [],
-        wideLogoUrl: data?.wideLogoUrl,
-        squareLogoUrl: data?.squareLogoUrl,
         quickAppList: data?.quickAppList || []
       };
     },
@@ -69,8 +54,6 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     defaultValues: chatSettings2Form(chatSettings)
   });
 
-  const wideLogoUrl = watch('wideLogoUrl');
-  const squareLogoUrl = watch('squareLogoUrl');
   const formQuickApps = watch('quickAppList');
 
   useMount(async () => {
@@ -324,17 +307,6 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
             <Box fontWeight={'500'}>
               <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
                 <Box>{t('chat:setting.home.slogan')}</Box>
-
-                <Button
-                  variant={'link'}
-                  size={'sm'}
-                  color={'primary.600'}
-                  _hover={{ textDecoration: 'none', color: 'primary.400' }}
-                  _active={{ color: 'primary.600' }}
-                  onClick={() => onDiagramShow(true)}
-                >
-                  {t('chat:setting.home.diagram')}
-                </Button>
               </Flex>
 
               <Box>
@@ -345,122 +317,6 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
               </Box>
             </Box>
 
-            {/* DIALOGUE TIPS */}
-            <Box fontWeight={'500'}>
-              <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
-                <Box>{t('chat:setting.home.dialogue_tips')}</Box>
-
-                <Button
-                  variant={'link'}
-                  size={'sm'}
-                  color={'primary.600'}
-                  _hover={{ textDecoration: 'none', color: 'primary.400' }}
-                  _active={{ color: 'primary.600' }}
-                  onClick={() => onDiagramShow(true)}
-                >
-                  {t('chat:setting.home.diagram')}
-                </Button>
-              </Flex>
-
-              <Box>
-                <Input
-                  placeholder={t('chat:setting.home.dialogue_tips_placeholder')}
-                  {...register('dialogTips', { required: true })}
-                />
-              </Box>
-            </Box>
-
-            {/* COPYRIGHT */}
-            {!feConfigs.hideChatCopyrightSetting && (
-              <>
-                <Flex fontWeight={'500'} alignItems="center" gap={2}>
-                  <Flex
-                    fontWeight={'500'}
-                    alignItems={'center'}
-                    gap={3}
-                    _before={{
-                      content: '""',
-                      display: 'block',
-                      h: '14px',
-                      w: '4px',
-                      bg: 'primary.600',
-                      borderRadius: '8px'
-                    }}
-                  >
-                    {t('chat:setting.copyright.copyright_configuration')}
-                  </Flex>
-                </Flex>
-
-                <Box fontWeight={'500'}>
-                  <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
-                    <Box>{t('chat:setting.home.home_tab_title')}</Box>
-
-                    <Button
-                      variant={'link'}
-                      size={'sm'}
-                      color={'primary.600'}
-                      _hover={{ textDecoration: 'none', color: 'primary.400' }}
-                      _active={{ color: 'primary.600' }}
-                      onClick={() => onDiagramShow(true)}
-                    >
-                      {t('chat:setting.home.diagram')}
-                    </Button>
-                  </Flex>
-
-                  <Box>
-                    <MyInput
-                      isDisabled={isSaving}
-                      placeholder={t('chat:setting.home.home_tab_title_placeholder')}
-                      {...register('homeTabTitle')}
-                    />
-                  </Box>
-                </Box>
-
-                {/* LOGO */}
-                <Box fontWeight={'500'}>
-                  <Flex fontWeight={'500'} fontSize="14px" alignItems={'center'} gap={2} mb={2}>
-                    <Box>{t('chat:setting.copyright.logo')}</Box>
-
-                    <Button
-                      variant={'link'}
-                      size={'sm'}
-                      color={'primary.600'}
-                      _hover={{ textDecoration: 'none', color: 'primary.400' }}
-                      _active={{ color: 'primary.600' }}
-                      onClick={() => onDiagramShow(true)}
-                    >
-                      {t('chat:setting.copyright.diagram')}
-                    </Button>
-                  </Flex>
-
-                  <Grid
-                    alignItems="center"
-                    templateColumns={['1fr', 'fit-content(100px) 64px fit-content(100px)']}
-                    gap={[6, 2]}
-                  >
-                    <ImageUpload
-                      height="100px"
-                      aspectRatio={2.84 / 1}
-                      tips={t('chat:setting.copyright.tips')}
-                      imageSrc={wideLogoUrl || DEFAULT_LOGO_BANNER_URL}
-                      onFileSelect={(url) => setValue('wideLogoUrl', url)}
-                    />
-
-                    {isPc && (
-                      <Box ml={8} w="1px" h="100px" alignSelf="flex-start" bg="myGray.200" />
-                    )}
-
-                    <ImageUpload
-                      height="100px"
-                      aspectRatio={1 / 1}
-                      tips={t('chat:setting.copyright.tips.square')}
-                      imageSrc={squareLogoUrl || DEFAULT_LOGO_BANNER_COLLAPSED_URL}
-                      onFileSelect={(url) => setValue('squareLogoUrl', url)}
-                    />
-                  </Grid>
-                </Box>
-              </>
-            )}
           </Flex>
         </Flex>
       </Flex>

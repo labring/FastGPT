@@ -23,14 +23,10 @@ const ChatSettingSchema = new Schema({
     default: true
   },
   slogan: String,
-  dialogTips: String,
   selectedTools: {
     type: Array,
     default: []
   },
-  homeTabTitle: String,
-  wideLogoUrl: String,
-  squareLogoUrl: String,
   quickAppIds: {
     type: [String],
     default: []
