@@ -36,24 +36,22 @@ const Md5DuplicateModal: React.FC<Md5DuplicateModalProps> = ({
       onClose={onClose}
     >
       <ModalBody>
-        <VStack spacing={3} alignItems="stretch">
+        <VStack p={2} spacing={3} alignItems="stretch">
           <Box fontSize={'14px'} lineHeight={'20px'} color={'myGray.900'}>
             {t('dataset:md5_duplicate_files_exist')}
           </Box>
-          <VStack spacing={1} alignItems="stretch" maxH={'200px'} overflowY={'auto'}>
+          <VStack spacing={0} alignItems="stretch">
             {md5DuplicateFiles.map((item, index) => (
               <HStack
                 key={index}
-                spacing={'8px'}
+                spacing={0}
                 alignItems="center"
-                bg={'myGray.50'}
-                borderRadius={'4px'}
-                px={3}
-                py={2}
+                h={'38px'}
+                borderBottom={'1px solid #EDF2F7'}
               >
-                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center">
-                  <MyTooltip label={item.existingFileName} maxW="400px">
-                    <Box flex={1} fontSize={'13px'} color={'myGray.900'} noOfLines={1}>
+                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center" px={'8px'} py={'4px'}>
+                  <MyTooltip label={item.existingFileName}>
+                    <Box flex={1} fontSize={'14px'} color={'myGray.550'} lineHeight={'1.6'} noOfLines={1}>
                       {item.existingFileName}
                     </Box>
                   </MyTooltip>
@@ -70,9 +68,9 @@ const Md5DuplicateModal: React.FC<Md5DuplicateModalProps> = ({
                     {item.type === 'dataset' ? t('dataset:existing_file') : t('dataset:new_upload')}
                   </Box>
                 </HStack>
-                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center">
-                  <MyTooltip label={item.newFileName} maxW="400px">
-                    <Box flex={1} fontSize={'13px'} color={'myGray.900'} noOfLines={1}>
+                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center" px={'8px'} py={'4px'}>
+                  <MyTooltip label={item.newFileName}>
+                    <Box flex={1} fontSize={'14px'} color={'myGray.550'} lineHeight={'1.6'} noOfLines={1}>
                       {item.newFileName}
                     </Box>
                   </MyTooltip>
@@ -96,8 +94,8 @@ const Md5DuplicateModal: React.FC<Md5DuplicateModalProps> = ({
       </ModalBody>
       <ModalFooter>
         <HStack spacing={3} w={'100%'} justifyContent={'flex-end'}>
-          <Button variant="primary" onClick={onConfirm}>
-            {t('common:Confirm')}
+          <Button variant="whitePrimary" onClick={onConfirm}>
+            {t('dataset:md5_duplicate_confirm')}
           </Button>
         </HStack>
       </ModalFooter>
