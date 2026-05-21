@@ -109,7 +109,6 @@
   "resume_placeholder_generating": "生成中",
   "resume_unavailable": "目前無法恢復正在產生的串流內容，請稍後再查看最終回答。",
   "resume_unavailable_memory_pressure": "目前服務資源緊張，暫時不提供串流恢復。請稍後再查看最終回答。",
-  "stopping_chat": "正在停止上一輪對話，請稍候",
   "sandbox_binary_file_no_preview": "無法預覽該文件，請直接下載查看",
   "sandbox_entry_tooltip": "查看虛擬機器文件",
   "sandbox_files": "虛擬機器文件",

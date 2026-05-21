@@ -1155,12 +1155,6 @@ const ChatBox = ({
         : state
     );
     syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
-    if (!completed) {
-      toast({
-        title: t('chat:stopping_chat'),
-        status: 'warning'
-      });
-    }
   });
 
   // retry input

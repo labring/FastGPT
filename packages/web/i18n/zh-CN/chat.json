@@ -112,7 +112,6 @@
   "resume_placeholder_generating": "生成中",
   "resume_unavailable": "当前无法恢复正在生成的流式内容，请稍后查看最终回答。",
   "resume_unavailable_memory_pressure": "当前服务资源紧张，暂不提供流式恢复。请稍后查看最终回答。",
-  "stopping_chat": "正在停止上一轮对话，请稍候",
   "sandbox_binary_file_no_preview": "无法预览该文件，请直接下载查看",
   "sandbox_entry_tooltip": "查看虚拟机文件",
   "sandbox_files": "虚拟机文件",
