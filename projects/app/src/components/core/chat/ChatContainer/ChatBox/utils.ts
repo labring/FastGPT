@@ -215,27 +215,21 @@ export const shouldAppendResumeInteractive = ({
   incomingInteractive: WorkflowInteractiveResponseType;
 }) => {
   const incomingFinalInteractive = extractDeepestInteractive(incomingInteractive);
+  const lastExistingInteractive = existingValues[existingValues.length - 1]?.interactive;
 
-  return !existingValues.some((value) => {
-    if (!value.interactive) return false;
+  if (!lastExistingInteractive) return true;
 
-    const existingFinalInteractive = extractDeepestInteractive(value.interactive);
-    const isSameInteractive =
-      existingFinalInteractive.type === incomingFinalInteractive.type &&
-      (existingFinalInteractive.usageId === incomingFinalInteractive.usageId ||
-        isSameArray(existingFinalInteractive.entryNodeIds, incomingFinalInteractive.entryNodeIds));
+  const existingFinalInteractive = extractDeepestInteractive(lastExistingInteractive);
+  const isSameInteractive =
+    existingFinalInteractive.type === incomingFinalInteractive.type &&
+    (existingFinalInteractive.usageId === incomingFinalInteractive.usageId ||
+      isSameArray(existingFinalInteractive.entryNodeIds, incomingFinalInteractive.entryNodeIds));
 
-    if (!isSameInteractive) return false;
+  if (!isSameInteractive) return true;
 
-    if (
-      existingFinalInteractive.type === 'userInput' &&
-      existingFinalInteractive.params.submitted
-    ) {
-      return true;
-    }
-
-    return false;
-  });
+  return !(
+    existingFinalInteractive.type === 'userInput' && existingFinalInteractive.params.submitted
+  );
 };
 
 export const refreshSubmittedFormInteractiveValues = ({

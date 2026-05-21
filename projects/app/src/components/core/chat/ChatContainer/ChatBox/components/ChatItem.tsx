@@ -479,7 +479,7 @@ const ChatItem = (props: Props) => {
                   />
                   {i === splitAiResponseResults.length - 1 && (
                     <ResponseTags
-                      showTags={!isLastChild || !isChatting || !!chat.responseData?.length}
+                      showTags={!isLastChild || !isChatting}
                       historyItem={chat}
                       onOpenCiteModal={onOpenCiteModal}
                     />

@@ -198,6 +198,44 @@ describe('shouldAppendResumeInteractive', () => {
       })
     ).toBe(true);
   });
+
+  it('appends a repeated form node after a previous submitted form is no longer last', () => {
+    const submittedInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'first-usage-id',
+      params: {
+        description: '',
+        inputForm: [],
+        submitted: true
+      }
+    } as const;
+
+    expect(
+      shouldAppendResumeInteractive({
+        existingValues: [
+          {
+            interactive: submittedInteractive
+          },
+          {
+            text: {
+              content: 'confirmed, continuing workflow'
+            }
+          }
+        ],
+        incomingInteractive: {
+          ...submittedInteractive,
+          usageId: 'second-usage-id',
+          params: {
+            ...submittedInteractive.params,
+            submitted: false
+          }
+        }
+      })
+    ).toBe(true);
+  });
 });
 
 describe('mergeResumeCompletedChatRecords', () => {
