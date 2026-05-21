@@ -97,7 +97,7 @@
   "view_chart": "Chart",
   "view_table": "Form",
   "vlm_model": "VLM",
-  "vlm_model_tip": "Generates additional indexes for images in documents within the knowledge base.",
+  "vlm_model_tip": "When knowledge contains images, you can configure an image parsing model to recognize text and structural information (e.g., tables, flowcharts).",
   "volunme_of_failed_calls": "Failed calls",
   "waiting_test": "Waiting for test",
   "model_permission_config_hint": "If no collaborators are added, all members are available by default",
