@@ -153,6 +153,14 @@ describe('writeSandboxFile', () => {
     const sandbox = makeSandbox({ writeFiles });
     await expect(writeSandboxFile(sandbox, '/empty.txt', '')).resolves.toBeUndefined();
   });
+
+  it('当传入 data:;base64, 格式的内容时，自动将其解码为 Buffer 写入', async () => {
+    const writeFiles = vi.fn().mockResolvedValue([makeWriteResult('/image.png')]);
+    const sandbox = makeSandbox({ writeFiles });
+    const base64Content = 'data:image/png;base64,aGVsbG8='; // "hello" in base64
+    await writeSandboxFile(sandbox, '/image.png', base64Content);
+    expect(writeFiles).toHaveBeenCalledWith([{ path: '/image.png', data: Buffer.from('hello') }]);
+  });
 });
 
 // ─── isSandboxPathDirectory ────────────────────────────────────────────────

@@ -551,11 +551,17 @@ const SandboxEditor = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const text = await new Promise<string>((resolve, reject) => {
+      const language = getLanguageByFileName(file.name);
+      const isBinary = getIsBinaryByLanguage(language);
+      const content = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
-        reader.readAsText(file);
+        if (isBinary) {
+          reader.readAsDataURL(file);
+        } else {
+          reader.readAsText(file);
+        }
       });
       const path = targetDirPath === '.' ? file.name : `${targetDirPath}/${file.name}`;
       await writeSandboxFile({
@@ -563,7 +569,7 @@ const SandboxEditor = ({
         chatId,
         outLinkAuthData,
         path,
-        content: text
+        content
       });
 
       const newNode: TreeNode = {
