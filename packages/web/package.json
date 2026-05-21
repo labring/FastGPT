@@ -31,7 +31,7 @@
     "date-fns": "catalog:",
     "dayjs": "catalog:",
     "i18next": "catalog:",
-    "js-cookie": "^3.0.5",
+    "js-cookie": "^3.0.7",
     "lexical": "0.12.6",
     "lodash": "catalog:",
     "next": "catalog:",
