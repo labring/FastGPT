@@ -132,11 +132,44 @@ describe('DatasetDataIndexOperation', () => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
   });
 
-  describe('getDefaultIndexes', () => {
+  describe('getSystemIndexes', () => {
+    it('should collect image embedding sources by image index switch and model capability', () => {
+      const textModelOperation = new DatasetDataIndexOperation(embeddingModel);
+      const visionOperation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+
+      expect(
+        textModelOperation.getImageEmbeddingSources({
+          q: '![one](dataset/team/one.png)',
+          imageId: 'dataset/team/main.png',
+          imageIndex: true
+        })
+      ).toEqual([]);
+
+      expect(
+        visionOperation.getImageEmbeddingSources({
+          q: '![one](dataset/team/one.png) ![invalid](relative/image.png)',
+          a: '![two](https://example.com/two.png) ![repeat](dataset/team/one.png)',
+          imageId: 'dataset/team/main.png',
+          imageIndex: true
+        })
+      ).toEqual(['dataset/team/main.png', 'dataset/team/one.png', 'https://example.com/two.png']);
+
+      expect(
+        visionOperation.getImageEmbeddingSources({
+          q: '![one](dataset/team/one.png)',
+          imageId: 'dataset/team/main.png',
+          imageIndex: false
+        })
+      ).toEqual(['dataset/team/main.png']);
+    });
+
     it('should create prefixed default indexes from question and answer', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 
-      const result = await operation.getDefaultIndexes({
+      const result = await operation.getSystemIndexes({
         q: 'question text',
         a: 'answer text',
         indexSize: 50,
@@ -151,6 +184,45 @@ describe('DatasetDataIndexOperation', () => {
         {
           type: DatasetDataIndexTypeEnum.default,
           text: 'collection title\nanswer text'
+        }
+      ]);
+    });
+
+    it('should create image embedding indexes from image id and markdown images', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+
+      const result = await operation.getSystemIndexes({
+        q: 'question ![one](dataset/team/one.png)',
+        a: 'answer ![two](https://example.com/two.png) ![repeat](dataset/team/one.png)',
+        imageId: 'dataset/team/main.png',
+        imageIndex: true,
+        indexSize: 50,
+        maxIndexSize: 200
+      });
+
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.default,
+          text: 'question ![one](dataset/team/one.png)'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.default,
+          text: 'answer ![two](https://example.com/two.png) ![repeat](dataset/team/one.png)'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/main.png'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/one.png'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'https://example.com/two.png'
         }
       ]);
     });
@@ -191,6 +263,91 @@ describe('DatasetDataIndexOperation', () => {
       ]);
     });
 
+    it('should regenerate system indexes and only reuse matching image embedding ids', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+
+      const result = await operation.formatIndexes({
+        q: 'question ![new](dataset/team/new.png)',
+        a: '',
+        imageId: 'dataset/team/main.png',
+        imageIndex: true,
+        indexSize: 20,
+        maxIndexSize: 200,
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_1' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'dataset/team/main.png',
+            dataId: 'main_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'dataset/team/old.png',
+            dataId: 'old_image'
+          }
+        ]
+      });
+
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.custom,
+          text: 'manual',
+          dataId: 'manual_1'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.default,
+          text: 'question ![new](dataset/team/new.png)'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/main.png',
+          dataId: 'main_old'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/new.png'
+        }
+      ]);
+    });
+
+    it('should keep text indexes whose text matches image embedding source', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+      const imageSource = 'dataset/team/main.png';
+
+      const result = await operation.formatIndexes({
+        q: '',
+        a: '',
+        imageId: imageSource,
+        indexSize: 20,
+        maxIndexSize: 200,
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: imageSource,
+            dataId: 'custom_image_text'
+          }
+        ]
+      });
+
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.custom,
+          text: imageSource,
+          dataId: 'custom_image_text'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: imageSource
+        }
+      ]);
+    });
+
     it('should split a custom index when token count exceeds max token', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
       mockCountPromptTokens.mockResolvedValueOnce(30);
@@ -214,18 +371,65 @@ describe('DatasetDataIndexOperation', () => {
       expect(mergedText).toContain('first');
       expect(mergedText).toContain('third');
     });
+
+    it('should check default index token size after prefix is applied', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      mockCountPromptTokens.mockResolvedValueOnce(21);
+
+      const result = await operation.formatIndexes({
+        q: 'short content',
+        a: '',
+        indexSize: 10,
+        maxIndexSize: 20,
+        indexPrefix: '# LongTitle',
+        indexes: []
+      });
+
+      expect(mockCountPromptTokens).toHaveBeenCalledWith('# LongTitle\nshort content');
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.default,
+          text: '# LongTitle\nshort content'
+        }
+      ]);
+    });
+
+    it('should keep image embedding indexes unsplit even when text looks too long', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+      const imageSource = 'dataset/team/a-very-long-image-source-name-that-is-not-text.png';
+
+      const result = await operation.formatIndexes({
+        q: '',
+        a: '',
+        imageId: imageSource,
+        indexSize: 8,
+        maxIndexSize: 12,
+        indexes: []
+      });
+
+      expect(mockCountPromptTokens).not.toHaveBeenCalled();
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: imageSource
+        }
+      ]);
+    });
   });
 
-  describe('mergeExistingDefaultIndexIds', () => {
+  describe('mergeExistingSystemIndexIds', () => {
     it('should reuse dataId for unchanged default indexes only', () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 
-      const result = operation.mergeExistingDefaultIndexIds({
+      const result = operation.mergeExistingSystemIndexIds({
         currentIndexes: [
           { type: DatasetDataIndexTypeEnum.default, text: 'same', dataId: 'default_old' },
           { type: DatasetDataIndexTypeEnum.custom, text: 'same custom', dataId: 'custom_old' }
         ],
-        nextDefaultIndexes: [
+        nextSystemIndexes: [
           { type: DatasetDataIndexTypeEnum.default, text: 'same' },
           { type: DatasetDataIndexTypeEnum.default, text: 'new' }
         ]
@@ -234,6 +438,38 @@ describe('DatasetDataIndexOperation', () => {
       expect(result).toEqual([
         { type: DatasetDataIndexTypeEnum.default, text: 'same', dataId: 'default_old' },
         { type: DatasetDataIndexTypeEnum.default, text: 'new' }
+      ]);
+    });
+
+    it('should reuse system dataId by type and text without crossing text and image indexes', () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      const result = operation.mergeExistingSystemIndexIds({
+        currentIndexes: [
+          { type: DatasetDataIndexTypeEnum.default, text: 'same-source', dataId: 'default_old' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'same-source',
+            dataId: 'image_old'
+          },
+          { type: DatasetDataIndexTypeEnum.custom, text: 'dataset/team/new.png', dataId: 'custom' }
+        ],
+        nextSystemIndexes: [
+          { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'same-source' },
+          { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'dataset/team/new.png' }
+        ]
+      });
+
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'same-source',
+          dataId: 'image_old'
+        },
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/new.png'
+        }
       ]);
     });
   });
@@ -343,14 +579,12 @@ describe('DatasetDataIndexOperation', () => {
       expect(mockVectorInsert).not.toHaveBeenCalled();
     });
 
-    it('should insert text and image embedding patch items with separate vector calls', async () => {
+    it('should insert text and image embedding patch items in one vector call', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
         vision: true
       });
-      mockVectorInsert
-        .mockResolvedValueOnce({ insertIds: ['text_vector_id'] })
-        .mockResolvedValueOnce({ insertIds: ['image_vector_id'] });
+      mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id', 'image_vector_id'] });
       const patchResult = operation.buildPatch({
         currentIndexes: [],
         nextIndexes: [
@@ -370,17 +604,11 @@ describe('DatasetDataIndexOperation', () => {
       });
 
       expect(tokens).toBeGreaterThan(0);
-      expect(mockVectorInsert).toHaveBeenCalledTimes(2);
-      expect(mockGetVectors).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({
-          inputs: [{ type: 'text', input: 'text index' }]
-        })
-      );
-      expect(mockGetVectors).toHaveBeenNthCalledWith(
-        2,
+      expect(mockVectorInsert).toHaveBeenCalledTimes(1);
+      expect(mockGetVectors).toHaveBeenCalledWith(
         expect.objectContaining({
           inputs: [
+            { type: 'text', input: 'text index' },
             { type: 'image', input: 'data:image/png;base64,dataset/team/collection/image.png' }
           ]
         })
@@ -433,6 +661,32 @@ describe('DatasetDataIndexOperation', () => {
         { type: DatasetDataIndexTypeEnum.custom, text: 'one', dataId: 'id_1' }
       ]);
       expect(mockVectorInsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('should skip invalid image embedding sources without dropping valid text indexes', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+
+      const result = await operation.insertVectors({
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: 'one' },
+          { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'relative/image.png' }
+        ],
+        teamId: 'team_id',
+        datasetId: 'dataset_id',
+        collectionId: 'collection_id'
+      });
+
+      expect(result.indexes).toEqual([
+        { type: DatasetDataIndexTypeEnum.custom, text: 'one', dataId: 'id_1' }
+      ]);
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inputs: [{ type: 'text', input: 'one' }]
+        })
+      );
     });
 
     it('should skip vector delete when id list is empty', async () => {

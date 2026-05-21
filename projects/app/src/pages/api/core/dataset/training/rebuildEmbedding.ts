@@ -10,9 +10,9 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLLMModel, getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import {
   getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode,
-  matchDatasetDataMarkdownImageUrls
+  getDatasetImageTrainingMode
 } from '@fastgpt/service/core/dataset/utils';
+import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -145,7 +145,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
             .select('imageIndex')
             .session(session);
           const hasMarkdownImages =
-            !!collection?.imageIndex && matchDatasetDataMarkdownImageUrls(data.q).length > 0;
+            !!collection?.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
           const mode = getDatasetImageTrainingMode({
             supportVlm,
             supportImageIndex,

@@ -7,24 +7,23 @@ import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
-  DatasetDataIndexItemType,
   DatasetDataSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import {
   getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode,
-  matchDatasetDataMarkdownImageUrls
+  getDatasetImageTrainingMode
 } from '@fastgpt/service/core/dataset/utils';
-import { isValidImageEmbeddingSource } from '@fastgpt/service/core/dataset/search/utils';
+import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -46,39 +45,26 @@ type PopulateType = {
   };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
-type DatasetDataIndexInputType = Omit<DatasetDataIndexItemType, 'dataId'> & {
-  dataId?: string;
-};
 
-export const getMarkdownImageUrlsFromTrainingData = (trainingData: {
-  q?: string;
-  data?: { q?: string };
-}) => {
-  const texts = [trainingData.q, trainingData.data?.q].filter(Boolean) as string[];
-
-  return Array.from(new Set(texts.flatMap(matchDatasetDataMarkdownImageUrls)));
-};
-
+/**
+ * 获取重建时需要从训练任务透传给 data 层的外部索引。
+ *
+ * `default` 和 `imageEmbedding` 都是系统索引，由 data/dataIndex 根据当前 q/a/imageId
+ * 重新生成；这里仅保留 custom/question/summary/image 等外部索引。其中 image 是 VLM
+ * 生成的文本描述索引，只有当前集合仍开启图片索引且 VLM 可用时才保留。
+ */
 export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
   const sourceIndexes = trainingData.indexes?.length
     ? trainingData.indexes.map((index) => ({ ...index }))
     : trainingData.data?.indexes || [];
-  const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
+  const { supportVlm } = getDatasetImageIndexCapability({
     vectorModel: trainingData.dataset.vectorModel,
     vlmModel: trainingData.dataset.vlmModel
   });
-  const validImageEmbeddingSources = new Set(
-    [
-      ...(trainingData.data?.imageId ? [trainingData.data.imageId] : []),
-      ...(trainingData.collection.imageIndex
-        ? getMarkdownImageUrlsFromTrainingData(trainingData)
-        : [])
-    ].filter(isValidImageEmbeddingSource)
-  );
 
   return sourceIndexes.filter((index) => {
-    if (index.type === DatasetDataIndexTypeEnum.imageEmbedding) {
-      return supportImageEmbedding && validImageEmbeddingSources.has(index.text);
+    if (isDatasetDataSystemIndexType(index.type)) {
+      return false;
     }
     if (
       index.type === DatasetDataIndexTypeEnum.image &&
@@ -88,45 +74,6 @@ export const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
     }
     return true;
   });
-};
-
-export const appendImageEmbeddingIndexes = ({
-  indexes,
-  trainingData,
-  embModel,
-  includeDataImageId = true
-}: {
-  indexes: DatasetDataIndexInputType[];
-  trainingData: Pick<TrainingDataType, 'q' | 'data' | 'collection'>;
-  embModel: ReturnType<typeof getEmbeddingModel>;
-  includeDataImageId?: boolean;
-}) => {
-  if (!isImageEmbeddingModel(embModel)) return indexes;
-
-  const existedImageIds = new Set(
-    indexes
-      .filter((item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding)
-      .map((item) => item.text)
-  );
-  const imageIds = [
-    ...(includeDataImageId && trainingData.data?.imageId ? [trainingData.data.imageId] : []),
-    ...(trainingData.collection.imageIndex
-      ? getMarkdownImageUrlsFromTrainingData(trainingData)
-      : [])
-  ]
-    .filter(Boolean)
-    .filter(isValidImageEmbeddingSource) as string[];
-
-  const uniqueImageIds = imageIds.filter(
-    (item, index, self) => index === self.indexOf(item) && !existedImageIds.has(item)
-  );
-
-  return indexes.concat(
-    uniqueImageIds.map((imageId) => ({
-      type: DatasetDataIndexTypeEnum.imageEmbedding,
-      text: imageId
-    }))
-  );
 };
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
@@ -318,7 +265,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
             .session(session);
           const hasMarkdownImages =
             !!collection?.imageIndex &&
-            matchDatasetDataMarkdownImageUrls(newRebuildingData.q).length > 0;
+            uniqueDatasetDataMarkdownImageUrls([newRebuildingData.q]).length > 0;
           const { availableVlmModel, supportVlm, supportImageIndex } =
             getDatasetImageIndexCapability({
               vectorModel: trainingData.dataset.vectorModel,
@@ -365,16 +312,14 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
   const q = trainingData.q || datasetData.q;
   const a = trainingData.a ?? datasetData.a;
-  const rebuildIndexes = appendImageEmbeddingIndexes({
-    indexes: getRebuildBaseIndexes(trainingData),
-    trainingData,
-    embModel
-  });
+  const rebuildIndexes = getRebuildBaseIndexes(trainingData);
 
   const { tokens } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
     q,
     a,
+    imageId: datasetData.imageId,
+    imageIndex: !!trainingData.collection.imageIndex,
     indexes: rebuildIndexes,
     model: trainingData.dataset.vectorModel,
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
@@ -400,12 +345,6 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
     const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
-    const indexes = appendImageEmbeddingIndexes({
-      indexes: trainingData.indexes || [],
-      trainingData,
-      embModel,
-      includeDataImageId: false
-    });
 
     // insert new data to dataset
     const { tokens } = await createDatasetData({
@@ -419,11 +358,12 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
       indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexes,
+      indexes: trainingData.indexes || [],
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,
       embeddingModel: trainingData.dataset.vectorModel,
+      imageIndex: !!trainingData.collection.imageIndex,
       session
     });
 

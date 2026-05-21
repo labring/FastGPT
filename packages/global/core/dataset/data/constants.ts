@@ -1,11 +1,12 @@
 import { i18nT } from '../../../common/i18n/utils';
 
 export enum DatasetDataIndexTypeEnum {
-  default = 'default', // 默认的
+  default = 'default', // 默认文本索引
+  imageEmbedding = 'imageEmbedding', // 默认图片向量
+
   summary = 'summary', // 摘要，系统生成
   question = 'question', // 补全问题，系统生成
   image = 'image', // 图片描述，系统生成
-  imageEmbedding = 'imageEmbedding', // 图片向量，系统生成
   custom = 'custom'
 }
 

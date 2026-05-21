@@ -1,6 +1,5 @@
 import {
-  updateDatasetDataGeneratedIndexes,
-  updateDatasetDataDefaultIndexes,
+  updateDatasetDataSystemIndexes,
   updateDatasetDataByIndexes
 } from '@/service/core/dataset/data/data';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
@@ -17,11 +16,7 @@ import {
   UpdateDatasetDataResponseSchema,
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
-import {
-  buildDatasetDataIndexRebuildPlan,
-  getDatasetImageIndexCapability,
-  replaceS3KeyToPreviewUrl
-} from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addHours } from 'date-fns';
@@ -50,11 +45,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   const dataset = collection.dataset;
   const vectorModel = dataset.vectorModel;
-  const { supportImageEmbedding } = getDatasetImageIndexCapability({
-    vectorModel,
-    vlmModel: dataset.vlmModel
-  });
-  const nextQ = q || datasetData.q || '';
+  const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {
     addAuditLog({
@@ -69,23 +60,19 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     });
   };
 
-  const shouldUseIndexRebuildPlan =
-    !!collection.imageIndex || collection.type === DatasetCollectionTypeEnum.images;
-
   if (hasIndexes) {
     // 兼容旧 API：调用方显式传 indexes 时仍按完整索引更新。
-    // imageEmbedding 是系统索引，不能被外部 indexes 覆盖或误删，必须从数据库当前值保留。
+    // imageEmbedding 是系统索引，不能被外部 indexes 覆盖，统一由 dataIndex 根据数据内容重建。
     const manualIndexes = indexes?.filter(
       (index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding
-    );
-    const preservedImageEmbeddingIndexes = datasetData.indexes.filter(
-      (index) => index.type === DatasetDataIndexTypeEnum.imageEmbedding
     );
     const { tokens } = await updateDatasetDataByIndexes({
       dataId,
       q: nextQ,
       a: nextA,
-      indexes: [...(manualIndexes || []), ...preservedImageEmbeddingIndexes],
+      imageId: datasetData.imageId,
+      imageIndex: !!collection.imageIndex,
+      indexes: manualIndexes || [],
       model: vectorModel,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
@@ -99,46 +86,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         model: vectorModel
       });
     }
-  } else if (shouldUseIndexRebuildPlan) {
-    const baseIndexes = datasetData.indexes.filter(
-      (index) => index.type !== DatasetDataIndexTypeEnum.default
-    );
-    const rebuildPlan = buildDatasetDataIndexRebuildPlan({
-      indexes: baseIndexes,
-      existingIndexes: datasetData.indexes,
-      nextQ,
-      supportImageEmbedding,
+  } else if (!!nextQ || !!datasetData.imageId) {
+    const { tokens } = await updateDatasetDataSystemIndexes({
+      dataId,
+      q: nextQ,
+      a: nextA,
+      imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
-      isImageCollection: collection.type === DatasetCollectionTypeEnum.images,
-      imageId: datasetData.imageId
-    });
-
-    const generatedIndexes = rebuildPlan.indexes.filter(
-      (index) => index.type === DatasetDataIndexTypeEnum.imageEmbedding
-    );
-
-    const { tokens } = await updateDatasetDataGeneratedIndexes({
-      dataId,
-      q: nextQ,
-      a: nextA,
-      indexes: generatedIndexes,
-      model: vectorModel,
-      indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
-    });
-
-    if (tokens > 0) {
-      pushGenerateVectorUsage({
-        teamId,
-        tmbId,
-        inputTokens: tokens,
-        model: vectorModel
-      });
-    }
-  } else if (q !== undefined || a !== undefined) {
-    const { tokens } = await updateDatasetDataDefaultIndexes({
-      dataId,
-      q: nextQ,
-      a: nextA,
       model: vectorModel,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
@@ -157,8 +111,6 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
   pushUpdateDataAuditLog();
 
   return UpdateDatasetDataResponseSchema.parse({
-    dataId,
-    rebuilding: false,
     q: replaceS3KeyToPreviewUrl(nextQ, addHours(new Date(), 1)),
     a: nextA ? replaceS3KeyToPreviewUrl(nextA, addHours(new Date(), 1)) : undefined
   });

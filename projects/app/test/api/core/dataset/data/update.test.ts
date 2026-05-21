@@ -5,20 +5,16 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 const {
   mockAuthDatasetData,
   mockUpdateDatasetDataByIndexes,
-  mockUpdateDatasetDataDefaultIndexes,
-  mockUpdateDatasetDataGeneratedIndexes,
+  mockUpdateDatasetDataSystemIndexes,
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
-  mockGetDatasetImageIndexCapability,
   mockReplaceS3KeyToPreviewUrl
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
   mockUpdateDatasetDataByIndexes: vi.fn(),
-  mockUpdateDatasetDataDefaultIndexes: vi.fn(),
-  mockUpdateDatasetDataGeneratedIndexes: vi.fn(),
+  mockUpdateDatasetDataSystemIndexes: vi.fn(),
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
-  mockGetDatasetImageIndexCapability: vi.fn(),
   mockReplaceS3KeyToPreviewUrl: vi.fn()
 }));
 
@@ -32,8 +28,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 
 vi.mock('@/service/core/dataset/data/data', () => ({
   updateDatasetDataByIndexes: mockUpdateDatasetDataByIndexes,
-  updateDatasetDataDefaultIndexes: mockUpdateDatasetDataDefaultIndexes,
-  updateDatasetDataGeneratedIndexes: mockUpdateDatasetDataGeneratedIndexes
+  updateDatasetDataSystemIndexes: mockUpdateDatasetDataSystemIndexes
 }));
 
 vi.mock('@/service/support/wallet/usage/push', () => ({
@@ -46,8 +41,6 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  buildDatasetDataIndexRebuildPlan: vi.fn(() => ({ indexes: [] })),
-  getDatasetImageIndexCapability: mockGetDatasetImageIndexCapability,
   replaceS3KeyToPreviewUrl: mockReplaceS3KeyToPreviewUrl
 }));
 
@@ -94,16 +87,12 @@ describe('PUT /api/core/dataset/data/update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthDatasetData.mockResolvedValue(buildAuthResult());
-    mockGetDatasetImageIndexCapability.mockReturnValue({
-      supportImageEmbedding: true
-    });
     mockReplaceS3KeyToPreviewUrl.mockImplementation((text: string) => text);
     mockUpdateDatasetDataByIndexes.mockResolvedValue({ tokens: 12 });
-    mockUpdateDatasetDataDefaultIndexes.mockResolvedValue({ tokens: 0 });
-    mockUpdateDatasetDataGeneratedIndexes.mockResolvedValue({ tokens: 0 });
+    mockUpdateDatasetDataSystemIndexes.mockResolvedValue({ tokens: 0 });
   });
 
-  it('should keep legacy indexes update API compatible while preserving system image embedding indexes', async () => {
+  it('should keep legacy indexes update API compatible while rebuilding system image embedding indexes', async () => {
     const result = await handler({
       body: {
         dataId,
@@ -126,23 +115,19 @@ describe('PUT /api/core/dataset/data/update', () => {
       dataId,
       q: 'new question',
       a: 'new answer',
+      imageId: 'dataset/team/main.png',
+      imageIndex: true,
       indexes: [
         {
           type: DatasetDataIndexTypeEnum.custom,
           text: 'new custom'
-        },
-        {
-          type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/main.png',
-          dataId: 'image_embedding_old'
         }
       ],
       model: 'vision-embedding',
       indexSize: 256,
       indexPrefix: '# Collection'
     });
-    expect(mockUpdateDatasetDataGeneratedIndexes).not.toHaveBeenCalled();
-    expect(mockUpdateDatasetDataDefaultIndexes).not.toHaveBeenCalled();
+    expect(mockUpdateDatasetDataSystemIndexes).not.toHaveBeenCalled();
     expect(mockPushGenerateVectorUsage).toHaveBeenCalledWith({
       teamId: 'team-id',
       tmbId: 'tmb-id',
@@ -150,10 +135,51 @@ describe('PUT /api/core/dataset/data/update', () => {
       model: 'vision-embedding'
     });
     expect(result).toEqual({
-      dataId,
-      rebuilding: false,
       q: 'new question',
       a: 'new answer'
     });
+  });
+
+  it('should pass an explicit empty question to the index update path', async () => {
+    await handler({
+      body: {
+        dataId,
+        q: '',
+        a: '',
+        indexes: []
+      }
+    } as any);
+
+    expect(mockUpdateDatasetDataByIndexes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataId,
+        q: '',
+        a: '',
+        imageId: 'dataset/team/main.png',
+        imageIndex: true,
+        indexes: []
+      })
+    );
+  });
+
+  it('should pass image context when rebuilding generated indexes', async () => {
+    await handler({
+      body: {
+        dataId,
+        q: 'new question ![new](dataset/team/new.png)'
+      }
+    } as any);
+
+    expect(mockUpdateDatasetDataSystemIndexes).toHaveBeenCalledWith({
+      dataId,
+      q: 'new question ![new](dataset/team/new.png)',
+      a: 'old answer',
+      imageId: 'dataset/team/main.png',
+      imageIndex: true,
+      model: 'vision-embedding',
+      indexSize: 256,
+      indexPrefix: '# Collection'
+    });
+    expect(mockUpdateDatasetDataByIndexes).not.toHaveBeenCalled();
   });
 });

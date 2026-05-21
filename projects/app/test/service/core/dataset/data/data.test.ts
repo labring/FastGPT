@@ -21,8 +21,7 @@ import {
   createDatasetData,
   deleteDatasetData,
   updateDatasetDataByIndexes,
-  updateDatasetDataDefaultIndexes,
-  updateDatasetDataGeneratedIndexes
+  updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
@@ -76,11 +75,13 @@ const createDatasetContext = async () => {
 const createMongoData = async ({
   q = 'old question',
   a = 'old answer',
+  imageId,
   indexes,
   history
 }: {
   q?: string;
   a?: string;
+  imageId?: string;
   indexes?: DatasetDataIndexItemType[];
   history?: DatasetDataItemType['history'];
 } = {}) => {
@@ -92,6 +93,7 @@ const createMongoData = async ({
     collectionId: collection._id,
     q,
     a,
+    imageId,
     history,
     indexes: indexes ?? [
       {
@@ -237,7 +239,7 @@ describe('Dataset data service', () => {
       ).rejects.toBe('q, datasetId, collectionId, embeddingModel is required');
     });
 
-    it('should use default text for image data without using filename as question text', async () => {
+    it('should allow empty question text for image data without creating default text index', async () => {
       const { root, dataset, collection } = await createDatasetContext();
       const imageId = `dataset/${dataset._id}/黄芪.png`;
       vi.mocked(getEmbeddingModel).mockReturnValue({
@@ -258,8 +260,7 @@ describe('Dataset data service', () => {
 
       const data = await MongoDatasetData.findById(result.insertId).lean();
 
-      expect(data?.q).toBe('dataset:image_embedding_index_default_desc');
-      expect(data?.q).not.toContain('黄芪');
+      expect(data?.q).toBe('');
       expect(data?.indexes).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -272,7 +273,7 @@ describe('Dataset data service', () => {
         expect.arrayContaining([
           expect.objectContaining({
             type: DatasetDataIndexTypeEnum.default,
-            text: 'dataset:image_embedding_index_default_desc'
+            text: ''
           })
         ])
       );
@@ -380,9 +381,105 @@ describe('Dataset data service', () => {
         })
       ).rejects.toBe('Data not found');
     });
+
+    it('should rebuild image embedding indexes from data content when image index is enabled', async () => {
+      vi.mocked(getEmbeddingModel).mockReturnValue({
+        ...embeddingModel,
+        vision: true
+      });
+      const mainImage = 'dataset/team/main.png';
+      const oldMarkdownImage = 'dataset/team/old.png';
+      const newMarkdownImage = 'dataset/team/new.png';
+      const { data } = await createMongoData({
+        q: `old question ![old](${oldMarkdownImage})`,
+        a: '',
+        imageId: mainImage,
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'old custom index',
+            dataId: 'custom_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.default,
+            text: `old question ![old](${oldMarkdownImage})`,
+            dataId: 'default_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: mainImage,
+            dataId: 'main_image_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: oldMarkdownImage,
+            dataId: 'old_markdown_image'
+          }
+        ]
+      });
+
+      await updateDatasetDataByIndexes({
+        dataId: String(data._id),
+        q: `new question ![new](${newMarkdownImage})`,
+        a: '',
+        imageId: mainImage,
+        imageIndex: true,
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'new custom index'
+          }
+        ],
+        model: 'text-embedding-3-small',
+        indexSize: 50
+      });
+
+      const updatedData = await MongoDatasetData.findById(data._id).lean();
+      expect(updatedData?.indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'new custom index'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.default,
+            text: `new question ![new](${newMarkdownImage})`
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: mainImage,
+            dataId: 'main_image_old'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: newMarkdownImage
+          })
+        ])
+      );
+      expect(
+        updatedData?.indexes.find(
+          (index) =>
+            index.type === DatasetDataIndexTypeEnum.imageEmbedding &&
+            index.text === oldMarkdownImage
+        )
+      ).toBeUndefined();
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inputs: expect.arrayContaining([
+            {
+              type: 'image',
+              input: `data:image/png;base64,${newMarkdownImage}`
+            }
+          ])
+        })
+      );
+      expect(mockVectorDelete.mock.calls[0]?.[0].idList).toEqual(
+        expect.arrayContaining(['custom_old', 'default_old', 'old_markdown_image'])
+      );
+    });
   });
 
-  describe('updateDatasetDataDefaultIndexes', () => {
+  describe('updateDatasetDataSystemIndexes', () => {
     it('should replace only default indexes and keep concurrently added custom indexes', async () => {
       const { data } = await createMongoData({
         q: 'old question',
@@ -401,7 +498,7 @@ describe('Dataset data service', () => {
         ]
       });
 
-      const updatePromise = updateDatasetDataDefaultIndexes({
+      const updatePromise = updateDatasetDataSystemIndexes({
         dataId: String(data._id),
         q: 'new question',
         a: '',
@@ -484,7 +581,7 @@ describe('Dataset data service', () => {
         ]
       });
 
-      const result = await updateDatasetDataDefaultIndexes({
+      const result = await updateDatasetDataSystemIndexes({
         dataId: String(data._id),
         q: 'same question',
         a: 'same answer',
@@ -501,7 +598,7 @@ describe('Dataset data service', () => {
 
     it('should reject when data does not exist', async () => {
       await expect(
-        updateDatasetDataDefaultIndexes({
+        updateDatasetDataSystemIndexes({
           dataId: String(new Types.ObjectId()),
           q: 'question',
           model: 'text-embedding-3-small'
@@ -510,7 +607,7 @@ describe('Dataset data service', () => {
     });
   });
 
-  describe('updateDatasetDataGeneratedIndexes', () => {
+  describe('updateDatasetDataSystemIndexes with image embedding', () => {
     it('should replace only default and image embedding indexes without touching manual indexes', async () => {
       vi.mocked(getEmbeddingModel).mockReturnValue({
         ...embeddingModel,
@@ -554,16 +651,11 @@ describe('Dataset data service', () => {
       });
       const nextImage = `dataset/${data.datasetId}/new.png`;
 
-      await updateDatasetDataGeneratedIndexes({
+      await updateDatasetDataSystemIndexes({
         dataId: String(data._id),
         q: `new question ![new](${nextImage})`,
         a: '',
-        indexes: [
-          {
-            type: DatasetDataIndexTypeEnum.imageEmbedding,
-            text: nextImage
-          }
-        ],
+        imageIndex: true,
         model: 'text-embedding-3-small',
         indexSize: 50
       });

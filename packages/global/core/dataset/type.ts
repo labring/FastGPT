@@ -171,7 +171,10 @@ export const DatasetDataIndexItemSchema = z.object({
     .default(DatasetDataIndexTypeEnum.custom)
     .meta({ description: '索引类型' }),
   dataId: z.string().meta({ description: 'vectorDB ID' }),
-  text: z.string().meta({ description: '索引文本' })
+  text: z.string().meta({
+    description: `默认就是索引的文本内容，特殊的：
+imageEmbedding - 图片的 objectKey/url`
+  })
 });
 const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({ dataId: true }).extend({
   dataId: z.string().optional().meta({

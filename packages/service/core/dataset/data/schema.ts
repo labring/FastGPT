@@ -33,10 +33,7 @@ const DatasetDataSchema = new Schema({
     ref: DatasetColCollectionName,
     required: true
   },
-  q: {
-    type: String,
-    required: true
-  },
+  q: String,
   a: {
     type: String
   },

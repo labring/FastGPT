@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  buildDatasetDataIndexRebuildPlan,
   getDatasetImageIndexCapability,
   getDatasetImageTrainingMode,
-  matchDatasetDataMarkdownImageUrls,
   replaceS3KeyToPreviewUrl
 } from '@fastgpt/service/core/dataset/utils';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  matchDatasetDataMarkdownImages,
+  matchDatasetDataMarkdownImageUrls,
+  uniqueDatasetDataMarkdownImageUrls
+} from '@fastgpt/service/core/dataset/data/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
@@ -449,12 +451,43 @@ describe('replaceS3KeyToPreviewUrl', () => {
 });
 
 describe('matchDatasetDataMarkdownImageUrls', () => {
+  it('应提取统一的 markdown 图片节点结构', () => {
+    const result = matchDatasetDataMarkdownImages(
+      '文字 ![猫]( dataset/team/cat.png ) 和 ![dog](https://example.com/dog.png)'
+    );
+
+    expect(result).toEqual([
+      {
+        raw: '![猫]( dataset/team/cat.png )',
+        alt: '猫',
+        url: 'dataset/team/cat.png',
+        index: expect.any(Number)
+      },
+      {
+        raw: '![dog](https://example.com/dog.png)',
+        alt: 'dog',
+        url: 'https://example.com/dog.png',
+        index: expect.any(Number)
+      }
+    ]);
+  });
+
   it('应提取 markdown 图片 URL 并忽略普通链接', () => {
     const result = matchDatasetDataMarkdownImageUrls(
       '![a](dataset/team/a.png) [普通链接](https://example.com) ![b](https://img.test/b.jpg)'
     );
 
     expect(result).toEqual(['dataset/team/a.png', 'https://img.test/b.jpg']);
+  });
+
+  it('应从多个文本字段按首次出现顺序去重图片 URL', () => {
+    const result = uniqueDatasetDataMarkdownImageUrls([
+      'new ![a](dataset/team/a.png) ![a again](dataset/team/a.png)',
+      undefined,
+      'old ![b](https://example.com/b.jpg)'
+    ]);
+
+    expect(result).toEqual(['dataset/team/a.png', 'https://example.com/b.jpg']);
   });
 });
 
@@ -528,111 +561,5 @@ describe('getDatasetImageIndexCapability', () => {
     expect(result.supportImageEmbedding).toBe(true);
     expect(result.supportImageIndex).toBe(true);
     expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
-  });
-});
-
-describe('buildDatasetDataIndexRebuildPlan', () => {
-  it('更新索引时应只重算多模态索引，并保留其他非默认索引', () => {
-    const result = buildDatasetDataIndexRebuildPlan({
-      indexes: [
-        { type: DatasetDataIndexTypeEnum.default, text: 'old default', dataId: 'default_vector' },
-        { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
-        {
-          type: DatasetDataIndexTypeEnum.question,
-          text: 'old question',
-          dataId: 'question_vector'
-        },
-        { type: DatasetDataIndexTypeEnum.summary, text: 'old summary', dataId: 'summary_vector' },
-        { type: DatasetDataIndexTypeEnum.image, text: 'old image summary', dataId: 'image_vector' }
-      ],
-      existingIndexes: [
-        {
-          type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/old.png',
-          dataId: 'old_image_vector'
-        }
-      ],
-      nextQ: 'hello ![cat](dataset/team/cat.png)',
-      supportImageEmbedding: true,
-      imageIndex: true
-    });
-
-    expect(result.indexes).toEqual([
-      { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
-      { type: DatasetDataIndexTypeEnum.question, text: 'old question', dataId: 'question_vector' },
-      { type: DatasetDataIndexTypeEnum.summary, text: 'old summary', dataId: 'summary_vector' },
-      { type: DatasetDataIndexTypeEnum.image, text: 'old image summary', dataId: 'image_vector' },
-      { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'dataset/team/cat.png' }
-    ]);
-  });
-
-  it('多模态图片来源不变时应复用已有 dataId', () => {
-    const result = buildDatasetDataIndexRebuildPlan({
-      indexes: [],
-      existingIndexes: [
-        {
-          type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/cat.png',
-          dataId: 'image_embedding_vector'
-        }
-      ],
-      nextQ: 'hello ![cat](dataset/team/cat.png)',
-      supportImageEmbedding: true,
-      imageIndex: true
-    });
-
-    expect(result.indexes).toEqual([
-      {
-        type: DatasetDataIndexTypeEnum.imageEmbedding,
-        text: 'dataset/team/cat.png',
-        dataId: 'image_embedding_vector'
-      }
-    ]);
-  });
-
-  it('不支持图片向量模型时应移除已有多模态索引并保留其他索引', () => {
-    const result = buildDatasetDataIndexRebuildPlan({
-      indexes: [
-        { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' },
-        {
-          type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/cat.png',
-          dataId: 'image_embedding_vector'
-        }
-      ],
-      existingIndexes: [],
-      nextQ: 'hello ![](dataset/team/cat.png)',
-      supportImageEmbedding: false,
-      imageIndex: true
-    });
-
-    expect(result.indexes).toEqual([
-      { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_vector' }
-    ]);
-  });
-
-  it('图片集合应生成主图图片向量索引并复用已有 dataId', () => {
-    const result = buildDatasetDataIndexRebuildPlan({
-      indexes: [],
-      existingIndexes: [
-        {
-          type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/main.png',
-          dataId: 'main_vector'
-        }
-      ],
-      supportImageEmbedding: true,
-      imageIndex: false,
-      isImageCollection: true,
-      imageId: 'dataset/team/main.png'
-    });
-
-    expect(result.indexes).toEqual([
-      {
-        type: DatasetDataIndexTypeEnum.imageEmbedding,
-        text: 'dataset/team/main.png',
-        dataId: 'main_vector'
-      }
-    ]);
   });
 });

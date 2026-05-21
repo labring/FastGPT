@@ -16,6 +16,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type InputDataType = {
@@ -42,12 +43,11 @@ export enum TabEnum {
 let indexClientId = 0;
 const getIndexClientId = () => `dataset-index-${Date.now()}-${indexClientId++}`;
 const clearEditingIndexDelay = 600;
-const imageEmbeddingIndexDefaultDescKey = 'dataset:image_embedding_index_default_desc';
 
 const sortIndexesForDisplay = (indexes: InputDataIndexType[] = []) => {
   const getOrder = (index: InputDataIndexType) => {
-    // Keep the editable custom indexes before the generated default index.
-    if (index.type === DatasetDataIndexTypeEnum.default) return 1;
+    // Keep editable indexes before the generated system indexes.
+    if (isDatasetDataSystemIndexType(index.type)) return 1;
     return 0;
   };
 
@@ -83,7 +83,7 @@ const formatIndexesForForm = (
 
 const formatIndexesForRequest = (indexes: InputDataType['indexes'] = []) =>
   indexes
-    .filter((item) => !!item.text?.trim())
+    .filter((item) => !isDatasetDataSystemIndexType(item.type) && !!item.text?.trim())
     .map((item) => ({
       // Strip UI-only fields before submitting to the import API.
       type: item.type,
@@ -95,14 +95,10 @@ const formatDataForForm = (
     indexes?: DatasetDataIndexItemType[];
   } = {},
   dataId?: string,
-  previousIndexes?: InputDataIndexType[],
-  t?: (key: string) => string
+  previousIndexes?: InputDataIndexType[]
 ): InputDataType & { dataId?: string } => ({
   ...(dataId ? { dataId } : {}),
-  q:
-    data.q === imageEmbeddingIndexDefaultDescKey && t
-      ? t(imageEmbeddingIndexDefaultDescKey)
-      : data.q || '',
+  q: data.q || '',
   a: data.a || '',
   imagePreivewUrl: data.imagePreivewUrl,
   indexes: formatIndexesForForm(data.indexes, previousIndexes)
@@ -265,8 +261,7 @@ export const useInputDataModal = ({
       const refreshedData = formatDataForForm(
         latestData,
         targetDataId,
-        currentIndexes,
-        t
+        currentIndexes
       ) as InputDataType & {
         dataId: string;
       };
@@ -275,7 +270,7 @@ export const useInputDataModal = ({
       reset(refreshedData);
       return refreshedData;
     },
-    [getValues, reset, resetSavedIndexes, t]
+    [getValues, reset, resetSavedIndexes]
   );
 
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
@@ -300,7 +295,7 @@ export const useInputDataModal = ({
           hasAnswer: !!initialData?.a
         })
       );
-      const formData = formatDataForForm(initialData, undefined, undefined, t);
+      const formData = formatDataForForm(initialData);
       resetSavedIndexes(formData.indexes);
       reset(formData);
 
@@ -318,7 +313,7 @@ export const useInputDataModal = ({
 
       const postData: Parameters<typeof postInsertData2Dataset>[0] = {
         collectionId: collection._id,
-        q: e.q === t(imageEmbeddingIndexDefaultDescKey) ? imageEmbeddingIndexDefaultDescKey : e.q,
+        q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         indexes: formatIndexesForRequest(e.indexes)
       };
@@ -354,15 +349,9 @@ export const useInputDataModal = ({
 
       const updateResult = await putDatasetDataById({
         dataId,
-        q: e.q === t(imageEmbeddingIndexDefaultDescKey) ? imageEmbeddingIndexDefaultDescKey : e.q,
+        q: e.q,
         a: currentTab === TabEnum.qa ? e.a : ''
       });
-      if (updateResult.rebuilding) {
-        return {
-          ...e,
-          dataId
-        };
-      }
       const refreshedData = await refreshDataForm(dataId);
       return {
         ...refreshedData,
@@ -394,7 +383,7 @@ export const useInputDataModal = ({
       const text = targetIndex?.text?.trim() || '';
       const type = targetIndex?.type || DatasetDataIndexTypeEnum.custom;
 
-      if (type === DatasetDataIndexTypeEnum.default) {
+      if (isDatasetDataSystemIndexType(type)) {
         return;
       }
 

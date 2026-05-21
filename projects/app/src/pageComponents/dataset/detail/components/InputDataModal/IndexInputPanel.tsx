@@ -11,17 +11,10 @@ import {
   DatasetDataIndexTypeEnum,
   getDatasetIndexMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import type { InputDataType } from './useInputDataModal';
 
 type IndexField = UseFieldArrayReturn<InputDataType, 'indexes'>['fields'][number];
-
-const systemIndexTypes = new Set<DatasetDataIndexTypeEnum>([
-  DatasetDataIndexTypeEnum.default,
-  DatasetDataIndexTypeEnum.imageEmbedding
-]);
-
-const isSystemIndex = (type?: DatasetDataIndexTypeEnum) =>
-  systemIndexTypes.has(type || DatasetDataIndexTypeEnum.custom);
 
 const IndexInputPanel = ({
   canWrite,
@@ -99,7 +92,7 @@ const IndexInputPanel = ({
             const canFoldIndex = indexes.length > 1;
             const hasIndexDataId = !!index.dataId;
             const isDeletingCurrentIndex = deletingIndexClientId === index.clientId;
-            const isSystem = isSystemIndex(index.type);
+            const isSystem = isDatasetDataSystemIndexType(index.type);
             const canDeleteIndex =
               canWrite && !isSystem && hasIndexDataId && !isDeletingCurrentIndex;
             const canToggleFold = canFoldIndex && !isDeletingCurrentIndex;
