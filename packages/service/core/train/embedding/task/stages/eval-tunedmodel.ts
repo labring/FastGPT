@@ -26,7 +26,7 @@ import { evaluateEmbeddingModelHelper } from '../helpers/evaluate-model';
  */
 export async function runEvalTunedModelStage(task: EmbeddingTrainTaskSchemaType): Promise<{
   tunedModelEvalResult: EmbeddingEvalResult;
-  rankingResults: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
 }> {
   addLog.info('Run eval tuned model stage (embedding)', { taskId: String(task._id) });
 

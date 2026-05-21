@@ -97,8 +97,7 @@ const EmbeddingTrainTaskSchema = new connectionMongo.Schema({
           rankingResults: [
             {
               itemId: String,
-              rankedIds: [String],
-              chunks: [{ id: String, q: String, a: String }]
+              rankedIds: [String]
             }
           ]
         },
@@ -118,8 +117,7 @@ const EmbeddingTrainTaskSchema = new connectionMongo.Schema({
           rankingResults: [
             {
               itemId: String,
-              rankedIds: [String],
-              chunks: [{ id: String, q: String, a: String }]
+              rankedIds: [String]
             }
           ]
         },

@@ -201,11 +201,10 @@ export type EmbeddingTrainTaskSchemaType = {
 
       eval_basemodel?: {
         baseModelEvalResult: EmbeddingEvalResult;
-        /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
+        /** Per-query ranked document IDs from embedding search (indexed by eval data item _id) */
         rankingResults?: Array<{
           itemId: string;
           rankedIds: string[];
-          chunks: Array<{ id: string; q: string; a: string }>;
         }>;
       };
 
@@ -224,11 +223,10 @@ export type EmbeddingTrainTaskSchemaType = {
 
       eval_tunedmodel?: {
         tunedModelEvalResult: EmbeddingEvalResult;
-        /** Per-query ranked document IDs + chunk content from embedding search (indexed by eval data item _id) */
+        /** Per-query ranked document IDs from embedding search (indexed by eval data item _id) */
         rankingResults?: Array<{
           itemId: string;
           rankedIds: string[];
-          chunks: Array<{ id: string; q: string; a: string }>;
         }>;
       };
 

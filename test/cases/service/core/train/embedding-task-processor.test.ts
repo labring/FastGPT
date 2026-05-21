@@ -131,6 +131,12 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
   }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: {
+    find: vi.fn()
+  }
+}));
+
 vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
@@ -416,6 +422,14 @@ describe('Embedding Train Task Processor', () => {
         ])
       });
 
+      // Mock MongoDatasetData for llm-judge batch chunk lookup
+      const { MongoDatasetData } = await import('@fastgpt/service/core/dataset/data/schema');
+      (MongoDatasetData.find as any).mockReturnValue({
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
+      });
+
       // Mock getEmbeddingModel
       const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
       (getEmbeddingModel as any).mockReturnValue({
@@ -456,8 +470,7 @@ describe('Embedding Train Task Processor', () => {
         rankingResults: [
           {
             itemId: 'eval_data_123',
-            rankedIds: ['data_001'],
-            chunks: [{ id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }]
+            rankedIds: ['data_001']
           }
         ]
       });
@@ -743,6 +756,14 @@ describe('Embedding Train Task Processor', () => {
         ])
       });
 
+      // Mock MongoDatasetData for llm-judge batch chunk lookup
+      const mockedMongoDatasetData = await import('@fastgpt/service/core/dataset/data/schema');
+      (mockedMongoDatasetData.MongoDatasetData.find as any).mockReturnValue({
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
+      });
+
       // Mock getEmbeddingModel
       const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
       (getEmbeddingModel as any).mockReturnValue({
@@ -780,8 +801,7 @@ describe('Embedding Train Task Processor', () => {
         rankingResults: [
           {
             itemId: 'eval_data_123',
-            rankedIds: ['data_001'],
-            chunks: [{ id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }]
+            rankedIds: ['data_001']
           }
         ]
       });
@@ -1140,8 +1160,7 @@ describe('Embedding Train Task Processor', () => {
         rankingResults: [
           {
             itemId: 'eval_data_123',
-            rankedIds: ['data_001'],
-            chunks: [{ id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }]
+            rankedIds: ['data_001']
           }
         ]
       });
