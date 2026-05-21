@@ -304,8 +304,9 @@ const HomeChatWindow = () => {
                 h={['30px', '36px']}
                 boxShadow={'none'}
                 size="sm"
+                w="200px"
                 bg={'myGray.50'}
-                rounded="full"
+                borderRadius={'4px'}
                 list={availableModels}
                 value={selectedModel}
                 onChange={async (model) => {
