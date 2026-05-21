@@ -47,7 +47,7 @@ export async function evaluateEmbeddingModelHelper(
   datasetIds: string[]
 ): Promise<{
   evalResult: EmbeddingEvalResult;
-  rankingResults: Array<{ itemId: string; rankedIds: string[]; chunks: Array<{ id: string; q: string; a: string }> }>;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
 }> {
   addLog.info('Evaluate embedding model', { taskId, modelId, stage });
 
@@ -156,20 +156,15 @@ export async function evaluateEmbeddingModelHelper(
           const retrievalResults =
             nodeResponse?.retrievalResults || (searchResponse as any).data?.quoteQA || [];
           const rankedIds = retrievalResults.map((r: any) => r.id as string);
-          const chunks = retrievalResults.map((r: any) => ({
-            id: r.id as string,
-            q: (r.q ?? '') as string,
-            a: (r.a ?? '') as string
-          }));
 
-          return { rankedIds, expectedIds, chunks };
+          return { rankedIds, expectedIds };
         } catch (err) {
           addLog.warn('Embedding eval search failed for query, treating as no results', {
             taskId,
             query: query?.substring(0, 50),
             error: err instanceof Error ? err.message : String(err)
           });
-          return { rankedIds: [], expectedIds, chunks: [] };
+          return { rankedIds: [], expectedIds };
         }
       })
     )
@@ -179,8 +174,7 @@ export async function evaluateEmbeddingModelHelper(
 
   const rankingResults = evalDataItems.map((item, idx) => ({
     itemId: (item as any)._id.toString(),
-    rankedIds: cases[idx].rankedIds,
-    chunks: (cases[idx] as any).chunks as Array<{ id: string; q: string; a: string }>
+    rankedIds: cases[idx].rankedIds
   }));
 
   addLog.info('Embedding model evaluated', {

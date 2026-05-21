@@ -6,6 +6,7 @@ import {
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { MongoEvalDatasetData } from '../../../../../core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoDatasetData } from '../../../../../core/dataset/data/schema';
 import { judgeRelevantChunks } from '../../external';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import type { RankingCase } from '../../../common/metrics/rankingMetrics';
@@ -25,8 +26,8 @@ const K_VALUES = [5, 10, 15];
  * Replaces the original expectedContextIds with LLM-detected relevant IDs
  * and recomputes MRR/NDCG metrics for both models.
  *
- * Key difference from rerank: chunk content is sourced from rankingResults[].chunks
- * (stored during embedding evaluation), not from retrievalContextsFull.
+ * Chunk content (q/a text) is batch-fetched from MongoDatasetData using the
+ * merged top-K IDs, consistent with rerank's llm-judge pattern.
  *
  * @param task - Embedding training task (after stage 6 completion)
  * @returns Judged expected IDs and re-evaluated metrics
@@ -60,15 +61,11 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  // Build lookup maps: itemId -> { rankedIds, chunks }
-  const baselineMap = new Map(
-    baselineRanking.map((r) => [r.itemId, { rankedIds: r.rankedIds, chunks: r.chunks }])
-  );
-  const tunedMap = new Map(
-    tunedRanking.map((r) => [r.itemId, { rankedIds: r.rankedIds, chunks: r.chunks }])
-  );
+  // Build lookup maps from eval data item _id to ranking data
+  const baselineMap = new Map(baselineRanking.map((r) => [r.itemId, r.rankedIds]));
+  const tunedMap = new Map(tunedRanking.map((r) => [r.itemId, r.rankedIds]));
 
-  // Read eval dataset data for question text
+  // Read eval dataset data for question text and candidate IDs
   const evalDataItems = await MongoEvalDatasetData.find({
     evalDatasetCollectionId: evalDatasetId
   }).lean();
@@ -82,13 +79,41 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  // Build question lookup
-  const questionMap = new Map(
-    evalDataItems.map((item: any) => [item._id.toString(), item.userInput ?? ''])
-  );
-
   const topK = trainEnv.LLM_JUDGE_TOP_K;
   const defaultModel = getDefaultLLMModel();
+
+  // Build the eval data content lookup
+  const evalDataContentMap = new Map(
+    evalDataItems.map((item: any) => [
+      item._id.toString(),
+      {
+        question: item.userInput ?? '',
+        candidateIds: (item.retrievalContextsFull || []).map((c: any) => c.id)
+      }
+    ])
+  );
+
+  // Collect all IDs that may need q/a lookups (baseline/tuned topK merged for each item)
+  const allNeededIds = new Set<string>();
+  for (const [itemId, baselineIds] of baselineMap) {
+    const tunedIds = tunedMap.get(itemId);
+    if (!tunedIds) continue;
+    const evalContent = evalDataContentMap.get(itemId);
+    if (!evalContent) continue;
+
+    const mergedIds = Array.from(
+      new Set([...baselineIds.slice(0, topK), ...tunedIds.slice(0, topK)])
+    );
+    mergedIds.forEach((id) => allNeededIds.add(id));
+  }
+
+  // Batch fetch q/a text from original dataset data
+  const dataTextMap = new Map<string, { q: string; a: string }>(
+    (await MongoDatasetData.find({ _id: { $in: [...allNeededIds] } }, 'q a').lean()).map((d) => [
+      String(d._id),
+      d as { q: string; a: string }
+    ])
+  );
 
   // Collect items that have both baseline and tuned ranking results
   const judgeItems: Array<{
@@ -99,33 +124,23 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
     tunedRankedIds: string[];
   }> = [];
 
-  for (const [itemId, baselineData] of baselineMap) {
-    const tunedData = tunedMap.get(itemId);
-    if (!tunedData) continue;
+  for (const [itemId, baselineIds] of baselineMap) {
+    const tunedIds = tunedMap.get(itemId);
+    if (!tunedIds) continue;
 
-    const question = questionMap.get(itemId);
-    if (!question) continue;
+    const evalContent = evalDataContentMap.get(itemId);
+    if (!evalContent) continue;
 
     // Merge top K IDs from baseline and tuned, dedup
     const mergedIds = Array.from(
-      new Set([...baselineData.rankedIds.slice(0, topK), ...tunedData.rankedIds.slice(0, topK)])
+      new Set([...baselineIds.slice(0, topK), ...tunedIds.slice(0, topK)])
     );
 
-    // Build chunk content lookup from both ranking results
-    const chunkContentMap = new Map<string, { q: string; a: string }>();
-    for (const c of baselineData.chunks) {
-      chunkContentMap.set(c.id, { q: c.q ?? '', a: c.a ?? '' });
-    }
-    for (const c of tunedData.chunks) {
-      if (!chunkContentMap.has(c.id)) {
-        chunkContentMap.set(c.id, { q: c.q ?? '', a: c.a ?? '' });
-      }
-    }
-
+    // Lookup chunk content from MongoDatasetData (fetched in batch above)
     const retrieval_reference_list = mergedIds
       .map((id) => {
-        const chunk = chunkContentMap.get(id);
-        return { id, q: chunk?.q ?? '', a: chunk?.a ?? '' };
+        const doc = dataTextMap.get(id);
+        return { id, q: doc?.q ?? '', a: doc?.a ?? '' };
       })
       .filter((c) => c.q.length > 0 || c.a.length > 0);
 
@@ -133,10 +148,10 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
 
     judgeItems.push({
       itemId,
-      question,
+      question: evalContent.question,
       retrieval_reference_list,
-      baselineRankedIds: baselineData.rankedIds,
-      tunedRankedIds: tunedData.rankedIds
+      baselineRankedIds: baselineIds,
+      tunedRankedIds: tunedIds
     });
   }
 
