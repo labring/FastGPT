@@ -19,6 +19,8 @@ export const ChatRoleMap = {
 
 export enum ChatFileTypeEnum {
   image = 'image',
+  audio = 'audio',
+  video = 'video',
   file = 'file'
 }
 

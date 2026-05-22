@@ -25,6 +25,9 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   // 这些字段只影响 FastGPT 自身逻辑，不能透传给模型供应商。
   delete body.retainDatasetCite;
   delete body.useVision;
+  delete body.useAudio;
+  delete body.useVideo;
+  delete body.extractFiles;
   delete body.requestOrigin;
 
   const modelData = getLLMModel(body.model);

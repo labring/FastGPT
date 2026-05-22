@@ -158,6 +158,14 @@ export function buildCurrentAgentInputFiles({
   });
 }
 
+const getReadableAgentFileType = (type: `${ChatFileTypeEnum}`) => {
+  if (type === ChatFileTypeEnum.image) return 'image';
+  if (type === ChatFileTypeEnum.audio) return 'audio';
+  if (type === ChatFileTypeEnum.video) return 'video';
+
+  return 'document';
+};
+
 /**
  * 加载知识库
  */
@@ -209,10 +217,6 @@ export const loadAgentDatasetContext = async (
 /* Prompt */
 export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
   if (files.length === 0) return '';
-
-  const getReadableAgentFileType = (type: `${ChatFileTypeEnum}`) => {
-    return type === ChatFileTypeEnum.file ? 'document' : 'image';
-  };
 
   return `## 文件
 用户本次对话上传的的文件， 可通过 ${SubAppIds.readFiles} 读取文件内容：

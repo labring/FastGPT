@@ -9,6 +9,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -31,6 +32,88 @@ const isContextCheckpointMessage = (message: ChatCompletionMessageParam) =>
   typeof message.content === 'string' &&
   message.content.trim().startsWith('<context_checkpoint>') &&
   message.content.trim().endsWith('</context_checkpoint>');
+
+type MediaFileType = 'image' | 'audio' | 'video';
+
+const mediaFileTypes = [
+  { type: 'image', fileTypes: imageFileType },
+  { type: 'audio', fileTypes: audioFileType },
+  { type: 'video', fileTypes: videoFileType }
+] as const satisfies { type: MediaFileType; fileTypes: string }[];
+
+const getFileExtension = (filename: string) => filename.split('.').pop()?.toLowerCase() || '';
+
+const matchFileType = (fileTypes: string, extension: string) =>
+  !!extension && fileTypes.split(',').some((item) => item.trim() === `.${extension}`);
+
+/**
+ * 从可访问 URL 中恢复文件名，用于判断音频格式。
+ * S3 签名链接可能把原始文件名放在 query 里，普通链接则取 pathname 末尾。
+ */
+const getFilenameFromUrl = (url: string, fallbackName?: string) => {
+  if (fallbackName && !fallbackName.startsWith('http')) return fallbackName;
+
+  try {
+    const parsedUrl = new URL(url, 'http://localhost:3000');
+    const filename = parsedUrl.searchParams.get('filename') || parsedUrl.pathname.split('/').pop();
+    return filename || fallbackName || 'file';
+  } catch {
+    return fallbackName || 'file';
+  }
+};
+
+const getFileTypeFromUrl = (url: string): MediaFileType | 'file' => {
+  const filename = getFilenameFromUrl(url, url);
+  const extension = getFileExtension(filename);
+  return (
+    mediaFileTypes.find(({ fileTypes }) => matchFileType(fileTypes, extension))?.type || 'file'
+  );
+};
+
+const createAudioContentPart = (
+  data: string,
+  filename = data
+): ChatCompletionContentPart | undefined => {
+  const extension = getFileExtension(filename);
+  if (!matchFileType(audioFileType, extension)) return;
+
+  return {
+    type: 'input_audio',
+    input_audio: {
+      data,
+      format: extension
+    }
+  };
+};
+
+const createVideoContentPart = (url: string): ChatCompletionContentPart => ({
+  type: 'video_url',
+  video_url: {
+    url
+  }
+});
+
+const getS3FileUrl = async (key?: string) => {
+  if (!key) return;
+
+  try {
+    return (
+      await getS3ChatSource().createGetChatFileURL({
+        key,
+        external: false
+      })
+    ).url;
+  } catch {}
+};
+
+const loadUrlAsBase64Data = async (url: string) => {
+  const response = await axios.get<ArrayBuffer>(url, {
+    responseType: 'arraybuffer',
+    timeout: 10000
+  });
+
+  return `data:;base64,${Buffer.from(response.data).toString('base64')}`;
+};
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -120,10 +203,16 @@ export const filterGPTMessageByMaxContext = async ({
 export const loadRequestMessages = async ({
   messages,
   useVision = false,
+  useAudio = false,
+  useVideo = false,
+  extractFiles,
   supportReason = false
 }: {
   messages: ChatCompletionMessageParam[];
   useVision?: boolean;
+  useAudio?: boolean;
+  useVideo?: boolean;
+  extractFiles?: boolean;
   supportReason?: boolean;
 }) => {
   const parseSystemMessage = (
@@ -141,33 +230,45 @@ export const loadRequestMessages = async ({
 
     return arrayContent;
   };
-  // Parse user content(text and img) Store history => api messages
+  // Parse user content and normalize FastGPT internal multimodal parts to provider-ready messages.
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
-    // Split question text and image
-    const parseStringWithImages = (input: string): ChatCompletionContentPart[] => {
-      if (!useVision || input.length > 500) {
+    // Extract media URLs from short plain text questions and build internal content parts.
+    const parseStringWithFiles = (input: string): ChatCompletionContentPart[] => {
+      const shouldExtractFiles = extractFiles ?? useVision;
+      if (!shouldExtractFiles || input.length >= 500) {
         return [{ type: 'text', text: input }];
       }
 
-      // 正则表达式匹配图片URL
-      const imageRegex =
-        /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/gi;
+      const urlRegex = /(https?:\/\/[^\s]+)/gi;
 
       const result: ChatCompletionContentPart[] = [];
 
-      // 提取所有HTTPS图片URL并添加到result开头
-      const httpsImages = Array.from(new Set(input.matchAll(imageRegex)), (m) => m[0]);
-      httpsImages.forEach((url) => {
-        result.push({
-          type: 'image_url',
-          image_url: {
-            url: url
+      const mediaUrls = Array.from(new Set(input.matchAll(urlRegex)), (m) =>
+        m[0].replace(/[，。,.!?;:]+$/, '')
+      ).filter((url) => getFileTypeFromUrl(url) !== 'file');
+      mediaUrls.forEach((url) => {
+        const fileType = getFileTypeFromUrl(url);
+        if (fileType === 'image' && useVision) {
+          result.push({
+            type: 'image_url',
+            image_url: {
+              url
+            }
+          });
+        }
+        if (fileType === 'audio' && useAudio) {
+          const audioPart = createAudioContentPart(url, getFilenameFromUrl(url));
+          if (audioPart) {
+            result.push(audioPart);
           }
-        });
+        }
+        if (fileType === 'video' && useVideo) {
+          result.push(createVideoContentPart(url));
+        }
       });
 
-      // Too many images return text
-      if (httpsImages.length > 4) {
+      // Too many media files return text
+      if (result.length > 4) {
         return [{ type: 'text', text: input }];
       }
 
@@ -175,94 +276,161 @@ export const loadRequestMessages = async ({
       result.push({ type: 'text', text: input });
       return result;
     };
-    // Load image to base64
-    const loadUserContentImage = async (content: ChatCompletionContentPart[]) => {
-      return Promise.all(
-        content.map(async (item) => {
-          if (item.type === 'image_url') {
-            // Remove url origin
-            const imgUrl = item.image_url.url;
+    const normalizeMultimodalContentParts = async (content: ChatCompletionContentPart[]) => {
+      return (
+        await Promise.all(
+          content.map(async (item) => {
+            if (item.type === 'image_url') {
+              const { key, ...imageItem } = item;
+              // Remove url origin
+              const imgUrl = imageItem.image_url.url;
 
-            // base64 image
-            if (imgUrl.startsWith('data:image/')) {
-              return item;
-            }
-
-            try {
-              // If imgUrl is a local path, load image from local, and set url to base64
-              if (imgUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64) {
-                try {
-                  const url = await (async () => {
-                    if (item.key) {
-                      try {
-                        return (
-                          await getS3ChatSource().createGetChatFileURL({
-                            key: item.key,
-                            external: false
-                          })
-                        ).url;
-                      } catch (error) {}
-                    }
-                    return imgUrl;
-                  })();
-                  const { completeBase64: base64 } = await getImageBase64(url);
-
-                  return {
-                    ...item,
-                    image_url: {
-                      ...item.image_url,
-                      url: base64
-                    }
-                  };
-                } catch (error) {
-                  return Promise.reject(
-                    `Cannot load image ${imgUrl}, because ${getErrText(error)}`
-                  );
-                }
+              // base64 image
+              if (imgUrl.startsWith('data:image/')) {
+                return imageItem;
               }
 
-              // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
-              const response = await axios.head(imgUrl, {
-                timeout: 10000
-              });
-              if (response.status < 200 || response.status >= 400) {
-                logger.info('Filtered invalid image URL', { url: imgUrl });
+              try {
+                // If imgUrl is a local path, load image from local, and set url to base64
+                if (imgUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+                  try {
+                    const url = (await getS3FileUrl(key)) || imgUrl;
+                    const { completeBase64: base64 } = await getImageBase64(url);
+
+                    return {
+                      ...imageItem,
+                      image_url: {
+                        ...imageItem.image_url,
+                        url: base64
+                      }
+                    };
+                  } catch (error) {
+                    return Promise.reject(
+                      `Cannot load image ${imgUrl}, because ${getErrText(error)}`
+                    );
+                  }
+                }
+
+                // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
+                const response = await axios.head(imgUrl, {
+                  timeout: 10000
+                });
+                if (response.status < 200 || response.status >= 400) {
+                  logger.info('Filtered invalid image URL', { url: imgUrl });
+                  return;
+                }
+              } catch (error: any) {
+                if (error?.response?.status === 405 || error?.response?.status === 403) {
+                  return imageItem;
+                }
+                logger.warn('Failed to validate image URL', { url: imgUrl, error });
                 return;
               }
-            } catch (error: any) {
-              if (error?.response?.status === 405 || error?.response?.status === 403) {
-                return item;
-              }
-              logger.warn('Failed to validate image URL', { url: imgUrl, error });
-              return;
             }
-          }
-          return item;
-        })
-      ).then((res) => res.filter(Boolean) as ChatCompletionContentPart[]);
+
+            if (item.type === 'input_audio') {
+              const { key, ...audioItem } = item;
+              const audioData = audioItem.input_audio.data;
+              if (audioItem.input_audio.data.startsWith('data:')) {
+                return audioItem;
+              }
+
+              const shouldLoadAsBase64 =
+                !!key || audioData.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+              if (shouldLoadAsBase64) {
+                const data = await loadUrlAsBase64Data((await getS3FileUrl(key)) || audioData);
+                return {
+                  ...audioItem,
+                  input_audio: {
+                    ...audioItem.input_audio,
+                    data
+                  }
+                };
+              }
+
+              return audioItem;
+            }
+
+            if (item.type === 'video_url') {
+              const { key, ...videoItem } = item;
+              const videoUrl = videoItem.video_url.url;
+              if (videoUrl.startsWith('data:')) {
+                return videoItem;
+              }
+
+              const shouldLoadAsBase64 =
+                !!key || videoUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+              if (shouldLoadAsBase64) {
+                const url = await loadUrlAsBase64Data((await getS3FileUrl(key)) || videoUrl);
+                return {
+                  ...videoItem,
+                  video_url: {
+                    url
+                  }
+                };
+              }
+
+              return videoItem;
+            }
+
+            if (item.type !== 'file_url') return item;
+            const { key, ...fileItem } = item;
+
+            // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的
+            // input_audio / video_url。普通 file 当前不直接透传给 LLM。
+            const fileType = fileItem.fileType || getFileTypeFromUrl(fileItem.url);
+            if (fileType === 'audio' && useAudio) {
+              const fileUrl = (await getS3FileUrl(key)) || fileItem.url;
+              const filename = getFilenameFromUrl(fileUrl, fileItem.name);
+              const audioUrl =
+                key || fileUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64
+                  ? await loadUrlAsBase64Data(fileUrl)
+                  : fileUrl;
+              return createAudioContentPart(audioUrl, filename);
+            }
+            if (fileType === 'video' && useVideo) {
+              const fileUrl = (await getS3FileUrl(key)) || fileItem.url;
+              const videoUrl =
+                key || fileUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64
+                  ? await loadUrlAsBase64Data(fileUrl)
+                  : fileUrl;
+              return createVideoContentPart(videoUrl);
+            }
+          })
+        )
+      ).filter(Boolean) as ChatCompletionContentPart[];
     };
 
     if (content === undefined) return;
     if (typeof content === 'string') {
       if (content === '') return;
 
-      const loadImageContent = await loadUserContentImage(parseStringWithImages(content));
-      if (loadImageContent.length === 0) return;
-      return loadImageContent;
+      const normalizedContent = await normalizeMultimodalContentParts(
+        parseStringWithFiles(content)
+      );
+      if (normalizedContent.length === 0) return;
+      return normalizedContent;
     }
 
     const result = (
       await Promise.all(
         content.map(async (item) => {
-          // Remove system filed
-
-          delete item.key;
+          // Filter unsupported content parts before provider-specific normalization.
           if (item.type === 'text') {
             // If it is array, not need to parse image
             if (item.text) return item;
             return;
           }
-          if (item.type === 'file_url') return; // LLM not support file_url
+          if (item.type === 'file_url') {
+            const fileType = item.fileType || getFileTypeFromUrl(item.url);
+            if (fileType === 'audio' && useAudio) return item;
+            if (fileType === 'video' && useVideo) return item;
+            return;
+          }
+          if (item.type === 'input_audio' && !useAudio) return;
+          if (item.type === 'video_url' && !useVideo) return;
           if (item.type === 'image_url') {
             // close vision, remove image_url
             if (!useVision) return;
@@ -277,10 +445,10 @@ export const loadRequestMessages = async ({
       .flat()
       .filter(Boolean) as ChatCompletionContentPart[];
 
-    const loadImageContent = await loadUserContentImage(result);
+    const normalizedContent = await normalizeMultimodalContentParts(result);
 
-    if (loadImageContent.length === 0) return;
-    return loadImageContent;
+    if (normalizedContent.length === 0) return;
+    return normalizedContent;
   };
 
   const formatAssistantItem = (

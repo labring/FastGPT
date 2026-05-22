@@ -179,6 +179,9 @@ export const runUnifiedAgentLoop = async ({
       reasoning_effort: runtime.reasoningEffort,
       stream: runtime.stream ?? true,
       useVision: runtime.useVision,
+      useAudio: runtime.useAudio,
+      useVideo: runtime.useVideo,
+      extractFiles: runtime.extractFiles,
       messages,
       tools: getToolsForUnifiedLoop({
         catalog: runtime.toolCatalog

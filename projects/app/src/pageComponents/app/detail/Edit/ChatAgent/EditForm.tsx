@@ -138,24 +138,24 @@ const EditForm = ({
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
-  // Force close image select when model not support vision
+  // 简易 Agent 不暴露多模态开关，文件选择能力直接跟随模型能力。
   useEffect(() => {
-    if (!selectedModel.vision) {
-      setAppForm((state) => ({
-        ...state,
-        chatConfig: {
-          ...state.chatConfig,
-          ...(state.chatConfig.fileSelectConfig
-            ? {
-                fileSelectConfig: {
-                  ...state.chatConfig.fileSelectConfig,
-                  canSelectImg: false
-                }
+    setAppForm((state) => ({
+      ...state,
+      chatConfig: {
+        ...state.chatConfig,
+        ...(state.chatConfig.fileSelectConfig
+          ? {
+              fileSelectConfig: {
+                ...state.chatConfig.fileSelectConfig,
+                canSelectImg: !!selectedModel.vision,
+                canSelectAudio: !!selectedModel.audio,
+                canSelectVideo: !!selectedModel.video
               }
-            : {})
-        }
-      }));
-    }
+            }
+          : {})
+      }
+    }));
   }, [selectedModel, setAppForm]);
 
   return (
@@ -191,6 +191,7 @@ const EditForm = ({
                 showTopP={false}
                 showStopSign={false}
                 showResponseFormat={false}
+                showMultimodalConfig={false}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,

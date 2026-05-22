@@ -65,6 +65,27 @@ export const ToolCallNode: FlowNodeTemplateType = {
       value: true
     },
     {
+      key: NodeInputKeyEnum.aiChatAudio,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
+      key: NodeInputKeyEnum.aiChatVideo,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
+      key: NodeInputKeyEnum.aiChatExtractFiles,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
+    {
       key: NodeInputKeyEnum.aiChatReasoning,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',

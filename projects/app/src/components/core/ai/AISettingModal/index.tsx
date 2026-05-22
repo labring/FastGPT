@@ -6,7 +6,10 @@ import {
   Box,
   Button,
   Flex,
+  type FlexProps,
   HStack,
+  type MenuItemProps,
+  type MenuListProps,
   Switch,
   TableContainer,
   Tbody,
@@ -31,16 +34,57 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+
+type MultimodalValue =
+  | NodeInputKeyEnum.aiChatVision
+  | NodeInputKeyEnum.aiChatAudio
+  | NodeInputKeyEnum.aiChatVideo;
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const RIGHT_AREA_WIDTH = '320px';
+
+const MULTIMODAL_SELECT_TAG_STYLE: FlexProps = {
+  bg: 'white',
+  color: 'myGray.700',
+  borderColor: 'myGray.200',
+  borderRadius: 'sm',
+  px: 2,
+  py: 1,
+  fontSize: '10px',
+  fontWeight: 500,
+  lineHeight: '14px',
+  letterSpacing: '0.2px'
+};
+
+const MULTIMODAL_SELECT_MENU_LIST_STYLE: MenuListProps = {
+  p: '6px'
+};
+
+const MULTIMODAL_SELECT_MENU_ITEM_STYLE: MenuItemProps = {
+  h: '40px',
+  px: 3,
+  py: '6px',
+  fontSize: 'xs',
+  fontWeight: 500,
+  lineHeight: '16px',
+  letterSpacing: '0.5px',
+  color: 'myGray.900',
+  borderRadius: 'xs',
+  _notLast: {
+    mb: 0
+  },
+  _hover: {
+    bg: 'rgba(17, 24, 36, 0.05)'
+  }
+};
 
 const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <Box w="full" bg="white" border="1px solid" borderColor="myGray.200" borderRadius="md" p={4}>
@@ -93,6 +137,7 @@ export type AIChatSettingsModalProps = {
   showStopSign?: boolean;
   showResponseFormat?: boolean;
   showReasoning?: boolean;
+  showMultimodalConfig?: boolean;
 };
 
 const AIChatSettingsModal = ({
@@ -105,7 +150,8 @@ const AIChatSettingsModal = ({
   showTopP = true,
   showStopSign = true,
   showResponseFormat = true,
-  showReasoning = true
+  showReasoning = true,
+  showMultimodalConfig = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -114,6 +160,7 @@ const AIChatSettingsModal = ({
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
+  const [isMultimodalManuallyEnabled, setIsMultimodalManuallyEnabled] = useState(false);
   const { feConfigs } = useSystemStore();
 
   const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
@@ -123,12 +170,16 @@ const AIChatSettingsModal = ({
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const reasoningEffort = watch(NodeInputKeyEnum.aiChatReasoningEffort);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
-  const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
+  const showMultimodalSetting =
+    showMultimodalConfig && watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
 
   const maxToken = watch('maxToken');
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
+  const useAudio = watch(NodeInputKeyEnum.aiChatAudio);
+  const useVideo = watch(NodeInputKeyEnum.aiChatVideo);
+  const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
   const data = useMemo(() => {
     const modelData = getWebLLMModel(model);
@@ -141,6 +192,73 @@ const AIChatSettingsModal = ({
   }, [model]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
+  const multimodalOptions = useMemo(
+    () =>
+      [
+        supportParams.vision && {
+          label: t('app:llm_multimodal_image'),
+          value: NodeInputKeyEnum.aiChatVision
+        },
+        supportParams.audio && {
+          label: t('app:llm_multimodal_audio'),
+          value: NodeInputKeyEnum.aiChatAudio
+        },
+        supportParams.video && {
+          label: t('app:llm_multimodal_video'),
+          value: NodeInputKeyEnum.aiChatVideo
+        }
+      ].filter(Boolean) as {
+        label: string;
+        value: MultimodalValue;
+      }[],
+    [supportParams.audio, supportParams.video, supportParams.vision, t]
+  );
+  const selectedMultimodalValues = useMemo(
+    () =>
+      [
+        useVision && supportParams.vision && NodeInputKeyEnum.aiChatVision,
+        useAudio && supportParams.audio && NodeInputKeyEnum.aiChatAudio,
+        useVideo && supportParams.video && NodeInputKeyEnum.aiChatVideo
+      ].filter(Boolean) as MultimodalValue[],
+    [supportParams.audio, supportParams.video, supportParams.vision, useAudio, useVideo, useVision]
+  );
+  const hasEnabledMultimodal = selectedMultimodalValues.length > 0;
+  const isMultimodalControlEnabled = hasEnabledMultimodal || isMultimodalManuallyEnabled;
+  const isSingleMultimodal = multimodalOptions.length === 1;
+  const isMultipleMultimodal = multimodalOptions.length > 1;
+  const singleMultimodalOption = multimodalOptions[0];
+  const multimodalSettingLabel =
+    isSingleMultimodal && singleMultimodalOption
+      ? {
+          [NodeInputKeyEnum.aiChatVision]: t('app:llm_use_vision'),
+          [NodeInputKeyEnum.aiChatAudio]: t('app:llm_use_audio'),
+          [NodeInputKeyEnum.aiChatVideo]: t('app:llm_use_video')
+        }[singleMultimodalOption.value]
+      : t('app:llm_use_multimodal');
+  const showAdvancedConfig =
+    (supportParams.temperature && showTemperature) ||
+    (supportParams.topP && showTopP) ||
+    (supportParams.stop && showStopSign) ||
+    (supportParams.responseFormat && showResponseFormat);
+
+  const onChangeMultimodalValues = (values: MultimodalValue[]) => {
+    setValue(NodeInputKeyEnum.aiChatVision, values.includes(NodeInputKeyEnum.aiChatVision));
+    setValue(NodeInputKeyEnum.aiChatAudio, values.includes(NodeInputKeyEnum.aiChatAudio));
+    setValue(NodeInputKeyEnum.aiChatVideo, values.includes(NodeInputKeyEnum.aiChatVideo));
+  };
+
+  const closeMultimodal = () => {
+    setIsMultimodalManuallyEnabled(false);
+    onChangeMultimodalValues([]);
+  };
+
+  const openMultipleMultimodal = () => {
+    setIsMultimodalManuallyEnabled(true);
+
+    if (selectedMultimodalValues.length === 0 && supportParams.vision) {
+      onChangeMultimodalValues([NodeInputKeyEnum.aiChatVision]);
+    }
+  };
 
   const topP = watch(NodeInputKeyEnum.aiChatTopP);
   const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
@@ -157,6 +275,27 @@ const AIChatSettingsModal = ({
     const modelData = getWebLLMModel(e);
     if (modelData) {
       setValue('maxToken', modelData.maxResponse / 2);
+      if (showMultimodalSetting) {
+        const support = getLLMSupportParams(modelData);
+        const shouldDefaultVision =
+          !supportParams.multimodal &&
+          support.vision &&
+          !getValues(NodeInputKeyEnum.aiChatVision) &&
+          !getValues(NodeInputKeyEnum.aiChatAudio) &&
+          !getValues(NodeInputKeyEnum.aiChatVideo);
+        const nextMultimodalValues = [
+          (shouldDefaultVision || !!getValues(NodeInputKeyEnum.aiChatVision)) &&
+            support.vision &&
+            NodeInputKeyEnum.aiChatVision,
+          !!getValues(NodeInputKeyEnum.aiChatAudio) &&
+            support.audio &&
+            NodeInputKeyEnum.aiChatAudio,
+          !!getValues(NodeInputKeyEnum.aiChatVideo) && support.video && NodeInputKeyEnum.aiChatVideo
+        ].filter(Boolean) as MultimodalValue[];
+
+        onChangeMultimodalValues(nextMultimodalValues);
+        setIsMultimodalManuallyEnabled(nextMultimodalValues.length > 0);
+      }
     }
 
     setRefresh(!refresh);
@@ -187,7 +326,7 @@ const AIChatSettingsModal = ({
       w={'580px'}
       maxW={'90vw'}
     >
-      <Box maxH={'60vh'} overflowY={'auto'} overflowX={'hidden'}>
+      <Box maxH={'60vh'} overflowY={'auto'} overflowX={'hidden'} sx={{ scrollbarGutter: 'stable' }}>
         <VStack spacing={4} align="stretch">
           {/* 基础配置 */}
           <SectionCard title={t('app:ai_setting_basic_config')}>
@@ -308,142 +447,60 @@ const AIChatSettingsModal = ({
                 />
               </SettingRow>
             )}
-            {supportParams.temperature && showTemperature && (
+            {showMultimodalSetting && (
               <SettingRow
-                label={t('app:temperature')}
-                tip={t('app:temperature_tip')}
+                label={multimodalSettingLabel}
                 switchControl={
-                  <Switch
-                    isChecked={temperature !== undefined}
-                    onChange={(e) => {
-                      setValue('temperature', e.target.checked ? 0 : undefined);
-                    }}
-                  />
-                }
-              >
-                <InputSlider
-                  min={0}
-                  max={10}
-                  step={1}
-                  value={temperature}
-                  inputVariant={'whiteOutline'}
-                  isDisabled={temperature === undefined}
-                  onChange={(e) => {
-                    setValue(NodeInputKeyEnum.aiChatTemperature, e);
-                    setRefresh(!refresh);
-                  }}
-                />
-              </SettingRow>
-            )}
-            {supportParams.topP && showTopP && (
-              <SettingRow
-                label="Top_p"
-                tip={t('app:show_top_p_tip')}
-                switchControl={
-                  <Switch
-                    isChecked={topP !== undefined}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
-                    }}
-                  />
-                }
-              >
-                <InputSlider
-                  min={0}
-                  max={1}
-                  step={0.1}
-                  value={topP}
-                  inputVariant={'whiteOutline'}
-                  isDisabled={topP === undefined}
-                  onChange={(e) => {
-                    setValue(NodeInputKeyEnum.aiChatTopP, e);
-                    setRefresh(!refresh);
-                  }}
-                />
-              </SettingRow>
-            )}
-            {showStopSign && supportParams.stop && (
-              <SettingRow
-                label={t('app:stop_sign')}
-                switchControl={
-                  <Switch
-                    isChecked={stopSign !== undefined}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatStopSign, e.target.checked ? '' : undefined);
-                    }}
-                  />
-                }
-              >
-                <Input
-                  isDisabled={stopSign === undefined}
-                  h={'36px'}
-                  {...register(NodeInputKeyEnum.aiChatStopSign)}
-                  placeholder={t('app:stop_sign_placeholder')}
-                />
-              </SettingRow>
-            )}
-            {showResponseFormat && supportParams.responseFormat && (
-              <SettingRow
-                label={t('app:response_format')}
-                switchControl={
-                  <Switch
-                    isChecked={responseFormat !== undefined}
-                    onChange={(e) => {
-                      setValue(
-                        NodeInputKeyEnum.aiChatResponseFormat,
-                        e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
-                      );
-                    }}
-                  />
-                }
-              >
-                <MySelect<string>
-                  isDisabled={responseFormat === undefined}
-                  placeholder={t('app:response_format_placeholder')}
-                  h={'36px'}
-                  list={selectedModel.responseFormatList!.map((item) => ({
-                    value: item,
-                    label: item
-                  }))}
-                  value={responseFormat}
-                  onChange={(e) => {
-                    setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
-                  }}
-                />
-              </SettingRow>
-            )}
-            {showResponseFormat && responseFormat === 'json_schema' && (
-              <Box w="full" pt={2}>
-                <HStack spacing={1} fontSize="sm" color="myGray.900" fontWeight={500} mb={2}>
-                  <Box>JSON Schema</Box>
-                  <QuestionTip label={t('app:json_schema_tip')} />
-                </HStack>
-                <JsonEditor
-                  value={jsonSchema || ''}
-                  onChange={(e) => {
-                    setValue(NodeInputKeyEnum.aiChatJsonSchema, e);
-                  }}
-                  bg={'myGray.25'}
-                />
-              </Box>
-            )}
-            {showVisionSwitch && (
-              <SettingRow
-                label={t('app:llm_use_vision')}
-                tip={t('app:llm_use_vision_tip')}
-                switchControl={
-                  supportParams.vision ? (
+                  supportParams.multimodal ? (
                     <Switch
-                      isChecked={useVision}
+                      isChecked={isMultimodalControlEnabled}
                       onChange={(e) => {
-                        setValue(NodeInputKeyEnum.aiChatVision, e.target.checked);
+                        if (!e.target.checked) {
+                          closeMultimodal();
+                          return;
+                        }
+
+                        if (isSingleMultimodal && singleMultimodalOption) {
+                          setIsMultimodalManuallyEnabled(true);
+                          onChangeMultimodalValues([singleMultimodalOption.value]);
+                          return;
+                        }
+
+                        openMultipleMultimodal();
                       }}
                     />
                   ) : (
                     <Box fontSize={'sm'} color={'myGray.500'}>
-                      {t('app:llm_not_support_vision')}
+                      {t('app:llm_not_support_multimodal')}
                     </Box>
                   )
+                }
+              >
+                {isMultipleMultimodal && isMultimodalControlEnabled && (
+                  <MultipleSelect
+                    h={'36px'}
+                    value={selectedMultimodalValues}
+                    list={multimodalOptions}
+                    placeholder={t('app:llm_multimodal_select_placeholder')}
+                    tagStyle={MULTIMODAL_SELECT_TAG_STYLE}
+                    menuListStyle={MULTIMODAL_SELECT_MENU_LIST_STYLE}
+                    menuItemStyle={MULTIMODAL_SELECT_MENU_ITEM_STYLE}
+                    onSelect={onChangeMultimodalValues}
+                  />
+                )}
+              </SettingRow>
+            )}
+            {showMultimodalSetting && (
+              <SettingRow
+                label={t('app:extract_chat_files')}
+                tip={t('app:extract_chat_files_tip')}
+                switchControl={
+                  <Switch
+                    isChecked={!!extractFiles}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatExtractFiles, e.target.checked);
+                    }}
+                  />
                 }
               />
             )}
@@ -501,6 +558,134 @@ const AIChatSettingsModal = ({
                     />
                   }
                 />
+              )}
+            </SectionCard>
+          )}
+
+          {/* 高级配置 */}
+          {showAdvancedConfig && (
+            <SectionCard title={t('app:ai_setting_advanced_config')}>
+              {supportParams.temperature && showTemperature && (
+                <SettingRow
+                  label={t('app:temperature')}
+                  tip={t('app:temperature_tip')}
+                  switchControl={
+                    <Switch
+                      isChecked={temperature !== undefined}
+                      onChange={(e) => {
+                        setValue('temperature', e.target.checked ? 0 : undefined);
+                      }}
+                    />
+                  }
+                >
+                  <InputSlider
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={temperature}
+                    inputVariant={'whiteOutline'}
+                    isDisabled={temperature === undefined}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatTemperature, e);
+                      setRefresh(!refresh);
+                    }}
+                  />
+                </SettingRow>
+              )}
+              {supportParams.topP && showTopP && (
+                <SettingRow
+                  label="Top_p"
+                  tip={t('app:show_top_p_tip')}
+                  switchControl={
+                    <Switch
+                      isChecked={topP !== undefined}
+                      onChange={(e) => {
+                        setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
+                      }}
+                    />
+                  }
+                >
+                  <InputSlider
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    value={topP}
+                    inputVariant={'whiteOutline'}
+                    isDisabled={topP === undefined}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatTopP, e);
+                      setRefresh(!refresh);
+                    }}
+                  />
+                </SettingRow>
+              )}
+              {showStopSign && supportParams.stop && (
+                <SettingRow
+                  label={t('app:stop_sign')}
+                  switchControl={
+                    <Switch
+                      isChecked={stopSign !== undefined}
+                      onChange={(e) => {
+                        setValue(
+                          NodeInputKeyEnum.aiChatStopSign,
+                          e.target.checked ? '' : undefined
+                        );
+                      }}
+                    />
+                  }
+                >
+                  <Input
+                    isDisabled={stopSign === undefined}
+                    h={'36px'}
+                    {...register(NodeInputKeyEnum.aiChatStopSign)}
+                    placeholder={t('app:stop_sign_placeholder')}
+                  />
+                </SettingRow>
+              )}
+              {showResponseFormat && supportParams.responseFormat && (
+                <SettingRow
+                  label={t('app:response_format')}
+                  switchControl={
+                    <Switch
+                      isChecked={responseFormat !== undefined}
+                      onChange={(e) => {
+                        setValue(
+                          NodeInputKeyEnum.aiChatResponseFormat,
+                          e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
+                        );
+                      }}
+                    />
+                  }
+                >
+                  <MySelect<string>
+                    isDisabled={responseFormat === undefined}
+                    placeholder={t('app:response_format_placeholder')}
+                    h={'36px'}
+                    list={selectedModel.responseFormatList!.map((item) => ({
+                      value: item,
+                      label: item
+                    }))}
+                    value={responseFormat}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
+                    }}
+                  />
+                </SettingRow>
+              )}
+              {showResponseFormat && responseFormat === 'json_schema' && (
+                <Box w="full" pt={2}>
+                  <HStack spacing={1} fontSize="sm" color="myGray.900" fontWeight={500} mb={2}>
+                    <Box>JSON Schema</Box>
+                    <QuestionTip label={t('app:json_schema_tip')} />
+                  </HStack>
+                  <JsonEditor
+                    value={jsonSchema || ''}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatJsonSchema, e);
+                    }}
+                    bg={'myGray.25'}
+                  />
+                </Box>
               )}
             </SectionCard>
           )}

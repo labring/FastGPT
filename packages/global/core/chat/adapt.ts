@@ -20,6 +20,28 @@ import type {
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 
+type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
+type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
+type FileUrlContentFileType = NonNullable<FileUrlContentPart['fileType']>;
+
+const fileUrlChatFileTypeSet = new Set<ChatFileTypeEnum>([
+  ChatFileTypeEnum.file,
+  ChatFileTypeEnum.audio,
+  ChatFileTypeEnum.video
+]);
+
+export const isFileUrlChatFileType = (type?: ChatFileTypeEnum): type is FileUrlChatFileType =>
+  !!type && fileUrlChatFileTypeSet.has(type);
+
+const fileUrlType2ChatFileType: Record<FileUrlContentFileType, FileUrlChatFileType> = {
+  file: ChatFileTypeEnum.file,
+  audio: ChatFileTypeEnum.audio,
+  video: ChatFileTypeEnum.video
+};
+
+const getFileUrlChatFileType = (fileType?: FileUrlContentFileType) =>
+  fileUrlType2ChatFileType[fileType || 'file'];
+
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.Developer]: ChatRoleEnum.System,
@@ -273,11 +295,12 @@ export const chats2GPTMessages = ({
                   url: item.file.url
                 }
               };
-            } else if (item.file?.type === ChatFileTypeEnum.file) {
+            } else if (isFileUrlChatFileType(item.file?.type)) {
               return {
                 type: 'file_url',
                 name: item.file?.name || '',
                 url: item.file.url,
+                fileType: item.file.type,
                 key: item.file.key
               };
             }
@@ -587,7 +610,7 @@ export const GPTMessages2Chats = ({
             } else if (item.type === 'file_url') {
               value.push({
                 file: {
-                  type: ChatFileTypeEnum.file,
+                  type: getFileUrlChatFileType(item.fileType),
                   name: item.name || '',
                   url: item.url,
                   key: item.key

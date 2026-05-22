@@ -1,4 +1,4 @@
-import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import path from 'path';
@@ -29,9 +29,23 @@ const isImageFilename = (filename?: string) => {
   return imageFileType.includes(path.extname(filename).toLowerCase());
 };
 
+const isAudioFilename = (filename?: string) => {
+  if (!filename) return false;
+  return audioFileType.includes(path.extname(filename).toLowerCase());
+};
+
+const isVideoFilename = (filename?: string) => {
+  if (!filename) return false;
+  return videoFileType.includes(path.extname(filename).toLowerCase());
+};
+
 /** 从文件名推断聊天文件类型，无法识别时统一兜底为普通文件。 */
-const inferChatFileType = (filename?: string): ChatFileTypeEnum =>
-  isImageFilename(filename) ? ChatFileTypeEnum.image : ChatFileTypeEnum.file;
+const inferChatFileType = (filename?: string): ChatFileTypeEnum => {
+  if (isImageFilename(filename)) return ChatFileTypeEnum.image;
+  if (isAudioFilename(filename)) return ChatFileTypeEnum.audio;
+  if (isVideoFilename(filename)) return ChatFileTypeEnum.video;
+  return ChatFileTypeEnum.file;
+};
 
 /** 从 S3 object key 中提取稳定文件名。 */
 const inferChatFileNameFromKey = (key: string) => path.basename(key) || 'file';
@@ -55,6 +69,8 @@ const isChatFileValueInput = (value: unknown): value is ChatFileValueInput =>
   (typeof (value as ChatFileValueInput).key === 'string' ||
     typeof (value as ChatFileValueInput).url === 'string' ||
     (value as ChatFileValueInput).type === ChatFileTypeEnum.image ||
+    (value as ChatFileValueInput).type === ChatFileTypeEnum.audio ||
+    (value as ChatFileValueInput).type === ChatFileTypeEnum.video ||
     (value as ChatFileValueInput).type === ChatFileTypeEnum.file);
 
 /** 从前端/历史文件对象中只读取文件存储需要的字段。 */
@@ -64,7 +80,10 @@ export const parseRawChatFileValue = (file: ChatFileValueInput): RawChatFileValu
     url: typeof file.url === 'string' ? file.url : undefined,
     name: typeof file.name === 'string' ? file.name : undefined,
     type:
-      file.type === ChatFileTypeEnum.image || file.type === ChatFileTypeEnum.file
+      file.type === ChatFileTypeEnum.image ||
+      file.type === ChatFileTypeEnum.audio ||
+      file.type === ChatFileTypeEnum.video ||
+      file.type === ChatFileTypeEnum.file
         ? file.type
         : undefined
   };

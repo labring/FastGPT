@@ -10,6 +10,7 @@ import {
   MenuItem,
   type MenuItemProps,
   MenuList,
+  type MenuListProps,
   useDisclosure
 } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -62,6 +63,9 @@ export type SelectProps<T = any> = {
   onOpenFunc?: () => void;
 
   tagStyle?: FlexProps;
+  menuListStyle?: MenuListProps;
+  menuItemStyle?: MenuItemProps;
+  selectedMenuItemStyle?: MenuItemProps;
   menuBottomSlot?: React.ReactNode;
 } & Omit<ButtonProps, 'onSelect'>;
 
@@ -92,6 +96,9 @@ const MultipleSelect = <T = any,>({
   onOpenFunc,
 
   tagStyle,
+  menuListStyle,
+  menuItemStyle,
+  selectedMenuItemStyle,
   menuBottomSlot,
   isLoading,
   ...props
@@ -122,6 +129,7 @@ const MultipleSelect = <T = any,>({
       return listItem || { value: val, label: String(val) };
     });
   }, [formatValue, list]);
+  const tagWidth = tagStyle?.w;
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -188,8 +196,8 @@ const MultipleSelect = <T = any,>({
     // 创建临时元素来测量每个tag的实际宽度
     const measureTagWidth = (item: any): number => {
       // 如果有tagStyle.w，优先使用
-      if (tagStyle?.w) {
-        return typeof tagStyle.w === 'number' ? tagStyle.w : parseInt(String(tagStyle.w)) || 60;
+      if (tagWidth) {
+        return typeof tagWidth === 'number' ? tagWidth : parseInt(String(tagWidth)) || 60;
       }
 
       // 否则根据文本长度估算（更精确）
@@ -239,7 +247,7 @@ const MultipleSelect = <T = any,>({
 
     setVisibleItems(selectedItems.slice(0, visibleCount));
     setOverflowItems(selectedItems.slice(visibleCount));
-  }, [closeable, formLabel, selectedItems, tagStyle?.w]);
+  }, [closeable, formLabel, selectedItems, tagWidth]);
 
   // 动态监听容器宽度变化并重新计算布局
   useEffect(() => {
@@ -300,6 +308,8 @@ const MultipleSelect = <T = any,>({
               fontSize={'sm'}
               gap={2}
               {...menuItemStyles}
+              {...menuItemStyle}
+              {...(isSelected ? selectedMenuItemStyle : {})}
             >
               <Checkbox isChecked={isSelected} />
               {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
@@ -309,7 +319,7 @@ const MultipleSelect = <T = any,>({
         })}
       </>
     );
-  }, [list, isSelectAll, formatValue, onclickItem]);
+  }, [list, isSelectAll, formatValue, onclickItem, menuItemStyle, selectedMenuItemStyle]);
 
   return (
     <Box h={'100%'} w={'100%'}>
@@ -456,6 +466,7 @@ const MultipleSelect = <T = any,>({
           maxH={'40vh'}
           overflowY={'auto'}
           position={'relative'}
+          {...menuListStyle}
         >
           {setIsSelectAll && (
             <>

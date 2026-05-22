@@ -89,11 +89,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       quoteQA: rawQuoteQA,
       aiChatVision: rawAiChatVision,
+      aiChatAudio: rawAiChatAudio,
+      aiChatVideo: rawAiChatVideo,
+      aiChatExtractFiles,
       fileUrlList: rawFileLinks // node quote file links
     }
   } = props;
   let quoteQA = rawQuoteQA;
   let aiChatVision = rawAiChatVision;
+  let aiChatAudio = rawAiChatAudio;
+  let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
 
@@ -106,6 +111,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   try {
     aiChatVision = modelConstantsData.vision && aiChatVision;
+    aiChatAudio = modelConstantsData.audio && aiChatAudio;
+    aiChatVideo = modelConstantsData.video && aiChatVideo;
     // Check fileLinks is reference variable
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
@@ -195,6 +202,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         },
         retainDatasetCite,
         useVision: aiChatVision,
+        useAudio: aiChatAudio,
+        useVideo: aiChatVideo,
+        extractFiles: aiChatExtractFiles,
         requestOrigin
       },
       userKey: externalProvider.openaiAccount,

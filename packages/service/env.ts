@@ -207,7 +207,7 @@ export const serviceEnv = createEnv({
       .optional()
       .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
     MULTIPLE_DATA_TO_BASE64: BoolSchema.default(true).meta({
-      description: '是否强制将图片转成 base64 传递给模型'
+      description: '是否强制将图片、音频、视频转成 base64 传递给模型'
     }),
 
     //==================== Beta features ====================

@@ -1076,6 +1076,18 @@ export const ModelEditModal = ({
                 register={register}
               />
               <SwitchField
+                label={t('account:model.audio')}
+                tip={t('account:model.audio_tip')}
+                field={'audio'}
+                register={register}
+              />
+              <SwitchField
+                label={t('account:model.video')}
+                tip={t('account:model.video_tip')}
+                field={'video'}
+                register={register}
+              />
+              <SwitchField
                 label={t('account:model.reasoning')}
                 tip={t('account:model.reasoning_tip')}
                 field={'reasoning'}

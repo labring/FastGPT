@@ -50,6 +50,7 @@ import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -281,7 +282,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       isDefault: false,
       isDefaultDatasetTextModel: false,
       isDefaultDatasetImageModel: false,
-      type
+      type,
+      ...(type === ModelTypeEnum.llm
+        ? {
+            vision: true,
+            audio: false,
+            video: false
+          }
+        : {})
     } as SystemModelItemType;
 
     setEditModelData(modelData);
@@ -401,25 +409,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           {item.testMode && <TestModeBetaTag />}
                         </Flex>
                       </HStack>
-                      <HStack mt={2}>
-                        {item.contextToken && (
-                          <MyTag type="borderFill" colorSchema="blue" py={0.5}>
-                            {Math.floor(item.contextToken / 1000)}k
-                          </MyTag>
-                        )}
-                        {item.vision && (
-                          <MyTag type="borderFill" colorSchema="green" py={0.5}>
-                            {item.type === ModelTypeEnum.llm
-                              ? t('account:model.vision_tag')
-                              : t('common:core.ai.model.multimodal')}
-                          </MyTag>
-                        )}
-                        {item.toolChoice && (
-                          <MyTag type="borderFill" colorSchema="adora" py={0.5}>
-                            {t('account:model.tool_choice_tag')}
-                          </MyTag>
-                        )}
-                      </HStack>
+                      <ModelCapabilityTags
+                        mt={2}
+                        contextToken={item.contextToken}
+                        showVision={!!item.vision}
+                        showVideo={!!item.video}
+                        showAudio={!!item.audio}
+                        showReasoning={!!item.reasoning}
+                      />
                     </Td>
                     <Td>
                       <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>

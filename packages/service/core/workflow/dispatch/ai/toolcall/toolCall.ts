@@ -52,6 +52,9 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       temperature,
       maxToken,
       aiChatVision,
+      aiChatAudio,
+      aiChatVideo,
+      aiChatExtractFiles,
       aiChatTopP,
       aiChatStopSign,
       aiChatResponseFormat,
@@ -133,7 +136,10 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       },
       requestOrigin,
       retainDatasetCite,
-      useVision: aiChatVision
+      useVision: aiChatVision,
+      useAudio: aiChatAudio,
+      useVideo: aiChatVideo,
+      extractFiles: aiChatExtractFiles
     },
     childrenInteractiveParams,
     userKey: externalProvider.openaiAccount,

@@ -104,6 +104,9 @@ export type AgentLoopRuntime = {
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;
   useVision?: boolean;
+  useAudio?: boolean;
+  useVideo?: boolean;
+  extractFiles?: boolean;
   maxRunAgentTimes?: number;
   batchToolSize?: number;
   maxStopGateRejections?: number;

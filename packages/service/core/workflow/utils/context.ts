@@ -1,4 +1,4 @@
-import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 
@@ -89,9 +89,22 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
 
     if (extension && imageFileType.includes(extension)) {
-      // Default to file type for non-extension files
       return {
         type: ChatFileTypeEnum.image,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && audioFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.audio,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && videoFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.video,
         name: filename ? decodeURIComponent(filename) : url,
         url
       };

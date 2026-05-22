@@ -49,6 +49,9 @@ export type LLMRequestBodyType<T> = Omit<
   retainDatasetCite?: boolean;
   toolCallMode?: 'toolChoice' | 'prompt';
   useVision?: boolean;
+  useAudio?: boolean;
+  useVideo?: boolean;
+  extractFiles?: boolean;
   requestOrigin?: string;
 };
 
