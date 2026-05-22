@@ -176,6 +176,7 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+  langfuse?: LangfuseConfigType;
   fileUrlWhitelist?: string[];
   customDomain?: customDomainType;
 
@@ -362,6 +363,12 @@ export type customPdfParseType = {
   textinAppId?: string;
   textinSecretCode?: string;
   price?: number;
+};
+
+export type LangfuseConfigType = {
+  secretKey?: string;
+  publicKey?: string;
+  baseUrl?: string;
 };
 
 export type EvaluationConfigType = {

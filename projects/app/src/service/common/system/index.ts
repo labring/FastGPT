@@ -28,6 +28,7 @@ import {
   ProPromptLoader
 } from '@fastgpt/service/core/ai/config/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { refreshLangfuseTracing } from '@fastgpt/service/common/langfuse';
 import { env } from '@fastgpt/service/env';
 import { readConfigData } from '@fastgpt/service/common/system/config/controller';
 
@@ -189,6 +190,7 @@ export async function initSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
+  await refreshLangfuseTracing();
 
   logger.info('System config loaded', {
     fastgpt: {
