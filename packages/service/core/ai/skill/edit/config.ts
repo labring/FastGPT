@@ -27,7 +27,10 @@ export function buildEditDebugCreateConfig(params: {
 
   if (providerConfig.provider === 'sealosdevbox') {
     return {
-      env: {},
+      env: {
+        FASTGPT_SESSION_ID: sessionId,
+        FASTGPT_WORKDIR: defaults.workDirectory
+      },
       workingDir: defaults.workDirectory,
       metadata: {
         skillId,
