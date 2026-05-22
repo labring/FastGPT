@@ -57,7 +57,7 @@
     "vitest": "^4.0.16"
   },
   "devDependencies": {
-    "@types/ali-oss": "^6.16.13",
+    "@types/ali-oss": "^6.23.0",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
