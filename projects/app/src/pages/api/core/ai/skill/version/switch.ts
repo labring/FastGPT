@@ -5,14 +5,14 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
-import { findSandboxResourcesByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
+import { deleteSandboxResource } from '@fastgpt/service/core/ai/sandbox/service/resource';
+import { findSandboxResourcesByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
   type SwitchSkillVersionBody,
   type SwitchSkillVersionResponse
@@ -64,7 +64,7 @@ async function handler(
 
   await Promise.allSettled(
     editSandboxes.map(async (sandbox) => {
-      await SandboxClient.deleteResource(sandbox).catch((err) => {
+      await deleteSandboxResource(sandbox).catch((err) => {
         logger.error('Failed to delete edit-debug sandbox on version switch', {
           sandboxId: sandbox.sandboxId,
           error: err

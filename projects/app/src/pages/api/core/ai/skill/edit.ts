@@ -79,8 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     };
 
-    logger.info('Creating edit-debug sandbox request', { skillId, teamId, tmbId });
-
     // Create sandbox; 'ready' phase in onProgress carries the endpoint result
     await createEditDebugSandbox({
       skillId,

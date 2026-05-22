@@ -7,7 +7,7 @@ import { SandboxGetHtmlPreviewLinkBodySchema } from '@fastgpt/global/openapi/cor
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 

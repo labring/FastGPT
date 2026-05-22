@@ -6,7 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { serviceEnv } from '@fastgpt/service/env';
-import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/config';
+import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
 
 const {
   runUnifiedAgentLoopMock,
@@ -47,9 +47,9 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/controller', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/controller')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/service/runtime')>();
 
   return {
     ...original,

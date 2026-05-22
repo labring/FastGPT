@@ -1,19 +1,15 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
   SandboxCheckExistBodySchema,
   type SandboxCheckExistResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
-async function handler(
-  req: ApiRequestProps,
-  res: NextApiResponse<SandboxCheckExistResponse>
-): Promise<SandboxCheckExistResponse> {
+async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse> {
   if (!global.feConfigs?.show_agent_sandbox) {
     return {
       exists: false

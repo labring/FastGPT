@@ -811,6 +811,7 @@ const SandboxEditor = ({
   return (
     <MyBox
       isLoading={loadingRoot && fileTree.length === 0}
+      text={t('chat:sandbox_loading_files')}
       loadingVariant="particle"
       display={'flex'}
       h="full"

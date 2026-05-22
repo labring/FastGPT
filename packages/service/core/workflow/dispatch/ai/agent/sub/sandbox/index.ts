@@ -4,7 +4,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { runSandboxTools } from '../../../../../../ai/sandbox/toolCall';
 import type { DispatchSubAppResponse } from '../../type';
-import type { SandboxClient } from '../../../../../../ai/sandbox/controller';
+import type { SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 
 export const dispatchSandboxTool = async ({
   toolName,

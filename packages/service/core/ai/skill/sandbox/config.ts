@@ -6,8 +6,8 @@
 
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { serviceEnv } from '../../../../env';
-import type { SandboxCreateConfig, SandboxProviderConfig } from '../../sandbox/config';
-import { type SandboxDefaults } from '../../sandbox/config';
+import type { SandboxDefaults } from '../../sandbox/runtime/config';
+import type { SandboxCreateConfig, SandboxProviderConfig } from '../../sandbox/provider/config';
 
 export {
   EDIT_DEBUG_SANDBOX_CHAT_ID,

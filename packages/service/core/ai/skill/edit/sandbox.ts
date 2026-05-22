@@ -8,28 +8,26 @@ import {
   getEditDebugSandboxId,
   buildEditDebugCreateConfig
 } from './config';
-import {
-  getSandboxDefaults,
-  getSandboxProviderConfig,
-  validateSandboxConfig
-} from '../../sandbox/config';
+import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
+import { getSandboxDefaults } from '../../sandbox/runtime/config';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
   disconnectSandbox,
-  getReadySandboxInfo,
-  SandboxClient,
-  getSandboxClient
-} from '../../sandbox/controller';
+  getReadySandboxInfo
+} from '../../sandbox/provider/lifecycle';
+import type { SandboxClient } from '../../sandbox/service/runtime';
+import { getSandboxClient } from '../../sandbox/service/runtime';
+import { deleteSandboxResource } from '../../sandbox/service/resource';
 import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
   findSandboxInstanceByAppChatType,
   findSandboxResourcesByAppChatTypeExcludeProvider,
   updateSandboxInstanceRecordBySandboxId
-} from '../../sandbox/instance';
+} from '../../sandbox/instance/repository';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
@@ -233,7 +231,7 @@ export async function createEditDebugSandbox(
       });
 
       try {
-        await SandboxClient.deleteResource(instance);
+        await deleteSandboxResource(instance);
       } catch (deleteError) {
         addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
           sandboxId: instance.sandboxId,
@@ -268,7 +266,7 @@ export async function createEditDebugSandbox(
     });
     await Promise.all(
       staleProviderInstances.map(async (instance) => {
-        await SandboxClient.deleteResource(instance).catch((error) => {
+        await deleteSandboxResource(instance).catch((error) => {
           addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
             sandboxId: instance.sandboxId,
             provider: instance.provider,

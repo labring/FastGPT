@@ -8,9 +8,9 @@ import { toolMap as readFileToolMap } from './readFile.tool';
 import { toolMap as searchToolMap } from './search.tool';
 import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
-import { getSandboxClient, type SandboxClient } from '../controller';
+import { getSandboxClient, type SandboxClient } from '../service/runtime';
 import { parseJsonArgs } from '../../utils';
-import { writeUrlFilesToSandbox } from '../service/files';
+import { writeUrlFilesToSandbox } from '../service/file';
 
 const ToolMap = {
   ...editFileToolMap,
@@ -28,6 +28,12 @@ export type SandboxToolCallResult = {
   durationSeconds: number;
 };
 
+/**
+ * 执行一次 sandbox 工具调用。
+ *
+ * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用已有 SandboxClient；
+ * 未传入 client 时会按 app/user/chat 获取运行态 sandbox。
+ */
 export const runSandboxTools = async ({
   appId,
   userId,
@@ -57,7 +63,6 @@ export const runSandboxTools = async ({
     };
   }
 
-  // Parse args
   const parsedArgs = tool.zodSchema.safeParse(parseJsonArgs(args));
   if (!parsedArgs.success) {
     return {
@@ -85,6 +90,11 @@ export const runSandboxTools = async ({
   };
 };
 
+/**
+ * 将用户输入文件注入到当前会话 sandbox。
+ *
+ * 该入口会确保运行态 sandbox 可用，然后把远端 URL 文件下载并写入 provider 文件系统。
+ */
 export const injectSandboxFiles = async ({
   appId,
   userId,
@@ -101,6 +111,11 @@ export const injectSandboxFiles = async ({
   await writeUrlFilesToSandbox(instance.provider, files);
 };
 
+/**
+ * 获取 sandbox 工具的展示信息。
+ *
+ * 仅返回全局工具表中已有工具的本地化名称和描述，供 workflow/tool UI 展示使用。
+ */
 export const getSandboxToolInfo = (name: string, lang: localeType = LangEnum.en) => {
   if (name in sandboxToolMap) {
     const info = sandboxToolMap[name];

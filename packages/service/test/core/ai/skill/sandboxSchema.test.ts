@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 
 describe('SandboxInstance Schema', () => {
   it('should create a sandbox instance document with required fields', async () => {

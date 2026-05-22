@@ -36,8 +36,8 @@ import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance';
-import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/config';
+import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,

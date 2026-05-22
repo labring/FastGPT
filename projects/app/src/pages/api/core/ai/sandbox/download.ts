@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

@@ -1,4 +1,4 @@
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
@@ -18,7 +18,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, isEntry },
+    node: { nodeId, isEntry, inputs },
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -33,7 +33,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       systemPrompt,
       userChatInput,
       history = 6,
-      fileUrlList: fileLinks,
+      fileUrlList: rawFileLinks,
       aiChatVision,
       aiChatReasoning,
       isResponseAnswerText = true,
@@ -47,9 +47,15 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const toolModel = getLLMModel(model);
     const useVision = aiChatVision && toolModel.vision;
     const chatHistories = getHistories(history, histories);
+    const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+    const fileLinks =
+      !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0
+        ? undefined
+        : rawFileLinks;
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    props.params.fileUrlList = fileLinks;
 
     const toolNodes = useToolNodeList({
       nodeId,

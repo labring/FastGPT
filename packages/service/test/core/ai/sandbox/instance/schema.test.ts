@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 
 describe('MongoSandboxInstance schema indexes', () => {
   it('uses a Mongo-compatible partial index for chat sandbox uniqueness', () => {

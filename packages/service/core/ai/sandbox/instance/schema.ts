@@ -1,10 +1,15 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 const { Schema } = connectionMongo;
-import type { SandboxInstanceSchemaType } from './type';
+import type { SandboxInstanceSchemaType } from '../type';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { SandboxLimitSchema, SandboxProviderSchema } from './type';
+import { SandboxLimitSchema, SandboxProviderSchema } from '../type';
 
+/**
+ * sandbox 实例记录集合。
+ *
+ * 记录 FastGPT 业务归属和远端 provider 资源的映射关系，远端资源本身不在 Mongo 中保存。
+ */
 export const collectionName = 'agent_sandbox_instances';
 
 const SandboxInstanceSchema = new Schema({
@@ -83,6 +88,11 @@ SandboxInstanceSchema.index(
 SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
 SandboxInstanceSchema.index({ type: 1, chatId: 1 });
 
+/**
+ * sandbox 实例 Mongo model。
+ *
+ * 只在 instance/repository 中封装常规读写；需要跨层使用时优先新增 repository 方法。
+ */
 export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,
   SandboxInstanceSchema

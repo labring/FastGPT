@@ -24,7 +24,7 @@
   "skill_intro_placeholder": "介绍使用场景及途径",
   "skill_requirement_label": "技能需求（用于智能生成SKILL.md）",
   "skill_requirement_tooltip_title": "示例：",
-  "skill_requirement_tooltip_example": "目标：\n根据会议记录自动生成会议纪要。\n\n流程：\n1、识别会议主题和参与人员\n2、提取讨论的关键要点\n3、整理出明确的结论和决策\n4、提取需要跟进的行动项，并标注负责人（如有）\n\n要求：\n1、结果以结构化格式输出\n2、包含：会议主题、参与人、讨论要点、决策结论、行动项\n3、内容简洁清晰，避免冗余描述",
+  "skill_requirement_tooltip_example": "## 目标\n根据会议记录自动生成会议纪要。\n\n## 流程\n1. 识别会议主题和参与人员\n2. 提取讨论的关键要点\n3. 整理出明确的结论和决策\n4. 提取需要跟进的行动项，并标注负责人（如有）\n\n## 要求\n1. 结果以结构化格式输出\n2. 包含：会议主题、参与人、讨论要点、决策结论、行动项\n3. 内容简洁清晰，避免冗余描述",
   "skill_requirement_default": "## 目标\n\n## 流程\n\n## 要求",
   "ai_optimize": "AI 优化",
   "import_skill": "导入 Skill",

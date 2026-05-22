@@ -1,4 +1,4 @@
-import { type SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { type SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import type archiver from 'archiver';
 import mime from 'mime';
 

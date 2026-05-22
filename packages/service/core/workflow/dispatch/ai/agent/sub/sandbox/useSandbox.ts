@@ -8,8 +8,8 @@ import {
   injectAgentSkillFilesToSandbox,
   type DeployedSkillInfo
 } from '../../../../../../ai/skill/runtime';
-import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
-import { getSandboxDefaults } from '../../../../../../ai/sandbox/config';
+import { getSandboxDefaults } from '../../../../../../ai/sandbox/runtime/config';
+import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 
 type UseSandboxParams = {

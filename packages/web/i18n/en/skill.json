@@ -25,7 +25,7 @@
   "skill_requirement_label": "Skill Requirements (used to auto-generate SKILL.md)",
   "skill_requirement_tooltip": "TODO",
   "skill_requirement_tooltip_title": "Example:",
-  "skill_requirement_tooltip_example": "Goal:\nAutomatically generate meeting minutes from meeting notes.\n\nProcess:\n1. Identify the meeting topic and participants\n2. Extract key discussion points\n3. Organize clear conclusions and decisions\n4. Extract follow-up action items and note the responsible person (if any)\n\nRequirements:\n1. Output in structured format\n2. Include: meeting topic, participants, discussion points, decisions, action items\n3. Content should be concise and clear, avoiding redundancy",
+  "skill_requirement_tooltip_example": "## Goal\nAutomatically generate meeting minutes from meeting notes.\n\n## Process\n1. Identify the meeting topic and participants\n2. Extract key discussion points\n3. Organize clear conclusions and decisions\n4. Extract follow-up action items and note the responsible person (if any)\n\n## Requirements\n1. Output in structured format\n2. Include: meeting topic, participants, discussion points, decisions, action items\n3. Content should be concise and clear, avoiding redundancy",
   "skill_requirement_default": "## Goal\n\n## Process\n\n## Requirements",
   "ai_optimize": "AI Optimize",
   "import_skill": "Import Skill",

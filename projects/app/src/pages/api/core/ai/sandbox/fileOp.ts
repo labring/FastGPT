@@ -1,8 +1,10 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient, type SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import {
+  getSandboxClient,
+  type SandboxClient
+} from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import {
   SandboxFileOpBodySchema,
   type SandboxFileOpResponse
@@ -35,10 +37,7 @@ const opMap: Record<
   }
 };
 
-async function handler(
-  req: ApiRequestProps,
-  res: NextApiResponse<SandboxFileOpResponse>
-): Promise<SandboxFileOpResponse> {
+async function handler(req: ApiRequestProps): Promise<SandboxFileOpResponse> {
   const { appId, chatId, type, path, destPath, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxFileOpBodySchema

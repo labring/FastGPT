@@ -1,11 +1,11 @@
 import type { SandboxInstanceSchemaType } from '@fastgpt/global/core/ai/skill/type';
-import { SandboxClient } from '../../sandbox/controller';
-import { getSandboxProviderConfig } from '../../sandbox/config';
+import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import {
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
   findSkillRelatedSandboxResources
-} from '../../sandbox/instance';
+} from '../../sandbox/instance/repository';
+import { deleteSandboxResource } from '../../sandbox/service/resource';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 export {
@@ -65,7 +65,7 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
 
   addLog.info('[Sandbox] Deleting sandbox', { sandboxId });
 
-  await SandboxClient.deleteResource(instanceDoc);
+  await deleteSandboxResource(instanceDoc);
 }
 
 /**
@@ -86,7 +86,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
 
   await Promise.allSettled(
     instances.map(async (doc) => {
-      await SandboxClient.deleteResource(doc);
+      await deleteSandboxResource(doc);
     })
   );
 }

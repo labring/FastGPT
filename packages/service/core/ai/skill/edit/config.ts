@@ -1,10 +1,7 @@
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
-import type {
-  SandboxCreateConfig,
-  SandboxDefaults,
-  SandboxProviderConfig
-} from '../../sandbox/config';
+import type { SandboxCreateConfig, SandboxProviderConfig } from '../../sandbox/provider/config';
+import type { SandboxDefaults } from '../../sandbox/runtime/config';
 
 export const EDIT_DEBUG_SANDBOX_CHAT_ID = 'edit-debug';
 

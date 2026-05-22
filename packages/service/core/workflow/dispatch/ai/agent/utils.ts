@@ -18,7 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import type { SandboxClient } from '../../../../ai/sandbox/controller';
+import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
