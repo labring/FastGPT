@@ -38,7 +38,7 @@
     "next-i18next": "catalog:",
     "prettier": "catalog:lint",
     "react-i18next": "catalog:",
-    "turbo": "2.9.9",
+    "turbo": "2.9.14",
     "typescript-eslint": "catalog:lint",
     "typescript": "catalog:",
     "vitest": "catalog:"
