@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { addMinutes } from 'date-fns';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -274,7 +275,30 @@ async function handler(
       ),
       MongoDatasetTraining.aggregate<{ _id: string; count: number }>([
         { $match: { datasetId: { $in: datasetObjectIds } } },
-        { $group: { _id: { $toString: '$datasetId' }, count: { $sum: 1 } } }
+        {
+          $group: {
+            _id: { datasetId: '$datasetId', collectionId: '$collectionId' },
+            count: { $sum: 1 },
+            hasError: {
+              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+            },
+            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
+          }
+        },
+        {
+          $match: {
+            count: { $gt: 0 },
+            hasError: { $ne: true },
+            $or: [{ hasActive: true }, { allParse: { $ne: true } }]
+          }
+        },
+        {
+          $group: {
+            _id: { $toString: '$_id.datasetId' },
+            count: { $sum: 1 }
+          }
+        }
       ])
     ]);
     uniqueNonFolderDatasets.forEach((dataset, index) => {
