@@ -32,7 +32,13 @@ import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/his
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from './type';
+import { postStopV2Chat } from '@/web/core/chat/api';
+import type {
+  ChatBoxInputType,
+  ChatBoxInputFormType,
+  SendPromptFnType,
+  StopChatFnResult
+} from './type';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
@@ -148,7 +154,7 @@ type Props = OutLinkChatAuthProps &
     /** 覆盖默认消息删除接口；Skill 调试会话需要走 skill 专属 chat item 删除接口。 */
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
     /** 覆盖默认停止对话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
-    onStopChat?: () => Promise<unknown>;
+    onStopChat?: () => Promise<StopChatFnResult>;
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
   };
@@ -286,6 +292,22 @@ const ChatBox = ({
     if (!enableMarkChatRead) return;
 
     return onMarkChatRead?.(data) ?? postMarkChatRead(data);
+  });
+  const requestStopChat = useMemoizedFn(async (): Promise<StopChatFnResult> => {
+    if (onStopChat) {
+      return onStopChat();
+    }
+
+    const result = await postStopV2Chat({
+      appId,
+      chatId,
+      outLinkAuthData
+    });
+
+    return {
+      chatGenerateStatus: result.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      completed: result.completed
+    };
   });
 
   const finishChatGenerateStatus = useMemoizedFn(
@@ -2081,6 +2103,7 @@ const ChatBox = ({
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
+                onStopChat={requestStopChat}
                 onStopSettled={handleStopSettled}
                 disableSend={isRoundPending}
                 TextareaDom={TextareaDom}
@@ -2106,6 +2129,7 @@ const ChatBox = ({
                 onSendMessage={sendPrompt}
                 lastInteractive={lastInteractive}
                 onStop={() => abortRequest('stop')}
+                onStopChat={requestStopChat}
                 onStopSettled={handleStopSettled}
                 disableSend={isRoundPending}
                 TextareaDom={TextareaDom}

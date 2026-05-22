@@ -5,7 +5,12 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { type ChatBoxInputFormType, type ChatBoxInputType, type SendPromptFnType } from '../type';
+import {
+  type ChatBoxInputFormType,
+  type ChatBoxInputType,
+  type SendPromptFnType,
+  type StopChatFnResult
+} from '../type';
 import { textareaMinH } from '../constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
@@ -20,7 +25,6 @@ import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { postStopV2Chat } from '@/web/core/chat/api';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -37,6 +41,7 @@ const ChatInput = ({
   lastInteractive,
   onSendMessage,
   onStop,
+  onStopChat,
   onStopSettled,
   disableSend,
   TextareaDom,
@@ -46,6 +51,7 @@ const ChatInput = ({
   lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
+  onStopChat: () => Promise<StopChatFnResult>;
   onStopSettled?: (status: ChatGenerateStatusEnum, completed: boolean) => void;
   disableSend?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
@@ -137,12 +143,8 @@ const ChatInput = ({
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
       if (isChatting) {
-        const result = await postStopV2Chat({
-          appId,
-          chatId,
-          outLinkAuthData
-        });
-        onStopSettled?.(result.chatGenerateStatus ?? ChatGenerateStatusEnum.done, result.completed);
+        const result = await onStopChat();
+        onStopSettled?.(result.chatGenerateStatus, result.completed);
       }
     } catch {
       onStopSettled?.(ChatGenerateStatusEnum.generating, false);
@@ -409,6 +411,7 @@ const ChatInput = ({
     onSelectFile,
     handleSend,
     handleStop,
+    onStopChat,
     onStopSettled
   ]);
 

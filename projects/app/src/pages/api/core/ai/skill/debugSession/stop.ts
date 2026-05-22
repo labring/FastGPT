@@ -4,6 +4,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   setAgentRuntimeStop,
+  shouldWorkflowStop,
   waitForWorkflowComplete
 } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
 import {
@@ -12,9 +13,11 @@ import {
   type SkillDebugSessionStopResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: ApiRequestProps): Promise<SkillDebugSessionStopResponse> {
-  const { skillId, chatId } = parseApiInput({
+  const { skillId } = parseApiInput({
     req,
     bodySchema: SkillDebugSessionControlBodySchema
   }).body;
@@ -27,15 +30,23 @@ async function handler(req: ApiRequestProps): Promise<SkillDebugSessionStopRespo
     per: ReadPermissionVal
   });
 
-  await setAgentRuntimeStop({
+  const runtimeStatusParams = {
     appId: skillId,
-    chatId
-  });
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+  };
 
-  await waitForWorkflowComplete({ appId: skillId, chatId, timeout: 5000 });
+  await setAgentRuntimeStop(runtimeStatusParams);
+
+  await waitForWorkflowComplete({
+    ...runtimeStatusParams,
+    timeout: 5000
+  });
+  const completed = !(await shouldWorkflowStop(runtimeStatusParams));
 
   return SkillDebugSessionStopResponseSchema.parse({
-    success: true
+    success: true,
+    completed,
+    chatGenerateStatus: completed ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.generating
   });
 }
 

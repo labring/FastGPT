@@ -12,6 +12,7 @@ import {
   SkillPackageSchema,
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
+import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -248,7 +249,9 @@ export const SkillDebugSessionControlBodySchema = z.object({
 export type SkillDebugSessionControlBody = z.infer<typeof SkillDebugSessionControlBodySchema>;
 
 export const SkillDebugSessionStopResponseSchema = z.object({
-  success: z.boolean()
+  success: z.boolean(),
+  completed: z.boolean().describe('工作流是否已在本次请求等待窗口内完成停止'),
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).describe('当前对话生成状态')
 });
 export type SkillDebugSessionStopResponse = z.infer<typeof SkillDebugSessionStopResponseSchema>;
 

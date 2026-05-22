@@ -80,7 +80,13 @@ export const useSkillChatTest = ({
   const handleDeleteChatItem = useMemoizedFn((contentId: string) =>
     delSkillDebugChatItem({ skillId, chatId, contentId })
   );
-  const handleStopChat = useMemoizedFn(() => postStopSkillDebugChat({ skillId, chatId }));
+  const handleStopChat = useMemoizedFn(async () => {
+    const result = await postStopSkillDebugChat({ skillId, chatId });
+    return {
+      chatGenerateStatus: result.chatGenerateStatus,
+      completed: result.completed
+    };
+  });
 
   const ChatContainer = useCallback(
     () => (
