@@ -217,7 +217,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // Skill capability is gated by SHOW_SKILL env: when disabled, we skip skill loading entirely
     // (no MongoDB query, no sandbox init), even if existing apps still have skills configured.
     if (env.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+      const sandboxSessionId =
+        mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}-${chatId}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -226,7 +227,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         sessionId: sandboxSessionId,
         workflowStreamResponse,
         showSkillReferences: showSkillReferences === true,
-        allFilesMap
+        allFilesMap,
+        chatId
       });
       capabilities.push(sandboxCap);
     }

@@ -275,11 +275,16 @@ export async function authSandboxAccess({
     }
 
     const { tmbId, teamId } = await parseHeaderCert(props);
-    await authSkillByTmbId({
-      tmbId,
-      skillId: appId,
-      per: ReadPermissionVal
-    });
+
+    // appId may be empty for endpoints that only need chatId-based sandbox lookup.
+    // Skip skill auth when appId is falsy — no specific app/resource to authorize.
+    if (appId) {
+      await authSkillByTmbId({
+        tmbId,
+        skillId: appId,
+        per: ReadPermissionVal
+      });
+    }
 
     return {
       teamId,

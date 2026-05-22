@@ -95,7 +95,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
     if (env.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+      const sandboxSessionId =
+        mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}-${chatId}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -215,11 +216,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     /* ===== Restore session messages from last AI history ===== */
     const piMessagesKey = `piMessages-${nodeId}`;
-    const lastHistory = chatHistories[chatHistories.length - 1];
-    const restoredMessages =
-      lastHistory?.obj === ChatRoleEnum.AI
-        ? (lastHistory.memories?.[piMessagesKey] as any[] | undefined) ?? []
-        : [];
+    let restoredMessages: any[] = [];
+    for (let i = chatHistories.length - 1; i >= 0; i--) {
+      if (chatHistories[i].obj === ChatRoleEnum.AI) {
+        const aiItem = chatHistories[i] as { memories?: Record<string, any> };
+        const stored = aiItem.memories?.[piMessagesKey] as any[] | undefined;
+        if (stored?.length) {
+          restoredMessages = stored;
+          break;
+        }
+      }
+    }
 
     /* ===== Create & run Agent ===== */
     const { Agent } = await import('@mariozechner/pi-agent-core');
@@ -238,7 +245,14 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         apiKey,
         getAgentState: () => agent.state,
         settings: { enabled: env.PI_AGENT_COMPACTION_ENABLED }
-      })
+      }),
+      onPayload: (params: any) => {
+        // Ensure tool_choice is set; some models require explicit tool_choice
+        if (params.tools?.length > 0 && params.tool_choice === undefined) {
+          params.tool_choice = 'auto';
+        }
+        return params;
+      }
     });
 
     // Collect text deltas to build answerText

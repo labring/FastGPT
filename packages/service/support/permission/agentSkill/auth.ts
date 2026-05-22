@@ -44,6 +44,10 @@ export const authSkillByTmbId = async ({
   skill: AgentSkillSchemaType & { permission: SkillPermission };
 }> => {
   const skill = await (async () => {
+    if (!skillId) {
+      return Promise.reject(SkillErrEnum.unExist);
+    }
+
     const [{ teamId, permission: tmbPer }, skill] = await Promise.all([
       getTmbInfoByTmbId({ tmbId }),
       MongoAgentSkills.findOne({ _id: skillId, deleteTime: null }).lean()
