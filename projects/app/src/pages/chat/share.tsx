@@ -450,7 +450,7 @@ const Render = (props: Props) => {
         await getTokenLogin();
 
         // 2. 登录成功，验证应用权限
-        await getInitChatInfo({ appId, chatId: chatId || getNanoid() });
+        await getInitChatInfo({ appId, chatId: getNanoid() });
 
         setIsConfirmed(true);
       } catch (error: any) {
@@ -472,7 +472,7 @@ const Render = (props: Props) => {
     const handleLoginSuccess = async () => {
       try {
         // 验证应用权限
-        await getInitChatInfo({ appId, chatId: chatId || getNanoid() });
+        await getInitChatInfo({ appId, chatId: getNanoid() });
         setIsConfirmed(true);
         return true;
       } catch (e: any) {
