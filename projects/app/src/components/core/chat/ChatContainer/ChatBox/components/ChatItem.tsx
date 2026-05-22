@@ -138,12 +138,6 @@ const AIContentCard = React.memo(function AIContentCard({
       {chatValue.map((value, i) => {
         const isLastResponse = isLastChild && i === chatValue.length - 1;
         const key = `${dataId}-ai-${i}`;
-        const folded = value.stepId
-          ? (chatValue.find((item) => item.stepTitle?.stepId === value.stepId)?.stepTitle?.folded ??
-            true)
-          : false;
-
-        if (folded) return null;
 
         return (
           <Box
