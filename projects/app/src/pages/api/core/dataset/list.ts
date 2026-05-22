@@ -1,5 +1,6 @@
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Types } from 'mongoose';
+import { addMinutes } from 'date-fns';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -207,10 +208,33 @@ async function handler(req: ApiRequestProps) {
         },
         { _id: 1, 'modules.inputs': 1 }
       ).lean(),
-      // processingCount: 统计训练队列中的记录数
+      // processingCount: 统计 status === "training" 的 collection 数量
       MongoDatasetTraining.aggregate<{ _id: string; count: number }>([
         { $match: { datasetId: { $in: datasetObjectIds } } },
-        { $group: { _id: { $toString: '$datasetId' }, count: { $sum: 1 } } }
+        {
+          $group: {
+            _id: { datasetId: '$datasetId', collectionId: '$collectionId' },
+            count: { $sum: 1 },
+            hasError: {
+              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+            },
+            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
+          }
+        },
+        {
+          $match: {
+            count: { $gt: 0 },
+            hasError: { $ne: true },
+            $or: [{ hasActive: true }, { allParse: { $ne: true } }]
+          }
+        },
+        {
+          $group: {
+            _id: { $toString: '$_id.datasetId' },
+            count: { $sum: 1 }
+          }
+        }
       ])
     ]);
 
