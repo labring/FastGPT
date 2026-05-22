@@ -18,17 +18,25 @@ export const joinSandboxPath = (basePath: string, path: string) =>
 export const getSkillsRootPath = (workDirectory: string) =>
   joinSandboxPath(workDirectory, 'skills');
 
-// skill 名会进入 sandbox 路径，只保留对目录名安全且可读的部分；真实唯一性由 skillId 保证。
 export const getSafeSkillDirectoryName = (skillName: string) => {
-  const normalizedSkillName = skillName
+  const normalized = skillName
     .trim()
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .replace(/[\\/]/g, '-')
-    .trim()
-    .slice(0, 80);
+    // 1. 将空格和空白字符替换为中划线
+    .replace(/\s+/g, '-')
+    // 2. 只保留中文、英文、数字、中划线和下划线，其它所有非法/危险字符都替换为中划线
+    .replace(/[^\w\u4e00-\u9fa5-]/g, '-')
+    // 3. 将连续的多个中划线或下划线合并为单个
+    .replace(/-+/g, '-')
+    .replace(/_+/g, '_')
+    // 4. 去除首尾的多余中划线/下划线
+    .replace(/^[-_]|[-_]$/g, '')
+    // 5. 限制长度在合理范围
+    .slice(0, 50)
+    .trim();
 
-  return normalizedSkillName && normalizedSkillName !== '.' && normalizedSkillName !== '..'
-    ? normalizedSkillName
+  // 6. 排除特殊目录名或为空、纯中/下划线的情况，使用安全回退值
+  return normalized && normalized !== '.' && normalized !== '..' && !/^[-_]+$/.test(normalized)
+    ? normalized
     : 'skill';
 };
 

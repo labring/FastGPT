@@ -4,7 +4,6 @@ import {
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum,
   AgentSkillCreationStatusEnum,
-  SandboxProtocolEnum,
   SandboxTypeEnum
 } from './constants';
 import { SandboxStatusEnum } from '../sandbox/constants';
@@ -19,7 +18,6 @@ export const AgentSkillSourceSchema = z.enum(AgentSkillSourceEnum);
 export const AgentSkillCategorySchema = z.enum(AgentSkillCategoryEnum);
 export const AgentSkillTypeSchema = z.enum(AgentSkillTypeEnum);
 export const AgentSkillCreationStatusSchema = z.enum(AgentSkillCreationStatusEnum);
-export const SandboxProtocolSchema = z.enum(SandboxProtocolEnum);
 export const SandboxTypeSchema = z.enum(SandboxTypeEnum);
 export const SandboxStatusSchema = z.enum([
   SandboxStatusEnum.running,

@@ -1,6 +1,6 @@
 import z from 'zod';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 
 // ---- 沙盒实例 DB 类型 ----
 export const SandboxProviderSchema = z.enum(['sealosdevbox', 'opensandbox', 'e2b']);
@@ -32,13 +32,6 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxEndpointSchema = z.object({
-  host: z.string(),
-  port: z.number(),
-  protocol: z.enum(SandboxProtocolEnum),
-  url: z.string()
-});
-
 export const SandboxMetadataSchema = z.object({
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
@@ -49,8 +42,7 @@ export const SandboxMetadataSchema = z.object({
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
-  image: SandboxImageSchema,
-  endpoint: SandboxEndpointSchema.optional()
+  image: SandboxImageSchema
 });
 export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 

@@ -2,8 +2,16 @@
  * 构建单主 loop 的稳定 system prompt。
  * workflow 侧可把用户配置、sandbox、知识库引用规则等合并到 systemPrompt 中传入。
  */
-export const getMainAgentSystemPrompt = ({ systemPrompt }: { systemPrompt?: string }) => `<role>
-你是 Super Agent。
+export const getMainAgentSystemPrompt = ({
+  systemPrompt,
+  hasRuntimeTools
+}: {
+  systemPrompt?: string;
+  hasRuntimeTools: boolean;
+}) => `<!-- Main Agent -->
+
+<role>
+你是 FastGPT Main Agent。
 你在一个工具循环中工作：阅读用户目标，调用工具获取信息或执行动作，维护计划状态，并在任务完成后给出最终回答。
 </role>
 
@@ -31,6 +39,15 @@ ${systemPrompt}
 - 不要把 ask_agent 或 update_plan 当成普通业务工具解释给用户。
 - 工具返回结果后，根据结果继续执行、更新计划或最终回答。
 </tool_rules>
+
+${
+  !hasRuntimeTools
+    ? `<tool_constraint>
+当前没有可用的 runtime tools。
+不要调用不存在的 runtime tool；如果可以直接回答就直接回答。复杂任务仍可用 update_plan 维护计划，必要时用 ask_agent 追问强阻塞信息。
+</tool_constraint>`
+    : ''
+}
 
 <planning_rules>
 默认不要过度规划。

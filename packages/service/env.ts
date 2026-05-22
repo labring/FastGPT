@@ -265,17 +265,6 @@ export const serviceEnv = createEnv({
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),
-
-    SANDBOX_PROXY_BASEURL: UrlSchema.optional().meta({
-      description: 'Sandbox proxy 完整公开访问 URL，每个 sandbox 通过 <sid>.<host> 访问'
-    }),
-    SANDBOX_PROXY_SECRET: z.string().min(16).optional().meta({
-      description: 'App 与 sandbox-proxy 共享的 JWT 签名密钥，至少 16 个字符'
-    }),
-    SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(1800).meta({
-      description:
-        'Sandbox proxy JWT 与 Cookie Max-Age 生命周期（秒），默认 1800；活跃 WebSocket 不会因 token 到期被中断，后续 HTTP 请求或重连需要刷新 token'
-    }),
     SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
       description:
         '是否把 endpoint 中的 host.docker.internal 改写为 localhost；当 sandbox-proxy 直接运行在宿主机进程时开启，容器或 k8s 内运行时保持关闭'
@@ -321,14 +310,5 @@ export const serviceEnv = createEnv({
 if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_TIMES) {
   throw new Error(
     `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
-  );
-}
-
-if (
-  serviceEnv.SHOW_SKILL &&
-  (!serviceEnv.SANDBOX_PROXY_BASEURL || !serviceEnv.SANDBOX_PROXY_SECRET)
-) {
-  throw new Error(
-    'Invalid environment configuration: SHOW_SKILL=true requires both SANDBOX_PROXY_BASEURL and SANDBOX_PROXY_SECRET'
   );
 }

@@ -28,28 +28,8 @@ export enum AgentSkillTypeEnum {
   folder = 'folder',
   skill = 'skill'
 }
-
-export const AgentSkillFolderTypeList = [AgentSkillTypeEnum.folder];
-
 // Sandbox types
 export enum SandboxTypeEnum {
   editDebug = 'edit-debug',
   sessionRuntime = 'session-runtime'
 }
-
-// Sandbox status states
-export enum SandboxStateEnum {
-  pending = 'Pending',
-  running = 'Running',
-  failed = 'Failed',
-  succeeded = 'Succeeded',
-  unknown = 'Unknown'
-}
-
-// Sandbox protocol types
-export enum SandboxProtocolEnum {
-  http = 'http',
-  https = 'https'
-}
-
-export const sandboxInstanceCollectionName = 'agent_sandbox_instances';

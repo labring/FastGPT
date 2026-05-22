@@ -83,7 +83,7 @@ describe('SandboxInstance Schema', () => {
     expect(validation?.errors?.status).toBeDefined();
   });
 
-  it('should allow endpoint and storage as optional fields in metadata', async () => {
+  it('should allow storage as optional fields in metadata', async () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-mno345',
@@ -98,12 +98,6 @@ describe('SandboxInstance Schema', () => {
         provider: 'opensandbox',
         image: { repository: 'node' },
         providerCreatedAt: new Date(),
-        endpoint: {
-          host: 'localhost',
-          port: 8080,
-          protocol: 'http',
-          url: 'http://localhost:8080'
-        },
         storage: {
           key: 'test/package.zip',
           uploadedAt: new Date()
@@ -111,8 +105,6 @@ describe('SandboxInstance Schema', () => {
       }
     });
 
-    expect(doc.metadata?.endpoint?.host).toBe('localhost');
-    expect(doc.metadata?.endpoint?.port).toBe(8080);
     expect(doc.metadata?.storage?.key).toBe('test/package.zip');
   });
 
