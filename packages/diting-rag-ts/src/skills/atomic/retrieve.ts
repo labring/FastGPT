@@ -166,7 +166,8 @@ export class RetrieveSkill extends BaseSkill {
       for (const query of queries) {
         try {
           const results = await this.fullTextSearch!.search(query, datasetIds, {
-            limit: options.limit
+            limit: options.limit,
+            filter: { forbidCollectionIds: options.forbidCollectionIds }
           });
           fullTextResults.push(...results.chunks);
         } catch (e) {

@@ -161,7 +161,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   parentId: ParentIdSchema.meta({ description: '父级 ID' }),
   name: z.string().meta({ description: '名称' }),
   type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签' }),
 
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),

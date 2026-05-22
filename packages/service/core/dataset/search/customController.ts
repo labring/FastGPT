@@ -43,7 +43,8 @@ import type { SearchDatasetDataProps, SearchDatasetDataResponse } from './contro
 // Import exported functions from controller
 import {
   datasetDataReRank as reRankFunction,
-  filterDatasetDataByMaxTokens as filterFunction
+  filterDatasetDataByMaxTokens as filterFunction,
+  filterCollectionByNewTagFormat
 } from './controller';
 
 // Import assistant-specific reranker
@@ -119,7 +120,8 @@ export async function searchDatasetDataForAssistant(
     rerankMethod,
     rerankWeight = 0.5,
     datasetIds = [],
-    collectionFilterMatch
+    collectionFilterMatch,
+    authForbidCollectionIds
   } = props;
 
   // Constants data
@@ -238,10 +240,36 @@ export async function searchDatasetDataForAssistant(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null | Record<string, any>)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null | Record<string, any>)[] | undefined;
 
-      if (andTags && andTags.length > 0) {
+      const isNewTagFormat =
+        (Array.isArray(andTags) &&
+          andTags.length > 0 &&
+          typeof andTags[0] === 'object' &&
+          andTags[0] !== null) ||
+        (Array.isArray(orTags) &&
+          orTags.length > 0 &&
+          typeof orTags[0] === 'object' &&
+          orTags[0] !== null);
+
+      if (isNewTagFormat) {
+        const andConditions = (andTags || []).filter(
+          (item): item is Record<string, Record<string, any>> =>
+            typeof item === 'object' && item !== null
+        );
+        const orConditions = (orTags || []).filter(
+          (item): item is Record<string, Record<string, any>> =>
+            typeof item === 'object' && item !== null
+        );
+
+        tagCollectionIdList = await filterCollectionByNewTagFormat({
+          teamId,
+          datasetIds,
+          andConditions: andConditions.length > 0 ? andConditions : undefined,
+          orConditions: orConditions.length > 0 ? orConditions : undefined
+        });
+      } else if (andTags && andTags.length > 0) {
         const uniqueAndTags = Array.from(new Set(andTags));
         if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
           return [];
@@ -695,18 +723,23 @@ export async function searchDatasetDataForAssistant(
       filterCollectionByMetadata()
     ]);
 
+    // Merge permission-based forbidden collections
+    const mergedForbidList = authForbidCollectionIds?.length
+      ? [...new Set([...forbidCollectionIdList, ...authForbidCollectionIds])]
+      : forbidCollectionIdList;
+
     const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
       embeddingRecall({
         queries,
         limit: embeddingLimit,
-        forbidCollectionIdList,
+        forbidCollectionIdList: mergedForbidList,
         filterCollectionIdList
       }),
       fullTextRecall({
         queries,
         limit: fullTextLimit,
         filterCollectionIdList,
-        forbidCollectionIdList
+        forbidCollectionIdList: mergedForbidList
       })
     ]);
 
