@@ -11,12 +11,15 @@ export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
-    await sandboxInstance.provider.writeFiles([
+    const [file] = await sandboxInstance.provider.writeFiles([
       {
         path: params.path,
         data: params.content
       }
     ]);
+    if (!file || file.error) {
+      throw new Error(`Failed to write file: ${file?.error?.message || params.path}`);
+    }
 
     return {
       response: `File written successfully: ${params.path}`

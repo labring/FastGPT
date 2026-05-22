@@ -29,6 +29,7 @@
   "skill_requirement_default": "## Goal\n\n## Process\n\n## Requirements",
   "ai_optimize": "AI Optimize",
   "import_skill": "Import Skill",
+  "import_skill_select_file": "Select a Skill archive",
   "import_skill_file_type_tip": "Supports {{ext}} formats",
   "import_skill_max_size_tip": "Upload up to {{maxCount}} file at a time, max file size: {{maxSize}}",
   "unsupported_file_format": "File format {{ext}} is not supported",

@@ -28,6 +28,7 @@
   "skill_requirement_default": "## 目标\n\n## 流程\n\n## 要求",
   "ai_optimize": "AI 优化",
   "import_skill": "导入 Skill",
+  "import_skill_select_file": "请选择 Skill 压缩包",
   "import_skill_file_type_tip": "支持 {{ext}} 格式",
   "import_skill_max_size_tip": "单次最多上传 {{maxCount}} 个文件，单个文件最大 {{maxSize}}",
   "unsupported_file_format": "不支持 {{ext}} 文件格式",

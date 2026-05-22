@@ -4,6 +4,8 @@ import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { bytesToBase64 } from '@/utils/base64';
 import { MockCommandExecution } from '../../mocks/MockCommandExecution';
 
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
 describe('CommandPolyfillService', () => {
   let mockExecutor: MockCommandExecution;
   let polyfill: CommandPolyfillService;
@@ -18,7 +20,7 @@ describe('CommandPolyfillService', () => {
       const expectedContent = 'Hello, World!';
       const base64Content = bytesToBase64(new TextEncoder().encode(expectedContent));
 
-      mockExecutor.mockCommand('cat "/test/file.txt" | base64 -w 0', {
+      mockExecutor.mockCommand(`cat ${shellQuote('/test/file.txt')} | base64 -w 0`, {
         stdout: base64Content,
         stderr: '',
         exitCode: 0
@@ -31,7 +33,7 @@ describe('CommandPolyfillService', () => {
     });
 
     it('should throw FileOperationError for non-existent file', async () => {
-      mockExecutor.mockCommand('cat "/nonexistent" | base64 -w 0', {
+      mockExecutor.mockCommand(`cat ${shellQuote('/nonexistent')} | base64 -w 0`, {
         stdout: '',
         stderr: 'cat: /nonexistent: No such file or directory',
         exitCode: 1
@@ -47,7 +49,7 @@ describe('CommandPolyfillService', () => {
     });
 
     it('should throw FileOperationError for permission denied', async () => {
-      mockExecutor.mockCommand('cat "/secret" | base64 -w 0', {
+      mockExecutor.mockCommand(`cat ${shellQuote('/secret')} | base64 -w 0`, {
         stdout: '',
         stderr: 'cat: /secret: Permission denied',
         exitCode: 1
@@ -68,17 +70,20 @@ describe('CommandPolyfillService', () => {
       const content = new TextEncoder().encode('Test content');
       const base64Content = bytesToBase64(content);
 
-      mockExecutor.mockCommand('mkdir -p "/test"', {
+      mockExecutor.mockCommand(`mkdir -p ${shellQuote('/test')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
       });
 
-      mockExecutor.mockCommand(`echo "${base64Content}" | base64 -d > "/test/output.txt"`, {
-        stdout: '',
-        stderr: '',
-        exitCode: 0
-      });
+      mockExecutor.mockCommand(
+        `echo "${base64Content}" | base64 -d > ${shellQuote('/test/output.txt')}`,
+        {
+          stdout: '',
+          stderr: '',
+          exitCode: 0
+        }
+      );
 
       const bytesWritten = await polyfill.writeFile('/test/output.txt', content);
       expect(bytesWritten).toBe(content.length);
@@ -89,32 +94,64 @@ describe('CommandPolyfillService', () => {
     });
 
     it('should write text file directly', async () => {
-      mockExecutor.mockCommand('mkdir -p "/test"', {
+      const text = 'Hello World';
+      const base64Content = bytesToBase64(new TextEncoder().encode(text));
+
+      mockExecutor.mockCommand(`mkdir -p ${shellQuote('/test')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
       });
 
-      mockExecutor.mockCommand('cat > "/test/text.txt" << \'POLYFILL_EOF\'', {
-        stdout: '',
-        stderr: '',
-        exitCode: 0
-      });
+      mockExecutor.mockCommand(
+        `echo "${base64Content}" | base64 -d > ${shellQuote('/test/text.txt')}`,
+        {
+          stdout: '',
+          stderr: '',
+          exitCode: 0
+        }
+      );
 
-      const bytesWritten = await polyfill.writeTextFile('/test/text.txt', 'Hello World');
+      const bytesWritten = await polyfill.writeTextFile('/test/text.txt', text);
       expect(bytesWritten).toBe(11);
+    });
+
+    it('should not embed text content into the shell command', async () => {
+      const text = 'POLYFILL_EOF\n$(touch /tmp/pwned)';
+      const base64Content = bytesToBase64(new TextEncoder().encode(text));
+
+      mockExecutor.mockCommand(`mkdir -p ${shellQuote('/test')}`, {
+        stdout: '',
+        stderr: '',
+        exitCode: 0
+      });
+
+      mockExecutor.mockCommand(
+        `echo "${base64Content}" | base64 -d > ${shellQuote('/test/text.txt')}`,
+        {
+          stdout: '',
+          stderr: '',
+          exitCode: 0
+        }
+      );
+
+      await polyfill.writeTextFile('/test/text.txt', text);
+
+      const commands = mockExecutor.getExecutedCommands().map(({ command }) => command);
+      expect(commands.some((command) => command.includes('POLYFILL_EOF'))).toBe(false);
+      expect(commands.some((command) => command.includes('touch /tmp/pwned'))).toBe(false);
     });
   });
 
   describe('deleteFiles', () => {
     it('should delete multiple files', async () => {
-      mockExecutor.mockCommand('rm -f "/file1.txt"', {
+      mockExecutor.mockCommand(`rm -f ${shellQuote('/file1.txt')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
       });
 
-      mockExecutor.mockCommand('rm -f "/file2.txt"', {
+      mockExecutor.mockCommand(`rm -f ${shellQuote('/file2.txt')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
@@ -128,7 +165,7 @@ describe('CommandPolyfillService', () => {
     });
 
     it('should report failures for files that cannot be deleted', async () => {
-      mockExecutor.mockCommand('rm -f "/protected"', {
+      mockExecutor.mockCommand(`rm -f ${shellQuote('/protected')}`, {
         stdout: '',
         stderr: 'rm: cannot remove',
         exitCode: 1
@@ -139,11 +176,19 @@ describe('CommandPolyfillService', () => {
       expect(results[0].success).toBe(false);
       expect(results[0].error).toBeDefined();
     });
+
+    it('should single-quote paths so command substitutions are not evaluated', async () => {
+      const path = "/workspace/$(touch /tmp/pwned)'`echo bad`.txt";
+
+      await polyfill.deleteFiles([path]);
+
+      expect(mockExecutor.getExecutedCommands()[0].command).toBe(`rm -f ${shellQuote(path)}`);
+    });
   });
 
   describe('createDirectories', () => {
     it('should create directories with mkdir -p', async () => {
-      mockExecutor.mockCommand('mkdir -p "/new/dir"', {
+      mockExecutor.mockCommand(`mkdir -p ${shellQuote('/new/dir')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
@@ -152,17 +197,17 @@ describe('CommandPolyfillService', () => {
       await polyfill.createDirectories(['/new/dir']);
 
       const commands = mockExecutor.getExecutedCommands();
-      expect(commands[0].command).toBe('mkdir -p "/new/dir"');
+      expect(commands[0].command).toBe(`mkdir -p ${shellQuote('/new/dir')}`);
     });
 
     it('should set permissions when specified', async () => {
-      mockExecutor.mockCommand('mkdir -p "/new/dir"', {
+      mockExecutor.mockCommand(`mkdir -p ${shellQuote('/new/dir')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
       });
 
-      mockExecutor.mockCommand('chmod 755 "/new/dir"', {
+      mockExecutor.mockCommand(`chmod 755 ${shellQuote('/new/dir')}`, {
         stdout: '',
         stderr: '',
         exitCode: 0
@@ -184,7 +229,7 @@ drwxr-xr-x 3 user group 4096 2024-01-15T10:30:00 ..
 drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
 
       mockExecutor.mockCommand(
-        'ls -la "/test" --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"',
+        `ls -la ${shellQuote('/test')} --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`,
         {
           stdout: lsOutput,
           stderr: '',
@@ -201,18 +246,21 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
 
     it('should throw FileOperationError for non-existent directory', async () => {
       mockExecutor.mockCommand(
-        'ls -la "/nonexistent" --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"',
+        `ls -la ${shellQuote('/nonexistent')} --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`,
         {
           stdout: 'DIRECTORY_NOT_FOUND',
           stderr: '',
           exitCode: 0
         }
       );
-      mockExecutor.mockCommand('ls -la "/nonexistent" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"', {
-        stdout: 'DIRECTORY_NOT_FOUND',
-        stderr: '',
-        exitCode: 0
-      });
+      mockExecutor.mockCommand(
+        `ls -la ${shellQuote('/nonexistent')} 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`,
+        {
+          stdout: 'DIRECTORY_NOT_FOUND',
+          stderr: '',
+          exitCode: 0
+        }
+      );
 
       try {
         await polyfill.listDirectory('/nonexistent');
@@ -227,7 +275,7 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
     it('should parse stat output', async () => {
       // Format: size|mtime|ctime|mode|user|group|type
       mockExecutor.mockCommand(
-        'stat -c \'%s|%Y|%W|%a|%U|%G|%F\' "/test/file.txt" 2>/dev/null || echo "STAT_FAILED"',
+        `stat -c '%s|%Y|%W|%a|%U|%G|%F' ${shellQuote('/test/file.txt')} 2>/dev/null || echo "STAT_FAILED"`,
         {
           stdout: '1234|1705312200|1705311000|644|user|group|regular file',
           stderr: '',
@@ -249,7 +297,7 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
   describe('search', () => {
     it('should use find command for search', async () => {
       mockExecutor.mockCommand(
-        'find "/home" -name \'*.txt\' -print 2>/dev/null || echo "FIND_FAILED"',
+        `find ${shellQuote('/home')} -name ${shellQuote('*.txt')} -print 2>/dev/null || echo "FIND_FAILED"`,
         {
           stdout: '/home/file1.txt\n/home/file2.txt',
           stderr: '',
@@ -266,7 +314,7 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
 
     it('should fallback to ls + grep if find not available', async () => {
       mockExecutor.mockCommand(
-        'find "/home" -name \'*.log\' -print 2>/dev/null || echo "FIND_FAILED"',
+        `find ${shellQuote('/home')} -name ${shellQuote('*.log')} -print 2>/dev/null || echo "FIND_FAILED"`,
         {
           stdout: 'FIND_FAILED',
           stderr: '',
@@ -274,11 +322,14 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`;
         }
       );
 
-      mockExecutor.mockCommand('ls -R "/home" 2>/dev/null | grep -E "*.log" || true', {
-        stdout: 'app.log\nerror.log',
-        stderr: '',
-        exitCode: 0
-      });
+      mockExecutor.mockCommand(
+        `ls -R ${shellQuote('/home')} 2>/dev/null | grep -E ${shellQuote('*.log')} || true`,
+        {
+          stdout: 'app.log\nerror.log',
+          stderr: '',
+          exitCode: 0
+        }
+      );
 
       const results = await polyfill.search('*.log', '/home');
 

@@ -426,16 +426,28 @@ export async function packageSkillInSandbox(params: {
     }
 
     const zipFilePath = joinSandboxPath(targetDir, 'package.zip');
-    const files = await newSandbox.readFiles([zipFilePath]);
+    try {
+      const files = await newSandbox.readFiles([zipFilePath]);
+      const file = files?.[0];
 
-    if (!files || files.length === 0) {
-      throw new Error('Package file not found in sandbox');
+      if (!file) {
+        throw new Error('Package file not found in sandbox');
+      }
+      if (file.error) {
+        throw new Error(`Failed to read package file in sandbox: ${file.error.message}`);
+      }
+
+      const content = file.content;
+      return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
+    } finally {
+      await newSandbox.execute(`rm -f ${shellQuote(zipFilePath)}`).catch((cleanupError) => {
+        addLog.warn('[Sandbox] Failed to cleanup package zip', {
+          sandboxId,
+          zipFilePath,
+          error: cleanupError
+        });
+      });
     }
-
-    await newSandbox.execute(`rm -f ${shellQuote(zipFilePath)}`);
-
-    const content = files[0].content;
-    return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
   } catch (error) {
     addLog.error('[Sandbox] Failed to package skill', {
       sandboxId,

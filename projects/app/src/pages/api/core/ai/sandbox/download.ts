@@ -13,6 +13,46 @@ import {
 } from '@/service/core/sandbox/fileService';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+
+export const writeDirectoryArchiveResponse = async ({
+  sandbox,
+  archive,
+  res,
+  path
+}: {
+  sandbox: SandboxClient;
+  archive: archiver.Archiver;
+  res: NextApiResponse;
+  path: string;
+}) => {
+  let onArchiveError: ((err: Error) => void) | undefined;
+  let archiveError: Error | undefined;
+  const archiveErrorPromise = new Promise<never>((_, reject) => {
+    onArchiveError = (err: Error) => {
+      archiveError = err;
+      reject(err);
+    };
+    archive.once('error', onArchiveError);
+  });
+  void archiveErrorPromise.catch(() => undefined);
+
+  archive.pipe(res);
+  try {
+    await addDirectoryToArchive(sandbox, archive, path, '');
+    if (archiveError) {
+      throw archiveError;
+    }
+    await Promise.race([Promise.resolve(archive.finalize()), archiveErrorPromise]);
+  } catch (error) {
+    archive.destroy();
+    throw error;
+  } finally {
+    if (onArchiveError) {
+      archive.off('error', onArchiveError);
+    }
+  }
+};
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
   const { appId, chatId, path, outLinkAuthData } = parseApiInput({
@@ -44,13 +84,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
     );
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('error', (err) => {
-      throw err;
+    await writeDirectoryArchiveResponse({
+      sandbox,
+      archive: archiver('zip', { zlib: { level: 9 } }),
+      res,
+      path
     });
-    archive.pipe(res);
-    await addDirectoryToArchive(sandbox, archive, path, '');
-    await archive.finalize();
   } else {
     const { content, fileName } = await getSandboxFileContent(sandbox, path, false);
     const encodedFileName = encodeURIComponent(fileName);

@@ -38,7 +38,7 @@ export class CommandPolyfillService {
     try {
       const size = await this.statSize(path);
       if (size === undefined) {
-        const result = await this.executor.execute(`cat "${this.escapePath(path)}" | base64 -w 0`);
+        const result = await this.executor.execute(`cat ${this.shellQuote(path)} | base64 -w 0`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
         }
@@ -80,8 +80,9 @@ export class CommandPolyfillService {
    */
   private async statSize(path: string): Promise<number | undefined> {
     // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'.
+    const quotedPath = this.shellQuote(path);
     const result = await this.executor.execute(
-      `stat -c '%s' "${this.escapePath(path)}" 2>/dev/null || stat -f '%z' "${this.escapePath(path)}" 2>/dev/null || echo STAT_FAILED`
+      `stat -c '%s' ${quotedPath} 2>/dev/null || stat -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
     );
     const stdout = result.stdout.trim();
     if (!stdout || stdout.includes('STAT_FAILED')) return undefined;
@@ -97,12 +98,12 @@ export class CommandPolyfillService {
    * per-byte trap that made the old implementation unusable for large reads.
    */
   async readFileRange(path: string, start: number, end?: number): Promise<Uint8Array> {
-    const escaped = this.escapePath(path);
+    const quotedPath = this.shellQuote(path);
     const tailPos = start + 1; // tail -c uses 1-indexed byte position
     const cmd =
       end !== undefined
-        ? `tail -c +${tailPos} "${escaped}" | head -c ${end - start} | base64 -w 0`
-        : `tail -c +${tailPos} "${escaped}" | base64 -w 0`;
+        ? `tail -c +${tailPos} ${quotedPath} | head -c ${end - start} | base64 -w 0`
+        : `tail -c +${tailPos} ${quotedPath} | base64 -w 0`;
 
     const result = await this.executor.execute(cmd);
     if (result.exitCode !== 0) {
@@ -142,7 +143,7 @@ export class CommandPolyfillService {
     if (data.length === 0) {
       if (options?.truncate) {
         // Create/truncate the file even if there's nothing to write.
-        const result = await this.executor.execute(`: > "${this.escapePath(path)}"`);
+        const result = await this.executor.execute(`: > ${this.shellQuote(path)}`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
         }
@@ -158,7 +159,7 @@ export class CommandPolyfillService {
       const chunk = base64.slice(i, i + chunkSize);
       const redirect = first ? '>' : '>>';
       const result = await this.executor.execute(
-        `echo "${chunk}" | base64 -d ${redirect} "${this.escapePath(path)}"`
+        `echo "${chunk}" | base64 -d ${redirect} ${this.shellQuote(path)}`
       );
       if (result.exitCode !== 0) {
         throw this.createFileError(path, result.stderr);
@@ -171,19 +172,9 @@ export class CommandPolyfillService {
    * Write a text file directly.
    */
   async writeTextFile(path: string, content: string): Promise<number> {
-    await this.createParentDirectory(path);
-
-    // Use heredoc for text content to avoid escaping issues
-    const escapedContent = content.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
-    const result = await this.executor.execute(
-      `cat > "${this.escapePath(path)}" << 'POLYFILL_EOF'\n${escapedContent}\nPOLYFILL_EOF`
-    );
-
-    if (result.exitCode !== 0) {
-      throw this.createFileError(path, result.stderr);
-    }
-
-    return content.length;
+    const data = new TextEncoder().encode(content);
+    await this.writeFile(path, data);
+    return data.length;
   }
 
   // ==================== File Delete Operations ====================
@@ -196,7 +187,7 @@ export class CommandPolyfillService {
 
     for (const path of paths) {
       try {
-        const result = await this.executor.execute(`rm -f "${this.escapePath(path)}"`);
+        const result = await this.executor.execute(`rm -f ${this.shellQuote(path)}`);
         results.push({
           path,
           success: result.exitCode === 0,
@@ -224,7 +215,7 @@ export class CommandPolyfillService {
     options?: { mode?: number; owner?: string; group?: string }
   ): Promise<void> {
     for (const path of paths) {
-      const result = await this.executor.execute(`mkdir -p "${this.escapePath(path)}"`);
+      const result = await this.executor.execute(`mkdir -p ${this.shellQuote(path)}`);
       if (result.exitCode !== 0) {
         throw new FileOperationError(
           `Failed to create directory: ${result.stderr}`,
@@ -235,7 +226,7 @@ export class CommandPolyfillService {
 
       // Set permissions if specified
       if (options?.mode) {
-        await this.executor.execute(`chmod ${options.mode.toString(8)} "${this.escapePath(path)}"`);
+        await this.executor.execute(`chmod ${options.mode.toString(8)} ${this.shellQuote(path)}`);
       }
 
       // Set ownership if specified
@@ -243,7 +234,7 @@ export class CommandPolyfillService {
         const owner = options.owner || '';
         const group = options.group ? `:${options.group}` : '';
         await this.executor.execute(
-          `chown ${owner}${group} "${this.escapePath(path)}" 2>/dev/null || true`
+          `chown ${this.shellQuote(`${owner}${group}`)} ${this.shellQuote(path)} 2>/dev/null || true`
         );
       }
     }
@@ -262,7 +253,7 @@ export class CommandPolyfillService {
     const flags = flagParts.length > 0 ? `-${flagParts.join('')}` : '';
 
     for (const path of paths) {
-      const result = await this.executor.execute(`rm ${flags} "${this.escapePath(path)}"`.trim());
+      const result = await this.executor.execute(`rm ${flags} ${this.shellQuote(path)}`.trim());
       if (result.exitCode !== 0) {
         throw new FileOperationError(
           `Failed to delete directory: ${result.stderr}`,
@@ -278,12 +269,12 @@ export class CommandPolyfillService {
    */
   async listDirectory(path: string): Promise<DirectoryEntry[]> {
     let result = await this.executor.execute(
-      `ls -la "${this.escapePath(path)}" --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`
+      `ls -la ${this.shellQuote(path)} --time-style=+"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`
     );
 
     if (result.stdout.includes('DIRECTORY_NOT_FOUND') || result.exitCode !== 0) {
       result = await this.executor.execute(
-        `ls -la "${this.escapePath(path)}" 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`
+        `ls -la ${this.shellQuote(path)} 2>/dev/null || echo "DIRECTORY_NOT_FOUND"`
       );
     }
 
@@ -301,7 +292,7 @@ export class CommandPolyfillService {
     const lastSlash = filePath.lastIndexOf('/');
     if (lastSlash > 0) {
       const parentDir = filePath.slice(0, lastSlash);
-      await this.executor.execute(`mkdir -p "${this.escapePath(parentDir)}"`);
+      await this.executor.execute(`mkdir -p ${this.shellQuote(parentDir)}`);
     }
   }
 
@@ -317,7 +308,7 @@ export class CommandPolyfillService {
       try {
         // Use stat for detailed info
         const result = await this.executor.execute(
-          `stat -c '%s|%Y|%W|%a|%U|%G|%F' "${this.escapePath(path)}" 2>/dev/null || echo "STAT_FAILED"`
+          `stat -c '%s|%Y|%W|%a|%U|%G|%F' ${this.shellQuote(path)} 2>/dev/null || echo "STAT_FAILED"`
         );
 
         if (result.stdout.includes('STAT_FAILED')) {
@@ -356,7 +347,7 @@ export class CommandPolyfillService {
     for (const entry of entries) {
       if (entry.mode !== undefined) {
         await this.executor.execute(
-          `chmod ${entry.mode.toString(8)} "${this.escapePath(entry.path)}"`
+          `chmod ${entry.mode.toString(8)} ${this.shellQuote(entry.path)}`
         );
       }
 
@@ -364,7 +355,7 @@ export class CommandPolyfillService {
         const owner = entry.owner || '';
         const group = entry.group ? `:${entry.group}` : '';
         await this.executor.execute(
-          `chown ${owner}${group} "${this.escapePath(entry.path)}" 2>/dev/null || true`
+          `chown ${this.shellQuote(`${owner}${group}`)} ${this.shellQuote(entry.path)} 2>/dev/null || true`
         );
       }
     }
@@ -376,13 +367,12 @@ export class CommandPolyfillService {
    * Search for files via find command.
    */
   async search(pattern: string, path: string = '.'): Promise<SearchResult[]> {
-    // Escape pattern for shell but allow glob characters
-    const escapedPattern = pattern.replace(/'/g, "'\"'\"'");
-    const escapedPath = this.escapePath(path);
+    const quotedPattern = this.shellQuote(pattern);
+    const quotedPath = this.shellQuote(path);
 
     // Try find command first
     let result = await this.executor.execute(
-      `find "${escapedPath}" -name '${escapedPattern}' -print 2>/dev/null || echo "FIND_FAILED"`
+      `find ${quotedPath} -name ${quotedPattern} -print 2>/dev/null || echo "FIND_FAILED"`
     );
 
     if (!result.stdout.includes('FIND_FAILED')) {
@@ -394,7 +384,7 @@ export class CommandPolyfillService {
 
     // Fallback to ls + grep if find not available
     result = await this.executor.execute(
-      `ls -R "${escapedPath}" 2>/dev/null | grep -E "${escapedPattern}" || true`
+      `ls -R ${quotedPath} 2>/dev/null | grep -E ${quotedPattern} || true`
     );
 
     return result.stdout
@@ -409,7 +399,7 @@ export class CommandPolyfillService {
   async moveFiles(entries: { source: string; destination: string }[]): Promise<void> {
     for (const { source, destination } of entries) {
       const result = await this.executor.execute(
-        `mv "${this.escapePath(source)}" "${this.escapePath(destination)}"`
+        `mv ${this.shellQuote(source)} ${this.shellQuote(destination)}`
       );
       if (result.exitCode !== 0) {
         throw new FileOperationError(
@@ -439,7 +429,7 @@ export class CommandPolyfillService {
         .replace(/&/g, '\\&');
 
       const result = await this.executor.execute(
-        `sed -i 's/${escapedOld}/${escapedNew}/g' "${this.escapePath(path)}"`
+        `sed -i ${this.shellQuote(`s/${escapedOld}/${escapedNew}/g`)} ${this.shellQuote(path)}`
       );
 
       if (result.exitCode !== 0) {
@@ -517,12 +507,15 @@ export class CommandPolyfillService {
   // ==================== Private Helpers ====================
 
   /**
-   * Escape a path for safe shell usage.
+   * Quote a shell operand with POSIX single-quote escaping.
+   *
+   * Double quotes still allow command substitution (`$()` and backticks), so
+   * every user-controlled path/pattern passed to command polyfills must go
+   * through this helper before being concatenated into a shell command.
    */
-  private escapePath(path: string): string {
-    if (!path) return '.';
-    // Replace " with \" for shell safety
-    return path.replace(/"/g, '\\"');
+  private shellQuote(value: string): string {
+    const safeValue = value || '.';
+    return `'${safeValue.replace(/'/g, `'\\''`)}'`;
   }
 
   /**
