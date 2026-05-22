@@ -468,7 +468,7 @@ const HomeChatWindow = () => {
             enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
-            slogan={chatSettings?.slogan}
+            slogan={chatSettings?.slogan || t('chat:setting.home.slogan.default')}
             outLinkAuthData={outLinkAuthData}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
