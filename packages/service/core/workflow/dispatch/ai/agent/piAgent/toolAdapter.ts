@@ -161,7 +161,7 @@ export async function buildAgentTools({
             return { response: result.response, usages: result.usages };
           }
 
-          // Capability tools (e.g. sandbox skills) get first chance — when SHOW_SKILL is on,
+          // Capability tools (e.g. sandbox skills) get first chance —
           // the skills capability owns the sandbox session and must intercept tools like
           // `sandbox_get_file_url` so the file lookup runs against the capability's sandbox
           // (sandboxId = sessionId), not the hashed sandboxId from getSandboxClient.

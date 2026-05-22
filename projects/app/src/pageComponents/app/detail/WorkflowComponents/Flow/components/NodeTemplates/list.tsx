@@ -225,8 +225,6 @@ const NodeTemplateList = ({
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
-  const showSkill = !!feConfigs?.show_skill;
-
   const handleAddNode = useCallback(
     async ({
       template,
@@ -386,9 +384,6 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (!showSkill && item.flowNodeType === FlowNodeTypeEnum.agent) {
-            return;
-          }
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,

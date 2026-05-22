@@ -194,7 +194,7 @@ export const getSandboxClient = async (
   return sandbox;
 };
 
-/** Like getSandboxClient but checks for a session-runtime sandbox (SHOW_SKILL mode) first. */
+/** Like getSandboxClient but checks for a session-runtime sandbox (skill sandbox) first. */
 export const getSandboxClientByChat = async (
   props: UnionIdType,
   opts: {
@@ -202,7 +202,7 @@ export const getSandboxClientByChat = async (
     createConfig?: OpenSandboxConfigType;
   } = {}
 ) => {
-  // Prefer sessionRuntime sandbox (SHOW_SKILL mode — skill sandbox)
+  // Prefer sessionRuntime sandbox (skill sandbox)
   const sessionSandbox = await MongoSandboxInstance.findOne({
     chatId: props.chatId,
     'metadata.sandboxType': SandboxTypeEnum.sessionRuntime

@@ -35,7 +35,7 @@ describe('transformPreviewHistories', () => {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: undefined,
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       llmModuleAccount: 1,
       quoteList: [],
       totalQuoteList: [],
@@ -63,7 +63,7 @@ describe('transformPreviewHistories', () => {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: undefined,
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       llmModuleAccount: 1,
       quoteList: [],
       totalQuoteList: undefined,
@@ -153,7 +153,7 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(result).toEqual({
       ...item,
       llmModuleAccount: 3,
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       quoteList: [
         {
           id: quoteId,
@@ -200,7 +200,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       llmModuleAccount: 1,
       quoteList: [],
       totalQuoteList: [],
@@ -242,7 +242,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(result).toEqual({
       ...item,
-      useAgentSandbox: false,
+      useSandboxFileDisplay: false,
       llmModuleAccount: 3,
       quoteList: [],
       totalQuoteList: [],

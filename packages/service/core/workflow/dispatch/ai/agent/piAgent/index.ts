@@ -93,8 +93,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       ? `${fileInputPrompt}\n\n${userChatInput}`
       : userChatInput;
 
-    // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
-    if (env.SHOW_SKILL) {
+    // Initialize capabilities — sandbox skills (lazy-init)
+    {
       const sandboxSessionId =
         mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}-${chatId}`;
 
@@ -124,8 +124,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
     // Get sub apps — pi-agent-core manages reasoning, no plan tool needed.
-    // SHOW_SKILL replaces the generic agent sandbox: in skill mode the model uses skill
-    // tools (sandbox_write_file / sandbox_execute / ...) and must NEVER see sandbox_shell.
+    // Skill capability owns the sandbox session: the model uses skill tools
+    // (sandbox_write_file / sandbox_execute / ...) and must NEVER see sandbox_shell.
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
@@ -135,7 +135,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
         useAgentSandbox:
-          !env.SHOW_SKILL && useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+          useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
         extraTools: capabilityTools
       }
     );
@@ -171,9 +171,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       lang
     });
 
-    // Append sandbox system prompt when sandbox is enabled (skipped in SHOW_SKILL mode —
-    // the skill capability owns the sandbox prompt and the model never sees sandbox_shell)
-    if (!env.SHOW_SKILL && useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    // Append sandbox system prompt when sandbox is enabled
+    // (skipped when skill capability is active — the skill capability owns the sandbox prompt)
+    if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
       formatedSystemPrompt =
         `${formatedSystemPrompt}\n\n${SANDBOX_SYSTEM_PROMPT}\n\n<ToolPriority>\nWhen both sandbox_shell / sandbox_get_file_url and sandbox_execute_* tools can fulfill the same task, prefer sandbox_shell and sandbox_get_file_url — they have higher priority.\n</ToolPriority>`.trim();
     }

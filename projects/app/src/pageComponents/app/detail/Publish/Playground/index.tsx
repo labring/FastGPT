@@ -206,8 +206,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             />
           </Flex>
         </Flex>
-        {feConfigs?.show_skill && (
-          <Flex gap={4} flexWrap={'wrap'}>
+        <Flex gap={4} flexWrap={'wrap'}>
             <Flex alignItems={'center'}>
               <Flex alignItems={'center'} flex={'0 0 127px'}>
                 <FormLabel fontSize={'12px'}>{t('publish:show_skill_reference')}</FormLabel>
@@ -226,7 +225,6 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
               />
             </Flex>
           </Flex>
-        )}
       </Flex>
     </Flex>
   );

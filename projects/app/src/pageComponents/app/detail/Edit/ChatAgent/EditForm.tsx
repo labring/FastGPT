@@ -411,30 +411,28 @@ const EditForm = ({
 
       {/* 模块二：Skill + 工具 */}
       <SectionCard>
-        {feConfigs?.show_skill && (
-          <>
-            <Box pt="16px" px="25px" pb={4}>
-              <SkillSelect
-                title="Skill"
-                selectedSkills={appForm.selectedAgentSkills || []}
-                onAddSkill={(skill) =>
-                  setAppForm((state) => ({
-                    ...state,
-                    selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])]
-                  }))
-                }
-                onRemoveSkill={(skillId) =>
-                  setAppForm((state) => ({
-                    ...state,
-                    selectedAgentSkills:
-                      state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
-                  }))
-                }
-              />
-            </Box>
-            <Box h="1px" bg="myGray.200" mx="16px" />
-          </>
-        )}
+        <>
+          <Box pt="16px" px="25px" pb={4}>
+            <SkillSelect
+              title="Skill"
+              selectedSkills={appForm.selectedAgentSkills || []}
+              onAddSkill={(skill) =>
+                setAppForm((state) => ({
+                  ...state,
+                  selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])]
+                }))
+              }
+              onRemoveSkill={(skillId) =>
+                setAppForm((state) => ({
+                  ...state,
+                  selectedAgentSkills:
+                    state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
+                }))
+              }
+            />
+          </Box>
+          <Box h="1px" bg="myGray.200" mx="16px" />
+        </>
         <Box pt="16px" px="25px" pb={4}>
           <ToolSelect
             selectedModel={selectedModel}

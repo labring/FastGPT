@@ -495,24 +495,22 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
-          {feConfigs?.show_skill && (
-            <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
-              <Flex alignItems={'center'}>
-                <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
-                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
-              </Flex>
-              <Switch
-                {...register('showSkillReferences', {
-                  onChange(e) {
-                    if (e.target.checked) {
-                      setValue('showRunningStatus', true);
-                    }
-                  }
-                })}
-                isChecked={showSkillReferences}
-              />
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+              <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
             </Flex>
-          )}
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                }
+              })}
+              isChecked={showSkillReferences}
+            />
+          </Flex>
         </Box>
       </ModalBody>
 

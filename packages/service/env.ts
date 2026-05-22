@@ -29,7 +29,6 @@ export const env = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
     AGENT_SANDBOX_OPENSANDBOX_REQUEST_TIMEOUT: z.number().default(60),
-    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: z.string().url().optional(),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
@@ -112,10 +111,6 @@ export const env = createEnv({
     STREAM_RESUME_REDIS_MAXMEMORY_RATIO: NumSchema.positive().max(1).default(0.5),
     /** Redis 内存水位检测缓存时长（毫秒），避免每个流请求都调用 INFO MEMORY */
     STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: IntSchema.positive().default(5000),
-
-    // Beta features
-    // Whether the Skill feature is enabled (frontend entries + backend runtime)
-    SHOW_SKILL: BoolSchema.default(false),
 
     // Agent engine selection: 'default' uses the built-in Plan+Step engine, 'pi' uses pi-agent-core
     AGENT_ENGINE: z.enum(['default', 'pi']).default('default'),
