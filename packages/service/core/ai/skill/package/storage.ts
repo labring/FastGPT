@@ -5,7 +5,6 @@
  * 包内容解析放在 package/archiveUtils 与 package/zipBuilder，版本落库放在 version 模块。
  */
 
-import { S3PrivateBucket } from '../../../../common/s3/buckets/private';
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -76,7 +75,7 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
   const { storageKey } = params;
   const { maxDownloadBytes } = getSkillSizeLimits();
 
-  const bucket = new S3PrivateBucket();
+  const bucket = getS3SkillSource();
 
   const response = await bucket.client.downloadObject({
     key: storageKey
@@ -107,7 +106,7 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
  * 删除单个版本的 Skill ZIP 包。
  */
 export async function deleteSkillPackage(storageKey: string): Promise<void> {
-  const bucket = new S3PrivateBucket();
+  const bucket = getS3SkillSource();
 
   await bucket.client.deleteObject({
     key: storageKey
@@ -131,7 +130,7 @@ export function deleteSkillAllPackages(teamId: string, skillId: string): Promise
  */
 export async function checkSkillPackageExists(storageKey: string): Promise<boolean> {
   try {
-    const bucket = new S3PrivateBucket();
+    const bucket = getS3SkillSource();
 
     const { exists } = await bucket.client.checkObjectExists({
       key: storageKey
@@ -165,7 +164,7 @@ export async function copySkillPackage(
  */
 export async function listSessionArtifacts(sessionId: string): Promise<string[]> {
   const prefix = `agent-sessions/${sessionId}/`;
-  const bucket = new S3PrivateBucket();
+  const bucket = getS3SkillSource();
 
   const { keys } = await bucket.client.listObjects({ prefix });
   return keys.map((key) => key.replace(prefix, ''));
@@ -179,7 +178,7 @@ export async function downloadSessionArtifact(
   filePath: string
 ): Promise<Buffer> {
   const key = `agent-sessions/${sessionId}/${filePath}`;
-  const bucket = new S3PrivateBucket();
+  const bucket = getS3SkillSource();
 
   const response = await bucket.client.downloadObject({ key });
 
@@ -200,7 +199,7 @@ export async function downloadSessionArtifact(
  */
 export async function cleanSessionArtifacts(sessionId: string): Promise<{ deletedCount: number }> {
   const prefix = `agent-sessions/${sessionId}/`;
-  const bucket = new S3PrivateBucket();
+  const bucket = getS3SkillSource();
 
   const { keys: failedKeys } = await bucket.client.deleteObjectsByPrefix({ prefix });
 

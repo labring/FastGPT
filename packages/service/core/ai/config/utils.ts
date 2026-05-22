@@ -189,9 +189,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         );
       }
       if (!_systemDefaultModel.helperBotLLM) {
-        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
-          (item) => item.type === ModelTypeEnum.llm
-        );
+        // HELPER_BOT_MODEL 未配置或未命中已启用模型时，回退到系统默认 LLM。
+        _systemDefaultModel.helperBotLLM = _systemDefaultModel.llm;
       }
       if (!_systemDefaultModel.embedding) {
         _systemDefaultModel.embedding = Array.from(_embeddingModelMap.values())[0];

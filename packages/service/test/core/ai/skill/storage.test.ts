@@ -4,7 +4,6 @@ import {
   downloadSkillPackage,
   deleteSkillPackage
 } from '@fastgpt/service/core/ai/skill/package';
-import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getS3SkillSource } from '@fastgpt/service/common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getSkillSizeLimits } from '@fastgpt/service/core/ai/skill/sandbox/config';
@@ -28,6 +27,14 @@ const s3SkillSourceMocks = vi.hoisted(() => {
         accessUrl: { url: 'mock-url' }
       })
     ),
+    downloadObjectMock: vi.fn().mockResolvedValue({
+      // body must be async-iterable; an array satisfies for-await-of
+      body: [Buffer.from('mock zip content')]
+    }),
+    deleteObjectMock: vi.fn().mockResolvedValue(undefined),
+    checkObjectExistsMock: vi.fn().mockResolvedValue({ exists: true }),
+    listObjectsMock: vi.fn().mockResolvedValue({ keys: [] }),
+    deleteObjectsByPrefixMock: vi.fn().mockResolvedValue({ keys: [] }),
     removePackageTTLMock: vi.fn().mockResolvedValue(undefined),
     deleteSkillPackagesByPrefixMock: vi.fn().mockResolvedValue(undefined)
   };
@@ -36,25 +43,17 @@ const s3SkillSourceMocks = vi.hoisted(() => {
 vi.mock('@fastgpt/service/common/s3/sources/skill', () => ({
   getS3SkillSource: vi.fn(() => ({
     bucketName: 'fastgpt-private',
+    client: {
+      downloadObject: s3SkillSourceMocks.downloadObjectMock,
+      deleteObject: s3SkillSourceMocks.deleteObjectMock,
+      checkObjectExists: s3SkillSourceMocks.checkObjectExistsMock,
+      listObjects: s3SkillSourceMocks.listObjectsMock,
+      deleteObjectsByPrefix: s3SkillSourceMocks.deleteObjectsByPrefixMock
+    },
     uploadPackage: s3SkillSourceMocks.uploadPackageMock,
     removePackageTTL: s3SkillSourceMocks.removePackageTTLMock,
     deleteSkillPackagesByPrefix: s3SkillSourceMocks.deleteSkillPackagesByPrefixMock
   }))
-}));
-
-// Mock the S3 bucket
-vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
-  S3PrivateBucket: vi.fn(function (this: any) {
-    this.bucketName = 'fastgpt-private';
-    this.client = {
-      downloadObject: vi.fn().mockResolvedValue({
-        // body must be async-iterable; an array satisfies for-await-of
-        body: [Buffer.from('mock zip content')]
-      }),
-      deleteObject: vi.fn().mockResolvedValue(undefined),
-      checkObjectExists: vi.fn().mockResolvedValue({ exists: true })
-    };
-  })
 }));
 
 describe('storage', () => {
@@ -65,7 +64,6 @@ describe('storage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    s3SkillSourceMocks.uploadPackageMock.mockClear();
   });
 
   describe('getSkillSizeLimits', () => {
@@ -165,7 +163,8 @@ describe('storage', () => {
           })
         ).rejects.toThrow(SkillErrEnum.archiveTooLarge);
 
-        expect(S3PrivateBucket).not.toHaveBeenCalled();
+        expect(getS3SkillSource).not.toHaveBeenCalled();
+        expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
         serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = originalMaxUploadSize;
       }
@@ -181,18 +180,12 @@ describe('storage', () => {
 
       expect(Buffer.isBuffer(result)).toBe(true);
       expect(result.toString()).toBe('mock zip content');
+      expect(getS3SkillSource).toHaveBeenCalled();
+      expect(s3SkillSourceMocks.downloadObjectMock).toHaveBeenCalledWith({ key: storageKey });
     });
 
     it('should throw when download response has no body', async () => {
-      // Override mock for this test to return null body
-      const { S3PrivateBucket: MockBucket } =
-        await import('@fastgpt/service/common/s3/buckets/private');
-      (MockBucket as any).mockImplementationOnce(function (this: any) {
-        this.bucketName = 'fastgpt-private';
-        this.client = {
-          downloadObject: vi.fn().mockResolvedValue({ body: null })
-        };
-      });
+      s3SkillSourceMocks.downloadObjectMock.mockResolvedValueOnce({ body: null });
 
       const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
 
@@ -208,6 +201,8 @@ describe('storage', () => {
       const storageKey = `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`;
 
       await expect(deleteSkillPackage(storageKey)).resolves.not.toThrow();
+      expect(getS3SkillSource).toHaveBeenCalled();
+      expect(s3SkillSourceMocks.deleteObjectMock).toHaveBeenCalledWith({ key: storageKey });
     });
   });
 });

@@ -22,8 +22,8 @@ import { createVersion } from '../../version';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { getDefaultLLMModel } from '../../../model';
 import { createSkillGenerationUsage } from './usage';
+import { getSkillCreationLLMModel } from './model';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -159,7 +159,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
     if (requirements) {
       // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
-      const model = getDefaultLLMModel().model;
+      const model = getSkillCreationLLMModel();
       const [generatedSkillMd, usage] = await generateSkillMd({
         name,
         description,
