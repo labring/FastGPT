@@ -215,6 +215,7 @@
   "code_error.team_error.un_auth": "Unauthorized to Operate This Team",
   "code_error.team_error.user_not_active": "The user did not accept or has left the team",
   "code_error.team_error.website_sync_not_enough": "The free version cannot be synchronized with the web site ~",
+  "code_error.team_error.sandbox_not_support": "The current team package does not support using sandbox/VM.",
   "code_error.team_error.you_have_been_in_the_team": "You are already in this team",
   "code_error.token_error_code.403": "Invalid Login Status, Please Re-login",
   "comfirm_import": "Confirm import",

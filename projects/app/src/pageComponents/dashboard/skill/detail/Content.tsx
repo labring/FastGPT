@@ -44,6 +44,7 @@ const Content = () => {
             chatId={'edit-debug'}
             showFileOps={true}
             showDownload={false}
+            defaultViewMode={'source'}
           />
         )}
         {sandboxState === 'failed' && <SandboxError />}

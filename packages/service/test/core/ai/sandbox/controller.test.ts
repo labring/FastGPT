@@ -91,6 +91,15 @@ import {
   connectReadySandboxByInstance
 } from '@fastgpt/service/core/ai/sandbox/controller';
 
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamSandboxPermission: vi.fn().mockResolvedValue(undefined)
+}));
+
 const { Types } = connectionMongo;
 const oid = () => String(new Types.ObjectId());
 
@@ -394,6 +403,51 @@ describe('sandbox runtime helpers', () => {
     expect(client.provider.provider).toBe('sealosdevbox');
     expect(sandboxAdapterMocks.ensureRunningMock).toHaveBeenCalledTimes(1);
     expect(sandboxAdapterMocks.waitUntilReadyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks team sandbox permission and throws if denied', async () => {
+    const teamId = oid();
+    const appDoc = await MongoApp.create({
+      name: 'Test App Permission',
+      type: 'simple',
+      teamId,
+      tmbId: oid(),
+      modules: []
+    });
+
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(TeamErrEnum.sandboxNotSupport);
+
+    await expect(
+      getSandboxClient({
+        appId: String(appDoc._id),
+        userId: 'user-1',
+        chatId: 'chat-1'
+      })
+    ).rejects.toBe(TeamErrEnum.sandboxNotSupport);
+
+    expect(checkTeamSandboxPermission).toHaveBeenCalledWith(teamId);
+  });
+
+  it('checks team sandbox permission for skills and throws if denied', async () => {
+    const teamId = oid();
+    const skillDoc = await MongoAgentSkills.create({
+      name: 'Test Skill Permission',
+      source: 'personal',
+      teamId,
+      tmbId: oid()
+    });
+
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(TeamErrEnum.sandboxNotSupport);
+
+    await expect(
+      getSandboxClient({
+        appId: String(skillDoc._id),
+        userId: 'user-1',
+        chatId: 'chat-1'
+      })
+    ).rejects.toBe(TeamErrEnum.sandboxNotSupport);
+
+    expect(checkTeamSandboxPermission).toHaveBeenCalledWith(teamId);
   });
 
   it('disconnects opensandbox and keeps other providers as no-op', async () => {

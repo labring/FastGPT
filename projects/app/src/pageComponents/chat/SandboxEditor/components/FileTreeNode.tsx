@@ -119,6 +119,7 @@ const FileTreeNode = ({
         fontSize="13px"
         color={textColor}
         transition="all 0.15s ease"
+        userSelect={'none'}
         {...listeners}
         {...attributes}
       >
@@ -275,6 +276,7 @@ const RenameInput = ({
           onCancel();
         }
       }}
+      userSelect={'text'}
     />
   );
 };
@@ -367,6 +369,7 @@ export const InlineCreateNode = ({
             onCancel();
           }
         }}
+        userSelect={'text'}
       />
     </Flex>
   );

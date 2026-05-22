@@ -30,6 +30,10 @@ import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { SandboxResourceDoc } from './instance';
+import { MongoApp } from '../../app/schema';
+import { MongoAgentSkills } from '../skill/model/schema';
+import { checkTeamSandboxPermission } from '../../../support/permission/teamLimit';
+
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UnionIdType = {
@@ -521,6 +525,27 @@ export const getSandboxClient = async (
     createConfig?: SandboxCreateSpec;
   } = {}
 ) => {
+  let checkAppId = 'appId' in props ? props.appId : undefined;
+  if (!checkAppId && 'sandboxId' in props) {
+    const doc = await MongoSandboxInstance.findOne({ sandboxId: props.sandboxId }, 'appId').lean();
+    checkAppId = doc?.appId || undefined;
+  }
+  if (checkAppId) {
+    let teamId: string | undefined;
+    const appDoc = await MongoApp.findById(checkAppId, 'teamId').lean();
+    if (appDoc) {
+      teamId = String(appDoc.teamId);
+    } else {
+      const skillDoc = await MongoAgentSkills.findById(checkAppId, 'teamId').lean();
+      if (skillDoc) {
+        teamId = String(skillDoc.teamId);
+      }
+    }
+    if (teamId) {
+      await checkTeamSandboxPermission(teamId);
+    }
+  }
+
   const sandboxId = (() => {
     if ('sandboxId' in props) {
       return props.sandboxId;

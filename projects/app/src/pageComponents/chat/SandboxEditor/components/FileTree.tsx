@@ -876,6 +876,7 @@ const ContextMenuItem = ({
     align="center"
     fontSize="13px"
     color={isDanger ? 'red.500' : 'myGray.700'}
+    userSelect={'none'}
   >
     <Text>{label}</Text>
   </Flex>

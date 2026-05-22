@@ -33,6 +33,7 @@ type Props = {
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
+  defaultViewMode?: 'source' | 'preview';
 };
 
 const EditorContent = ({
@@ -49,7 +50,8 @@ const EditorContent = ({
   appId,
   chatId,
   outLinkAuthData,
-  showDownload = true
+  showDownload = true,
+  defaultViewMode
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -57,7 +59,9 @@ const EditorContent = ({
   const [generatingLink, setGeneratingLink] = useState(false);
   const openedFilesRef = useLatest(openedFiles);
   const supportsPreviewToggle = getSupportsPreviewToggle(activeFile?.language);
-  const viewMode = supportsPreviewToggle ? (viewModeByPath[activeFilePath] ?? 'preview') : 'source';
+  const viewMode = supportsPreviewToggle
+    ? (viewModeByPath[activeFilePath] ?? defaultViewMode ?? 'preview')
+    : 'source';
 
   const handleHtmlPreview = async () => {
     if (!activeFile) return;

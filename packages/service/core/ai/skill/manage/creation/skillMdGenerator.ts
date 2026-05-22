@@ -47,14 +47,24 @@ Agent Skill Designer
 - Provide clear instructions and examples for skill usage
 
 ## Constraints
-- Output must be a complete SKILL.md file with valid YAML frontmatter
-- Frontmatter must include 'name' (kebab-case, 1-64 chars, lowercase/numbers/hyphens only) and 'description' fields
-- The 'name' field must not start or end with hyphens, and must not contain consecutive hyphens
-- The 'description' field should be concise (1-200 chars) and describe when/why the skill is triggered
-- Body content must include Overview, Instructions, and Examples sections
-- All content must be practical and directly usable
-- Do not include any explanatory text outside the SKILL.md file
-- Do not wrap the output in code blocks or markdown formatting
+- Output must be a complete SKILL.md file with valid YAML frontmatter.
+- You MUST strictly open and close the YAML frontmatter block with three dashes (---) on their own lines. DO NOT forget to include the closing '---' line!
+- The file MUST start with the opening dashes (---) as the very first line. Do not output any markdown code block markers (like \`\`\`markdown ... \`\`\`) or wrap the content.
+- Frontmatter must include 'name' (kebab-case, 1-64 chars, lowercase/numbers/hyphens only) and 'description' fields.
+- The 'name' field must not start or end with hyphens, and must not contain consecutive hyphens.
+- The 'description' field should be concise (1-200 chars) and describe when/why the skill is triggered.
+- Body content must include Overview, Instructions, and Examples sections.
+- All content must be practical and directly usable.
+- Do not include any explanatory text outside the SKILL.md file.
+
+## YAML Frontmatter Format Example
+---
+name: web-search
+description: Search the web
+---
+
+# Overview
+Provide a clear overview of the skill here.
 
 ## Workflow
 1. Analyze the user's goal, workflow, requirements, and examples
@@ -108,13 +118,14 @@ ${examples}`;
   prompt += `
 
 ## Important Notes
-- Generate the complete SKILL.md file with valid YAML frontmatter
-- The 'name' field must be in kebab-case format (lowercase letters, numbers, and hyphens only)
-- The 'name' must be 1-64 characters long
-- The 'description' should be concise and action-oriented (1-200 characters)
-- Include Overview, Instructions, and Examples sections in the body
-- Output ONLY the SKILL.md content, no explanations or code blocks
-- Ensure the skill is practical and ready for immediate use`;
+- Generate the complete SKILL.md file with valid YAML frontmatter.
+- You MUST strictly open and close the YAML frontmatter block with three dashes (---) on their own lines. DO NOT forget the closing '---' line!
+- The 'name' field must be in kebab-case format (lowercase letters, numbers, and hyphens only).
+- The 'name' must be 1-64 characters long.
+- The 'description' should be concise and action-oriented (1-200 characters).
+- Include Overview, Instructions, and Examples sections in the body.
+- Output ONLY the SKILL.md content, no explanations or code blocks.
+- Ensure the skill is practical and ready for immediate use.`;
 
   return prompt;
 };

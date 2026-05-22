@@ -208,6 +208,7 @@
   "code_error.team_error.over_size": "團隊成員超出限制",
   "code_error.team_error.plugin_amount_not_enough": "已達外掛程式數量上限",
   "code_error.team_error.re_rank_not_enough": "免費版無法使用檢索重排~",
+  "code_error.team_error.sandbox_not_support": "當前團隊套餐不支持使用虛擬機/沙盒功能~",
   "code_error.team_error.ticket_not_available": "當前套餐暫不支持工單服務，可以前往社區免費獲取幫助～",
   "code_error.team_error.too_many_invitations": "您的有效邀請連結數已達上限，請先清理連結",
   "code_error.team_error.un_auth": "無權操作此團隊",

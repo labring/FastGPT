@@ -88,34 +88,63 @@ export const getAgentSkillInfos = async ({
   sandbox
 }: GetAgentSkillInfosParams): Promise<DeployedSkillInfo[]> => {
   const scanDirectories = skillDirectories?.length ? skillDirectories : [workDirectory || '.'];
-  const findResult = await sandbox.execute(
-    `find ${scanDirectories.map(shellQuote).join(' ')} -iname "SKILL.md" 2>/dev/null`
-  );
-  if (findResult.exitCode !== 0 || !findResult.stdout.trim()) return [];
 
-  const paths = parseCommandOutputLines(findResult.stdout);
+  // 并发 find 所有目录，过滤出错目录，避免级联报错
+  const findResults = await Promise.all(
+    scanDirectories.map(async (dir) => {
+      const { exitCode, stdout, stderr } = await sandbox.execute(
+        `find ${shellQuote(dir)} -iname "SKILL.md" 2>/dev/null`
+      );
+      if (exitCode !== 0) {
+        logger.warn('[Agent Skills] Find command failed for directory', { dir, stderr });
+        return [];
+      }
+      return parseCommandOutputLines(stdout);
+    })
+  );
+
+  const paths = findResults.flat();
+  if (paths.length === 0) return [];
+
   const files = await sandbox.readFiles(paths);
 
-  const result: DeployedSkillInfo[] = [];
-  for (const file of files) {
-    const content =
-      file.content instanceof Uint8Array
-        ? new TextDecoder('utf-8').decode(file.content)
-        : String(file.content);
-    const { frontmatter } = parseSkillMarkdown(content);
-    if (!frontmatter.name) continue;
+  return files
+    .map((file) => {
+      if (file.error) {
+        logger.error('[Agent Skills] Failed to read skill.md file', {
+          path: file.path,
+          error: file.error
+        });
+        return null;
+      }
 
-    const directory = file.path.replace(/\/skill\.md$/i, '');
-    result.push({
-      id: file.path,
-      name: String(frontmatter.name),
-      description: frontmatter.description ? String(frontmatter.description) : '',
-      directory,
-      skillMdPath: file.path
-    });
-  }
+      const content =
+        file.content instanceof Uint8Array
+          ? new TextDecoder('utf-8').decode(file.content)
+          : String(file.content);
 
-  return result;
+      const { frontmatter, error: parseError } = parseSkillMarkdown(content);
+      if (!frontmatter.name) {
+        logger.warn(
+          '[Agent Skills] Skill parsed without a valid name or has malformed frontmatter',
+          {
+            path: file.path,
+            parseError,
+            frontmatter
+          }
+        );
+        return null;
+      }
+
+      return {
+        id: file.path,
+        name: String(frontmatter.name),
+        description: frontmatter.description ? String(frontmatter.description) : '',
+        directory: file.path.replace(/\/skill\.md$/i, ''),
+        skillMdPath: file.path
+      };
+    })
+    .filter((info): info is DeployedSkillInfo => !!info);
 };
 
 /**
@@ -144,7 +173,8 @@ export const injectAgentSkillFilesToSandbox = async ({
     deleteTime: null
   });
   if (skills.length === 0) {
-    throw new Error('No valid skills found');
+    logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
+    return [];
   }
 
   const currentVersionIds = skills
@@ -183,7 +213,11 @@ export const injectAgentSkillFilesToSandbox = async ({
     ];
   });
   if (deployableSkills.length === 0) {
-    throw new Error('No deployable skills found (missing current versions)');
+    logger.warn(
+      '[Agent Skills] No deployable skills found (missing current versions) from input skillIds',
+      { skillIds }
+    );
+    return [];
   }
 
   const skillsRootPath = getSkillsRootPath(workDirectory);

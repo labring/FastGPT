@@ -3,6 +3,7 @@ import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/rea
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -10,6 +11,8 @@ import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { importSkill } from '@/web/core/skill/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
 const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
@@ -39,7 +42,15 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [skillName, setSkillName] = useState('');
+  const [avatar, setAvatar] = useState(DEFAULT_SKILL_AVATAR);
   const maxUploadBytes = feConfigs?.limit?.agentSkillMaxUploadBytes;
+
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess(newAvatar) {
+        setAvatar(newAvatar);
+      }
+    });
 
   const { File: FileInput, onOpen } = useSelectFile({
     fileType: ACCEPT_TYPES,
@@ -52,6 +63,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
       const formData = new FormData();
       formData.append('file', selectedFile!);
       formData.append('name', skillName.trim());
+      formData.append('avatar', avatar);
       if (parentId) formData.append('parentId', parentId);
       return importSkill(formData);
     },
@@ -122,13 +134,17 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
             {t('common:input_name')}
           </Box>
           <Flex mt={2} mb={5} alignItems={'center'}>
-            <Avatar
-              flexShrink={0}
-              src={DEFAULT_SKILL_AVATAR}
-              w={['1.75rem', '2.25rem']}
-              h={['1.75rem', '2.25rem']}
-              borderRadius={'md'}
-            />
+            <MyTooltip label={t('common:set_avatar')}>
+              <Avatar
+                flexShrink={0}
+                src={avatar}
+                w={['1.75rem', '2.25rem']}
+                h={['1.75rem', '2.25rem']}
+                cursor={'pointer'}
+                borderRadius={'md'}
+                onClick={handleAvatarSelectorOpen}
+              />
+            </MyTooltip>
             <Input
               flex={1}
               ml={3}
@@ -219,6 +235,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
           </Button>
         </ModalFooter>
       </MyModal>
+      <AvatarUploader />
     </>
   );
 };

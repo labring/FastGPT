@@ -215,6 +215,7 @@
   "code_error.team_error.un_auth": "无权操作该团队",
   "code_error.team_error.user_not_active": "用户未接受或已离开团队",
   "code_error.team_error.website_sync_not_enough": "免费版无法使用Web站点同步~",
+  "code_error.team_error.sandbox_not_support": "当前团队套餐不支持使用虚拟机/沙箱功能~",
   "code_error.team_error.you_have_been_in_the_team": "你已经在该团队中",
   "code_error.token_error_code.403": "登录状态无效，请重新登录",
   "comfirm_import": "确认导入",

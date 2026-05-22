@@ -177,9 +177,13 @@ description: Zeta skill
         }
 
         if (command.includes('-iname "SKILL.md"')) {
+          const matchedPaths = skillMdPaths.filter((path) => {
+            const dirMatch = command.match(/find\s+'([^']+)'/);
+            return dirMatch ? path.startsWith(dirMatch[1]) : true;
+          });
           return {
             exitCode: 0,
-            stdout: `${skillMdPaths.join('\n')}\n`,
+            stdout: `${matchedPaths.join('\n')}\n`,
             stderr: ''
           };
         }
@@ -233,12 +237,12 @@ description: Zeta skill
         skill2._id
       )}.zip' -d '${skill2TargetDir}' && rm '/workspace/package_${String(skill2._id)}.zip'`
     );
-    const findSkillCommand = sandbox.execute.mock.calls
+    const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
-      .find((command) => command.includes('-iname "SKILL.md"'));
-    expect(findSkillCommand).toContain(`'${skill1TargetDir}'`);
-    expect(findSkillCommand).toContain(`'${skill2TargetDir}'`);
-    expect(findSkillCommand).not.toBe(`find '/workspace' -iname "SKILL.md" 2>/dev/null`);
+      .filter((command) => command.includes('-iname "SKILL.md"'));
+    expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
+    expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
+    expect(findSkillCommands).not.toContain(`find '/workspace' -iname "SKILL.md" 2>/dev/null`);
     expect(result).toHaveLength(6);
     expect(result.map((item) => item.name)).toEqual(
       expect.arrayContaining(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'])
@@ -356,9 +360,14 @@ description: Missing skill
         }
 
         if (command.includes('-iname "SKILL.md"')) {
+          const allPaths = Array.from(contentByPath.keys());
+          const matchedPaths = allPaths.filter((path) => {
+            const dirMatch = command.match(/find\s+'([^']+)'/);
+            return dirMatch ? path.startsWith(dirMatch[1]) : true;
+          });
           return {
             exitCode: 0,
-            stdout: `${Array.from(contentByPath.keys()).join('\n')}\n`,
+            stdout: `${matchedPaths.join('\n')}\n`,
             stderr: ''
           };
         }
@@ -411,11 +420,11 @@ description: Missing skill
     expect(sandbox.execute).toHaveBeenCalledWith(
       "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'"
     );
-    const findSkillCommand = sandbox.execute.mock.calls
+    const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
-      .find((command) => command.includes('-iname "SKILL.md"'));
-    expect(findSkillCommand).toContain(`'${existingSkillTargetDir}'`);
-    expect(findSkillCommand).toContain(`'${missingSkillTargetDir}'`);
+      .filter((command) => command.includes('-iname "SKILL.md"'));
+    expect(findSkillCommands.some((c) => c.includes(`'${existingSkillTargetDir}'`))).toBe(true);
+    expect(findSkillCommands.some((c) => c.includes(`'${missingSkillTargetDir}'`))).toBe(true);
     expect(result.map((item) => item.name)).toEqual(
       expect.arrayContaining(['existing', 'missing'])
     );
@@ -631,6 +640,42 @@ description: Latest current skill
       `rm -rf '${skillTargetDir}' '/workspace/package_${String(skill._id)}.zip'`
     );
     expect(sandbox.readFiles).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array when skills are invalid/deleted or missing current version', async () => {
+    const teamId = new Types.ObjectId().toHexString();
+    const tmbId = new Types.ObjectId().toHexString();
+
+    const sandbox = {
+      writeFiles: vi.fn(),
+      execute: vi.fn(),
+      readFiles: vi.fn()
+    };
+
+    // 1. Test when skill is invalid or deleted (skills.length === 0)
+    const resultNoSkills = await injectAgentSkillFilesToSandbox({
+      sandbox: sandbox as any,
+      skillIds: [new Types.ObjectId().toHexString()],
+      teamId,
+      workDirectory: '/workspace'
+    });
+    expect(resultNoSkills).toEqual([]);
+
+    // 2. Test when skill exists but has no current version (deployableSkills.length === 0)
+    const skill = await MongoAgentSkills.create({
+      name: 'NoVersionSkill',
+      description: '',
+      teamId,
+      tmbId,
+      source: AgentSkillSourceEnum.personal
+    });
+    const resultNoVersion = await injectAgentSkillFilesToSandbox({
+      sandbox: sandbox as any,
+      skillIds: [String(skill._id)],
+      teamId,
+      workDirectory: '/workspace'
+    });
+    expect(resultNoVersion).toEqual([]);
   });
 });
 

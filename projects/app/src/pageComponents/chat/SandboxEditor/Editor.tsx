@@ -43,6 +43,7 @@ export type Props = {
   outLinkAuthData?: OutLinkChatAuthProps;
   showFileOps?: boolean;
   showDownload?: boolean;
+  defaultViewMode?: 'source' | 'preview';
 };
 
 const SandboxEditor = ({
@@ -50,7 +51,8 @@ const SandboxEditor = ({
   chatId,
   outLinkAuthData,
   showFileOps = true,
-  showDownload = true
+  showDownload = true,
+  defaultViewMode
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -377,24 +379,6 @@ const SandboxEditor = ({
       });
       return;
     }
-    if (type === 'file') {
-      await writeSandboxFile({
-        appId,
-        chatId,
-        outLinkAuthData,
-        path: fullPath,
-        content: ''
-      });
-      await openFile(fullPath);
-    } else {
-      await fileOpSandbox({
-        appId,
-        chatId,
-        outLinkAuthData,
-        type: 'mkdir',
-        path: fullPath
-      });
-    }
 
     let targetLevel = 0;
     if (parentPath !== '.') {
@@ -414,7 +398,64 @@ const SandboxEditor = ({
       children: type === 'directory' ? [] : undefined,
       loaded: type === 'directory' ? true : undefined
     };
+
+    // 1. 乐观更新文件树 UI
     setFileTree((prevTree) => addTreeNode(prevTree, parentPath, newNode));
+
+    // 2. 如果是文件，乐观更新标签页并打开
+    if (type === 'file') {
+      const fileName = name;
+      const language = getLanguageByFileName(fileName);
+      const isBinary = getIsBinaryByLanguage(language);
+      const tempFile: OpenedFile = {
+        path: fullPath,
+        name: fileName,
+        content: '',
+        language,
+        isBinary,
+        isDirty: false
+      };
+      setOpenedFiles((prev) => [...prev, tempFile]);
+      setActiveFilePath(fullPath);
+      setSelectedPath(fullPath);
+    }
+
+    // 3. 异步发送请求，若失败则回滚状态并抛出错误
+    try {
+      if (type === 'file') {
+        await writeSandboxFile({
+          appId,
+          chatId,
+          outLinkAuthData,
+          path: fullPath,
+          content: ''
+        });
+      } else {
+        await fileOpSandbox({
+          appId,
+          chatId,
+          outLinkAuthData,
+          type: 'mkdir',
+          path: fullPath
+        });
+      }
+    } catch (error) {
+      // 4. 请求失败回滚本地状态
+      setFileTree((prevTree) => deleteTreeNode(prevTree, fullPath));
+      if (type === 'file') {
+        setOpenedFiles((prev) => {
+          const filtered = prev.filter((f) => f.path !== fullPath);
+          setActiveFilePath((prevActive) => {
+            if (prevActive === fullPath) {
+              return filtered.length > 0 ? filtered[filtered.length - 1].path : '';
+            }
+            return prevActive;
+          });
+          return filtered;
+        });
+      }
+      throw error;
+    }
   };
 
   // 重命名完成
@@ -603,18 +644,20 @@ const SandboxEditor = ({
 
   // 当切换 tab 时,更新编辑器内容
   useEffect(() => {
-    if (!editorRef.current || !activeFilePath || !activeFile) return;
-    if (activeFile.isBinary || activeFile.isUnknown) return;
+    if (!editorRef.current || !activeFilePath) return;
+
+    const file = openedFilesRef.current?.find((f) => f.path === activeFilePath);
+    if (!file || file.isBinary || file.isUnknown) return;
 
     // 使用 ref 标记防止循环更新
     isUpdatingRef.current = true;
-    editorRef.current.setValue(activeFile.content);
+    editorRef.current.setValue(file.content);
 
     // 延迟重置标记,确保 setValue 完成
     setTimeout(() => {
       isUpdatingRef.current = false;
     }, 0);
-  }, [activeFilePath, activeFile]);
+  }, [activeFilePath, openedFilesRef]);
 
   // 切换目录展开/折叠
   const toggleDirectory = async (node: TreeNode) => {
@@ -748,6 +791,7 @@ const SandboxEditor = ({
                 chatId={chatId}
                 outLinkAuthData={outLinkAuthData}
                 showDownload={showDownload}
+                defaultViewMode={defaultViewMode}
               />
             </>
           ) : (

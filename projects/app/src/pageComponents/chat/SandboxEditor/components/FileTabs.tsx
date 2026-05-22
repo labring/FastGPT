@@ -67,6 +67,7 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
               _hover={{
                 bg: 'myGray.50'
               }}
+              userSelect={'none'}
             >
               {active && (
                 <Box
