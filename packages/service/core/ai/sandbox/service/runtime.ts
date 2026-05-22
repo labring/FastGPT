@@ -24,6 +24,7 @@ type UnionIdType = {
   appId: string;
   userId: string;
   chatId: string;
+  teamId?: string;
 };
 
 type SandboxClientProps = {
@@ -31,6 +32,7 @@ type SandboxClientProps = {
   appId?: string;
   userId?: string;
   chatId?: string;
+  teamId?: string;
 };
 
 type SandboxClientOptions = {
@@ -53,15 +55,24 @@ async function resolveSandboxTeamId(appId?: string): Promise<string | undefined>
 /**
  * 校验当前业务归属团队是否允许使用 sandbox。
  *
- * getSandboxClient 既支持 app/user/chat 三元组，也支持直接传 sandboxId 复用实例；
- * 后者需要先通过实例记录反查 appId，再按 app 或 skill 解析 teamId。
+ * 如果传入了 teamId 则直接进行校验，跳过数据库反查。
+ * 否则通过 appId 或 sandboxId 联表反查业务归属团队。
  */
-async function checkRuntimeSandboxPermission(props: { sandboxId: string } | UnionIdType) {
-  const appId = 'appId' in props ? props.appId : await findSandboxAppIdBySandboxId(props.sandboxId);
-  const teamId = await resolveSandboxTeamId(appId);
+async function checkRuntimeSandboxPermission(
+  props: { sandboxId: string; teamId?: string } | UnionIdType
+) {
+  let resolvedTeamId = props.teamId;
 
-  if (teamId) {
-    await checkTeamSandboxPermission(teamId);
+  if (!resolvedTeamId) {
+    const appId =
+      'appId' in props ? props.appId : await findSandboxAppIdBySandboxId(props.sandboxId);
+    resolvedTeamId = await resolveSandboxTeamId(appId);
+  }
+
+  if (resolvedTeamId) {
+    await checkTeamSandboxPermission(resolvedTeamId);
+  } else if (process.env.NODE_ENV !== 'test') {
+    throw new Error('Sandbox appId or teamId is required for security verification');
   }
 }
 
@@ -176,6 +187,15 @@ export class SandboxClient {
   }
 }
 
+function resolveSandboxId(props: { sandboxId: string } | UnionIdType): string {
+  if ('sandboxId' in props) {
+    return props.sandboxId;
+  }
+
+  const sandboxUserId = props.chatId === 'edit-debug' ? '' : props.userId;
+  return generateSandboxId(props.appId, sandboxUserId, props.chatId);
+}
+
 /**
  * 获取当前业务会话的运行态 sandbox client。
  *
@@ -186,6 +206,7 @@ export const getSandboxClient = async (
   props:
     | {
         sandboxId: string;
+        teamId?: string;
       }
     | UnionIdType,
   opts: {
@@ -196,14 +217,7 @@ export const getSandboxClient = async (
 ) => {
   await checkRuntimeSandboxPermission(props);
 
-  const sandboxId = (() => {
-    if ('sandboxId' in props) {
-      return props.sandboxId;
-    }
-
-    const sandboxUserId = props.chatId === 'edit-debug' ? '' : props.userId;
-    return generateSandboxId(props.appId, sandboxUserId, props.chatId);
-  })();
+  const sandboxId = resolveSandboxId(props);
 
   const vmConfig = await getSessionVolumeConfig(sandboxId);
 

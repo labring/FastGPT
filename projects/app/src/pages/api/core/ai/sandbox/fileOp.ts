@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authSandboxSession } from '@/service/core/sandbox/auth';
 import {
   getSandboxClient,
   type SandboxClient
@@ -10,7 +10,6 @@ import {
   type SandboxFileOpResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 const opMap: Record<
@@ -43,29 +42,15 @@ async function handler(req: ApiRequestProps): Promise<SandboxFileOpResponse> {
     bodySchema: SandboxFileOpBodySchema
   }).body;
 
-  let uid: string;
-  if (chatId === 'edit-debug') {
-    const authResult = await authSkill({
-      req,
-      authToken: true,
-      authApiKey: true,
-      skillId: appId,
-      per: WritePermissionVal
-    });
-    uid = authResult.tmbId;
-  } else {
-    const authResult = await authChatCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      appId,
-      chatId,
-      ...outLinkAuthData
-    });
-    uid = authResult.uid;
-  }
+  const { uid, teamId } = await authSandboxSession({
+    req,
+    appId,
+    chatId,
+    outLinkAuthData,
+    per: WritePermissionVal
+  });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
+  const sandbox = await getSandboxClient({ appId, userId: uid, chatId, teamId });
   await sandbox.ensureAvailable();
 
   // 严格的路径安全校验，防止 Shell 注入。仅允许常规字符、中文字符及空格，拒绝换行/回车符
