@@ -38,30 +38,32 @@ const AIResponseBox = ({
   const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
+  const reasoningContent = value.reasoning?.content || '';
+  const textContent = value.text?.content || '';
 
   if (value.hideInUI) return null;
 
   const responseBlocks: React.ReactNode[] = [];
 
-  if ('reasoning' in value && value.reasoning && !value.hideReason) {
+  if (reasoningContent && !value.hideReason) {
     responseBlocks.push(
       <RenderReasoningContent
         key="reasoning"
         isChatting={isChatting}
-        isLastResponseValue={isLastResponseValue}
-        content={value.reasoning.content}
+        isLastResponseValue={isLastResponseValue && !textContent && !tools}
+        content={reasoningContent}
         isDisabled={disableStreamingInteraction}
       />
     );
   }
 
-  if ('text' in value && value.text) {
+  if (value.text && textContent) {
     responseBlocks.push(
       <RenderText
         key="text"
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
-        text={value.text.content}
+        text={textContent}
         onOpenCiteModal={onOpenCiteModal}
         isDisabled={disableStreamingInteraction}
       />

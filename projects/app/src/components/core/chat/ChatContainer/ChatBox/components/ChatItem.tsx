@@ -126,8 +126,8 @@ const AIContentCard = React.memo(function AIContentCard({
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
   const lastValue = chatValue[chatValue.length - 1];
-  const lastIsText = lastValue?.text;
-  const lastIsReasoning = lastValue?.reasoning;
+  const lastHasText = !!lastValue?.text?.content?.trim();
+  const lastHasReasoning = !!lastValue?.reasoning?.content?.trim();
   return (
     <Flex flexDirection={'column'}>
       {chatValue.map((value, i) => {
@@ -154,7 +154,7 @@ const AIContentCard = React.memo(function AIContentCard({
       })}
 
       {/* 生成中占位动画（含断线续传拉流期间最后一条非文本时的 shimmer） */}
-      {isLastChild && !lastIsText && !lastIsReasoning && isChatting && (
+      {isLastChild && !lastHasText && !lastHasReasoning && isChatting && (
         <Box className={markdownStyles.animation}></Box>
       )}
 
