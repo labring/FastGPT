@@ -197,7 +197,7 @@ const AppCard = React.memo(function AppCard({
 
   const menuList = useMemo(
     () => [
-      ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+      ...([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(app.type)
         ? [
             {
               children: [

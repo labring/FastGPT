@@ -13,7 +13,6 @@
   "mcp_json_config": "接入脚本",
   "mcp_name": "MCP 服务名",
   "mcp_server": "MCP 服务",
-  "mcp_server_description": "允许你选择部分应用，以 MCP 的协议对外提供使用。由于 MCP 协议的不成熟，该功能仍处于测试阶段。",
   "not_sse_server": "系统未配置 SSE 接入服务",
   "search_app": "搜索应用",
   "select_app": "应用选择",

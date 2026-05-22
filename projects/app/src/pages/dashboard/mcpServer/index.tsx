@@ -104,9 +104,8 @@ const McpServer = () => {
               </>
             )}
             <Card flex={1} px={4} display={'flex'} flexDirection={'column'}>
-              <InfoBanner my={4}>{t('dashboard_mcp:mcp_server_description')}</InfoBanner>
               {/* table */}
-              <TableContainer overflowY={'auto'} fontSize={'sm'}>
+              <TableContainer mt={4} overflowY={'auto'} fontSize={'sm'}>
                 <Table>
                   <Thead>
                     <Tr>
