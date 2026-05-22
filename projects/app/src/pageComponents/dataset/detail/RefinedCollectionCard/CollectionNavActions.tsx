@@ -238,7 +238,7 @@ const CollectionNavActions = () => {
   const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const showTagManageBtn =
-    !isDatabase && !!feConfigs?.isPlus && datasetDetail.permission.hasWritePer;
+    !isDatabase && !isStructureDocument && !!feConfigs?.isPlus && datasetDetail.permission.hasWritePer;
 
   return (
     <HStack spacing={2} flexShrink={0}>
