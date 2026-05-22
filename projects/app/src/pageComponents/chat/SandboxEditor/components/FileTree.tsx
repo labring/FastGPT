@@ -7,13 +7,9 @@ import {
   InputGroup,
   InputLeftElement,
   Text,
-  Spinner,
-  Button,
-  ModalBody,
-  ModalFooter
+  Spinner
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Trans, useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -57,6 +53,7 @@ const customCollisionDetection: CollisionDetection = (args) => {
   return rectCollisions;
 };
 import { downloadSandbox } from '../api';
+import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 export type FileItem = {
   name: string;
@@ -219,7 +216,6 @@ const FileTree = ({
     node: TreeNode;
   } | null>(null);
   const [nodeToDelete, setNodeToDelete] = useState<TreeNode | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -509,17 +505,14 @@ const FileTree = ({
   const handleConfirmDelete = async () => {
     if (!nodeToDelete) return;
     try {
-      setIsDeleting(true);
       await onDeleteFile(nodeToDelete.path);
-      setNodeToDelete(null);
     } catch (error) {
       toast({
         title: t('chat:sandbox_delete_failed'),
         description: getErrText(error),
         status: 'error'
       });
-    } finally {
-      setIsDeleting(false);
+      throw error;
     }
   };
 
@@ -836,39 +829,24 @@ const FileTree = ({
       )}
 
       {/* 删除确认弹窗 */}
-      {nodeToDelete && (
-        <MyModal
-          isOpen
-          onClose={() => setNodeToDelete(null)}
-          title={t('chat:sandbox_confirm_delete_title')}
-          iconSrc="common/delete"
-          maxW="350px"
-        >
-          <ModalBody>
-            <Text fontSize="14px" color="myGray.800">
-              <Trans
-                i18nKey="chat:sandbox_confirm_delete_content"
-                values={{ name: nodeToDelete.name }}
-                components={{
-                  name: <Text as="span" fontWeight="600" color="red.600" />
-                }}
-              />
-            </Text>
-          </ModalBody>
-          <ModalFooter gap={3}>
-            <Button
-              variant="whiteBase"
-              onClick={() => setNodeToDelete(null)}
-              isDisabled={isDeleting}
-            >
-              {t('common:Cancel')}
-            </Button>
-            <Button colorScheme="red" isLoading={isDeleting} onClick={handleConfirmDelete}>
-              {t('chat:sandbox_confirm_delete_action')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
-      )}
+      <ConfirmWarningModal
+        isOpen={!!nodeToDelete}
+        title={t('chat:sandbox_confirm_delete_title')}
+        content={
+          nodeToDelete && (
+            <Trans
+              i18nKey="chat:sandbox_confirm_delete_content"
+              values={{ name: nodeToDelete.name }}
+              components={{
+                name: <Text as="span" fontWeight="600" color="red.600" />
+              }}
+            />
+          )
+        }
+        onClose={() => setNodeToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        confirmButtonVariant="dangerFill"
+      />
     </Box>
   );
 };
