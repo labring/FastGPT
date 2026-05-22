@@ -434,61 +434,55 @@ export const DashboardNavbar = ({
     })();
   }, [openConfirm, router, setUserInfo]);
 
-  const settingsItems = useMemo<SettingsItem[]>(
-    () => [
-      ...(feConfigs?.isPlus
-        ? [{ key: 'usage', label: t('common:usage_records'), path: '/account/usage' }]
-        : []),
-      { key: 'info', label: t('common:personal_information'), path: '/account/info' },
-      ...(feConfigs?.isPlus
-        ? [{ key: 'team', label: t('common:team'), path: '/account/team' }]
-        : []),
-      ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
-        ? [{ key: 'bill', label: t('common:bills_and_invoices'), path: '/account/bill' }]
-        : []),
-      { key: 'thirdParty', label: t('common:third_party'), path: '/account/thirdParty' },
-      ...(feConfigs?.isPlus && feConfigs?.customDomain?.enable
-        ? [
-            {
-              key: 'customDomain',
-              label: t('common:custom_domain'),
-              path: '/account/customDomain'
-            }
-          ]
-        : []),
-      { key: 'model', label: t('common:model_provider'), path: '/account/model' },
-      ...(userInfo?.username === 'root'
-        ? [{ key: 'config', label: t('common:system_tool_manage'), path: '/config/tool' }]
-        : []),
-      ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
-        ? [{ key: 'promotion', label: t('common:promotion_records'), path: '/account/promotion' }]
-        : []),
-      ...(userInfo?.team?.permission.hasApikeyCreatePer
-        ? [{ key: 'apikey', label: t('common:api_key'), path: '/account/apikey' }]
-        : []),
-      ...(feConfigs?.isPlus
-        ? [{ key: 'inform', label: t('common:notifications'), path: '/account/inform' }]
-        : []),
-      { key: 'setting', label: t('common:language'), path: '/account/setting' },
-      { key: 'loginout', label: t('common:logout'), isLogout: true }
-    ],
-    [feConfigs, t, userInfo]
-  );
+  const settingsItems: SettingsItem[] = [
+    ...(feConfigs?.isPlus
+      ? [{ key: 'usage', label: t('common:usage_records'), path: '/account/usage' }]
+      : []),
+    { key: 'info', label: t('common:personal_information'), path: '/account/info' },
+    ...(feConfigs?.isPlus
+      ? [{ key: 'team', label: t('common:team'), path: '/account/team' }]
+      : []),
+    ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
+      ? [{ key: 'bill', label: t('common:bills_and_invoices'), path: '/account/bill' }]
+      : []),
+    { key: 'thirdParty', label: t('common:third_party'), path: '/account/thirdParty' },
+    ...(feConfigs?.isPlus && feConfigs?.customDomain?.enable
+      ? [
+          {
+            key: 'customDomain',
+            label: t('common:custom_domain'),
+            path: '/account/customDomain'
+          }
+        ]
+      : []),
+    { key: 'model', label: t('common:model_provider'), path: '/account/model' },
+    ...(userInfo?.username === 'root'
+      ? [{ key: 'config', label: t('common:system_tool_manage'), path: '/config/tool' }]
+      : []),
+    ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
+      ? [{ key: 'promotion', label: t('common:promotion_records'), path: '/account/promotion' }]
+      : []),
+    ...(userInfo?.team?.permission.hasApikeyCreatePer
+      ? [{ key: 'apikey', label: t('common:api_key'), path: '/account/apikey' }]
+      : []),
+    ...(feConfigs?.isPlus
+      ? [{ key: 'inform', label: t('common:notifications'), path: '/account/inform' }]
+      : []),
+    { key: 'setting', label: t('common:language'), path: '/account/setting' },
+    { key: 'loginout', label: t('common:logout'), isLogout: true }
+  ];
 
-  const appBuildItems = useMemo(
-    () => [
-      { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
-      // { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' }, // TODO: 暂时隐藏 skill 菜单入口
-      {
-        key: 'tool',
-        label: t('common:navbar.Tools'),
-        path: '/dashboard/tool',
-        activePaths: ['/dashboard/tool', '/dashboard/systemTool']
-      },
-      { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
-    ],
-    [t]
-  );
+  const appBuildItems = [
+    { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
+    // { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' }, // TODO: 暂时隐藏 skill 菜单入口
+    {
+      key: 'tool',
+      label: t('common:navbar.Tools'),
+      path: '/dashboard/tool',
+      activePaths: ['/dashboard/tool', '/dashboard/systemTool']
+    },
+    { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
+  ];
 
   const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
 
