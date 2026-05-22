@@ -150,10 +150,11 @@ export const useDebug = () => {
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
+    // BUG: 工具调用的情况下，无法填写非必填
     const renderInputs = runtimeNode.inputs.filter((input) => {
       if (runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput) return true;
       if (checkInputIsReference(input)) return true;
-      if (input.required && !input.value) return true;
+      if (!input.value) return true;
     });
 
     const variablesForm = useForm<Record<string, any>>({
