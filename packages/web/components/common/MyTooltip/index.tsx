@@ -17,6 +17,7 @@ const MyTooltip = ({ children, shouldWrapChildren = true, ...props }: Props) => 
       py={2}
       borderRadius={'8px'}
       whiteSpace={'pre-wrap'}
+      maxWidth={'400px'}
       boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
       shouldWrapChildren={shouldWrapChildren}
       {...props}
