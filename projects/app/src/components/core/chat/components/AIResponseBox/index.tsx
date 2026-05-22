@@ -50,7 +50,7 @@ const AIResponseBox = ({
       <RenderReasoningContent
         key="reasoning"
         isChatting={isChatting}
-        isLastResponseValue={isLastResponseValue && !textContent}
+        isLastResponseValue={isLastResponseValue && !textContent && !tools}
         content={reasoningContent}
         isDisabled={disableStreamingInteraction}
       />
