@@ -475,10 +475,23 @@ const AIResponseBox = ({
   const tools = value.tool ? [value.tool] : value.tools;
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
+  const responseNodes: React.ReactNode[] = [];
 
+  if ('reasoning' in value && value.reasoning && !value.hideReason) {
+    responseNodes.push(
+      <RenderResoningContent
+        key={'reasoning'}
+        isChatting={isChatting}
+        isLastResponseValue={isLastResponseValue}
+        content={value.reasoning.content}
+        isDisabled={disableStreamingInteraction}
+      />
+    );
+  }
   if ('text' in value && value.text) {
-    return (
+    responseNodes.push(
       <RenderText
+        key={'text'}
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
         text={value.text.content}
@@ -487,29 +500,33 @@ const AIResponseBox = ({
       />
     );
   }
-  if ('reasoning' in value && value.reasoning) {
-    return (
-      <RenderResoningContent
-        isChatting={isChatting}
-        isLastResponseValue={isLastResponseValue}
-        content={value.reasoning.content}
-        isDisabled={disableStreamingInteraction}
-      />
+  if (tools && showRunningStatus) {
+    responseNodes.push(
+      ...tools.map((tool) => (
+        <Box key={tool.id}>
+          <RenderTool showAnimation={isChatting} tool={tool} />
+        </Box>
+      ))
     );
   }
-  if (tools && showRunningStatus) {
-    return tools.map((tool) => (
-      <Box key={tool.id} _notLast={{ mb: 2 }}>
-        <RenderTool showAnimation={isChatting} tool={tool} />
-      </Box>
-    ));
-  }
   if (skills && showSkillReferences && showRunningStatus) {
-    return skills.map((skill) => (
-      <Box key={skill.id} _notLast={{ mb: 2 }}>
-        <RenderSkill showAnimation={isChatting} skill={skill} />
-      </Box>
-    ));
+    responseNodes.push(
+      ...skills.map((skill) => (
+        <Box key={skill.id}>
+          <RenderSkill showAnimation={isChatting} skill={skill} />
+        </Box>
+      ))
+    );
+  }
+
+  if (responseNodes.length > 0) {
+    return responseNodes.length === 1 ? (
+      responseNodes[0]
+    ) : (
+      <Flex flexDirection={'column'} gap={2}>
+        {responseNodes}
+      </Flex>
+    );
   }
   if ('interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);

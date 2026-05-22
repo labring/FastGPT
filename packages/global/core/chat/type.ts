@@ -223,7 +223,8 @@ export const AIChatItemValueSchema = z.object({
   stepTitle: StepTitleItemSchema.nullish(),
 
   /** @deprecated */
-  tool: ToolModuleResponseItemSchema.nullish()
+  tool: ToolModuleResponseItemSchema.nullish(),
+  hideReason: z.boolean().optional()
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;

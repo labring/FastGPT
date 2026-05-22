@@ -85,6 +85,14 @@ describe('parseReasoningContent', () => {
     expect(parseReasoningContent('<think>reasoning</think>')).toEqual(['reasoning', '']);
   });
 
+  it('should remove separator whitespace after think tag', () => {
+    expect(parseReasoningContent('<think>reasoning</think>\n')).toEqual(['reasoning', '']);
+    expect(parseReasoningContent('<think>reasoning</think>\n\nanswer')).toEqual([
+      'reasoning',
+      'answer'
+    ]);
+  });
+
   it('should handle multiline think content', () => {
     expect(parseReasoningContent('<think>line1\nline2</think>answer')).toEqual([
       'line1\nline2',
@@ -189,6 +197,22 @@ describe('parseLLMStreamResponse', () => {
           { content: '你好3' }
         ],
         correct: { answer: '你好1你好2你好3', reasoning: '这是思考过程' }
+      },
+      {
+        data: [{ content: '<think>这是' }, { content: '思考过程</think>\n' }],
+        correct: { answer: '', reasoning: '这是思考过程' }
+      },
+      {
+        data: [{ content: '<think>这是' }, { content: '思考过程</think>\n' }, { content: '你好1' }],
+        correct: { answer: '你好1', reasoning: '这是思考过程' }
+      },
+      {
+        data: [{ content: '<think>这是' }, { content: '思考过程</think>\n\n你好1' }],
+        correct: { answer: '你好1', reasoning: '这是思考过程' }
+      },
+      {
+        data: [{ reasoning_content: '这是思考过程' }, { content: '\n' }, { content: '你好1' }],
+        correct: { answer: '你好1', reasoning: '这是思考过程' }
       },
       {
         data: [

@@ -20,11 +20,7 @@ import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
-import {
-  type ChatCompletionMessageParam,
-  type ChatCompletionTool
-} from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { type ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getExtractJsonPrompt,
@@ -214,7 +210,11 @@ const toolChoice = async (props: ActionProps) => {
       ]
     }
   ];
-  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+  const adaptMessages = chats2GPTMessages({
+    messages,
+    reserveId: false,
+    reserveReason: false
+  });
   const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
     maxContext: extractModel.maxContext
@@ -270,13 +270,6 @@ const toolChoice = async (props: ActionProps) => {
     }
   })();
 
-  const AIMessages: ChatCompletionMessageParam[] = [
-    {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: toolCalls
-    }
-  ];
-
   return {
     inputTokens,
     outputTokens,
@@ -328,7 +321,7 @@ const completions = async (props: ActionProps) => {
     body: {
       model: extractModel.model,
       temperature: 0.01,
-      messages: chats2GPTMessages({ messages, reserveId: false }),
+      messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
     userKey: externalProvider.openaiAccount
