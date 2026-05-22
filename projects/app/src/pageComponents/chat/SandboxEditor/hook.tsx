@@ -315,6 +315,7 @@ export const useSandboxFileStore = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const openedFilesRef = useLatest(openedFiles);
+  const loadingFilePathsRef = useRef<Set<string>>(new Set());
 
   // 激活文件变更时，自动同步选中态
   useEffect(() => {
@@ -553,37 +554,65 @@ export const useSandboxFileStore = ({
 
   // 打开文件
   const openFile = async (filePath: string) => {
-    // 检查是否已打开
+    // 检查是否已打开或正在加载
     const existingFile = openedFiles.find((f) => f.path === filePath);
+    const isAlreadyLoading = loadingFilePathsRef.current.has(filePath);
 
-    if (existingFile) {
+    if (existingFile || isAlreadyLoading) {
       setActiveFilePath(filePath);
       setSelectedPath(filePath);
       return;
     }
 
-    try {
-      const fileName = filePath.split('/').pop() || '';
-      const language = getLanguageByFileName(fileName);
-      const isBinary = getIsBinaryByLanguage(language);
+    const fileName = filePath.split('/').pop() || '';
+    const language = getLanguageByFileName(fileName);
+    const isBinary = getIsBinaryByLanguage(language);
 
+    // 先乐观推送临时 Tab
+    const tempFile: OpenedFile = {
+      path: filePath,
+      name: fileName,
+      content: '',
+      language,
+      isBinary,
+      isDirty: false
+    };
+
+    setOpenedFiles((prev) => [...prev, tempFile]);
+    setActiveFilePath(filePath);
+    setSelectedPath(filePath);
+
+    try {
+      loadingFilePathsRef.current.add(filePath);
       const { content, isUnknown } = await loadFile(filePath, language);
 
-      const newFile: OpenedFile = {
-        path: filePath,
-        name: fileName,
-        content,
-        language,
-        isBinary,
-        isDirty: false,
-        isUnknown
-      };
-
-      setOpenedFiles((prev) => [...prev, newFile]);
-      setActiveFilePath(filePath);
-      setSelectedPath(filePath);
+      // 加载成功后更新 Tab 状态
+      setOpenedFiles((prev) =>
+        prev.map((f) =>
+          f.path === filePath
+            ? {
+                ...f,
+                content,
+                isUnknown
+              }
+            : f
+        )
+      );
     } catch (error) {
       console.error('Failed to open file:', error);
+      // 如果加载失败，把这个临时的 tab 移出，并切到其他 tab 或清空
+      setOpenedFiles((prev) => {
+        const newOpenedFiles = prev.filter((f) => f.path !== filePath);
+        setActiveFilePath((currActive) => {
+          if (currActive === filePath) {
+            return newOpenedFiles.length > 0 ? newOpenedFiles[newOpenedFiles.length - 1].path : '';
+          }
+          return currActive;
+        });
+        return newOpenedFiles;
+      });
+    } finally {
+      loadingFilePathsRef.current.delete(filePath);
     }
   };
 

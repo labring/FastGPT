@@ -51,6 +51,7 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
           return (
             <Flex
               key={file.path}
+              title={file.path}
               px={4}
               bg={'white'}
               borderRight={'1px solid'}
