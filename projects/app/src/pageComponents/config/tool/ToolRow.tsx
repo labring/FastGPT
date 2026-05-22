@@ -23,6 +23,7 @@ import type {
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const ToolRow = ({
   tool,
@@ -207,14 +208,20 @@ const ToolRow = ({
         )}
       </Box>
       <Box w={1.1 / 10}>
-        {!!tool?.needsSystemSecret ? (
-          <Box color={tool?.hasSystemSecret ? 'green.600' : 'myGray.500'}>
-            {tool?.hasSystemSecret
+        {tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.none ? (
+          <Box pl={4}>-</Box>
+        ) : (
+          <Box
+            color={
+              tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.configured
+                ? 'green.600'
+                : 'myGray.500'
+            }
+          >
+            {tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.configured
               ? t('app:toolkit_system_key_configured')
               : t('app:toolkit_system_key_not_configured')}
           </Box>
-        ) : (
-          <Box pl={4}>-</Box>
         )}
       </Box>
     </MyBox>

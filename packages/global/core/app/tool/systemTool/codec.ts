@@ -3,6 +3,7 @@ import { parseI18nString } from '../../../../common/i18n/utils';
 import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
+import { SystemToolSystemSecretStatusEnum } from './constants';
 import type { SystemToolListItemType } from './type';
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
@@ -25,6 +26,19 @@ export const SystemToolCodec = {
     }
 
     return configData.inputListVal;
+  },
+
+  getSystemSecretStatus({
+    hasSecret,
+    hasSystemSecret
+  }: {
+    hasSecret?: boolean;
+    hasSystemSecret?: boolean;
+  }) {
+    if (!hasSecret) return SystemToolSystemSecretStatusEnum.none;
+    return hasSystemSecret
+      ? SystemToolSystemSecretStatusEnum.configured
+      : SystemToolSystemSecretStatusEnum.unconfigured;
   },
 
   fromDBTypeToListItemType(item: SystemPluginToolCollectionType): SystemToolListItemType {
@@ -55,6 +69,7 @@ export const SystemToolCodec = {
       userGuide,
       // 数据库内配置的 system tool 一定没有 system secret
       hasSystemSecret: false,
+      systemSecretStatus: SystemToolSystemSecretStatusEnum.none,
       systemKeyCost: 0,
       // 数据库里面取出来的一定不是 toolset
       isToolSet: false,
@@ -79,6 +94,7 @@ export const SystemToolCodec = {
     lang?: `${LangEnum}`;
   }): SystemToolListItemType {
     const configuredSecretsVal = this.getConfiguredSecretsVal(config);
+    const hasSystemSecret = !!configuredSecretsVal;
 
     return {
       id: this.getDBPluginId(tool.pluginId),
@@ -86,7 +102,11 @@ export const SystemToolCodec = {
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,
-      hasSystemSecret: !!configuredSecretsVal,
+      hasSystemSecret,
+      systemSecretStatus: this.getSystemSecretStatus({
+        hasSecret: tool.hasSecret,
+        hasSystemSecret
+      }),
       hasTokenFee: config?.hasTokenFee ?? false,
       intro: parseI18nString(tool.description, lang),
       isToolSet: !!tool.children && tool.children.length > 0,

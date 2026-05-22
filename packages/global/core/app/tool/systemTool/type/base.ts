@@ -7,6 +7,7 @@ import {
   InputConfigTypeSchema
 } from '../../../../workflow/type/io';
 import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
+import { SystemToolSystemSecretStatusEnum } from '../constants';
 
 // 系统工具最基础最通用的类型
 export const SystemToolBaseSchema = z.object({
@@ -55,6 +56,10 @@ export const SystemToolListItemSchema = z.object({
   hasTokenFee: z.boolean().meta({ description: '是否有系统密钥费用' }),
 
   hasSystemSecret: z.boolean().meta({ description: '是否有系统密钥' }),
+  systemSecretStatus: z
+    .enum(SystemToolSystemSecretStatusEnum)
+    .default(SystemToolSystemSecretStatusEnum.none)
+    .meta({ description: '系统密钥配置状态' }),
   secrets: z.array(InputConfigTypeSchema).optional(),
 
   // 用户筛选

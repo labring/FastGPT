@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -78,7 +79,8 @@ describe('admin system tool list handler', () => {
         currentCost: 0,
         systemKeyCost: 0,
         hasTokenFee: false,
-        hasSystemSecret: false
+        hasSystemSecret: false,
+        systemSecretStatus: SystemToolSystemSecretStatusEnum.none
       }
     ]);
 
@@ -109,9 +111,42 @@ describe('admin system tool list handler', () => {
         currentCost: 0,
         systemKeyCost: 0,
         hasTokenFee: false,
-        hasSystemSecret: false,
-        needsSystemSecret: false
+        systemSecretStatus: SystemToolSystemSecretStatusEnum.none
       }
     ]);
+  });
+
+  it('returns system key column status from repo list item', async () => {
+    mocks.getSystemToolList.mockResolvedValueOnce([
+      {
+        id: 'systemTool-web-search',
+        version: '1.2.3',
+        etag: 'etag-1',
+        status: 'Normal',
+        source: 'system',
+        isToolSet: false,
+        avatar: 'search.svg',
+        name: '联网搜索',
+        intro: '搜索网页内容',
+        author: 'FastGPT',
+        tags: ['search'],
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: true,
+        systemSecretStatus: SystemToolSystemSecretStatusEnum.configured
+      }
+    ]);
+
+    const result = await handler(
+      {
+        query: {}
+      } as ApiRequestProps<{}, {}>,
+      {} as ApiResponseType<any>
+    );
+
+    expect(result[0]).toMatchObject({
+      systemSecretStatus: SystemToolSystemSecretStatusEnum.configured
+    });
   });
 });

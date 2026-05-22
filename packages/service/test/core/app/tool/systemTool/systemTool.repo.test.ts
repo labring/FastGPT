@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
+  getTool: vi.fn(),
   findSystemTools: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
     listTools: mocks.listTools,
-    getTool: vi.fn()
+    getTool: mocks.getTool
   }
 }));
 
@@ -24,14 +26,17 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 const createPluginTool = ({
   pluginId,
   name,
-  tags = []
+  tags = [],
+  hasSecret = false
 }: {
   pluginId: string;
   name: string;
   tags?: string[];
+  hasSecret?: boolean;
 }) => ({
   source: 'system',
   isToolset: false,
+  hasSecret,
   type: 'tool',
   name: { en: name },
   description: { en: `${name} intro` },
@@ -46,14 +51,17 @@ const createPluginTool = ({
 const createToolConfig = ({
   pluginId,
   pluginOrder,
-  tags
+  tags,
+  secretsVal
 }: {
   pluginId: string;
   pluginOrder: number;
   tags: string[];
+  secretsVal?: Record<string, unknown>;
 }) => ({
   pluginId: `systemTool-${pluginId}`,
   pluginOrder,
+  secretsVal,
   customConfig: {
     name: pluginId,
     version: '1.0.0',
@@ -125,5 +133,35 @@ describe('SystemToolRepo.getSystemToolList', () => {
       'systemTool-second',
       'systemTool-third'
     ]);
+  });
+
+  it('sets system secret status from list hasSecret and saved secrets', async () => {
+    mocks.listTools.mockResolvedValue([
+      createPluginTool({ pluginId: 'no-secret', name: 'No secret' }),
+      createPluginTool({ pluginId: 'need-secret', name: 'Need secret', hasSecret: true }),
+      createPluginTool({ pluginId: 'configured-secret', name: 'Configured secret', hasSecret: true })
+    ]);
+    mocks.findSystemTools.mockResolvedValue([
+      createToolConfig({ pluginId: 'no-secret', pluginOrder: 1, tags: [] }),
+      createToolConfig({ pluginId: 'need-secret', pluginOrder: 2, tags: [] }),
+      createToolConfig({
+        pluginId: 'configured-secret',
+        pluginOrder: 3,
+        tags: [],
+        secretsVal: { apiKey: 'configured' }
+      })
+    ]);
+
+    const tools = await SystemToolRepo.getInstance().getSystemToolList({});
+    const statusMap = new Map(tools.map((tool) => [tool.id, tool.systemSecretStatus]));
+
+    expect(statusMap.get('systemTool-no-secret')).toBe(SystemToolSystemSecretStatusEnum.none);
+    expect(statusMap.get('systemTool-need-secret')).toBe(
+      SystemToolSystemSecretStatusEnum.unconfigured
+    );
+    expect(statusMap.get('systemTool-configured-secret')).toBe(
+      SystemToolSystemSecretStatusEnum.configured
+    );
+    expect(mocks.getTool).not.toHaveBeenCalled();
   });
 });

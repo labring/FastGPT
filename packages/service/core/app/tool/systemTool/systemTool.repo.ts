@@ -176,6 +176,7 @@ export class SystemToolRepo {
         author: global.feConfigs.systemTitle ?? '',
         avatar: app.avatar,
         hasSystemSecret: false,
+        systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
         inputs:
           appVersion.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
             ?.inputs ?? [],
@@ -245,13 +246,18 @@ export class SystemToolRepo {
 
     const secrets = jsonSchema2SecretInput({ jsonSchema: tool.secretSchema });
     const configuredSecretsVal = SystemToolCodec.getConfiguredSecretsVal(dbTool);
+    const hasSystemSecret = !!configuredSecretsVal;
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: childPluginId ? child?.icon ?? tool.icon : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
-      hasSystemSecret: !!configuredSecretsVal,
+      hasSystemSecret,
+      systemSecretStatus: SystemToolCodec.getSystemSecretStatus({
+        hasSecret: !!secrets?.length,
+        hasSystemSecret
+      }),
       secretsVal: configuredSecretsVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
       intro:

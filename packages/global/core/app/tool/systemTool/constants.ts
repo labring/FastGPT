@@ -27,3 +27,9 @@ export const SystemToolSecretInputTypeMap = {
     text: i18nT('common:Manual')
   }
 };
+
+export enum SystemToolSystemSecretStatusEnum {
+  none = 'none',
+  configured = 'configured',
+  unconfigured = 'unconfigured'
+}

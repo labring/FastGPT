@@ -3,6 +3,7 @@
 import z from 'zod';
 import { SystemToolBaseSchema, SystemToolDetailSchema } from './base';
 import { PluginStatusSchema } from '../../../../plugin/type';
+import { SystemToolSystemSecretStatusEnum } from '../constants';
 
 export const AdminSystemToolListItemSchema = z.object({
   ...SystemToolBaseSchema.shape,
@@ -20,8 +21,9 @@ export const AdminSystemToolListItemSchema = z.object({
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' }),
   hasTokenFee: z.boolean().meta({ description: '是否有系统密钥费用' }),
-  hasSystemSecret: z.boolean().meta({ description: '是否有系统密钥' }),
-  needsSystemSecret: z.boolean().meta({ description: '是否需要系统密钥' })
+  systemSecretStatus: z
+    .enum(SystemToolSystemSecretStatusEnum)
+    .meta({ description: '系统密钥配置状态' })
 });
 
 export type AdminSystemToolListItemType = z.infer<typeof AdminSystemToolListItemSchema>;

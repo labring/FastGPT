@@ -44,21 +44,20 @@ export async function handler(
     MongoPluginToolTag.find({}).lean()
   ]);
 
+  const filteredTools = systemTools.filter((item) => filterToolByName(item.name, searchRegex));
+
   return GetAdminSystemToolsResponseSchema.parse(
-    systemTools
-      .filter((item) => filterToolByName(item.name, searchRegex))
-      .map((item) => {
-        return AdminSystemToolListItemSchema.parse({
-          ...item,
-          name: item.name,
-          intro: item.intro,
-          needsSystemSecret: !!item.secrets,
-          hasSystemSecret: item.hasSystemSecret,
-          tags: tags
-            .filter((tag) => item.tags?.includes(tag.tagId))
-            .map((tag) => parseI18nString(tag.tagName, lang))
-        } satisfies AdminSystemToolListItemType);
-      })
+    filteredTools.map((item) => {
+      return AdminSystemToolListItemSchema.parse({
+        ...item,
+        name: item.name,
+        intro: item.intro,
+        systemSecretStatus: item.systemSecretStatus,
+        tags: tags
+          .filter((tag) => item.tags?.includes(tag.tagId))
+          .map((tag) => parseI18nString(tag.tagName, lang))
+      } satisfies AdminSystemToolListItemType);
+    })
   );
 }
 
