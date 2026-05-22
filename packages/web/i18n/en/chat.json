@@ -144,7 +144,7 @@
   "sandbox_rename_failed": "Rename failed",
   "sandbox_root_directory": "Root directory",
   "sandbox_search_files": "Search files",
-  "sandbox_search_workspace_files": "@Type to search workspace files...",
+  "sandbox_search_workspace_files": "Type to search workspace files...",
   "sandbox_select_file_edit": "Select a file to edit",
   "sandbox_source": "Source",
   "sandbox_status_checkExisting": "Checking sandbox...",

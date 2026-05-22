@@ -144,7 +144,7 @@
   "sandbox_rename_failed": "重命名失败",
   "sandbox_root_directory": "根目录",
   "sandbox_search_files": "搜索文件",
-  "sandbox_search_workspace_files": "@输入以搜索工作区文件...",
+  "sandbox_search_workspace_files": "输入以搜索工作区文件...",
   "sandbox_select_file_edit": "选择一个文件进行编辑",
   "sandbox_source": "原文",
   "sandbox_status_checkExisting": "检查沙箱状态...",

@@ -10,6 +10,8 @@ import {
   repackFileMapAsZip,
   getSupportedArchiveFormat,
   extractToFileMap,
+  normalizeSkillWorkspaceRoot,
+  hasSkillsDirectoryContent,
   stripRootPrefix
 } from '@fastgpt/service/core/ai/skill/package';
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/ai/skill/api';
@@ -113,12 +115,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     if (Object.keys(fileMap).length === 0) {
       return Promise.reject(SkillErrEnum.archiveEmpty);
     }
-    const skillMdKey = findSkillMdKey(fileMap);
-    if (!skillMdKey) {
-      return Promise.reject(SkillErrEnum.invalidSkillPackage);
-    }
-    fileMap = stripRootPrefix(fileMap, getRootPrefix(skillMdKey));
-
     // Derive package-level name from caller-supplied value or archive filename
     const pkgName =
       body.name ||
@@ -126,14 +122,24 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       'package';
     const pkgDescription = body.description ?? '';
 
-    // Prefix files with 'skills/{pkgName}/' to maintain workspace structure
+    fileMap = normalizeSkillWorkspaceRoot(fileMap);
     const finalFileMap: Record<string, Buffer> = {};
-    const prefix = `skills/${pkgName}/`;
-    for (const [key, value] of Object.entries(fileMap)) {
-      finalFileMap[`${prefix}${key}`] = value;
+    if (hasSkillsDirectoryContent(fileMap)) {
+      Object.assign(finalFileMap, fileMap);
+    } else {
+      const skillMdKey = findSkillMdKey(fileMap);
+      if (!skillMdKey) {
+        return Promise.reject(SkillErrEnum.invalidSkillPackage);
+      }
+
+      const singleSkillFileMap = stripRootPrefix(fileMap, getRootPrefix(skillMdKey));
+      const prefix = `skills/${pkgName}/`;
+      for (const [key, value] of Object.entries(singleSkillFileMap)) {
+        finalFileMap[`${prefix}${key}`] = value;
+      }
     }
 
-    // Repack the entire fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
+    // Repack the workspace fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
     const zipBuffer = await repackFileMapAsZip(finalFileMap);
 
     // Build skill package using package-level metadata only

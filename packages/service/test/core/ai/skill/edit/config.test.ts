@@ -33,7 +33,10 @@ describe('skill edit config', () => {
     });
 
     expect(result).toEqual({
-      env: {},
+      env: {
+        FASTGPT_SESSION_ID: 'session-1',
+        FASTGPT_WORKDIR: '/home/devbox/workspace'
+      },
       workingDir: '/home/devbox/workspace',
       metadata: {
         skillId: 'skill-1',

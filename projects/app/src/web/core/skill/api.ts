@@ -1,5 +1,6 @@
 import { GET, DELETE, POST } from '@/web/common/api/request';
 import { downloadFetch } from '@/web/common/system/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -147,11 +148,21 @@ export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>
   GET<GetSkillFolderPathResponse>('/core/ai/skill/folder/path', data);
 
 /** 导出 Skill 压缩包（触发浏览器下载） */
-export const exportSkill = (skillId: string, skillName: string) =>
-  downloadFetch({
-    url: `/api/core/ai/skill/export?skillId=${encodeURIComponent(skillId)}`,
-    filename: `${skillName}.zip`
+export const exportSkill = (
+  skillId: string,
+  skillName: string,
+  source: 'version' | 'workspace' = 'version'
+) => {
+  const { setLoading } = useSystemStore.getState();
+  setLoading(true);
+  return downloadFetch({
+    url: `/api/core/ai/skill/export?skillId=${encodeURIComponent(skillId)}&source=${source}`,
+    filename: `${skillName}.zip`,
+    waitResponse: true
+  }).finally(() => {
+    setLoading(false);
   });
+};
 
 /** 获取引用了某个 Skill 的应用列表 */
 export const getAppsBySkillId = (skillId: string) =>

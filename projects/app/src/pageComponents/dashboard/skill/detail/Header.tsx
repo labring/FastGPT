@@ -158,7 +158,7 @@ const Header = () => {
   );
 
   const { runAsync: onExportSkill } = useRequest(
-    (skillId: string, skillName: string) => exportSkill(skillId, skillName),
+    (skillId: string, skillName: string) => exportSkill(skillId, skillName, 'workspace'),
     {
       successToast: t('skill:export_success'),
       errorToast: t('skill:export_failed')

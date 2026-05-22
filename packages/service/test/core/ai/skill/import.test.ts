@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ImportSkillBody } from '@fastgpt/global/core/ai/skill/api';
-import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   getSupportedArchiveFormat,
   findSkillMdKey,
   getRootPrefix,
   stripRootPrefix,
+  isIgnoredSystemArchiveEntry,
+  normalizeSkillWorkspaceRoot,
+  hasSkillsDirectoryContent,
   repackFileMapAsZip,
   JSZip
 } from '@fastgpt/service/core/ai/skill/package';
@@ -42,6 +42,26 @@ describe('getSupportedArchiveFormat', () => {
     expect(getSupportedArchiveFormat('Skill.ZIP')).toBe('zip');
     expect(getSupportedArchiveFormat('Skill.TAR.GZ')).toBe('tar.gz');
     expect(getSupportedArchiveFormat('Skill.TGZ')).toBe('tar.gz');
+  });
+});
+
+// ===========================================================================
+// isIgnoredSystemArchiveEntry
+// ===========================================================================
+describe('isIgnoredSystemArchiveEntry', () => {
+  it('ignores common OS generated archive entries', () => {
+    expect(isIgnoredSystemArchiveEntry('__MACOSX/._SKILL.md')).toBe(true);
+    expect(isIgnoredSystemArchiveEntry('workspace/__MACOSX/skills/._main.ts')).toBe(true);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/.DS_Store')).toBe(true);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/._SKILL.md')).toBe(true);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/Thumbs.db')).toBe(true);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/desktop.ini')).toBe(true);
+  });
+
+  it('keeps normal skill files', () => {
+    expect(isIgnoredSystemArchiveEntry('skills/demo/SKILL.md')).toBe(false);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/src/main.ts')).toBe(false);
+    expect(isIgnoredSystemArchiveEntry('skills/demo/.env.example')).toBe(false);
   });
 });
 
@@ -119,6 +139,64 @@ describe('stripRootPrefix', () => {
     const fileMap = { 'my-skill/': Buffer.from('') };
     const result = stripRootPrefix(fileMap, 'my-skill/');
     expect(Object.keys(result)).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// normalizeSkillWorkspaceRoot / hasSkillsDirectoryContent
+// ===========================================================================
+describe('normalizeSkillWorkspaceRoot', () => {
+  it('keeps workspace-root skills directory unchanged', () => {
+    const fileMap = {
+      'skills/my-skill/SKILL.md': Buffer.from('a'),
+      'skills/my-skill/src/main.ts': Buffer.from('b')
+    };
+
+    expect(normalizeSkillWorkspaceRoot(fileMap)).toEqual(fileMap);
+  });
+
+  it('strips archive wrapper before skills directory', () => {
+    const fileMap = {
+      'exported-workspace/skills/my-skill/SKILL.md': Buffer.from('a'),
+      'exported-workspace/skills/my-skill/src/main.ts': Buffer.from('b')
+    };
+    const result = normalizeSkillWorkspaceRoot(fileMap);
+
+    expect(result).toHaveProperty('skills/my-skill/SKILL.md');
+    expect(result).toHaveProperty('skills/my-skill/src/main.ts');
+    expect(result).not.toHaveProperty('exported-workspace/skills/my-skill/SKILL.md');
+  });
+
+  it('returns unchanged map when no skills directory exists', () => {
+    const fileMap = { 'my-skill/SKILL.md': Buffer.from('a') };
+    expect(normalizeSkillWorkspaceRoot(fileMap)).toEqual(fileMap);
+  });
+});
+
+describe('hasSkillsDirectoryContent', () => {
+  it('returns true when skills directory has files', () => {
+    expect(
+      hasSkillsDirectoryContent({
+        'skills/my-skill/SKILL.md': Buffer.from('a')
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for legacy root SKILL.md packages', () => {
+    expect(
+      hasSkillsDirectoryContent({
+        'SKILL.md': Buffer.from('a'),
+        'src/main.ts': Buffer.from('b')
+      })
+    ).toBe(false);
+  });
+
+  it('returns false when only non-skills files exist', () => {
+    expect(
+      hasSkillsDirectoryContent({
+        'README.md': Buffer.from('a')
+      })
+    ).toBe(false);
   });
 });
 

@@ -8,6 +8,29 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { getRootUser, getUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+
+const skillExportMocks = vi.hoisted(() => ({
+  findSandboxInstanceByAppChatTypeMock: vi.fn(),
+  packageSkillInSandboxMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/instance/repository')>();
+  return {
+    ...actual,
+    findSandboxInstanceByAppChatType: skillExportMocks.findSandboxInstanceByAppChatTypeMock
+  };
+});
+
+vi.mock('@fastgpt/service/core/ai/skill/edit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/edit')>();
+  return {
+    ...actual,
+    packageSkillInSandbox: skillExportMocks.packageSkillInSandboxMock
+  };
+});
 
 const mockJsonRes = vi.mocked(jsonRes);
 
@@ -270,6 +293,44 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.end).toHaveBeenCalledWith(expect.any(Buffer));
     expect(Buffer.compare(res.endData, zipContent)).toBe(0);
+
+    await MongoAgentSkills.deleteOne({ _id: skill._id });
+  });
+
+  it('指定 workspace 来源时应直接导出 edit sandbox 工作区内容', async () => {
+    const user = await getRootUser();
+
+    const skill = await MongoAgentSkills.create({
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal,
+      name: 'workspace-skill',
+      description: '',
+      category: [],
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+
+    const skillId = String(skill._id);
+    const workspaceZip = Buffer.from('PK workspace zip content');
+    skillExportMocks.findSandboxInstanceByAppChatTypeMock.mockResolvedValueOnce({
+      sandboxId: 'edit-sandbox-1',
+      status: SandboxStatusEnum.running
+    });
+    skillExportMocks.packageSkillInSandboxMock.mockResolvedValueOnce(workspaceZip);
+
+    const res = makeMockRes();
+    const req = makeMockReq({ auth: user, query: { skillId, source: 'workspace' } });
+
+    await handler(req, res);
+
+    expect(mockJsonRes).not.toHaveBeenCalled();
+    expect(skillExportMocks.packageSkillInSandboxMock).toHaveBeenCalledWith({
+      sandboxId: 'edit-sandbox-1',
+      workDirectory: expect.any(String)
+    });
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Length', workspaceZip.length);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(Buffer.compare(res.endData, workspaceZip)).toBe(0);
 
     await MongoAgentSkills.deleteOne({ _id: skill._id });
   });

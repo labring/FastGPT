@@ -18,7 +18,7 @@ export function getSandboxDefaults(): SandboxDefaults {
       defaultImage: {
         repository: ''
       },
-      workDirectory: '/home/devbox',
+      workDirectory: '/home/devbox/workspace',
       entrypoint: ''
     };
   }

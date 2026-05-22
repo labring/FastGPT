@@ -141,7 +141,7 @@
   "sandbox_rename_failed": "重新命名失敗",
   "sandbox_root_directory": "根目錄",
   "sandbox_search_files": "搜尋文件",
-  "sandbox_search_workspace_files": "@輸入以搜尋工作區文件...",
+  "sandbox_search_workspace_files": "輸入以搜尋工作區文件...",
   "sandbox_select_file_edit": "選擇一個文件進行編輯",
   "sandbox_source": "原文",
   "sandbox_status_checkExisting": "檢查沙箱狀態...",

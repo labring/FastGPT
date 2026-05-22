@@ -309,7 +309,8 @@ export const GetSkillFolderPathResponseSchema = z.array(
 export type GetSkillFolderPathResponse = z.infer<typeof GetSkillFolderPathResponseSchema>;
 
 export const ExportSkillQuerySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema,
+  source: z.enum(['version', 'workspace']).optional().default('version')
 });
 export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
 
@@ -387,7 +388,8 @@ export const ImportSkillMultipartRequestSchema = {
     file: {
       type: 'string' as const,
       format: 'binary' as const,
-      description: '技能压缩包文件，支持 ZIP / TAR / TAR.GZ'
+      description:
+        '技能压缩包文件，支持 workspace 包（根目录包含非空 skills/）或单 skill 包（根目录或一级目录包含 SKILL.md），支持 ZIP / TAR / TAR.GZ'
     },
     name: {
       type: 'string' as const,

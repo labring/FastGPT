@@ -6,11 +6,19 @@ import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { ExportSkillQuerySchema } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillTypeEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
+import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  EDIT_DEBUG_SANDBOX_CHAT_ID,
+  packageSkillInSandbox
+} from '@fastgpt/service/core/ai/skill/edit';
 
 export const config = {
   api: {
@@ -25,7 +33,7 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
     return jsonRes(res, { code: 405, error: 'Method not allowed' });
   }
 
-  const { skillId } = parseApiInput({ req, querySchema: ExportSkillQuerySchema }).query;
+  const { skillId, source } = parseApiInput({ req, querySchema: ExportSkillQuerySchema }).query;
 
   const { teamId, tmbId, skill } = await authSkill({
     req,
@@ -39,21 +47,43 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
     return jsonRes(res, { code: 400, error: 'Folders cannot be exported' });
   }
 
-  if (!skill.currentVersionId) {
+  if (source === 'version' && !skill.currentVersionId) {
     return jsonRes(res, { code: 404, error: 'No current version available for download' });
   }
 
-  logger.debug('Exporting skill', { skillId, skillName: skill.name });
+  logger.debug('Exporting skill', { skillId, skillName: skill.name, source });
 
-  const currentVersion = await MongoAgentSkillsVersion.findOne({
-    _id: skill.currentVersionId,
-    skillId
-  }).lean();
-  if (!currentVersion?.storageKey) {
-    return jsonRes(res, { code: 404, error: 'No current version available for download' });
+  let zipBuffer: Buffer;
+  if (source === 'workspace') {
+    const providerConfig = getSandboxProviderConfig();
+    const sandboxInfo = await findSandboxInstanceByAppChatType({
+      provider: providerConfig.provider,
+      appId: skillId,
+      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      status: SandboxStatusEnum.running,
+      type: SandboxTypeEnum.editDebug
+    });
+
+    if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
+      return jsonRes(res, { code: 404, error: 'Edit sandbox not found or not running' });
+    }
+
+    const defaults = getSandboxDefaults();
+    zipBuffer = await packageSkillInSandbox({
+      sandboxId: sandboxInfo.sandboxId,
+      workDirectory: defaults.workDirectory
+    });
+  } else {
+    const currentVersion = await MongoAgentSkillsVersion.findOne({
+      _id: skill.currentVersionId,
+      skillId
+    }).lean();
+    if (!currentVersion?.storageKey) {
+      return jsonRes(res, { code: 404, error: 'No current version available for download' });
+    }
+
+    zipBuffer = await downloadSkillPackage({ storageKey: currentVersion.storageKey });
   }
-
-  const zipBuffer = await downloadSkillPackage({ storageKey: currentVersion.storageKey });
 
   const filename = `${skill.name}.zip`;
   res.setHeader('Content-Type', 'application/zip');
