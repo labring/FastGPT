@@ -18,9 +18,9 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { useContextSelector } from 'use-context-selector';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
-import { useLatest } from 'ahooks';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useLatest } from 'ahooks';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import {
@@ -36,6 +36,74 @@ import {
 } from './utils';
 
 const EXCLUDE_NAMES = ['node_modules', '.git', '.next', 'dist', 'build', '.bun'];
+
+type Action = {
+  run: () => Promise<void>;
+  rollback: () => void;
+};
+
+class ActionQueue {
+  private queue: Action[] = [];
+  private isProcessing = false;
+  private isDestroyed = false;
+  private onStateChange?: (processing: boolean) => void;
+  private onError?: (error: any) => void;
+
+  constructor(onStateChange?: (processing: boolean) => void, onError?: (error: any) => void) {
+    this.onStateChange = onStateChange;
+    this.onError = onError;
+  }
+
+  destroy() {
+    this.isDestroyed = true;
+    this.onStateChange = undefined;
+    this.onError = undefined;
+  }
+
+  push(action: Action) {
+    if (this.isDestroyed) return;
+    this.queue.push(action);
+    this.onStateChange?.(true);
+    this.process();
+  }
+
+  private async process() {
+    if (this.isProcessing || this.queue.length === 0) {
+      if (this.queue.length === 0) {
+        this.onStateChange?.(false);
+      }
+      return;
+    }
+    this.isProcessing = true;
+
+    const current = this.queue.shift()!;
+    try {
+      await current.run();
+    } catch (error) {
+      console.error('Action failed in queue:', error);
+
+      // 熔断机制：触发当前失败 Action 的回滚，并回滚所有排队 Action
+      if (!this.isDestroyed) {
+        current.rollback();
+      }
+
+      const remaining = [...this.queue];
+      this.queue = [];
+      for (const action of remaining) {
+        if (!this.isDestroyed) {
+          action.rollback();
+        }
+      }
+
+      if (!this.isDestroyed) {
+        this.onError?.(error);
+      }
+    } finally {
+      this.isProcessing = false;
+      this.process();
+    }
+  }
+}
 
 /**
  * useSandboxEditor —— UI Hook
@@ -209,6 +277,29 @@ export const useSandboxFileStore = ({
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  const queueRef = useRef<ActionQueue | null>(null);
+  if (queueRef.current === null) {
+    queueRef.current = new ActionQueue(
+      (processing) => {
+        setSaving(processing);
+      },
+      (error) => {
+        toast({
+          title: t('chat:sandbox_operation_failed', '操作失败，正在同步工作区...'),
+          description: getErrText(error),
+          status: 'error'
+        });
+        refreshWorkspace();
+      }
+    );
+  }
+
+  useEffect(() => {
+    return () => {
+      queueRef.current?.destroy();
+    };
+  }, []);
+
   const [fileTree, setFileTree] = useState<TreeNode[]>([]);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([]));
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
@@ -250,30 +341,53 @@ export const useSandboxFileStore = ({
   }, [openedFilesRef]);
 
   // 加载目录 - 改造为普通异步函数，避免 useRequest 的并发竞态问题
-  const { runAsync: loadDirectory } = useRequest(
+  const loadDirectory = useCallback(
     async (path: string, level: number) => {
-      const data = await listSandboxFiles({ appId, chatId, outLinkAuthData, path });
-      const filteredFiles = (data.files || []).filter((file) => !EXCLUDE_NAMES.includes(file.name));
-      const nodes: TreeNode[] = filteredFiles.map((file) => ({
-        ...file,
-        level,
-        children: file.type === 'directory' ? [] : undefined,
-        loaded: false // 子目录初始未加载
-      }));
-
-      const sortedNodes = sortTreeNodes(nodes);
-
-      setFileTree((prevTree) => {
-        if (level === 0) {
-          return sortedNodes;
-        }
-        // 更新目标节点，标记为已加载
-        return updateTreeNode(prevTree, path, sortedNodes, true);
+      setLoadingDirs((prev) => {
+        const next = new Set(prev);
+        next.add(path);
+        return next;
       });
 
-      return sortedNodes;
+      try {
+        const data = await listSandboxFiles({ appId, chatId, outLinkAuthData, path });
+        const filteredFiles = (data.files || []).filter(
+          (file) => !EXCLUDE_NAMES.includes(file.name)
+        );
+        const nodes: TreeNode[] = filteredFiles.map((file) => ({
+          ...file,
+          level,
+          children: file.type === 'directory' ? [] : undefined,
+          loaded: false // 子目录初始未加载
+        }));
+
+        const sortedNodes = sortTreeNodes(nodes);
+
+        setFileTree((prevTree) => {
+          if (level === 0) {
+            return sortedNodes;
+          }
+          // 更新目标节点，标记为已加载
+          return updateTreeNode(prevTree, path, sortedNodes, true);
+        });
+
+        return sortedNodes;
+      } catch (error) {
+        toast({
+          title: t('chat:sandbox_load_failed', '加载目录失败'),
+          description: getErrText(error),
+          status: 'error'
+        });
+        throw error;
+      } finally {
+        setLoadingDirs((prev) => {
+          const next = new Set(prev);
+          next.delete(path);
+          return next;
+        });
+      }
     },
-    { manual: true }
+    [appId, chatId, outLinkAuthData, toast, t, setLoadingDirs, setFileTree]
   );
 
   /**
@@ -332,25 +446,30 @@ export const useSandboxFileStore = ({
       const targetFile = openedFilesRef.current?.find((f) => f.path === targetPath);
       if (!targetFile || targetFile.isBinary || targetFile.isUnknown) return;
 
-      setSaving(true);
-      try {
-        await writeSandboxFile({
-          appId,
-          chatId,
-          outLinkAuthData,
-          path: targetPath,
-          content: targetFile.content
-        });
+      // 乐观更新: 标记为已保存
+      setOpenedFiles((prev) =>
+        prev.map((f) => (f.path === targetPath ? { ...f, isDirty: false } : f))
+      );
 
-        // 标记为已保存
-        setOpenedFiles((prev) =>
-          prev.map((f) => (f.path === targetPath ? { ...f, isDirty: false } : f))
-        );
-      } catch (error) {
-        console.error('Failed to save file:', error);
-      } finally {
-        setSaving(false);
-      }
+      queueRef.current?.push({
+        run: async () => {
+          const currentFile = openedFilesRef.current?.find((f) => f.path === targetPath);
+          if (!currentFile || currentFile.isBinary || currentFile.isUnknown) return;
+          await writeSandboxFile({
+            appId,
+            chatId,
+            outLinkAuthData,
+            path: targetPath,
+            content: currentFile.content
+          });
+        },
+        rollback: () => {
+          // 回滚: 重新标记为脏文件
+          setOpenedFiles((prev) =>
+            prev.map((f) => (f.path === targetPath ? { ...f, isDirty: true } : f))
+          );
+        }
+      });
     },
     [appId, chatId, outLinkAuthData, activeFilePath, openedFilesRef]
   );
@@ -361,21 +480,36 @@ export const useSandboxFileStore = ({
       openedFilesRef.current?.filter((f) => f.isDirty && !f.isBinary && !f.isUnknown) || [];
     if (dirtyFiles.length === 0) return;
 
-    await Promise.all(
-      dirtyFiles.map(async (f) => {
-        await writeSandboxFile({
-          appId,
-          chatId,
-          outLinkAuthData,
-          path: f.path,
-          content: f.content
-        });
-      })
-    );
-
+    // 乐观更新: 标记所有脏文件为已保存
     setOpenedFiles((prev) =>
       prev.map((f) => (dirtyFiles.some((df) => df.path === f.path) ? { ...f, isDirty: false } : f))
     );
+
+    queueRef.current?.push({
+      run: async () => {
+        await Promise.all(
+          dirtyFiles.map(async (df) => {
+            const currentFile = openedFilesRef.current?.find((f) => f.path === df.path);
+            if (!currentFile || currentFile.isBinary || currentFile.isUnknown) return;
+            await writeSandboxFile({
+              appId,
+              chatId,
+              outLinkAuthData,
+              path: df.path,
+              content: currentFile.content
+            });
+          })
+        );
+      },
+      rollback: () => {
+        // 回滚: 恢复脏标记
+        setOpenedFiles((prev) =>
+          prev.map((f) =>
+            dirtyFiles.some((df) => df.path === f.path) ? { ...f, isDirty: true } : f
+          )
+        );
+      }
+    });
   }, [appId, chatId, outLinkAuthData, openedFilesRef]);
 
   // 1.5 秒防抖自动保存脏文件
@@ -523,234 +657,275 @@ export const useSandboxFileStore = ({
   };
 
   // 新建文件/目录 (乐观更新)
-  const onCreateNode = async (parentPath: string, name: string, type: 'file' | 'directory') => {
-    const fullPath = parentPath === '.' ? name : `${parentPath}/${name}`;
+  const onCreateNode = useCallback(
+    async (parentPath: string, name: string, type: 'file' | 'directory') => {
+      const fullPath = parentPath === '.' ? name : `${parentPath}/${name}`;
 
-    const conflictNode = findNodeByPath(fileTree, fullPath);
-    if (conflictNode) {
-      toast({
-        title: t('chat:sandbox_create_failed'),
-        description: t('chat:sandbox_file_already_exists'),
-        status: 'warning'
-      });
-      return;
-    }
-
-    let targetLevel = 0;
-    if (parentPath !== '.') {
-      const parentNode = findNodeByPath(fileTree, parentPath);
-      if (parentNode) {
-        targetLevel = parentNode.level + 1;
-      } else {
-        targetLevel = parentPath.split('/').length;
-      }
-    }
-
-    const newNode: TreeNode = {
-      name,
-      path: fullPath,
-      type,
-      level: targetLevel,
-      children: type === 'directory' ? [] : undefined,
-      loaded: type === 'directory' ? true : undefined
-    };
-
-    // 1. 乐观更新文件树 UI
-    setFileTree((prevTree) => addTreeNode(prevTree, parentPath, newNode));
-
-    // 2. 如果是文件，乐观更新标签页并打开
-    if (type === 'file') {
-      const fileName = name;
-      const language = getLanguageByFileName(fileName);
-      const isBinary = getIsBinaryByLanguage(language);
-      const tempFile: OpenedFile = {
-        path: fullPath,
-        name: fileName,
-        content: '',
-        language,
-        isBinary,
-        isDirty: false
-      };
-      setOpenedFiles((prev) => [...prev, tempFile]);
-      setActiveFilePath(fullPath);
-      setSelectedPath(fullPath);
-    }
-
-    // 3. 异步发送请求，若失败则回滚状态并抛出错误
-    try {
-      if (type === 'file') {
-        await writeSandboxFile({
-          appId,
-          chatId,
-          outLinkAuthData,
-          path: fullPath,
-          content: ''
+      const conflictNode = findNodeByPath(fileTree, fullPath);
+      if (conflictNode) {
+        toast({
+          title: t('chat:sandbox_create_failed'),
+          description: t('chat:sandbox_file_already_exists'),
+          status: 'warning'
         });
-      } else {
-        await fileOpSandbox({
-          appId,
-          chatId,
-          outLinkAuthData,
-          type: 'mkdir',
-          path: fullPath
-        });
+        return;
       }
-    } catch (error) {
-      // 4. 请求失败回滚本地状态
-      setFileTree((prevTree) => deleteTreeNode(prevTree, fullPath));
-      if (type === 'file') {
-        setOpenedFiles((prev) => {
-          const filtered = prev.filter((f) => f.path !== fullPath);
-          setActiveFilePath((prevActive) => {
-            if (prevActive === fullPath) {
-              return filtered.length > 0 ? filtered[filtered.length - 1].path : '';
-            }
-            return prevActive;
-          });
-          return filtered;
-        });
-      }
-      throw error;
-    }
-  };
 
-  // 重命名完成 (乐观更新)
-  const onRenameComplete = async (oldPath: string, newName: string) => {
-    const parts = oldPath.split('/');
-    parts.pop();
-    const parentPath = parts.join('/');
-    const newPath = parentPath ? `${parentPath}/${newName}` : newName;
-
-    if (oldPath === newPath) return;
-
-    const conflictNode = findNodeByPath(fileTree, newPath);
-    if (conflictNode) {
-      toast({
-        title: t('chat:sandbox_rename_failed'),
-        description: t('chat:sandbox_file_already_exists'),
-        status: 'warning'
-      });
-      return;
-    }
-
-    const oldName = oldPath.split('/').pop() || '';
-
-    // 1. 乐观更新
-    updateStatePaths(oldPath, newPath, newName);
-    setFileTree((prevTree) => renameTreeNodeInTree(prevTree, oldPath, newPath, newName));
-
-    // 2. 异步请求，失败时回滚
-    try {
-      await fileOpSandbox({
-        appId,
-        chatId,
-        outLinkAuthData,
-        type: 'move',
-        path: oldPath,
-        destPath: newPath
-      });
-    } catch (error) {
-      // 细粒度回滚状态并向上抛出错误
-      updateStatePaths(newPath, oldPath, oldName);
-      setFileTree((prevTree) => renameTreeNodeInTree(prevTree, newPath, oldPath, oldName));
-      throw error;
-    }
-  };
-
-  // 移动文件/目录（拖拽移动） (乐观更新)
-  const onMoveFile = async (srcPath: string, targetDirPath: string) => {
-    const parts = srcPath.split('/');
-    const fileName = parts.pop() || '';
-    const destPath = targetDirPath === '.' ? fileName : `${targetDirPath}/${fileName}`;
-
-    if (srcPath === destPath) return;
-
-    const srcParts = srcPath.split('/');
-    srcParts.pop();
-    const srcParentPath = srcParts.join('/') || '.';
-
-    // 1. 乐观更新
-    updateStatePaths(srcPath, destPath);
-    setFileTree((prevTree) => moveTreeNodeInTree(prevTree, srcPath, targetDirPath));
-
-    // 2. 异步请求，失败时回滚
-    try {
-      await fileOpSandbox({
-        appId,
-        chatId,
-        outLinkAuthData,
-        type: 'move',
-        path: srcPath,
-        destPath
-      });
-    } catch (error) {
-      // 细粒度回滚状态
-      updateStatePaths(destPath, srcPath);
-      setFileTree((prevTree) => moveTreeNodeInTree(prevTree, destPath, srcParentPath));
-      throw error;
-    }
-  };
-
-  // 删除文件/目录 (非乐观更新，等待接口成功后再移除)
-  const onDeleteFile = async (filePath: string) => {
-    // 1. 异步请求
-    await fileOpSandbox({
-      appId,
-      chatId,
-      outLinkAuthData,
-      type: 'delete',
-      path: filePath
-    });
-
-    // 2. 成功后更新本地状态
-    deleteStatePaths(filePath);
-    setFileTree((prevTree) => deleteTreeNode(prevTree, filePath));
-  };
-
-  // 上传文件
-  const onUploadFiles = async (files: FileList, targetDirPath: string) => {
-    let targetLevel = 0;
-    if (targetDirPath !== '.') {
-      const parentNode = findNodeByPath(fileTree, targetDirPath);
-      if (parentNode) {
-        targetLevel = parentNode.level + 1;
-      } else {
-        targetLevel = targetDirPath.split('/').length;
-      }
-    }
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const language = getLanguageByFileName(file.name);
-      const isBinary = getIsBinaryByLanguage(language);
-      const content = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        if (isBinary) {
-          reader.readAsDataURL(file);
+      let targetLevel = 0;
+      if (parentPath !== '.') {
+        const parentNode = findNodeByPath(fileTree, parentPath);
+        if (parentNode) {
+          targetLevel = parentNode.level + 1;
         } else {
-          reader.readAsText(file);
+          targetLevel = parentPath.split('/').length;
         }
-      });
-      const path = targetDirPath === '.' ? file.name : `${targetDirPath}/${file.name}`;
-      await writeSandboxFile({
-        appId,
-        chatId,
-        outLinkAuthData,
-        path,
-        content
-      });
+      }
 
       const newNode: TreeNode = {
-        name: file.name,
-        path,
-        type: 'file',
-        level: targetLevel
+        name,
+        path: fullPath,
+        type,
+        level: targetLevel,
+        children: type === 'directory' ? [] : undefined,
+        loaded: type === 'directory' ? true : undefined
       };
-      setFileTree((prevTree) => addTreeNode(prevTree, targetDirPath, newNode));
-    }
-  };
+
+      // 1. 乐观更新文件树 UI
+      setFileTree((prevTree) => addTreeNode(prevTree, parentPath, newNode));
+
+      // 2. 如果是文件，乐观更新标签页并打开
+      if (type === 'file') {
+        const fileName = name;
+        const language = getLanguageByFileName(fileName);
+        const isBinary = getIsBinaryByLanguage(language);
+        const tempFile: OpenedFile = {
+          path: fullPath,
+          name: fileName,
+          content: '',
+          language,
+          isBinary,
+          isDirty: false
+        };
+        setOpenedFiles((prev) => [...prev, tempFile]);
+        setActiveFilePath(fullPath);
+        setSelectedPath(fullPath);
+      }
+
+      // 3. 异步发送请求，若失败则回融并回滚状态
+      queueRef.current?.push({
+        run: async () => {
+          if (type === 'file') {
+            await writeSandboxFile({
+              appId,
+              chatId,
+              outLinkAuthData,
+              path: fullPath,
+              content: ''
+            });
+          } else {
+            await fileOpSandbox({
+              appId,
+              chatId,
+              outLinkAuthData,
+              type: 'mkdir',
+              path: fullPath
+            });
+          }
+        },
+        rollback: () => {
+          setFileTree((prevTree) => deleteTreeNode(prevTree, fullPath));
+          if (type === 'file') {
+            setOpenedFiles((prev) => {
+              const filtered = prev.filter((f) => f.path !== fullPath);
+              setActiveFilePath((prevActive) => {
+                if (prevActive === fullPath) {
+                  return filtered.length > 0 ? filtered[filtered.length - 1].path : '';
+                }
+                return prevActive;
+              });
+              return filtered;
+            });
+          }
+        }
+      });
+    },
+    [appId, chatId, outLinkAuthData, fileTree, toast, t]
+  );
+
+  // 重命名完成 (乐观更新)
+  const onRenameComplete = useCallback(
+    async (oldPath: string, newName: string) => {
+      const parts = oldPath.split('/');
+      parts.pop();
+      const parentPath = parts.join('/');
+      const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+
+      if (oldPath === newPath) return;
+
+      const conflictNode = findNodeByPath(fileTree, newPath);
+      if (conflictNode) {
+        toast({
+          title: t('chat:sandbox_rename_failed'),
+          description: t('chat:sandbox_file_already_exists'),
+          status: 'warning'
+        });
+        return;
+      }
+
+      const oldName = oldPath.split('/').pop() || '';
+
+      // 1. 乐观更新
+      updateStatePaths(oldPath, newPath, newName);
+      setFileTree((prevTree) => renameTreeNodeInTree(prevTree, oldPath, newPath, newName));
+
+      // 2. 异步请求，失败时回滚
+      queueRef.current?.push({
+        run: async () => {
+          await fileOpSandbox({
+            appId,
+            chatId,
+            outLinkAuthData,
+            type: 'move',
+            path: oldPath,
+            destPath: newPath
+          });
+        },
+        rollback: () => {
+          updateStatePaths(newPath, oldPath, oldName);
+          setFileTree((prevTree) => renameTreeNodeInTree(prevTree, newPath, oldPath, oldName));
+        }
+      });
+    },
+    [appId, chatId, outLinkAuthData, fileTree, toast, t]
+  );
+
+  // 移动文件/目录（拖拽移动） (乐观更新)
+  const onMoveFile = useCallback(
+    async (srcPath: string, targetDirPath: string) => {
+      const parts = srcPath.split('/');
+      const fileName = parts.pop() || '';
+      const destPath = targetDirPath === '.' ? fileName : `${targetDirPath}/${fileName}`;
+
+      if (srcPath === destPath) return;
+
+      const srcParts = srcPath.split('/');
+      srcParts.pop();
+      const srcParentPath = srcParts.join('/') || '.';
+
+      // 1. 乐观更新
+      updateStatePaths(srcPath, destPath);
+      setFileTree((prevTree) => moveTreeNodeInTree(prevTree, srcPath, targetDirPath));
+
+      // 2. 异步请求，失败时回滚
+      queueRef.current?.push({
+        run: async () => {
+          await fileOpSandbox({
+            appId,
+            chatId,
+            outLinkAuthData,
+            type: 'move',
+            path: srcPath,
+            destPath
+          });
+        },
+        rollback: () => {
+          updateStatePaths(destPath, srcPath);
+          setFileTree((prevTree) => moveTreeNodeInTree(prevTree, destPath, srcParentPath));
+        }
+      });
+    },
+    [appId, chatId, outLinkAuthData]
+  );
+
+  // 删除文件/目录 (非乐观更新，等待接口成功后再移除)
+  const onDeleteFile = useCallback(
+    async (filePath: string) => {
+      queueRef.current?.push({
+        run: async () => {
+          await fileOpSandbox({
+            appId,
+            chatId,
+            outLinkAuthData,
+            type: 'delete',
+            path: filePath
+          });
+          deleteStatePaths(filePath);
+          setFileTree((prevTree) => deleteTreeNode(prevTree, filePath));
+        },
+        rollback: () => {
+          // 非乐观更新，无需本地状态回滚
+        }
+      });
+    },
+    [appId, chatId, outLinkAuthData]
+  );
+
+  // 上传文件
+  const onUploadFiles = useCallback(
+    async (files: FileList, targetDirPath: string) => {
+      let targetLevel = 0;
+      if (targetDirPath !== '.') {
+        const parentNode = findNodeByPath(fileTree, targetDirPath);
+        if (parentNode) {
+          targetLevel = parentNode.level + 1;
+        } else {
+          targetLevel = targetDirPath.split('/').length;
+        }
+      }
+
+      const uploadTasks: { path: string; content: string; newNode: TreeNode }[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const language = getLanguageByFileName(file.name);
+        const isBinary = getIsBinaryByLanguage(language);
+        const content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          if (isBinary) {
+            reader.readAsDataURL(file);
+          } else {
+            reader.readAsText(file);
+          }
+        });
+        const path = targetDirPath === '.' ? file.name : `${targetDirPath}/${file.name}`;
+        const newNode: TreeNode = {
+          name: file.name,
+          path,
+          type: 'file',
+          level: targetLevel
+        };
+        uploadTasks.push({ path, content, newNode });
+      }
+
+      // 乐观更新 UI
+      const addedPaths: string[] = [];
+      uploadTasks.forEach((task) => {
+        setFileTree((prevTree) => addTreeNode(prevTree, targetDirPath, task.newNode));
+        addedPaths.push(task.path);
+      });
+
+      queueRef.current?.push({
+        run: async () => {
+          for (const task of uploadTasks) {
+            await writeSandboxFile({
+              appId,
+              chatId,
+              outLinkAuthData,
+              path: task.path,
+              content: task.content
+            });
+          }
+        },
+        rollback: () => {
+          addedPaths.forEach((path) => {
+            setFileTree((prevTree) => deleteTreeNode(prevTree, path));
+          });
+        }
+      });
+    },
+    [appId, chatId, outLinkAuthData, fileTree]
+  );
 
   // 展开折叠目录
   const toggleDirectory = async (node: TreeNode) => {
