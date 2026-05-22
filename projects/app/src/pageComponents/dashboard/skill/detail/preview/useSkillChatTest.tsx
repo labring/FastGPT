@@ -25,7 +25,7 @@ export const useSkillChatTest = ({
   skillId: string;
   model: string;
   chatId: string;
-  // session-runtime sandbox 懒初始化，首次发消息触发 warm-up；调用方一般不再需要传
+  // Agent sandbox lazily initialized on first message; caller generally does not need to pass
   isReady?: boolean;
 }) => {
   const { t } = useTranslation();

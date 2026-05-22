@@ -446,7 +446,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
 
         {/* 4. Skills section (manual select / reference dual mode) */}
-        {feConfigs?.show_skill && skillsInput && (
+        {skillsInput && (
           <Box mb={5}>
             <CustomInputLabel
               nodeId={nodeId}

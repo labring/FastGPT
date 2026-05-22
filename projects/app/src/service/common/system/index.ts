@@ -161,7 +161,7 @@ export async function initSystemConfig() {
       ...(fastgptConfig.feConfigs || {}),
       limit: {
         ...fileRes?.feConfigs?.limit,
-        agentSandboxMaxSessionRuntime: env.AGENT_SANDBOX_MAX_SESSION_RUNTIME,
+        agentSandboxMaxCount: env.AGENT_SANDBOX_MAX_SESSION_RUNTIME,
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {})
       },
@@ -173,7 +173,7 @@ export async function initSystemConfig() {
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
       show_agent_sandbox: !!env.AGENT_SANDBOX_PROVIDER,
-      show_skill: env.SHOW_SKILL,
+      show_skill: true,
       show_evaluation: process.env.SHOW_EVALUATION === 'true',
       payFormUrl: process.env.PAY_FORM_URL || '',
 

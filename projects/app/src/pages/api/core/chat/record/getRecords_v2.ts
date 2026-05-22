@@ -179,13 +179,11 @@ async function handler(
   await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
   // Reorder AI response value: insert skill records after their corresponding tool
-  if (global.feConfigs?.show_skill) {
-    result.histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.value = reorderAIResponseValue(item.value);
-      }
-    });
-  }
+  result.histories.forEach((item) => {
+    if (item.obj === ChatRoleEnum.AI) {
+      item.value = reorderAIResponseValue(item.value);
+    }
+  });
 
   // Remove important information
   if (isOutLink && app.type !== AppTypeEnum.workflowTool) {

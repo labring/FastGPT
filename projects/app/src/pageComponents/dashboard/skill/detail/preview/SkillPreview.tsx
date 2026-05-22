@@ -26,7 +26,7 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
     [llmModelList]
   );
 
-  // session-runtime sandbox 懒初始化，ChatBox 始终允许发送；首次发消息会有几秒 warm-up
+  // Agent sandbox lazily initialized; ChatBox always allows send; first message triggers warm-up
   const { ChatContainer } = useSkillChatTest({
     skillId,
     model: selectedModel,

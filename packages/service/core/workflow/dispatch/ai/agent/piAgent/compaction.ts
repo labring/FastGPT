@@ -192,6 +192,14 @@ function findCutPoint(messages: AgentMessage[], keepRecentTokens: number): numbe
     }
   }
 
+  // When total tokens < keepRecentTokens, accumulated never hits the threshold.
+  // Keep at least the first user message (current prompt); summarize the rest.
+  if (accumulated < keepRecentTokens && validCutPoints.length >= 2) {
+    // Use the second valid cut point so the first message (current prompt) is kept.
+    // If we only have 2 cut points and the first is index 0, keep just message 0.
+    cutIndex = validCutPoints[1];
+  }
+
   // When cutting at an assistant message with tool calls, include its tool results
   if (messages[cutIndex].role === 'assistant') {
     let j = cutIndex + 1;

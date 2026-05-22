@@ -255,7 +255,7 @@ describe('QuestionGuidePrompt', () => {
   });
 
   it('should contain key instructions about generating 3 questions', () => {
-    expect(QuestionGuidePrompt).toContain('3 potential questions');
+    expect(QuestionGuidePrompt).toContain('3 potential follow-up questions');
   });
 
   it('should instruct to use same language as user', () => {
@@ -274,12 +274,12 @@ describe('QuestionGuideFooterPrompt', () => {
   });
 
   it('should contain JSON format instruction', () => {
-    expect(QuestionGuideFooterPrompt).toContain('JSON format');
+    expect(QuestionGuideFooterPrompt).toContain('JSON object');
   });
 
   it('should contain example output format with Question placeholders', () => {
-    expect(QuestionGuideFooterPrompt).toContain("'Question 1'");
-    expect(QuestionGuideFooterPrompt).toContain("'Question 2'");
-    expect(QuestionGuideFooterPrompt).toContain("'Question 3'");
+    expect(QuestionGuideFooterPrompt).toContain('"Question 1"');
+    expect(QuestionGuideFooterPrompt).toContain('"Question 2"');
+    expect(QuestionGuideFooterPrompt).toContain('"Question 3"');
   });
 });

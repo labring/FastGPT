@@ -99,6 +99,7 @@
   "editor_upload_failed": "Upload failed",
   "editor_rename_failed": "Rename failed",
   "editor_delete_failed": "Delete failed",
+  "editor_stale_detected": "Files were updated by another session. Refresh to see the latest content.",
   "preview_sync_failed_title": "Failed to sync sandbox; this preview may reflect older files",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",

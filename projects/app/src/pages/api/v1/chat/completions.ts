@@ -215,7 +215,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId,
         offset: 0,
         limit,
-        field: `obj value nodeOutputs`
+        field: `obj value nodeOutputs memories`
       }),
       getAppLatestVersion(app._id, app),
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')

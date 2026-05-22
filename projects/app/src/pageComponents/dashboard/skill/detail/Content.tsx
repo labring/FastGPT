@@ -26,7 +26,7 @@ const Content = () => {
       <Box h={'100%'} display={currentTab === TabEnum.config ? 'block' : 'none'}>
         {skillId && <AgentSkillEditor skillId={skillId} canWrite={canWrite} />}
       </Box>
-      {/* Preview Tab: 走 session-runtime sandbox（懒初始化，首次发消息触发 warm-up） */}
+      {/* Preview Tab: agent sandbox, lazily initialized on first message */}
       <Box h={'100%'} display={currentTab === TabEnum.preview ? 'block' : 'none'}>
         <SkillPreview />
       </Box>

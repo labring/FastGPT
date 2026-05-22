@@ -34,7 +34,6 @@ export const getOpenSandboxConnectionConfig = ({
   }
   return {
     sessionId,
-    useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
     baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
     apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
     runtime: env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,

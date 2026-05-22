@@ -27,6 +27,7 @@ import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { resolveDatasetParams } from '../resolveDatasetParams';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -93,9 +94,12 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       ? `${fileInputPrompt}\n\n${userChatInput}`
       : userChatInput;
 
-    // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
-    if (env.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+    // Initialize capabilities — sandbox skills (lazy-init)
+    {
+      const sandboxSessionId =
+        mode === 'chat'
+          ? chatId
+          : `debug-${hashStr(`${runningAppInfo.id}-${nodeId}-${chatId}`).slice(0, 40)}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -123,8 +127,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
     // Get sub apps — pi-agent-core manages reasoning, no plan tool needed.
-    // SHOW_SKILL replaces the generic agent sandbox: in skill mode the model uses skill
-    // tools (sandbox_write_file / sandbox_execute / ...) and must NEVER see sandbox_shell.
+    // Skill capability owns the sandbox session: the model uses skill tools
+    // (sandbox_write_file / sandbox_execute / ...) and must NEVER see sandbox_shell.
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
@@ -133,8 +137,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox:
-          !env.SHOW_SKILL && useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
         extraTools: capabilityTools
       }
     );
@@ -170,9 +173,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       lang
     });
 
-    // Append sandbox system prompt when sandbox is enabled (skipped in SHOW_SKILL mode —
-    // the skill capability owns the sandbox prompt and the model never sees sandbox_shell)
-    if (!env.SHOW_SKILL && useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    // Append sandbox system prompt when sandbox is enabled
+    // (skipped when skill capability is active — the skill capability owns the sandbox prompt)
+    if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
       formatedSystemPrompt =
         `${formatedSystemPrompt}\n\n${SANDBOX_SYSTEM_PROMPT}\n\n<ToolPriority>\nWhen both sandbox_shell / sandbox_get_file_url and sandbox_execute_* tools can fulfill the same task, prefer sandbox_shell and sandbox_get_file_url — they have higher priority.\n</ToolPriority>`.trim();
     }
@@ -215,11 +218,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     /* ===== Restore session messages from last AI history ===== */
     const piMessagesKey = `piMessages-${nodeId}`;
-    const lastHistory = chatHistories[chatHistories.length - 1];
-    const restoredMessages =
-      lastHistory?.obj === ChatRoleEnum.AI
-        ? (lastHistory.memories?.[piMessagesKey] as any[] | undefined) ?? []
-        : [];
+    let restoredMessages: any[] = [];
+    for (let i = chatHistories.length - 1; i >= 0; i--) {
+      if (chatHistories[i].obj === ChatRoleEnum.AI) {
+        const aiItem = chatHistories[i] as { memories?: Record<string, any> };
+        const stored = aiItem.memories?.[piMessagesKey] as any[] | undefined;
+        if (stored?.length) {
+          restoredMessages = stored;
+          break;
+        }
+      }
+    }
 
     /* ===== Create & run Agent ===== */
     const { Agent } = await import('@mariozechner/pi-agent-core');
@@ -238,7 +247,14 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         apiKey,
         getAgentState: () => agent.state,
         settings: { enabled: env.PI_AGENT_COMPACTION_ENABLED }
-      })
+      }),
+      onPayload: (params: any) => {
+        // Ensure tool_choice is set; some models require explicit tool_choice
+        if (params.tools?.length > 0 && params.tool_choice === undefined) {
+          params.tool_choice = 'auto';
+        }
+        return params;
+      }
     });
 
     // Collect text deltas to build answerText

@@ -87,6 +87,7 @@
   "editor_upload_failed": "上傳失敗",
   "editor_rename_failed": "重新命名失敗",
   "editor_delete_failed": "刪除失敗",
+  "editor_stale_detected": "檔案已被其他工作階段更新，刷新以檢視最新內容。",
   "preview_sync_failed_title": "同步沙箱失敗，本次預覽可能基於舊版檔案",
   "search_skill": "搜尋",
   "select_skill": "選擇 Skill",

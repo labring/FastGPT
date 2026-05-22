@@ -70,7 +70,7 @@ export type SandboxStatusItemType = {
   phase: SandboxStatusPhase;
   isWarmStart?: boolean; // present on 'connecting' and 'ready'
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
-  // 'uploadingPackage', 'extractingPackage' in session-runtime
+  // 'uploadingPackage', 'extractingPackage' in agent sandbox
   message?: string; // optional human-readable message
   // Present on 'ready' phase for sandboxes with HTTP service
   endpoint?: {

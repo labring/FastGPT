@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxSchema';
-import { SandboxMetadataSchema } from '@fastgpt/service/core/ai/sandbox/type';
 
 describe('SandboxInstance Schema', () => {
   it('should create a sandbox instance document with required fields', async () => {
@@ -13,10 +12,9 @@ describe('SandboxInstance Schema', () => {
       sandboxId: 'provider-sandbox-abc123',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'session-runtime',
+      chatId: 'session-chat-001',
       status: 'running',
       metadata: {
-        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -31,9 +29,8 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance(mockInstance);
     expect(doc.sandboxId).toBe(mockInstance.sandboxId);
     expect(doc.appId).toBe(mockInstance.appId);
-    expect(doc.chatId).toBe('session-runtime');
+    expect(doc.chatId).toBe('session-chat-001');
     expect(doc.status).toBe('running');
-    expect(doc.metadata?.sandboxType).toBe('session-runtime');
     expect(doc?.provider).toBe('opensandbox');
   });
 
@@ -46,7 +43,6 @@ describe('SandboxInstance Schema', () => {
       chatId: 'session-chat-001',
       status: 'running',
       metadata: {
-        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -67,10 +63,9 @@ describe('SandboxInstance Schema', () => {
       sandboxId: 'provider-sandbox-ghi789',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'session-runtime',
+      chatId: 'session-chat-001',
       status: 'invalid-status' as any,
       metadata: {
-        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -84,35 +79,15 @@ describe('SandboxInstance Schema', () => {
     expect(validation?.errors?.status).toBeDefined();
   });
 
-  it('should validate metadata.sandboxType enum via Zod schema', async () => {
-    // metadata is stored as Mongoose Mixed and validated at the application
-    // layer via the Zod schema, so assert against SandboxMetadataSchema here.
-    const result = SandboxMetadataSchema.safeParse({
-      sandboxType: 'invalid-type',
-      teamId: '507f1f77bcf86cd799439012',
-      tmbId: '507f1f77bcf86cd799439013',
-      image: { repository: 'node' }
-    });
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const sandboxTypeIssue = result.error.issues.find((issue) =>
-        issue.path.includes('sandboxType')
-      );
-      expect(sandboxTypeIssue).toBeDefined();
-    }
-  });
-
   it('should allow endpoint and storage as optional fields in metadata', async () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-mno345',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
-      chatId: 'session-runtime',
+      chatId: 'session-chat-001',
       status: 'running',
       metadata: {
-        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -135,7 +110,6 @@ describe('SandboxInstance Schema', () => {
 
     expect(doc.metadata?.endpoint?.host).toBe('localhost');
     expect(doc.metadata?.endpoint?.port).toBe(8080);
-    // expect(doc.storage?.size).toBe(1024);
   });
 
   it('should support stopped status', async () => {
@@ -147,7 +121,6 @@ describe('SandboxInstance Schema', () => {
       chatId: 'session-chat-002',
       status: 'stopped',
       metadata: {
-        sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
@@ -158,7 +131,6 @@ describe('SandboxInstance Schema', () => {
     });
 
     expect(doc.status).toBe('stopped');
-    expect(doc.metadata?.sandboxType).toBe('session-runtime');
     expect(doc.metadata?.skillIds).toHaveLength(2);
   });
 });
