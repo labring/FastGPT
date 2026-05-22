@@ -29,6 +29,7 @@ type State = {
 };
 
 const createCustomStorage = () => {
+  // source/chatId/appId 跟当前 tab 绑定，放 sessionStorage；其余跨 tab 共享字段放 localStorage
   const sessionKeys = ['source', 'chatId', 'appId'];
 
   return {
@@ -174,7 +175,10 @@ export const useChatStore = create<State>()(
   )
 );
 
-// Storage 事件监听器，用于跨 tab 同步
+/**
+ * 跨 tab 同步 localStorage 中的持久字段（lastChatId、appChatIdMap 等）。
+ * sessionStorage 字段（source/chatId/appId）各 tab 独立，不参与 storage 事件合并。
+ */
 const createStorageListener = (store: any) => {
   const handleStorageChange = (e: StorageEvent) => {
     if (e.key === 'chatStore' && e.newValue && e.storageArea === localStorage) {

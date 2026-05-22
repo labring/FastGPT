@@ -71,6 +71,11 @@ export const stripChatValueFileUrls = (value: UserChatItemValueItemType[] = []) 
     return item;
   });
 
+/**
+ * 判断是否应清空恢复流开始前的 AI 占位内容。
+ * 仅在「尚未准备 resume AI record」且「尚未收到任何 resume 输出」时重置，
+ * 避免恢复过程中误清已 replay 的流式文本或交互状态。
+ */
 export const shouldResetResumeAiPlaceholder = ({
   hasPreparedResumeAiRecord,
   hasReceivedResumeOutput
@@ -79,6 +84,10 @@ export const shouldResetResumeAiPlaceholder = ({
   hasReceivedResumeOutput: boolean;
 }) => !hasPreparedResumeAiRecord && !hasReceivedResumeOutput;
 
+/**
+ * 判断是否用 resume 占位内容覆盖当前 AI record 的 value。
+ * 已有真实 AI 输出时不覆盖；空 record 时可写入「停止中」等提示或占位标记。
+ */
 export const shouldReplaceResumeAiValue = ({
   hasExistingAiOutput,
   text,
@@ -89,6 +98,20 @@ export const shouldReplaceResumeAiValue = ({
   resetExistingValue?: boolean;
 }) => !hasExistingAiOutput && (!!text || !!resetExistingValue);
 
+/**
+ * 恢复流结束时，用 completed records 覆盖当前聊天记录，同时保留恢复过程中的中间状态。
+ *
+ * 覆盖 completed records 会丢失两类恢复期间才存在的数据：
+ * 1. 当前 streaming AI record 上 replay 出来的 `responseData`（含 `formInputResult`）；
+ * 2. 已提交 `userInput` 交互节点里经 {@link refreshSubmittedFormInteractiveValues} 回填的 `inputForm.value`。
+ *
+ * 合并策略：
+ * - `responseData`：仅对 `dataId === responseChatId` 的 AI 消息，把 current 中多出的节点响应追加进去（去重）；
+ * - 交互值：优先按 `dataId` 匹配 current AI record；匹配不到时，从所有 current AI record 中
+ *   按 {@link areSameInteractive} 身份规则寻找已提交交互并覆盖 completed 里的空值。
+ *
+ * 若 current 侧既无 replay `responseData` 也无交互态，直接返回 completed records，避免无意义遍历。
+ */
 export const mergeResumeCompletedChatRecords = ({
   currentRecords,
   completedRecords,
@@ -152,6 +175,7 @@ export const mergeResumeCompletedChatRecords = ({
 const areSameChatResponseDataItem = (a: ChatHistoryItemResType, b: ChatHistoryItemResType) =>
   a.id === b.id && a.nodeId === b.nodeId;
 
+/** 判断两个交互是否为同一轮工作流交互（比较最内层 interactive，而非 child 包装层）。 */
 const areSameInteractive = (
   a: WorkflowInteractiveResponseType,
   b: WorkflowInteractiveResponseType
@@ -161,10 +185,16 @@ const areSameInteractive = (
 
   return (
     finalA.type === finalB.type &&
+    // 同一轮交互：usageId 相同，或 entryNodeIds 数组完全一致（dataId 变化时仍视为同一表单）
     (finalA.usageId === finalB.usageId || isSameArray(finalA.entryNodeIds, finalB.entryNodeIds))
   );
 };
 
+/**
+ * 将 current 侧已提交的 `userInput` 交互写回 completed 侧同身份交互节点。
+ * completed record 持久化后 `inputForm.value` 可能为空（尤其 fileSelect URL 数组），
+ * 而恢复流 replay 期间已在 current record 中 hydrate 过，此处防止覆盖时丢失。
+ */
 const mergeSubmittedInteractiveValues = ({
   completedValues,
   currentValues
@@ -207,6 +237,13 @@ const mergeSubmittedInteractiveValues = ({
   return hasUpdated ? nextValues : completedValues;
 };
 
+/**
+ * 恢复流 replay 交互节点时，判断是否应 append 到 AI record.value。
+ *
+ * 核心约束：若 existing 中已有同一身份且已 submitted 的 `userInput`，
+ * 则跳过 incoming 的未提交副本，避免空表单覆盖已回填的文件/字段值。
+ * 不同身份交互，或同身份但 existing 尚未 submitted（例如中间插入了确认文本），仍允许 append。
+ */
 export const shouldAppendResumeInteractive = ({
   existingValues,
   incomingInteractive
@@ -232,6 +269,16 @@ export const shouldAppendResumeInteractive = ({
   );
 };
 
+/**
+ * 恢复流收到 `flowNodeResponse` 且带 `formInputResult` 时，把节点结果写回已提交的表单交互节点。
+ *
+ * 匹配目标交互节点（二者满足其一即可）：
+ * 1. `entryNodeIds` 包含 `nodeResponse.nodeId`；
+ * 2. 全历史仅有一个 submitted 表单交互，且其字段 key 与 `formInputResult` 有交集（dataId 变化时的兜底）。
+ *
+ * `fileSelect` 字段会把 URL 字符串数组归一化为 `{ name, url }[]`（复用 `normalizeFormInputResultFile`）。
+ * 无任何字段更新时返回原 `histories` 引用，避免触发多余渲染。
+ */
 export const refreshSubmittedFormInteractiveValues = ({
   histories,
   nodeResponse
@@ -272,6 +319,7 @@ export const refreshSubmittedFormInteractiveValues = ({
       }
       if (!finalInteractive.params.submitted) return value;
 
+      // 优先 nodeId 精确匹配；仅一个 submitted 表单时允许 key 交集兜底（覆盖 dataId 漂移）
       const matchedByNodeId = finalInteractive.entryNodeIds?.includes(nodeResponse.nodeId);
       const matchedByOnlySubmittedForm =
         submittedFormInteractiveCount === 1 &&
