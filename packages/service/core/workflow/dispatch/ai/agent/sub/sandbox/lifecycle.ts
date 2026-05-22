@@ -22,7 +22,6 @@ import {
   disconnectFromProviderSandbox,
   buildBaseContainerEnv
 } from '../../../../../../agentSkills/sandboxConfig';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
 import { env } from '../../../../../../../env';
@@ -172,11 +171,11 @@ async function deploySkillsToSandbox(
 // --- Exported lifecycle functions ---
 
 /**
- * 创建或复用 session-runtime 沙箱。
+ * 创建或复用 agent skill 沙箱。
  *
  * Uses findOneAndUpdate with upsert to atomically check-and-reserve the
  * session slot, preventing two replicas from creating duplicate containers
- * for the same chatId + sandboxType combination.
+ * for the same chatId combination.
  */
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
@@ -188,14 +187,13 @@ export async function createAgentSandbox(
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
-  // Step 1: Atomically reserve or find an existing session-runtime sandbox.
-  // Uses the unique partial index on (appId, chatId, metadata.sandboxType)
+  // Step 1: Atomically reserve or find an existing sandbox.
+  // Uses the unique partial index on (appId, chatId)
   // so that only one replica can claim the slot.
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const reservation = await MongoSandboxInstance.findOneAndUpdate(
     {
-      chatId,
-      'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+      chatId
     },
     {
       $setOnInsert: {
@@ -208,7 +206,6 @@ export async function createAgentSandbox(
         lastActiveAt: new Date(),
         createdAt: new Date(),
         metadata: {
-          sandboxType: SandboxTypeEnum.sessionRuntime,
           sessionId,
           teamId,
           tmbId,
@@ -221,7 +218,7 @@ export async function createAgentSandbox(
   ).lean();
 
   if (reservation) {
-    logger.info('[Agent Sandbox] Reusing existing session-runtime sandbox', {
+    logger.info('[Agent Sandbox] Reusing existing sandbox', {
       sessionId,
       providerSandboxId: reservation.sandboxId
     });
@@ -347,7 +344,7 @@ export async function createAgentSandbox(
   }
 
   // Step 2: Fetch skills and filter deployable ones (skip when no skills configured)
-  logger.info('[Agent Sandbox] Creating new session-runtime sandbox', {
+  logger.info('[Agent Sandbox] Creating new sandbox', {
     skillIds,
     teamId,
     sessionId
@@ -375,16 +372,15 @@ export async function createAgentSandbox(
     }
   }
 
-  // Check active session-runtime sandbox count limit
-  const maxSessionRuntime =
-    global.feConfigs?.limit?.agentSandboxMaxSessionRuntime ?? env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
-  if (maxSessionRuntime !== undefined) {
+  // Check active sandbox count limit
+  const maxCount =
+    global.feConfigs?.limit?.agentSandboxMaxCount ?? env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
+  if (maxCount !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
-      status: SandboxStatusEnum.running,
-      'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+      status: SandboxStatusEnum.running
     });
-    if (activeCount >= maxSessionRuntime) {
-      const message = `Active session-runtime sandbox limit reached (${activeCount}/${maxSessionRuntime}). Please try again later.`;
+    if (activeCount >= maxCount) {
+      const message = `Active agent sandbox limit reached (${activeCount}/${maxCount}). Please try again later.`;
       onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
       throw new Error(message);
     }
@@ -409,7 +405,6 @@ export async function createAgentSandbox(
           metadata: {
             teamId,
             tmbId,
-            sandboxType: SandboxTypeEnum.sessionRuntime,
             sessionId
           }
         }
@@ -447,11 +442,10 @@ export async function createAgentSandbox(
       { sandboxId: sessionId },
       {
         $set: {
-          appId: teamId, // session-runtime uses teamId as appId
+          appId: teamId, // agent sandbox uses teamId as appId
           userId: tmbId,
           chatId,
           metadata: {
-            sandboxType: SandboxTypeEnum.sessionRuntime,
             sessionId,
             teamId,
             tmbId,

@@ -3,7 +3,6 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { env } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -194,7 +193,7 @@ export const getSandboxClient = async (
   return sandbox;
 };
 
-/** Like getSandboxClient but checks for a session-runtime sandbox (skill sandbox) first. */
+/** Like getSandboxClient but checks for an existing sandbox by chatId first. */
 export const getSandboxClientByChat = async (
   props: UnionIdType,
   opts: {
@@ -202,17 +201,16 @@ export const getSandboxClientByChat = async (
     createConfig?: OpenSandboxConfigType;
   } = {}
 ) => {
-  // Prefer sessionRuntime sandbox (skill sandbox)
-  const sessionSandbox = await MongoSandboxInstance.findOne({
-    chatId: props.chatId,
-    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+  // Prefer an existing sandbox already associated with this chatId
+  const existingSandbox = await MongoSandboxInstance.findOne({
+    chatId: props.chatId
   }).lean();
 
-  if (sessionSandbox) {
-    return getSandboxClient({ sandboxId: sessionSandbox.sandboxId }, opts);
+  if (existingSandbox) {
+    return getSandboxClient({ sandboxId: existingSandbox.sandboxId }, opts);
   }
 
-  // Fallback: generic sandbox (useAgentSandbox mode)
+  // Fallback: create/find by appId/userId/chatId hash
   return getSandboxClient(props, opts);
 };
 

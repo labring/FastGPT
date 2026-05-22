@@ -118,7 +118,7 @@ export type FastGPTFeConfigsType = {
   limit?: {
     exportDatasetLimitMinutes?: number;
     websiteSyncLimitMinuted?: number;
-    agentSandboxMaxSessionRuntime?: number;
+    agentSandboxMaxCount?: number;
     workflowParallelRunMaxConcurrency?: number;
   };
 

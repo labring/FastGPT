@@ -207,24 +207,24 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex gap={4} flexWrap={'wrap'}>
-            <Flex alignItems={'center'}>
-              <Flex alignItems={'center'} flex={'0 0 127px'}>
-                <FormLabel fontSize={'12px'}>{t('publish:show_skill_reference')}</FormLabel>
-                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')} />
-              </Flex>
-              <Switch
-                {...register('showSkillReferences', {
-                  onChange(e) {
-                    if (e.target.checked) {
-                      setValue('showRunningStatus', true);
-                    }
-                    autoSave();
-                  }
-                })}
-                isChecked={showSkillReferences}
-              />
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={'0 0 127px'}>
+              <FormLabel fontSize={'12px'}>{t('publish:show_skill_reference')}</FormLabel>
+              <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')} />
             </Flex>
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                  autoSave();
+                }
+              })}
+              isChecked={showSkillReferences}
+            />
           </Flex>
+        </Flex>
       </Flex>
     </Flex>
   );

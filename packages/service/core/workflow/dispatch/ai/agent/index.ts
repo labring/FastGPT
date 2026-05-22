@@ -47,6 +47,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
 import { resolveDatasetParams } from './resolveDatasetParams';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -216,7 +217,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
     {
       const sandboxSessionId =
-        mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}-${chatId}`;
+        mode === 'chat'
+          ? chatId
+          : `debug-${hashStr(`${runningAppInfo.id}-${nodeId}-${chatId}`).slice(0, 40)}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,

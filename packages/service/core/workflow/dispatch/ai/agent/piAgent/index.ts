@@ -27,6 +27,7 @@ import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { resolveDatasetParams } from '../resolveDatasetParams';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -96,7 +97,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Initialize capabilities — sandbox skills (lazy-init)
     {
       const sandboxSessionId =
-        mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}-${chatId}`;
+        mode === 'chat'
+          ? chatId
+          : `debug-${hashStr(`${runningAppInfo.id}-${nodeId}-${chatId}`).slice(0, 40)}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
@@ -134,8 +137,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox:
-          useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
         extraTools: capabilityTools
       }
     );

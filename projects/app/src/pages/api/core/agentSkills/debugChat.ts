@@ -65,7 +65,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
 
 /**
  * Build a minimal two-node runtime workflow for skill debug:
- * workflowStart -> agent (with skillId, sessionRuntime sandbox)
+ * workflowStart -> agent (with skillId, agent sandbox)
  */
 export function buildDebugRuntimeNodes(
   skillId: string,

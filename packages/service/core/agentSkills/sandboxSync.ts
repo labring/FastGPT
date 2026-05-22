@@ -1,13 +1,12 @@
 /**
  * Skill Sandbox Sync
  *
- * Push the latest MinIO package.zip to the Run Preview sessionRuntime sandbox
+ * Push the latest MinIO package.zip to the Run Preview sandbox
  * and unzip in-place. Only clears first-level entries from the current zip,
  * leaving other skills' directories in the same workspace untouched.
  *
  * Targeted sandbox instance:
- *   chatId = `debug-${skillId}-${AGENT_NODE_ID}`
- *   metadata.sandboxType = SandboxTypeEnum.sessionRuntime
+ *   chatId = `debug-${hashStr(`${skillId}-${AGENT_NODE_ID}`).slice(0, 40)}`
  *
  * AGENT_NODE_ID must stay in sync with debugChat.ts:66.
  *
@@ -16,7 +15,6 @@
  */
 import JSZip from 'jszip';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { getSandboxClient } from '../ai/sandbox/controller';
 import { downloadSkillPackage } from './storage';
@@ -25,6 +23,7 @@ import { listZipDirectory } from './packageEditor';
 import { acquireSkillEditLock, releaseSkillEditLock } from './editLock';
 import { MongoAgentSkills } from './schema';
 import { getLogger, LogCategories } from '../../common/logger';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -42,7 +41,7 @@ function shellSingleQuote(s: string): string {
 }
 
 /**
- * Sync current skill's MinIO package to the Run Preview sessionRuntime sandbox.
+ * Sync current skill's MinIO package to the Run Preview sandbox.
  *
  * - no sandbox instance → { synced: false, reason: 'noSandbox' } (lifecycle creates with latest zip)
  * - instance exists → download zip → write to container → remove only zip's root entries → unzip
@@ -53,10 +52,9 @@ export async function syncSkillSandbox(params: {
 }): Promise<SyncSkillSandboxResult> {
   const { skillId, teamId } = params;
 
-  const sessionId = `debug-${skillId}-${AGENT_NODE_ID}`;
+  const sessionId = `debug-${hashStr(`${skillId}-${AGENT_NODE_ID}`).slice(0, 40)}`;
   const instance = await MongoSandboxInstance.findOne({
-    chatId: sessionId,
-    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
+    chatId: sessionId
   }).lean();
 
   if (!instance) {
@@ -114,7 +112,7 @@ export async function syncSkillSandbox(params: {
       );
     }
 
-    addLog.info('[Sandbox] Synced sessionRuntime sandbox', {
+    addLog.info('[Sandbox] Synced sandbox', {
       skillId,
       sandboxId: instance.sandboxId,
       sessionId,
