@@ -134,7 +134,7 @@ const ChatContent = (props: ChatPageProps) => {
   if (!isInitedUser) {
     return (
       <PageContainer isLoading flex={'1'} p={4}>
-        <NextHead title={feConfigs?.systemTitle} icon={feConfigs?.favicon} />
+        <NextHead title={feConfigs?.systemTitle} />
       </PageContainer>
     );
   }

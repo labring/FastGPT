@@ -411,7 +411,7 @@ const HomeChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} icon={getWebReqUrl(feConfigs?.favicon)} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
 
       {/* show history slider */}
       {isPc ? (
