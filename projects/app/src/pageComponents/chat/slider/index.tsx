@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Flex, Box, HStack } from '@chakra-ui/react';
+import { Flex, Box, HStack, Text } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -167,14 +167,20 @@ const LogoSection = () => {
       justifyContent={isCollapsed ? 'center' : 'space-between'}
     >
       <AnimatedSection show={!isCollapsed}>
-        <MyImage
-          w="32px"
-          h="32px"
-          src={logoSrc}
-          alt="logo"
-          borderRadius="8px"
-          loading="eager"
-        />
+        <Flex align="center" gap="8px">
+          <MyImage
+            w="32px"
+            h="32px"
+            src={logoSrc}
+            alt="logo"
+            borderRadius="8px"
+            flexShrink={0}
+            loading="eager"
+          />
+          <Text fontSize="18px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
+            {feConfigs?.systemTitle}
+          </Text>
+        </Flex>
       </AnimatedSection>
 
       <AnimatedSection show={isCollapsed}>

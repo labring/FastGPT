@@ -1,5 +1,5 @@
 import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
@@ -11,13 +11,19 @@ const WelcomeHomeBox = () => {
 
   return (
     <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4}>
-      <MyImage
-        alt="logo"
-        w="32px"
-        h="32px"
-        src={feConfigs?.systemLogo || LOGO_ICON}
-        borderRadius="8px"
-      />
+      <Flex align="center" gap="8px">
+        <MyImage
+          alt="logo"
+          w="32px"
+          h="32px"
+          src={feConfigs?.systemLogo || LOGO_ICON}
+          borderRadius="8px"
+          flexShrink={0}
+        />
+        <Text fontSize="18px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
+          {feConfigs?.systemTitle}
+        </Text>
+      </Flex>
       <Box color="myGray.500">{slogan}</Box>
     </Flex>
   );

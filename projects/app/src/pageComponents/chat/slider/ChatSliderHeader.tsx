@@ -6,7 +6,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'react-i18next';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Text } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -67,6 +67,9 @@ const ChatSliderHeader = ({ title }: Props) => {
           h="32px"
           borderRadius="8px"
         />
+        <Text ml="8px" fontSize="18px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
+          {feConfigs?.systemTitle}
+        </Text>
       </Flex>
 
       <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
