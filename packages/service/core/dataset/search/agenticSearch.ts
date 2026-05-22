@@ -8,7 +8,11 @@ import type { AgenticSearchResult } from 'diting-rag-ts';
 import { detectLang } from 'diting-rag-ts';
 import { chunkItemsToSearchResults } from './providers/agenticAdapter';
 import { createFastGPTProviders } from './providers/fastgptProviders';
-import { defaultSearchDatasetData, type SearchDatasetDataResponse } from './controller';
+import {
+  defaultSearchDatasetData,
+  type SearchDatasetDataResponse,
+  resolveCollectionFilter
+} from './controller';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SearchDatasetDataProps } from './controller';
@@ -189,12 +193,44 @@ export async function agenticSearchDispatch(
       { datasetId: { $in: datasetIds }, forbid: true },
       '_id'
     ).lean();
-    const mergedForbidCollectionIds = (() => {
-      const ids = new Set<string>();
-      systemForbiddenCols.forEach((c) => ids.add(String(c._id)));
-      props.authForbidCollectionIds?.forEach((id) => ids.add(id));
-      return ids.size > 0 ? Array.from(ids) : undefined;
-    })();
+    const forbidSet = new Set<string>();
+    systemForbiddenCols.forEach((c) => forbidSet.add(String(c._id)));
+    props.authForbidCollectionIds?.forEach((id) => forbidSet.add(id));
+
+    // 标签过滤：将白名单转黑名单追加到 forbidCollectionIds
+    const filterWhitelist = await resolveCollectionFilter({
+      teamId,
+      datasetIds,
+      collectionFilterMatch: props.collectionFilterMatch
+    });
+    if (filterWhitelist !== undefined) {
+      if (filterWhitelist.length === 0) {
+        // 标签过滤结果为空，直接返回空
+        return {
+          searchRes: [],
+          embeddingTokens: 0,
+          reRankInputTokens: 0,
+          searchMode: DatasetSearchModeEnum.mixedRecall,
+          limit: 0,
+          similarity: 0,
+          usingReRank: !!rerankModel,
+          usingSimilarityFilter: false
+        };
+      }
+      // 查出 datasets 下所有可用 collection，不在白名单中的加入 forbid
+      const allCols = await MongoDatasetCollection.find(
+        { datasetId: { $in: datasetIds }, forbid: { $ne: true }, type: { $ne: 'folder' } },
+        '_id'
+      ).lean();
+      const whitelistSet = new Set(filterWhitelist);
+      allCols
+        .map((c) => String(c._id))
+        .filter((id) => !whitelistSet.has(id))
+        .forEach((id) => forbidSet.add(id));
+    }
+
+    const mergedForbidCollectionIds: string[] | undefined =
+      forbidSet.size > 0 ? Array.from(forbidSet) : undefined;
 
     // 创建 Agentic Search
     const agent = createAgenticSearch({
