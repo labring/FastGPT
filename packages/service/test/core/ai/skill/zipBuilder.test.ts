@@ -206,6 +206,18 @@ ${largeMarkdown}`;
       expect(result.skillMdPath).toBe('my-skill/SKILL.md');
     });
 
+    it('should validate zip with SKILL.md in nested subfolders (workspace root style)', async () => {
+      const zip = new JSZip();
+      zip.file('skills/my-skill/SKILL.md', '---\nname: test\n---\n\n# Test');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateZipStructure(buffer);
+
+      expect(result.valid).toBe(true);
+      expect(result.hasSkillMd).toBe(true);
+      expect(result.skillMdPath).toBe('skills/my-skill/SKILL.md');
+    });
+
     it('should invalidate zip without SKILL.md', async () => {
       const zip = new JSZip();
       zip.file('README.md', '# README');
@@ -250,6 +262,24 @@ ${largeMarkdown}`;
       expect(Object.keys(result.assets!)).toContain('assets/icon.png');
       expect(Object.keys(result.assets!)).toContain('README.md');
       expect(Object.keys(result.assets!)).not.toContain('my-skill/README.md');
+    });
+
+    it('should extract SKILL.md from nested subfolders and strip prefix from assets, preserving root level assets', async () => {
+      const zip = new JSZip();
+      const skillMd = '---\nname: test\n---\n';
+      zip.file('skills/my-skill/SKILL.md', skillMd);
+      zip.file('skills/my-skill/assets/icon.png', Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      zip.file('package.json', '{}');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractSkillPackage(buffer);
+
+      expect(result.success).toBe(true);
+      expect(result.skillMd).toBe(skillMd);
+      expect(result.assets).toBeDefined();
+      expect(Object.keys(result.assets!)).toContain('assets/icon.png');
+      expect(Object.keys(result.assets!)).toContain('package.json');
+      expect(Object.keys(result.assets!)).not.toContain('skills/my-skill/assets/icon.png');
     });
 
     it('should return error for missing SKILL.md', async () => {
@@ -372,9 +402,44 @@ description: Real runtime skill
 
       expect(result.name).toBe('real-runtime-skill');
       expect(files).toEqual(
-        expect.arrayContaining(['real-runtime-skill/SKILL.md', 'real-runtime-skill/src/main.ts'])
+        expect.arrayContaining([
+          'skills/real-runtime-skill/SKILL.md',
+          'skills/real-runtime-skill/src/main.ts'
+        ])
       );
       expect(files).not.toContain('database-display-name/SKILL.md');
+    });
+
+    it('preserves other files outside rootPrefix like .bashrc and other directories', async () => {
+      const zip = new JSZip();
+      const skillMd = `---
+name: real-runtime-skill
+description: Real runtime skill
+---
+
+# Real runtime skill`;
+
+      zip.file('skills/real-runtime-skill/SKILL.md', skillMd);
+      zip.file('skills/real-runtime-skill/src/main.ts', 'export default 1;');
+      zip.file('.local/share/code-server/User/settings.json', '{}');
+      zip.file('abc/SKILL.md', '---\nname: abc\n---\n');
+      zip.file('.bashrc', '# bashrc');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await standardizeSkillPackageBySkillMdName(buffer);
+      const standardizedZip = await JSZip.loadAsync(result.buffer);
+      const files = Object.keys(standardizedZip.files).filter(
+        (path) => !standardizedZip.files[path].dir
+      );
+      expect(files).toEqual(
+        expect.arrayContaining([
+          'skills/real-runtime-skill/SKILL.md',
+          'skills/real-runtime-skill/src/main.ts',
+          'skills/real-runtime-skill/.local/share/code-server/User/settings.json',
+          'skills/real-runtime-skill/abc/SKILL.md',
+          'skills/real-runtime-skill/.bashrc'
+        ])
+      );
     });
   });
 });

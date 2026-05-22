@@ -17,7 +17,8 @@ import {
   isValidArrayReferenceValue,
   getElseIFLabel,
   clientGetWorkflowToolRunUserQuery,
-  removeUnauthModels
+  removeUnauthModels,
+  checkWorkflowUsesSandbox
 } from '@fastgpt/global/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
@@ -1405,5 +1406,69 @@ describe('removeUnauthModels', () => {
     const result = await removeUnauthModels({ modules, allowedModels });
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
     expect(result?.[1].inputs[0].value).toBeUndefined();
+  });
+});
+
+describe('checkWorkflowUsesSandbox', () => {
+  it('should return false if nodes is empty or undefined', () => {
+    expect(checkWorkflowUsesSandbox([])).toBe(false);
+    expect(checkWorkflowUsesSandbox(undefined as any)).toBe(false);
+  });
+
+  it('should return true if any node input has useAgentSandbox as true', () => {
+    const nodes: any = [
+      {
+        inputs: [{ key: NodeInputKeyEnum.useAgentSandbox, value: true }]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(true);
+  });
+
+  it('should return false if useAgentSandbox input is false or not present', () => {
+    const nodes: any = [
+      {
+        inputs: [
+          { key: NodeInputKeyEnum.useAgentSandbox, value: false },
+          { key: 'other', value: true }
+        ]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(false);
+  });
+
+  it('should return true if any node input has editSkillId', () => {
+    const nodes: any = [
+      {
+        inputs: [{ key: NodeInputKeyEnum.editSkillId, value: 'some-skill-id' }]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(true);
+  });
+
+  it('should return false if editSkillId is empty', () => {
+    const nodes: any = [
+      {
+        inputs: [{ key: NodeInputKeyEnum.editSkillId, value: '' }]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(false);
+  });
+
+  it('should return true if any node input has non-empty skills array', () => {
+    const nodes: any = [
+      {
+        inputs: [{ key: NodeInputKeyEnum.skills, value: [{ skillId: 'skill-1' }] }]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(true);
+  });
+
+  it('should return false if skills array is empty', () => {
+    const nodes: any = [
+      {
+        inputs: [{ key: NodeInputKeyEnum.skills, value: [] }]
+      }
+    ];
+    expect(checkWorkflowUsesSandbox(nodes)).toBe(false);
   });
 });

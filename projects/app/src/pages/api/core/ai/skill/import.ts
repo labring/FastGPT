@@ -126,8 +126,15 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       'package';
     const pkgDescription = body.description ?? '';
 
+    // Prefix files with 'skills/{pkgName}/' to maintain workspace structure
+    const finalFileMap: Record<string, Buffer> = {};
+    const prefix = `skills/${pkgName}/`;
+    for (const [key, value] of Object.entries(fileMap)) {
+      finalFileMap[`${prefix}${key}`] = value;
+    }
+
     // Repack the entire fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
-    const zipBuffer = await repackFileMapAsZip(fileMap);
+    const zipBuffer = await repackFileMapAsZip(finalFileMap);
 
     // Build skill package using package-level metadata only
     const skillPackage: SkillPackageType = {

@@ -28,7 +28,7 @@ import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -120,14 +120,17 @@ const Header = () => {
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
 
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
   const { runAsync: onClickDeleteSkill } = useRequest(deleteSkill, {
     onSuccess() {
       router.push('/dashboard/skill');
     },
     successToast: t('skill:delete_success'),
     errorToast: t('skill:delete_failed')
+  });
+
+  const { openConfirm: openConfirmDelete, ConfirmModal: DeleteConfirmModal } = useConfirm({
+    type: 'delete',
+    title: t('skill:confirm_delete_title')
   });
 
   const { runAsync: onUpdateSkill } = useRequest(
@@ -221,13 +224,33 @@ const Header = () => {
             label: t('common:Delete'),
             onClick: () => {
               if (!skillDetail) return;
-              setDeleteOpen(true);
+              openConfirmDelete({
+                customContent: (
+                  <Trans
+                    i18nKey={'skill:confirm_delete_with_refs'}
+                    values={{ count: skillDetail?.appCount ?? 0 }}
+                    components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                  />
+                ),
+                onConfirm: () => onClickDeleteSkill(skillDetail._id),
+                confirmText: t('skill:confirm_delete_action'),
+                confirmButtonVariant: 'dangerFill',
+                inputConfirmText: skillDetail.name
+              })();
             }
           }
         ]
       }
     ],
-    [t, skillDetail, onExportSkill, setEditedSkill, setShowPermModal, setDeleteOpen]
+    [
+      t,
+      skillDetail,
+      onExportSkill,
+      setEditedSkill,
+      setShowPermModal,
+      openConfirmDelete,
+      onClickDeleteSkill
+    ]
   );
 
   if (!skillDetail) return null;
@@ -313,23 +336,7 @@ const Header = () => {
       )}
 
       {/* 删除确认弹窗 */}
-      <ConfirmWarningModal
-        isOpen={deleteOpen}
-        title={t('skill:confirm_delete_title')}
-        content={
-          <Trans
-            i18nKey={'skill:confirm_delete_with_refs'}
-            values={{ count: skillDetail?.appCount ?? 0 }}
-            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-          />
-        }
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={() => (skillDetail ? onClickDeleteSkill(skillDetail._id) : undefined)}
-        cancelText={t('common:Cancel')}
-        confirmText={t('skill:confirm_delete_action')}
-        confirmButtonVariant={'dangerFill'}
-        inputConfirmText={skillDetail.name}
-      />
+      <DeleteConfirmModal />
 
       {/* 编辑信息弹窗 */}
       {!!editedSkill && (

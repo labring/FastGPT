@@ -11,7 +11,13 @@ import {
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -110,6 +116,10 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const { t } = useTranslation();
   const { toast } = useToast();
   const { fitView, getViewport, setViewport } = useReactFlow();
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const showSandbox = feConfigs?.show_agent_sandbox;
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
@@ -183,6 +193,35 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const flowData2StoreDataAndCheck = useCallback(
     (hideTip = false) => {
       const nodes = getNodes();
+
+      // Sandbox unavailable check
+      const sandboxUnavailableNode = nodes.find((node) => {
+        if (node.data.flowNodeType === FlowNodeTypeEnum.agent) {
+          const useAgentSandbox = node.data.inputs.find(
+            (input) => input.key === NodeInputKeyEnum.useAgentSandbox
+          )?.value;
+          return !!useAgentSandbox && (!showSandbox || !enableSandbox);
+        }
+        return false;
+      });
+
+      if (sandboxUnavailableNode) {
+        if (!hideTip) {
+          onUpdateNodeError(sandboxUnavailableNode.data.nodeId, true);
+          fitView({
+            nodes: [sandboxUnavailableNode],
+            padding: 0.3
+          });
+          toast({
+            status: 'warning',
+            title: !showSandbox
+              ? t('skill:sandbox_system_not_configured_toast')
+              : t('skill:sandbox_plan_not_supported_title')
+          });
+        }
+        return;
+      }
+
       const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
       if (!checkResults) {
@@ -205,7 +244,17 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         });
       }
     },
-    [getNodes, edges, onRemoveError, fitView, toast, t, onUpdateNodeError]
+    [
+      getNodes,
+      edges,
+      onRemoveError,
+      fitView,
+      toast,
+      t,
+      onUpdateNodeError,
+      showSandbox,
+      enableSandbox
+    ]
   );
 
   // 4. initData - 初始化工作流数据

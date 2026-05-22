@@ -184,7 +184,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
     }
 
     const packageRootName = extractSkillNameFromSkillMd(skillMd);
-    const zipBuffer = await createSkillPackage({ name: packageRootName, skillMd });
+    const zipBuffer = await createSkillPackage({ name: `skills/${packageRootName}`, skillMd });
     const versionId = new Types.ObjectId().toString();
 
     const storageInfo = await uploadSkillPackage({

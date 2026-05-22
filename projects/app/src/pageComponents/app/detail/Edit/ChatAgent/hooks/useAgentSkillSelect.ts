@@ -14,8 +14,9 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkAgentSkillSandboxUnavailable } from '../utils';
-import type { SkillSandboxPlanWarningType } from '@/components/core/skill/useSkillSandboxOperationGuard';
 import { useSelectedAgentSkillStatus } from '../../FormComponent/ToolSelector/hooks/useSelectedAgentSkillStatus';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 /**
  * 管理 ChatAgent 表单中的 Skill 选择与 sandbox 开关联动。
@@ -36,11 +37,14 @@ export const useAgentSkillSelect = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [sandboxPlanWarning, setSandboxPlanWarning] = useState<SkillSandboxPlanWarningType>();
+  const { isTeamAdmin } = useUserStore();
+  const { openConfirm, ConfirmModal } = useConfirm();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
   const hasShownSandboxUnavailableWarningRef = useRef(false);
-  const closeSandboxPlanWarning = useCallback(() => {
-    setSandboxPlanWarning(undefined);
-  }, []);
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
@@ -65,11 +69,27 @@ export const useAgentSkillSelect = ({
       return;
     }
     if (!enableSandbox) {
-      setSandboxPlanWarning('skill');
+      openConfirm({
+        title: t('skill:sandbox_plan_not_supported_title'),
+        customContent: t('skill:sandbox_skill_plan_not_supported_content'),
+        onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+        confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+        cancelText: t('common:Close'),
+        showCancel: isTeamAdmin
+      })();
       return;
     }
     onOpenSkillSelect();
-  }, [enableSandbox, onOpenSkillSelect, showSandbox, t, toast]);
+  }, [
+    enableSandbox,
+    onOpenSkillSelect,
+    showSandbox,
+    t,
+    toast,
+    openConfirm,
+    isTeamAdmin,
+    onOpenRecharge
+  ]);
 
   const onAddAgentSkill = useCallback(
     (skill: SelectedAgentSkillItemType) => {
@@ -104,16 +124,25 @@ export const useAgentSkillSelect = ({
 
   const onChangeAgentSandbox = useCallback(
     (checked: boolean) => {
-      if (!showSandbox) {
-        toast({
-          status: 'warning',
-          title: t('skill:sandbox_system_not_configured_toast')
-        });
-        return;
-      }
-      if (!enableSandbox) {
-        setSandboxPlanWarning('switch');
-        return;
+      if (checked) {
+        if (!showSandbox) {
+          toast({
+            status: 'warning',
+            title: t('skill:sandbox_system_not_configured_toast')
+          });
+          return;
+        }
+        if (!enableSandbox) {
+          openConfirm({
+            title: t('skill:sandbox_plan_not_supported_title'),
+            customContent: t('skill:sandbox_plan_not_supported_content'),
+            onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+            confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+            cancelText: t('common:Close'),
+            showCancel: isTeamAdmin
+          })();
+          return;
+        }
       }
       if (!checked && hasSelectedAgentSkills) {
         toast({
@@ -130,7 +159,17 @@ export const useAgentSkillSelect = ({
         }
       }));
     },
-    [enableSandbox, hasSelectedAgentSkills, setAppForm, showSandbox, t, toast]
+    [
+      enableSandbox,
+      hasSelectedAgentSkills,
+      setAppForm,
+      showSandbox,
+      t,
+      toast,
+      openConfirm,
+      isTeamAdmin,
+      onOpenRecharge
+    ]
   );
 
   // 按系统/套餐能力同步修复历史 Skill 与虚拟机开关状态。
@@ -181,7 +220,8 @@ export const useAgentSkillSelect = ({
     onAddAgentSkill,
     onRemoveAgentSkill,
     onChangeAgentSandbox,
-    sandboxPlanWarning,
-    closeSandboxPlanWarning
+    ConfirmModal,
+    isOpenRecharge,
+    onCloseRecharge
   };
 };

@@ -34,8 +34,8 @@ import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { SkillSandboxPlanWarningModal } from '@/components/core/skill/useSkillSandboxOperationGuard';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -125,8 +125,9 @@ const EditForm = ({
     onAddAgentSkill,
     onRemoveAgentSkill,
     onChangeAgentSandbox,
-    sandboxPlanWarning,
-    closeSandboxPlanWarning,
+    ConfirmModal,
+    isOpenRecharge,
+    onCloseRecharge,
     selectedAgentSkillStatus
   } = useAgentSkillSelect({
     appForm,
@@ -655,10 +656,8 @@ const EditForm = ({
           }}
         />
       )}
-      <SkillSandboxPlanWarningModal
-        warningType={sandboxPlanWarning}
-        onClose={closeSandboxPlanWarning}
-      />
+      <ConfirmModal />
+      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
       <SkillModal />
     </>
   );

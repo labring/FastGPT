@@ -510,3 +510,16 @@ export const removeUnauthModels = async ({
   }
   return modules;
 };
+
+export const checkWorkflowUsesSandbox = (nodes: StoreNodeItemType[]): boolean => {
+  return (
+    nodes?.some((node) =>
+      node.inputs.some(
+        ({ key, value }) =>
+          (key === NodeInputKeyEnum.useAgentSandbox && value === true) ||
+          (key === NodeInputKeyEnum.editSkillId && !!value) ||
+          (key === NodeInputKeyEnum.skills && Array.isArray(value) && value.length > 0)
+      )
+    ) ?? false
+  );
+};

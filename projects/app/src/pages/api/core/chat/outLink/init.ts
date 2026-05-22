@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import {
+  getGuideModule,
+  getAppChatConfig,
+  checkWorkflowUsesSandbox
+} from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -73,7 +77,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       avatar: app.avatar,
       intro: app.intro,
       type: app.type,
-      pluginInputs
+      pluginInputs,
+      useAgentSandbox: checkWorkflowUsesSandbox(nodes)
     }
   };
 }

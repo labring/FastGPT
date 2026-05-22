@@ -2,18 +2,25 @@ import { replaceSensitiveText } from '../string/tools';
 import { ERROR_RESPONSE } from './errorCode';
 
 export const getErrText = (err: any, def = ''): any => {
-  const msg: string =
-    typeof err === 'string'
-      ? err || def
-      : err?.response?.data?.message ||
-        err?.response?.message ||
-        err?.message ||
-        err?.response?.data?.msg ||
-        err?.response?.msg ||
-        err?.msg ||
-        err?.error ||
-        err?.code ||
-        def;
+  const getRawMsg = (e: any): any => {
+    if (typeof e === 'string') return e;
+    if (!e) return '';
+    return (
+      e.system_error_text ||
+      e.errorText ||
+      e.response?.data?.message ||
+      e.response?.message ||
+      e.response?.data?.msg ||
+      e.response?.msg ||
+      e.message ||
+      e.msg ||
+      (typeof e.error === 'string' ? e.error : getRawMsg(e.error)) ||
+      e.code ||
+      ''
+    );
+  };
+
+  const msg = getRawMsg(err) || def;
 
   if (ERROR_RESPONSE[msg]) {
     return ERROR_RESPONSE[msg].message;

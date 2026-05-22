@@ -40,6 +40,7 @@ type ChatBoxDataType = {
     type: AppTypeEnum;
     pluginInputs: FlowNodeInputItemType[];
     chatModels?: string[];
+    useAgentSandbox?: boolean;
   };
 };
 
@@ -199,7 +200,8 @@ const ChatItemContextProvider = ({
     variablesForm.reset(values);
 
     ChatBoxRef.current?.restartChat?.();
-  }, [chatBoxData?.app?.chatConfig?.variables, variablesForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatBoxData?.app?.chatConfig?.variables]);
 
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 

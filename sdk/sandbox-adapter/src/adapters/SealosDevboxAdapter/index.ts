@@ -52,7 +52,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
   readonly provider = 'sealosdevbox' as const;
 
   get rootPath(): string {
-    return '/home/devbox/workspace';
+    return '/home/devbox';
   }
 
   private api: DevboxApi;

@@ -1,15 +1,10 @@
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { Types } from '../../../../common/mongo';
 import { updateCurrentVersion } from '../manage';
-import {
-  removeSkillPackageTTL,
-  standardizeSkillPackageBySkillMdName,
-  uploadSkillPackage
-} from '../package';
+import { removeSkillPackageTTL, validateZipStructure, uploadSkillPackage } from '../package';
 import { packageSkillInSandbox } from './sandbox';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from './config';
 import { createVersion } from '../version';
-import { getSkillsRootPath } from '../runtime';
 import { getSandboxDefaults } from '../../sandbox/runtime/config';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import { findSandboxInstanceByAppChatType } from '../../sandbox/instance/repository';
@@ -58,9 +53,12 @@ export async function saveDeploySkillFromSandbox({
     const defaults = getSandboxDefaults();
     packageBuffer = await packageSkillInSandbox({
       sandboxId: sandboxInfo.sandboxId,
-      workDirectory: getSkillsRootPath(defaults.workDirectory)
+      workDirectory: defaults.workDirectory
     });
-    packageBuffer = (await standardizeSkillPackageBySkillMdName(packageBuffer)).buffer;
+    const validation = await validateZipStructure(packageBuffer);
+    if (!validation.valid) {
+      throw new Error(validation.error || 'Invalid skill package structure');
+    }
   } catch (error: any) {
     return Promise.reject(
       new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)

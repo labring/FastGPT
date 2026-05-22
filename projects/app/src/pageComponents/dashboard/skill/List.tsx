@@ -46,7 +46,6 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -212,14 +211,12 @@ const List = ({
     [editPerSkillId, skills]
   );
 
-  const [deleteTarget, setDeleteTarget] = useState<{
-    skillId: string;
-    name: string;
-    refsCount: number;
-  }>();
-
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
     content: t('skill:copy_skill_confirm')
+  });
+  const { openConfirm: openConfirmDelete, ConfirmModal: DeleteConfirmModal } = useConfirm({
+    type: 'delete',
+    title: t('skill:confirm_delete_title')
   });
 
   const { runAsync: onClickDeleteSkill } = useRequest(deleteSkill, {
@@ -398,11 +395,19 @@ const List = ({
                   icon: 'delete',
                   label: t('common:Delete'),
                   onClick: () =>
-                    setDeleteTarget({
-                      skillId: skill._id,
-                      name: skill.name,
-                      refsCount: isFolder ? 0 : relatedAppsCount
-                    })
+                    openConfirmDelete({
+                      customContent: (
+                        <Trans
+                          i18nKey={'skill:confirm_delete_with_refs'}
+                          values={{ count: isFolder ? 0 : relatedAppsCount }}
+                          components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                        />
+                      ),
+                      onConfirm: () => onClickDeleteSkill(skill._id),
+                      confirmText: t('skill:confirm_delete_action'),
+                      confirmButtonVariant: 'dangerFill',
+                      inputConfirmText: skill.name
+                    })()
                 }
               ]
             }
@@ -547,23 +552,7 @@ const List = ({
           );
         })}
       </Grid>
-      <ConfirmWarningModal
-        isOpen={!!deleteTarget}
-        title={t('skill:confirm_delete_title')}
-        content={
-          <Trans
-            i18nKey={'skill:confirm_delete_with_refs'}
-            values={{ count: deleteTarget?.refsCount ?? 0 }}
-            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-          />
-        }
-        onClose={() => setDeleteTarget(undefined)}
-        onConfirm={() => (deleteTarget ? onClickDeleteSkill(deleteTarget.skillId) : undefined)}
-        cancelText={t('common:Cancel')}
-        confirmText={t('skill:confirm_delete_action')}
-        confirmButtonVariant={'dangerFill'}
-        inputConfirmText={deleteTarget?.name}
-      />
+      <DeleteConfirmModal />
       <ConfirmCopyModal />
       {!!editedSkill && (
         <EditResourceModal

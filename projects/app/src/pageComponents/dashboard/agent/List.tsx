@@ -43,7 +43,6 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -80,11 +79,6 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
-  const [deleteTarget, setDeleteTarget] = useState<{
-    appId: string;
-    name: string;
-    content: string;
-  }>();
 
   const editPerApp = useMemo(
     () =>
@@ -133,6 +127,10 @@ const List = () => {
 
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
     content: t('app:confirm_copy_app_tip')
+  });
+  const { openConfirm: openConfirmDelete, ConfirmModal: DeleteConfirmModal } = useConfirm({
+    type: 'delete',
+    title: t('common:delete_warning')
   });
   const { runAsync: onclickCopy } = useRequest(postCopyApp, {
     onSuccess({ appId }) {
@@ -427,17 +425,18 @@ const List = () => {
                                           icon: 'delete',
                                           label: t('common:Delete'),
                                           onClick: () =>
-                                            setDeleteTarget({
-                                              appId: app._id,
-                                              name: app.name,
-                                              content: (() => {
+                                            openConfirmDelete({
+                                              customContent: (() => {
                                                 if (isFolder)
                                                   return t('app:confirm_delete_folder_tip');
                                                 if (isAgent) return t('app:confirm_del_app_tip');
                                                 if (isTool) return t('app:confirm_del_tool_tip');
                                                 return t('app:confirm_del_app_tip');
-                                              })()
-                                            })
+                                              })(),
+                                              onConfirm: () => onclickDelApp(app._id),
+                                              confirmButtonVariant: 'dangerFill',
+                                              inputConfirmText: app.name
+                                            })()
                                         }
                                       ]
                                     }
@@ -455,15 +454,7 @@ const List = () => {
           })}
         </Grid>
       )}
-      <ConfirmWarningModal
-        isOpen={!!deleteTarget}
-        title={t('common:delete_warning')}
-        content={deleteTarget?.content ?? ''}
-        onClose={() => setDeleteTarget(undefined)}
-        onConfirm={() => (deleteTarget ? onclickDelApp(deleteTarget.appId) : undefined)}
-        confirmButtonVariant={'dangerFill'}
-        inputConfirmText={deleteTarget?.name}
-      />
+      <DeleteConfirmModal />
       <ConfirmCopyModal />
       {!!editedApp && (
         <EditResourceModal

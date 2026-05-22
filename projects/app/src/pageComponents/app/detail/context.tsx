@@ -22,7 +22,7 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -186,7 +186,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const isAgent = AppTypeList.includes(appDetail.type);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const { openConfirm, ConfirmModal } = useConfirm();
   const { runAsync: deleteApp } = useRequest(
     async () => {
       if (!appDetail) return Promise.reject('Not load app');
@@ -204,7 +204,15 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       errorToast: t('common:delete_failed')
     }
   );
-  const onDelApp = useCallback(() => setIsDeleteModalOpen(true), []);
+  const onDelApp = useCallback(() => {
+    openConfirm({
+      title: t('common:delete_warning'),
+      customContent: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip'),
+      onConfirm: deleteApp,
+      confirmButtonVariant: 'dangerFill',
+      inputConfirmText: appDetail.name
+    })();
+  }, [openConfirm, isAgent, deleteApp, appDetail.name, t]);
 
   const contextValue: AppContextType = useMemo(
     () => ({
@@ -246,15 +254,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       {isOpenInfoEdit && <InfoModal onClose={onCloseInfoEdit} />}
       {isOpenTeamTagModal && <TagsEditModal onClose={onCloseTeamTagModal} />}
 
-      <ConfirmWarningModal
-        isOpen={isDeleteModalOpen}
-        title={t('common:delete_warning')}
-        content={isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip')}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={deleteApp}
-        confirmButtonVariant={'dangerFill'}
-        inputConfirmText={appDetail.name}
-      />
+      <ConfirmModal />
     </AppContext.Provider>
   );
 };

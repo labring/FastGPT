@@ -268,6 +268,23 @@ const Header = ({
                       return false;
                     }
 
+                    if (appForm.aiSettings.useAgentSandbox) {
+                      if (!showSandbox) {
+                        toast({
+                          title: t('skill:sandbox_system_not_configured_toast'),
+                          status: 'warning'
+                        });
+                        return false;
+                      }
+                      if (!enableSandbox) {
+                        toast({
+                          title: t('skill:sandbox_plan_not_supported_title'),
+                          status: 'warning'
+                        });
+                        return false;
+                      }
+                    }
+
                     const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
 
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));

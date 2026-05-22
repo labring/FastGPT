@@ -146,11 +146,18 @@ export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValida
     // 兼容根目录直接放 SKILL.md 的历史包。
     let skillMdPath = files.find((f) => f.toUpperCase() === 'SKILL.MD');
 
-    // 标准包会把 SKILL.md 放在一级目录内。
+    // 标准包会把 SKILL.md 放在子目录内。
     if (!skillMdPath) {
-      skillMdPath = files.find(
-        (f) => f.toUpperCase().endsWith('/SKILL.MD') && f.split('/').length === 2
-      );
+      // 优先在 skills/ 目录中寻找
+      skillMdPath = files.find((f) => {
+        const upper = f.toUpperCase();
+        return upper.includes('/SKILLS/') && upper.endsWith('/SKILL.MD');
+      });
+
+      // 兜底找任意子目录下的 SKILL.md
+      if (!skillMdPath) {
+        skillMdPath = files.find((f) => f.toUpperCase().endsWith('/SKILL.MD'));
+      }
     }
 
     if (!skillMdPath) {
@@ -250,8 +257,9 @@ export async function standardizeSkillPackage(
 
   const { skillMd, assets = {} } = extractResult;
 
+  const rootName = name.startsWith('skills/') ? name : `skills/${name}`;
   const standardizedBuffer = await createSkillPackage({
-    name,
+    name: rootName,
     skillMd,
     assets
   });
@@ -281,7 +289,7 @@ export async function standardizeSkillPackageBySkillMdName(
   const { skillMd, assets = {} } = extractResult;
   const name = extractSkillNameFromSkillMd(skillMd);
   const buffer = await createSkillPackage({
-    name,
+    name: `skills/${name}`,
     skillMd,
     assets
   });

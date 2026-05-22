@@ -41,7 +41,7 @@ import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEd
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -153,7 +153,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
   const showWorkflowAgentSkills = false;
-  const [sandboxPlanWarning, setSandboxPlanWarning] = useState<'switch' | 'skill'>();
+  const { openConfirm, ConfirmModal } = useConfirm();
 
   // Split tool/common inputs and outputs
   const { isTool, commonInputs } = useMemoEnhance(
@@ -400,24 +400,49 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       return;
     }
     if (!enableSandbox) {
-      setSandboxPlanWarning('skill');
+      openConfirm({
+        title: t('skill:sandbox_plan_not_supported_title'),
+        customContent: t('skill:sandbox_skill_plan_not_supported_content'),
+        onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+        confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+        cancelText: t('common:Close'),
+        showCancel: isTeamAdmin
+      })();
       return;
     }
     onOpenSkillSelect();
-  }, [enableSandbox, onOpenSkillSelect, showSandbox, t, toast]);
+  }, [
+    enableSandbox,
+    onOpenSkillSelect,
+    showSandbox,
+    t,
+    toast,
+    isTeamAdmin,
+    onOpenRecharge,
+    openConfirm
+  ]);
   const onChangeAgentSandbox = useCallback(
     (checked: boolean) => {
       if (!sandboxInput) return;
-      if (!showSandbox) {
-        toast({
-          status: 'warning',
-          title: t('skill:sandbox_system_not_configured_toast')
-        });
-        return;
-      }
-      if (!enableSandbox) {
-        setSandboxPlanWarning('switch');
-        return;
+      if (checked) {
+        if (!showSandbox) {
+          toast({
+            status: 'warning',
+            title: t('skill:sandbox_system_not_configured_toast')
+          });
+          return;
+        }
+        if (!enableSandbox) {
+          openConfirm({
+            title: t('skill:sandbox_plan_not_supported_title'),
+            customContent: t('skill:sandbox_plan_not_supported_content'),
+            onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+            confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+            cancelText: t('common:Close'),
+            showCancel: isTeamAdmin
+          })();
+          return;
+        }
       }
       if (!checked && selectedAgentSkills.length > 0) {
         toast({
@@ -445,7 +470,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       selectedAgentSkills.length,
       showSandbox,
       t,
-      toast
+      toast,
+      openConfirm,
+      isTeamAdmin,
+      onOpenRecharge
     ]
   );
   const skillsRenderType = useMemo(
@@ -907,32 +935,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
       <SkillModal />
 
-      <ConfirmWarningModal
-        isOpen={!!sandboxPlanWarning}
-        title={t('skill:sandbox_plan_not_supported_title')}
-        content={
-          sandboxPlanWarning === 'skill'
-            ? t('skill:sandbox_skill_plan_not_supported_content')
-            : t('skill:sandbox_plan_not_supported_content')
-        }
-        onClose={() => setSandboxPlanWarning(undefined)}
-        onConfirm={
-          isTeamAdmin
-            ? () => {
-                onOpenRecharge();
-              }
-            : undefined
-        }
-        confirmText={isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close')}
-        cancelText={t('common:Close')}
-        showCancel={isTeamAdmin}
-      />
+      <ConfirmModal />
       {isOpenRecharge && (
         <RechargeModal
           onClose={onCloseRecharge}
           onPaySuccess={() => {
             onCloseRecharge();
-            setSandboxPlanWarning(undefined);
           }}
         />
       )}

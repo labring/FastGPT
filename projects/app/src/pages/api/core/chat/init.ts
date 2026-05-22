@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import {
+  getGuideModule,
+  getAppChatConfig,
+  checkWorkflowUsesSandbox
+} from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatResponseType } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -79,7 +83,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs
+        pluginInputs,
+        useAgentSandbox: checkWorkflowUsesSandbox(nodes)
       }
     };
   } catch (error: any) {

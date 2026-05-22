@@ -53,7 +53,7 @@ const customCollisionDetection: CollisionDetection = (args) => {
   return rectCollisions;
 };
 import { downloadSandbox } from '../api';
-import ConfirmWarningModal from '@/components/common/Modal/ConfirmWarningModal';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 export type FileItem = {
   name: string;
@@ -215,7 +215,7 @@ const FileTree = ({
     y: number;
     node: TreeNode;
   } | null>(null);
-  const [nodeToDelete, setNodeToDelete] = useState<TreeNode | null>(null);
+  const { openConfirm, ConfirmModal } = useConfirm();
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -498,22 +498,33 @@ const FileTree = ({
 
   const handleCtxDelete = () => {
     if (!contextMenu) return;
-    setNodeToDelete(contextMenu.node);
+    const node = contextMenu.node;
     setContextMenu(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!nodeToDelete) return;
-    try {
-      await onDeleteFile(nodeToDelete.path);
-    } catch (error) {
-      toast({
-        title: t('chat:sandbox_delete_failed'),
-        description: getErrText(error),
-        status: 'error'
-      });
-      throw error;
-    }
+    openConfirm({
+      title: t('chat:sandbox_confirm_delete_title'),
+      customContent: (
+        <Trans
+          i18nKey="chat:sandbox_confirm_delete_content"
+          values={{ name: node.name }}
+          components={{
+            name: <Text as="span" fontWeight="600" color="red.600" />
+          }}
+        />
+      ),
+      confirmButtonVariant: 'dangerFill',
+      onConfirm: async () => {
+        try {
+          await onDeleteFile(node.path);
+        } catch (error) {
+          toast({
+            title: t('chat:sandbox_delete_failed'),
+            description: getErrText(error),
+            status: 'error'
+          });
+          throw error;
+        }
+      }
+    })();
   };
 
   const handleCtxDownload = async () => {
@@ -829,24 +840,7 @@ const FileTree = ({
       )}
 
       {/* 删除确认弹窗 */}
-      <ConfirmWarningModal
-        isOpen={!!nodeToDelete}
-        title={t('chat:sandbox_confirm_delete_title')}
-        content={
-          nodeToDelete && (
-            <Trans
-              i18nKey="chat:sandbox_confirm_delete_content"
-              values={{ name: nodeToDelete.name }}
-              components={{
-                name: <Text as="span" fontWeight="600" color="red.600" />
-              }}
-            />
-          )
-        }
-        onClose={() => setNodeToDelete(null)}
-        onConfirm={handleConfirmDelete}
-        confirmButtonVariant="dangerFill"
-      />
+      <ConfirmModal />
     </Box>
   );
 };

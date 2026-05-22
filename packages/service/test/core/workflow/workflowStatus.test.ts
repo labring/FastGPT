@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   setAgentRuntimeStop,
   delAgentRuntimeStopSign,
@@ -113,5 +114,51 @@ describe('Workflow Status Redis Functions', () => {
     // 停止标志应该存在
     const shouldStop = await shouldWorkflowStop({ appId: testAppId, chatId: testChatId });
     expect(shouldStop).toBe(true);
+  });
+});
+
+describe('getErrText upgraded logic', () => {
+  test('should prioritize system_error_text', () => {
+    const errorObj = {
+      system_error_text: '虚拟机环境缺失，请先配置虚拟机',
+      errorText: 'Some other error',
+      message: 'Unused message'
+    };
+    expect(getErrText(errorObj)).toBe('虚拟机环境缺失，请先配置虚拟机');
+  });
+
+  test('should fallback to errorText', () => {
+    const errorObj = {
+      errorText: 'Sandbox startup error',
+      message: 'Unused message'
+    };
+    expect(getErrText(errorObj)).toBe('Sandbox startup error');
+  });
+
+  test('should fallback to message', () => {
+    const errorObj = {
+      message: 'Standard exception message'
+    };
+    expect(getErrText(errorObj)).toBe('Standard exception message');
+  });
+
+  test('should fallback to getErrText with raw object', () => {
+    const errorObj = {
+      status: 500
+    };
+    expect(getErrText(errorObj)).toBe('');
+  });
+
+  test('should handle plain string', () => {
+    expect(getErrText('Plain string error')).toBe('Plain string error');
+  });
+
+  test('should recursively resolve nested error object', () => {
+    const errorObj = {
+      error: {
+        system_error_text: 'Nested VM initialization failed'
+      }
+    };
+    expect(getErrText(errorObj)).toBe('Nested VM initialization failed');
   });
 });

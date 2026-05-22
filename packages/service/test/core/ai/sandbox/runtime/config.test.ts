@@ -56,7 +56,7 @@ describe('sandbox runtime config', () => {
       defaultImage: {
         repository: ''
       },
-      workDirectory: '/home/devbox/workspace',
+      workDirectory: '/home/devbox',
       entrypoint: ''
     });
   });

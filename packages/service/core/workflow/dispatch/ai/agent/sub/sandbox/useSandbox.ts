@@ -87,13 +87,11 @@ export async function useSandbox({
   editSkillId,
   currentFiles
 }: UseSandboxParams): Promise<UseSandboxResult> {
-  const sandboxEnabledByConfig = !!global.feConfigs?.show_agent_sandbox;
   const hasEditSkill = !!editSkillId;
   const hasAgentSkills = skillIds.length > 0;
-  const shouldStartSandbox =
-    sandboxEnabledByConfig && (useAgentSandbox || hasEditSkill || hasAgentSkills);
+  const needSandbox = useAgentSandbox || hasEditSkill || hasAgentSkills;
 
-  if (shouldStartSandbox) {
+  if (needSandbox) {
     try {
       await checkTeamSandboxPermission(teamId);
     } catch {
@@ -101,7 +99,7 @@ export async function useSandbox({
     }
   }
 
-  if (!shouldStartSandbox) {
+  if (!needSandbox) {
     return {
       skillInfos: []
     };
