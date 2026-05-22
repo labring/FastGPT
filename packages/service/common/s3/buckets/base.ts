@@ -24,7 +24,6 @@ import { getLogger, LogCategories } from '../../logger';
 import { addS3DelJob } from '../queue/delete';
 import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../contracts/type';
 import type { createStorage } from '@fastgpt-sdk/storage';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { jwtSignS3DownloadToken, jwtSignS3UploadToken } from '../security/token';
 
@@ -298,7 +297,7 @@ export class S3BaseBucket {
 
     const contentLength = metadataResponse.contentLength;
     const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
-    const extension = parseFileExtensionFromUrl(filename);
+    const extension = path.extname(filename).slice(1).toLowerCase();
     const contentType: string = metadataResponse.contentType || 'application/octet-stream';
 
     return {
