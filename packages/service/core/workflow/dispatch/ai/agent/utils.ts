@@ -4,10 +4,11 @@ import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } f
 import { getAgentRuntimeTools } from './sub/tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { readFileTool, ReadFileToolSchema } from './sub/file/utils';
-import { datasetSearchTool } from './sub/dataset/utils';
+import { DatasetSearchToolSchema, datasetSearchTool } from './sub/dataset/utils';
 import { SANDBOX_TOOLS, sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { dispatchFileRead } from './sub/file';
 import type { DispatchAgentModuleProps } from '.';
 import { dispatchAgentDatasetSearch } from './sub/dataset';
@@ -121,6 +122,7 @@ export type ToolDispatchContext = Pick<
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
+  allFilesMap?: Record<string, { url: string; name: string; type: string }>;
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
@@ -133,6 +135,7 @@ export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
   filesMap,
+  allFilesMap = {},
   capabilityToolCallHandler,
   checkIsStopping,
   chatConfig,
@@ -221,8 +224,24 @@ export const getExecuteTool = ({
           };
         }
         if (toolId === SubAppIds.datasetSearch) {
+          const toolParams = DatasetSearchToolSchema.safeParse(parseJsonArgs(args));
+          const seenImageUrls = new Set<string>();
+          // dataset_search 只信任 # Input Files 中已登记的图片文件，避免模型伪造 URL 或把文档当图片检索。
+          const imageUrls = toolParams.success
+            ? (toolParams.data.imageIds || [])
+                .map((id) => allFilesMap[id])
+                .filter((file) => file?.type === ChatFileTypeEnum.image)
+                .map((file) => file.url)
+                .filter((url) => {
+                  if (!url || seenImageUrls.has(url)) return false;
+                  seenImageUrls.add(url);
+                  return true;
+                })
+            : [];
+
           const result = await dispatchAgentDatasetSearch({
             args: args,
+            imageUrls,
             datasetParams,
             teamId: runningUserInfo.teamId,
             tmbId: runningUserInfo.tmbId,

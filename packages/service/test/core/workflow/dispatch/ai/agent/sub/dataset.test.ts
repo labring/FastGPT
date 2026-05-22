@@ -64,7 +64,8 @@ describe('dispatchAgentDatasetSearch', () => {
     vi.clearAllMocks();
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model'
+        vectorModel: 'embedding-model',
+        vlmModel: 'vlm-model'
       })
     });
     countPromptTokensMock.mockResolvedValue(100);
@@ -190,6 +191,213 @@ describe('dispatchAgentDatasetSearch', () => {
     );
     expect(result.nodeResponse?.quoteList?.map((item: { id: string }) => item.id)).toEqual([
       'chunk_2'
+    ]);
+  });
+
+  it('passes image queries and vlm model to dataset search for image-only search', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(0);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: '', imageIds: ['current-0'] }),
+      imageUrls: ['https://file.example.com/cat.png'],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: true
+      } as any
+    });
+
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: [],
+        imageQueries: ['https://file.example.com/cat.png'],
+        vlmModel: 'vlm-model'
+      })
+    );
+    expect(result.response).toBe('未找到相关信息。');
+    expect(result.nodeResponse).toEqual(
+      expect.objectContaining({
+        query: '',
+        datasetQueries: ['https://file.example.com/cat.png'],
+        quoteList: []
+      })
+    );
+  });
+
+  it('keeps text and image queries separated for mixed search', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(0);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [
+        {
+          id: 'chunk_1',
+          q: 'image question',
+          a: 'image answer',
+          sourceName: 'image.png',
+          score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
+        }
+      ],
+      embeddingTokens: 3,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: '找类似图片', imageIds: ['current-0'] }),
+      imageUrls: ['https://file.example.com/cat.png'],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5
+      } as any
+    });
+
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['找类似图片'],
+        imageQueries: ['https://file.example.com/cat.png']
+      })
+    );
+  });
+
+  it('adds image caption as dataset search child node response', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(0);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [
+        {
+          id: 'chunk_1',
+          q: 'question 1',
+          a: 'answer 1',
+          sourceName: 'doc.md',
+          score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
+        }
+      ],
+      embeddingTokens: 20,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false,
+      imageCaptionResult: {
+        model: 'vlm-model',
+        inputTokens: 11,
+        outputTokens: 4,
+        requestIds: ['req_image_caption'],
+        seconds: 1.5,
+        usedUserOpenAIKey: false,
+        queries: ['一只橘猫坐在窗边']
+      }
+    });
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: '', imageIds: ['current-0'] }),
+      imageUrls: ['https://file.example.com/cat.png'],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5
+      } as any
+    });
+
+    expect(result.nodeResponse?.childrenResponses).toEqual([
+      expect.objectContaining({
+        id: 'req_image_caption',
+        nodeId: 'req_image_caption',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        moduleName: 'account_usage:image_parse',
+        moduleLogo: 'core/workflow/template/datasetSearch',
+        model: 'vlm-model name',
+        llmRequestIds: ['req_image_caption'],
+        inputTokens: 11,
+        outputTokens: 4,
+        totalPoints: 0.15,
+        textOutput: '一只橘猫坐在窗边'
+      })
+    ]);
+    expect(result.nodeResponse).toEqual(
+      expect.objectContaining({
+        childTotalPoints: 0.15
+      })
+    );
+    expect(result.usages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          moduleName: 'account_usage:image_parse',
+          totalPoints: 0.15
+        })
+      ])
+    );
+  });
+
+  it('sets image caption LLM points to zero when user OpenAI key is valid', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(0);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false,
+      imageCaptionResult: {
+        model: 'vlm-model',
+        inputTokens: 11,
+        outputTokens: 4,
+        requestIds: ['req_image_caption'],
+        seconds: 1.5,
+        usedUserOpenAIKey: true,
+        queries: ['一只橘猫坐在窗边']
+      }
+    });
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: '', imageIds: ['current-0'] }),
+      imageUrls: ['https://file.example.com/cat.png'],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      userKey: { key: 'user-key' } as any,
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
+        usingReRank: false,
+        rerankWeight: 0.5
+      } as any
+    });
+
+    expect(result.nodeResponse?.childrenResponses).toEqual([
+      expect.objectContaining({
+        moduleName: 'account_usage:image_parse',
+        totalPoints: 0
+      })
     ]);
   });
 

@@ -23,6 +23,7 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   createChunkSelectionChildNodeResponse,
+  createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -31,6 +32,7 @@ type DatasetSearchParams = {
   teamId: string;
   tmbId: string;
   args: string;
+  imageUrls?: string[];
   llmModel: string;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
@@ -161,6 +163,7 @@ ${chunkSummaries}
 
 export const dispatchAgentDatasetSearch = async ({
   args,
+  imageUrls,
   datasetParams,
   teamId,
   llmModel,
@@ -179,28 +182,55 @@ export const dispatchAgentDatasetSearch = async ({
     };
   }
 
-  const query = toolParams.data.query;
+  const query = toolParams.data.query.trim();
+  // Agent v2 工具允许纯图检索，此时 query 为空，只把图片 URL 传给底层检索。
+  const textQueries = query ? [query] : [];
+  const seenImageUrls = new Set<string>();
+  // 同一张图片可能被模型重复传入 imageIds；这里按 URL 去重，避免重复 embedding/VLM 消耗。
+  const imageQueries = (imageUrls || [])
+    .map((url) => url.trim())
+    .filter((url) => {
+      if (!url || seenImageUrls.has(url)) return false;
+      seenImageUrls.add(url);
+      return true;
+    });
+
+  if (textQueries.length === 0 && imageQueries.length === 0) {
+    return {
+      response: formatDatasetSearchResponse([]),
+      usages: [],
+      nodeResponse: {
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        moduleName: i18nT('chat:dataset_search'),
+        query,
+        datasetQueries: [],
+        quoteList: []
+      }
+    };
+  }
 
   logger.debug('[Agent Dataset Search] Starting', {
     query,
+    imageCount: imageQueries.length,
     datasetParams
   });
 
   try {
     const datasetIds = await Promise.resolve(datasetParams.datasets.map((item) => item.datasetId));
 
-    // Get vector model
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasetIds[0], 'vectorModel').lean())?.vectorModel
-    );
+    // Get vector model and VLM model
+    const dataset = await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean();
+    const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(datasetParams.rerankModel);
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
       teamId,
-      textQueries: [query],
+      textQueries,
+      imageQueries,
       model: vectorModel.model,
+      vlmModel: dataset?.vlmModel,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
       datasetIds,
@@ -209,6 +239,7 @@ export const dispatchAgentDatasetSearch = async ({
       usingReRank: datasetParams.usingReRank,
       rerankModel: rerankModelData,
       rerankWeight: datasetParams.rerankWeight ?? 0.5,
+      collectionFilterMatch: datasetParams.collectionFilterMatch,
       datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
       datasetSearchExtensionModel: datasetParams.datasetSearchExtensionModel,
       datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg,
@@ -220,7 +251,8 @@ export const dispatchAgentDatasetSearch = async ({
       reRankInputTokens,
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
-      queryExtensionResult
+      queryExtensionResult,
+      imageCaptionResult
     } = await defaultSearchDatasetData(searchData);
 
     // count bill results
@@ -296,11 +328,37 @@ export const dispatchAgentDatasetSearch = async ({
           inputTokens: reRankInputTokens
         });
       }
+      // 4. Image caption
+      if (imageCaptionResult) {
+        // 底层图搜图会先用数据集 VLM 把图片转成文本描述，这部分要作为图片解析子调用计费和展示。
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        });
+        const imageCaptionUsage: ChatNodeUsageType = {
+          totalPoints: imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints,
+          moduleName: i18nT('account_usage:image_parse'),
+          model: modelName,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        };
+        usages.push(imageCaptionUsage);
+        childrenResponses.push(
+          createImageCaptionChildNodeResponse({
+            requestIds: imageCaptionResult.requestIds,
+            usage: imageCaptionUsage,
+            seconds: imageCaptionResult.seconds,
+            queries: imageCaptionResult.queries
+          })
+        );
+      }
     }
 
     // LLM Pick Chunks (compress search results if too long)
     const pickResults = await selectRelevantChunksByLLM({
-      query,
+      // 纯图检索没有用户文本，用稳定占位问题触发分块压缩，避免空 query 影响 chunk selection。
+      query: query || (imageQueries.length > 0 ? '用户上传的图片' : ''),
       chunks: searchRes,
       model: llmModel,
       userKey
@@ -323,11 +381,16 @@ export const dispatchAgentDatasetSearch = async ({
       }
     }
     const formattedResponse = formatDatasetSearchResponse(searchResults);
+    const childTotalPoints = childrenResponses.reduce(
+      (sum, item) => sum + (item.totalPoints || 0),
+      0
+    );
 
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
       query,
+      datasetQueries: [...textQueries, ...imageQueries],
       embeddingModel: vectorModel.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? searchData.similarity : undefined,
@@ -345,6 +408,7 @@ export const dispatchAgentDatasetSearch = async ({
       }),
       searchUsingReRank,
       ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
+      ...(childTotalPoints > 0 ? { childTotalPoints } : {}),
       // Results
       quoteList: searchResults
     };

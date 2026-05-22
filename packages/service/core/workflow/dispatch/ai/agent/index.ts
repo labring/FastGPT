@@ -262,6 +262,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getSubApp,
         completionTools: agentCompletionTools,
         filesMap,
+        allFilesMap,
         capabilityToolCallHandler,
         streamResponseFn: workflowStreamResponse
       },

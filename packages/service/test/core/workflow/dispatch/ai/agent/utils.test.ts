@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 
@@ -169,6 +170,80 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userKey
+      })
+    );
+  });
+
+  it('passes image urls from allFilesMap to dataset search tool', async () => {
+    dispatchAgentDatasetSearchMock.mockResolvedValue({
+      response: 'dataset content',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Dataset Search'
+      }
+    });
+
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: undefined
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 0,
+      params: {
+        model: 'gpt-4',
+        agent_datasetParams: {
+          datasets: [{ datasetId: 'dataset_1' }]
+        }
+      },
+      stream: false,
+      getSubAppInfo: () => ({
+        name: 'Dataset Search',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => undefined,
+      completionTools: [],
+      filesMap: {},
+      allFilesMap: {
+        'current-0': {
+          name: 'cat.png',
+          type: ChatFileTypeEnum.image,
+          url: 'https://file.example.com/cat.png'
+        },
+        'current-1': {
+          name: 'doc.pdf',
+          type: ChatFileTypeEnum.file,
+          url: 'https://file.example.com/doc.pdf'
+        }
+      }
+    } as any);
+
+    await executeTool({
+      callId: 'call_dataset_search',
+      toolId: SubAppIds.datasetSearch,
+      args: '{"query":"","imageIds":["current-0","current-1","missing","current-0"]}'
+    });
+
+    expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageUrls: ['https://file.example.com/cat.png']
       })
     );
   });
