@@ -16,6 +16,8 @@ type State = {
   lastChatId: string;
   chatId: string;
   setChatId: (e?: string) => any;
+  /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
+  appChatIdMap: Record<string, string>;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
@@ -27,6 +29,7 @@ type State = {
 };
 
 const createCustomStorage = () => {
+  // source/chatId/appId 跟当前 tab 绑定，放 sessionStorage；其余跨 tab 共享字段放 localStorage
   const sessionKeys = ['source', 'chatId', 'appId'];
 
   return {
@@ -95,17 +98,33 @@ export const useChatStore = create<State>()(
           if (!e) return;
 
           set((state) => {
+            if (state.appId !== e) {
+              // 离开当前应用前，记住该应用最近一次会话
+              if (state.appId && state.chatId) {
+                state.appChatIdMap[state.appId] = state.chatId;
+              }
+              // 切换到目标应用：优先恢复该应用上次的 chatId，否则临时生成（待历史列表加载后再对齐）
+              const restoredChatId = state.appChatIdMap[e];
+              state.chatId = restoredChatId || getNanoid(24);
+              if (state.source) {
+                state.lastChatId = `${state.source}-${state.chatId}`;
+              }
+            }
             state.appId = e;
             state.lastChatAppId = e;
           });
         },
         lastChatId: '',
         chatId: '',
+        appChatIdMap: {},
         setChatId(e) {
           const id = e || getNanoid(24);
           set((state) => {
             state.chatId = id;
             state.lastChatId = `${state.source}-${id}`;
+            if (state.appId) {
+              state.appChatIdMap[state.appId] = id;
+            }
           });
         },
         lastChatAppId: '',
@@ -133,6 +152,7 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = '';
             state.chatId = '';
             state.lastChatId = '';
+            state.appChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.outLinkAuthData = {};
           });
@@ -147,14 +167,18 @@ export const useChatStore = create<State>()(
           appId: state.appId,
           lastChatId: state.lastChatId,
           lastChatAppId: state.lastChatAppId,
-          lastPane: state.lastPane
+          lastPane: state.lastPane,
+          appChatIdMap: state.appChatIdMap
         })
       }
     )
   )
 );
 
-// Storage 事件监听器，用于跨 tab 同步
+/**
+ * 跨 tab 同步 localStorage 中的持久字段（lastChatId、appChatIdMap 等）。
+ * sessionStorage 字段（source/chatId/appId）各 tab 独立，不参与 storage 事件合并。
+ */
 const createStorageListener = (store: any) => {
   const handleStorageChange = (e: StorageEvent) => {
     if (e.key === 'chatStore' && e.newValue && e.storageArea === localStorage) {

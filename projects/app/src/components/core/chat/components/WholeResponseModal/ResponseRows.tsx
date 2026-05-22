@@ -8,6 +8,7 @@ import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuoteList from '../../ChatContainer/ChatBox/components/QuoteList';
+import FormInputResult from '../FormInputResult';
 import { agentPlanStatusMap } from './constants';
 import { Row } from './Row';
 
@@ -424,7 +425,12 @@ export const WorkflowResultRows = ({ activeModule }: { activeModule: ChatHistory
         label={t('common:core.chat.response.loop_output_element')}
         value={activeModule.loopOutputValue}
       />
-      <Row label={t('workflow:form_input_result')} value={activeModule.formInputResult} />
+      {activeModule.formInputResult && (
+        <Row
+          label={t('workflow:form_input_result')}
+          rawDom={<FormInputResult value={activeModule.formInputResult} />}
+        />
+      )}
       <Row
         label={t('workflow:tool_params.tool_params_result')}
         value={activeModule.toolParamsResult}

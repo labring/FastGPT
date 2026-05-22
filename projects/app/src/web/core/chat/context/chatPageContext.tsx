@@ -151,6 +151,11 @@ export const ChatPageContextProvider = ({
         return '';
       })();
 
+      // 切换应用时同步更新 store，避免 URL / page props 已变但 chatId、chatBoxData 仍停留在上一应用
+      if (_id) {
+        setAppId(_id);
+      }
+
       await router.replace({
         query: {
           ...router.query,
@@ -163,7 +168,7 @@ export const ChatPageContextProvider = ({
       setLastPane(newPane);
       setLastChatAppId(_id);
     },
-    [lastestPane, router, setLastPane, setLastChatAppId, chatSettings?.appId]
+    [lastestPane, router, setAppId, setLastPane, setLastChatAppId, chatSettings?.appId]
   );
 
   useEffect(() => {

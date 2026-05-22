@@ -41,7 +41,12 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import {
   getInteractiveByHistories,
   formatChatValue2InputType,
+  mergeResumeCompletedChatRecords,
+  refreshSubmittedFormInteractiveValues,
   rewriteHistoriesByInteractiveResponse,
+  shouldAppendResumeInteractive,
+  shouldReplaceResumeAiValue,
+  shouldResetResumeAiPlaceholder,
   stripChatValueFileUrls
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
@@ -59,7 +64,10 @@ import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  getChatTitleFromChatMessage,
+  mergeChatResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -78,6 +86,7 @@ import {
   shouldFollowGeneratingScroll,
   shouldForceScrollAfterRecordsLoaded
 } from './scrollUtils';
+import { isChatRoundPending } from './chatStatus';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -204,6 +213,14 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const isRoundPending = isChatRoundPending({
+    isChatting,
+    chatGenerateStatus:
+      chatBoxData.appId === appId && chatBoxData.chatId === chatId
+        ? chatBoxData.chatGenerateStatus
+        : undefined,
+    lastChat: chatRecords[chatRecords.length - 1]
+  });
 
   const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
   const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
@@ -211,7 +228,12 @@ const ChatBox = ({
   const syncSidebarChatGenerateStatus = useMemoizedFn(
     (
       status: ChatGenerateStatusEnum,
-      options?: { hasBeenRead?: boolean; targetAppId?: string; targetChatId?: string }
+      options?: {
+        hasBeenRead?: boolean;
+        targetAppId?: string;
+        targetChatId?: string;
+        title?: string;
+      }
     ) => {
       const targetAppId = options?.targetAppId ?? appId;
       if (targetAppId !== appId) return;
@@ -226,7 +248,7 @@ const ChatBox = ({
             {
               chatId: targetChatId,
               appId: targetAppId,
-              title: chatBoxData.title || t('common:core.chat.New Chat'),
+              title: options?.title || chatBoxData.title || t('common:core.chat.New Chat'),
               customTitle: '',
               top: false,
               updateTime: new Date(),
@@ -370,9 +392,16 @@ const ChatBox = ({
       durationSeconds,
       autoTTSResponse
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      setChatRecords((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
+      setChatRecords((state) => {
+        const histories = nodeResponse?.formInputResult
+          ? refreshSubmittedFormInteractiveValues({
+              histories: state,
+              nodeResponse
+            })
+          : state;
+
+        return histories.map((item, index) => {
+          if (index !== histories.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
 
           if (autoTTSResponse) {
@@ -625,6 +654,15 @@ const ChatBox = ({
             resetVariables({ variables });
           }
           if (event === SseResponseEventEnum.interactive && interactive) {
+            if (
+              !shouldAppendResumeInteractive({
+                existingValues: item.value,
+                incomingInteractive: interactive
+              })
+            ) {
+              return item;
+            }
+
             const val: AIChatItemValueItemType = {
               interactive
             };
@@ -645,8 +683,8 @@ const ChatBox = ({
           }
 
           return item;
-        })
-      );
+        });
+      });
 
       const forceScroll = event === SseResponseEventEnum.interactive;
       generatingScroll(forceScroll);
@@ -737,7 +775,13 @@ const ChatBox = ({
       setChatRecords((state) => {
         const lastItem = state[state.length - 1];
         if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-          if (!text && !options?.resetExistingValue) {
+          const shouldReplaceValue = shouldReplaceResumeAiValue({
+            hasExistingAiOutput: hasMeaningfulAiOutput(lastItem),
+            text,
+            resetExistingValue: options?.resetExistingValue
+          });
+
+          if (!shouldReplaceValue && lastItem.status === status) {
             return state;
           }
 
@@ -746,14 +790,18 @@ const ChatBox = ({
               ? item
               : {
                   ...item,
-                  value: [
-                    {
-                      text: {
-                        content: text
+                  ...(shouldReplaceValue
+                    ? {
+                        value: [
+                          {
+                            text: {
+                              content: text
+                            }
+                          }
+                        ],
+                        responseData: options?.resetExistingValue ? [] : item.responseData
                       }
-                    }
-                  ],
-                  responseData: options?.resetExistingValue ? [] : item.responseData,
+                    : {}),
                   status,
                   ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
                 }
@@ -796,7 +844,7 @@ const ChatBox = ({
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
-          if (isChatting) {
+          if (isRoundPending) {
             !hideInUI &&
               toast({
                 title: t('chat:is_chatting'),
@@ -890,6 +938,7 @@ const ChatBox = ({
               status: ChatStatusEnum.loading
             }
           ];
+          const temporaryHistoryTitle = getChatTitleFromChatMessage(currentHumanChat);
 
           resumedChatTargetRef.current = `${appId}:${chatId}`;
 
@@ -897,12 +946,16 @@ const ChatBox = ({
             state.chatId === chatId
               ? {
                   ...state,
+                  title: temporaryHistoryTitle,
                   chatGenerateStatus: ChatGenerateStatusEnum.generating,
                   hasBeenRead: false
                 }
               : state
           );
-          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, { hasBeenRead: false });
+          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
+            hasBeenRead: false,
+            title: temporaryHistoryTitle
+          });
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
@@ -1089,6 +1142,20 @@ const ChatBox = ({
       )();
     }
   );
+
+  const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
+    const nextStatus = completed ? status : ChatGenerateStatusEnum.generating;
+    setChatBoxData((state) =>
+      state.chatId === chatId && state.appId === appId
+        ? {
+            ...state,
+            chatGenerateStatus: nextStatus,
+            hasBeenRead: false
+          }
+        : state
+    );
+    syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
+  });
 
   // retry input
   const onDelMessage = useCallback(
@@ -1361,6 +1428,7 @@ const ChatBox = ({
     scrollToBottom('auto', 100);
     let resumeFinalStatus = ChatGenerateStatusEnum.done;
     let hasPreparedResumeAiRecord = false;
+    let hasReceivedResumeOutput = false;
 
     (async () => {
       try {
@@ -1382,11 +1450,15 @@ const ChatBox = ({
             if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
               upsertResumeAiPlaceholder(responseChatId, '', ChatStatusEnum.loading, {
-                resetExistingValue: !hasPreparedResumeAiRecord
+                resetExistingValue: shouldResetResumeAiPlaceholder({
+                  hasPreparedResumeAiRecord,
+                  hasReceivedResumeOutput
+                })
               });
               hasPreparedResumeAiRecord = true;
             }
             generatingMessage(message);
+            hasReceivedResumeOutput = true;
           }
         });
 
@@ -1394,11 +1466,15 @@ const ChatBox = ({
 
         if (completedChat) {
           resumeFinalStatus = completedChat.chatGenerateStatus;
-          setChatRecords(
-            completedChat.records.list.map((item) => ({
-              ...item,
-              status: ChatStatusEnum.finish
-            }))
+          setChatRecords((state) =>
+            mergeResumeCompletedChatRecords({
+              currentRecords: state,
+              completedRecords: completedChat.records.list.map((item) => ({
+                ...item,
+                status: ChatStatusEnum.finish
+              })),
+              responseChatId
+            })
           );
           scrollToBottom('auto');
           scrollToBottom('auto', 100);
@@ -1567,7 +1643,8 @@ const ChatBox = ({
     toast
   ]);
 
-  const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
+  const canRenderChatInput = onStartChat && chatStarted && active && canSendQuery;
+  const canSendPrompt = canRenderChatInput && !isRoundPending;
 
   // Add listener
   useEffect(() => {
@@ -1974,6 +2051,8 @@ const ChatBox = ({
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
+                onStopSettled={handleStopSettled}
+                disableSend={isRoundPending}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
@@ -1984,7 +2063,7 @@ const ChatBox = ({
       ) : (
         <>
           {AppChatRenderBox}
-          {canSendPrompt && (
+          {canRenderChatInput && (
             <Box
               px={[3, 5]}
               m={['0 auto 10px', '10px auto']}
@@ -1997,6 +2076,8 @@ const ChatBox = ({
                 onSendMessage={sendPrompt}
                 lastInteractive={lastInteractive}
                 onStop={() => abortRequest('stop')}
+                onStopSettled={handleStopSettled}
+                disableSend={isRoundPending}
                 TextareaDom={TextareaDom}
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}

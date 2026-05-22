@@ -33,6 +33,7 @@ describe('useChatStore', () => {
       lastChatAppId: '',
       lastChatId: '',
       chatId: '',
+      appChatIdMap: {},
       lastPane: undefined,
       outLinkAuthData: {}
     });
@@ -50,6 +51,49 @@ describe('useChatStore', () => {
     const newState = useChatStore.getState();
     expect(newState.appId).toBe('test-app-id');
     expect(newState.lastChatAppId).toBe('test-app-id');
+  });
+
+  it('should use a new chatId when switching to app without saved chat', () => {
+    const store = useChatStore.getState();
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('chat-from-app-a');
+
+    store.setAppId('app-b');
+
+    const newState = useChatStore.getState();
+    expect(newState.appId).toBe('app-b');
+    expect(newState.chatId).toBe('test-generated-id');
+    expect(newState.chatId).not.toBe('chat-from-app-a');
+    expect(newState.lastChatId).toBe(`${ChatSourceEnum.online}-test-generated-id`);
+  });
+
+  it('should save and restore chatId per app when switching appId', () => {
+    const store = useChatStore.getState();
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('chat-a');
+
+    store.setAppId('app-b');
+    store.setChatId('chat-b');
+
+    store.setAppId('app-a');
+    expect(useChatStore.getState().chatId).toBe('chat-a');
+
+    store.setAppId('app-b');
+    expect(useChatStore.getState().chatId).toBe('chat-b');
+  });
+
+  it('should keep chatId when setting the same appId', () => {
+    const store = useChatStore.getState();
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('stable-chat-id');
+
+    store.setAppId('app-a');
+
+    const newState = useChatStore.getState();
+    expect(newState.chatId).toBe('stable-chat-id');
   });
 
   it('should set and get chatId', () => {
@@ -194,6 +238,7 @@ describe('useChatStore', () => {
       lastChatAppId: '',
       chatId: '',
       lastChatId: '',
+      appChatIdMap: {},
       lastPane: ChatSidebarPaneEnum.HOME,
       outLinkAuthData: {}
     });

@@ -115,7 +115,6 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
   }
   const { t } = useTranslation();
 
-  const { setChatId } = useChatStore();
   const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
 
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
@@ -136,7 +135,6 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
   const onclickApp = (id: string) => {
     handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
     onCloseDrawer();
-    setChatId();
   };
 
   return (

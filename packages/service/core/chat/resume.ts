@@ -22,6 +22,7 @@ export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
+export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
 
 type ResumeRequestHeaderValue = string | string[] | undefined;
 type RedisMemoryPressureCache = {
@@ -47,7 +48,8 @@ export const getStreamResumeRedisKeys = ({
   chatId
 }: StreamResumeRedisKeysParams) => ({
   keyOfStream: `stream:resume:data:${teamId}:${appId}:${chatId}`,
-  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${appId}:${chatId}`
+  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${appId}:${chatId}`,
+  keyOfActive: `stream:resume:active:${teamId}:${appId}:${chatId}`
 });
 
 type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;
@@ -60,6 +62,10 @@ const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
 
 export type StreamResumeUnavailableState = {
   reason: `${StreamResumeUnavailableReasonEnum}`;
+};
+
+export type StreamResumeActiveState = {
+  updatedAt: number;
 };
 
 const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
@@ -183,9 +189,26 @@ const touchStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
   await redis.expire(keyOfStream, STREAM_RESUME_TTL_SECONDS);
 };
 
-const shrinkStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
+const touchStreamResumeActiveState = async (keys: StreamResumeKeys) => {
   const redis = getGlobalRedisConnection();
-  await redis.expire(keyOfStream, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS);
+  await redis.set(
+    keys.keyOfActive,
+    JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
+    'EX',
+    STREAM_RESUME_TTL_SECONDS
+  );
+};
+
+const touchStreamResumeState = async (keys: StreamResumeKeys) => {
+  await Promise.all([touchStreamResumeTTL(keys), touchStreamResumeActiveState(keys)]);
+};
+
+const shrinkStreamResumeTTL = async ({ keyOfStream, keyOfActive }: StreamResumeKeys) => {
+  const redis = getGlobalRedisConnection();
+  await Promise.all([
+    redis.expire(keyOfStream, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS),
+    redis.expire(keyOfActive, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS)
+  ]);
 };
 
 const setStreamResumeUnavailableState = async (
@@ -217,6 +240,27 @@ export const getStreamResumeUnavailableState = async (params: StreamResumeRedisK
   }
 };
 
+export const getStreamResumeActiveState = async (params: StreamResumeRedisKeysParams) => {
+  const redis = getGlobalRedisConnection();
+  const keys = getStreamResumeRedisKeys(params);
+  const state = await redis.get(keys.keyOfActive);
+
+  if (!state) return;
+
+  try {
+    const parsed = JSON.parse(state) as StreamResumeActiveState;
+    if (!Number.isFinite(parsed?.updatedAt)) return;
+    return parsed;
+  } catch {
+    return;
+  }
+};
+
+export const isStreamResumeActiveStale = (
+  state: StreamResumeActiveState | undefined,
+  now = Date.now()
+) => !state || now - state.updatedAt > STREAM_RESUME_INACTIVE_MS;
+
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;
   if (Buffer.isBuffer(chunk)) return chunk.toString(encoding || 'utf8');
@@ -227,7 +271,8 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
   await Promise.all([
     clearStreamResumeUnavailableState(keys),
-    getGlobalRedisConnection().del(keys.keyOfStream)
+    getGlobalRedisConnection().del(keys.keyOfStream),
+    getGlobalRedisConnection().del(keys.keyOfActive)
   ]);
 };
 
@@ -247,7 +292,7 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
         await redis.call('XADD', rawKeys.rawKeyOfStream, '*', 'raw', chunk);
         const now = Date.now();
         if (lastTouchedAt === 0 || now - lastTouchedAt >= STREAM_RESUME_TTL_TOUCH_INTERVAL_MS) {
-          await touchStreamResumeTTL(keys);
+          await touchStreamResumeState(keys);
           lastTouchedAt = now;
         }
       })

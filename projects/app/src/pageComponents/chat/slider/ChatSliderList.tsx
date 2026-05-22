@@ -12,12 +12,13 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
-  const { chatId: activeChatId } = useChatStore();
+  const { chatId: activeChatId, appId } = useChatStore();
 
   const histories = useContextSelector(ChatContext, (v) => v.histories);
   const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
@@ -29,6 +30,8 @@ const ChatSliderList = () => {
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
+    const scopedHistories = histories.filter((item) => item.appId === appId);
+
     const formatHistories: {
       id: string;
       title: string;
@@ -37,7 +40,7 @@ const ChatSliderList = () => {
       updateTime: Date;
       chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
-    }[] = histories.map((item) => {
+    }[] = scopedHistories.map((item) => {
       const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
 
       return {
@@ -47,9 +50,9 @@ const ChatSliderList = () => {
         top: item.top,
         updateTime: item.updateTime,
         chatGenerateStatus: isActiveChat
-          ? chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus
+          ? (chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus)
           : item.chatGenerateStatus,
-        hasBeenRead: isActiveChat ? chatBoxData.hasBeenRead ?? item.hasBeenRead : item.hasBeenRead
+        hasBeenRead: isActiveChat ? (chatBoxData.hasBeenRead ?? item.hasBeenRead) : item.hasBeenRead
       };
     });
 
@@ -63,20 +66,31 @@ const ChatSliderList = () => {
       hasBeenRead?: boolean;
     } = {
       id: activeChatId,
-      title: t('common:core.chat.New Chat'),
+      title: getDisplayHistoryTitle({
+        title: chatBoxData.chatId === activeChatId ? chatBoxData.title : undefined,
+        fallbackTitle: t('common:core.chat.New Chat')
+      }),
       updateTime: new Date(),
       chatGenerateStatus:
         chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
       hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
     };
-    const activeChat = histories.find((item) => item.chatId === activeChatId);
+    const activeChat = scopedHistories.find((item) => item.chatId === activeChatId);
+    const shouldPrependActiveChat =
+      chatBoxData.appId === appId &&
+      chatBoxData.chatId === activeChatId &&
+      !activeChat &&
+      !!activeChatId;
 
-    return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
+    return shouldPrependActiveChat ? [newChat].concat(formatHistories) : formatHistories;
   }, [
     activeChatId,
+    appId,
     histories,
     t,
+    chatBoxData.appId,
     chatBoxData.chatId,
+    chatBoxData.title,
     chatBoxData.chatGenerateStatus,
     chatBoxData.hasBeenRead
   ]);
@@ -89,6 +103,7 @@ const ChatSliderList = () => {
 
   return (
     <>
+      {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
       <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {concatHistory.map((item, i) => (
           <Flex

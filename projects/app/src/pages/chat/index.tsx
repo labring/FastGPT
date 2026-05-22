@@ -99,26 +99,29 @@ type ChatPageProps = {
 };
 
 const ChatContent = (props: ChatPageProps) => {
-  const { appId, isStandalone } = props;
-  const { chatId } = useChatStore();
+  const { appId: pageAppId, isStandalone } = props;
+  const { appId: storeAppId, chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
 
   const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
   const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
 
+  // 优先使用 store 中的 appId：handlePaneChange 会同步写入，比 page props 更早与 chatId 对齐
+  const currentAppId = storeAppId || pageAppId;
+
   const chatHistoryProviderParams = useMemo(
-    () => ({ appId, source: ChatSourceEnum.online }),
-    [appId]
+    () => ({ appId: currentAppId, source: ChatSourceEnum.online }),
+    [currentAppId]
   );
 
   const chatRecordProviderParams = useMemo(() => {
     return {
-      appId,
+      appId: currentAppId,
       type: GetChatTypeEnum.normal,
       chatId
     };
-  }, [appId, chatId]);
+  }, [currentAppId, chatId]);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {

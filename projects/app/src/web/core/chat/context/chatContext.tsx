@@ -16,6 +16,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { upsertHistoryTitle } from './historyTitleUtils';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -83,7 +84,8 @@ const ChatContextProvider = ({
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
-  const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
+  const { chatId, setChatId, outLinkAuthData } = useChatStore();
+  const historyAppId = String(params.appId ?? '');
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
@@ -139,7 +141,7 @@ const ChatContextProvider = ({
   const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
-        appId,
+        appId: historyAppId,
         ...data,
         ...outLinkAuthData
       }),
@@ -164,7 +166,7 @@ const ChatContextProvider = ({
             : updatedHistories;
         });
       },
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [outLinkAuthData, historyAppId],
       errorToast: undefined
     }
   );
@@ -172,7 +174,7 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        appId: appId,
+        appId: historyAppId,
         chatId,
         ...outLinkAuthData
       }),
@@ -181,18 +183,18 @@ const ChatContextProvider = ({
         const chatId = params[0];
         setHistories((old) => old.filter((i) => i.chatId !== chatId));
       },
-      refreshDeps: [outLinkAuthData, appId]
+      refreshDeps: [outLinkAuthData, historyAppId]
     }
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        appId: appId,
+        appId: historyAppId,
         ...outLinkAuthData
       }),
     {
-      refreshDeps: [outLinkAuthData, appId],
+      refreshDeps: [outLinkAuthData, historyAppId],
       onSuccess() {
         setHistories([]);
       },
@@ -204,22 +206,60 @@ const ChatContextProvider = ({
 
   const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
-      // Chat history exists
-      if (histories.find((item) => item.chatId === chatId)) {
-        setHistories((state) =>
-          state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
-        );
-      } else {
-        // Chat history not exists
-        loadHistories({ init: true });
-      }
+      const { chatId: currentChatId } = useChatStore.getState();
+      if (chatId !== currentChatId) return;
+
+      setHistories((state) =>
+        upsertHistoryTitle({
+          histories: state,
+          appId: historyAppId,
+          chatId,
+          title: newTitle,
+          fallbackTitle: '新对话'
+        })
+      );
+      loadHistories({ init: true });
     },
-    [histories, loadHistories, setHistories]
+    [historyAppId, loadHistories, setHistories]
   );
 
   const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
   const historiesRef = useRef(histories);
-  historiesRef.current = histories;
+  const prevHistoryAppIdRef = useRef<string | null>(null);
+  const pendingAppChatRestoreRef = useRef(false);
+
+  useEffect(() => {
+    historiesRef.current = histories;
+  }, [histories]);
+
+  /** 切换应用后，若当前 chatId 无效则恢复该应用上次会话或最近一条历史 */
+  useEffect(() => {
+    if (prevHistoryAppIdRef.current === null) {
+      prevHistoryAppIdRef.current = historyAppId;
+      return;
+    }
+    if (prevHistoryAppIdRef.current !== historyAppId) {
+      pendingAppChatRestoreRef.current = true;
+      prevHistoryAppIdRef.current = historyAppId;
+    }
+  }, [historyAppId]);
+
+  useEffect(() => {
+    if (!pendingAppChatRestoreRef.current || isPaginationLoading || !historyAppId) return;
+
+    pendingAppChatRestoreRef.current = false;
+
+    const { chatId: currentChatId } = useChatStore.getState();
+    const scopedHistories = histories.filter((item) => item.appId === historyAppId);
+
+    if (scopedHistories.some((item) => item.chatId === currentChatId)) {
+      return;
+    }
+
+    if (scopedHistories.length > 0) {
+      onChangeChatId(scopedHistories[0].chatId, true);
+    }
+  }, [historyAppId, histories, isPaginationLoading, onChangeChatId]);
 
   /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
   const hasGeneratingInSidebar = useMemo(
@@ -235,7 +275,7 @@ const ChatContextProvider = ({
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
       getChatHistoryStatus({
-        ...(appId ? { appId } : {}),
+        ...(historyAppId ? { appId: historyAppId } : {}),
         chatIds,
         ...outLinkAuthData
       })
@@ -249,7 +289,7 @@ const ChatContextProvider = ({
               const nextRead =
                 nextGen === ChatGenerateStatusEnum.generating
                   ? false
-                  : s.hasBeenRead ?? item.hasBeenRead;
+                  : (s.hasBeenRead ?? item.hasBeenRead);
               return {
                 ...item,
                 chatGenerateStatus: nextGen,
@@ -286,7 +326,7 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [appId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
+  }, [historyAppId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

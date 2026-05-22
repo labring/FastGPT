@@ -22,6 +22,7 @@ import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { postStopV2Chat } from '@/web/core/chat/api';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -36,6 +37,8 @@ const ChatInput = ({
   lastInteractive,
   onSendMessage,
   onStop,
+  onStopSettled,
+  disableSend,
   TextareaDom,
   resetInputVal,
   chatForm
@@ -43,6 +46,8 @@ const ChatInput = ({
   lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
+  onStopSettled?: (status: ChatGenerateStatusEnum, completed: boolean) => void;
+  disableSend?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
@@ -100,7 +105,7 @@ const ChatInput = ({
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const canSendMessage = havInput && !hasFileUploading;
+  const canSendMessage = havInput && !hasFileUploading && !disableSend;
   const canUploadFile =
     showSelectFile ||
     showSelectImg ||
@@ -117,28 +122,30 @@ const ChatInput = ({
 
   /* on send */
   const handleSend = useCallback(
-    async (val?: string) => {
+    async (val: string = inputValue) => {
       if (!canSendMessage) return;
-      const textareaValue = val || TextareaDom.current?.value || '';
 
       onSendMessage({
-        text: textareaValue.trim(),
+        text: val.trim(),
         files: fileList,
         interactive: lastInteractive
       });
       replaceFiles([]);
     },
-    [TextareaDom, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
       if (isChatting) {
-        await postStopV2Chat({
+        const result = await postStopV2Chat({
           appId,
           chatId,
           outLinkAuthData
-        }).catch();
+        });
+        onStopSettled?.(result.chatGenerateStatus ?? ChatGenerateStatusEnum.done, result.completed);
       }
+    } catch {
+      onStopSettled?.(ChatGenerateStatusEnum.generating, false);
     } finally {
       onStop();
     }
@@ -205,26 +212,28 @@ const ChatInput = ({
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
               const isEnter = e.key === 'Enter';
-              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+              const textarea = e.currentTarget;
+              if (isEnter && (e.ctrlKey || e.altKey)) {
                 // Add a new line
-                const index = TextareaDom.current.selectionStart;
-                const val = TextareaDom.current.value;
-                TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-                TextareaDom.current.selectionStart = index + 1;
-                TextareaDom.current.selectionEnd = index + 1;
+                const index = textarea.selectionStart;
+                const val = textarea.value;
+                textarea.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+                textarea.selectionStart = index + 1;
+                textarea.selectionEnd = index + 1;
 
-                TextareaDom.current.style.height = textareaMinH;
-                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+                textarea.style.height = textareaMinH;
+                textarea.style.height = `${textarea.scrollHeight}px`;
 
                 return;
               }
 
               // Select all content
-              // @ts-ignore
-              e.key === 'a' && e.ctrlKey && e.target?.select();
+              if (e.key === 'a' && e.ctrlKey) {
+                textarea.select();
+              }
 
               if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                handleSend();
+                handleSend(textarea.value);
                 e.preventDefault();
               }
             }}
@@ -366,7 +375,7 @@ const ChatInput = ({
                 if (isChatting) {
                   return handleStop();
                 }
-                return handleSend();
+                return void handleSend(inputValue);
               }}
             >
               {isChatting ? (
@@ -394,10 +403,12 @@ const ChatInput = ({
     isStopping,
     isChatting,
     canSendMessage,
+    disableSend,
     onOpenSelectFile,
     onSelectFile,
     handleSend,
-    handleStop
+    handleStop,
+    onStopSettled
   ]);
 
   const activeStyles: FlexProps = {
