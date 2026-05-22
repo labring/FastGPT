@@ -23,7 +23,8 @@ const {
   injectAgentSkillFilesToSandboxMock,
   sandboxWriteFilesMock,
   sandboxClientExecMock,
-  axiosGetMock
+  axiosGetMock,
+  checkTeamSandboxPermissionMock
 } = vi.hoisted(() => ({
   agentPromptMock: vi.fn(),
   agentSubscribeMock: vi.fn(),
@@ -38,7 +39,12 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   sandboxWriteFilesMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
-  axiosGetMock: vi.fn()
+  axiosGetMock: vi.fn(),
+  checkTeamSandboxPermissionMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamSandboxPermission: checkTeamSandboxPermissionMock
 }));
 
 vi.mock('@mariozechner/pi-agent-core', () => ({
@@ -261,6 +267,7 @@ describe('dispatchPiAgent user context', () => {
       show_agent_sandbox: true
     };
     agentConstructorArgs.length = 0;
+    checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     agentPromptMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue(undefined);
     sandboxClientExecMock.mockResolvedValue({

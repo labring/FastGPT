@@ -28,7 +28,6 @@ type Props = {
   setOpenedFiles: React.Dispatch<React.SetStateAction<OpenedFile[]>>;
   openedFiles: OpenedFile[];
   editorRef: React.MutableRefObject<EditorInstance | undefined>;
-  isUpdatingRef: React.MutableRefObject<boolean>;
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
@@ -46,7 +45,6 @@ const EditorContent = ({
   setOpenedFiles,
   openedFiles,
   editorRef,
-  isUpdatingRef,
   appId,
   chatId,
   outLinkAuthData,
@@ -167,6 +165,7 @@ const EditorContent = ({
           height="100%"
           language={activeFile.language || 'plaintext'}
           value={activeFile.content || ''}
+          path={activeFile.path}
           theme="vs-light"
           options={{
             minimap: { enabled: false },
@@ -220,11 +219,8 @@ const EditorContent = ({
             });
           }}
           onChange={(value) => {
-            // 防止循环更新
-            if (isUpdatingRef.current) return;
-
             // 更新当前文件内容
-            if (activeFilePath && value !== undefined) {
+            if (activeFilePath && value !== undefined && value !== activeFile?.content) {
               setOpenedFiles((prev) =>
                 prev.map((f) =>
                   f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f

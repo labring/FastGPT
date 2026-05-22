@@ -81,7 +81,7 @@ type Props = {
   selectedPath: string;
   setSelectedPath: (path: string) => void;
   openFile: (path: string) => void;
-  toggleDirectory: (node: TreeNode) => void;
+  toggleDirectory: (node: TreeNode) => Promise<void> | void;
   onCreateNode: (parentPath: string, name: string, type: 'file' | 'directory') => Promise<void>;
   onRenameComplete: (oldPath: string, newName: string) => Promise<void>;
   onMoveFile: (srcPath: string, targetDirPath: string) => Promise<void>;
@@ -374,16 +374,21 @@ const FileTree = ({
   };
 
   // 上端控制区触发
-  const triggerCreateInSelected = (type: 'file' | 'directory') => {
+  const triggerCreateInSelected = async (type: 'file' | 'directory') => {
     const parentPath = getTargetDirPathFromSelected();
 
     // 自动展开目标目录
     if (parentPath !== '.') {
-      setExpandedDirs((prev) => {
-        const next = new Set(prev);
-        next.add(parentPath);
-        return next;
-      });
+      const parentNode = findNodeByPath(filteredTree, parentPath);
+      if (parentNode && !parentNode.loaded) {
+        await toggleDirectory(parentNode);
+      } else {
+        setExpandedDirs((prev) => {
+          const next = new Set(prev);
+          next.add(parentPath);
+          return next;
+        });
+      }
     }
 
     setCreatingNode({ parentPath, type });
@@ -447,30 +452,44 @@ const FileTree = ({
     });
   };
 
-  const handleCtxCreateFile = () => {
+  const handleCtxCreateFile = async () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
     const parentPath = node.type === 'directory' ? node.path : getParentPath(node.path);
 
-    setExpandedDirs((prev) => {
-      const next = new Set(prev);
-      next.add(parentPath);
-      return next;
-    });
+    if (parentPath !== '.') {
+      const parentNode = findNodeByPath(filteredTree, parentPath);
+      if (parentNode && !parentNode.loaded) {
+        await toggleDirectory(parentNode);
+      } else {
+        setExpandedDirs((prev) => {
+          const next = new Set(prev);
+          next.add(parentPath);
+          return next;
+        });
+      }
+    }
     setCreatingNode({ parentPath, type: 'file' });
     setContextMenu(null);
   };
 
-  const handleCtxCreateDir = () => {
+  const handleCtxCreateDir = async () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
     const parentPath = node.type === 'directory' ? node.path : getParentPath(node.path);
 
-    setExpandedDirs((prev) => {
-      const next = new Set(prev);
-      next.add(parentPath);
-      return next;
-    });
+    if (parentPath !== '.') {
+      const parentNode = findNodeByPath(filteredTree, parentPath);
+      if (parentNode && !parentNode.loaded) {
+        await toggleDirectory(parentNode);
+      } else {
+        setExpandedDirs((prev) => {
+          const next = new Set(prev);
+          next.add(parentPath);
+          return next;
+        });
+      }
+    }
     setCreatingNode({ parentPath, type: 'directory' });
     setContextMenu(null);
   };
