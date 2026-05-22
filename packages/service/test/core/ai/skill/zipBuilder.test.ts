@@ -296,7 +296,7 @@ ${largeMarkdown}`;
 
   // ==================== normalizeSkillPackageZipForSandbox ====================
   describe('normalizeSkillPackageZipForSandbox', () => {
-    it('strips a single package root directory for sandbox extraction', async () => {
+    it('keeps a single package root directory (innermost) for sandbox extraction', async () => {
       const zip = new JSZip();
       zip.file('my-skill/SKILL.md', '---\nname: test\n---');
       zip.file('my-skill/src/main.ts', 'export default 1;');
@@ -308,11 +308,10 @@ ${largeMarkdown}`;
         (path) => !normalizedZip.files[path].dir
       );
 
-      expect(files).toEqual(expect.arrayContaining(['SKILL.md', 'src/main.ts']));
-      expect(files).not.toContain('my-skill/SKILL.md');
+      expect(files).toEqual(expect.arrayContaining(['my-skill/SKILL.md', 'my-skill/src/main.ts']));
     });
 
-    it('strips nested archive roots down to the real skill root', async () => {
+    it('strips nested archive roots down to the real skill root (keeps innermost folder)', async () => {
       const zip = new JSZip();
       zip.file('archive-root/my-skill/SKILL.md', '---\nname: test\n---');
       zip.file('archive-root/my-skill/src/main.ts', 'export default 1;');
@@ -324,9 +323,8 @@ ${largeMarkdown}`;
         (path) => !normalizedZip.files[path].dir
       );
 
-      expect(files).toEqual(expect.arrayContaining(['SKILL.md', 'src/main.ts']));
+      expect(files).toEqual(expect.arrayContaining(['my-skill/SKILL.md', 'my-skill/src/main.ts']));
       expect(files).not.toContain('archive-root/my-skill/SKILL.md');
-      expect(files).not.toContain('my-skill/SKILL.md');
     });
 
     it('keeps root-level packages unchanged', async () => {

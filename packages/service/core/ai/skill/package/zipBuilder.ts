@@ -352,9 +352,24 @@ export async function normalizeSkillPackageZipForSandbox(zipBuffer: Buffer): Pro
     const filename = entry.path.split('/').pop()?.toLowerCase();
     return filename === 'skill.md';
   });
+  // 1. 检查是否有任何文件以 'skills/' 开头
+  const hasSkillsDirectory = entries.some((entry) => entry.path.startsWith('skills/'));
+
   const rootPrefix = (() => {
+    if (hasSkillsDirectory) {
+      return 'skills/';
+    }
+    // 2. 如果没有 'skills/' 目录，说明是非标准旧包，退回到降维兼容逻辑
     if (skillMdEntries.length === 1 && skillMdEntries[0].path.includes('/')) {
-      return skillMdEntries[0].path.slice(0, skillMdEntries[0].path.lastIndexOf('/') + 1);
+      const path = skillMdEntries[0].path;
+      const lastSlashIdx = path.lastIndexOf('/');
+      if (lastSlashIdx !== -1) {
+        const secondLastSlashIdx = path.lastIndexOf('/', lastSlashIdx - 1);
+        if (secondLastSlashIdx !== -1) {
+          return path.slice(0, secondLastSlashIdx + 1);
+        }
+      }
+      return '';
     }
 
     const topLevelNames = new Set<string>();
@@ -372,10 +387,16 @@ export async function normalizeSkillPackageZipForSandbox(zipBuffer: Buffer): Pro
       ? `${Array.from(topLevelNames)[0]}/`
       : '';
   })();
+
   const normalizedZip = new JSZip();
 
   await Promise.all(
     entries.map(async ({ path, file }) => {
+      // 3. 如果是有 'skills/' 文件夹的标准包，我们只解压以 'skills/' 开头的文件，忽略不相干的文件
+      if (hasSkillsDirectory && !path.startsWith('skills/')) {
+        return;
+      }
+
       const targetPath =
         rootPrefix && path.startsWith(rootPrefix) ? path.slice(rootPrefix.length) : path;
       if (!targetPath) return;

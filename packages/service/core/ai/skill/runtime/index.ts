@@ -1,7 +1,7 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage } from '../package';
+import { downloadSkillPackage, normalizeSkillPackageZipForSandbox } from '../package';
 import { parseSkillMarkdown } from '../utils/skillMarkdown';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo } from './types';
@@ -232,7 +232,8 @@ export const injectAgentSkillFilesToSandbox = async ({
   await Promise.all(
     deployableSkills.map(async ({ skill, version, targetDir, zipPath }) => {
       try {
-        const packageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
+        const rawPackageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
+        const packageBuffer = await normalizeSkillPackageZipForSandbox(rawPackageBuffer);
         const extractCommand = `mkdir -p ${shellQuote(targetDir)} && unzip -o ${shellQuote(
           zipPath
         )} -d ${shellQuote(targetDir)} && rm ${shellQuote(zipPath)}`;

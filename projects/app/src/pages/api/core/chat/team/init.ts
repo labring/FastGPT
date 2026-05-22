@@ -1,10 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import {
-  getGuideModule,
-  getAppChatConfig,
-  checkWorkflowUsesSandbox
-} from '@fastgpt/global/core/workflow/utils';
+import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import {
   InitTeamChatQuerySchema,
@@ -98,8 +94,7 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs,
-        useAgentSandbox: checkWorkflowUsesSandbox(nodes)
+        pluginInputs
       }
     }
   });
