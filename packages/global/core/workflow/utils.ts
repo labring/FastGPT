@@ -53,7 +53,6 @@ import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 
 const workflowModelInputKeySet = new Set<string>([
-  'model',
   NodeInputKeyEnum.aiModelId,
   NodeInputKeyEnum.datasetSearchEmbeddingModelId,
   NodeInputKeyEnum.datasetSearchRerankModelId,

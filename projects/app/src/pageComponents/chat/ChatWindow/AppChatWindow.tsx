@@ -59,7 +59,7 @@ const AppChatWindow = () => {
 
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      if (!appId || !chatId || forbidLoadChat.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;

@@ -25,7 +25,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { addLog } from '../../../common/system/log';
 import { extractChunkSynonyms } from './synonym';
 import { MongoDatasetSynonymMapping } from '../synonym/mappingSchema';

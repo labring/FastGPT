@@ -128,7 +128,7 @@ const HomeChatWindow = () => {
   // 初始化聊天数据
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
+      if (!appId || !chatId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });

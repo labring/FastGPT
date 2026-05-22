@@ -1143,7 +1143,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'gpt-4',
             selectedTypeIndex: 0,
@@ -1167,7 +1167,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'unauthorized-model',
             selectedTypeIndex: 0,
@@ -1191,7 +1191,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'unauthorized-model',
             selectedTypeIndex: 1,
@@ -1215,7 +1215,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: ['nodeId', 'outputKey'],
             selectedTypeIndex: 0,
@@ -1262,7 +1262,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'any-model',
             selectedTypeIndex: 0,
@@ -1285,7 +1285,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat 1',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'gpt-4',
             selectedTypeIndex: 0,
@@ -1300,7 +1300,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat 2',
         inputs: [
           {
-            key: 'model',
+            key: NodeInputKeyEnum.aiModelId,
             label: 'Model',
             value: 'unauthorized',
             selectedTypeIndex: 0,

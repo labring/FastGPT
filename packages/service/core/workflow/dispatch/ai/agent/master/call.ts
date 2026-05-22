@@ -701,7 +701,7 @@ export const masterCall = async ({
 
   // llmTotalPoints 是 runAgentCall 内每次 LLM 调用单独计价后的累计值，保证梯度计费正确
   const llmUsage = {
-    modelId: getLLMModelById(agentModelId).id,
+    modelId: getLLMModelById(agentModelId)?.id,
     totalPoints: llmTotalPoints
   };
   const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);

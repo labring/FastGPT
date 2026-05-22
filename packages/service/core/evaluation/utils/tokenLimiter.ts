@@ -1,5 +1,5 @@
 import { getEvaluationModelById } from '../../ai/model';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { addLog } from '../../../common/system/log';
 import { MAX_TOKEN_FOR_EVALUATION_SUMMARY } from '@fastgpt/global/core/evaluation/constants';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';

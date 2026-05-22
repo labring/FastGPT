@@ -2,7 +2,7 @@ import { MongoSystemModel } from '../../../ai/config/schema';
 import { updatedReloadSystemModel } from '../../../ai/config/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getModelProvider } from '../../../app/provider/controller';
 import {
   deleteTunedModelChannel,
@@ -39,7 +39,8 @@ export async function createRerankModelConfig(params: {
   instruction?: string;
   taskId: string;
 }): Promise<string> {
-  const { name, endpoint, isActive, tmbId, teamId, charsPointsPrice, maxToken, instruction } = params;
+  const { name, endpoint, isActive, tmbId, teamId, charsPointsPrice, maxToken, instruction } =
+    params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 

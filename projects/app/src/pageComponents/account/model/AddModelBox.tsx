@@ -213,6 +213,20 @@ const getOptionalNumber = (value: unknown) => {
   return undefined;
 };
 
+const buildModelMetadataPayload = (data: SystemModelItemType) => {
+  const metadata = { ...data } as Partial<SystemModelItemType> & Record<string, any>;
+
+  delete metadata.id;
+  delete metadata.isShared;
+  delete metadata.avatar;
+  delete metadata.permission;
+  delete metadata.sourceMember;
+  delete metadata.tmbId;
+  delete metadata.teamId;
+
+  return metadata;
+};
+
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
 
 const Section = ({
@@ -863,9 +877,7 @@ export const ModelEditModal = ({
         }
       }
 
-      const metadata = { ...data };
-      delete (metadata as Partial<SystemModelItemType>).id;
-      delete (metadata as Partial<SystemModelItemType>).isShared;
+      const metadata = buildModelMetadataPayload(data);
 
       return (
         modelData.id
@@ -952,7 +964,7 @@ export const ModelEditModal = ({
                 <Input
                   {...register('model', { required: true })}
                   {...InputStyles}
-                  isReadOnly={!isCustom || !!modelData.model}
+                  isReadOnly={!isCustom}
                 />
               </Field>
               <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>

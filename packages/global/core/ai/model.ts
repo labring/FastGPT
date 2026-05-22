@@ -1,5 +1,5 @@
 import { i18nT } from '../../common/i18n/utils';
-import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
+import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.schema';
 
 export enum ModelTypeEnum {
   llm = 'llm',

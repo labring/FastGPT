@@ -176,6 +176,7 @@
   "code_error.error_message.511": "You do not have permission on the model.",
   "code_error.error_message.513": "You do not have permission to read the file.",
   "code_error.error_message.514": "Invalid API key.",
+  "code_error.model_not_found": "Referenced model not found: {{modelIds}}",
   "code_error.openapi_error.api_key_not_exist": "The API key does not exist.",
   "code_error.openapi_error.exceed_limit": "Up to 10 API keys can be created.",
   "code_error.openapi_error.un_auth": "You do not have permission on the API key.",

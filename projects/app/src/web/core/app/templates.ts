@@ -136,7 +136,7 @@ export const getEmptyAppsTemplate = (t: any) => {
           version: '481',
           inputs: [
             {
-              key: 'model',
+              key: NodeInputKeyEnum.aiModelId,
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference

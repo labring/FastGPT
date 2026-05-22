@@ -314,6 +314,8 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 };
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+  const vectorModel = getEmbeddingModelById(trainingData.dataset.vectorModelId);
+
   return mongoSessionRun(async (session) => {
     // insert new data to dataset
     const { tokens, insertId } = await insertData2Dataset({
@@ -327,15 +329,13 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       imageId: trainingData.imageId,
       imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
-      indexSize:
-        trainingData.indexSize ||
-        getMaxIndexSize(getEmbeddingModelById(trainingData.dataset.vectorModelId)),
+      indexSize: trainingData.indexSize || getMaxIndexSize(vectorModel),
       indexes: trainingData.indexes,
       metadata: trainingData.dataMetadata,
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,
-      embeddingModelId: trainingData.dataset.vectorModelId,
+      embeddingModelId: vectorModel.id,
       session
     });
 

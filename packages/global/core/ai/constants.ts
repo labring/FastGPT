@@ -18,6 +18,7 @@ export enum ModelTypeEnum {
   rerank = 'rerank'
 }
 
+// Fallback defaults used only when no models are loaded from plugins or DB
 export const defaultQAModels: LLMModelItemType[] = [
   {
     id: 'default-llm-gpt5',

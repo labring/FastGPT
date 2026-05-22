@@ -7,14 +7,10 @@
  */
 
 import { getVectorsByText } from '../../../ai/embedding';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { createChatCompletion } from '../../../ai/config';
-import {
-  getLLMModelById,
-  getEmbeddingModelById,
-  getRerankModelById
-} from '../../../ai/model';
-import type { LLMModelItemType, RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { getLLMModelById, getEmbeddingModelById, getRerankModelById } from '../../../ai/model';
+import type { LLMModelItemType, RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,

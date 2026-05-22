@@ -1914,7 +1914,7 @@ describe('Rerank Train Task Processor', () => {
           mode: 'test',
           params: expect.objectContaining({
             userChatInput: 'Test query',
-            rerankModel: undefined,
+            rerankModelId: undefined,
             usingReRank: false,
             // Verify actual search params from constants are used
             similarity: 0.1,

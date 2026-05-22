@@ -59,7 +59,7 @@ export const defaultWhisperConfig: AppWhisperConfigType = {
 
 export const defaultQGConfig: AppQGConfigType = {
   open: false,
-  modelId: 'gpt-5',
+  modelId: '',
   customPrompt: ''
 };
 

@@ -42,6 +42,7 @@ import {
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
 import Md5DuplicateModal, { type Md5DuplicateItem } from './Md5DuplicateModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FileSelectorBox, {
   type SelectFileItemType as FaqSelectFileItemType
 } from '@/components/Select/FileSelectorBox';
@@ -110,6 +111,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   onFinish
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   // ── 顶层状态 ─────────────────────────────
   const [addMode, setAddMode] = useState<AddMode>('file');
@@ -120,6 +122,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   const [showTagManageModal, setShowTagManageModal] = useState(false);
 
   const loadTagOptions = useCallback(() => {
+    if (!feConfigs?.isPlus) return;
     getAllTags(datasetId).then((result) => {
       setTagOptions(
         result.list.map((tag) => ({ label: tag.tag, value: tag._id, tagType: tag.tagType }))

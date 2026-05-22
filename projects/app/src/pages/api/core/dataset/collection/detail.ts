@@ -58,6 +58,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
     ...collection,
     dataset: {
       ...collection.dataset,
+      vectorModelId: collection.dataset?.vectorModelId || '',
+      agentModelId: collection.dataset?.agentModelId || '',
       synonymFiles: (collection.dataset as any)?.synonymFiles?.map(
         (id: any) => id?.toString?.() ?? id
       )

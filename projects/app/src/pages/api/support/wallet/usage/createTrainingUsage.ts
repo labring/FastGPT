@@ -27,8 +27,8 @@ async function handler(req: NextApiRequest) {
     tmbId,
     appName: name,
     billSource: UsageSourceEnum.training,
-    vectorModelId: getEmbeddingModelById(dataset.vectorModelId).id,
-    agentModelId: getLLMModelById(dataset.agentModelId).id,
+    vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id || '',
+    agentModelId: getLLMModelById(dataset.agentModelId)?.id,
     vllmModelId: getVlmModelById(dataset.vlmModelId)?.id
   });
 

@@ -352,11 +352,13 @@ async function handler(
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
         aiproxyChannels: global.aiproxyChannelsCache,
-        activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
-          ...model,
-          permission: new ModelPermission({ role: ReadRoleVal }),
-          trainTaskSummary: emptySummary()
-        }))
+        activeModelList: global.systemActiveDesensitizedModels
+          .filter((model) => !model.isCustom)
+          .map((model) => ({
+            ...model,
+            permission: new ModelPermission({ role: ReadRoleVal }),
+            trainTaskSummary: emptySummary()
+          }))
       };
     }
 

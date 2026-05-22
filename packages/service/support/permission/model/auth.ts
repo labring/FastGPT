@@ -35,7 +35,7 @@ export const authModelByTmbId = async ({
   const model = getModelById(modelId);
 
   if (!model) {
-    return Promise.reject('Model not found');
+    return Promise.reject(`Model not found: ${modelId}`);
   }
 
   const permission = await getModelPermission({
@@ -75,7 +75,7 @@ export const authModel = async ({
   const result = await parseHeaderCert(props);
 
   if (!modelId) {
-    return Promise.reject('Model not found');
+    return Promise.reject('Model not found: modelId is empty');
   }
 
   const { model } = await authModelByTmbId({
@@ -143,7 +143,8 @@ export const authModels = async ({
   const models = ids.map((id) => getModelById(id));
 
   if (models.some((model) => !model)) {
-    return Promise.reject('Model not found');
+    const missingIds = ids.filter((id, i) => !models[i]);
+    return Promise.reject(`Model not found: ${missingIds.join(', ')}`);
   }
 
   const tmb = await getTmbInfoByTmbId({ tmbId: result.tmbId });

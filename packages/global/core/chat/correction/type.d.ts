@@ -1,5 +1,5 @@
 import type { CorrectionModeEnum } from './constants';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 export type CorrectionIndexItem = {
   type: 'q' | 'a' | 'c';

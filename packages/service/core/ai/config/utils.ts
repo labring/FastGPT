@@ -85,7 +85,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         }
         if (model.isDefaultEvaluationModel) {
           _systemDefaultModel.evaluation = model;
-	}
+        }
         if (model.model === process.env.HELPER_BOT_MODEL) {
           _systemDefaultModel.helperBotLLM = model;
         }
@@ -131,16 +131,32 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       );
 
       if (pluginModelsWithoutDB.length > 0) {
-        const newDocs = await MongoSystemModel.insertMany(
+        const modelNames = pluginModelsWithoutDB.map((m) => m.model);
+        // Use bulkWrite + upsert to safely handle concurrent startup across nodes
+        await MongoSystemModel.bulkWrite(
           pluginModelsWithoutDB.map((model) => ({
-            model: model.model,
-            metadata: { ...model, isCustom: false },
-            isShared: true
-          })),
+            updateOne: {
+              filter: { model: model.model, 'metadata.isCustom': false },
+              update: {
+                $setOnInsert: {
+                  model: model.model,
+                  metadata: { ...model, isCustom: false },
+                  isShared: true
+                }
+              },
+              upsert: true
+            }
+          })) as any,
           { ordered: false }
         );
-        dbModels.push(...newDocs);
-        addLog.info(`Persisted ${newDocs.length} system models to MongoDB`);
+        // Re-fetch to get _id values for both pre-existing and newly inserted records
+        const refreshedDocs = await MongoSystemModel.find({
+          model: { $in: modelNames },
+          'metadata.isCustom': false
+        }).lean();
+        dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.metadata?.isCustom);
+        dbModels.push(...refreshedDocs);
+        addLog.info(`Persisted ${refreshedDocs.length} system models to MongoDB`);
       }
     }
 
@@ -153,7 +169,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         return { ...formatObj1, ...formatObj2 };
       };
 
-      const dbModel = dbModels.find((item) => item.model === model.model && !item.metadata?.isCustom);
+      const dbModel = dbModels.find(
+        (item) => item.model === model.model && !item.metadata?.isCustom
+      );
       const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
 
       const modelData: any = {

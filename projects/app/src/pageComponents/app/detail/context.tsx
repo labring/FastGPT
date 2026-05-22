@@ -20,6 +20,8 @@ import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
@@ -205,6 +207,33 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     async (data: PostPublishAppProps) => {
       try {
         if (!appDetail.permission.hasWritePer) return;
+
+        // Validate model references before saving
+        const modelIds = extractWorkflowModelIds({
+          modules: data.nodes,
+          chatConfig: data.chatConfig
+        });
+        if (modelIds.length > 0) {
+          const systemStore = useSystemStore.getState();
+          const allValidModelIds = new Set([
+            ...systemStore.llmModelList.map((m) => m.id),
+            ...systemStore.embeddingModelList.map((m) => m.id),
+            ...systemStore.reRankModelList.map((m) => m.id),
+            ...systemStore.ttsModelList.map((m) => m.id),
+            ...systemStore.sttModelList.map((m) => m.id)
+          ]);
+          const invalidModelIds = modelIds.filter((id) => !allValidModelIds.has(id));
+          if (invalidModelIds.length > 0) {
+            toast({
+              title: t('common:code_error.model_not_found', {
+                modelIds: invalidModelIds.join(', ')
+              }),
+              status: 'warning',
+              duration: 6000
+            });
+          }
+        }
+
         await postPublishApp(appId, data);
         setAppDetail((state) => ({
           ...state,

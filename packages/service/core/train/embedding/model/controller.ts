@@ -2,7 +2,7 @@ import { MongoSystemModel } from '../../../ai/config/schema';
 import { updatedReloadSystemModel } from '../../../ai/config/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getModelProvider } from '../../../app/provider/controller';
 import {
   deleteTunedModelChannel,

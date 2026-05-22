@@ -510,7 +510,7 @@ export async function dispatchDatasetSearch(
         searchMode,
         embeddingWeight,
         usingReRank,
-        rerankModelId: rerankModelData.id,
+        rerankModelId: rerankModelData?.id,
         rerankMethod,
         rerankWeight,
         collectionFilterMatch,
@@ -620,7 +620,8 @@ export async function dispatchDatasetSearch(
               queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
                 ? {
                     llmModelId: corrFaqQueryExtensionResult.aiExtensionResult.llmModelId,
-                    embeddingModelId: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
+                    embeddingModelId:
+                      corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
                     inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
                     outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
                     embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
@@ -675,7 +676,8 @@ export async function dispatchDatasetSearch(
               queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
                 ? {
                     llmModelId: corrFaqQueryExtensionResult.aiExtensionResult.llmModelId,
-                    embeddingModelId: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
+                    embeddingModelId:
+                      corrFaqQueryExtensionResult.aiExtensionResult.embeddingModelId,
                     inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
                     outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
                     embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
@@ -752,7 +754,7 @@ export async function dispatchDatasetSearch(
               );
               for (let i = 0; i < needsDbLookupIds.length; i++) {
                 const dsId = needsDbLookupIds[i];
-                const modelId = getEmbeddingModelById(dbModels[i]?.vectorModelId).id;
+                const modelId = getEmbeddingModelById(dbModels[i]?.vectorModelId)?.id || '';
                 if (!modelGroupMap.has(modelId)) {
                   modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
                 }
@@ -785,7 +787,7 @@ export async function dispatchDatasetSearch(
                   searchMode,
                   embeddingWeight,
                   usingReRank,
-                  rerankModelId: rerankModelData.id,
+                  rerankModelId: rerankModelData?.id,
                   rerankMethod,
                   rerankWeight,
                   collectionFilterMatch,
@@ -859,7 +861,10 @@ export async function dispatchDatasetSearch(
               });
 
               // Store per-model token counts for billing
-              const modelTokenMap = new Map<string, { modelId: string; modelName: string; tokens: number }>();
+              const modelTokenMap = new Map<
+                string,
+                { modelId: string; modelName: string; tokens: number }
+              >();
               for (const { result, vectorModelId } of groupSearchResults) {
                 if (result.embeddingTokens > 0) {
                   const modelData = getEmbeddingModelById(vectorModelId);
@@ -935,8 +940,9 @@ export async function dispatchDatasetSearch(
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     // 1. Search vector — bill per embedding model used across all groups
-    const modelTokenMap: Map<string, { modelId: string; modelName: string; tokens: number }> | undefined =
-      commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
+    const modelTokenMap:
+      | Map<string, { modelId: string; modelName: string; tokens: number }>
+      | undefined = commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
     if (modelTokenMap && modelTokenMap.size > 0) {
       for (const { modelId, modelName, tokens } of modelTokenMap.values()) {
         const { totalPoints, modelName: billingModelName } = formatModelChars2Points({

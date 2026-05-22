@@ -8,7 +8,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../global/common/i18n/utils';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
   ? `${process.env.AIPROXY_API_ENDPOINT}/v1`
@@ -87,9 +87,7 @@ export const createChatCompletion = async ({
       ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelData.requestAuth
-          ? { Authorization: `Bearer ${modelData.requestAuth}` }
-          : {})
+        ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
       }
     });
 
