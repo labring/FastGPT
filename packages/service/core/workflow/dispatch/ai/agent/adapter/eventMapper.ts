@@ -192,10 +192,16 @@ export const createWorkflowAgentLoopEventMapper = ({
     assistantText?: string;
     reasoningText?: string;
   }) => {
-    // 没有可见 assistantText 时，不在 request end 阶段回填 reasoning 到已有 tool。
-    // reasoning 的归属需要按流式顺序附着到后续 content/tool，避免误挂到上一轮工具。
-    if (!assistantText) return;
-
+    /*
+     * 只处理“本轮 LLM 结束于工具调用”的 assistant 内容归属。
+     *
+     * 例子：
+     *   request 1: reasoningText="需要先查时间", assistantText=undefined, toolCalls=[call_time]
+     *   request 2: reasoningText="工具返回了时间", assistantText="现在是 10 点"
+     *
+     * request 1 没有可见回答，但 reasoning 仍然属于 call_time 前的 assistant turn。
+     * 如果不挂到对应 tools value 上，刷新后/下一轮上下文会只剩 tool，丢失第一段思考。
+     */
     const runtimeToolCalls = toolCalls.filter((call) => {
       const functionName = call.function.name;
       return (
@@ -211,6 +217,22 @@ export const createWorkflowAgentLoopEventMapper = ({
     const existingIndex = assistantResponses.findIndex((item) =>
       item.tools?.some((tool) => runtimeToolCallIds.has(tool.id))
     );
+
+    if (!assistantText) {
+      // reason -> tool：没有 answerText 可单独插入时，把 reasoning 按 callId 挂到已创建的工具卡。
+      if (!reasoningText || existingIndex < 0) return;
+
+      const currentValue = assistantResponses[existingIndex];
+      assistantResponses[existingIndex] = {
+        ...currentValue,
+        reasoning: {
+          content: [currentValue.reasoning?.content, reasoningText].filter(Boolean).join('\n\n')
+        },
+        ...(!showReasoning ? { hideReason: true } : {})
+      };
+      return;
+    }
+
     const insertIndex = existingIndex >= 0 ? existingIndex : assistantResponses.length;
 
     const assistantValue: AIChatItemValueItemType = {

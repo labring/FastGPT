@@ -142,9 +142,12 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
   ): message is AssistantToolCallMessage => {
     if (message?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) return false;
 
+    const hasNoAssistantText =
+      message.content === undefined || message.content === null || message.content === '';
+
     return (
       hasAssistantToolCalls(message) &&
-      typeof message.content !== 'string' &&
+      hasNoAssistantText &&
       typeof message.reasoning_content !== 'string'
     );
   };
