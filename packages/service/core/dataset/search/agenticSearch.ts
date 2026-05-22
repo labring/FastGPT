@@ -23,6 +23,7 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import { formatAgenticLabel, getSearchingFallback } from './agenticSearchLabels';
 
 // 本地定义 AgentEvent 类型（避免依赖 diting-rag-ts 新版 dist）
@@ -264,11 +265,19 @@ export async function agenticSearchDispatch(
       initialLanguageStats: langSample
     });
 
+    let streamError: string | null = null;
+
     for await (const item of stream) {
       if ('chunks' in item && 'searchCount' in item) {
         finalResult = item as AgenticSearchResult;
       } else {
         const event = item as AgentEvent;
+        // 追踪 runner.ts stream() 产生的 ERROR 事件：
+        // runner.ts 在 catch LangGraph 异常后 yield ERROR 事件并 return，
+        // 生成器正常结束（不抛），需在此处显式捕获错误信息
+        if (event.step === 'error') {
+          streamError = event.detail || 'Unknown agentic search error';
+        }
         const reasoningText = formatEventText(event, queryLang);
         if (reasoningText) {
           accumulatedReasoningText += reasoningText;
@@ -280,6 +289,10 @@ export async function agenticSearchDispatch(
           }
         }
       }
+    }
+
+    if (streamError) {
+      throw new Error(streamError);
     }
 
     if (!finalResult) {
@@ -326,9 +339,21 @@ export async function agenticSearchDispatch(
 
     return response;
   } catch (error) {
-    addLog.error('[AgenticSearch] Failed, falling back to default', { error });
+    addLog.error('[AgenticSearch] Failed', { error });
 
-    // 降级：使用默认混合检索
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    // diting-rag-ts agent 节点 LLM 重试全部耗尽且无 chunks：
+    // 底模完全不可用，不应静默降级，需将错误抛给前端展示
+    if (
+      errorMsg.includes('LLM call failed after') &&
+      errorMsg.includes('no chunks collected')
+    ) {
+      addLog.error('[AgenticSearch] LLM fatal error, propagating to caller');
+      throw new Error(i18nT('chat:language_model_error'));
+    }
+
+    // 非 LLM 致命错误（search/EMB 异常）：降级使用默认混合检索
+    addLog.warn('[AgenticSearch] Non-fatal error, falling back to default search');
     return defaultSearchDatasetData({
       ...props,
       searchMode: DatasetSearchModeEnum.mixedRecall

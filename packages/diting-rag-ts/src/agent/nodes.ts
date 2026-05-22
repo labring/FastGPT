@@ -170,7 +170,9 @@ async function retryWithGuidance(
 
 /**
  * 构建 agent 节点在 retry 全部失败时的 fallback 返回值。
- * 有 chunks 时标记 done 进入 select_chunks，无 chunks 时返回 error。
+ * 有 chunks 时标记 done 进入 select_chunks 用已有结果生成回答；
+ * 无 chunks 时直接抛出异常，让上层（runner.ts）的 error 处理路径
+ * 捕获并返回明确的错误信息，而非静默返回空召回。
  */
 function agentRetryExhaustedUpdate(
   state: AgenticRAGStateType,
@@ -187,12 +189,7 @@ function agentRetryExhaustedUpdate(
       llmOutputTokens: 0
     };
   }
-  return {
-    pendingToolCalls: [],
-    error: `${nodeName} error after ${attempts} attempts: ${lastErrorMsg}`,
-    executionPath: [`${nodeName}(retry_exhausted)`],
-    nodeHist: [{ node: nodeName, toolCalls: [] }]
-  };
+  throw new Error(`${nodeName}: LLM call failed after ${attempts} attempts, no chunks collected — ${lastErrorMsg}`);
 }
 
 // ============================================================
