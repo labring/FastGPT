@@ -14,7 +14,6 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { i18nT } from '@fastgpt/web/i18n/utils';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';
 import fs from 'node:fs';
@@ -93,8 +92,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       num: result.fileMetadata.length
     });
 
-    if (!dataset.vlmModel) {
-      return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
+    const hasVlm = !!dataset.vlmModel;
+    const hasCustomParse = !!(
+      global.systemEnv.customPdfParse?.url && global.systemEnv.customPdfParse?.key
+    );
+    if (!hasVlm && !hasCustomParse) {
+      return Promise.reject(DatasetErrEnum.imageDatasetRequiresVlmModel);
     }
 
     // 使用前端计算的 MD5（SparkMD5），避免前后端计算不一致。

@@ -20,9 +20,9 @@ export const useToast = (props?: UseToastOptions & { containerStyle?: CSSPropert
     (options?: UseToastOptions) => {
       if (options?.title || options?.description) {
         toast({
+          ...options,
           ...(options.title && { title: t(options.title as any) }),
-          ...(options.description && { description: t(options.description as any) }),
-          ...options
+          ...(options.description && { description: t(options.description as any) })
         });
       }
     },

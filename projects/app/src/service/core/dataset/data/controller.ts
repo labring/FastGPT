@@ -21,6 +21,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { detectLang } from 'diting-rag-ts';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const formatIndexes = async ({
   indexes = [],
@@ -186,7 +187,7 @@ export async function insertData2Dataset({
   session?: ClientSession;
 }) {
   if (imageId && !q) {
-    return Promise.reject('Image understanding failed, please configure the VLM model');
+    return Promise.reject(DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse);
   }
   if (!q || !datasetId || !collectionId || !embeddingModel) {
     return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
