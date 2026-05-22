@@ -7,6 +7,7 @@ import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getRootUser, getUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 const mockJsonRes = vi.mocked(jsonRes);
 
@@ -87,27 +88,27 @@ describe('GET /api/core/ai/skill/export', () => {
 
   // ==================== Auth validation ====================
 
-  it('未鉴权请求应返回 500（unAuthorization）', async () => {
+  it('未鉴权请求应返回 401（unAuthorization）', async () => {
     const res = makeMockRes();
     const req = makeMockReq({ query: { skillId: '507f1f77bcf86cd799439011' } }); // no auth
 
-    await handler(req, res);
+    const result = (await handler(req, res)) as any;
 
-    // parseHeaderCert throws Error('unAuthorization'); err.message = 'unAuthorization'
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'unAuthorization' });
+    expect(result.code).toBe(500);
+    expect(result.error.message).toBe('unAuthorization');
   });
 
-  // ==================== Param validation (now delegated to authSkill) ====================
+  // ==================== Param validation ====================
 
-  it('缺少 skillId 时 authSkill 拒绝访问，返回 500', async () => {
+  it('缺少 skillId 时 Zod 校验失败，返回 400', async () => {
     const user = await getRootUser();
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: {} }); // no skillId
 
-    await handler(req, res);
+    const result = (await handler(req, res)) as any;
 
-    // authSkill rejects with SkillErrEnum.unExist (string), err.message is undefined
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'Failed to export skill' });
+    expect(result.code).toBe(500);
+    expect(result.error).toBeInstanceOf(ApiRequestInputParseError);
   });
 
   it('skillId 格式无效时 MongoDB 抛出 CastError，返回 500', async () => {
@@ -115,13 +116,10 @@ describe('GET /api/core/ai/skill/export', () => {
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId: 'not-a-valid-object-id' } });
 
-    await handler(req, res);
+    const result = (await handler(req, res)) as any;
 
-    // MongoDB CastError has a .message property containing 'ObjectId'
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 500,
-      error: expect.stringContaining('ObjectId')
-    });
+    expect(result.code).toBe(500);
+    expect(result.error.message).toContain('ObjectId');
   });
 
   // ==================== Skill existence validation ====================
@@ -134,10 +132,10 @@ describe('GET /api/core/ai/skill/export', () => {
       query: { skillId: '507f1f77bcf86cd799439011' } // valid ObjectId but no matching document
     });
 
-    await handler(req, res);
+    const result = (await handler(req, res)) as any;
 
-    // authSkill rejects with SkillErrEnum.unExist (string), err.message is undefined
-    expect(mockJsonRes).toHaveBeenCalledWith(res, { code: 500, error: 'Failed to export skill' });
+    expect(result.code).toBe(500);
+    expect(result.error).toBe('skillUnExist');
   });
 
   // ==================== Business rule validation ====================
@@ -214,13 +212,10 @@ describe('GET /api/core/ai/skill/export', () => {
     const res = makeMockRes();
     const req = makeMockReq({ auth: stranger, query: { skillId: String(skill._id) } });
 
-    await handler(req, res);
+    const result = (await handler(req, res)) as any;
 
-    // authSkill rejects with SkillErrEnum.unAuthSkill (string), err.message is undefined
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 500,
-      error: 'Failed to export skill'
-    });
+    expect(result.code).toBe(500);
+    expect(result.error).toBe('unAuthSkill');
 
     await MongoAgentSkills.deleteOne({ _id: skill._id });
   });

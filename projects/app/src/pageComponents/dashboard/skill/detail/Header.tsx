@@ -35,7 +35,10 @@ const ConfigPerModal = dynamic(() => import('@/components/support/permission/Con
 
 const RouteTab = () => {
   const { t } = useTranslation();
-  const { currentTab, setCurrentTab } = useContextSelector(SkillDetailContext, (v) => v);
+  const { currentTab, setCurrentTab } = useContextSelector(SkillDetailContext, (v) => ({
+    currentTab: v.currentTab,
+    setCurrentTab: v.setCurrentTab
+  }));
 
   const isSkillReady = useContextSelector(SkillDetailContext, (v) => v.isSkillReady);
 
@@ -89,7 +92,14 @@ const Header = () => {
     setShowHistories,
     isSkillReady,
     saveAllRef
-  } = useContextSelector(SkillDetailContext, (v) => v);
+  } = useContextSelector(SkillDetailContext, (v) => ({
+    skillDetail: v.skillDetail,
+    refreshSkillDetail: v.refreshSkillDetail,
+    showHistories: v.showHistories,
+    setShowHistories: v.setShowHistories,
+    isSkillReady: v.isSkillReady,
+    saveAllRef: v.saveAllRef
+  }));
 
   const [savingAll, setSavingAll] = useState(false);
 

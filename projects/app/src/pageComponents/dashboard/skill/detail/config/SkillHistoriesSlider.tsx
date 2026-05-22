@@ -42,7 +42,11 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
   const { skillId, refreshSkillDetail, restartSandbox } = useContextSelector(
     SkillDetailContext,
-    (v) => v
+    (v) => ({
+      skillId: v.skillId,
+      refreshSkillDetail: v.refreshSkillDetail,
+      restartSandbox: v.restartSandbox
+    })
   );
 
   const [editId, setEditId] = useState<string | undefined>(undefined);

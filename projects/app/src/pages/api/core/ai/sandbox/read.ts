@@ -29,6 +29,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   const { content, contentType } = await getSandboxFileContent(sandbox, path, true);
 
   res.setHeader('Content-Type', contentType);
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self' data: blob:; script-src 'none'; style-src 'unsafe-inline' 'self';"
+  );
   res.send(content);
 }
 

@@ -112,7 +112,9 @@ const ConfirmWarningModal = ({
               try {
                 await onConfirm?.();
                 handleClose();
-              } catch {}
+              } catch (err) {
+                console.error('[ConfirmWarningModal] onConfirm error:', err);
+              }
               setRequesting(false);
             }}
           >

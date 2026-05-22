@@ -12,11 +12,8 @@ import { getSessionVolumeConfig, type VolumeManagerResult } from '../volume/serv
 import { buildRuntimeSandboxAdapter } from '../provider/adapter';
 import { ensureConnectedSandboxRunning } from '../provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from './resource';
-import { findSandboxAppIdBySandboxId, upsertRunningSandboxInstance } from '../instance/repository';
+import { upsertRunningSandboxInstance } from '../instance/repository';
 import type { SandboxProviderType } from '../type';
-import { MongoApp } from '../../../app/schema';
-import { MongoAgentSkills } from '../../skill/model/schema';
-import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -41,40 +38,6 @@ type SandboxClientOptions = {
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateSpec;
 };
-
-async function resolveSandboxTeamId(appId?: string): Promise<string | undefined> {
-  if (!appId) return;
-
-  const appDoc = await MongoApp.findById(appId, 'teamId').lean();
-  if (appDoc) return String(appDoc.teamId);
-
-  const skillDoc = await MongoAgentSkills.findById(appId, 'teamId').lean();
-  if (skillDoc) return String(skillDoc.teamId);
-}
-
-/**
- * 校验当前业务归属团队是否允许使用 sandbox。
- *
- * 如果传入了 teamId 则直接进行校验，跳过数据库反查。
- * 否则通过 appId 或 sandboxId 联表反查业务归属团队。
- */
-async function checkRuntimeSandboxPermission(
-  props: { sandboxId: string; teamId?: string } | UnionIdType
-) {
-  let resolvedTeamId = props.teamId;
-
-  if (!resolvedTeamId) {
-    const appId =
-      'appId' in props ? props.appId : await findSandboxAppIdBySandboxId(props.sandboxId);
-    resolvedTeamId = await resolveSandboxTeamId(appId);
-  }
-
-  if (resolvedTeamId) {
-    await checkTeamSandboxPermission(resolvedTeamId);
-  } else if (process.env.NODE_ENV !== 'test') {
-    throw new Error('Sandbox appId or teamId is required for security verification');
-  }
-}
 
 /**
  * 当前会话运行态 sandbox client。
@@ -215,8 +178,6 @@ export const getSandboxClient = async (
     createConfig?: SandboxCreateSpec;
   } = {}
 ) => {
-  await checkRuntimeSandboxPermission(props);
-
   const sandboxId = resolveSandboxId(props);
 
   const vmConfig = await getSessionVolumeConfig(sandboxId);

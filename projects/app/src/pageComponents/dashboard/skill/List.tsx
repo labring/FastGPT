@@ -192,7 +192,12 @@ const List = ({
 
   const { skills, loadSkills, isFetchingSkills, searchKey } = useContextSelector(
     SkillListContext,
-    (v) => v
+    (v) => ({
+      skills: v.skills,
+      loadSkills: v.loadSkills,
+      isFetchingSkills: v.isFetchingSkills,
+      searchKey: v.searchKey
+    })
   );
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();

@@ -3,6 +3,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
+import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 
 const { getLLMModelMock, runToolCallMock, useToolMessagesMock, useToolNodeListMock } = vi.hoisted(
   () => ({
@@ -27,6 +28,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessag
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList', () => ({
   useToolNodeList: useToolNodeListMock
+}));
+
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamSandboxPermission: vi.fn()
 }));
 
 const createProps = (overrides: Record<string, any> = {}) =>
@@ -171,5 +176,25 @@ describe('dispatchRunTools file context', () => {
         })
       })
     );
+  });
+
+  it('should throw error when team has no permission', async () => {
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValue(new Error('no permission'));
+    global.feConfigs = { show_agent_sandbox: true };
+
+    const promise = dispatchRunTools(
+      createProps({
+        params: {
+          ...createProps().params,
+          useAgentSandbox: true
+        }
+      })
+    );
+
+    await expect(promise).rejects.toThrow(
+      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+    );
+    expect(useToolMessagesMock).not.toHaveBeenCalled();
+    expect(runToolCallMock).not.toHaveBeenCalled();
   });
 });

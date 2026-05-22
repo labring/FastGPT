@@ -14,9 +14,11 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
+  SwitchSkillVersionBodySchema,
   type SwitchSkillVersionBody,
   type SwitchSkillVersionResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -25,7 +27,10 @@ export type { SwitchSkillVersionBody, SwitchSkillVersionResponse };
 async function handler(
   req: ApiRequestProps<SwitchSkillVersionBody>
 ): Promise<SwitchSkillVersionResponse> {
-  const { skillId, versionId } = req.body;
+  const { skillId, versionId } = parseApiInput({
+    req,
+    bodySchema: SwitchSkillVersionBodySchema
+  }).body;
   await authSkill({ skillId, req, per: WritePermissionVal, authToken: true, authApiKey: true });
 
   const targetVersion = await MongoAgentSkillsVersion.findOne({

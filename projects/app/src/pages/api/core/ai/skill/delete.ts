@@ -3,7 +3,11 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { markSkillSubtreeDeleted } from '@fastgpt/service/core/ai/skill/manage';
 import { addAgentSkillDeleteJob } from '@fastgpt/service/core/ai/skill/delete';
-import type { DeleteSkillQuery } from '@fastgpt/global/core/ai/skill/api';
+import {
+  DeleteSkillQuerySchema,
+  type DeleteSkillQuery
+} from '@fastgpt/global/openapi/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -12,7 +16,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 async function handler(req: ApiRequestProps<Record<string, never>, DeleteSkillQuery>) {
-  const { skillId } = req.query;
+  const { skillId } = parseApiInput({ req, querySchema: DeleteSkillQuerySchema }).query;
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);

@@ -26,7 +26,11 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
-import type { UpdateSkillBody } from '@fastgpt/global/core/ai/skill/api';
+import {
+  UpdateSkillBodySchema,
+  type UpdateSkillBody
+} from '@fastgpt/global/openapi/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
@@ -34,7 +38,10 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
 async function handler(req: ApiRequestProps<UpdateSkillBody>) {
-  const { skillId, name, description, category, avatar, parentId } = req.body as UpdateSkillBody;
+  const { skillId, name, description, category, avatar, parentId } = parseApiInput({
+    req,
+    bodySchema: UpdateSkillBodySchema
+  }).body;
 
   if (!skillId) {
     return Promise.reject(SkillErrEnum.invalidSkillId);

@@ -15,7 +15,8 @@ const {
   sandboxClientExecMock,
   axiosGetMock,
   getAgentSkillInfosMock,
-  injectAgentSkillFilesToSandboxMock
+  injectAgentSkillFilesToSandboxMock,
+  checkTeamSandboxPermissionMock
 } = vi.hoisted(() => ({
   runUnifiedAgentLoopMock: vi.fn(),
   getSandboxClientMock: vi.fn(),
@@ -23,7 +24,8 @@ const {
   sandboxClientExecMock: vi.fn(),
   axiosGetMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
-  injectAgentSkillFilesToSandboxMock: vi.fn()
+  injectAgentSkillFilesToSandboxMock: vi.fn(),
+  checkTeamSandboxPermissionMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/agentLoop', async (importOriginal) => {
@@ -56,6 +58,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', async (importOrigina
     getSandboxClient: getSandboxClientMock
   };
 });
+
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamSandboxPermission: checkTeamSandboxPermissionMock
+}));
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const original = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
@@ -210,6 +216,7 @@ const getEditSkillsRootPath = () =>
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
     serviceEnv.SHOW_SKILL = true;
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
@@ -492,5 +499,31 @@ describe('dispatchRunAgent user context', () => {
         }
       }
     ]);
+  });
+
+  it('throws error and interrupts when checkTeamSandboxPermission fails', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
+
+    let promise: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/old.pdf': ChatFileTypeEnum.file,
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
+    const result = await promise;
+    expect(result.error?.system_error_text).toBe(
+      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+    );
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
   });
 });

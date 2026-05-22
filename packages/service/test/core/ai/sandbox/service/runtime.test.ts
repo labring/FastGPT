@@ -145,67 +145,6 @@ describe('sandbox runtime service', () => {
     expect(client.getSandboxId()).toBe(generateSandboxId('app-1', 'user-1', 'normal-chat'));
   });
 
-  it('checks team sandbox permission for app-owned runtime sandboxes', async () => {
-    mocks.mongoAppFindById.mockReturnValueOnce(mockLeanResult({ teamId: 'team-app-1' }));
-
-    await expect(
-      getSandboxClient({
-        appId: 'app-1',
-        userId: 'user-1',
-        chatId: 'chat-1'
-      })
-    ).resolves.toBeInstanceOf(SandboxClient);
-
-    expect(mocks.mongoAppFindById).toHaveBeenCalledWith('app-1', 'teamId');
-    expect(mocks.mongoAgentSkillsFindById).not.toHaveBeenCalled();
-    expect(mocks.checkTeamSandboxPermission).toHaveBeenCalledWith('team-app-1');
-  });
-
-  it('checks team sandbox permission for skill-owned runtime sandboxes', async () => {
-    mocks.mongoAppFindById.mockReturnValueOnce(mockLeanResult(null));
-    mocks.mongoAgentSkillsFindById.mockReturnValueOnce(mockLeanResult({ teamId: 'team-skill-1' }));
-
-    await expect(
-      getSandboxClient({
-        appId: 'skill-1',
-        userId: 'user-1',
-        chatId: 'edit-debug'
-      })
-    ).resolves.toBeInstanceOf(SandboxClient);
-
-    expect(mocks.mongoAppFindById).toHaveBeenCalledWith('skill-1', 'teamId');
-    expect(mocks.mongoAgentSkillsFindById).toHaveBeenCalledWith('skill-1', 'teamId');
-    expect(mocks.checkTeamSandboxPermission).toHaveBeenCalledWith('team-skill-1');
-  });
-
-  it('looks up appId from sandboxId before checking team sandbox permission', async () => {
-    mocks.findSandboxAppIdBySandboxId.mockResolvedValueOnce('app-from-sandbox');
-    mocks.mongoAppFindById.mockReturnValueOnce(mockLeanResult({ teamId: 'team-from-sandbox' }));
-
-    await expect(getSandboxClient({ sandboxId: 'sandbox-1' })).resolves.toBeInstanceOf(
-      SandboxClient
-    );
-
-    expect(mocks.findSandboxAppIdBySandboxId).toHaveBeenCalledWith('sandbox-1');
-    expect(mocks.checkTeamSandboxPermission).toHaveBeenCalledWith('team-from-sandbox');
-  });
-
-  it('throws before creating sandbox when team sandbox permission is denied', async () => {
-    mocks.mongoAppFindById.mockReturnValueOnce(mockLeanResult({ teamId: 'team-denied' }));
-    mocks.checkTeamSandboxPermission.mockRejectedValueOnce(new Error('sandbox not supported'));
-
-    await expect(
-      getSandboxClient({
-        appId: 'app-denied',
-        userId: 'user-1',
-        chatId: 'chat-1'
-      })
-    ).rejects.toThrow('sandbox not supported');
-
-    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
-    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
-  });
-
   it('passes resource limits into running instance records and command timeout into exec', async () => {
     const provider = createProvider();
     mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);

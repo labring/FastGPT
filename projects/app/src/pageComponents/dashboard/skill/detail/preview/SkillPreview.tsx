@@ -16,7 +16,10 @@ import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/
 
 const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: () => void }) => {
   const { t } = useTranslation();
-  const { skillId, sandboxState } = useContextSelector(SkillDetailContext, (v) => v);
+  const { skillId, sandboxState } = useContextSelector(SkillDetailContext, (v) => ({
+    skillId: v.skillId,
+    sandboxState: v.sandboxState
+  }));
 
   const { llmModelList } = useSystemStore();
   const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.model || '');
@@ -77,7 +80,7 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
 const CHAT_ID_STORAGE_KEY = (skillId: string) => `skill_debug_chatId_${skillId}`;
 
 const Render = () => {
-  const { skillId } = useContextSelector(SkillDetailContext, (v) => v);
+  const skillId = useContextSelector(SkillDetailContext, (v) => v.skillId);
   const [chatId, setChatId] = useState(() => {
     const stored = localStorage.getItem(CHAT_ID_STORAGE_KEY(skillId));
     if (stored) return stored;

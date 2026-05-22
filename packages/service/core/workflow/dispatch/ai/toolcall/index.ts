@@ -11,6 +11,7 @@ import { filterToolResponseToPreview } from './utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
+import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -41,6 +42,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
   } = props;
 
+  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    try {
+      await checkTeamSandboxPermission(runningUserInfo.teamId);
+    } catch (err) {
+      throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+    }
+  }
+
   const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
   try {
@@ -56,6 +65,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
     props.params.fileUrlList = fileLinks;
+    props.params.useAgentSandbox = useSandbox;
 
     const toolNodes = useToolNodeList({
       nodeId,
