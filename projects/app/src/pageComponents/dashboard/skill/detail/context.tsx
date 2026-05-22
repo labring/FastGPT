@@ -214,7 +214,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     return sandboxError;
   })();
   const visibleCurrentTab =
-    !isSkillReady && currentTab === TabEnum.preview ? TabEnum.config : currentTab;
+    (!isSkillReady || visibleSandboxState !== 'ready') && currentTab === TabEnum.preview
+      ? TabEnum.config
+      : currentTab;
 
   useEffect(() => {
     if (!isSkillCreating) return;

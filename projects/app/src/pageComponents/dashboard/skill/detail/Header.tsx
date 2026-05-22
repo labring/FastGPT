@@ -40,7 +40,10 @@ const RouteTab = () => {
     setCurrentTab: v.setCurrentTab
   }));
 
-  const isSkillReady = useContextSelector(SkillDetailContext, (v) => v.isSkillReady);
+  const canSwitchTab = useContextSelector(
+    SkillDetailContext,
+    (v) => v.isSkillReady && v.sandboxState === 'ready'
+  );
 
   const tabList = [
     { label: t('skill:detail_tab_config'), value: TabEnum.config },
@@ -53,7 +56,7 @@ const RouteTab = () => {
         <HStack
           key={tab.value}
           justifyContent={'center'}
-          cursor={'pointer'}
+          cursor={currentTab === tab.value ? 'default' : canSwitchTab ? 'pointer' : 'not-allowed'}
           w={'120px'}
           h={8}
           fontSize={'12px'}
@@ -69,7 +72,7 @@ const RouteTab = () => {
             : {
                 color: 'myGray.500',
                 onClick: () => {
-                  if (!isSkillReady && tab.value === TabEnum.preview) return;
+                  if (!canSwitchTab) return;
                   setCurrentTab(tab.value);
                 }
               })}
@@ -91,6 +94,7 @@ const Header = () => {
     showHistories,
     setShowHistories,
     isSkillReady,
+    sandboxState,
     saveAllRef
   } = useContextSelector(SkillDetailContext, (v) => ({
     skillDetail: v.skillDetail,
@@ -98,8 +102,10 @@ const Header = () => {
     showHistories: v.showHistories,
     setShowHistories: v.setShowHistories,
     isSkillReady: v.isSkillReady,
+    sandboxState: v.sandboxState,
     saveAllRef: v.saveAllRef
   }));
+  const canOperate = isSkillReady && sandboxState === 'ready';
 
   const [savingAll, setSavingAll] = useState(false);
 
@@ -295,7 +301,7 @@ const Header = () => {
       <Box flex={1} />
 
       {/* 右侧按钮组（历史版本抽屉打开时隐藏） */}
-      {isSkillReady && !showHistories && (
+      {canOperate && !showHistories && (
         <HStack spacing={3}>
           <IconButton
             icon={<MyIcon name={'history'} w={'18px'} />}
@@ -320,7 +326,9 @@ const Header = () => {
       )}
 
       {/* 历史版本抽屉 */}
-      {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
+      {canOperate && showHistories && (
+        <SkillHistoriesSlider onClose={() => setShowHistories(false)} />
+      )}
 
       {/* 发布确认弹窗 */}
       {isPublishModalOpen && (

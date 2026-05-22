@@ -6,7 +6,6 @@ import { SkillDetailContext, TabEnum } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import SkillPreview from './preview/SkillPreview';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 
 const Content = () => {
   const { t } = useTranslation();
@@ -35,19 +34,19 @@ const Content = () => {
         display={currentTab === TabEnum.config ? 'flex' : 'none'}
         flexDirection={'column'}
       >
-        {(sandboxState === 'idle' || sandboxState === 'loading') && (
-          <Loading fixed={false} text={t('skill:generating')} bg={'white'} variant={'particle'} />
-        )}
-        {sandboxState === 'ready' && (
+        {sandboxState === 'failed' ? (
+          <SandboxError />
+        ) : (
           <SandboxEditor
             appId={skillId}
             chatId={'edit-debug'}
             showFileOps={true}
             showDownload={false}
             defaultViewMode={'source'}
+            isPreparing={sandboxState !== 'ready'}
+            preparingText={t('skill:generating')}
           />
         )}
-        {sandboxState === 'failed' && <SandboxError />}
       </Box>
       <Box
         flex={1}

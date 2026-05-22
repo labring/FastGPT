@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Center, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
@@ -6,7 +6,6 @@ import { useContextSelector } from 'use-context-selector';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type Editor from '@monaco-editor/react';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useMount } from 'ahooks';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 import FileTree from './components/FileTree';
@@ -24,6 +23,8 @@ export type Props = {
   showFileOps?: boolean;
   showDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
+  isPreparing?: boolean;
+  preparingText?: string;
 };
 
 const SandboxEditor = ({
@@ -32,7 +33,9 @@ const SandboxEditor = ({
   outLinkAuthData,
   showFileOps = true,
   showDownload = true,
-  defaultViewMode
+  defaultViewMode,
+  isPreparing = false,
+  preparingText
 }: Props) => {
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
@@ -86,10 +89,15 @@ const SandboxEditor = ({
     };
   }, [saveAllFiles, saveAllRef]);
 
-  // 初始化加载根目录
-  useMount(() => {
+  const loadWorkspace = useCallback(() => {
+    if (isPreparing) return;
     refreshWorkspace();
-  });
+  }, [isPreparing, refreshWorkspace]);
+
+  // 初始化加载根目录；Skill edit 等 sandbox ready 后再开始拉取文件列表。
+  useEffect(() => {
+    loadWorkspace();
+  }, [loadWorkspace]);
 
   const filteredTree = filterTree(fileTree, searchQuery);
 
@@ -183,15 +191,15 @@ const SandboxEditor = ({
 
   return (
     <MyBox
-      isLoading={loadingRoot && fileTree.length === 0}
-      text={t('chat:sandbox_loading_files')}
+      isLoading={isPreparing || (loadingRoot && fileTree.length === 0)}
+      text={isPreparing ? preparingText : t('chat:sandbox_loading_files')}
       loadingVariant="particle"
       display={'flex'}
       h="full"
       w="full"
       bg="myGray.25"
     >
-      {renderContent()}
+      {!isPreparing && renderContent()}
     </MyBox>
   );
 };

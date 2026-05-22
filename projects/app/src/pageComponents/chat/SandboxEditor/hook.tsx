@@ -395,7 +395,7 @@ export const useSandboxFileStore = ({
    * 首次刷新工作区时走递归列表接口。
    * 这样 Skill edit 打开编辑器只需要一次 API 请求，服务端也只执行一次目录扫描命令。
    */
-  const refreshWorkspace = async () => {
+  const refreshWorkspace = useCallback(async () => {
     setLoadingRoot(true);
     try {
       const data = await listSandboxFilesRecursive({
@@ -412,7 +412,7 @@ export const useSandboxFileStore = ({
     } finally {
       setLoadingRoot(false);
     }
-  };
+  }, [appId, chatId, outLinkAuthData, setExpandedDirs, setFileTree, setLoadingRoot]);
 
   // 读取文件内容 - 根据 language 决定解码策略
   const loadFile = async (filePath: string, language: string) => {
