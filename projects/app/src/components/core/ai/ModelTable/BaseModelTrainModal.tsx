@@ -523,35 +523,35 @@ const BaseModelTrainModal = ({
 
                   return (
                     <Box key={id} userSelect={'none'}>
-                      <MyTooltip label={disabledTooltip}>
-                        <Flex
-                          align={'center'}
-                          pr={2}
-                          pl={3 + level * 20}
-                          py={1.5}
-                          borderRadius={'md'}
-                          _hover={{ bg: isDisabled ? undefined : 'myGray.50' }}
-                          cursor={isDisabled ? 'not-allowed' : 'pointer'}
-                          opacity={isDisabled ? 0.5 : 1}
-                          onClick={() => {
-                            if (isDisabled) return;
-                            if (isFolder) {
-                              if (!searchKey) {
-                                setExpandedFolderIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(id)) {
-                                    next.delete(id);
-                                  } else {
-                                    next.add(id);
-                                  }
-                                  return next;
-                                });
-                              }
-                              return;
+                      <Flex
+                        align={'center'}
+                        pr={2}
+                        pl={3 + level * 20}
+                        py={1.5}
+                        borderRadius={'md'}
+                        _hover={{ bg: isDisabled ? undefined : 'myGray.50' }}
+                        cursor={isDisabled ? 'not-allowed' : 'pointer'}
+                        opacity={isDisabled ? 0.5 : 1}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          if (isFolder) {
+                            if (!searchKey) {
+                              setExpandedFolderIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(id)) {
+                                  next.delete(id);
+                                } else {
+                                  next.add(id);
+                                }
+                                return next;
+                              });
                             }
-                            onSelectDataset(item, !selectedDatasetIdSet.has(id));
-                          }}
-                        >
+                            return;
+                          }
+                          onSelectDataset(item, !selectedDatasetIdSet.has(id));
+                        }}
+                      >
+                        <MyTooltip label={disabledTooltip}>
                           <Box
                             w={5}
                             onClick={(e) => {
@@ -574,6 +574,7 @@ const BaseModelTrainModal = ({
                               size={'sm'}
                             />
                           </Box>
+                        </MyTooltip>
                           <Avatar
                             src={item.avatar}
                             w={7}
@@ -605,7 +606,6 @@ const BaseModelTrainModal = ({
                             </Box>
                           )}
                         </Flex>
-                      </MyTooltip>
                     </Box>
                   );
                 })}
