@@ -2,8 +2,14 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 
 const SandboxBaseSchema = z.object({
-  appId: z.string(),
-  chatId: z.string(),
+  appId: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用 ID'
+  }),
+  chatId: z.string().meta({
+    example: 'bEdzC6PNupZrr1RoVutMF2DL',
+    description: '对话 ID'
+  }),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 
@@ -27,6 +33,81 @@ export const SandboxListResponseSchema = z.object({
   files: z.array(SandboxFileItemSchema)
 });
 export type SandboxListResponse = z.infer<typeof SandboxListResponseSchema>;
+
+/* ============================================================================
+ * API: 递归列出沙盒目录
+ * Route: POST /api/core/ai/sandbox/listRecursive
+ * Method: POST
+ * Description: 一次性获取指定目录下的文件树，用于 Skill Edit 初始化文件列表
+ * Tags: ['Sandbox', 'Read']
+ * ============================================================================ */
+export const SandboxListRecursiveBodySchema = SandboxListBodySchema.extend({
+  excludeNames: z
+    .array(z.string())
+    .optional()
+    .meta({
+      example: ['node_modules', '.git', 'dist'],
+      description: '需要跳过的文件或目录名称，仅按文件名匹配'
+    }),
+  maxDepth: z.number().int().min(0).max(20).default(20).meta({
+    example: 20,
+    description: '最大递归深度，0 表示只返回当前目录的直接子项'
+  })
+});
+export type SandboxListRecursiveBody = z.input<typeof SandboxListRecursiveBodySchema>;
+
+export type SandboxFileTreeItem = SandboxFileItem & {
+  children?: SandboxFileTreeItem[];
+  level: number;
+  loaded?: boolean;
+};
+
+export const SandboxFileTreeItemSchema: z.ZodType<SandboxFileTreeItem> =
+  SandboxFileItemSchema.extend({
+    children: z
+      .lazy(() => z.array(SandboxFileTreeItemSchema))
+      .optional()
+      .meta({
+        description: '子节点。文件没有该字段，目录在未加载到更深层时可能为空数组'
+      }),
+    level: z.number().int().nonnegative().meta({
+      example: 0,
+      description: '节点层级，相对于请求 path 的直接子项为 0'
+    }),
+    loaded: z.boolean().optional().meta({
+      example: true,
+      description: '目录子节点是否已完整加载；达到 maxDepth 截断时为 false'
+    })
+  });
+
+export const SandboxListRecursiveResponseSchema = z.object({
+  files: z.array(SandboxFileTreeItemSchema).meta({
+    description: '递归目录树',
+    example: [
+      {
+        name: 'src',
+        path: 'src',
+        type: 'directory',
+        level: 1,
+        loaded: true,
+        children: [
+          {
+            name: 'index.ts',
+            path: 'src/index.ts',
+            type: 'file',
+            size: 128,
+            level: 2
+          }
+        ]
+      }
+    ]
+  }),
+  expandedPaths: z.array(z.string()).meta({
+    example: ['src'],
+    description: '默认展开的目录路径'
+  })
+});
+export type SandboxListRecursiveResponse = z.infer<typeof SandboxListRecursiveResponseSchema>;
 
 /**
  * 写入文件 - 请求/响应

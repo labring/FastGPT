@@ -6,6 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   checkSandboxExist,
   listSandboxFiles,
+  listSandboxFilesRecursive,
   writeSandboxFile,
   downloadSandbox,
   getSandboxFile,
@@ -275,60 +276,22 @@ export const useSandboxFileStore = ({
     { manual: true }
   );
 
-  // 递归并发加载全部目录和文件，排除特定依赖并收集展开路径
-  const loadDirectoryRecursive = async (
-    path: string,
-    level: number,
-    expandedPaths: string[]
-  ): Promise<TreeNode[]> => {
-    try {
-      const data = await listSandboxFiles({ appId, chatId, outLinkAuthData, path });
-      const filteredFiles = (data.files || []).filter((file) => !EXCLUDE_NAMES.includes(file.name));
-
-      const nodes: TreeNode[] = await Promise.all(
-        filteredFiles.map(async (file) => {
-          if (file.type === 'directory') {
-            expandedPaths.push(file.path);
-            try {
-              const children = await loadDirectoryRecursive(file.path, level + 1, expandedPaths);
-              return {
-                ...file,
-                level,
-                children: sortTreeNodes(children),
-                loaded: true
-              };
-            } catch (err) {
-              console.error(`Failed to load subdirectory ${file.path}:`, err);
-              return {
-                ...file,
-                level,
-                children: [],
-                loaded: true
-              };
-            }
-          } else {
-            return {
-              ...file,
-              level
-            };
-          }
-        })
-      );
-
-      return sortTreeNodes(nodes);
-    } catch (error) {
-      console.error(`Failed to load directory ${path}:`, error);
-      return [];
-    }
-  };
-
+  /**
+   * 首次刷新工作区时走递归列表接口。
+   * 这样 Skill edit 打开编辑器只需要一次 API 请求，服务端也只执行一次目录扫描命令。
+   */
   const refreshWorkspace = async () => {
     setLoadingRoot(true);
     try {
-      const expandedPaths: string[] = [];
-      const rootNodes = await loadDirectoryRecursive('.', 0, expandedPaths);
-      setFileTree(rootNodes);
-      setExpandedDirs(new Set(expandedPaths));
+      const data = await listSandboxFilesRecursive({
+        appId,
+        chatId,
+        outLinkAuthData,
+        path: '.',
+        excludeNames: EXCLUDE_NAMES
+      });
+      setFileTree(data.files);
+      setExpandedDirs(new Set(data.expandedPaths));
     } catch (error) {
       console.error('Failed to refresh workspace:', error);
     } finally {

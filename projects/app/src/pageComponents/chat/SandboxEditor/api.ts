@@ -1,6 +1,8 @@
 import type {
   SandboxListBody,
   SandboxListResponse,
+  SandboxListRecursiveBody,
+  SandboxListRecursiveResponse,
   SandboxWriteBody,
   SandboxWriteResponse,
   SandboxReadBody,
@@ -26,6 +28,12 @@ export const fileOpSandbox = async (data: SandboxFileOpBody) =>
  */
 export const listSandboxFiles = async (data: SandboxListBody) =>
   POST<SandboxListResponse>('/core/ai/sandbox/list', data);
+
+/**
+ * 递归列出目录文件
+ */
+export const listSandboxFilesRecursive = async (data: SandboxListRecursiveBody) =>
+  POST<SandboxListRecursiveResponse>('/core/ai/sandbox/listRecursive', data);
 
 /**
  * 写入文件内容

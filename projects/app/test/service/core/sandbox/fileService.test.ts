@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   listSandboxDirectory,
+  listSandboxDirectoryRecursive,
   writeSandboxFile,
   isSandboxPathDirectory,
   getSandboxFileContent,
@@ -122,6 +123,165 @@ describe('listSandboxDirectory', () => {
     const sandbox = makeSandbox({ listDirectory });
     await listSandboxDirectory(sandbox, '/some/path');
     expect(listDirectory).toHaveBeenCalledWith('/some/path');
+  });
+});
+
+// ─── listSandboxDirectoryRecursive ────────────────────────────────────────
+
+describe('listSandboxDirectoryRecursive', () => {
+  const makeFindRecord = (type: 'd' | 'f' | 'l', size: number, path: string) =>
+    `${type}\t${size}\t${path}\0`;
+
+  const makeExecuteSuccess = (stdout: string) =>
+    vi.fn().mockResolvedValue({
+      stdout,
+      stderr: '',
+      exitCode: 0
+    });
+
+  it('通过一次 find 命令拼接目录树并收集展开路径', async () => {
+    const execute = makeExecuteSuccess(
+      [
+        makeFindRecord('d', 96, '.'),
+        makeFindRecord('f', 2, './b.txt'),
+        makeFindRecord('d', 64, './src'),
+        makeFindRecord('f', 1, './a.txt'),
+        makeFindRecord('f', 10, './src/index.ts')
+      ].join('')
+    );
+    const sandbox = makeSandbox({ execute });
+
+    const result = await listSandboxDirectoryRecursive(sandbox, '.');
+
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0][0]).toContain('find');
+    expect(execute.mock.calls[0][0]).toContain('-exec sh -c');
+    expect(execute.mock.calls[0][0]).toContain('printf "%s\\t%s\\t%s\\0"');
+    expect(result).toEqual({
+      files: [
+        {
+          name: 'src',
+          path: 'src',
+          type: 'directory',
+          size: undefined,
+          level: 0,
+          children: [
+            {
+              name: 'index.ts',
+              path: 'src/index.ts',
+              type: 'file',
+              size: 10,
+              level: 1
+            }
+          ],
+          loaded: true
+        },
+        {
+          name: 'a.txt',
+          path: 'a.txt',
+          type: 'file',
+          size: 1,
+          level: 0
+        },
+        {
+          name: 'b.txt',
+          path: 'b.txt',
+          type: 'file',
+          size: 2,
+          level: 0
+        }
+      ],
+      expandedPaths: ['src']
+    });
+  });
+
+  it('将 excludeNames 转成 find prune 条件', async () => {
+    const execute = makeExecuteSuccess(
+      [
+        makeFindRecord('d', 96, '.'),
+        makeFindRecord('d', 64, './src'),
+        makeFindRecord('f', 10, './src/app.ts')
+      ].join('')
+    );
+    const sandbox = makeSandbox({ execute });
+
+    const result = await listSandboxDirectoryRecursive(sandbox, '.', {
+      excludeNames: ['node_modules']
+    });
+
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0][0]).toContain("-name 'node_modules'");
+    expect(execute.mock.calls[0][0]).toContain('-prune -o');
+    expect(result.files).toEqual([
+      {
+        name: 'src',
+        path: 'src',
+        type: 'directory',
+        size: undefined,
+        level: 0,
+        children: [
+          {
+            name: 'app.ts',
+            path: 'src/app.ts',
+            type: 'file',
+            size: 10,
+            level: 1
+          }
+        ],
+        loaded: true
+      }
+    ]);
+  });
+
+  it('达到 maxDepth 时保留目录节点但不继续递归', async () => {
+    const execute = makeExecuteSuccess(
+      [makeFindRecord('d', 96, '.'), makeFindRecord('d', 64, './src')].join('')
+    );
+    const sandbox = makeSandbox({ execute });
+
+    const result = await listSandboxDirectoryRecursive(sandbox, '.', { maxDepth: 0 });
+
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0][0]).toContain('-maxdepth 1');
+    expect(result).toEqual({
+      files: [
+        {
+          name: 'src',
+          path: 'src',
+          type: 'directory',
+          size: undefined,
+          level: 0,
+          children: [],
+          loaded: false
+        }
+      ],
+      expandedPaths: []
+    });
+  });
+
+  it('find 命令失败时抛出 stderr 中的错误信息', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      stdout: '',
+      stderr: 'find failed',
+      exitCode: 1
+    });
+    const sandbox = makeSandbox({ execute });
+
+    await expect(listSandboxDirectoryRecursive(sandbox, '.')).rejects.toThrow('find failed');
+  });
+
+  it('find 输出被截断时抛出错误', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      stdout: makeFindRecord('d', 96, '.'),
+      stderr: '',
+      exitCode: 0,
+      truncated: true
+    });
+    const sandbox = makeSandbox({ execute });
+
+    await expect(listSandboxDirectoryRecursive(sandbox, '.')).rejects.toThrow(
+      'Sandbox file list output was truncated'
+    );
   });
 });
 

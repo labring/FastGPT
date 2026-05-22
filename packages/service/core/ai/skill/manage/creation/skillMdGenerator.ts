@@ -30,34 +30,43 @@ export type SkillMdGenerationUsage = {
  * 不额外包裹解释文本，避免后续打包前还要做二次清洗。
  */
 const getSkillMdGeneratorSystemPrompt = () => {
-  return `# Role
-Agent Skill Designer
+  return `You create concise, production-ready Agent Skill SKILL.md files.
 
-## Skills
-- Deep understanding of Agent Skills specification and SKILL.md format
-- Expertise in designing clear, actionable skill definitions
-- Ability to create well-structured YAML frontmatter with appropriate metadata
-- Proficiency in writing comprehensive skill documentation with examples
-- Strong capability in analyzing requirements and translating them into skill specifications
+## Output Contract
+Return only the SKILL.md file content. Do not add explanations, notes, or markdown code fences.
 
-## Goals
-- Generate a complete, valid SKILL.md file that follows the Agent Skills specification
-- Create a skill definition that accurately captures the user's requirements
-- Ensure the skill is practical, well-documented, and ready for deployment
-- Provide clear instructions and examples for skill usage
+The file must use this exact outer structure:
+---
+name: <kebab-case-skill-name>
+description: <short trigger description>
+---
 
-## Constraints
-- Output must be a complete SKILL.md file with valid YAML frontmatter.
-- You MUST strictly open and close the YAML frontmatter block with three dashes (---) on their own lines. DO NOT forget to include the closing '---' line!
-- The file MUST start with the opening dashes (---) as the very first line. Do not output any markdown code block markers (like \`\`\`markdown ... \`\`\`) or wrap the content.
-- Frontmatter must include 'name' (kebab-case, 1-64 chars, lowercase/numbers/hyphens only) and 'description' fields.
-- The 'name' field must not start or end with hyphens, and must not contain consecutive hyphens.
-- The 'description' field should be concise (1-200 chars) and describe when/why the skill is triggered.
-- Body content must include Overview, Instructions, and Examples sections.
-- All content must be practical and directly usable.
-- Do not include any explanatory text outside the SKILL.md file.
+<markdown body content>
 
-## YAML Frontmatter Format Example
+## Frontmatter Rules
+- The first line must be exactly "---".
+- Include a closing "---" line after the frontmatter.
+- Include exactly one blank line between the closing "---" and the markdown body.
+- "name" must be kebab-case, 1-64 characters, lowercase letters/numbers/hyphens only, with no leading, trailing, or consecutive hyphens.
+- "description" must be 1-200 characters and describe when/why the skill should trigger.
+
+## Body Rules
+- Start the markdown body with "# Overview".
+- Include "## Instructions" and "## Examples" sections.
+- Write the description and markdown body in the same natural language as the user's requirements.
+- Prefer concise imperative instructions over long explanations.
+- Preserve the user's requirements faithfully. Do not invent tools, dependencies, files, or capabilities that were not requested.
+- Keep content practical and directly usable.
+
+## Instruction Quality Rules
+- The "## Instructions" section is the most important part of the skill. Make it a concrete workflow, not a generic checklist.
+- Include 4-8 numbered steps when the task has a repeatable process.
+- Each step must contain a specific action and a decision/output, such as what to inspect, what to create, what to validate, or when to stop and ask the user.
+- Include task-specific details from the requirements: expected inputs, files/resources, tools/APIs, constraints, validation checks, and final output shape when they are provided.
+- If the requirements do not specify a tool or file, write tool-neutral steps instead of inventing one.
+- Avoid vague steps like "Analyze the request", "Do the task", "Ensure quality", or "Return the result" unless they are expanded with task-specific criteria.
+
+## Valid Example
 ---
 name: web-search
 description: Search the web
@@ -66,16 +75,18 @@ description: Search the web
 # Overview
 Provide a clear overview of the skill here.
 
-## Workflow
-1. Analyze the user's goal, workflow, requirements, and examples
-2. Design an appropriate skill name in kebab-case format
-3. Create a concise, action-oriented description
-4. Structure the skill documentation with clear sections
-5. Generate the complete SKILL.md with frontmatter and body
-6. Ensure all content is practical and implementation-ready
+## Instructions
+1. Identify the exact question, required freshness, and any source or domain constraints.
+2. Search primary or authoritative sources first; use secondary sources only to fill context gaps.
+3. Compare publication dates and discard stale or conflicting results unless the conflict is relevant.
+4. Summarize the answer with direct source links and note any uncertainty or missing evidence.
 
-## Output Format
-Output ONLY the complete SKILL.md file content, starting with the frontmatter (---) and including the full body. No additional text, explanations, or code block markers.`;
+## Examples
+- User asks for current product information.
+- User asks to compare recent public sources.
+
+## Final Check
+Before answering, verify that the first line is "---", the frontmatter has both required fields, the closing "---" exists, and the body starts after one blank line.`;
 };
 
 /**
@@ -89,45 +100,27 @@ const getSkillMdGeneratorUserPrompt = (params: {
 }) => {
   const { goal, workflow, requirements, examples } = params;
 
-  let prompt = `Please generate a complete SKILL.md file based on the following skill requirements:
+  return [
+    `Please generate a complete SKILL.md file based on the following skill requirements:
 
 ## Skill Goal
-${goal}`;
-
-  if (workflow) {
-    prompt += `
-
-## Workflow/Process
-${workflow}`;
-  }
-
-  if (requirements) {
-    prompt += `
-
-## Additional Requirements
-${requirements}`;
-  }
-
-  if (examples) {
-    prompt += `
-
-## Usage Examples
-${examples}`;
-  }
-
-  prompt += `
-
-## Important Notes
-- Generate the complete SKILL.md file with valid YAML frontmatter.
-- You MUST strictly open and close the YAML frontmatter block with three dashes (---) on their own lines. DO NOT forget the closing '---' line!
-- The 'name' field must be in kebab-case format (lowercase letters, numbers, and hyphens only).
-- The 'name' must be 1-64 characters long.
-- The 'description' should be concise and action-oriented (1-200 characters).
-- Include Overview, Instructions, and Examples sections in the body.
-- Output ONLY the SKILL.md content, no explanations or code blocks.
-- Ensure the skill is practical and ready for immediate use.`;
-
-  return prompt;
+${goal}`,
+    workflow
+      ? `## Workflow/Process
+${workflow}`
+      : '',
+    requirements
+      ? `## Additional Requirements
+${requirements}`
+      : '',
+    examples
+      ? `## Usage Examples
+${examples}`
+      : '',
+    'Generate the SKILL.md now. Follow the system output contract exactly.'
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 };
 
 /**
@@ -138,14 +131,18 @@ const getSkillGuidanceSystemPrompt = () =>
 
 Output a JSON object with the following fields:
 - "goal" (required, string): A concise statement of what the skill should accomplish
-- "workflow" (optional, string): Step-by-step process or workflow, use numbered list format
+- "workflow" (required, string): A concrete step-by-step process, use numbered list format
 - "requirements" (optional, string): Specific constraints, technical requirements, or rules
 - "examples" (optional, string): Concrete usage examples or sample scenarios
 
 Rules:
 - Output ONLY valid JSON, no markdown code blocks, no explanations
 - If the input already contains clear structured information, extract it faithfully
-- If a field cannot be determined from the input, omit it
+- If the input does not provide explicit steps, infer a practical workflow from the goal and constraints
+- Workflow steps must be task-specific and actionable; avoid generic steps like "analyze", "process", or "return result" without concrete criteria
+- Do not invent tools, dependencies, files, or capabilities that are not stated or strongly implied by the requirements
+- If an optional field cannot be determined from the input, omit it
+- Keep extracted text in the same natural language as the user's requirements
 - Keep each field concise and focused`;
 
 /**
@@ -160,24 +157,20 @@ const getSkillGuidanceUserPrompt = ({
   description: string;
   requirements: string;
 }) => {
-  let prompt = `Please analyze the following skill requirements and extract structured design information:
+  return [
+    `Please analyze the following skill requirements and extract structured design information:
 
 ## Skill Name
-${name}`;
-
-  if (description) {
-    prompt += `
-
-## Skill Description
-${description}`;
-  }
-
-  prompt += `
-
-## Requirements Text
-${requirements}`;
-
-  return prompt;
+${name}`,
+    description
+      ? `## Skill Description
+${description}`
+      : '',
+    `## Requirements Text
+${requirements}`
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 };
 
 /**

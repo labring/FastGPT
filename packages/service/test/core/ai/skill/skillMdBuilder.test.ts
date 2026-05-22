@@ -453,6 +453,113 @@ describe('skillMd utilities', () => {
       expect(userMessage?.content).toContain('Test requirements');
     });
 
+    it('should instruct both generation steps to preserve user language', async () => {
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '{"goal":"生成中文技能"}',
+        usage: { inputTokens: 50, outputTokens: 20 }
+      } as any);
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '---\nname: chinese-skill\ndescription: 生成中文技能\n---\n\n# Overview\n内容',
+        usage: { inputTokens: 100, outputTokens: 50 }
+      } as any);
+
+      await generateSkillMd({
+        name: 'chinese-skill',
+        description: '生成中文技能',
+        requirements: '请生成一个中文技能说明',
+        model: 'gpt-4o'
+      });
+
+      const guidanceSystemMessage = mockCreateLLMResponse.mock.calls[0][0].body.messages.find(
+        (m: any) => m.role === 'system'
+      ) as { content: string } | undefined;
+      const generationSystemMessage = mockCreateLLMResponse.mock.calls[1][0].body.messages.find(
+        (m: any) => m.role === 'system'
+      ) as { content: string } | undefined;
+
+      expect(guidanceSystemMessage?.content).toContain(
+        "Keep extracted text in the same natural language as the user's requirements"
+      );
+      expect(generationSystemMessage?.content).toContain(
+        "Write the description and markdown body in the same natural language as the user's requirements."
+      );
+    });
+
+    it('should require concrete task-specific instruction steps', async () => {
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '{"goal":"Goal","workflow":"1. Inspect inputs\\n2. Validate output"}',
+        usage: { inputTokens: 50, outputTokens: 20 }
+      } as any);
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '---\nname: x\ndescription: x\n---\n\n# Overview\ncontent',
+        usage: { inputTokens: 100, outputTokens: 50 }
+      } as any);
+
+      await generateSkillMd({
+        name: 'test',
+        description: '',
+        requirements: 'reqs',
+        model: 'gpt-4o'
+      });
+
+      const guidanceSystemMessage = mockCreateLLMResponse.mock.calls[0][0].body.messages.find(
+        (m: any) => m.role === 'system'
+      ) as { content: string } | undefined;
+      const generationSystemMessage = mockCreateLLMResponse.mock.calls[1][0].body.messages.find(
+        (m: any) => m.role === 'system'
+      ) as { content: string } | undefined;
+
+      expect(guidanceSystemMessage?.content).toContain(
+        'If the input does not provide explicit steps, infer a practical workflow from the goal and constraints'
+      );
+      expect(guidanceSystemMessage?.content).toContain(
+        'Workflow steps must be task-specific and actionable'
+      );
+      expect(generationSystemMessage?.content).toContain('## Instruction Quality Rules');
+      expect(generationSystemMessage?.content).toContain(
+        'Include 4-8 numbered steps when the task has a repeatable process.'
+      );
+      expect(generationSystemMessage?.content).toContain(
+        'Avoid vague steps like "Analyze the request", "Do the task", "Ensure quality", or "Return the result"'
+      );
+    });
+
+    it('should keep strict SKILL.md output skeleton in system prompt only', async () => {
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '{"goal":"Goal"}',
+        usage: { inputTokens: 50, outputTokens: 20 }
+      } as any);
+      mockCreateLLMResponse.mockResolvedValueOnce({
+        answerText: '---\nname: x\ndescription: x\n---\n\n# Overview\ncontent',
+        usage: { inputTokens: 100, outputTokens: 50 }
+      } as any);
+
+      await generateSkillMd({
+        name: 'test',
+        description: '',
+        requirements: 'reqs',
+        model: 'gpt-4o'
+      });
+
+      const secondCallMessages = mockCreateLLMResponse.mock.calls[1][0].body.messages;
+      const systemMessage = secondCallMessages.find((m: any) => m.role === 'system') as
+        | { content: string }
+        | undefined;
+      const userMessage = secondCallMessages.find((m: any) => m.role === 'user') as
+        | { content: string }
+        | undefined;
+
+      const skeleton =
+        '---\nname: <kebab-case-skill-name>\ndescription: <short trigger description>\n---\n\n<markdown body content>';
+      expect(systemMessage?.content).toContain('## Output Contract');
+      expect(systemMessage?.content).toContain(skeleton);
+      expect(systemMessage?.content).toContain(
+        'Include exactly one blank line between the closing "---" and the markdown body.'
+      );
+      expect(userMessage?.content).toContain('Follow the system output contract exactly.');
+      expect(userMessage?.content).not.toContain(skeleton);
+    });
+
     it('should use gpt-4o model for both LLM calls', async () => {
       mockCreateLLMResponse.mockResolvedValueOnce({
         answerText: '{"goal":"Goal"}',
