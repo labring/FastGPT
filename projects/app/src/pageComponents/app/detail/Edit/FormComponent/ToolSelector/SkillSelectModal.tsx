@@ -92,8 +92,8 @@ const SkillSelectModal = ({
       h={['90vh', '80vh']}
     >
       {/* Header: search */}
-      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'flex-end'} w={'full'}>
-        <Box w={200}>
+      <Box px={[3, 6]} pt={4} w={'full'}>
+        <Box w={'full'}>
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}

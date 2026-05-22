@@ -7,21 +7,28 @@ FROM ubuntu:24.04
 
 # Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
+ENV BUN_INSTALL=/usr/local
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
+# Install sandbox runtime tools.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
     git \
     jq \
+    python3 \
+    python3-pip \
     ripgrep \
-    vim-tiny \
     tree \
-    zip \
+    vim-tiny \
     unzip \
-    curl \
-    ca-certificates
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-RUN apt install -y python3 nodejs
-RUN rm -rf /var/lib/apt/lists/*
+    zip \
+    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && curl -fsSL https://bun.sh/install | bash \
+    && for tool in bash python3 node bun git curl; do command -v "$tool"; done \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
 RUN useradd --create-home --shell /bin/bash sandbox
