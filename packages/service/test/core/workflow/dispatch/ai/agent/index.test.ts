@@ -1,11 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { serviceEnv } from '@fastgpt/service/env';
 import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
 
 const {
@@ -209,7 +208,6 @@ const createProps = () =>
     }
   }) as any;
 
-const originalShowSkill = serviceEnv.SHOW_SKILL;
 const getEditSkillsRootPath = () =>
   `${getSandboxDefaults().workDirectory.replace(/\/+$/, '')}/skills`;
 
@@ -217,7 +215,6 @@ describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    serviceEnv.SHOW_SKILL = true;
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
       show_agent_sandbox: true
@@ -263,10 +260,6 @@ describe('dispatchRunAgent user context', () => {
       assistantMessages: [],
       requestIds: []
     });
-  });
-
-  afterEach(() => {
-    serviceEnv.SHOW_SKILL = originalShowSkill;
   });
 
   it('passes rewritten history and current system-reminder into unified agent loop', async () => {
@@ -398,13 +391,12 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.messages.at(-1)?.content).not.toContain('当前 sandbox 工作目录');
   });
 
-  it('scans edit skill infos even when SHOW_SKILL is disabled', async () => {
+  it('scans edit skill infos without requiring selected skills', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = false;
     props.params.skills = [];
     props.params.editSkillId = 'edit_skill_1';
-    serviceEnv.SHOW_SKILL = false;
 
     let result: any;
     runWithContext(

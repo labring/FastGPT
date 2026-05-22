@@ -146,8 +146,6 @@ export type FastGPTFeConfigsType = {
 
   // tmp
   agentSandboxFree?: boolean;
-  // Beta features
-  show_skill?: boolean;
 };
 
 export type SystemEnvType = {

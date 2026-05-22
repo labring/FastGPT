@@ -134,16 +134,12 @@ const DashboardContainer = ({
           }
         ]
       },
-      ...(feConfigs?.show_skill
-        ? [
-            {
-              groupId: TabEnum.skill,
-              groupAvatar: 'common/skill',
-              groupName: t('common:navbar.Skill'),
-              children: []
-            }
-          ]
-        : []),
+      {
+        groupId: TabEnum.skill,
+        groupAvatar: 'common/skill',
+        groupName: t('common:navbar.Skill'),
+        children: []
+      },
       {
         groupId: TabEnum.tool,
         groupAvatar: 'core/app/type/plugin',
@@ -232,8 +228,7 @@ const DashboardContainer = ({
   }, [
     currentType,
     feConfigs.appTemplateCourse,
-    feConfigs?.isPlus,
-    feConfigs?.show_skill,
+    feConfigs.isPlus,
     hasAppCreatePer,
     t,
     templateList,

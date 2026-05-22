@@ -209,7 +209,6 @@ export const serviceEnv = createEnv({
     }),
 
     //==================== Beta features ====================
-    SHOW_SKILL: BoolSchema.default(false).meta({ description: '是否展示 Skill 功能入口' }),
     AGENT_ENGINE: z.enum(['default', 'pi']).default('default').meta({
       description: 'Agent 引擎选择：default（unified agent loop）| pi（pi-agent-core 引擎）'
     }),

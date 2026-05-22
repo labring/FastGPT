@@ -152,6 +152,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const showWorkflowAgentSkills = false;
   const [sandboxPlanWarning, setSandboxPlanWarning] = useState<'switch' | 'skill'>();
 
   // Split tool/common inputs and outputs
@@ -536,7 +537,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
 
         {/* 4. Skills section (manual select / reference dual mode) */}
-        {feConfigs?.show_skill && skillsInput && (
+        {showWorkflowAgentSkills && skillsInput && (
           <Box mb={5}>
             <CustomInputLabel
               nodeId={nodeId}

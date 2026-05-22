@@ -52,7 +52,7 @@ const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
 const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   const { t } = useTranslation();
-  const { Loading, setIsLoading } = useLoading();
+  const { setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
@@ -282,7 +282,6 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
-  const showRunningStatus = watch('showRunningStatus');
   const showSkillReferences = watch('showSkillReferences');
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
@@ -479,24 +478,22 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
-          {feConfigs?.show_skill && (
-            <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
-              <Flex alignItems={'center'}>
-                <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
-                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
-              </Flex>
-              <Switch
-                {...register('showSkillReferences', {
-                  onChange(e) {
-                    if (e.target.checked) {
-                      setValue('showRunningStatus', true);
-                    }
-                  }
-                })}
-                isChecked={showSkillReferences}
-              />
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+              <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
             </Flex>
-          )}
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                }
+              })}
+              isChecked={showSkillReferences}
+            />
+          </Flex>
         </Box>
       </ModalBody>
 

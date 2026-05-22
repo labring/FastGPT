@@ -129,7 +129,7 @@ describe('dispatchAgentDatasetSearch', () => {
     });
 
     const result = await dispatchAgentDatasetSearch({
-      args: JSON.stringify({ query: 'origin' }),
+      args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
       llmModel: 'gpt-main',
@@ -147,6 +147,13 @@ describe('dispatchAgentDatasetSearch', () => {
 
     expect(result.nodeResponse).not.toHaveProperty('llmRequestIds');
     expect(result.nodeResponse).not.toHaveProperty('queryExtensionResult');
+    expect(result.nodeResponse).not.toHaveProperty('query');
+    expect(result.nodeResponse?.datasetQueries).toEqual(['origin']);
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['origin']
+      })
+    );
     expect(result.nodeResponse?.childrenResponses).toEqual([
       expect.objectContaining({
         id: 'req_query_extension',
@@ -242,7 +249,7 @@ describe('dispatchAgentDatasetSearch', () => {
     });
 
     const result = await dispatchAgentDatasetSearch({
-      args: JSON.stringify({ query: 'origin' }),
+      args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
       llmModel: 'gpt-main',
@@ -295,5 +302,33 @@ describe('dispatchAgentDatasetSearch', () => {
         })
       ])
     );
+  });
+
+  it('keeps compatibility with legacy string query params', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false
+    });
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: 'legacy query' }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        searchMode: DatasetSearchModeEnum.embedding
+      } as any
+    });
+
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['legacy query']
+      })
+    );
+    expect(result.nodeResponse?.datasetQueries).toEqual(['legacy query']);
   });
 });

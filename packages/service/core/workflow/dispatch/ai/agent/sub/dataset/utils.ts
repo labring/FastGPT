@@ -6,7 +6,11 @@ import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constan
 
 // 工具参数 Schema (Agent 调用时传递的参数)
 export const DatasetSearchToolSchema = z.object({
-  query: z.string()
+  query: z
+    .union([z.string(), z.array(z.string())])
+    .transform((query) =>
+      (Array.isArray(query) ? query : [query]).map((item) => item.trim()).filter(Boolean)
+    )
 });
 
 // 工具配置类型（从 Agent 节点配置传入的预设参数）
@@ -37,8 +41,11 @@ export const datasetSearchTool: ChatCompletionTool = {
       type: 'object',
       properties: {
         query: {
-          type: 'string',
-          description: '要搜索的查询文本，描述需要查找的信息'
+          type: 'array',
+          items: {
+            type: 'string'
+          },
+          description: '要搜索的查询文本数组，描述需要查找的信息'
         }
       },
       required: ['query']

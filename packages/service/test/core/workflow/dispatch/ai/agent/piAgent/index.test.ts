@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -6,7 +6,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
-import { serviceEnv } from '@fastgpt/service/env';
 import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
 
 const {
@@ -133,7 +132,6 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
   };
 });
 
-const originalShowSkill = serviceEnv.SHOW_SKILL;
 const getEditSkillsRootPath = () =>
   `${getSandboxDefaults().workDirectory.replace(/\/+$/, '')}/skills`;
 
@@ -261,7 +259,6 @@ const createProps = () =>
 describe('dispatchPiAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.SHOW_SKILL = true;
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
       show_agent_sandbox: true
@@ -311,10 +308,6 @@ describe('dispatchPiAgent user context', () => {
       getAnswerText: vi.fn(() => 'pi answer'),
       appendPendingAgentError: vi.fn()
     });
-  });
-
-  afterEach(() => {
-    serviceEnv.SHOW_SKILL = originalShowSkill;
   });
 
   it('passes the full current system-reminder to agent.prompt', async () => {

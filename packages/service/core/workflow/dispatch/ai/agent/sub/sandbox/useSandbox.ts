@@ -1,6 +1,5 @@
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { AgentInputFile } from '../../adapter/userContext';
-import { serviceEnv } from '../../../../../../../env';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   getAgentSkillInfos,
@@ -12,9 +11,6 @@ import { getSandboxDefaults } from '../../../../../../ai/sandbox/runtime/config'
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import { checkTeamSandboxPermission } from '../../../../../../../support/permission/teamLimit';
-import { getLogger, LogCategories } from '../../../../../../../common/logger';
-
-const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 type UseSandboxParams = {
   appId: string;
@@ -93,14 +89,14 @@ export async function useSandbox({
 }: UseSandboxParams): Promise<UseSandboxResult> {
   const sandboxEnabledByConfig = !!global.feConfigs?.show_agent_sandbox;
   const hasEditSkill = !!editSkillId;
-  const hasAgentSkills = serviceEnv.SHOW_SKILL && skillIds.length > 0;
+  const hasAgentSkills = skillIds.length > 0;
   const shouldStartSandbox =
     sandboxEnabledByConfig && (useAgentSandbox || hasEditSkill || hasAgentSkills);
 
   if (shouldStartSandbox) {
     try {
       await checkTeamSandboxPermission(teamId);
-    } catch (err) {
+    } catch {
       throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
     }
   }
