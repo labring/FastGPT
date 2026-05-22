@@ -7,12 +7,24 @@ import type { ExecuteOptions, ExecuteResult } from '@fastgpt-sdk/sandbox-adapter
 import type { SandboxListRecursiveResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { Call } from '@test/utils/request';
 
+const mockSandboxRuntimeConfig = vi.hoisted(() => {
+  const state = { workDirectory: '.' };
+  return {
+    state,
+    getSandboxDefaults: vi.fn(() => ({ workDirectory: state.workDirectory }))
+  };
+});
+
 vi.mock('@/service/core/sandbox/auth', () => ({
   authSandboxSession: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
   getSandboxClient: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/config', () => ({
+  getSandboxDefaults: mockSandboxRuntimeConfig.getSandboxDefaults
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/listRecursive';
@@ -72,6 +84,7 @@ describe('sandbox/listRecursive api', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     tempDir = await mkdtemp(join(tmpdir(), 'fastgpt-sandbox-list-'));
+    mockSandboxRuntimeConfig.state.workDirectory = tempDir;
 
     await mkdir(join(tempDir, 'src/components'), { recursive: true });
     await mkdir(join(tempDir, 'src/nested'), { recursive: true });
@@ -123,8 +136,10 @@ describe('sandbox/listRecursive api', () => {
       teamId: 'team-id'
     });
     expect(sandbox.ensureAvailable).toHaveBeenCalledOnce();
+    expect(mockSandboxRuntimeConfig.getSandboxDefaults).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledOnce();
     expect(execute.mock.calls[0][0]).toContain('find');
+    expect(execute.mock.calls[0][0]).toContain(tempDir);
     expect(execute.mock.calls[0][0]).toContain("-name 'node_modules'");
     expect(execute.mock.calls[0][0]).toContain('-exec sh -c');
 

@@ -5,6 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import type archiver from 'archiver';
 import mime from 'mime';
+import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
 
 export type SandboxFileEntry = {
   name: string;
@@ -19,6 +20,98 @@ export type SandboxFileContent = {
   fileName: string;
 };
 
+const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
+
+const getSandboxWorkDirectory = () => getSandboxDefaults().workDirectory;
+
+/**
+ * 将编辑器传入的相对路径锚定到 sandbox workspace。
+ *
+ * SandboxEditor 以 `.` 表示工作区根目录；Sealos provider 自身的 `.` 会落到
+ * `/home/devbox`，因此 API 边界必须显式把相对路径解析到当前运行态 workDirectory。
+ * 已经是绝对路径的历史节点路径保持原样，保证旧 UI 状态和下载/保存路径兼容。
+ */
+export function resolveSandboxWorkspacePath(
+  path: string | undefined,
+  workDirectory = getSandboxWorkDirectory()
+) {
+  const rawPath = path || '.';
+  if (rawPath === '.' || rawPath === './' || rawPath === '') {
+    return trimSandboxPathRight(workDirectory);
+  }
+
+  if (rawPath.split('/').includes('..')) {
+    throw new Error('Path traversal detected');
+  }
+
+  if (rawPath.startsWith('/')) return rawPath;
+
+  const relativePath = rawPath.replace(/^\.\//, '');
+  return `${trimSandboxPathRight(workDirectory)}/${relativePath}`;
+}
+
+/**
+ * 把 provider 返回的 workspace 绝对路径还原成前端编辑器使用的相对路径。
+ *
+ * API 发给 Sealos provider 时需要绝对 workDirectory；但前端文件树一直以 workspace
+ * 相对路径作为节点 id。这里保留前端语义，避免首屏递归加载和后续新建/上传出现绝对路径与相对路径混用。
+ */
+export function toSandboxWorkspaceRelativePath(
+  path: string,
+  workDirectory = getSandboxWorkDirectory()
+) {
+  const normalizedPath = trimSandboxPathRight(path.replace(/^\.\//, ''));
+  const normalizedWorkDirectory = trimSandboxPathRight(workDirectory);
+
+  if (!normalizedWorkDirectory) {
+    return normalizedPath.replace(/^\/+/, '') || '.';
+  }
+
+  if (normalizedPath === normalizedWorkDirectory) return '.';
+
+  if (normalizedPath.startsWith(`${normalizedWorkDirectory}/`)) {
+    return normalizedPath.slice(normalizedWorkDirectory.length + 1) || '.';
+  }
+
+  return normalizedPath;
+}
+
+/** 归一化单层目录列表中的路径，保持 API 响应为 workspace 相对路径。 */
+export function normalizeSandboxFileEntryPaths(
+  entries: SandboxFileEntry[],
+  workDirectory: string
+): SandboxFileEntry[] {
+  return entries.map((entry) => ({
+    ...entry,
+    path: toSandboxWorkspaceRelativePath(entry.path, workDirectory)
+  }));
+}
+
+/** 递归归一化首屏文件树和展开目录集合中的路径。 */
+export function normalizeSandboxFileTreePaths(
+  result: SandboxListRecursiveResponse,
+  workDirectory: string
+): SandboxListRecursiveResponse {
+  const normalizeTree = (nodes: SandboxFileTreeItem[]): SandboxFileTreeItem[] =>
+    nodes.map((node) => {
+      const normalizedNode: SandboxFileTreeItem = {
+        ...node,
+        path: toSandboxWorkspaceRelativePath(node.path, workDirectory)
+      };
+      if (node.children) {
+        normalizedNode.children = normalizeTree(node.children);
+      }
+      return normalizedNode;
+    });
+
+  return {
+    files: normalizeTree(result.files),
+    expandedPaths: result.expandedPaths.map((path) =>
+      toSandboxWorkspaceRelativePath(path, workDirectory)
+    )
+  };
+}
+
 /**
  * 列出沙盒中指定目录的直接子项。
  * 这里只做 provider DirectoryEntry 到前端文件条目的轻量映射，不递归、不排序，调用方按自己的展示语义处理。
@@ -27,13 +120,19 @@ export async function listSandboxDirectory(
   sandbox: SandboxClient,
   path: string
 ): Promise<SandboxFileEntry[]> {
-  const entries = await sandbox.provider.listDirectory(path);
-  return entries.map((entry) => ({
-    name: entry.name,
-    path: entry.path,
-    type: entry.isDirectory ? ('directory' as const) : ('file' as const),
-    size: entry.isFile ? entry.size : undefined
-  }));
+  const workDirectory = getSandboxWorkDirectory();
+  const entries = await sandbox.provider.listDirectory(
+    resolveSandboxWorkspacePath(path, workDirectory)
+  );
+  return normalizeSandboxFileEntryPaths(
+    entries.map((entry) => ({
+      name: entry.name,
+      path: entry.path,
+      type: entry.isDirectory ? ('directory' as const) : ('file' as const),
+      size: entry.isFile ? entry.size : undefined
+    })),
+    workDirectory
+  );
 }
 
 type ListSandboxDirectoryRecursiveOptions = {
@@ -60,6 +159,9 @@ export async function listSandboxDirectoryRecursive(
   path: string,
   options: ListSandboxDirectoryRecursiveOptions = {}
 ): Promise<SandboxListRecursiveResponse> {
+  const workDirectory = getSandboxWorkDirectory();
+  const providerPath = resolveSandboxWorkspacePath(path, workDirectory);
+
   type FlatSandboxFileEntry = SandboxFileEntry & {
     level: number;
   };
@@ -124,7 +226,11 @@ export async function listSandboxDirectoryRecursive(
     const normalizedRoot = trimPathRight(stripLeadingDotSlash(rootPath || '.'));
     const normalizedEntry = trimPathRight(stripLeadingDotSlash(rawPath));
 
-    if (normalizedEntry === normalizedRoot || (normalizedRoot === '.' && normalizedEntry === '.')) {
+    if (
+      normalizedEntry === normalizedRoot ||
+      normalizedEntry === '.' ||
+      (normalizedRoot === '.' && normalizedEntry === '.')
+    ) {
       return;
     }
 
@@ -246,7 +352,7 @@ export async function listSandboxDirectoryRecursive(
     'done'
   ].join('\n');
   const command = [
-    `find ${shellQuote(path)}`,
+    `find ${shellQuote(providerPath)}`,
     `-maxdepth ${maxDepth + 1}`,
     pruneExpression,
     `\\( -type d -o -type f -o -type l \\)`,
@@ -268,7 +374,10 @@ export async function listSandboxDirectoryRecursive(
     return Promise.reject(new Error(result.stderr || 'Failed to list sandbox files'));
   }
 
-  return buildSandboxFileTree(parseFindFileListOutput(result.stdout, path));
+  return normalizeSandboxFileTreePaths(
+    buildSandboxFileTree(parseFindFileListOutput(result.stdout, providerPath)),
+    workDirectory
+  );
 }
 
 /**
@@ -280,6 +389,7 @@ export async function writeSandboxFile(
   path: string,
   content: string
 ): Promise<void> {
+  const providerPath = resolveSandboxWorkspacePath(path);
   let data: string | Buffer = content;
   if (content.startsWith('data:') && content.includes(';base64,')) {
     const base64Index = content.indexOf(';base64,');
@@ -289,7 +399,7 @@ export async function writeSandboxFile(
     }
   }
 
-  const results = await sandbox.provider.writeFiles([{ path, data }]);
+  const results = await sandbox.provider.writeFiles([{ path: providerPath, data }]);
   const result = results[0];
   if (result.error) {
     return Promise.reject(result.error);
@@ -304,9 +414,13 @@ export async function isSandboxPathDirectory(
   sandbox: SandboxClient,
   path: string
 ): Promise<boolean> {
-  const fileInfoMap = await sandbox.provider.getFileInfo([path]);
-  const fileInfo = fileInfoMap.get(path);
-  return fileInfo?.isDirectory ?? (path === '.' || path === '' || path.endsWith('/'));
+  const providerPath = resolveSandboxWorkspacePath(path);
+  const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]);
+  const fileInfo = fileInfoMap.get(providerPath);
+  return (
+    fileInfo?.isDirectory ??
+    (path === '.' || path === '' || providerPath.endsWith('/') || path.endsWith('/'))
+  );
 }
 
 /**
@@ -318,18 +432,19 @@ export async function getSandboxFileContent(
   path: string,
   preview?: boolean
 ): Promise<SandboxFileContent> {
-  const results = await sandbox.provider.readFiles([path]);
+  const providerPath = resolveSandboxWorkspacePath(path);
+  const results = await sandbox.provider.readFiles([providerPath]);
   const result = results[0];
 
   if (result.error) {
     return Promise.reject(new Error(`Failed to read file: ${result.error.message}`));
   }
 
-  const fileName = path.split('/').pop() || 'file';
+  const fileName = providerPath.split('/').pop() || 'file';
   // 注意：preview 模式下 contentType 由文件路径决定，可能返回 text/html / image/svg+xml 等危险类型。
   // 若未来有任何代码让浏览器直接导航到 download 端点（iframe / window.open 等），需确保这类内容不被同源渲染，否则会造成存储型 XSS。
   const contentType = preview
-    ? (mime.getType(path) ?? 'application/octet-stream')
+    ? (mime.getType(providerPath) ?? 'application/octet-stream')
     : 'application/octet-stream';
 
   return {
@@ -354,7 +469,8 @@ export async function addDirectoryToArchive(
 ): Promise<void> {
   if (depth > MAX_ARCHIVE_DEPTH) return;
 
-  const entries = await sandbox.provider.listDirectory(dirPath);
+  const providerDirPath = resolveSandboxWorkspacePath(dirPath);
+  const entries = await sandbox.provider.listDirectory(providerDirPath);
 
   for (const entry of entries) {
     const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;

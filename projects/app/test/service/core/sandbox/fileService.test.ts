@@ -6,6 +6,8 @@ import {
   isSandboxPathDirectory,
   getSandboxFileContent,
   addDirectoryToArchive,
+  resolveSandboxWorkspacePath,
+  toSandboxWorkspaceRelativePath,
   type SandboxFileEntry
 } from '@/service/core/sandbox/fileService';
 import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
@@ -69,6 +71,68 @@ function makeFileInfoMap(path: string, info: Partial<FileInfo>): Map<string, Fil
   return new Map([[path, { path, ...info }]]);
 }
 
+// ─── resolveSandboxWorkspacePath ───────────────────────────────────────────
+
+describe('resolveSandboxWorkspacePath', () => {
+  it('把工作区根路径请求解析到 workDirectory', () => {
+    expect(resolveSandboxWorkspacePath('.', '/home/devbox/workspace')).toBe(
+      '/home/devbox/workspace'
+    );
+    expect(resolveSandboxWorkspacePath('', '/home/devbox/workspace/')).toBe(
+      '/home/devbox/workspace'
+    );
+  });
+
+  it('把相对路径锚定到 workDirectory，避免 Sealos 默认落到 /home/devbox', () => {
+    expect(resolveSandboxWorkspacePath('skills/a/SKILL.md', '/home/devbox/workspace')).toBe(
+      '/home/devbox/workspace/skills/a/SKILL.md'
+    );
+    expect(resolveSandboxWorkspacePath('./src/index.ts', '/workspace')).toBe(
+      '/workspace/src/index.ts'
+    );
+  });
+
+  it('保持绝对路径不变，兼容已加载文件树中的路径', () => {
+    expect(resolveSandboxWorkspacePath('/home/devbox/workspace/src/index.ts', '/workspace')).toBe(
+      '/home/devbox/workspace/src/index.ts'
+    );
+  });
+
+  it('拒绝路径穿越', () => {
+    expect(() => resolveSandboxWorkspacePath('../secret.txt', '/workspace')).toThrow(
+      'Path traversal detected'
+    );
+  });
+});
+
+// ─── toSandboxWorkspaceRelativePath ────────────────────────────────────────
+
+describe('toSandboxWorkspaceRelativePath', () => {
+  it('把 workspace 绝对路径还原成前端使用的相对路径', () => {
+    expect(
+      toSandboxWorkspaceRelativePath(
+        '/home/devbox/workspace/src/index.ts',
+        '/home/devbox/workspace'
+      )
+    ).toBe('src/index.ts');
+    expect(toSandboxWorkspaceRelativePath('/home/devbox/workspace', '/home/devbox/workspace')).toBe(
+      '.'
+    );
+  });
+
+  it('保持相对路径语义，避免影响前端本地新增节点', () => {
+    expect(toSandboxWorkspaceRelativePath('src/index.ts', '/home/devbox/workspace')).toBe(
+      'src/index.ts'
+    );
+    expect(toSandboxWorkspaceRelativePath('./src/index.ts', '/home/devbox/workspace')).toBe(
+      'src/index.ts'
+    );
+    expect(toSandboxWorkspaceRelativePath('.config/pip/pip.conf', '/home/devbox/workspace')).toBe(
+      '.config/pip/pip.conf'
+    );
+  });
+});
+
 // ─── listSandboxDirectory ──────────────────────────────────────────────────
 
 describe('listSandboxDirectory', () => {
@@ -86,7 +150,7 @@ describe('listSandboxDirectory', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject<SandboxFileEntry>({
       name: 'index.ts',
-      path: '/workspace/index.ts',
+      path: 'index.ts',
       type: 'file',
       size: 200
     });

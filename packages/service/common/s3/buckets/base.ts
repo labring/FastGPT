@@ -132,7 +132,7 @@ export class S3BaseBucket {
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    this.client.deleteObject({ key: objectKey }).catch((err) => {
+    await this.client.deleteObject({ key: objectKey }).catch((err) => {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
       }

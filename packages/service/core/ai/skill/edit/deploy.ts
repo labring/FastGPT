@@ -85,6 +85,12 @@ export async function saveDeploySkillFromSandbox({
   }
 
   return mongoSessionRun(async (session) => {
+    const isVersionLinked = await updateCurrentVersion(skillId, versionId, session);
+    if (!isVersionLinked) {
+      // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
+      throw new UserError('Skill not found');
+    }
+
     await createVersion(
       {
         versionId,
@@ -95,7 +101,6 @@ export async function saveDeploySkillFromSandbox({
       },
       session
     );
-    await updateCurrentVersion(skillId, versionId, session);
     await MongoAgentSkills.updateOne(
       { _id: skillId },
       {

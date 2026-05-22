@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { resolveSandboxWorkspacePath } from '@/service/core/sandbox/fileService';
 
 const opMap: Record<
   string,
@@ -67,7 +68,9 @@ async function handler(req: ApiRequestProps): Promise<SandboxFileOpResponse> {
     throw new Error('Unsupported operation type');
   }
 
-  const cmd = await opHandler(sandbox, path, destPath);
+  const resolvedPath = resolveSandboxWorkspacePath(path);
+  const resolvedDestPath = destPath ? resolveSandboxWorkspacePath(destPath) : undefined;
+  const cmd = await opHandler(sandbox, resolvedPath, resolvedDestPath);
 
   const result = await sandbox.exec(cmd);
   if (result.exitCode !== 0) {
