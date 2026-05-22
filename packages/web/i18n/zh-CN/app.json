@@ -371,7 +371,7 @@
   "plugin_dispatch_tip": "给模型附加获取外部数据的能力，具体调用哪些工具，将由模型自主决定，所有工具都将以非流模式运行。\n若选择了工具，知识库调用将自动作为一个特殊的工具。",
   "plugin_offline_tips": "您的系统无法直接访问工具市场数据，\n请手动复制网址并前往，以获得更多工具",
   "plugin_offline_url": "网址",
-  "precision_before_after": "Precision@5（学习前/学习后）",
+  "precision_before_after": "Hit@5（学习前/学习后）",
   "pro_modal_feature_1": "外部组织架构接入与多租户",
   "pro_modal_feature_2": "团队专属的应用展示页",
   "pro_modal_feature_3": "知识库增强索引",
