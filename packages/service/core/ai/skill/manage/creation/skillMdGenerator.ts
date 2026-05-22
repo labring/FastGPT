@@ -29,7 +29,7 @@ export type SkillMdGenerationUsage = {
  * 这个 prompt 只用于创建阶段的 AI 辅助生成，要求模型直接输出完整 SKILL.md，
  * 不额外包裹解释文本，避免后续打包前还要做二次清洗。
  */
-const getSkillMdGeneratorSystemPrompt = () => {
+export const getSkillMdGeneratorSystemPrompt = () => {
   return `You create concise, production-ready Agent Skill SKILL.md files.
 
 ## Output Contract
@@ -92,7 +92,7 @@ Before answering, verify that the first line is "---", the frontmatter has both 
 /**
  * 生成 SKILL.md 的 user prompt。
  */
-const getSkillMdGeneratorUserPrompt = (params: {
+export const getSkillMdGeneratorUserPrompt = (params: {
   goal: string;
   workflow?: string;
   requirements?: string;
@@ -126,7 +126,7 @@ ${examples}`
 /**
  * 提取用户 requirements 的结构化设计信息。
  */
-const getSkillGuidanceSystemPrompt = () =>
+export const getSkillGuidanceSystemPrompt = () =>
   `You are a skill design analyst. Your task is to analyze the user's skill requirements text and extract structured design information.
 
 Output a JSON object with the following fields:
@@ -148,7 +148,7 @@ Rules:
 /**
  * 生成 requirements 结构化提取的 user prompt。
  */
-const getSkillGuidanceUserPrompt = ({
+export const getSkillGuidanceUserPrompt = ({
   name,
   description,
   requirements
