@@ -98,6 +98,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks 
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
+# Skill 模式入口：esbuild 打包 server.ts，供 SHOW_SKILL=true 时使用
+COPY --from=builder --chown=nextjs:nodejs /app/projects/app/server-proxy.js /app/projects/app/server-proxy.js
 
 # copy standload packages
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
