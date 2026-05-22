@@ -36,6 +36,22 @@ const toolResponse = ({ id, name, response }: { id: string; name: string; respon
     seconds: 0.1
   }) as const;
 
+const createToolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) =>
+  ({
+    id,
+    type: 'function',
+    function: {
+      name,
+      arguments: args
+    }
+  }) as const;
+
+const toolCall = (params: { id: string; name: string; args?: string }) =>
+  ({
+    type: 'tool_call',
+    call: createToolCall(params)
+  }) as const;
+
 describe('createWorkflowAgentLoopEventMapper', () => {
   it('streams main answer deltas', () => {
     const workflowStreamResponse = vi.fn();
@@ -168,6 +184,293 @@ describe('createWorkflowAgentLoopEventMapper', () => {
             params: '{}'
           }
         ]
+      }
+    ]);
+  });
+
+  it('persists the first reasoning text on reasoning-only tool requests', () => {
+    const workflowStreamResponse = vi.fn();
+    const mapper = createWorkflowAgentLoopEventMapper({
+      workflowStreamResponse,
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent({
+      type: 'reasoning_delta',
+      text: 'first reasoning'
+    });
+    mapper.emitEvent(toolCall({ id: 'call_time', name: 'get_time' }));
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_tool',
+      finishReason: 'tool_calls',
+      reasoningText: 'first reasoning',
+      toolCalls: [createToolCall({ id: 'call_time', name: 'get_time' })]
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_time',
+        name: 'get_time',
+        response: '2026-05-22 10:00:00'
+      })
+    });
+
+    // Final answer values are appended by the agent dispatcher after the loop finishes.
+    mapper.assistantResponses.push({
+      text: {
+        content: '现在是 10 点。'
+      },
+      reasoning: {
+        content: 'second reasoning'
+      }
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        id: 'call_time',
+        reasoning: {
+          content: 'first reasoning'
+        },
+        tools: [
+          {
+            id: 'call_time',
+            toolName: 'get_time',
+            toolAvatar: '',
+            functionName: 'get_time',
+            params: '{}',
+            response: '2026-05-22 10:00:00'
+          }
+        ]
+      },
+      {
+        text: {
+          content: '现在是 10 点。'
+        },
+        reasoning: {
+          content: 'second reasoning'
+        }
+      }
+    ]);
+
+    const restoredMessages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: mapper.assistantResponses
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(restoredMessages).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'first reasoning',
+        tool_calls: [
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: '2026-05-22 10:00:00'
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: '现在是 10 点。',
+        reasoning_content: 'second reasoning'
+      }
+    ]);
+  });
+
+  it('persists hidden reasoning on reasoning-only tool requests', () => {
+    const workflowStreamResponse = vi.fn();
+    const mapper = createWorkflowAgentLoopEventMapper({
+      workflowStreamResponse,
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set(),
+      showReasoning: false
+    });
+
+    mapper.emitEvent({
+      type: 'reasoning_delta',
+      text: 'hidden first reasoning'
+    });
+    mapper.emitEvent(toolCall({ id: 'call_time', name: 'get_time' }));
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_tool',
+      finishReason: 'tool_calls',
+      reasoningText: 'hidden first reasoning',
+      toolCalls: [createToolCall({ id: 'call_time', name: 'get_time' })]
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
+    expect(workflowStreamResponse).toHaveBeenCalledWith({
+      id: 'call_time',
+      event: SseResponseEventEnum.toolCall,
+      data: {
+        tool: {
+          id: 'call_time',
+          toolName: 'get_time',
+          toolAvatar: '',
+          functionName: 'get_time',
+          params: '{}'
+        }
+      }
+    });
+    expect(mapper.assistantResponses).toEqual([
+      {
+        id: 'call_time',
+        reasoning: {
+          content: 'hidden first reasoning'
+        },
+        hideReason: true,
+        tools: [
+          {
+            id: 'call_time',
+            toolName: 'get_time',
+            toolAvatar: '',
+            functionName: 'get_time',
+            params: '{}'
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('keeps reasoning-only parallel tool calls continuous when restoring messages', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent(toolCall({ id: 'call_weather', name: 'weather', args: '{"city":"Beijing"}' }));
+    mapper.emitEvent(toolCall({ id: 'call_time', name: 'time' }));
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_parallel',
+      finishReason: 'tool_calls',
+      reasoningText: 'Need weather and time.',
+      toolCalls: [
+        createToolCall({ id: 'call_weather', name: 'weather', args: '{"city":"Beijing"}' }),
+        createToolCall({ id: 'call_time', name: 'time' })
+      ]
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_weather',
+        name: 'weather',
+        response: 'sunny'
+      })
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_time',
+        name: 'time',
+        response: '10:00'
+      })
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        id: 'call_weather',
+        reasoning: {
+          content: 'Need weather and time.'
+        },
+        tools: [
+          expect.objectContaining({
+            id: 'call_weather',
+            functionName: 'weather',
+            response: 'sunny'
+          })
+        ]
+      },
+      {
+        id: 'call_time',
+        tools: [
+          expect.objectContaining({
+            id: 'call_time',
+            functionName: 'time',
+            response: '10:00'
+          })
+        ]
+      }
+    ]);
+
+    const restoredMessages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: mapper.assistantResponses
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(restoredMessages).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need weather and time.',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: {
+              name: 'weather',
+              arguments: '{"city":"Beijing"}'
+            }
+          },
+          {
+            id: 'call_time',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'sunny'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_time',
+        content: '10:00'
       }
     ]);
   });

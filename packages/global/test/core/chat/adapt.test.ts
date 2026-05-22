@@ -353,6 +353,56 @@ describe('mergeAssistantFieldMessages', () => {
     ]);
   });
 
+  it('should treat empty assistant content on tool call messages as no answer text', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to call a tool.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: '',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to call a tool.',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      }
+    ]);
+  });
+
   it('should merge consecutive tool call groups into one assistant message', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -1167,6 +1217,61 @@ describe('chats2GPTMessages', () => {
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_search',
         content: 'compressed result'
+      }
+    ]);
+  });
+
+  it('should not skip tool calls when the same value also has empty text', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            text: {
+              content: ''
+            },
+            tools: [
+              {
+                id: 'call_search',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{}',
+                response: 'compressed result'
+              }
+            ]
+          },
+          {
+            text: {
+              content: 'Final answer'
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'compressed result'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Final answer'
       }
     ]);
   });

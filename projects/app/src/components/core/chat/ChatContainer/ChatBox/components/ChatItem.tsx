@@ -36,6 +36,25 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
+const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
+  if (item.hideInUI) return true;
+  if (item.text?.content?.trim() || item.reasoning?.content?.trim()) return false;
+  if (!item.text && !item.reasoning) return false;
+
+  return !(
+    item.tools?.length ||
+    item.tool ||
+    item.skills?.length ||
+    item.interactive ||
+    item.plan ||
+    item.planStatus ||
+    item.agentPlanUpdate ||
+    item.agentAsk ||
+    item.agentStopGate ||
+    item.contextCheckpoint
+  );
+};
+
 const colorMap = {
   [ChatStatusEnum.loading]: {
     bg: 'myGray.100',
@@ -217,18 +236,7 @@ const ChatItem = (props: Props) => {
 
     if (chat.obj === ChatRoleEnum.AI) {
       // Remove empty text node
-      const filterList = chat.value.filter((item, i) => {
-        if (item.hideInUI) {
-          return false;
-        }
-        if (item.text && !item.text.content?.trim()) {
-          return false;
-        }
-        if (item.reasoning && !item.reasoning.content?.trim()) {
-          return false;
-        }
-        return item;
-      });
+      const filterList = chat.value.filter((item) => !shouldFilterAiValue(item));
 
       const groupedValues: AIChatItemValueItemType[][] = [];
       let currentGroup: AIChatItemValueItemType[] = [];
