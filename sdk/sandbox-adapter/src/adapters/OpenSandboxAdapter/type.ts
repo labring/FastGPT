@@ -1,4 +1,4 @@
-import type { ImageSpec, ResourceLimits } from '@/types';
+import type { ImageSpec, NetworkPolicy, ResourceLimits } from '@/types';
 import type { Volume } from '@alibaba-group/opensandbox';
 
 /**
@@ -25,6 +25,12 @@ export interface OpenSandboxConfigType {
 
   /** Optional volume mounts for persistent storage */
   volumes?: Volume[];
+
+  /** Optional outbound network policy */
+  networkPolicy?: NetworkPolicy;
+
+  /** Opaque extension parameters passed through to OpenSandbox server */
+  extensions?: Record<string, string>;
 
   /** Skip readiness checks after create/connect */
   skipHealthCheck?: boolean;

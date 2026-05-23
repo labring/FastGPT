@@ -7,6 +7,7 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
@@ -15,6 +16,20 @@ const originalEnv = {
 const loadSandboxConfigModule = async () => {
   vi.resetModules();
   return import('@fastgpt/service/core/ai/sandbox/provider/config');
+};
+
+const defaultOpenSandboxDockerNetworkPolicy = {
+  defaultAction: 'allow',
+  egress: [
+    { action: 'deny', target: 'localhost' },
+    { action: 'deny', target: 'host.docker.internal' },
+    { action: 'deny', target: 'host.orb.internal' },
+    { action: 'deny', target: 'docker.orb.internal' },
+    { action: 'deny', target: 'gateway.orb.internal' },
+    { action: 'deny', target: 'proxyproxy.orb.internal' },
+    { action: 'deny', target: '*.orb.internal' },
+    { action: 'deny', target: '*.orb.local' }
+  ]
 };
 
 describe('sandbox provider config', () => {
@@ -32,6 +47,7 @@ describe('sandbox provider config', () => {
     );
     vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
@@ -150,6 +166,7 @@ describe('sandbox provider config', () => {
   it('parses opensandbox config and runtime create config from env', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'fastgpt-agent-sandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'test');
@@ -171,14 +188,21 @@ describe('sandbox provider config', () => {
           image: { repository: 'custom-image', tag: 'custom' },
           entrypoint: ['sh', '-c', 'echo ok'],
           env: { A: 'B' },
-          metadata: { teamId: 'team-1' }
+          metadata: { teamId: 'team-1' },
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: 'host.docker.internal' }]
+          },
+          extensions: {
+            traceId: 'trace-1'
+          }
         }
       })
     ).toEqual({
       providerConfig: {
         provider: 'opensandbox',
         baseUrl: 'http://opensandbox.local',
-        apiKey: undefined,
+        apiKey: 'opensandbox-key',
         runtime: 'docker',
         useServerProxy: true
       },
@@ -191,12 +215,20 @@ describe('sandbox provider config', () => {
         entrypoint: ['sh', '-c', 'echo ok'],
         env: { A: 'B' },
         metadata: { teamId: 'team-1' },
+        networkPolicy: {
+          defaultAction: 'allow',
+          egress: [{ action: 'deny', target: 'host.docker.internal' }]
+        },
+        extensions: {
+          traceId: 'trace-1'
+        },
         volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }]
       }
     });
   });
 
   it('builds opensandbox runtime create config from profile env image', async () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
 
@@ -208,7 +240,8 @@ describe('sandbox provider config', () => {
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
-      }
+      },
+      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
     });
   });
 
@@ -253,6 +286,19 @@ describe('sandbox provider config', () => {
         runtime: 'invalid' as 'docker'
       })
     ).toThrow('Invalid runtime: invalid');
+  });
+
+  it('requires opensandbox api key for docker runtime', async () => {
+    const { validateSandboxConfig } = await loadSandboxConfigModule();
+
+    expect(() =>
+      validateSandboxConfig({
+        provider: 'opensandbox',
+        baseUrl: 'http://opensandbox.local',
+        apiKey: '',
+        runtime: 'docker'
+      })
+    ).toThrow('Sandbox provider apiKey is required for opensandbox');
   });
 
   it('throws for unsupported provider in config switch', async () => {

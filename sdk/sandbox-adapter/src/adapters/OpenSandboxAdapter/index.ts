@@ -31,6 +31,7 @@ import type {
 import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
 import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { BoundedOutputBuffer } from '@/utils/outputBuffer';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@/constants';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
 import type { OpenSandboxConfigType } from './type';
 import {
@@ -40,7 +41,6 @@ import {
 } from './uploadRecovery';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
-
 export type { OpenSandboxConfigType } from './type';
 
 /**
@@ -119,7 +119,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   get rootPath(): string {
     const firstVolume = this.createConfig?.volumes?.[0] as { mountPath?: string } | undefined;
     const mountPath = firstVolume?.mountPath;
-    return mountPath ? mountPath.replace(/\/+$/, '') : '/home/sandbox';
+    return mountPath ? mountPath.replace(/\/+$/, '') : OPEN_SANDBOX_DEFAULT_ROOT_PATH;
   }
 
   get id(): SandboxId | undefined {
@@ -230,6 +230,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     }
 
     return result;
+  }
+
+  private getCommandTimeoutSeconds(timeoutMs?: number): number | undefined {
+    if (timeoutMs === undefined || timeoutMs <= 0) return undefined;
+    return Math.ceil(timeoutMs / 1000);
   }
 
   private extractExitCode(execution: {
@@ -375,7 +380,9 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           ...cfg.metadata,
           sessionId: this.connectionConfig.sessionId
         },
+        networkPolicy: cfg.networkPolicy,
         volumes: cfg.volumes as OpenSandboxConfigType['volumes'] | undefined,
+        extensions: cfg.extensions,
         skipHealthCheck: cfg.skipHealthCheck,
         readyTimeoutSeconds: cfg.readyTimeoutSeconds,
         healthCheckPollingInterval: cfg.healthCheckPollingInterval
@@ -786,7 +793,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         command,
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
-          background: options?.background
+          background: options?.background,
+          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
         },
         {
           onStdout: (msg) => {
@@ -864,7 +872,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         command,
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
-          background: options?.background
+          background: options?.background,
+          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
         },
         sdkHandlers
       );
@@ -894,7 +903,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     try {
       const execution = await this.sandbox.commands.run(command, {
         workingDirectory: this.normalizePath(options?.workingDirectory),
-        background: true
+        background: true,
+        timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
       });
 
       if (!execution.id) {
@@ -947,7 +957,16 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
 
   async ping(): Promise<boolean> {
     try {
-      return await this.sandbox.health.ping();
+      if (await this.sandbox.health.ping()) {
+        return true;
+      }
+    } catch {
+      // OpenSandbox 的 `/ping` 在容器刚 ready 后可能短暂返回 500；下面用命令通道兜底验证。
+    }
+
+    try {
+      const result = await this.execute('true', { timeoutMs: 3_000, maxOutputBytes: 1024 });
+      return result.exitCode === 0;
     } catch {
       return false;
     }

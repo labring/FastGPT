@@ -215,6 +215,56 @@ describe('WorkflowComponents utils', () => {
         }
       ]);
     });
+
+    it('should strip skill deleted marker when saving workflow', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agentNode',
+            name: 'Agent',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            showStatus: true,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.skills,
+                value: [
+                  {
+                    skillId: 'skill-1',
+                    name: 'Deleted Skill',
+                    description: '',
+                    isDeleted: true
+                  },
+                  {
+                    skillId: 'skill-2',
+                    name: 'Normal Skill',
+                    description: ''
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        {
+          skillId: 'skill-1',
+          name: 'Deleted Skill',
+          description: ''
+        },
+        {
+          skillId: 'skill-2',
+          name: 'Normal Skill',
+          description: ''
+        }
+      ]);
+    });
   });
 
   describe('filterExportModules', () => {
@@ -305,7 +355,7 @@ describe('WorkflowComponents utils', () => {
       const result = getEditorVariables({
         nodeId: 'nonexistent',
         nodeList: [],
-        getNodeById: (nodeId: string) => undefined,
+        getNodeById: () => undefined,
         edges: [],
         appDetail: {} as AppDetailType,
         t: (key: string) => key

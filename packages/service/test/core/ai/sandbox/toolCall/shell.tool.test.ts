@@ -7,6 +7,21 @@ const createSandboxInstance = () =>
   }) as any;
 
 describe('sandboxShellTool', () => {
+  it('rejects shell timeout larger than max before executing sandbox', () => {
+    const sandbox = createSandboxInstance();
+
+    expect(() => sandboxShellTool.zodSchema.parse({ command: 'sleep 1', timeout: 601 })).toThrow();
+    expect(sandbox.exec).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-positive shell timeout before executing sandbox', () => {
+    const sandbox = createSandboxInstance();
+
+    expect(() => sandboxShellTool.zodSchema.parse({ command: 'sleep 1', timeout: 0 })).toThrow();
+    expect(() => sandboxShellTool.zodSchema.parse({ command: 'sleep 1', timeout: -1 })).toThrow();
+    expect(sandbox.exec).not.toHaveBeenCalled();
+  });
+
   it('runs shell commands through the sandbox client', async () => {
     const sandbox = createSandboxInstance();
 

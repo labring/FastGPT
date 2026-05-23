@@ -4,8 +4,7 @@ const volumeConfigMock = vi.hoisted(() => ({
   config: {
     enable: true,
     url: 'http://volume-manager.local',
-    token: 'volume-token',
-    mountPath: '/workspace'
+    token: 'volume-token'
   }
 }));
 
@@ -26,13 +25,12 @@ describe('sandbox volume service', () => {
     volumeConfigMock.config = {
       enable: true,
       url: 'http://volume-manager.local',
-      token: 'volume-token',
-      mountPath: '/workspace'
+      token: 'volume-token'
     };
   });
 
   it('builds provider volume config and persisted storage metadata', () => {
-    expect(buildVolumeConfig('claim-1', '/workspace')).toEqual({
+    expect(buildVolumeConfig('claim-1')).toEqual({
       volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
       storage: {
         volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/workspace' }],
@@ -161,7 +159,7 @@ describe('sandbox volume service', () => {
     );
 
     await expect(getSessionVolumeConfig('session-1')).resolves.toEqual(
-      buildVolumeConfig('claim-session-1', '/workspace')
+      buildVolumeConfig('claim-session-1')
     );
   });
 });

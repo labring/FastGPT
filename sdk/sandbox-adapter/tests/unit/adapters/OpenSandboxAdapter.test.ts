@@ -35,6 +35,21 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.status.state).toBe('Creating');
     });
 
+    it('should use /workspace as the default root path', () => {
+      const adapter = makeAdapter();
+
+      expect(adapter.rootPath).toBe('/workspace');
+    });
+
+    it('should use the configured volume mount path as root path', () => {
+      const adapter = new OpenSandboxAdapter(MINIMAL_CONNECTION, {
+        image: { repository: 'node', tag: '20' },
+        volumes: [{ name: 'workspace', mountPath: '/workspace/' }]
+      } as OpenSandboxConfigType);
+
+      expect(adapter.rootPath).toBe('/workspace');
+    });
+
     it('should pass server proxy settings into ConnectionConfig', () => {
       const adapter = makeAdapter({
         apiKey: 'test-api-key',
@@ -266,6 +281,93 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.id).toBe('opensandbox-instance-2');
       expect(adapter.status.state).toBe('Running');
     });
+
+    it('should create sandbox with network policy and extensions', async () => {
+      const adapter = new OpenSandboxAdapter({ ...MINIMAL_CONNECTION, sessionId: 'session-1' }, {
+        image: { repository: 'node', tag: '20' },
+        resourceLimits: { cpuCount: 1, memoryMiB: 256 },
+        metadata: { teamId: 'team-1' },
+        networkPolicy: {
+          defaultAction: 'allow',
+          egress: [{ action: 'deny', target: 'host.docker.internal' }]
+        },
+        extensions: {
+          traceId: 'trace-1'
+        }
+      } as OpenSandboxConfigType);
+      vi.spyOn(adapter, 'ping').mockResolvedValue(true);
+      const create = vi.spyOn(Sandbox, 'create').mockResolvedValue({
+        id: 'opensandbox-instance-1',
+        health: {
+          ping: vi.fn(async () => true)
+        }
+      } as unknown as Sandbox);
+
+      await expect(adapter.create()).resolves.toBeUndefined();
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: 'host.docker.internal' }]
+          },
+          extensions: {
+            traceId: 'trace-1'
+          },
+          resource: {
+            cpu: '1',
+            memory: '256Mi'
+          },
+          metadata: expect.objectContaining({
+            teamId: 'team-1',
+            sessionId: 'session-1'
+          })
+        })
+      );
+    });
+
+    it('should fall back to command execution when health ping is temporarily unhealthy', async () => {
+      const adapter = makeAdapter();
+      const run = vi.fn(async () => ({}));
+      (
+        adapter as unknown as {
+          _sandbox: {
+            health: { ping: () => Promise<boolean> };
+            commands: { run: typeof run };
+          };
+        }
+      )._sandbox = {
+        health: { ping: vi.fn(async () => false) },
+        commands: { run }
+      };
+
+      await expect(adapter.ping()).resolves.toBe(true);
+
+      expect(run).toHaveBeenCalledWith(
+        'true',
+        expect.objectContaining({
+          timeoutSeconds: 3
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should report unhealthy when health ping and command fallback both fail', async () => {
+      const adapter = makeAdapter();
+      (
+        adapter as unknown as {
+          _sandbox: {
+            health: { ping: () => Promise<boolean> };
+            commands: { run: () => Promise<unknown> };
+          };
+        }
+      )._sandbox = {
+        health: { ping: vi.fn(async () => false) },
+        commands: { run: vi.fn(async () => ({ error: { value: '1' } })) }
+      };
+
+      await expect(adapter.ping()).resolves.toBe(false);
+    });
   });
 
   describe('Resource Conversion', () => {
@@ -409,6 +511,51 @@ describe('OpenSandboxAdapter', () => {
       const adapter = makeAdapter();
       const info = await adapter.getInfo();
       expect(info).toBeNull();
+    });
+  });
+
+  describe('Command Execution', () => {
+    it('should pass command timeout to OpenSandbox commands', async () => {
+      const adapter = makeAdapter();
+      const run = vi.fn(async (_command, _options, handlers) => {
+        handlers.onStdout({ text: 'ok\n' });
+        return {};
+      });
+      (adapter as any).sandbox = {
+        commands: { run }
+      };
+
+      const result = await adapter.execute('sleep 10', { timeoutMs: 2_000 });
+
+      expect(result.stdout).toBe('ok\n');
+      expect(run).toHaveBeenCalledWith(
+        'sleep 10',
+        expect.objectContaining({
+          timeoutSeconds: 2
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass stream command timeout to OpenSandbox commands', async () => {
+      const adapter = makeAdapter();
+      const run = vi.fn(async (_command, _options, handlers) => {
+        await handlers.onStdout?.({ text: 'ok\n' });
+        return {};
+      });
+      (adapter as any).sandbox = {
+        commands: { run }
+      };
+
+      await adapter.executeStream('sleep 10', {}, { timeoutMs: 2_100 });
+
+      expect(run).toHaveBeenCalledWith(
+        'sleep 10',
+        expect.objectContaining({
+          timeoutSeconds: 3
+        }),
+        expect.any(Object)
+      );
     });
   });
 

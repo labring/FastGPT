@@ -58,6 +58,18 @@ export interface KubeAccessPolicy {
   roleTemplate?: 'view' | 'edit' | 'admin';
 }
 
+export type NetworkRuleAction = 'allow' | 'deny';
+
+export interface NetworkRule {
+  action: NetworkRuleAction;
+  target: string;
+}
+
+export interface NetworkPolicy {
+  defaultAction?: NetworkRuleAction;
+  egress?: NetworkRule[];
+}
+
 /**
  * Information about a sandbox.
  */
@@ -131,6 +143,12 @@ export interface SandboxCreateSpec {
 
   /** Provider-native volume mount specs; shape is intentionally provider-defined. */
   volumes?: unknown[];
+
+  /** Provider-native outbound network policy. OpenSandbox currently matches FQDN/wildcard rules. */
+  networkPolicy?: NetworkPolicy;
+
+  /** Opaque provider extension parameters passed through to backends that support them. */
+  extensions?: Record<string, string>;
 
   /** Default workspace directory for relative paths and command execution. */
   workingDir?: string;

@@ -30,10 +30,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && for tool in bash python3 node bun git curl; do command -v "$tool"; done \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security
-RUN useradd --create-home --shell /bin/bash sandbox
+# Create a non-root user for security. Keep /workspace owned by this user so
+# Docker named volumes initialized from the image remain writable by sandbox.
+RUN useradd --create-home --shell /bin/bash --uid 10001 sandbox \
+    && mkdir -p /workspace \
+    && chown -R sandbox:sandbox /home/sandbox /workspace
 
-USER root
+USER sandbox
 WORKDIR /home/sandbox
 
 # Copy and configure entrypoint

@@ -1,4 +1,7 @@
-import type { OpenSandboxConfigType } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  OPEN_SANDBOX_DEFAULT_ROOT_PATH,
+  type OpenSandboxConfigType
+} from '@fastgpt-sdk/sandbox-adapter';
 import type { SandboxStorageType } from '../type';
 import { getVolumeManagerEnvConfig } from './config';
 
@@ -8,16 +11,17 @@ export type VolumeManagerResult = {
 };
 
 /**
- * 将 volume-manager 返回的 PVC 名称转换成 sandbox adapter 可识别的卷配置。
+ * 将 volume-manager 返回的 PVC 名称转换成 OpenSandbox adapter 可识别的卷配置。
  *
+ * OpenSandbox 的持久化工作区固定为 /workspace，避免 env 配置和镜像契约分叉。
  * 同时保留一份 storage metadata，方便后续在 Mongo 记录中还原真实挂载信息。
  */
-export const buildVolumeConfig = (claimName: string, mountPath: string): VolumeManagerResult => {
+export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
   return {
-    volumes: [{ name: 'workspace', pvc: { claimName }, mountPath }],
+    volumes: [{ name: 'workspace', pvc: { claimName }, mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH }],
     storage: {
-      volumes: [{ name: 'workspace', claimName, mountPath }],
-      mountPath
+      volumes: [{ name: 'workspace', claimName, mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH }],
+      mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
     }
   };
 };
@@ -80,7 +84,7 @@ export const getSessionVolumeConfig = async (
     );
   }
   const claimName = await ensureSessionVolume(sandboxId);
-  const volumeResult = buildVolumeConfig(claimName, vmConfig.mountPath);
+  const volumeResult = buildVolumeConfig(claimName);
 
   return volumeResult;
 };

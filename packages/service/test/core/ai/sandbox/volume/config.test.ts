@@ -16,8 +16,7 @@ describe('sandbox volume config', () => {
       serviceEnv: {
         AGENT_SANDBOX_ENABLE_VOLUME: true,
         AGENT_SANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
-        AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token',
-        AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: '/workspace'
+        AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token'
       }
     }));
 
@@ -26,8 +25,7 @@ describe('sandbox volume config', () => {
     expect(getVolumeManagerEnvConfig()).toEqual({
       enable: true,
       url: 'http://volume-manager.local',
-      token: 'volume-token',
-      mountPath: '/workspace'
+      token: 'volume-token'
     });
   });
 });

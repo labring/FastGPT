@@ -92,7 +92,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
     // Skill 配置
     AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50).meta({

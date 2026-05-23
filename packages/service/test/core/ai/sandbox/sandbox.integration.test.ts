@@ -37,7 +37,6 @@ vi.mock('@fastgpt/service/env', () => ({
       AGENT_SANDBOX_ENABLE_VOLUME: envBool(process.env.AGENT_SANDBOX_ENABLE_VOLUME),
       AGENT_SANDBOX_VOLUME_MANAGER_URL: process.env.AGENT_SANDBOX_VOLUME_MANAGER_URL,
       AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: process.env.AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
-      AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: '/home/sandbox',
 
       AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY
     };
@@ -90,6 +89,33 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     const result = await execReadySandbox('exit 1');
     expect(result.exitCode).not.toBe(0);
   });
+
+  it('should enforce SandboxClient exec timeout through OpenSandbox', async () => {
+    const startedAt = Date.now();
+    const result = await sandbox.exec('sleep 10', 1);
+
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
+    expect(result.exitCode).not.toBe(0);
+  }, 15_000);
+
+  it('should persist requested resource limits on sandbox instance record', async () => {
+    const params = createSandboxParams('resource-record');
+    const resourceLimits = {
+      cpuCount: 1,
+      memoryMiB: 256,
+      diskGiB: 1
+    };
+    const limitedSandbox = await getSandboxClient(params, { resourceLimits });
+
+    try {
+      const doc = await MongoSandboxInstance.findOne({ chatId: params.chatId });
+      expect(doc?.limit?.cpuCount).toBe(resourceLimits.cpuCount);
+      expect(doc?.limit?.memoryMiB).toBe(resourceLimits.memoryMiB);
+      expect(doc?.limit?.diskGiB).toBe(resourceLimits.diskGiB);
+    } finally {
+      await limitedSandbox.delete();
+    }
+  }, 120_000);
 
   it('should share filesystem within same session', async () => {
     await execReadySandbox(`touch ${testDir}/test-integration.txt`);
