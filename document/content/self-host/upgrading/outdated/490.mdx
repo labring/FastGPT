@@ -12,7 +12,7 @@ description: FastGPT V4.9.0 更新说明
 - 更新 FastGPT 镜像 tag: v4.9.0
 - 更新 FastGPT 商业版镜像 tag: v4.9.0
 - Sandbox 镜像，可以不更新
-- 更新 PG 容器为 v0.8.0-pg15, 可以查看[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml)
+- 更新 PG 容器为 v0.8.0-pg15, 可以查看[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml)
 
 ### 3. 替换 OneAPI（可选）
 
@@ -20,7 +20,7 @@ description: FastGPT V4.9.0 更新说明
 
 #### 1. 修改 yml 文件
 
-参考[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml) 文件。里面已移除 OneAPI 并添加了 AIProxy配置。包含一个服务和一个 PgSQL 数据库。将 `aiproxy` 的配置`追加`到 OneAPI 的配置后面（先不要删除 OneAPI，有一个初始化会自动同步 OneAPI 的配置）
+参考[最新的 yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) 文件。里面已移除 OneAPI 并添加了 AIProxy 配置。包含一个服务和一个 PgSQL 数据库。将 `aiproxy` 的配置 `追加` 到 OneAPI 的配置后面（先不要删除 OneAPI，有一个初始化会自动同步 OneAPI 的配置）
 
 <details>
 <summary>AI Proxy Yml 配置</summary>
@@ -92,7 +92,7 @@ description: FastGPT V4.9.0 更新说明
 
 `docker-compose down` 停止服务，然后 `docker-compose up -d` 启动服务，此时会追加 `aiproxy` 服务，并修改 FastGPT 的配置。
 
-#### 4. 执行OneAPI迁移AI proxy脚本
+#### 4. 执行 OneAPI 迁移 AI proxy 脚本
 
 - 可联网方案:
 
@@ -111,7 +111,7 @@ curl --location --request POST 'http://localhost:3000/api/channels/import/oneapi
 # 返回 {"data":[],"success":true} 代表成功
 ```
 
-- 无法联网时，可打开`aiproxy`的外网暴露端口，然后在本地执行脚本。
+- 无法联网时，可打开 `aiproxy` 的外网暴露端口，然后在本地执行脚本。
 
 aiProxy 暴露端口：3003:3000，修改后重新 `docker-compose up -d` 启动服务。
 
@@ -128,9 +128,9 @@ curl --location --request POST 'http://localhost:3003/api/channels/import/oneapi
 
 - 如果不熟悉 docker 操作，建议不要走脚本迁移，直接删除 OneAPI 所有内容，然后手动重新添加渠道。
 
-#### 5. 进入 FastGPT 检查`AI Proxy` 服务是否正常启动。
+#### 5. 进入 FastGPT 检查 `AI Proxy` 服务是否正常启动。
 
-登录 root 账号后，在`账号-模型提供商`页面，可以看到多出了`模型渠道`和`调用日志`两个选项，打开模型渠道，可以看到之前 OneAPI 的渠道，说明迁移完成，此时可以手动再检查下渠道是否正常。
+登录 root 账号后，在 `账号-模型提供商` 页面，可以看到多出了 `模型渠道` 和 `调用日志` 两个选项，打开模型渠道，可以看到之前 OneAPI 的渠道，说明迁移完成，此时可以手动再检查下渠道是否正常。
 
 #### 6. 删除 OneAPI 服务
 
@@ -144,7 +144,7 @@ docker-compose up -d
 
 ### 4. 运行 FastGPT 升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv490' \
@@ -163,11 +163,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 1. 弃用 - 之前私有化部署的自定义文件解析方案，请同步更新到最新的配置方案。[点击查看 PDF 增强解析配置](../../config/json.mdx#使用-doc2x-解析-pdf-文件)
 2. 弃用 - 弃用旧版本地文件上传 API：/api/core/dataset/collection/create/file（以前仅商业版可用的 API，该接口已放切换成：/api/core/dataset/collection/create/localFile）
 3. 停止维护，即将弃用 - 外部文件库相关 API，可通过 API 文件库替代。
-4. API更新 - 上传文件至知识库、创建连接集合、API 文件库、推送分块数据等带有 `trainingType` 字段的接口，`trainingType`字段未来仅支持`chunk`和`QA`两种模式。增强索引模式将设置单独字段：`autoIndexes`，目前仍有适配旧版`trainingType=auto`代码，但请尽快变更成新接口类型。具体可见：[知识库 OpenAPI 文档](../../../openapi/dataset.mdx)
+4. API 更新 - 上传文件至知识库、创建连接集合、API 文件库、推送分块数据等带有 `trainingType` 字段的接口，`trainingType` 字段未来仅支持 `chunk` 和 `QA` 两种模式。增强索引模式将设置单独字段：`autoIndexes`，目前仍有适配旧版 `trainingType=auto` 代码，但请尽快变更成新接口类型。具体可见：[知识库 OpenAPI 文档](../../../openapi/dataset.mdx)
 
 ## 🚀 新增内容
 
-1. PDF增强解析交互添加到页面上。同时内嵌 Doc2x 服务，可直接使用 Doc2x 服务解析 PDF 文件。
+1. PDF 增强解析交互添加到页面上。同时内嵌 Doc2x 服务，可直接使用 Doc2x 服务解析 PDF 文件。
 2. 图片自动标注，同时修改知识库文件上传部分数据逻辑和交互。
 3. pg vector 插件升级 0.8.0 版本，引入迭代搜索，减少部分数据无法被检索的情况。
 4. 新增 qwen-qwq 系列模型配置。

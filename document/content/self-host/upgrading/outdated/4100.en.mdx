@@ -7,7 +7,7 @@ description: 'FastGPT V4.10.0 Update Notes'
 
 ### Docker Deployment
 
-- Refer to the latest [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker/docker-compose-pgvector.yml) file to add the `fastgpt-plugin` and `minio` services.
+- Refer to the latest [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) file to add the `fastgpt-plugin` and `minio` services.
 - Set the `fastgpt-plugin` environment variable `AUTH_TOKEN` to a sufficiently complex value.
 - Set the `fastgpt-plugin` environment variable `MINIO_CUSTOM_ENDPOINT` to `http://ip:port` or a relevant domain name that is accessible to FastGPT users.
 - Update the environment variables for the `fastgpt` and `fastgpt-pro` (commercial edition) containers:
@@ -16,6 +16,7 @@ description: 'FastGPT V4.10.0 Update Notes'
 PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 PLUGIN_TOKEN=the AUTH_TOKEN value you just set
 ```
+
 - Update the `fastgpt` and `fastgpt-pro` image tags to: v4.10.0-fix
 - Run `docker-compose up -d` to start/update all services.
 

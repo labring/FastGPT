@@ -1,0 +1,1 @@
+  SEEKDB_URL: mysql://root:seekdbpassword@fastgpt-vector:2881/mysql

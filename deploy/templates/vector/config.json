@@ -1,0 +1,32 @@
+{
+  "pg": {
+    "filename": "pg",
+    "dbFile": "pg.txt",
+    "configFile": "pg.config.txt"
+  },
+  "milvus": {
+    "filename": "milvus",
+    "dbFile": "milvus.txt",
+    "configFile": "milvus.config.txt"
+  },
+  "zilliz": {
+    "filename": "zilliz",
+    "configFile": "zilliz.config.txt"
+  },
+  "ob": {
+    "filename": "oceanbase",
+    "dbFile": "ob.txt",
+    "configFile": "ob.config.txt",
+    "extraFile": "ob.extra.txt"
+  },
+  "seekdb": {
+    "filename": "seekdb",
+    "dbFile": "seekdb.txt",
+    "configFile": "seekdb.config.txt"
+  },
+  "opengauss": {
+    "filename": "opengauss",
+    "dbFile": "opengauss.txt",
+    "configFile": "opengauss.config.txt"
+  }
+}

@@ -1,0 +1,1 @@
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql

@@ -57,14 +57,70 @@ radio_select() {
 # 确保退出时恢复光标
 trap 'tput cnorm 2>/dev/null; exit' INT TERM
 
+# ========== 部署版本列表（由 deploy/init.mjs 自动生成） ==========
+# BEGIN GENERATED DEPLOY VERSIONS
+DEPLOY_VERSIONS=(
+    "v4.14"
+    "main"
+)
+# END GENERATED DEPLOY VERSIONS
+
+# 获取部署版本展示文案：main 为迭代版，其他版本均视为稳定版
+get_version_label() {
+    local version="$1"
+    if [ "$version" == "main" ]; then
+        echo "迭代版 main"
+    else
+        echo "稳定版 $version"
+    fi
+}
+
 # ========== 1. 选择镜像源 ==========
 radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
 case $RADIO_RESULT in
-    1) REGION="global" ;;
-    *) REGION="cn" ;;
+    1)
+        REGION="global"
+        BASE_URL="https://doc.fastgpt.io/deploy"
+        ;;
+    *)
+        REGION="cn"
+        BASE_URL="https://doc.fastgpt.cn/deploy"
+        ;;
 esac
 
-# ========== 2. 选择向量数据库 ==========
+# ========== 2. 选择部署版本 ==========
+if [ ${#DEPLOY_VERSIONS[@]} -eq 0 ]; then
+    echo "错误: 未配置部署版本"
+    exit 1
+fi
+
+if [ -n "$FASTGPT_DEPLOY_VERSION" ]; then
+    version_matched=false
+    for version in "${DEPLOY_VERSIONS[@]}"; do
+        if [ "$FASTGPT_DEPLOY_VERSION" == "$version" ]; then
+            version_matched=true
+            break
+        fi
+    done
+
+    if [ "$version_matched" = true ]; then
+        DEPLOY_VERSION="$FASTGPT_DEPLOY_VERSION"
+    else
+        echo "错误: 不支持的 FASTGPT_DEPLOY_VERSION: $FASTGPT_DEPLOY_VERSION"
+        echo "可选版本: ${DEPLOY_VERSIONS[*]}"
+        exit 1
+    fi
+else
+    VERSION_OPTIONS=()
+    for version in "${DEPLOY_VERSIONS[@]}"; do
+        VERSION_OPTIONS+=("$(get_version_label "$version")")
+    done
+
+    radio_select "请选择部署版本 (↑↓ 选择, 回车确认):" "${VERSION_OPTIONS[@]}"
+    DEPLOY_VERSION="${DEPLOY_VERSIONS[$RADIO_RESULT]}"
+fi
+
+# ========== 3. 选择向量数据库 ==========
 radio_select "请选择向量数据库 (↑↓ 选择, 回车确认):" "PostgreSQL + pgvector" "Milvus" "Zilliz" "OceanBase" "SeekDB"
 case $RADIO_RESULT in
     1) VECTOR="milvus" ;;
@@ -74,7 +130,7 @@ case $RADIO_RESULT in
     *) VECTOR="pg" ;;
 esac
 
-# ========== 3. 检测可用 IP ==========
+# ========== 4. 检测可用 IP ==========
 IP_LIST=()
 PRIMARY_IP=""
 
@@ -152,17 +208,19 @@ select_address() {
     fi
 }
 
-# ========== 4. 选择 S3 访问地址 (端口 9000) ==========
+# ========== 5. 选择 S3 访问地址 (端口 9000) ==========
 select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000
 S3_ADDR="$SELECTED_ADDR"
 S3_CUSTOM=$SELECTED_CUSTOM
 
-# ========== 5. 选择 SSE MCP 访问地址 (端口 3003) ==========
+# ========== 6. 选择 SSE MCP 访问地址 (端口 3003) ==========
 select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
 
 # ========== 确认配置 ==========
+DEPLOY_VERSION_LABEL="$(get_version_label "$DEPLOY_VERSION")"
+
 REGION_LABEL="阿里云 (中国大陆)"
 if [ "$REGION" == "global" ]; then
     REGION_LABEL="GitHub (全球)"
@@ -191,6 +249,7 @@ fi
 
 echo ""
 echo "=============================="
+echo "  部署版本:     $DEPLOY_VERSION_LABEL"
 echo "  镜像源:       $REGION_LABEL"
 echo "  向量数据库:   $VECTOR"
 echo "  S3 地址:      $S3_DISPLAY"
@@ -213,13 +272,7 @@ if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
     VECTOR_FILE="zilliz"
 fi
 
-if [ "$REGION" == "cn" ]; then
-    BASE_URL="https://doc.fastgpt.cn/deploy"
-    YML_URL="${BASE_URL}/docker/cn/docker-compose.${VECTOR_FILE}.yml"
-else
-    BASE_URL="https://doc.fastgpt.io/deploy"
-    YML_URL="${BASE_URL}/docker/global/docker-compose.${VECTOR_FILE}.yml"
-fi
+YML_URL="${BASE_URL}/docker/${DEPLOY_VERSION}/${REGION}/docker-compose.${VECTOR_FILE}.yml"
 
 CONFIG_URL="${BASE_URL}/config/config.json"
 
@@ -316,69 +369,79 @@ else
     echo "警告: 未设置 MCP 地址，请手动编辑 config.json 中的 mcpServerProxyEndpoint"
 fi
 
-# ========== 检测并替换 docker.sock 路径 ==========
-# 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
-# 若路径错误，Docker 会把挂载目标在容器内创建为空目录，导致 volume-manager / opensandbox 无法调用 Docker API
-detect_docker_sock() {
-    # 1. DOCKER_HOST 环境变量
-    if [ -n "$DOCKER_HOST" ] && [[ "$DOCKER_HOST" == unix://* ]]; then
-        local sock="${DOCKER_HOST#unix://}"
-        [ -S "$sock" ] && { echo "$sock"; return 0; }
-    fi
-
-    # 2. docker context 当前上下文
-    if command -v docker &>/dev/null; then
-        local ctx
-        ctx=$(docker context inspect --format '{{ .Endpoints.docker.Host }}' 2>/dev/null)
-        if [[ "$ctx" == unix://* ]]; then
-            ctx="${ctx#unix://}"
-            [ -S "$ctx" ] && { echo "$ctx"; return 0; }
+if [ "$DEPLOY_VERSION" != "main" ]; then
+    # ========== 检测并替换 docker.sock 路径 ==========
+    # 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
+    # 若路径错误，Docker 会把挂载目标在容器内创建为空目录，导致 volume-manager / opensandbox 无法调用 Docker API
+    detect_docker_sock() {
+        # 1. DOCKER_HOST 环境变量
+        if [ -n "$DOCKER_HOST" ] && [[ "$DOCKER_HOST" == unix://* ]]; then
+            local sock="${DOCKER_HOST#unix://}"
+            [ -S "$sock" ] && { echo "$sock"; return 0; }
         fi
-    fi
 
-    # 3. 常见路径依次探测
-    local candidates=(
-        "/var/run/docker.sock"
-        "/run/docker.sock"
-        "$HOME/.docker/run/docker.sock"         # macOS Docker Desktop
-        "$HOME/.docker/desktop/docker.sock"
-        "/run/user/$(id -u 2>/dev/null)/docker.sock"  # rootless
-    )
-    for p in "${candidates[@]}"; do
-        [ -S "$p" ] && { echo "$p"; return 0; }
-    done
+        # 2. docker context 当前上下文
+        if command -v docker &>/dev/null; then
+            local ctx
+            ctx=$(docker context inspect --format '{{ .Endpoints.docker.Host }}' 2>/dev/null)
+            if [[ "$ctx" == unix://* ]]; then
+                ctx="${ctx#unix://}"
+                [ -S "$ctx" ] && { echo "$ctx"; return 0; }
+            fi
+        fi
 
-    return 1
-}
+        # 3. 常见路径依次探测
+        local candidates=(
+            "/var/run/docker.sock"
+            "/run/docker.sock"
+            "$HOME/.docker/run/docker.sock"         # macOS Docker Desktop
+            "$HOME/.docker/desktop/docker.sock"
+            "/run/user/$(id -u 2>/dev/null)/docker.sock"  # rootless
+        )
+        for p in "${candidates[@]}"; do
+            [ -S "$p" ] && { echo "$p"; return 0; }
+        done
 
-HOST_SOCK=$(detect_docker_sock)
-if [ -n "$HOST_SOCK" ]; then
-    if [ "$HOST_SOCK" != "/var/run/docker.sock" ]; then
-        # 只改宿主侧路径（冒号左边），容器内仍为 /var/run/docker.sock
-        ESCAPED_SOCK=$(printf '%s' "$HOST_SOCK" | sed -e 's/[\/&|]/\\&/g')
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+        return 1
+    }
+
+    HOST_SOCK=$(detect_docker_sock)
+    if [ -n "$HOST_SOCK" ]; then
+        if [ "$HOST_SOCK" != "/var/run/docker.sock" ]; then
+            # 只改宿主侧路径（冒号左边），容器内仍为 /var/run/docker.sock
+            ESCAPED_SOCK=$(printf '%s' "$HOST_SOCK" | sed -e 's/[\/&|]/\\&/g')
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+            else
+                sed -i "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+            fi
+            echo "已检测到 Docker socket: $HOST_SOCK，已更新 docker-compose.yml 挂载路径"
         else
-            sed -i "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+            echo "Docker socket 路径正常: /var/run/docker.sock"
         fi
-        echo "已检测到 Docker socket: $HOST_SOCK，已更新 docker-compose.yml 挂载路径"
     else
-        echo "Docker socket 路径正常: /var/run/docker.sock"
+        echo "警告: 未检测到 Docker socket。请确认 Docker 正在运行，"
+        echo "      并手动编辑 docker-compose.yml，将两处 '- /var/run/docker.sock:/var/run/docker.sock'"
+        echo "      左侧改成宿主机实际的 socket 路径。"
     fi
-else
-    echo "警告: 未检测到 Docker socket。请确认 Docker 正在运行，"
-    echo "      并手动编辑 docker-compose.yml，将两处 '- /var/run/docker.sock:/var/run/docker.sock'"
-    echo "      左侧改成宿主机实际的 socket 路径。"
 fi
 
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"
-echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
-echo "  2. 启动服务:   docker compose up -d"
-echo "  3. 开放端口:   3000, 9000, 3003"
-echo "  4. 访问服务:   http://localhost:3000"
-echo "  5. 登录服务:   默认账号为 'root', 密码为: '1234'"
-echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+if [ "$DEPLOY_VERSION" != "main" ]; then
+    echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
+    echo "  2. 启动服务:   docker compose up -d"
+    echo "  3. 开放端口:   3000, 9000, 3003"
+    echo "  4. 访问服务:   http://localhost:3000"
+    echo "  5. 登录服务:   默认账号为 'root', 密码为: '1234'"
+    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+else
+    echo "  1. 启动服务:   docker compose up -d"
+    echo "  2. 开放端口:   3000, 9000, 3003"
+    echo "  3. 访问服务:   http://localhost:3000"
+    echo "  4. 登录服务:   默认账号为 'root', 密码为: '1234'"
+    echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+fi
 echo ""
 echo "详细文档: https://doc.fastgpt.cn/self-host/deploy/docker"

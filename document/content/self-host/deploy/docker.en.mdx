@@ -65,6 +65,7 @@ SeekDB is a high-performance vector database based on MySQL protocol, fully comp
 <Alert icon="🤖" context="success">
 
 SeekDB uses MySQL protocol, fully compatible with OceanBase:
+
 - Supports 1536-dimensional vector retrieval
 - Built-in HNSW index algorithm
 - Batch insert and query optimization
@@ -124,7 +125,8 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
 #### Method 2: Manual Download
-If your environment is non-*nix or can't access external networks, manually download `docker-compose.yml`.
+
+If your environment is non-\*nix or can't access external networks, manually download `docker-compose.yml`.
 
 1. Download the `docker-compose.yml` file:
 
@@ -132,27 +134,29 @@ If your environment is non-*nix or can't access external networks, manually down
 <summary>Click to view docker-compose config file download links for different databases</summary>
 
 - **Pgvector**
-  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.pg.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.pg.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.pg.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.oceanbase.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.oceanbase.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.oceanbase.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.milvus.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.milvus.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.milvus.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.zilliz.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.zilliz.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.zilliz.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/cn/docker-compose.seekdb.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/global/docker-compose.seekdb.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.seekdb.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.seekdb.yml)
 
 2. Download the `config.json` file:
+
 - [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
 
 </details>
 
 Download config.json file:
+
 - [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
 
 ### 2. Modify Environment Variables
@@ -165,7 +169,7 @@ These ports must be accessible:
 
 1. Port 3000 (FastGPT main service)
 2. Port 9000 (S3 service)
-1. Port 3005 (FastGPT SSE MCP server service)
+3. Port 3005 (FastGPT SSE MCP server service)
 
 ### 4. Start Containers
 
@@ -192,9 +196,9 @@ Each container restart automatically initializes the root user with password `12
 
 Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All FastGPT systems must manually install system plugins.
 
-* Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
-* If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
-* You can also sort tools, set default installations, and manage tags.
+- Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
+- If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
+- You can also sort tools, set default installations, and manage tags.
 
 ![alt text](../../../public/imgs/image-121.png)
 
@@ -204,9 +208,9 @@ Starting from V4.14.0, the fastgpt-plugin image only provides the runtime enviro
 
 | FastGPT-plugin Version | FastGPT Main Service |
 | ---------------------- | -------------------- |
-|   0.6.x      |     >= 4.14.11         |
-|   0.5.x      |     >= 4.14.6, < 4.14.11        |
-|  < 0.5.0      |   < 4.14.6       
+| 0.6.x                  | >= 4.14.11           |
+| 0.5.x                  | >= 4.14.6, < 4.14.11 |
+| < 0.5.0                | < 4.14.6             |
 
 ### S3 Connection Issues
 
