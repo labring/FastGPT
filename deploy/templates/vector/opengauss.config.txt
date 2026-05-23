@@ -1,0 +1,1 @@
+  OPENGAUSS_URL: postgresql://gaussdb:FastGPT@123@fastgpt-vector:5432/fastgpt

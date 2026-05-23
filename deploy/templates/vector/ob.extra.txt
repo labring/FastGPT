@@ -1,0 +1,4 @@
+init_sql:
+    name: init_sql
+    content: |
+      ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;

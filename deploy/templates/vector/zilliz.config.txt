@@ -1,0 +1,2 @@
+  MILVUS_ADDRESS: zilliz_cloud_address
+  MILVUS_TOKEN: zilliz_cloud_token

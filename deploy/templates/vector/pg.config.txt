@@ -1,0 +1,1 @@
+  PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres

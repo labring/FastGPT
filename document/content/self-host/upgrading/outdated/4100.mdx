@@ -7,25 +7,26 @@ description: 'FastGPT V4.10.0 更新说明'
 
 ### Docker 版本
 
-- 参考最新的[docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker/docker-compose-pgvector.yml)文件，加入`fastgpt-plugin`和`minio`服务。
-- 修改`fastgpt-plugin`环境变量`AUTH_TOKEN`为较复杂的值。
-- 修改`fastgpt-plugin`环境变量`MINIO_CUSTOM_ENDPOINT`为`http://ip:port` 或相关域名，要求fastgpt 用户可访问。
-- 更新`fastgpt`和`fastgpt-pro`(商业版)容器的环境变量:
+- 参考最新的 [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) 文件，加入 `fastgpt-plugin` 和 `minio` 服务。
+- 修改 `fastgpt-plugin` 环境变量 `AUTH_TOKEN` 为较复杂的值。
+- 修改 `fastgpt-plugin` 环境变量 `MINIO_CUSTOM_ENDPOINT` 为 `http://ip:port` 或相关域名，要求 fastgpt 用户可访问。
+- 更新 `fastgpt` 和 `fastgpt-pro` (商业版)容器的环境变量:
 
 ```
 PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 PLUGIN_TOKEN=刚修改的 AUTH_TOKEN 值
 ```
-- 更新`fastgpt`和`fastgpt-pro`镜像 tag: v4.10.0-fix
-- `docker-compose up -d`启动/更新所有服务。
+
+- 更新 `fastgpt` 和 `fastgpt-pro` 镜像 tag: v4.10.0-fix
+- `docker-compose up -d` 启动/更新所有服务。
 
 ### Sealos 版本
 
-- 在 Sealos 桌面的`对象存储`中，新建一个存储桶，设置`publicRead`权限。并获取相关密钥：
+- 在 Sealos 桌面的 `对象存储` 中，新建一个存储桶，设置 `publicRead` 权限。并获取相关密钥：
 
 ![](../../../../public/imgs/sealos-s3.png)
 
-- 部署`fastgpt-plugin`服务，镜像`registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0`，内网暴露端口3000，无需公网访问，设置环境变量:
+- 部署 `fastgpt-plugin` 服务，镜像 `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0`，内网暴露端口 3000，无需公网访问，设置环境变量:
 
 ```
 AUTH_TOKEN=鉴权 token
@@ -43,7 +44,7 @@ MINIO_SECRET_KEY=Secret Key
 MINIO_BUCKET=存储桶名
 ```
 
-- 更新`fastgpt`和`fastgpt-pro`(商业版)容器的环境变量以及镜像 tag: v4.10.0-fix
+- 更新 `fastgpt` 和 `fastgpt-pro` (商业版)容器的环境变量以及镜像 tag: v4.10.0-fix
 
 ```
 PLUGIN_BASE_URL=fastgpt-plugin 服务的内网地址
