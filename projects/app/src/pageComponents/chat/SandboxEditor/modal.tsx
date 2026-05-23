@@ -18,8 +18,7 @@ const SandboxEditorModal = ({ onClose, ...props }: Props) => {
       onClose={onClose}
       title={t('chat:sandbox_files')}
       isCentered
-      maxW={['90vw', '1150px']}
-      w={'100%'}
+      size="lg"
       h={'85vh'}
       closeOnOverlayClick={false}
     >

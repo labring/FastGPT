@@ -16,8 +16,8 @@ import { useSandboxFileStore } from './hook';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
-const FILE_TREE_DEFAULT_WIDTH = 250;
-const FILE_TREE_MIN_WIDTH = 250;
+const FILE_TREE_DEFAULT_WIDTH = 230;
+const FILE_TREE_MIN_WIDTH = 230;
 const FILE_TREE_MAX_WIDTH = 600;
 const EDITOR_MIN_WIDTH = 360;
 
