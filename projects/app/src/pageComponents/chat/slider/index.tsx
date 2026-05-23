@@ -13,9 +13,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import {
-  ChatSidebarPaneEnum
-} from '@/pageComponents/chat/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
@@ -185,14 +183,7 @@ const LogoSection = () => {
 
       <AnimatedSection show={isCollapsed}>
         <Flex justifyContent="center" w="100%">
-          <MyImage
-            w="33px"
-            h="33px"
-            src={logoSrc}
-            alt="logo"
-            borderRadius="8px"
-            loading="eager"
-          />
+          <MyImage w="33px" h="33px" src={logoSrc} alt="logo" borderRadius="8px" loading="eager" />
         </Flex>
       </AnimatedSection>
 

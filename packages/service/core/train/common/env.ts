@@ -26,7 +26,6 @@ export const trainEnv = createEnv({
 
     // ===== LLM Judge Configuration =====
     LLM_JUDGE_TOP_K: PositiveIntSchema.default(10),
-    LLM_JUDGE_MOCK_ENABLE: BoolSchema.default(false),
 
     // ===== DiTing Service Configuration =====
     DITING_BASE_URL: z.string().default('http://diting:3000'),

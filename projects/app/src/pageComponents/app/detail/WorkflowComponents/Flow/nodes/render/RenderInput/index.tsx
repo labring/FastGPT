@@ -174,9 +174,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
         return (
           <React.Fragment key={input.key}>
-            {input.dividerBefore && (
-              <Box borderTop="1px solid #EBEDF0" mb="20px" />
-            )}
+            {input.dividerBefore && <Box borderTop="1px solid #EBEDF0" mb="20px" />}
             <Box
               _notLast={{ mb }}
               position={'relative'}

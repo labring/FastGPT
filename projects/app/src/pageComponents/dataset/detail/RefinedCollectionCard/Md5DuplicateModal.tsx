@@ -49,9 +49,22 @@ const Md5DuplicateModal: React.FC<Md5DuplicateModalProps> = ({
                 h={'38px'}
                 borderBottom={'1px solid #EDF2F7'}
               >
-                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center" px={'8px'} py={'4px'}>
+                <HStack
+                  flex={1}
+                  overflow="hidden"
+                  spacing={'8px'}
+                  alignItems="center"
+                  px={'8px'}
+                  py={'4px'}
+                >
                   <MyTooltip label={item.existingFileName}>
-                    <Box flex={1} fontSize={'14px'} color={'myGray.550'} lineHeight={'1.6'} noOfLines={1}>
+                    <Box
+                      flex={1}
+                      fontSize={'14px'}
+                      color={'myGray.550'}
+                      lineHeight={'1.6'}
+                      noOfLines={1}
+                    >
                       {item.existingFileName}
                     </Box>
                   </MyTooltip>
@@ -68,9 +81,22 @@ const Md5DuplicateModal: React.FC<Md5DuplicateModalProps> = ({
                     {item.type === 'dataset' ? t('dataset:existing_file') : t('dataset:new_upload')}
                   </Box>
                 </HStack>
-                <HStack flex={1} overflow="hidden" spacing={'8px'} alignItems="center" px={'8px'} py={'4px'}>
+                <HStack
+                  flex={1}
+                  overflow="hidden"
+                  spacing={'8px'}
+                  alignItems="center"
+                  px={'8px'}
+                  py={'4px'}
+                >
                   <MyTooltip label={item.newFileName}>
-                    <Box flex={1} fontSize={'14px'} color={'myGray.550'} lineHeight={'1.6'} noOfLines={1}>
+                    <Box
+                      flex={1}
+                      fontSize={'14px'}
+                      color={'myGray.550'}
+                      lineHeight={'1.6'}
+                      noOfLines={1}
+                    >
                       {item.newFileName}
                     </Box>
                   </MyTooltip>

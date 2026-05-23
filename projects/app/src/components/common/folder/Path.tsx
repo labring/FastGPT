@@ -167,7 +167,9 @@ const FolderPath = (props: {
   return paths.length === 0 && !!FirstPathDom ? (
     <>{FirstPathDom}</>
   ) : (
-    <Flex flex={1} minW={0} overflow={'hidden'}>{displayPaths.map((item, index) => renderPathItem(item, index))}</Flex>
+    <Flex flex={1} minW={0} overflow={'hidden'}>
+      {displayPaths.map((item, index) => renderPathItem(item, index))}
+    </Flex>
   );
 };
 

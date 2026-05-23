@@ -33,8 +33,7 @@ import type {
   ModelRow,
   OpenTrainModelHandler,
   TeamPermission,
-  TrainDetailModel,
-  TrainTaskItem
+  TrainDetailModel
 } from './types';
 import { modelTableTabValues } from './types';
 import { hasErrorTrainTask, hasRunningTrainTask } from './helpers/trainStatus';
@@ -291,9 +290,9 @@ const ModelTableRow = ({
 }: ModelTableRowProps) => {
   const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
-  const trainTaskCount = item.trainTaskList?.length || 0;
-  const showRunningTask = hasRunningTrainTask(item.trainTaskList);
-  const showErrorTask = hasErrorTrainTask(item.trainTaskList);
+  const trainTaskCount = item.trainTaskSummary?.totalCount || 0;
+  const showRunningTask = hasRunningTrainTask(item.trainTaskSummary);
+  const showErrorTask = hasErrorTrainTask(item.trainTaskSummary);
 
   const onClickTrainTaskCell = () => {
     if (trainTaskCount === 0 || !item.trainableModelType) return;
@@ -305,11 +304,8 @@ const ModelTableRow = ({
   };
 
   const latestTask = useMemo(() => {
-    if (!showTrainedModelColumns || !item.trainTaskList?.length) return undefined;
-    return [...item.trainTaskList].sort(
-      (a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
-    )[0];
-  }, [showTrainedModelColumns, item.trainTaskList]);
+    return showTrainedModelColumns ? item.trainTaskSummary?.latestTask : undefined;
+  }, [showTrainedModelColumns, item.trainTaskSummary]);
 
   const trainDatasetDisplay = useMemo(() => {
     if (!showTrainedModelColumns || !latestTask) return '-';

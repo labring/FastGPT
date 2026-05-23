@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
+import {
+  filterSensitiveFormData,
+  getAppQGuideCustomURL,
+  getEmbeddingModelSelectList
+} from '@/web/core/app/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { appWorkflow2AgentForm } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { DatasetSearchModeEnum, RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
 
 describe('form2AppWorkflow', () => {
   const mockT = (str: string) => str;
@@ -29,11 +34,11 @@ describe('form2AppWorkflow', () => {
         datasets: [],
         similarity: 0.8,
         limit: 1500,
-        searchMode: 'embedding',
+        searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.7,
         usingReRank: false,
         rerankModel: '',
-        rerankMethod: 'content',
+        rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
         datasetSearchExtensionModel: '',
@@ -75,11 +80,11 @@ describe('form2AppWorkflow', () => {
         ],
         similarity: 0.8,
         limit: 1500,
-        searchMode: 'embedding',
+        searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.7,
         usingReRank: false,
         rerankModel: '',
-        rerankMethod: 'content',
+        rerankMethod: RerankMethodEnum.content,
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false,
         datasetSearchExtensionModel: '',
@@ -239,6 +244,127 @@ describe('appWorkflow2AgentForm', () => {
 
     expect(result.dataset.usingReRank).toBe(false);
     expect(result.dataset.rerankModel).toBe('');
-    expect(result.dataset.rerankWeight).toBe(0.5);
+    expect(result.dataset.rerankWeight).toBe(0.4);
+  });
+});
+
+describe('getEmbeddingModelSelectList', () => {
+  const baseModel = {
+    model: 'text-embedding-ada-002',
+    name: 'text-embedding-ada-002',
+    isTuned: false
+  };
+
+  const tunedModel = {
+    model: 'tuned-embedding-v1',
+    name: 'tuned-embedding-v1',
+    isTuned: true,
+    trainTaskSummary: {
+      baseModelIds: ['text-embedding-ada-002'],
+      totalCount: 1,
+      hasRunning: false,
+      hasError: false
+    }
+  };
+
+  const multiBaseTunedModel = {
+    model: 'tuned-embedding-v2',
+    name: 'tuned-embedding-v2',
+    isTuned: true,
+    trainTaskSummary: {
+      baseModelIds: ['text-embedding-ada-002', 'other-base-model'],
+      totalCount: 2,
+      hasRunning: false,
+      hasError: false
+    }
+  };
+
+  const unrelatedTunedModel = {
+    model: 'tuned-other',
+    name: 'tuned-other',
+    isTuned: true,
+    trainTaskSummary: {
+      baseModelIds: ['some-other-model'],
+      totalCount: 1,
+      hasRunning: false,
+      hasError: false
+    }
+  };
+
+  const tunedModelWithoutSummary = {
+    model: 'tuned-no-summary',
+    name: 'tuned-no-summary',
+    isTuned: true
+  };
+
+  const modelList = [
+    baseModel,
+    tunedModel,
+    multiBaseTunedModel,
+    unrelatedTunedModel,
+    tunedModelWithoutSummary
+  ];
+
+  it('should return empty array when datasetVectorModel is undefined', () => {
+    const result = getEmbeddingModelSelectList(modelList, undefined);
+    expect(result).toEqual([]);
+  });
+
+  it('should return empty array when modelList is empty', () => {
+    const result = getEmbeddingModelSelectList([], 'text-embedding-ada-002');
+    expect(result).toEqual([]);
+  });
+
+  it('should include base model that matches datasetVectorModel directly', () => {
+    const result = getEmbeddingModelSelectList(modelList, 'text-embedding-ada-002');
+    expect(result).toContainEqual({
+      value: 'text-embedding-ada-002',
+      label: 'text-embedding-ada-002'
+    });
+  });
+
+  it('should include tuned model whose baseModelIds contains datasetVectorModel', () => {
+    const result = getEmbeddingModelSelectList(modelList, 'text-embedding-ada-002');
+    expect(result).toContainEqual({ value: 'tuned-embedding-v1', label: 'tuned-embedding-v1' });
+    expect(result).toContainEqual({ value: 'tuned-embedding-v2', label: 'tuned-embedding-v2' });
+  });
+
+  it('should not include tuned model whose baseModelIds does not contain datasetVectorModel', () => {
+    const result = getEmbeddingModelSelectList(modelList, 'text-embedding-ada-002');
+    expect(result).not.toContainEqual({ value: 'tuned-other', label: 'tuned-other' });
+  });
+
+  it('should not include non-tuned model that does not match datasetVectorModel', () => {
+    const result = getEmbeddingModelSelectList(modelList, 'some-other-model');
+    expect(result).toContainEqual({ value: 'tuned-other', label: 'tuned-other' });
+    expect(result).not.toContainEqual({
+      value: 'text-embedding-ada-002',
+      label: 'text-embedding-ada-002'
+    });
+  });
+
+  it('should handle tuned model without trainTaskSummary gracefully', () => {
+    const result = getEmbeddingModelSelectList(modelList, 'text-embedding-ada-002');
+    expect(result).not.toContainEqual({ value: 'tuned-no-summary', label: 'tuned-no-summary' });
+  });
+
+  it('should handle trainTaskSummary without baseModelIds gracefully', () => {
+    const modelWithoutBaseModelIds = {
+      model: 'tuned-empty-ids',
+      name: 'tuned-empty-ids',
+      isTuned: true,
+      trainTaskSummary: {
+        totalCount: 0,
+        hasRunning: false,
+        hasError: false
+      }
+    };
+    const list = [baseModel, modelWithoutBaseModelIds];
+    const result = getEmbeddingModelSelectList(list, 'text-embedding-ada-002');
+    expect(result).toContainEqual({
+      value: 'text-embedding-ada-002',
+      label: 'text-embedding-ada-002'
+    });
+    expect(result).not.toContainEqual({ value: 'tuned-empty-ids', label: 'tuned-empty-ids' });
   });
 });

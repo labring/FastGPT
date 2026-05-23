@@ -103,7 +103,16 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           templateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
         >
           {/* 左列：面包屑路径 */}
-          <Flex alignItems={'center'} py={'0.38rem'} pl={2} pr={4} h={10} ml={0.5} minW={0} overflow={'hidden'}>
+          <Flex
+            alignItems={'center'}
+            py={'0.38rem'}
+            pl={2}
+            pr={4}
+            h={10}
+            ml={0.5}
+            minW={0}
+            overflow={'hidden'}
+          >
             {currentTab === TabEnum.dataCard ? (
               <Flex
                 alignItems={'center'}

@@ -11,14 +11,23 @@ import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/t
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { resolveEmbeddingTasksByTunedModelId } from '@fastgpt/service/core/train/embedding/task/controller';
 import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
-import { buildEmbeddingTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/embedding/task/utils';
-import { buildRerankTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
-import type { EmbeddingTrainTaskListItem } from '@fastgpt/global/core/train/embedding/api';
-import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 
+export type TrainTaskSummary = {
+  totalCount: number;
+  hasRunning: boolean;
+  hasError: boolean;
+  baseModelIds?: string[];
+  latestTask?: {
+    createTime: Date;
+    creatorName: string;
+    datasetIds: string[];
+  };
+};
+
 export type ActiveModelListItem = SystemModelItemType & {
-  trainTaskList: (EmbeddingTrainTaskListItem | RerankTrainTaskListItem)[];
+  trainTaskSummary: TrainTaskSummary;
 };
 
 export type InitDateResponse = {
@@ -34,52 +43,184 @@ export type InitDateResponse = {
   aiproxyChannels?: AIProxyChannelsType;
 };
 
+const emptySummary = (): TrainTaskSummary => ({
+  totalCount: 0,
+  hasRunning: false,
+  hasError: false
+});
+
+function computeSummaryFromTasks(
+  tasks: {
+    status: string;
+    createTime: Date;
+    tmbId?: string;
+    datasetIds?: string[];
+    baseModelId?: string;
+  }[]
+): TrainTaskSummary & { _tmbId?: string } {
+  if (!tasks.length) return emptySummary();
+
+  const sorted = [...tasks].sort(
+    (a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+  );
+  const latest = sorted[0];
+  const baseModelIds = [
+    ...new Set(tasks.map((t) => t.baseModelId).filter((id): id is string => !!id))
+  ];
+
+  return {
+    totalCount: tasks.length,
+    hasRunning: tasks.some((t) => t.status === 'running'),
+    hasError: tasks.some((t) => t.status === 'failed'),
+    baseModelIds: baseModelIds.length > 0 ? baseModelIds : undefined,
+    latestTask: {
+      createTime: latest.createTime,
+      creatorName: '',
+      datasetIds: latest.datasetIds || []
+    },
+    _tmbId: latest.tmbId
+  };
+}
+
+async function batchQueryNonTunedSummaries(
+  MongoModel: typeof MongoEmbeddingTrainTask | typeof MongoRerankTrainTask,
+  teamId: string,
+  baseModelIds: string[]
+): Promise<Map<string, TrainTaskSummary & { _tmbId?: string }>> {
+  if (!baseModelIds.length) return new Map();
+
+  const result = await MongoModel.aggregate([
+    {
+      $match: {
+        teamId: new Types.ObjectId(teamId),
+        baseModelId: { $in: baseModelIds }
+      }
+    },
+    { $sort: { createTime: -1 } },
+    {
+      $group: {
+        _id: '$baseModelId',
+        totalCount: { $sum: 1 },
+        hasRunning: { $max: { $cond: [{ $eq: ['$status', 'running'] }, 1, 0] } },
+        hasError: { $max: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+        latestCreateTime: { $first: '$createTime' },
+        latestTmbId: { $first: '$tmbId' },
+        latestDatasetIds: { $first: '$datasetIds' }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        baseModelId: '$_id',
+        totalCount: 1,
+        hasRunning: { $eq: ['$hasRunning', 1] },
+        hasError: { $eq: ['$hasError', 1] },
+        latestCreateTime: 1,
+        latestTmbId: 1,
+        latestDatasetIds: { $ifNull: ['$latestDatasetIds', []] }
+      }
+    }
+  ]);
+
+  const map = new Map<string, TrainTaskSummary & { _tmbId?: string }>();
+  for (const item of result) {
+    map.set(item.baseModelId, {
+      totalCount: item.totalCount || 0,
+      hasRunning: !!item.hasRunning,
+      hasError: !!item.hasError,
+      latestTask: {
+        createTime: item.latestCreateTime,
+        creatorName: '',
+        datasetIds: item.latestDatasetIds
+      },
+      _tmbId: item.latestTmbId
+    });
+  }
+  return map;
+}
+
+async function resolveCreatorNames(
+  summaries: Map<string, TrainTaskSummary & { _tmbId?: string }>
+): Promise<void> {
+  const allTmbIds = Array.from(summaries.values())
+    .map((s) => s._tmbId)
+    .filter((id): id is string => !!id);
+
+  const uniqueTmbIds = [...new Set(allTmbIds)];
+
+  if (!uniqueTmbIds.length) return;
+
+  const members = await MongoTeamMember.find(
+    { _id: { $in: uniqueTmbIds.map((id) => new Types.ObjectId(id)) } },
+    { name: 1 }
+  ).lean();
+
+  const nameMap = new Map<string, string>();
+  for (const m of members) {
+    nameMap.set(String(m._id), m.name);
+  }
+
+  for (const summary of summaries.values()) {
+    if (summary.latestTask && summary._tmbId) {
+      summary.latestTask.creatorName = nameMap.get(summary._tmbId) || '';
+    }
+    delete summary._tmbId;
+  }
+}
+
 async function buildActiveModelList(
   models: SystemModelItemType[],
   teamId: string
 ): Promise<ActiveModelListItem[]> {
-  return Promise.all(
-    models.map(async (model) => {
-      if (model.type !== ModelTypeEnum.embedding && model.type !== ModelTypeEnum.rerank) {
-        return { ...model, trainTaskList: [] };
-      }
+  // Separate models by type and tuned status
+  const nonTunedEmbedding = models.filter((m) => m.type === ModelTypeEnum.embedding && !m.isTuned);
+  const tunedEmbedding = models.filter((m) => m.type === ModelTypeEnum.embedding && m.isTuned);
+  const nonTunedRerank = models.filter((m) => m.type === ModelTypeEnum.rerank && !m.isTuned);
+  const tunedRerank = models.filter((m) => m.type === ModelTypeEnum.rerank && m.isTuned);
 
-      if (model.type === ModelTypeEnum.embedding) {
-        const matchQuery = model.isTuned
-          ? {
-              _id: {
-                $in: (await resolveEmbeddingTasksByTunedModelId(model.model, teamId)).map(
-                  (t) => new Types.ObjectId(t._id)
-                )
-              }
-            }
-          : { teamId: new Types.ObjectId(teamId), baseModelId: model.model };
-        const tasks = await MongoEmbeddingTrainTask.aggregate([
-          { $match: matchQuery },
-          { $sort: { createTime: -1 } },
-          ...buildEmbeddingTrainTaskAggregationPipeline()
-        ]);
-        return { ...model, trainTaskList: tasks as EmbeddingTrainTaskListItem[] };
-      }
+  const summaryMap = new Map<string, TrainTaskSummary & { _tmbId?: string }>();
 
-      // ModelTypeEnum.rerank
-      const matchQuery = model.isTuned
-        ? {
-            _id: {
-              $in: (await resolveRerankTasksByTunedModelId(model.model, teamId)).map(
-                (t) => new Types.ObjectId(t._id)
-              )
-            }
-          }
-        : { teamId: new Types.ObjectId(teamId), baseModelId: model.model };
-      const tasks = await MongoRerankTrainTask.aggregate([
-        { $match: matchQuery },
-        { $sort: { createTime: -1 } },
-        ...buildRerankTrainTaskAggregationPipeline()
-      ]);
-      return { ...model, trainTaskList: tasks as RerankTrainTaskListItem[] };
-    })
-  );
+  // Batch query non-tuned models (2 queries total)
+  const [embeddingSummaries, rerankSummaries] = await Promise.all([
+    batchQueryNonTunedSummaries(
+      MongoEmbeddingTrainTask,
+      teamId,
+      nonTunedEmbedding.map((m) => m.model)
+    ),
+    batchQueryNonTunedSummaries(
+      MongoRerankTrainTask,
+      teamId,
+      nonTunedRerank.map((m) => m.model)
+    )
+  ]);
+
+  for (const [key, val] of embeddingSummaries) summaryMap.set(key, val);
+  for (const [key, val] of rerankSummaries) summaryMap.set(key, val);
+
+  // Individual queries for tuned models (rare, one per model)
+  for (const model of tunedEmbedding) {
+    const tasks = await resolveEmbeddingTasksByTunedModelId(model.model, teamId);
+    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+  }
+  for (const model of tunedRerank) {
+    const tasks = await resolveRerankTasksByTunedModelId(model.model, teamId);
+    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+  }
+
+  // Batch resolve creator names (1 query)
+  await resolveCreatorNames(summaryMap);
+
+  // Build result list
+  return models.map((model) => {
+    if (model.type !== ModelTypeEnum.embedding && model.type !== ModelTypeEnum.rerank) {
+      return { ...model, trainTaskSummary: emptySummary() };
+    }
+    const summary = summaryMap.get(model.model);
+    return {
+      ...model,
+      trainTaskSummary: summary || emptySummary()
+    };
+  });
 }
 
 async function handler(
@@ -118,7 +259,7 @@ async function handler(
         aiproxyChannels: global.aiproxyChannelsCache,
         activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
           ...model,
-          trainTaskList: []
+          trainTaskSummary: emptySummary()
         }))
       };
     }

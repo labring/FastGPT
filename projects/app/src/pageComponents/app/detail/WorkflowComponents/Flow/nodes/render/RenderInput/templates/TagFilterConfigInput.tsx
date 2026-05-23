@@ -391,7 +391,10 @@ export const TagFilterLogicToggle = ({ item, nodeId, inputs }: RenderInputProps)
       );
       const unAuthNames: string[] = [];
       results.forEach((result, i) => {
-        if (result.status === 'rejected' && result.reason?.statusText === DatasetErrEnum.unAuthDataset) {
+        if (
+          result.status === 'rejected' &&
+          result.reason?.statusText === DatasetErrEnum.unAuthDataset
+        ) {
           unAuthNames.push(datasets[i].name);
         }
       });

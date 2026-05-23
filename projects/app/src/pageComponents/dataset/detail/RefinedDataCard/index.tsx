@@ -591,15 +591,15 @@ const RefinedDataCard = () => {
               />
               {canWrite &&
                 collection?.trainingType !== DatasetCollectionDataProcessModeEnum.imageParse && (
-                <Button
-                  ml={2}
-                  variant={'whiteBase'}
-                  size={'md'}
-                  onClick={() => setIsAddingData(true)}
-                >
-                  {t('dataset:add_chunk_btn')}
-                </Button>
-              )}
+                  <Button
+                    ml={2}
+                    variant={'whiteBase'}
+                    size={'md'}
+                    onClick={() => setIsAddingData(true)}
+                  >
+                    {t('dataset:add_chunk_btn')}
+                  </Button>
+                )}
             </Flex>
 
             {/* Data List - Scrollable */}

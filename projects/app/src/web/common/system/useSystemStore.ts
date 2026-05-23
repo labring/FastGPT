@@ -262,19 +262,24 @@ export const useSystemStore = create<State>()(
       {
         name: 'globalStore',
         partialize: (state) => {
-          const stripTrainTaskList = (list: any[]) =>
-            list?.map(({ trainTaskList, ...rest }: any) => ({
+          const stripTrainTaskSummary = (list: any[]) =>
+            list?.map(({ trainTaskSummary, ...rest }: any) => ({
               ...rest,
-              trainTaskList:
-                trainTaskList?.map(
-                  ({ status, createTime, baseModelId, datasetIds, creatorName }: any) => ({
-                    status,
-                    createTime,
-                    baseModelId,
-                    datasetIds,
-                    creatorName
-                  })
-                ) || []
+              trainTaskSummary: trainTaskSummary
+                ? {
+                    totalCount: trainTaskSummary.totalCount,
+                    hasRunning: trainTaskSummary.hasRunning,
+                    hasError: trainTaskSummary.hasError,
+                    baseModelIds: trainTaskSummary.baseModelIds,
+                    latestTask: trainTaskSummary.latestTask
+                      ? {
+                          createTime: trainTaskSummary.latestTask.createTime,
+                          creatorName: trainTaskSummary.latestTask.creatorName,
+                          datasetIds: trainTaskSummary.latestTask.datasetIds
+                        }
+                      : undefined
+                  }
+                : undefined
             }));
 
           return {
@@ -290,11 +295,11 @@ export const useSystemStore = create<State>()(
             modelProviderMap: state.modelProviderMap,
             aiproxyChannels: state.aiproxyChannels,
             defaultModels: state.defaultModels,
-            llmModelList: stripTrainTaskList(state.llmModelList),
-            embeddingModelList: stripTrainTaskList(state.embeddingModelList),
-            ttsModelList: stripTrainTaskList(state.ttsModelList),
-            reRankModelList: stripTrainTaskList(state.reRankModelList),
-            sttModelList: stripTrainTaskList(state.sttModelList)
+            llmModelList: stripTrainTaskSummary(state.llmModelList),
+            embeddingModelList: stripTrainTaskSummary(state.embeddingModelList),
+            ttsModelList: stripTrainTaskSummary(state.ttsModelList),
+            reRankModelList: stripTrainTaskSummary(state.reRankModelList),
+            sttModelList: stripTrainTaskSummary(state.sttModelList)
           };
         }
       }

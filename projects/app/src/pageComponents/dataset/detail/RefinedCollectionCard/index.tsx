@@ -89,10 +89,7 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, allDatasetTags } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, allDatasetTags } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
@@ -860,17 +857,18 @@ const CollectionCard = () => {
                               };
                             })();
 
-                            const tagItem = feConfigs?.isPlus && !isStructureDocument
-                              ? {
-                                  label: (
-                                    <Flex alignItems={'center'}>
-                                      <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
-                                      {t('dataset:tag.tags')}
-                                    </Flex>
-                                  ),
-                                  onClick: () => setSetTagsCollectionId(collection._id)
-                                }
-                              : null;
+                            const tagItem =
+                              feConfigs?.isPlus && !isStructureDocument
+                                ? {
+                                    label: (
+                                      <Flex alignItems={'center'}>
+                                        <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
+                                        {t('dataset:tag.tags')}
+                                      </Flex>
+                                    ),
+                                    onClick: () => setSetTagsCollectionId(collection._id)
+                                  }
+                                : null;
 
                             const moveItem = {
                               label: (

@@ -1,7 +1,11 @@
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { DatasetStatusEnum, DatasetTypeEnum, ApiDatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetStatusEnum,
+  DatasetTypeEnum,
+  ApiDatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';

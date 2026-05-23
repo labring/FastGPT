@@ -195,7 +195,12 @@ export class QueryRewriteSkill extends BaseSkill {
       let implicitDimensions: string[] | undefined;
 
       try {
-        const rewriteResult = await this.batchRewrite(query, selected, priorContext, targetLanguages);
+        const rewriteResult = await this.batchRewrite(
+          query,
+          selected,
+          priorContext,
+          targetLanguages
+        );
         rewrites = rewriteResult.rewrites || [];
         compareObjects = rewriteResult.compare_objects;
         explicitDimensions = rewriteResult.explicit_dimensions;
@@ -214,7 +219,8 @@ export class QueryRewriteSkill extends BaseSkill {
         return this.success({
           rewrites: [{ strategy: 'fallback', queries: [query] }],
           strategies_used: ['fallback'],
-          selection_reasoning: 'Batch rewrite produced no results; using original query as fallback',
+          selection_reasoning:
+            'Batch rewrite produced no results; using original query as fallback',
           queries: [query]
         });
       }

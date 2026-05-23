@@ -429,7 +429,15 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={mobilePreSpeak ? '48px' : fileList.length > 0 ? '176px' : InputLeftComponent ? '120px' : '96px'}
+        minH={
+          mobilePreSpeak
+            ? '48px'
+            : fileList.length > 0
+              ? '176px'
+              : InputLeftComponent
+                ? '120px'
+                : '96px'
+        }
         pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
         pb={InputLeftComponent ? 2 : 3}
         position={'relative'}
