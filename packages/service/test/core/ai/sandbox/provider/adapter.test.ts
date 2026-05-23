@@ -4,6 +4,7 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
+    AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false,
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'runtime-image',
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt-sdk/sandbox-adapter', () => ({
+  OPEN_SANDBOX_DEFAULT_ROOT_PATH: '/workspace',
   createSandbox: mocks.createSandbox
 }));
 

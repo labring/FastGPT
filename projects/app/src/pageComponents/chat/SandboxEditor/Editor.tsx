@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { Center, VStack } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Center, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
 import { useContextSelector } from 'use-context-selector';
@@ -15,6 +15,11 @@ import { filterTree } from './utils';
 import { useSandboxFileStore } from './hook';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+
+const FILE_TREE_DEFAULT_WIDTH = 250;
+const FILE_TREE_MIN_WIDTH = 250;
+const FILE_TREE_MAX_WIDTH = 600;
+const EDITOR_MIN_WIDTH = 360;
 
 export type Props = {
   appId: string;
@@ -40,6 +45,9 @@ const SandboxEditor = ({
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
   const editorRef = useRef<EditorInstance>();
+  const editorLayoutRef = useRef<HTMLDivElement>(null);
+  const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
+  const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
   const {
     fileTree,
     openedFiles,
@@ -101,6 +109,49 @@ const SandboxEditor = ({
 
   const filteredTree = filterTree(fileTree, searchQuery);
 
+  const handleFileTreeResizeStart = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const startX = e.clientX;
+      const startWidth = fileTreeWidth;
+      const previousCursor = document.body.style.cursor;
+      const previousUserSelect = document.body.style.userSelect;
+
+      setIsFileTreeResizing(true);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (event: MouseEvent) => {
+        const containerWidth = editorLayoutRef.current?.getBoundingClientRect().width ?? 0;
+        const maxWidth =
+          containerWidth > 0
+            ? Math.min(
+                FILE_TREE_MAX_WIDTH,
+                Math.max(FILE_TREE_MIN_WIDTH, containerWidth - EDITOR_MIN_WIDTH)
+              )
+            : FILE_TREE_MAX_WIDTH;
+
+        setFileTreeWidth(
+          Math.min(Math.max(startWidth + event.clientX - startX, FILE_TREE_MIN_WIDTH), maxWidth)
+        );
+      };
+
+      const handleMouseUp = () => {
+        setIsFileTreeResizing(false);
+        document.body.style.cursor = previousCursor;
+        document.body.style.userSelect = previousUserSelect;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [fileTreeWidth]
+  );
+
   const renderContent = () => {
     if (fileTree.length === 0) {
       if (loadingRoot) return null;
@@ -117,6 +168,7 @@ const SandboxEditor = ({
     return (
       <>
         <FileTree
+          width={fileTreeWidth}
           filteredTree={filteredTree}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -137,6 +189,37 @@ const SandboxEditor = ({
           chatId={chatId}
           outLinkAuthData={outLinkAuthData}
           showFileOps={showFileOps}
+        />
+
+        <Box
+          role="separator"
+          aria-label="Resize file tree"
+          aria-orientation="vertical"
+          flex="0 0 8px"
+          w="8px"
+          h="full"
+          ml="-4px"
+          mr="-4px"
+          cursor="col-resize"
+          position="relative"
+          zIndex={3}
+          onMouseDown={handleFileTreeResizeStart}
+          _before={{
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            w: '1px',
+            bg: isFileTreeResizing ? 'primary.600' : 'myGray.200',
+            transition: 'background 0.15s'
+          }}
+          _hover={{
+            _before: {
+              bg: 'primary.600'
+            }
+          }}
         />
 
         {/* 右侧: 编辑器区域 */}
@@ -194,6 +277,7 @@ const SandboxEditor = ({
       isLoading={isPreparing || (loadingRoot && fileTree.length === 0)}
       text={isPreparing ? preparingText : t('chat:sandbox_loading_files')}
       loadingVariant="particle"
+      ref={editorLayoutRef}
       display={'flex'}
       h="full"
       w="full"

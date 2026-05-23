@@ -1,7 +1,7 @@
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage } from '../package';
+import { downloadSkillPackage, extractNormalizedSkillPackageFilesForSandbox } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
@@ -35,6 +35,12 @@ import { checkTeamSandboxPermission } from '../../../../support/permission/teamL
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
+const getSandboxParentPath = (path: string) => {
+  const normalizedPath = path.replace(/\/+$/, '');
+  const slashIndex = normalizedPath.lastIndexOf('/');
+  return slashIndex > 0 ? normalizedPath.slice(0, slashIndex) : '/';
+};
+
 export type CreateEditDebugSandboxParams = {
   skillId: string;
   teamId: string;
@@ -66,7 +72,7 @@ export async function createEditDebugSandbox(
 
   try {
     await checkTeamSandboxPermission(teamId);
-  } catch (err) {
+  } catch {
     throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
   }
 
@@ -276,7 +282,6 @@ export async function createEditDebugSandbox(
     });
 
     const { skillsRootPath } = getEditSkillSandboxPaths();
-    const zipPath = joinSandboxPath(runtimeProfile.workDirectory, 'package.zip');
 
     const prepareWorkDirectoryResult = await client.provider.execute(
       `mkdir -p ${shellQuote(runtimeProfile.workDirectory)}`
@@ -287,25 +292,33 @@ export async function createEditDebugSandbox(
       );
     }
 
-    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
-    await client.provider.writeFiles([
-      {
-        path: zipPath,
-        data: packageBuffer
-      }
-    ]);
-
     onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
+    const packageFiles = await extractNormalizedSkillPackageFilesForSandbox(packageBuffer);
+    const writeEntries = packageFiles.map((file) => ({
+      path: joinSandboxPath(skillsRootPath, file.path),
+      data: file.data
+    }));
+    const parentDirs = Array.from(
+      new Set([skillsRootPath, ...writeEntries.map((entry) => getSandboxParentPath(entry.path))])
+    );
     const extractResult = await client.provider.execute(
       [
         `rm -rf ${shellQuote(skillsRootPath)}`,
-        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(runtimeProfile.workDirectory)}`,
-        `rm ${shellQuote(zipPath)}`
+        `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
       ].join(' && ')
     );
 
     if (extractResult.exitCode !== 0) {
       throw new Error(`Failed to extract package: ${extractResult.stderr}`);
+    }
+
+    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
+    const writeResults = await client.provider.writeFiles(writeEntries);
+    const failedWrite = writeResults.find((result) => result.error);
+    if (failedWrite) {
+      throw new Error(
+        `Failed to write skill package file ${failedWrite.path}: ${failedWrite.error?.message}`
+      );
     }
 
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({

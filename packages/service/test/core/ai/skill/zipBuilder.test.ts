@@ -6,6 +6,7 @@ import {
   validateZipStructure,
   extractSkillPackage,
   normalizeSkillPackageZipForSandbox,
+  extractNormalizedSkillPackageFilesForSandbox,
   standardizeSkillPackageBySkillMdName,
   JSZip
 } from '@fastgpt/service/core/ai/skill/package';
@@ -375,6 +376,20 @@ ${largeMarkdown}`;
       );
       expect(files).not.toContain('1/test/SKILL.md');
       expect(files).not.toContain('1/test2/SKILL.md');
+    });
+
+    it('preserves Chinese directory names when extracting normalized files for sandbox writes', async () => {
+      const zip = new JSZip();
+      zip.file('skills/测试的/SKILL.md', '---\nname: 测试的\n---');
+      zip.file('skills/测试的/test_file.txt', 'hello');
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      const files = await extractNormalizedSkillPackageFilesForSandbox(buffer);
+
+      expect(files.map((file) => file.path)).toEqual(
+        expect.arrayContaining(['测试的/SKILL.md', '测试的/test_file.txt'])
+      );
+      expect(files.map((file) => file.path).join('\n')).not.toContain('���');
     });
   });
 

@@ -201,7 +201,7 @@ describe('sandbox/listRecursive api', () => {
           level: 0
         }
       ],
-      expandedPaths: ['src', 'src/components', 'src/nested']
+      expandedPaths: ['src']
     });
     expect(JSON.stringify(res.data.files)).not.toContain('node_modules');
   });

@@ -321,11 +321,11 @@ export async function listSandboxDirectoryRecursive(
     const sortedRootNodes = sortTreeNodes(rootNodes);
     const expandedPaths: string[] = [];
 
+    // 递归列表会预加载多层目录，但 UI 默认只展开第一层，避免首屏把所有子目录铺开。
     const collectExpandedPaths = (nodes: SandboxFileTreeItem[]) => {
       for (const node of nodes) {
-        if (node.type === 'directory' && node.loaded) {
+        if (node.type === 'directory' && node.loaded && node.level === 0) {
           expandedPaths.push(node.path);
-          collectExpandedPaths(node.children ?? []);
         }
       }
     };

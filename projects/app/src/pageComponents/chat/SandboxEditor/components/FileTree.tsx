@@ -69,6 +69,7 @@ export type TreeNode = FileItem & {
 };
 
 type Props = {
+  width?: number;
   filteredTree: TreeNode[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -134,6 +135,7 @@ const DroppableRootBox = ({
 };
 
 const FileTree = ({
+  width = 250,
   filteredTree,
   searchQuery,
   setSearchQuery,
@@ -575,11 +577,9 @@ const FileTree = ({
 
   return (
     <Box
-      flex="0 0 250px"
-      w={0}
+      flex="0 0 auto"
+      w={`${width}px`}
       h="full"
-      borderRight="1px solid"
-      borderColor="myGray.200"
       bg="white"
       display="flex"
       flexDirection="column"

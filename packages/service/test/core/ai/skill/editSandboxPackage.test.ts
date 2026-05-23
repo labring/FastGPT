@@ -23,7 +23,8 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
-  downloadSkillPackage: vi.fn()
+  downloadSkillPackage: vi.fn(),
+  extractNormalizedSkillPackageFilesForSandbox: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/sandbox/config', () => ({
@@ -48,6 +49,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
+  buildBaseSandboxRuntimeEnv: vi.fn(() => ({
+    FASTGPT_WORKDIR: '/workspace'
+  })),
   getSandboxRuntimeProfile: () => ({
     provider: 'opensandbox',
     workDirectory: '/workspace',
@@ -111,7 +115,24 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: vi.fn()
 }));
 
-import { packageSkillInSandbox } from '@fastgpt/service/core/ai/skill/edit/sandbox';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
+import {
+  downloadSkillPackage,
+  extractNormalizedSkillPackageFilesForSandbox
+} from '@fastgpt/service/core/ai/skill/package';
+import {
+  createEditDebugSandbox,
+  packageSkillInSandbox
+} from '@fastgpt/service/core/ai/skill/edit/sandbox';
+import { getReadySandboxInfo } from '@fastgpt/service/core/ai/sandbox/provider/lifecycle';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import {
+  countRunningSandboxInstancesByType,
+  findSandboxInstanceByAppChatType,
+  findSandboxResourcesByAppChatTypeExcludeProvider,
+  updateSandboxInstanceRecordBySandboxId
+} from '@fastgpt/service/core/ai/sandbox/instance/repository';
 
 type MockReadFileResult = {
   path: string;
@@ -187,5 +208,90 @@ describe('packageSkillInSandbox', () => {
 
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+});
+
+describe('createEditDebugSandbox', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('writes extracted files directly so Chinese skill directory names are preserved', async () => {
+    const packageBuffer = Buffer.from('zip');
+    const skillId = 'skill-1';
+    const provider = {
+      status: { state: 'Running' },
+      execute: vi.fn(async (command: string) => {
+        if (command === "mkdir -p '/workspace'") {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (
+          command ===
+          "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills' '/workspace/skills/测试的'"
+        ) {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        return { exitCode: 1, stdout: '', stderr: `Unexpected command: ${command}` };
+      }),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        entries.map((entry) => ({
+          path: entry.path,
+          bytesWritten: entry.data.length,
+          error: null
+        }))
+      )
+    };
+
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-1'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-1',
+      storageKey: 'storage-key'
+    } as any);
+    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
+    vi.mocked(extractNormalizedSkillPackageFilesForSandbox).mockResolvedValueOnce([
+      {
+        path: '测试的/SKILL.md',
+        data: Buffer.from('---\nname: 测试的\n---')
+      }
+    ]);
+    vi.mocked(getSandboxClient).mockResolvedValueOnce({
+      provider,
+      delete: vi.fn()
+    } as any);
+    vi.mocked(getReadySandboxInfo).mockResolvedValueOnce({
+      image: 'test-image',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      status: { state: 'Running' }
+    } as any);
+    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
+      _id: 'doc-1'
+    } as any);
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: { state: 'Running' }
+    });
+
+    expect(provider.writeFiles).toHaveBeenCalledWith([
+      {
+        path: '/workspace/skills/测试的/SKILL.md',
+        data: Buffer.from('---\nname: 测试的\n---')
+      }
+    ]);
+    expect(provider.execute).not.toHaveBeenCalledWith(expect.stringContaining('unzip'));
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 });

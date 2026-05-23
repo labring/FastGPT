@@ -203,12 +203,14 @@ describe('listSandboxDirectoryRecursive', () => {
       exitCode: 0
     });
 
-  it('通过一次 find 命令拼接目录树并收集展开路径', async () => {
+  it('通过一次 find 命令拼接目录树并只默认展开第一层目录', async () => {
     const execute = makeExecuteSuccess(
       [
         makeFindRecord('d', 96, '.'),
         makeFindRecord('f', 2, './b.txt'),
         makeFindRecord('d', 64, './src'),
+        makeFindRecord('d', 64, './src/components'),
+        makeFindRecord('f', 12, './src/components/Button.tsx'),
         makeFindRecord('f', 1, './a.txt'),
         makeFindRecord('f', 10, './src/index.ts')
       ].join('')
@@ -230,6 +232,23 @@ describe('listSandboxDirectoryRecursive', () => {
           size: undefined,
           level: 0,
           children: [
+            {
+              name: 'components',
+              path: 'src/components',
+              type: 'directory',
+              size: undefined,
+              level: 1,
+              children: [
+                {
+                  name: 'Button.tsx',
+                  path: 'src/components/Button.tsx',
+                  type: 'file',
+                  size: 12,
+                  level: 2
+                }
+              ],
+              loaded: true
+            },
             {
               name: 'index.ts',
               path: 'src/index.ts',

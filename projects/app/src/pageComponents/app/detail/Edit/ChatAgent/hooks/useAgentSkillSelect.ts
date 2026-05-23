@@ -9,7 +9,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkAgentSkillSandboxUnavailable } from '../utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useSkillSelectData } from '../../FormComponent/ToolSelector/hooks/useSkillSelectData';
 
 /**
  * 管理 ChatAgent 表单中的 Skill 选择与 sandbox 开关联动。
@@ -37,18 +36,12 @@ export const useAgentSkillSelect = ({
     onOpen: onOpenRecharge,
     onClose: onCloseRecharge
   } = useDisclosure();
-  const skillSelectData = useSkillSelectData({ enabled: !!showSandbox && !!enableSandbox });
-  const { reset: resetSkillSelectData } = skillSelectData;
   const hasShownSandboxUnavailableWarningRef = useRef(false);
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
-  const closeSkillSelect = useCallback(() => {
-    onCloseSkillSelect();
-    resetSkillSelectData();
-  }, [onCloseSkillSelect, resetSkillSelectData]);
 
   const selectedAgentSkills = appForm.selectedAgentSkills || [];
   const hasSelectedAgentSkills = selectedAgentSkills.length > 0;
@@ -212,12 +205,11 @@ export const useAgentSkillSelect = ({
     selectedAgentSkills,
     isAgentSkillSandboxUnavailable,
     isOpenSkillSelect,
-    onCloseSkillSelect: closeSkillSelect,
+    onCloseSkillSelect,
     openSkillSelect,
     onAddAgentSkill,
     onRemoveAgentSkill,
     onChangeAgentSandbox,
-    skillSelectData,
     ConfirmModal,
     isOpenRecharge,
     onCloseRecharge

@@ -46,7 +46,6 @@ import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag'
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { useSkillSelectData } from '@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -380,17 +379,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
     [skillsInput]
   );
-  const skillSelectData = useSkillSelectData({ enabled: showWorkflowAgentSkills });
-  const { reset: resetSkillSelectData } = skillSelectData;
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
-  const closeSkillSelect = useCallback(() => {
-    onCloseSkillSelect();
-    resetSkillSelectData();
-  }, [onCloseSkillSelect, resetSkillSelectData]);
   const {
     isOpen: isOpenRecharge,
     onOpen: onOpenRecharge,
@@ -677,7 +670,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </Grid>
                   {isOpenSkillSelect && (
                     <SkillSelectModal
-                      {...skillSelectData}
                       selectedSkills={selectedAgentSkills}
                       onAddSkill={(skill: SelectedAgentSkillItemType) => {
                         if (!skillsInput) return;
@@ -724,7 +716,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           }
                         });
                       }}
-                      onClose={closeSkillSelect}
+                      onClose={onCloseSkillSelect}
                     />
                   )}
                 </>

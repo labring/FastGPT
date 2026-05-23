@@ -8,12 +8,12 @@ export type SkillSelectItemType = ListSkillsResponse['list'][number];
 export type SkillSelectNavItemType = { id: string; name: string };
 
 /**
- * 提前维护 Skill 选择弹窗的数据源。
+ * 维护 Skill 选择弹窗的数据源。
  *
- * 选择弹窗打开时只消费这里已经加载的列表，避免点击“选择”时再临时发起请求。
- * 搜索和进入文件夹属于用户主动切换列表范围，仍会刷新当前列表。
+ * 只有弹窗打开时才拉取列表；搜索和进入文件夹属于用户主动切换列表范围，
+ * 会在弹窗打开期间刷新当前列表。
  */
-export const useSkillSelectData = ({ enabled = true }: { enabled?: boolean } = {}) => {
+export const useSkillSelectData = () => {
   const [searchKey, setSearchKey] = useState('');
   const [navStack, setNavStack] = useState<SkillSelectNavItemType[]>([]);
 
@@ -21,8 +21,6 @@ export const useSkillSelectData = ({ enabled = true }: { enabled?: boolean } = {
 
   const { data: skillList = [], loading: isLoadingSkillList } = useRequest(
     async () => {
-      if (!enabled) return [];
-
       const { list } = await getSkillList({
         source: 'mine',
         parentId,
@@ -32,7 +30,7 @@ export const useSkillSelectData = ({ enabled = true }: { enabled?: boolean } = {
     },
     {
       manual: false,
-      refreshDeps: [enabled, parentId, searchKey],
+      refreshDeps: [parentId, searchKey],
       throttleWait: 300
     }
   );
@@ -75,5 +73,3 @@ export const useSkillSelectData = ({ enabled = true }: { enabled?: boolean } = {
     reset
   };
 };
-
-export type SkillSelectDataType = ReturnType<typeof useSkillSelectData>;

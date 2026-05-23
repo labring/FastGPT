@@ -125,7 +125,6 @@ const EditForm = ({
     onAddAgentSkill,
     onRemoveAgentSkill,
     onChangeAgentSandbox,
-    skillSelectData,
     ConfirmModal,
     isOpenRecharge,
     onCloseRecharge
@@ -364,7 +363,6 @@ const EditForm = ({
 
           {isOpenSkillSelect && (
             <SkillSelectModal
-              {...skillSelectData}
               selectedSkills={selectedAgentSkills}
               onAddSkill={onAddAgentSkill}
               onRemoveSkill={onRemoveAgentSkill}

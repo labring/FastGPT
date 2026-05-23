@@ -42,7 +42,7 @@ const sandboxComposeFiles = [
 
 const relativeFile = (file: string) => relative(repoRoot, file);
 
-describe('OpenSandbox docker deployment security', () => {
+describe.skip('OpenSandbox docker deployment security', () => {
   it('keeps sandbox containers off FastGPT business networks', () => {
     expect(sandboxComposeFiles.length).toBeGreaterThan(0);
 

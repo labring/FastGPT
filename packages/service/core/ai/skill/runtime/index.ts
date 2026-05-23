@@ -1,7 +1,7 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage, normalizeSkillPackageZipForSandbox } from '../package';
+import { downloadSkillPackage, extractNormalizedSkillPackageFilesForSandbox } from '../package';
 import { parseSkillMarkdown } from '../utils/skillMarkdown';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo } from './types';
@@ -9,11 +9,17 @@ import type { DeployedSkillInfo } from './types';
 export type { DeployedSkillInfo } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
+const MAX_SKILL_DIRECTORY_NAME_LENGTH = 50;
 
 export const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
 export const joinSandboxPath = (basePath: string, path: string) =>
   `${trimSandboxPathRight(basePath)}/${path}`;
+const getSandboxParentPath = (path: string) => {
+  const normalizedPath = path.replace(/\/+$/, '');
+  const slashIndex = normalizedPath.lastIndexOf('/');
+  return slashIndex > 0 ? normalizedPath.slice(0, slashIndex) : '/';
+};
 
 export const getSkillsRootPath = (workDirectory: string) =>
   joinSandboxPath(workDirectory, 'skills');
@@ -31,7 +37,7 @@ export const getSafeSkillDirectoryName = (skillName: string) => {
     // 4. 去除首尾的多余中划线/下划线
     .replace(/^[-_]|[-_]$/g, '')
     // 5. 限制长度在合理范围
-    .slice(0, 50)
+    .slice(0, MAX_SKILL_DIRECTORY_NAME_LENGTH)
     .trim();
 
   // 6. 排除特殊目录名或为空、纯中/下划线的情况，使用安全回退值
@@ -42,19 +48,11 @@ export const getSafeSkillDirectoryName = (skillName: string) => {
 
 export const getSkillTargetPath = ({
   workDirectory,
-  skillName,
-  skillId,
-  versionId
+  skillId
 }: {
   workDirectory: string;
-  skillName: string;
   skillId: string;
-  versionId: string;
-}) =>
-  // 目录名包含版本 id，当前版本切换后不会复用旧版本目录。
-  `${getSkillsRootPath(workDirectory)}/${getSafeSkillDirectoryName(
-    skillName
-  )}-${skillId}-v${versionId}`;
+}) => joinSandboxPath(getSkillsRootPath(workDirectory), getSafeSkillDirectoryName(skillId));
 
 export const getEditSkillTargetPath = ({
   workDirectory,
@@ -198,17 +196,14 @@ export const injectAgentSkillFilesToSandbox = async ({
     const skillId = String(skill._id);
     const targetDir = getSkillTargetPath({
       workDirectory,
-      skillName: skill.name,
-      skillId,
-      versionId: String(version._id)
+      skillId
     });
 
     return [
       {
         skill,
         version,
-        targetDir,
-        zipPath: joinSandboxPath(workDirectory, `package_${skillId}.zip`)
+        targetDir
       }
     ];
   });
@@ -230,23 +225,34 @@ export const injectAgentSkillFilesToSandbox = async ({
   }
 
   await Promise.all(
-    deployableSkills.map(async ({ skill, version, targetDir, zipPath }) => {
+    deployableSkills.map(async ({ skill, version, targetDir }) => {
       try {
         const rawPackageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
-        const packageBuffer = await normalizeSkillPackageZipForSandbox(rawPackageBuffer);
-        const extractCommand = `mkdir -p ${shellQuote(targetDir)} && unzip -o ${shellQuote(
-          zipPath
-        )} -d ${shellQuote(targetDir)} && rm ${shellQuote(zipPath)}`;
+        const packageFiles = await extractNormalizedSkillPackageFilesForSandbox(rawPackageBuffer);
+        const writeEntries = packageFiles.map((file) => ({
+          path: joinSandboxPath(targetDir, file.path),
+          data: file.data
+        }));
+        const parentDirs = Array.from(
+          new Set([targetDir, ...writeEntries.map((entry) => getSandboxParentPath(entry.path))])
+        );
+        const mkdirResult = await sandbox.execute(
+          `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
+        );
 
-        await sandbox.writeFiles([{ path: zipPath, data: packageBuffer }]);
-
-        const extractResult = await sandbox.execute(extractCommand);
-
-        if (extractResult.exitCode !== 0) {
-          // 解压失败时清理目标目录和临时 zip，避免下一轮扫描到不完整的 skill 包。
-          await sandbox.execute(`rm -rf ${shellQuote(targetDir)} ${shellQuote(zipPath)}`);
+        if (mkdirResult.exitCode !== 0) {
+          await sandbox.execute(`rm -rf ${shellQuote(targetDir)}`);
           throw new Error(
-            `Failed to extract skill package "${skill.name}": ${extractResult.stderr}`
+            `Failed to prepare skill package directory "${skill.name}": ${mkdirResult.stderr}`
+          );
+        }
+
+        const writeResults = await sandbox.writeFiles(writeEntries);
+        const failedWrite = writeResults.find((result) => result.error);
+        if (failedWrite) {
+          await sandbox.execute(`rm -rf ${shellQuote(targetDir)}`);
+          throw new Error(
+            `Failed to write skill package "${skill.name}" file ${failedWrite.path}: ${failedWrite.error?.message}`
           );
         }
       } catch (error) {

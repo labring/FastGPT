@@ -11,38 +11,31 @@ import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import FolderPath from '@/components/common/folder/Path';
-import type { SkillSelectDataType, SkillSelectItemType } from './hooks/useSkillSelectData';
+import { useSkillSelectData, type SkillSelectItemType } from './hooks/useSkillSelectData';
 
 const MAX_SKILL_COUNT = 100;
 
 const SkillSelectModal = ({
-  skillList,
-  isLoadingSkillList,
-  searchKey,
-  setSearchKey,
-  paths,
-  onEnterFolder,
-  onUpdateParentId,
   selectedSkills,
   onAddSkill,
   onRemoveSkill,
   onClose
-}: Pick<
-  SkillSelectDataType,
-  | 'skillList'
-  | 'isLoadingSkillList'
-  | 'searchKey'
-  | 'setSearchKey'
-  | 'paths'
-  | 'onEnterFolder'
-  | 'onUpdateParentId'
-> & {
+}: {
   selectedSkills: SelectedAgentSkillItemType[];
   onAddSkill: (skill: SelectedAgentSkillItemType) => void;
   onRemoveSkill: (skillId: string) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const {
+    skillList,
+    isLoadingSkillList,
+    searchKey,
+    setSearchKey,
+    paths,
+    onEnterFolder,
+    onUpdateParentId
+  } = useSkillSelectData();
   const isAtLimit = selectedSkills.length >= MAX_SKILL_COUNT;
 
   return (

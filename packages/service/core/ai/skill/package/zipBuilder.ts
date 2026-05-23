@@ -55,6 +55,11 @@ export type ExtractSkillPackageResult = {
   error?: string;
 };
 
+export type NormalizedSkillPackageFile = {
+  path: string;
+  data: Buffer;
+};
+
 /**
  * 创建标准单 skill ZIP 包。
  *
@@ -405,6 +410,33 @@ export async function normalizeSkillPackageZipForSandbox(zipBuffer: Buffer): Pro
   );
 
   return generateZipBuffer(normalizedZip);
+}
+
+/**
+ * 将 skill ZIP 归一化后展开成文件写入清单。
+ *
+ * 运行态不再依赖 sandbox 内的 `unzip` 命令处理文件名，避免中文路径在不同
+ * unzip/locale 组合下被错误解码。
+ */
+export async function extractNormalizedSkillPackageFilesForSandbox(
+  zipBuffer: Buffer
+): Promise<NormalizedSkillPackageFile[]> {
+  const normalizedBuffer = await normalizeSkillPackageZipForSandbox(zipBuffer);
+  const zip = await JSZip.loadAsync(normalizedBuffer);
+  const entries = Object.entries(zip.files)
+    .filter(([, file]) => !file.dir)
+    .map(([path, file]) => ({
+      path: normalizeZipEntryPath(path),
+      file
+    }))
+    .filter(({ path }) => isSafeZipEntryPath(path));
+
+  return Promise.all(
+    entries.map(async ({ path, file }) => ({
+      path,
+      data: await file.async('nodebuffer')
+    }))
+  );
 }
 
 /**
