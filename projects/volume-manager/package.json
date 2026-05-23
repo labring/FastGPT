@@ -4,17 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun dist/index.js",
-    "test": "vitest --run"
+    "dev": "tsx watch src/index.ts",
+    "build": "sh build.sh",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": "10.x"
   },
   "dependencies": {
-    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.12.18",
+    "undici": "^7.25.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   }
 }

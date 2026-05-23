@@ -31,7 +31,7 @@
     "hono": "^4.12.18",
     "lodash": "catalog:",
     "moment": "^2.30.1",
-    "qs": "^6.13.1",
+    "qs": "^6.15.2",
     "tiktoken": "1.0.17",
     "uuid": "^9.0.1",
     "zod": "catalog:"

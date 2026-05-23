@@ -1,3 +1,4 @@
+import { Agent } from 'undici';
 import type { IVolumeDriver, EnsureResult } from './IVolumeDriver';
 import { toVolumeName } from '../utils/naming';
 import { env } from '../env';
@@ -6,19 +7,20 @@ import { logDebug } from '../utils/logger';
 export class DockerVolumeDriver implements IVolumeDriver {
   private readonly socketPath: string;
   private readonly prefix: string;
+  private readonly dispatcher: Agent;
 
   constructor(socketPath = env.VM_DOCKER_SOCKET, prefix = env.VM_VOLUME_NAME_PREFIX) {
     this.socketPath = socketPath;
     this.prefix = prefix;
+    this.dispatcher = new Agent({ connect: { socketPath } });
   }
 
   private dockerFetch(path: string, init?: RequestInit): Promise<Response> {
-    // Bun supports unix socket via the `unix` fetch option
+    // Node fetch 通过 Undici dispatcher 访问 Docker Unix socket。
     return fetch(`http://localhost/${env.VM_DOCKER_API_VERSION}${path}`, {
       ...init,
-      // @ts-ignore - Bun-specific option
-      unix: this.socketPath
-    });
+      dispatcher: this.dispatcher
+    } as RequestInit & { dispatcher: Agent });
   }
 
   async ensure(sessionId: string): Promise<EnsureResult> {
