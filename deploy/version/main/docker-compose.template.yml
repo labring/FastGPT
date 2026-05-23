@@ -235,7 +235,7 @@ ${{vec.db}}
     healthcheck:
       test: [
         'CMD',
-        'bun',
+        'node',
         '-e',
         "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
       ]
