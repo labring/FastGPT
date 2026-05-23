@@ -79,6 +79,7 @@ export const serviceEnv = createEnv({
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.default('http://127.0.0.1:8080'),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),

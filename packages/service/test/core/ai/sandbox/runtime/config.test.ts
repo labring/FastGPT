@@ -4,7 +4,8 @@ const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
-  AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: process.env.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+  AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: process.env.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH,
+  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
 };
 
 const loadSandboxDefaultsModule = async () => {
@@ -26,6 +27,10 @@ describe('sandbox runtime config', () => {
     vi.stubEnv(
       'AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH',
       originalEnv.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
+      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
   });
 
@@ -57,6 +62,21 @@ describe('sandbox runtime config', () => {
         repository: ''
       },
       workDirectory: '/home/devbox/workspace',
+      entrypoint: ''
+    });
+  });
+
+  it('uses sealos work directory from env', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
+
+    const { getSandboxDefaults } = await loadSandboxDefaultsModule();
+
+    expect(getSandboxDefaults()).toEqual({
+      defaultImage: {
+        repository: ''
+      },
+      workDirectory: '/custom/devbox/workspace',
       entrypoint: ''
     });
   });

@@ -18,7 +18,7 @@ export function getSandboxDefaults(): SandboxDefaults {
       defaultImage: {
         repository: ''
       },
-      workDirectory: '/home/devbox/workspace',
+      workDirectory: serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
       entrypoint: ''
     };
   }

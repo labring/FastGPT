@@ -453,5 +453,119 @@ describe('OpenSandboxAdapter', () => {
       expect(view[0]).toBe(65);
       expect(view[9]).toBe(65);
     });
+
+    it('should treat upload 500 as success when small file content was actually written', async () => {
+      const adapter = makeAdapter();
+      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
+        statusCode: 500
+      });
+      const content = 'hello opensandbox';
+      const encoded = new TextEncoder().encode(content);
+      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
+      const mockGetFileInfo = vi.fn().mockResolvedValue({
+        '/test.txt': { path: '/test.txt', size: encoded.byteLength }
+      });
+      const mockReadBytes = vi.fn().mockResolvedValue(encoded);
+
+      (adapter as any).sandbox = {
+        files: {
+          writeFiles: mockWriteFiles,
+          getFileInfo: mockGetFileInfo,
+          readBytes: mockReadBytes
+        }
+      };
+
+      const result = await adapter.writeFiles([{ path: '/test.txt', data: content }]);
+
+      expect(result).toEqual([
+        { path: '/test.txt', bytesWritten: encoded.byteLength, error: null }
+      ]);
+      expect(mockGetFileInfo).toHaveBeenCalledWith(['/test.txt']);
+      expect(mockReadBytes).toHaveBeenCalledWith('/test.txt');
+    });
+
+    it('should accept upload 500 with matching size for large files without reading content', async () => {
+      const adapter = makeAdapter();
+      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
+        statusCode: 500
+      });
+      const data = new Uint8Array(1024 * 1024 + 1);
+      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
+      const mockGetFileInfo = vi.fn().mockResolvedValue({
+        '/large.bin': { path: '/large.bin', size: data.byteLength }
+      });
+      const mockReadBytes = vi.fn();
+
+      (adapter as any).sandbox = {
+        files: {
+          writeFiles: mockWriteFiles,
+          getFileInfo: mockGetFileInfo,
+          readBytes: mockReadBytes
+        }
+      };
+
+      const result = await adapter.writeFiles([{ path: '/large.bin', data }]);
+
+      expect(result[0].error).toBeNull();
+      expect(result[0].bytesWritten).toBe(data.byteLength);
+      expect(mockReadBytes).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to command stat when OpenSandbox file info also fails', async () => {
+      const adapter = makeAdapter();
+      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
+        statusCode: 500
+      });
+      const data = new Uint8Array(1024 * 1024 + 1);
+      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
+      const mockGetFileInfo = vi.fn().mockRejectedValue(new Error('Get file info failed'));
+      const mockRun = vi.fn(async (_command, _options, handlers) => {
+        handlers.onStdout({ text: `${data.byteLength}\n` });
+        return {};
+      });
+
+      (adapter as any).sandbox = {
+        files: {
+          writeFiles: mockWriteFiles,
+          getFileInfo: mockGetFileInfo,
+          readBytes: vi.fn()
+        },
+        commands: {
+          run: mockRun
+        }
+      };
+
+      const result = await adapter.writeFiles([{ path: '/large.bin', data }]);
+
+      expect(result[0].error).toBeNull();
+      expect(result[0].bytesWritten).toBe(data.byteLength);
+      expect(mockRun).toHaveBeenCalledTimes(1);
+    });
+
+    it('should keep upload 500 as error when committed file size mismatches', async () => {
+      const adapter = makeAdapter();
+      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
+        statusCode: 500
+      });
+      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
+      const mockGetFileInfo = vi.fn().mockResolvedValue({
+        '/broken.txt': { path: '/broken.txt', size: 1 }
+      });
+      const mockReadBytes = vi.fn();
+
+      (adapter as any).sandbox = {
+        files: {
+          writeFiles: mockWriteFiles,
+          getFileInfo: mockGetFileInfo,
+          readBytes: mockReadBytes
+        }
+      };
+
+      const result = await adapter.writeFiles([{ path: '/broken.txt', data: 'mismatch' }]);
+
+      expect(result[0].error).toBe(uploadError);
+      expect(result[0].bytesWritten).toBe(0);
+      expect(mockReadBytes).not.toHaveBeenCalled();
+    });
   });
 });
