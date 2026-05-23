@@ -24,6 +24,7 @@ import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import { MongoDataset } from '../../core/dataset/schema';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -229,11 +230,11 @@ export async function getDatasetEffectiveClbs({
     session
   });
 
-  const dataset = await MongoDataset.findOne({ _id: datasetId }, 'inheritPermission parentId')
+  const dataset = await MongoDataset.findOne({ _id: datasetId }, 'inheritPermission parentId type')
     .lean()
     .session(session ?? null);
 
-  if (dataset?.inheritPermission && dataset.parentId) {
+  if (dataset?.inheritPermission && dataset.parentId && dataset.type !== DatasetTypeEnum.folder) {
     const parentClbs = await getResourceOwnedClbs({
       resourceId: String(dataset.parentId),
       resourceType: PerResourceTypeEnum.dataset,

@@ -37,7 +37,9 @@ export enum DatasetErrEnum {
   fileContentDuplicate = 'fileContentDuplicate',
   // Image dataset errors
   imageDatasetRequiresVlmModel = 'imageDatasetRequiresVlmModel',
-  imageDatasetRequiresVlmModelOrCustomParse = 'imageDatasetRequiresVlmModelOrCustomParse'
+  imageDatasetRequiresVlmModelOrCustomParse = 'imageDatasetRequiresVlmModelOrCustomParse',
+  // Collaborator errors
+  cannotChangeOwner = 'cannotChangeOwner'
 }
 const datasetErr = [
   {
@@ -151,6 +153,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse,
     message: i18nT('file:custom_parse_failed_configure_vlm')
+  },
+  {
+    statusText: DatasetErrEnum.cannotChangeOwner,
+    message: i18nT('common:core.dataset.error.cannotChangeOwner')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

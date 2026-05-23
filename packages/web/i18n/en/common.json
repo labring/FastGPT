@@ -1321,6 +1321,7 @@
   "core.dataset.data.Too Long": "The length exceeds the maximum.",
   "core.dataset.data.unit": "Items",
   "core.dataset.error.canNotEditAdminPermission": "Admin permissions cannot be modified.",
+  "core.dataset.error.cannotChangeOwner": "Cannot change the owner. Please use the change owner feature.",
   "core.dataset.error.datasetIdMismatch": "Dataset ID mismatch",
   "core.dataset.error.invalidVectorModelOrQAModel": "Vector model or Q&A model encountered error.",
   "core.dataset.error.unAuthDataset": "You do not have permission to perform operations on the knowledge base.",
