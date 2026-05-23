@@ -102,14 +102,28 @@ export const multer = {
           return reject(new Error('File not found'));
         }
 
-        const data = (() => {
-          if (!request.body?.data) return {};
+        const bodyFields =
+          request.body && typeof request.body === 'object'
+            ? (request.body as Record<string, unknown>)
+            : {};
+        const plainFields = Object.fromEntries(
+          Object.entries(bodyFields).filter(([key]) => key !== 'data')
+        );
+        const parsedData = (() => {
+          const rawData = bodyFields.data;
+          if (typeof rawData !== 'string') return {};
           try {
-            return JSON.parse(request.body.data);
+            const parsed = JSON.parse(rawData);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
           } catch {
             return {};
           }
         })();
+        // 支持 data JSON 包装和普通 multipart 字段；data 中的值优先级更高，保持旧兼容语义。
+        const data = {
+          ...plainFields,
+          ...parsedData
+        } as T;
 
         resolve({
           data,

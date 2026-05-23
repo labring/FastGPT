@@ -89,8 +89,8 @@ Sealos Devbox server 已提供 exec/file 能力：
 
 - `codex-gateway` 默认监听 `1317`
 - Devbox v2 server gateway 固定反代 Pod 内 `1317`
-- `code-server` 当前监听 `1318`，可以配置 `CODE_SERVER_BIND_ADDR` 变更
-- `code-server` 默认不启动，需要 `CODE_SERVER_ENABLED=true`
+- `code-server` 是 runtime 的可选浏览器编辑服务，当前 FastGPT Skill 编辑页不再依赖它
+- 如果未来恢复 provider 页面嵌入，`code-server` 可通过 `CODE_SERVER_ENABLED=true` 启动
 - 默认工作目录是 `/home/devbox/workspace`
 - 默认 Codex home 是 `/codex-home`
 
@@ -99,8 +99,15 @@ Sealos Devbox server 已提供 exec/file 能力：
 ```ts
 {
   CODEX_GATEWAY_CWD: '/home/devbox/workspace',
-  CODEX_GATEWAY_CODEX_HOME: '/codex-home',
-  CODE_SERVER_ENABLED: enableCodeServer ? 'true' : 'false'
+  CODEX_GATEWAY_CODEX_HOME: '/codex-home'
+}
+```
+
+当前 `SandboxEditor` 文件 API 链路不需要启动 `code-server`。如果后续重新接入 provider 浏览器页面，再额外传入：
+
+```ts
+{
+  CODE_SERVER_ENABLED: 'true'
 }
 ```
 
@@ -188,151 +195,75 @@ AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
 AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
 ```
 
-## 4. Endpoint 与 Proxy
+## 4. 编辑器访问与文件通道
 
-### 4.1 Adaptor Endpoint 能力
+### 4.1 当前产品形态
 
-endpoint 解析应收敛到 `agent-sandbox-adaptor`，FastGPT 不应知道 provider 的 endpoint 规则。
+当前 FastGPT 不再使用 `SandboxIframe` 嵌入 `code-server`，也不再要求浏览器直接访问 provider endpoint。
 
-adaptor 里把 endpoint 能力正式化为两层：
-
-- `getEndpoint(service)`：返回 provider 对外服务地址，用于健康检查、普通服务访问。
-- `getProxyTarget(service)`：返回给 FastGPT `sandbox-proxy` 使用的 upstream target，用于 iframe/WS/cookie/auth。
-
-`getEndpoint(service)`：
-
-```ts
-interface IEndpointAccess {
-  getEndpoint(service: 'code-server'): Promise<Endpoint>;
-}
-
-type Endpoint = {
-  host: string;
-  port: number;
-  protocol: 'http' | 'https';
-  url: string;
-};
-```
-
-`getProxyTarget(service)`：
-
-```ts
-type SandboxProxyTarget = {
-  service: 'code-server';
-  origin: string;
-  basePath: string;
-  auth: 'code-server';
-};
-```
-
-OpenSandbox 的 `code-server` 是双端口语义：
-
-- provider direct endpoint 端口：`44772`
-- iframe 内部服务路径端口：`8080`
-
-这个差异属于 OpenSandbox provider 的内部实现，FastGPT 不应该知道 `44772`。
-
-Sealos Devbox 的 `code-server` 当前是单端口语义，但端口和 OpenSandbox 不同：
-
-- httpgate 端口：`1318`
-- iframe 服务路径端口：`1318`
-
-因此 `code-server` 的服务端口不是全局常量，而是 provider/runtime 维度的映射。
-
-因此 provider 映射应收敛在 adaptor：
-
-- `ISandbox` 增加 `getEndpoint(service)`，不支持的 provider 由 `BaseSandboxAdapter` 抛 `FeatureNotSupportedError`。
-- `ISandbox` 增加 `getProxyTarget(service)`。
-- OpenSandbox adapter 把现有 direct endpoint 解析逻辑收进去，避免 FastGPT 继续调用 OpenSandbox 私有 `/v1/sandboxes/.../endpoints?...`。
-- SealosDevbox adapter 从 Devbox info 推导 `code-server` 的 httpgate endpoint。
-
-SealosDevbox adapter 的 `getEndpoint('code-server')` 内部可以有两种实现来源：
-
-1. 首期采用：从 Devbox info 返回的 `gateway.url` 推导 httpgate domain，再根据 `uniqueID` 拼出 `devbox-<uniqueID>-1318.<domain>`。
-2. 后续可替换：如果 Devbox v2 server info API 返回 app port endpoint，则直接使用 API 返回值。
-
-首期不新增 FastGPT 环境变量配置 `httpgateDomain`。推导逻辑只放在 `SealosDevboxAdapter` 内部，FastGPT 不感知：
+Skill 编辑页使用 FastGPT 自己的 `SandboxEditor` 文件树和 Monaco 编辑器：
 
 ```txt
-gateway.url = https://devbox-gateway.staging-usw-1.sealos.io/codex/<uniqueID>
-httpgate    = https://devbox-<uniqueID>-1318.staging-usw-1.sealos.io
+Skill detail page
+  -> SandboxEditor
+    -> /api/core/ai/skill/edit              创建或复用 edit-debug sandbox
+    -> /api/core/ai/sandbox/listRecursive   递归读取 workspace 文件树
+    -> /api/core/ai/sandbox/read            读取文件
+    -> /api/core/ai/sandbox/write           写入文件
+    -> /api/core/ai/sandbox/fileOp          mkdir/delete/move/copy/upload
+    -> /api/core/ai/sandbox/download        下载文件或目录
+    -> /api/core/ai/skill/save-deploy       从 workspace 打包并发布版本
 ```
 
-如果某个部署的 gateway/httpgate 域名规则不同，后续再给 adaptor connection config 增加可选 override。
+因此首期 Sealos 接入的验收重点是 provider adapter 的生命周期、exec 和文件系统能力，而不是 `code-server` iframe、WebSocket 或 cookie/session 隔离。
 
-FastGPT 只调用：
+### 4.2 Backend 文件通道
 
-```ts
-const endpoint = await sandbox.getEndpoint('code-server');
-const proxyTarget = await sandbox.getProxyTarget('code-server');
+所有浏览器操作都回到 FastGPT API，由后端鉴权后通过 sandbox adapter 操作远端文件系统：
+
+```txt
+Browser
+  -> FastGPT API
+    -> authSandboxSession
+    -> getSandboxClient(appId/userId/chatId 或 edit-debug)
+    -> ISandbox.execute / readFiles / writeFiles / listDirectory / getFileInfo / moveFiles
+    -> OpenSandboxAdapter 或 SealosDevboxAdapter
 ```
 
-不关心 OpenSandbox 背后是 `44772` direct endpoint，也不关心 Sealos 背后是 httpgate host 规则还是 Devbox API。
+关键边界：
 
-### 4.2 服务划分
+- 浏览器只知道 FastGPT 的 API，不持有 provider endpoint、proxy target 或 provider path。
+- `authSandboxSession` 统一区分普通 chat sandbox 和 Skill `edit-debug` sandbox。
+- `getSandboxClient` 负责确保 sandbox 可用，并刷新本地 `agent_sandbox_instances` 记录。
+- `SandboxEditor` 只处理文件树/文件内容 UI，不承担 provider endpoint 解析。
 
-Sealos `frameworks/sandbox/fastgpt` runtime 有两个相关服务：
+### 4.3 Adapter Endpoint 能力
+
+`ISandbox.getEndpoint(port)` 可以作为 provider 暴露端口的可选能力保留，用于未来诊断或额外服务访问。
+
+当前 Skill 编辑链路不依赖：
+
+- `getProxyTarget(service)`
+- `sandbox-proxy`
+- `/__fastgpt_proxy/code-server/`
+- `SandboxIframe.tsx`
+- `code-server` HTTP/WS 访问
+
+如果后续重新引入 `code-server` 或 `codex-gateway` 的浏览器访问，再单独设计 service-level endpoint/proxy target。该设计不应混入当前 `SandboxEditor` 文件 API 链路。
+
+### 4.4 Sealos runtime 服务划分
+
+Sealos `frameworks/sandbox/fastgpt` runtime 仍可能包含：
 
 - `codex-gateway`: `1317`
 - `code-server`: `1318`
 
-当前 FastGPT iframe 在 Sealos Devbox 下目标是 `code-server:1318`。
+但它们不是当前 FastGPT Skill 编辑 UI 的首期依赖。当前 Sealos provider 首期需要保证：
 
-`codex-gateway:1317` 是 runtime 内置能力，但不是当前技能编辑 iframe 的首期入口。
-
-### 4.3 Proxy Target
-
-浏览器不直接访问 provider endpoint。浏览器只拿 FastGPT proxy token，`sandbox-proxy` 通过 FastGPT internal API 解析实际 upstream。
-
-`sandbox-proxy` 使用 FastGPT internal API 返回的 target。浏览器和 JWT 不携带 provider upstream，也不携带 provider path：
-
-```ts
-type SandboxProxyTarget = {
-  service: 'code-server';
-  origin: string;
-  basePath: string;
-  auth: 'code-server';
-};
-```
-
-OpenSandbox `code-server`：
-
-```ts
-{
-  service: 'code-server',
-  origin: 'http://<direct-host>',
-  basePath: '/proxy/8080',
-  auth: 'code-server'
-}
-```
-
-Sealos `code-server`：
-
-```ts
-{
-  service: 'code-server',
-  origin: 'https://devbox-<uniqueID>-1318.<httpgate-domain>',
-  basePath: '',
-  auth: 'code-server'
-}
-```
-
-`sandbox-proxy` 需要：
-
-- 只接受稳定 public path：`/__fastgpt_proxy/code-server/`。
-- 通过 internal API 解析 `origin/basePath/auth`，并在 proxy 进程内短缓存。
-- 将 public path 重写为 provider `basePath`：
-  - OpenSandbox：`/__fastgpt_proxy/code-server/...` -> `/proxy/8080/...`
-  - Sealos：httpgate 直达 code-server 根路径，`/__fastgpt_proxy/code-server/...` -> `/...`
-- 同时识别 provider `basePath` 请求，处理 code-server 生成的绝对资源路径：
-  - OpenSandbox：`/proxy/8080/...`
-  - Sealos：`/...`
-- 支持 HTTP/WS
-- 复用现有 code-server session 逻辑
-
-wildcard domain 仍然需要，用于按 sandbox 隔离浏览器 origin、cookie、localStorage 和 WebSocket。
-
-`codex-gateway:1317` 首期不接入 FastGPT iframe/proxy。
+- Devbox 可创建、恢复、暂停、删除。
+- `execute` 可运行 shell 命令。
+- `readFiles`、`writeFiles`、`listDirectory`、`getFileInfo`、`moveFiles` 等文件能力满足 `SandboxEditor`。
+- `workingDir` 正确映射到 `/home/devbox/workspace`，并和 Skill 包解压、保存发布使用同一个 workspace。
 
 ## 5. FastGPT 改造点
 
@@ -364,8 +295,7 @@ Sealos 只传支持字段：
   image: sealosImageIfConfigured,
   env: {
     CODEX_GATEWAY_CWD: '/home/devbox/workspace',
-    CODEX_GATEWAY_CODEX_HOME: '/codex-home',
-    CODE_SERVER_ENABLED: enableCodeServer ? 'true' : 'false'
+    CODEX_GATEWAY_CODEX_HOME: '/codex-home'
   },
   metadata: {
     sessionId
@@ -373,34 +303,31 @@ Sealos 只传支持字段：
 }
 ```
 
-### 5.3 Sandbox Iframe
+### 5.3 SandboxEditor 文件 API
 
-`SandboxIframe.tsx` 不硬编码 provider path。前端只访问稳定入口：
+Skill 编辑页不再嵌入 provider 页面。前端固定使用 `SandboxEditor`，所有文件操作走 FastGPT API。
 
-```txt
-https://<sandboxId>.<sandbox_proxy_base>/__fastgpt_proxy/code-server/?_t=<token>
-```
+首期需要保证这些接口在 Sealos provider 下行为一致：
 
-proxy token 只携带 `sid + svc`，实际 provider upstream 由 `sandbox-proxy` 通过 FastGPT internal API 解析。
+- `/api/core/ai/skill/edit`：创建或复用 edit-debug sandbox，并把当前版本包解压到 workspace。
+- `/api/core/ai/sandbox/listRecursive`：展示 Skill 文件树。
+- `/api/core/ai/sandbox/read` / `/api/core/ai/sandbox/write`：读写编辑器内容。
+- `/api/core/ai/sandbox/fileOp`：目录和文件的创建、删除、移动、复制、上传。
+- `/api/core/ai/sandbox/download`：下载 workspace 文件或目录。
+- `/api/core/ai/skill/save-deploy`：从 sandbox workspace 打包 ZIP，上传对象存储并切换当前版本。
 
-首期：
-
-- OpenSandbox -> `code-server`
-- Sealos -> `code-server`
-
-后续如果要接入 `codex-gateway`，再新增对应 service target。
+后续如果要接入 `code-server` 或 `codex-gateway` 浏览器页面，再新增对应 endpoint/proxy 设计。
 
 ## 6. TODO
 
 1. [x] 修改 `agent-sandbox-adaptor`：定义统一 `SandboxCreateSpecSchema`。
 2. [x] 修改 `agent-sandbox-adaptor`：SealosDevbox adapter 支持 `env/upstreamID/kubeAccess/pauseAt/archiveAfterPauseTime/labels/image`。
-3. [x] 修改 `agent-sandbox-adaptor`：把 `getEndpoint(service)` 提升为统一接口。
-4. [x] 修改 `agent-sandbox-adaptor`：增加 `getProxyTarget(service)`。
+3. [x] 修改 `agent-sandbox-adaptor`：保留 `getEndpoint(port)` 作为可选端口访问能力。
+4. [x] 修改 `agent-sandbox-adaptor`：SealosDevbox adapter 支持从 `gateway.url` 推导 httpgate endpoint，用于未来端口访问或诊断。
 5. [x] 修改 `agent-sandbox-adaptor`：OpenSandbox adapter 内收 direct endpoint 解析逻辑。
-6. [x] 修改 `agent-sandbox-adaptor`：SealosDevbox adapter 从 `gateway.url` 推导 httpgate domain，实现 `getEndpoint('code-server')` 和 `getProxyTarget('code-server')`。
+6. [x] 修改 FastGPT：Skill 编辑页改为 `SandboxEditor` 文件 API 链路，不再依赖 `SandboxIframe`。
 7. [x] 修改 FastGPT：新增 Sealos runtime 配置，避免复用 OpenSandbox image env。
 8. [x] 修改 FastGPT：Sealos provider 不再拒绝所有 create spec，而是只传支持字段。
-9. [x] 修改 FastGPT：新增 provider-aware proxy target internal API。
-10. [x] 修改 `sandbox-proxy`：支持 provider-aware `origin/basePath`，复用 code-server session 逻辑。
-11. [x] 修改 `SandboxIframe.tsx`：固定访问 `/__fastgpt_proxy/code-server/`，不感知 provider endpoint/path。
-12. [ ] 增加集成测试：创建 Devbox、exec、upload/download、访问 `code-server:1318`、验证 HTTP/WS。
+9. [x] 修改 FastGPT：新增 provider-aware sandbox 文件 API，覆盖文件树、读写、文件操作和下载。
+10. [x] 删除旧 `sandbox-proxy` / `SandboxIframe` 依赖路径。
+11. [ ] 增加集成测试：创建 Devbox、exec、upload/download、listDirectory、getFileInfo、moveFiles，并通过 `SandboxEditor` 相关 API 验证编辑/发布闭环。

@@ -111,6 +111,13 @@ export const GetSkillDetailQuerySchema = z.object({
 });
 export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
 
+export const ResumeSkillInheritPermissionQuerySchema = z.object({
+  skillId: IdSchema
+});
+export type ResumeSkillInheritPermissionQuery = z.infer<
+  typeof ResumeSkillInheritPermissionQuerySchema
+>;
+
 export const GetSkillDetailResponseSchema = z.object({
   _id: z.string(),
   source: AgentSkillSourceSchema,
@@ -209,7 +216,7 @@ export type {
 
 export const SkillDebugChatBodySchema = z.object({
   skillId: IdSchema,
-  chatId: z.string(),
+  chatId: z.string().min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(LooseObjectSchema),
   model: z.string().optional(),
@@ -238,7 +245,7 @@ export type SkillDebugSessionListResponse = z.infer<typeof SkillDebugSessionList
 
 export const SkillDebugSessionDeleteBodySchema = z.object({
   skillId: IdSchema,
-  chatId: z.string()
+  chatId: z.string().min(1)
 });
 export type SkillDebugSessionDeleteBody = z.infer<typeof SkillDebugSessionDeleteBodySchema>;
 

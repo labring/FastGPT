@@ -75,6 +75,38 @@ describe('SealosDevboxAdapter', () => {
     });
   });
 
+  it('should use workingDir as the default root for relative paths and commands', async () => {
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/sandbox/workspace'
+    });
+    const normalizePath = (adapter as any).normalizePath.bind(adapter) as (path?: string) => string;
+
+    expect(normalizePath('path.txt')).toBe('/home/sandbox/workspace/path.txt');
+    expect(normalizePath('./src/index.ts')).toBe('/home/sandbox/workspace/src/index.ts');
+    expect(normalizePath('.')).toBe('/home/sandbox/workspace');
+
+    const execMock = vi.fn(async () => ({
+      code: 200,
+      message: 'ok',
+      data: {
+        stdout: '/home/sandbox/workspace\n',
+        stderr: '',
+        exitCode: 0
+      }
+    }));
+    (adapter as any).api = { exec: execMock };
+
+    await expect(adapter.execute('pwd')).resolves.toMatchObject({
+      stdout: '/home/sandbox/workspace\n',
+      stderr: '',
+      exitCode: 0
+    });
+    expect(execMock).toHaveBeenCalledWith('devbox-1', {
+      command: ['sh', '-lc', "cd '/home/sandbox/workspace/' && pwd"],
+      timeoutSeconds: undefined
+    });
+  });
+
   it('should allow an explicit httpgate domain override for non-code-server endpoints', async () => {
     vi.stubGlobal(
       'fetch',

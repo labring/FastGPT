@@ -4,19 +4,23 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createEditDebugSandbox } from '@fastgpt/service/core/ai/skill/edit/sandbox';
-import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/ai/skill/api';
+import { CreateEditDebugSandboxBodySchema } from '@fastgpt/global/core/ai/skill/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
+import {
+  getZodParseErrorInputSource,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
 /**
  * Create an edit-debug sandbox for a skill.
- * Returns an SSE stream with sandboxStatus events; the final 'ready' event contains endpoint info.
+ * Returns an SSE stream with sandboxStatus events; the final 'ready' event contains sandboxId/status.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only POST method allowed
@@ -32,15 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.flushHeaders();
 
   try {
-    // Parse request body
-    const { skillId, image } = req.body as CreateEditDebugSandboxBody;
-
-    // Validate required parameters
-    if (!skillId) {
-      sseErrRes(res, SkillErrEnum.invalidSkillId);
-      res.end();
-      return;
-    }
+    const { skillId, image } = parseApiInput({
+      req,
+      bodySchema: CreateEditDebugSandboxBodySchema
+    }).body;
 
     if (!isValidObjectId(skillId)) {
       sseErrRes(res, SkillErrEnum.invalidSkillId);
@@ -91,8 +90,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   } catch (error) {
     logger.error('Failed to create edit-debug sandbox', { error });
-    // Wrap to avoid leaking internal implementation details via SSE
-    sseErrRes(res, new Error('Failed to create sandbox'));
+    // 请求参数错误是 API 边界可预期错误；运行时异常仍统一隐藏实现细节。
+    sseErrRes(
+      res,
+      getZodParseErrorInputSource(error) ? error : new Error('Failed to create sandbox')
+    );
     res.end();
   }
 }

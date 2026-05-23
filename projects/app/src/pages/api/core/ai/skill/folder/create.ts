@@ -10,13 +10,20 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import type { CreateSkillFolderBody } from '@fastgpt/global/core/ai/skill/api';
+import {
+  CreateSkillFolderBodySchema,
+  type CreateSkillFolderBody
+} from '@fastgpt/global/core/ai/skill/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
-  const { name, description, parentId } = req.body;
+  const { name, description, parentId } = parseApiInput({
+    req,
+    bodySchema: CreateSkillFolderBodySchema
+  }).body;
 
   if (!name) {
     return Promise.reject(CommonErrEnum.missingParams);

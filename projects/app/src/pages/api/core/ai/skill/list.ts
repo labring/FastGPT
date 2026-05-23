@@ -8,7 +8,6 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -19,18 +18,10 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { AgentSkillTypeEnum, AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type GetSkillListBody = {
-  parentId?: ParentIdType;
-  source?: 'store' | 'mine';
-  searchKey?: string;
-  category?: string;
-  type?: string;
-  skillIds?: string[];
-  page?: number;
-  pageSize?: number;
-  withAppCount?: boolean;
-};
+export type GetSkillListBody = ListSkillsQuery;
 
 const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
   const validQueries = queries.filter((query) => Object.keys(query).length > 0);
@@ -46,7 +37,7 @@ const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
   const { parentId, source, searchKey, category, type, skillIds, page, pageSize, withAppCount } =
-    req.body;
+    parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 

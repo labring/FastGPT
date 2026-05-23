@@ -5,16 +5,18 @@ import type {
   GetSkillDetailQuery,
   GetSkillDetailResponse
 } from '@fastgpt/global/core/ai/skill/api';
+import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
 ): Promise<GetSkillDetailResponse> {
-  const { skillId } = req.query;
+  const { skillId } = parseApiInput({ req, querySchema: GetSkillDetailQuerySchema }).query;
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);

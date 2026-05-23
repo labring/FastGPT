@@ -56,7 +56,7 @@ export type CreateEditDebugSandboxResult = {
  * 创建或复用一个 skill 编辑态 sandbox。
  *
  * 该流程只服务 edit-debug：下载当前版本包，标准化目录结构，写入并解压到
- * sandbox 工作目录下的 `skills`，最后返回 code-server endpoint。普通 agent session
+ * sandbox 工作目录下的 `skills`，最后返回 sandboxId/status 供 SandboxEditor 文件 API 使用。普通 agent session
  * 的 skill 注入逻辑仍由 runtime/useSandbox 负责，避免编辑态和运行态生命周期互相污染。
  */
 export async function createEditDebugSandbox(

@@ -27,7 +27,6 @@ export type {
   KubeAccessPolicy,
   LabelSpec,
   LifecyclePolicy,
-  NetworkPolicy,
   ResourceLimits,
   SandboxCreateSpec,
   SandboxEndpointSelector,

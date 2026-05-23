@@ -14,7 +14,11 @@ import {
   hasSkillsDirectoryContent,
   stripRootPrefix
 } from '@fastgpt/service/core/ai/skill/package';
-import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/ai/skill/api';
+import {
+  ImportSkillBodySchema,
+  type ImportSkillBody,
+  type ImportSkillResponse
+} from '@fastgpt/global/core/ai/skill/api';
 import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
 import {
   AgentSkillCategoryEnum,
@@ -28,6 +32,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
@@ -54,13 +59,10 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     filepaths.push(result.fileMetadata.path);
 
     const file = result.fileMetadata;
-    // Support both JSON-wrapped body ({"data": "..."}) and plain multipart form fields
-    const body: ImportSkillBody = {
-      parentId: result.data.parentId ?? (req.body?.parentId as string | undefined),
-      name: result.data.name ?? (req.body?.name as string | undefined),
-      description: result.data.description ?? (req.body?.description as string | undefined),
-      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined)
-    };
+    const body = parseApiInput({
+      req: { body: result.data },
+      bodySchema: ImportSkillBodySchema
+    }).body;
 
     const format = getSupportedArchiveFormat(file.originalname ?? '');
     if (!format) {

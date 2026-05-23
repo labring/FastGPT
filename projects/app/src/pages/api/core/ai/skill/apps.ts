@@ -18,16 +18,13 @@ import type {
   ListAppsBySkillIdQuery,
   ListAppsBySkillIdResponse
 } from '@fastgpt/global/core/ai/skill/api';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
 ): Promise<ListAppsBySkillIdResponse> {
-  const { skillId } = req.query;
-
-  if (!skillId) {
-    return Promise.reject(SkillErrEnum.invalidSkillId);
-  }
+  const { skillId } = parseApiInput({ req, querySchema: ListAppsBySkillIdQuerySchema }).query;
 
   const {
     tmbId,

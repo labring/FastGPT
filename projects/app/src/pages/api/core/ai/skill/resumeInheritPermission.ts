@@ -8,17 +8,23 @@ import {
 import { resumeInheritPermission } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import {
+  ResumeSkillInheritPermissionQuerySchema,
+  type ResumeSkillInheritPermissionQuery
+} from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type ResumeInheritPermissionQuery = {
-  skillId: string;
-};
+export type ResumeInheritPermissionQuery = ResumeSkillInheritPermissionQuery;
 export type ResumeInheritPermissionBody = Record<string, never>;
 
 // Resume the skill's inherit permission.
 async function handler(
   req: ApiRequestProps<ResumeInheritPermissionBody, ResumeInheritPermissionQuery>
 ) {
-  const { skillId } = req.query;
+  const { skillId } = parseApiInput({
+    req,
+    querySchema: ResumeSkillInheritPermissionQuerySchema
+  }).query;
   const { skill } = await authSkill({
     skillId,
     req,

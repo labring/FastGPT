@@ -1,4 +1,4 @@
-import type { ImageSpec, NetworkPolicy, ResourceLimits } from '@/types';
+import type { ImageSpec, ResourceLimits } from '@/types';
 import type { Volume } from '@alibaba-group/opensandbox';
 
 /**
@@ -10,9 +10,6 @@ export interface OpenSandboxConfigType {
 
   /** Entrypoint command */
   entrypoint?: string[];
-
-  /** Timeout in seconds (0 for no timeout) */
-  timeout?: number;
 
   /** Sandbox timeout in seconds. Set to `null` to require explicit cleanup. */
   timeoutSeconds?: number | null;
@@ -26,14 +23,8 @@ export interface OpenSandboxConfigType {
   /** Metadata for the sandbox */
   metadata?: Record<string, any>;
 
-  /** Network access policy */
-  networkPolicy?: NetworkPolicy;
-
   /** Optional volume mounts for persistent storage */
   volumes?: Volume[];
-
-  /** Provider-specific extensions */
-  extensions?: Record<string, unknown>;
 
   /** Skip readiness checks after create/connect */
   skipHealthCheck?: boolean;

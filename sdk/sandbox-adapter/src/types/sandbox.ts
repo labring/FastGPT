@@ -43,14 +43,6 @@ export interface ImageSpec {
   digest?: string;
 }
 
-/**
- * Network policy for sandbox.
- */
-export interface NetworkPolicy {
-  allowEgress?: boolean;
-  allowedHosts?: string[];
-}
-
 export interface LabelSpec {
   key: string;
   value: string;
@@ -103,26 +95,56 @@ export interface Endpoint {
 
 /**
  * App-facing create spec shared by callers that choose a provider at runtime.
- * Individual adapters should map only the fields their backend actually supports.
+ *
+ * The surface is intentionally wider than any single provider API: FastGPT builds
+ * one runtime profile, then each adapter maps the fields its backend supports and
+ * ignores the rest. Keep provider-specific fields documented here so callers do
+ * not need to import per-adapter request types.
  */
 export interface SandboxCreateSpec {
+  /** Container image to run. Required by OpenSandbox, optional for Sealos template-based devboxes. */
   image?: ImageSpec;
+
+  /** Entrypoint command used by providers that support overriding the container process. */
   entrypoint?: string[];
-  timeout?: number;
+
+  /** Sandbox lifetime in seconds. `null` means the provider should require explicit cleanup. */
   timeoutSeconds?: number | null;
+
+  /** CPU, memory, and disk limits, mapped only by providers with native resource controls. */
   resourceLimits?: ResourceLimits;
+
+  /** Environment variables injected when the sandbox is created. */
   env?: Record<string, string>;
+
+  /** App-level metadata for traceability; providers may persist or ignore it. */
   metadata?: Record<string, unknown>;
+
+  /** Provider-visible labels, mainly used by Kubernetes-backed providers such as Sealos. */
   labels?: LabelSpec[];
+
+  /** Pause/archive policy for providers with managed lifecycle support. */
   lifecycle?: LifecyclePolicy;
+
+  /** Kubernetes permission template for providers that expose in-sandbox kube access. */
   kubeAccess?: KubeAccessPolicy;
-  networkPolicy?: NetworkPolicy;
+
+  /** Provider-native volume mount specs; shape is intentionally provider-defined. */
   volumes?: unknown[];
+
+  /** Default workspace directory for relative paths and command execution. */
   workingDir?: string;
+
+  /** Stable upstream business id used by providers for reuse, grouping, or audit trails. */
   upstreamID?: string;
-  extensions?: Record<string, unknown>;
+
+  /** Skip post-create readiness checks when the caller or provider handles readiness elsewhere. */
   skipHealthCheck?: boolean;
+
+  /** Maximum seconds to wait for the sandbox to become ready. */
   readyTimeoutSeconds?: number;
+
+  /** Readiness polling interval in milliseconds. */
   healthCheckPollingInterval?: number;
 }
 

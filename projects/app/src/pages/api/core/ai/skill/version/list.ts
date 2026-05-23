@@ -5,10 +5,12 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
+  ListSkillVersionsBodySchema,
   type ListSkillVersionsBody,
   type SkillVersionListItemType
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type { ListSkillVersionsBody };
 export type ListSkillVersionsResponse = PaginationResponse<SkillVersionListItemType>;
@@ -16,7 +18,10 @@ export type ListSkillVersionsResponse = PaginationResponse<SkillVersionListItemT
 async function handler(
   req: ApiRequestProps<ListSkillVersionsBody>
 ): Promise<ListSkillVersionsResponse> {
-  const { skillId, isCurrent } = req.body;
+  const { skillId, isCurrent } = parseApiInput({
+    req,
+    bodySchema: ListSkillVersionsBodySchema
+  }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const { skill } = await authSkill({

@@ -4,18 +4,21 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import type { SkillDebugSessionDeleteBody } from '@fastgpt/global/core/ai/skill/api';
+import {
+  SkillDebugSessionDeleteBodySchema,
+  type SkillDebugSessionDeleteBody
+} from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { skillId, chatId } = req.body as SkillDebugSessionDeleteBody;
-
-  if (!skillId) throw new UserError('skillId is required');
-  if (!chatId) throw new UserError('chatId is required');
+async function handler(req: ApiRequestProps<SkillDebugSessionDeleteBody>, res: NextApiResponse) {
+  const { skillId, chatId } = parseApiInput({
+    req,
+    bodySchema: SkillDebugSessionDeleteBodySchema
+  }).body;
 
   // Authenticate skill access — write permission required for deletion
   await authSkill({

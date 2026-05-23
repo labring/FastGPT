@@ -51,16 +51,16 @@ import {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import {
+  SkillDebugChatBodySchema,
+  type SkillDebugChatBody
+} from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
-export type Props = {
-  skillId: string;
-  chatId: string;
-  responseChatItemId?: string;
+export type Props = Omit<SkillDebugChatBody, 'messages'> & {
   messages: ChatCompletionMessageParam[];
-  model?: string;
-  systemPrompt?: string;
 };
 
 // Node IDs for the minimal workflow
@@ -186,19 +186,23 @@ export function buildDebugRuntimeNodes(
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const {
-    skillId,
-    chatId,
-    responseChatItemId = getNanoid(),
-    messages = [],
-    model,
-    systemPrompt = ''
-  } = req.body as Props;
+  let skillId = '';
 
   try {
+    const {
+      skillId: parsedSkillId,
+      chatId,
+      responseChatItemId = getNanoid(),
+      messages = [],
+      model,
+      systemPrompt = ''
+    } = parseApiInput({
+      req,
+      bodySchema: SkillDebugChatBodySchema
+    }).body as Props;
+    skillId = parsedSkillId;
+
     // Validate required parameters
-    if (!skillId) throw new UserError('skillId is required');
-    if (!chatId) throw new UserError('chatId is required');
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new UserError('messages is required');
     }

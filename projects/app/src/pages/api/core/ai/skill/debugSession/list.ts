@@ -6,12 +6,20 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import type { SkillDebugSessionListResponse } from '@fastgpt/global/core/ai/skill/api';
+import {
+  SkillDebugSessionListQuerySchema,
+  type SkillDebugSessionListQuery,
+  type SkillDebugSessionListResponse
+} from '@fastgpt/global/core/ai/skill/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
-async function handler(req: ApiRequestProps) {
-  const { skillId } = req.query as { skillId: string };
+async function handler(req: ApiRequestProps<Record<string, never>, SkillDebugSessionListQuery>) {
+  const { skillId } = parseApiInput({
+    req,
+    querySchema: SkillDebugSessionListQuerySchema
+  }).query;
 
   // Authenticate skill access
   await authSkill({

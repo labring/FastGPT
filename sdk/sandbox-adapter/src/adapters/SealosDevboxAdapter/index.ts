@@ -39,7 +39,8 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
   readonly provider = 'sealosdevbox' as const;
 
   get rootPath(): string {
-    return '/home/devbox';
+    const workingDir = this.createConfig?.workingDir?.trim();
+    return workingDir ? workingDir.replace(/\/+$/, '') : '/home/devbox/workspace';
   }
 
   private api: DevboxApi;
