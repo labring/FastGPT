@@ -30,7 +30,7 @@ type BaseModelItem = {
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
-  trainTaskList?: ModelRow['trainTaskList'];
+  trainTaskSummary?: ModelRow['trainTaskSummary'];
 };
 
 type UseModelTableStateProps = {

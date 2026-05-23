@@ -1,4 +1,8 @@
-import { DatasetCollectionTypeEnum, DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { Types } from 'mongoose';
 import { addMinutes } from 'date-fns';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';

@@ -575,37 +575,30 @@ const BaseModelTrainModal = ({
                             />
                           </Box>
                         </MyTooltip>
-                          <Avatar
-                            src={item.avatar}
-                            w={7}
-                            h={7}
-                            borderRadius={'sm'}
-                            ml={2}
-                            mr={2.5}
-                          />
-                          <Box flex={1} minW={0}>
-                            <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
-                              {item.name}
-                            </Box>
-                            <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
-                              {isFolder ? t('common:Folder') : item.vectorModel?.name}
-                            </Box>
+                        <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} ml={2} mr={2.5} />
+                        <Box flex={1} minW={0}>
+                          <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
+                            {item.name}
                           </Box>
-                          {isFolder && childrenIds.length > 0 && (
-                            <Box
-                              display={'flex'}
-                              alignItems={'center'}
-                              justifyContent={'center'}
-                              color={'myGray.500'}
-                            >
-                              {isExpanded ? (
-                                <ChevronDownIcon w={5} h={5} />
-                              ) : (
-                                <ChevronRightIcon w={5} h={5} />
-                              )}
-                            </Box>
-                          )}
-                        </Flex>
+                          <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
+                            {isFolder ? t('common:Folder') : item.vectorModel?.name}
+                          </Box>
+                        </Box>
+                        {isFolder && childrenIds.length > 0 && (
+                          <Box
+                            display={'flex'}
+                            alignItems={'center'}
+                            justifyContent={'center'}
+                            color={'myGray.500'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon w={5} h={5} />
+                            ) : (
+                              <ChevronRightIcon w={5} h={5} />
+                            )}
+                          </Box>
+                        )}
+                      </Flex>
                     </Box>
                   );
                 })}

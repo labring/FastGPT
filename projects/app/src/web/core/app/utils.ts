@@ -1413,14 +1413,14 @@ export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): Store
 
 /**
  * 根据知识库向量模型，筛选可用的 embedding 模型选项。
- * 包含基模本身，以及通过 trainTaskList.baseModelId 关联的 tuned 模型。
+ * 包含基模本身，以及通过 trainTaskSummary.baseModelIds 关联的 tuned 模型。
  */
 export function getEmbeddingModelSelectList(
   embeddingModelList: {
     model: string;
     name: string;
     isTuned?: boolean;
-    trainTaskList?: { baseModelId: string }[];
+    trainTaskSummary?: { baseModelIds?: string[] };
   }[],
   datasetVectorModel: string | undefined
 ): { value: string; label: string }[] {
@@ -1429,7 +1429,7 @@ export function getEmbeddingModelSelectList(
     .filter((item) => {
       if (item.model === datasetVectorModel) return true;
       if (!item.isTuned) return false;
-      return (item.trainTaskList || []).some((t) => t.baseModelId === datasetVectorModel);
+      return (item.trainTaskSummary?.baseModelIds || []).includes(datasetVectorModel);
     })
     .map((item) => ({ value: item.model, label: item.name }));
 }

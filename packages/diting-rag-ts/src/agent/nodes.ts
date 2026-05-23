@@ -189,7 +189,9 @@ function agentRetryExhaustedUpdate(
       llmOutputTokens: 0
     };
   }
-  throw new Error(`${nodeName}: LLM call failed after ${attempts} attempts, no chunks collected — ${lastErrorMsg}`);
+  throw new Error(
+    `${nodeName}: LLM call failed after ${attempts} attempts, no chunks collected — ${lastErrorMsg}`
+  );
 }
 
 // ============================================================

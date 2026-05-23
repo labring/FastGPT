@@ -79,10 +79,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.embedding?.model}
-              list={embeddingModelList.filter((item) => !item.isTuned).map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
+              list={embeddingModelList
+                .filter((item) => !item.isTuned)
+                .map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -136,10 +138,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.rerank?.model}
-              list={reRankModelList.filter((item) => !item.isTuned).map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
+              list={reRankModelList
+                .filter((item) => !item.isTuned)
+                .map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,

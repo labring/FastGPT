@@ -227,7 +227,9 @@ const TagFilterSection = ({
                 {unAuthDatasetNames.length > 0 && (
                   <MyTooltip
                     label={t('workflow:tag_filter_unauth_datasets', {
-                      names: unAuthDatasetNames.map((n) => t('common:enum_quote', { name: n })).join(t('common:comma'))
+                      names: unAuthDatasetNames
+                        .map((n) => t('common:enum_quote', { name: n }))
+                        .join(t('common:comma'))
                     })}
                   >
                     <MyIcon name="common/circleAlert" boxSize={4} color={'orange.400'} />

@@ -63,24 +63,29 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const filteredEmbeddingModelList = useMemo(
-    () => embeddingModelList.filter((item) => !item.isTuned).map((item) => ({
-      label: item.name,
-      value: item.model
-    })),
+    () =>
+      embeddingModelList
+        .filter((item) => !item.isTuned)
+        .map((item) => ({
+          label: item.name,
+          value: item.model
+        })),
     [embeddingModelList]
   );
   const llmModelSelectList = useMemo(
-    () => llmModelList.map((item) => ({
-      label: item.name,
-      value: item.model
-    })),
+    () =>
+      llmModelList.map((item) => ({
+        label: item.name,
+        value: item.model
+      })),
     [llmModelList]
   );
   const vlmModelSelectList = useMemo(
-    () => vllmModelList.map((item) => ({
-      label: item.name,
-      value: item.model
-    })),
+    () =>
+      vllmModelList.map((item) => ({
+        label: item.name,
+        value: item.model
+      })),
     [vllmModelList]
   );
   const vlmModel = watch('vlmModel');

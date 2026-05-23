@@ -2,6 +2,7 @@ import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { FilterState, I18nT, ModelRow, ProviderOption } from '../types';
+import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
 
 type ModelProvider = {
   avatar: string;
@@ -18,11 +19,11 @@ type BaseModelItem = {
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
-  trainTaskList?: ModelRow['trainTaskList'];
+  trainTaskSummary?: TrainTaskSummary;
 };
 
 type TrainableModelItem = BaseModelItem & {
-  trainTaskList?: ModelRow['trainTaskList'];
+  trainTaskSummary?: TrainTaskSummary;
   supportTrain?: boolean;
 };
 
@@ -231,7 +232,7 @@ export const getFilteredModelList = ({
         tagColor: item.tagColor,
         trainableModelType: item.trainableModelType,
         isTuned: item.isTuned,
-        trainTaskList: item.trainTaskList || []
+        trainTaskSummary: item.trainTaskSummary
       };
     })
     .sort((a, b) => a.order - b.order);
@@ -246,9 +247,9 @@ export const getFilteredModelList = ({
   });
 };
 
-const getLatestTrainTime = (trainTaskList?: ModelRow['trainTaskList']) => {
-  if (!trainTaskList?.length) return 0;
-  return Math.max(...trainTaskList.map((t) => new Date(t.createTime).getTime()));
+const getLatestTrainTime = (trainTaskSummary?: TrainTaskSummary) => {
+  const t = trainTaskSummary?.latestTask?.createTime;
+  return t ? new Date(t).getTime() : 0;
 };
 
 export const getSortedModelList = (
@@ -262,13 +263,13 @@ export const getSortedModelList = (
 
   return [...modelList].sort((a, b) => {
     if (trainTaskCountSortOrder) {
-      const countA = a.trainTaskList?.length || 0;
-      const countB = b.trainTaskList?.length || 0;
+      const countA = a.trainTaskSummary?.totalCount || 0;
+      const countB = b.trainTaskSummary?.totalCount || 0;
       return trainTaskCountSortOrder === 'asc' ? countA - countB : countB - countA;
     }
 
-    const timeA = getLatestTrainTime(a.trainTaskList);
-    const timeB = getLatestTrainTime(b.trainTaskList);
+    const timeA = getLatestTrainTime(a.trainTaskSummary);
+    const timeB = getLatestTrainTime(b.trainTaskSummary);
     return trainTimeSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
   });
 };

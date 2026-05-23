@@ -316,7 +316,6 @@ const HomepageSetting = ({ Header }: Props) => {
                 />
               </Box>
             </Box>
-
           </Flex>
         </Flex>
       </Flex>

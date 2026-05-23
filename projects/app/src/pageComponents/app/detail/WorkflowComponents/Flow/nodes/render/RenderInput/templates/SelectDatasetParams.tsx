@@ -159,7 +159,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     // 新建节点时 input.value 为 undefined，将默认值写入 inputs 确保参数下发
     [
       { key: NodeInputKeyEnum.datasetSearchExtensionModel, defaultValue: defaultModels.llm?.model },
-      { key: NodeInputKeyEnum.datasetAgenticSearchLLMModel, defaultValue: defaultModels.llm?.model },
+      {
+        key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+        defaultValue: defaultModels.llm?.model
+      },
       { key: NodeInputKeyEnum.datasetSearchRerankModel, defaultValue: defaultModels.rerank?.model },
       {
         key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
@@ -264,7 +267,9 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                     <span>{t('app:retrieval_mode_single_desc')}</span>
                   </Box>
                   <Box>
-                    <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_multiple_title')}</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {t('app:retrieval_mode_multiple_title')}
+                    </span>
                     <span>{t('app:retrieval_mode_multiple_desc')}</span>
                   </Box>
                 </Box>
@@ -272,62 +277,59 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
             />
           </FormLabel>
           <Box flex="1">
-          <RetrievalModeSelector
-            value={retrievalMode}
-            onChange={(mode) => {
-              const prevMode = retrievalMode;
-              setRetrievalMode(mode);
-              const item = inputs.find(
-                (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
-              );
-              if (item) {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: NodeInputKeyEnum.datasetRetrievalMode,
-                  value: { ...item, value: mode }
-                });
-              }
-
-              // 切换检索模式时，清空另一模式的字段
-              if (mode !== prevMode) {
-                if (mode === DatasetRetrievalModeEnum.standard) {
-                  // 标准检索 → 清空多轮智能检索相关字段
-                  setAgenticSearchConfig((prev) => ({
-                    ...prev,
-                    agenticSearchLLMModel: '',
-                    agenticSearchRerankModel: '',
-                    agenticSearchReasoning: false
-                  }));
-                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, '');
-                  updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, '');
-                  updateNodeInput(
-                    NodeInputKeyEnum.datasetAgenticSearchReasoning,
-                    false
-                  );
-                } else {
-                  // 多轮智能检索 → 清空标准检索相关字段
-                  setData((prev) => ({
-                    ...prev,
-                    datasetSearchExtensionModel: '',
-                    rerankModel: ''
-                  }));
-                  updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, '');
-                  updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, '');
+            <RetrievalModeSelector
+              value={retrievalMode}
+              onChange={(mode) => {
+                const prevMode = retrievalMode;
+                setRetrievalMode(mode);
+                const item = inputs.find(
+                  (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
+                );
+                if (item) {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: NodeInputKeyEnum.datasetRetrievalMode,
+                    value: { ...item, value: mode }
+                  });
                 }
-              }
 
-              if (knowledgeTypeConfig.hasDatabaseKnowledge) {
-                const newAiModel =
-                  mode === DatasetRetrievalModeEnum.agentic
-                    ? agenticSearchConfig.agenticSearchLLMModel
-                    : data.datasetSearchExtensionModel || '';
-                if (newAiModel) {
-                  updateNodeInput(NodeInputKeyEnum.generateSqlModel, newAiModel);
+                // 切换检索模式时，清空另一模式的字段
+                if (mode !== prevMode) {
+                  if (mode === DatasetRetrievalModeEnum.standard) {
+                    // 标准检索 → 清空多轮智能检索相关字段
+                    setAgenticSearchConfig((prev) => ({
+                      ...prev,
+                      agenticSearchLLMModel: '',
+                      agenticSearchRerankModel: '',
+                      agenticSearchReasoning: false
+                    }));
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchReasoning, false);
+                  } else {
+                    // 多轮智能检索 → 清空标准检索相关字段
+                    setData((prev) => ({
+                      ...prev,
+                      datasetSearchExtensionModel: '',
+                      rerankModel: ''
+                    }));
+                    updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, '');
+                  }
                 }
-              }
-            }}
-          />
+
+                if (knowledgeTypeConfig.hasDatabaseKnowledge) {
+                  const newAiModel =
+                    mode === DatasetRetrievalModeEnum.agentic
+                      ? agenticSearchConfig.agenticSearchLLMModel
+                      : data.datasetSearchExtensionModel || '';
+                  if (newAiModel) {
+                    updateNodeInput(NodeInputKeyEnum.generateSqlModel, newAiModel);
+                  }
+                }
+              }}
+            />
           </Box>
         </Flex>
 

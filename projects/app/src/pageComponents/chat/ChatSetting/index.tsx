@@ -16,7 +16,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
 const DataDashboard = dynamic(() => import('@/pageComponents/chat/ChatSetting/DataDashboard'));
@@ -94,9 +93,7 @@ const ChatSetting = () => {
         {chatSettings && (
           <Box p={['16px 0 16px 0', 6]} flex="1 0 0" h="0" boxSizing="border-box">
             {/* homepage setting */}
-            {tab === ChatSettingTabOptionEnum.HOME && (
-              <HomepageSetting Header={SettingHeader} />
-            )}
+            {tab === ChatSettingTabOptionEnum.HOME && <HomepageSetting Header={SettingHeader} />}
 
             {/* data dashboard */}
             {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && (
