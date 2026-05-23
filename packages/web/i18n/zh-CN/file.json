@@ -21,6 +21,7 @@
   "common.import_update": "导入/更新",
   "common.upload_system_tools": "上传系统工具",
   "count.core.dataset.collection.Create Success": "成功导入 {{count}} 张图片",
+  "custom_parse_failed_configure_vlm": "自定义服务解析失败，请配置VLM模型",
   "custom_parse_missing_key": "已配置自定义解析服务地址，但未填写 key，请联系管理员补充配置",
   "delete_image": "删除图片",
   "eval_file": "评测文件",

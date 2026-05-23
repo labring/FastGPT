@@ -34,7 +34,10 @@ export enum DatasetErrEnum {
   // Template import errors
   templateImportModeNotFound = 'templateImportModeNotFound',
   // File upload errors
-  fileContentDuplicate = 'fileContentDuplicate'
+  fileContentDuplicate = 'fileContentDuplicate',
+  // Image dataset errors
+  imageDatasetRequiresVlmModel = 'imageDatasetRequiresVlmModel',
+  imageDatasetRequiresVlmModelOrCustomParse = 'imageDatasetRequiresVlmModelOrCustomParse'
 }
 const datasetErr = [
   {
@@ -140,6 +143,14 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.fileContentDuplicate,
     message: i18nT('common:core.dataset.error.fileContentDuplicate')
+  },
+  {
+    statusText: DatasetErrEnum.imageDatasetRequiresVlmModel,
+    message: i18nT('file:Image_dataset_requires_VLM_model_to_be_configured')
+  },
+  {
+    statusText: DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse,
+    message: i18nT('file:custom_parse_failed_configure_vlm')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

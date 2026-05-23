@@ -50,6 +50,7 @@
   "pptx_parse_failed": "Failed to parse the PPT file. Please ensure the file is in .pptx format and is not corrupted.",
   "file_type_requires_external_parse": ".ppt / .doc / .xls format requires an external parsing service (customPdfParse). Please contact your administrator.",
   "unsupported_file_type": "Unsupported file type. Supported formats: txt, md, html, pdf, docx, pptx, xls, xlsx, csv",
+  "custom_parse_failed_configure_vlm": "Custom parse service failed. Please configure a VLM model.",
   "custom_parse_missing_key": "Custom parse service URL is configured but the key is missing. Please contact your administrator.",
   "upload_failed": "Error occurred during the upload.",
   "upload_file_error": "Please upload an image.",
