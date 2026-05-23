@@ -57,13 +57,18 @@ describe('K8sVolumeDriver', () => {
     await expect(driver.ensure(VALID_ID)).rejects.toThrow('403');
   });
 
-  it('fetch calls include tls.ca from ca.crt', async () => {
+  it('fetch calls use an Undici dispatcher with ca.crt loaded', async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, status: 200 });
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const { readFileSync } = await import('fs');
     const driver = new K8sVolumeDriver();
     await driver.ensure(VALID_ID);
     const [, opts] = fetchMock.mock.calls[0];
-    expect((opts as any).tls?.ca).toBe('mock-ca-cert');
+    expect((opts as any).dispatcher).toBeTruthy();
+    expect(readFileSync).toHaveBeenCalledWith(
+      '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
+      'utf-8'
+    );
   });
 
   it('remove treats 404 as success', async () => {

@@ -173,8 +173,9 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: projects/volume-manager
+          context: .
           file: projects/volume-manager/Dockerfile
+          target: runner
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

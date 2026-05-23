@@ -1,3 +1,4 @@
+import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { env } from './env';
 import { DockerVolumeDriver } from './drivers/DockerVolumeDriver';
@@ -26,9 +27,9 @@ app.use('/v1/*', async (c, next) => {
 // Volume routes
 app.route('/v1/volumes', volumeRoutes(service));
 
-const server = Bun.serve({
+serve({
   port: env.PORT,
   fetch: app.fetch
 });
 
-console.log(`[volume-manager] Listening on port ${server.port} (runtime: ${env.VM_RUNTIME})`);
+console.log(`[volume-manager] Listening on port ${env.PORT} (runtime: ${env.VM_RUNTIME})`);

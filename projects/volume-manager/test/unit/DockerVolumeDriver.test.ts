@@ -29,6 +29,8 @@ describe('DockerVolumeDriver', () => {
     const driver = new DockerVolumeDriver();
     const result = await driver.ensure(VALID_ID);
     expect(result).toEqual({ claimName: VOLUME_NAME, created: false });
+    const [, opts] = fetchMock.mock.calls[0];
+    expect((opts as any).dispatcher).toBeTruthy();
   });
 
   it('ensure creates volume on 404', async () => {

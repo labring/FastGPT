@@ -3,9 +3,21 @@ title: 'V4.15.0-beta2(进行中)'
 description: 'FastGPT V4.15.0-beta2 更新说明'
 ---
 
-## 更新指南
+## 升级指南
 
-1. AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH 不再生效，opensandbox 固定挂载持久化数据到 `/workspace`，旧的沙盒持久化会受到影响。
+### 镜像变更
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta2
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta2
+
+如果使用 Opensandbox，更新下面镜像
+
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0
+- 更新 fastgpt-agent-volume-manager 镜像 tag: v0.2.0
+
+### 环境变量更新
+
+1. 如使用 opensandbox，则 AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH 不再生效，可移除。opensandbox 固定挂载持久化数据到 `/workspace`，旧的沙盒持久化会受到影响。
 
 ## 🚀 新增内容
 
@@ -45,3 +57,4 @@ description: 'FastGPT V4.15.0-beta2 更新说明'
 1. 拆分 AI request、工作流运行详情代码。
 2. 用户自定义密钥计费逻辑。
 3. 流恢复相关模块补充设计文档与单元测试（stop 状态、stale 清理、历史标题、dataId 校验、表单回填等）。
+4. volumn manager 将 bun 改成 Node.js 运行。

@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { Agent } from 'undici';
 import type { IVolumeDriver, EnsureResult } from './IVolumeDriver';
 import { toVolumeName } from '../utils/naming';
 import { env } from '../env';
@@ -10,10 +11,6 @@ const CA_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
 
 function readToken(): string {
   return readFileSync(TOKEN_PATH, 'utf-8').trim();
-}
-
-function fetchOpts(extra: RequestInit = {}): RequestInit {
-  return { ...extra, tls: { ca: readFileSync(CA_PATH, 'utf-8') } } as RequestInit;
 }
 
 function pvcBody(name: string, sessionId: string): object {
@@ -36,10 +33,17 @@ function pvcBody(name: string, sessionId: string): object {
 export class K8sVolumeDriver implements IVolumeDriver {
   private readonly namespace: string;
   private readonly prefix: string;
+  private dispatcher?: Agent;
 
   constructor(namespace = env.VM_K8S_NAMESPACE, prefix = env.VM_VOLUME_NAME_PREFIX) {
     this.namespace = namespace;
     this.prefix = prefix;
+  }
+
+  private fetchOpts(extra: RequestInit = {}): RequestInit & { dispatcher: Agent } {
+    // Kubernetes in-cluster CA 是服务账号挂载文件，按实例懒加载，避免模块初始化依赖运行环境。
+    this.dispatcher ??= new Agent({ connect: { ca: readFileSync(CA_PATH, 'utf-8') } });
+    return { ...extra, dispatcher: this.dispatcher } as RequestInit & { dispatcher: Agent };
   }
 
   private headers(): Record<string, string> {
@@ -60,7 +64,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
     const getUrl = this.pvcUrl(name);
 
     logDebug(`K8s GET PVC url=${getUrl}`);
-    const getRes = await fetch(getUrl, fetchOpts({ headers: this.headers() }));
+    const getRes = await fetch(getUrl, this.fetchOpts({ headers: this.headers() }));
     logDebug(`K8s GET PVC status=${getRes.status}`);
 
     if (getRes.ok) {
@@ -76,7 +80,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
     logDebug(`K8s POST PVC url=${postUrl} name=${name}`);
     const createRes = await fetch(
       postUrl,
-      fetchOpts({
+      this.fetchOpts({
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(pvcBody(name, sessionId))
@@ -99,7 +103,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
     logDebug(`K8s DELETE PVC url=${delUrl}`);
     const res = await fetch(
       delUrl,
-      fetchOpts({
+      this.fetchOpts({
         method: 'DELETE',
         headers: this.headers()
       })
