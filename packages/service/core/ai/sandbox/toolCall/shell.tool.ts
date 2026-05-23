@@ -4,7 +4,7 @@ import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const SandboxShellToolSchema = z.object({
   command: z.string(),
-  timeout: z.number().optional()
+  timeout: z.number().int().min(1).max(600).optional()
 });
 
 export const sandboxShellTool = defineTool({

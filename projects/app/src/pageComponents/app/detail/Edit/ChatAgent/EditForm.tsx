@@ -125,10 +125,10 @@ const EditForm = ({
     onAddAgentSkill,
     onRemoveAgentSkill,
     onChangeAgentSandbox,
+    skillSelectData,
     ConfirmModal,
     isOpenRecharge,
-    onCloseRecharge,
-    selectedAgentSkillStatus
+    onCloseRecharge
   } = useAgentSkillSelect({
     appForm,
     showSandbox,
@@ -293,7 +293,7 @@ const EditForm = ({
             gridGap={[2, 4]}
           >
             {selectedAgentSkills.map((item) => {
-              const isDeleted = selectedAgentSkillStatus[item.skillId];
+              const isDeleted = !!item.isDeleted;
 
               return (
                 <MyTooltip
@@ -364,6 +364,7 @@ const EditForm = ({
 
           {isOpenSkillSelect && (
             <SkillSelectModal
+              {...skillSelectData}
               selectedSkills={selectedAgentSkills}
               onAddSkill={onAddAgentSkill}
               onRemoveSkill={onRemoveAgentSkill}

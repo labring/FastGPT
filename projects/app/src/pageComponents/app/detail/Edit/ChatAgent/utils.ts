@@ -309,7 +309,14 @@ export function agentForm2AppWorkflow(
                     renderTypeList: [FlowNodeInputTypeEnum.hidden],
                     label: '',
                     valueType: WorkflowIOValueTypeEnum.arrayObject,
-                    value: data.selectedAgentSkills
+                    value: data.selectedAgentSkills.map(
+                      ({ skillId, name, description, avatar }) => ({
+                        skillId,
+                        name,
+                        description,
+                        ...(avatar === undefined ? {} : { avatar })
+                      })
+                    )
                   }
                 ]
               : [])

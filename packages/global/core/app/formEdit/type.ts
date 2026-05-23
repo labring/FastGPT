@@ -11,7 +11,8 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
   name: z.string(),
   description: z.string().default(''),
-  avatar: z.string().optional()
+  avatar: z.string().optional(),
+  isDeleted: z.boolean().default(false)
 });
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
 

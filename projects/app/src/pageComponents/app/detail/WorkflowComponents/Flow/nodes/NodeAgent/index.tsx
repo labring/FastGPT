@@ -45,8 +45,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSelectedAgentSkillStatus } from '@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSelectedAgentSkillStatus';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useSkillSelectData } from '@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -380,12 +380,17 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
     [skillsInput]
   );
-  const selectedAgentSkillStatus = useSelectedAgentSkillStatus(selectedAgentSkills);
+  const skillSelectData = useSkillSelectData({ enabled: showWorkflowAgentSkills });
+  const { reset: resetSkillSelectData } = skillSelectData;
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
+  const closeSkillSelect = useCallback(() => {
+    onCloseSkillSelect();
+    resetSkillSelectData();
+  }, [onCloseSkillSelect, resetSkillSelectData]);
   const {
     isOpen: isOpenRecharge,
     onOpen: onOpenRecharge,
@@ -596,7 +601,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       {t('common:Choose')}
                     </Button>
                     {selectedAgentSkills.map((item) => {
-                      const isDeleted = selectedAgentSkillStatus[item.skillId];
+                      const isDeleted = !!item.isDeleted;
 
                       return (
                         <MyTooltip
@@ -672,6 +677,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </Grid>
                   {isOpenSkillSelect && (
                     <SkillSelectModal
+                      {...skillSelectData}
                       selectedSkills={selectedAgentSkills}
                       onAddSkill={(skill: SelectedAgentSkillItemType) => {
                         if (!skillsInput) return;
@@ -718,7 +724,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           }
                         });
                       }}
-                      onClose={onCloseSkillSelect}
+                      onClose={closeSkillSelect}
                     />
                   )}
                 </>
