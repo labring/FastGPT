@@ -58,7 +58,7 @@ const loadDeployVersions = async () => {
   return versions.sort((a, b) => {
     if (a === 'main') return 1;
     if (b === 'main') return -1;
-    return a.localeCompare(b, undefined, { numeric: true });
+    return b.localeCompare(a, undefined, { numeric: true });
   });
 };
 
