@@ -88,10 +88,16 @@ const ADD_MODE_CARDS: { mode: AddMode; icon: string; nameKey: string; descKey: s
 
 // ─── 标签工具函数 ─────────────────────────────────────────────────────────────
 
-function tagsToCollectionTags(rows: TagEditorRow[]): CollectionTagValueType[] {
+function tagsToCollectionTags(
+  rows: TagEditorRow[],
+  tagOptions: { label: string; value: string; tagType?: string }[]
+): CollectionTagValueType[] {
   return rows
     .filter((r) => r.tagId && r.value.trim())
-    .map((r) => ({ tagId: r.tagId, value: r.value.trim() }));
+    .map((r) => {
+      const option = tagOptions.find((opt) => opt.value === r.tagId);
+      return { tagId: option?.label || r.tagId, value: r.value.trim() };
+    });
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
@@ -312,7 +318,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   const handleConfirm = useCallback(async () => {
     setIsSubmitting(true);
     try {
-      const tags = tagsToCollectionTags(tagRows);
+      const tags = tagsToCollectionTags(tagRows, tagOptions);
 
       if (addMode === 'file') {
         const allSuccess = [...docSuccessFiles, ...imageSuccessFiles];
@@ -495,7 +501,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
 
   // MD5 去重弹窗确认：过滤掉重复文件后继续执行文件名检查并上传
   const handleMd5Confirm = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     const md5DupNewNames = new Set(md5DuplicateFiles.map((d) => d.newFileName));
 
     setShowMd5DuplicateModal(false);
@@ -623,7 +629,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleSkipDuplicates = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       const toUploadDoc = docSuccessFiles.filter((f) => !duplicateFiles.includes(f.sourceName));
       const toUploadImg = imageSuccessFiles.filter((f) => !duplicateFiles.includes(f.sourceName));
@@ -696,7 +702,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleReplaceFiles = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       await Promise.all([
         ...docSuccessFiles.map((f) =>
@@ -753,7 +759,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleContinueUpload = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       await Promise.all([
         ...docSuccessFiles.map((f) =>
