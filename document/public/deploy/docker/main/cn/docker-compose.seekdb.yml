@@ -36,6 +36,11 @@ x-log-config: &x-log-config
   LOG_ENABLE_OTEL: false
   LOG_OTEL_LEVEL: info
   LOG_OTEL_URL: http://localhost:4318/v1/logs
+# 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
+# 明确绕过 compose 内部服务，避免内部请求被代理劫持。
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -177,7 +182,7 @@ services:
     restart: always
     environment:
       # 完整变量请参考: https://github.com/labring/FastGPT/blob/main/projects/app/.env.template
-      <<: [*x-share-db-config, *x-vec-config, *x-log-config]
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
@@ -222,7 +227,7 @@ services:
       - codesandbox
     restart: always
     environment:
-      <<: [*x-log-config]
+      <<: [*x-log-config, *x-no-proxy-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
       SANDBOX_TOKEN: *x-code-sandbox-token
       # ===== Resource Limits =====
@@ -273,7 +278,7 @@ services:
       - 3003:3000
     restart: always
     environment:
-      <<: [*x-log-config]
+      <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.6.2
@@ -283,7 +288,7 @@ services:
       - data
       - app
     environment:
-      <<: [*x-share-db-config, *x-log-config]
+      <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
       AUTH_TOKEN: *x-plugin-auth-token
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10

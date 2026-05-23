@@ -47,6 +47,11 @@ x-log-config: &x-log-config
   LOG_ENABLE_OTEL: false
   LOG_OTEL_LEVEL: info
   LOG_OTEL_URL: http://localhost:4318/v1/logs
+# 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
+# 明确绕过 compose 内部服务，避免内部请求被代理劫持。
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 services:
   # Vector DB
@@ -181,7 +186,7 @@ services:
       - fastgpt
     restart: always
     environment:
-      <<: [*x-log-config]
+      <<: [*x-log-config, *x-no-proxy-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
       SANDBOX_TOKEN: *x-code-sandbox-token
       # ===== Resource Limits =====
@@ -227,7 +232,8 @@ services:
       - fastgpt
     restart: always
     environment:
-      - FASTGPT_ENDPOINT=http://fastgpt:3000
+      <<: [*x-no-proxy-config]
+      FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.6.2
     container_name: fastgpt-plugin
@@ -237,7 +243,7 @@ services:
     networks:
       - fastgpt
     environment:
-      <<: [*x-share-db-config, *x-log-config]
+      <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
       AUTH_TOKEN: *x-plugin-auth-token
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
@@ -273,6 +279,7 @@ services:
       - source: opensandbox-config
         target: /etc/opensandbox/config.toml
     environment:
+      <<: [*x-no-proxy-config]
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
@@ -304,6 +311,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # Docker 模式必须挂载（只读即可）
     environment:
+      <<: [*x-no-proxy-config]
       PORT: 3000
       VM_RUNTIME: docker
       VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
