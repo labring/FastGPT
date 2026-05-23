@@ -10,7 +10,6 @@ import {
 import { getLogger, LogCategories } from '../logger';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
@@ -28,10 +27,12 @@ export enum QueueNames {
   evaluation = 'evaluation',
   s3FileDelete = 's3FileDelete',
   collectionUpdate = 'collectionUpdate',
+  agentSkillCreate = 'agentSkillCreate',
 
   // Delete Queue
   datasetDelete = 'datasetDelete',
   appDelete = 'appDelete',
+  agentSkillDelete = 'agentSkillDelete',
   teamDelete = 'teamDelete',
 
   // Publish

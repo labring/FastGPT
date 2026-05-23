@@ -4,26 +4,17 @@ import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../ty
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 
-export type AgentSubAppItemType = {};
+export type AgentSubAppItemType = object;
 
 /* ===== Agent Skill ===== */
 export const SelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
   name: z.string(),
   description: z.string().default(''),
-  avatar: z.string().optional()
+  avatar: z.string().optional(),
+  isDeleted: z.boolean().default(false)
 });
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
-
-/**
- * 将 skills 输入值规范化为 skillId 字符串数组。
- * 兼容两种格式：
- *   - string[]：debugChat 运行时直接传入的 skillId 数组
- *   - SelectedAgentSkillItemType[]：工作流 NodeAgent 存储的完整对象数组（含 name/avatar 等展示字段）
- */
-export const normalizeSkillIds = (
-  skills: Array<string | SelectedAgentSkillItemType> | undefined
-): string[] => (skills ?? []).map((s) => (typeof s === 'string' ? s : s.skillId)).filter(Boolean);
 
 /* ===== Tool ===== */
 export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({

@@ -6,7 +6,8 @@ import {
   checkTeamDatasetFolderLimit,
   checkDatasetIndexLimit,
   checkTeamDatasetLimit,
-  checkTeamDatasetSyncPermission
+  checkTeamDatasetSyncPermission,
+  checkTeamSandboxPermission
 } from '@fastgpt/service/support/permission/teamLimit';
 import * as walletUtils from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -829,5 +830,44 @@ describe('checkTeamDatasetSyncPermission', () => {
     vi.spyOn(walletUtils, 'getTeamStandPlan').mockResolvedValue(mockStandard as any);
 
     await expect(checkTeamDatasetSyncPermission(mockTeamId)).resolves.toBeUndefined();
+  });
+});
+
+describe('checkTeamSandboxPermission', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('当 enableSandbox 为 false 时抛出错误', async () => {
+    const mockStandard = {
+      standard: {
+        enableSandbox: false
+      }
+    };
+    vi.spyOn(walletUtils, 'getTeamStandPlan').mockResolvedValue(mockStandard as any);
+
+    await expect(checkTeamSandboxPermission(mockTeamId)).rejects.toBe(
+      TeamErrEnum.sandboxNotSupport
+    );
+  });
+
+  it('当 standard 不存在时不抛出错误', async () => {
+    const mockStandard = {
+      standard: undefined
+    };
+    vi.spyOn(walletUtils, 'getTeamStandPlan').mockResolvedValue(mockStandard as any);
+
+    await expect(checkTeamSandboxPermission(mockTeamId)).resolves.toBeUndefined();
+  });
+
+  it('当 enableSandbox 为 true 时正常通过', async () => {
+    const mockStandard = {
+      standard: {
+        enableSandbox: true
+      }
+    };
+    vi.spyOn(walletUtils, 'getTeamStandPlan').mockResolvedValue(mockStandard as any);
+
+    await expect(checkTeamSandboxPermission(mockTeamId)).resolves.toBeUndefined();
   });
 });

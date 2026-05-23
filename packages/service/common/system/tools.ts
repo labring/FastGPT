@@ -22,6 +22,10 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
   config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
+  config.feConfigs.limit = {
+    ...config.feConfigs.limit,
+    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024
+  };
 
   global.feConfigs = config.feConfigs;
   global.systemEnv = config.systemEnv;

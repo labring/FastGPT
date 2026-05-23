@@ -1,4 +1,8 @@
-import type { ChatFileTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  ChatFileTypeEnum,
+  ChatGenerateStatusEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 import type {
   ChatHistoryItemResType,
   ChatItemObjItemType,
@@ -39,6 +43,11 @@ export type SendPromptFnType = (
     history?: ChatSiteItemType[];
   }
 ) => void;
+
+export type StopChatFnResult = {
+  chatGenerateStatus: ChatGenerateStatusEnum;
+  completed: boolean;
+};
 
 export type ComponentRef = {
   restartChat: () => void;

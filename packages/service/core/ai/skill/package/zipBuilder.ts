@@ -1,0 +1,466 @@
+/**
+ * Skill ZIP 包构建与标准化工具。
+ *
+ * 这里处理 ZIP 结构本身：创建、校验、抽取、重新打包和写入 sandbox 前的路径归一化。
+ * package/storage 负责对象存储，package/archiveUtils 负责更通用的 zip/tar 解压。
+ *
+ * 多 skill ZIP 结构示例：
+ *   package.zip/
+ *   ├── skill-1/SKILL.md
+ *   ├── skill-2/SKILL.md
+ *   └── skill-3/SKILL.md
+ *
+ * 每个包含 SKILL.md 的一级目录会被视为一个独立 skill。
+ */
+
+import JSZip from 'jszip';
+import { extractSkillNameFromSkillMd } from '../utils/skillMdTemplate';
+
+// 测试用例需要直接构造 ZIP，因此这里保留 JSZip 的再导出。
+export { JSZip };
+
+export type CreateSkillPackageParams = {
+  name: string;
+  skillMd: string;
+  assets?: Record<string, Buffer | string>;
+  additionalFiles?: Record<string, Buffer | string>;
+};
+
+/**
+ * ZIP 中发现的单个 skill 目录信息。
+ */
+export type SkillDirInfo = {
+  /** ZIP 内一级目录名。 */
+  dirName: string;
+  /** SKILL.md frontmatter 中的 name。 */
+  name: string;
+  /** SKILL.md frontmatter 中的 description。 */
+  description: string;
+  /** 原始 SKILL.md 文本。 */
+  skillMdContent: string;
+};
+
+export type ZipValidationResult = {
+  valid: boolean;
+  hasSkillMd: boolean;
+  files: string[];
+  error?: string;
+  skillMdPath?: string;
+};
+
+export type ExtractSkillPackageResult = {
+  success: boolean;
+  skillMd?: string;
+  assets?: Record<string, Buffer>;
+  error?: string;
+};
+
+export type NormalizedSkillPackageFile = {
+  path: string;
+  data: Buffer;
+};
+
+/**
+ * 创建标准单 skill ZIP 包。
+ *
+ * 输出结构固定为 `{name}/SKILL.md` 加可选资源文件，便于后续版本存储和导出保持一致。
+ */
+export async function createSkillPackage(params: CreateSkillPackageParams): Promise<Buffer> {
+  const { name, skillMd, assets, additionalFiles } = params;
+  const zip = new JSZip();
+
+  // 根目录名直接来自 skill name，前面流程已经做过合法性约束。
+  const rootDir = name.replace(/\/+$/, '').trim();
+
+  // 显式创建目录，方便某些 ZIP 查看器展示完整目录结构。
+  zip.folder(rootDir);
+
+  // SKILL.md 是 skill 包的必需入口文件。
+  zip.file(`${rootDir}/SKILL.md`, skillMd);
+
+  // Add assets (optional)
+  if (assets) {
+    Object.entries(assets).forEach(([path, content]) => {
+      addFileToZip(zip, `${rootDir}/${path}`, content);
+    });
+  }
+
+  // Add additional files (optional)
+  if (additionalFiles) {
+    Object.entries(additionalFiles).forEach(([path, content]) => {
+      addFileToZip(zip, `${rootDir}/${path}`, content);
+    });
+  }
+
+  // Generate ZIP buffer
+  return generateZipBuffer(zip);
+}
+
+/**
+ * 向 ZIP 中写入单个文件，并统一处理 Buffer、Uint8Array 和字符串内容。
+ */
+export function addFileToZip(
+  zip: JSZip,
+  path: string,
+  content: Buffer | string | Uint8Array
+): void {
+  // ZIP 内路径不应带绝对路径前缀。
+  const normalizedPath = path.replace(/^\/+/, '');
+
+  if (content instanceof Buffer) {
+    zip.file(normalizedPath, content);
+  } else if (content instanceof Uint8Array) {
+    zip.file(normalizedPath, Buffer.from(content));
+  } else {
+    zip.file(normalizedPath, content);
+  }
+}
+
+/**
+ * 将 JSZip 实例压缩成 Node Buffer。
+ */
+export async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
+  return zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: {
+      level: 6
+    }
+  });
+}
+
+/**
+ * 校验 skill ZIP 包结构。
+ *
+ * 兼容两种形态：历史单 skill 包（一个 SKILL.md）和多 skill 包（多个一级目录各自含 SKILL.md）。
+ */
+export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValidationResult> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const files = Object.keys(zip.files);
+
+    if (files.length === 0) {
+      return {
+        valid: false,
+        hasSkillMd: false,
+        files,
+        error: 'ZIP archive is empty'
+      };
+    }
+
+    // 兼容根目录直接放 SKILL.md 的历史包。
+    let skillMdPath = files.find((f) => f.toUpperCase() === 'SKILL.MD');
+
+    // 标准包会把 SKILL.md 放在子目录内。
+    if (!skillMdPath) {
+      // 优先在 skills/ 目录中寻找
+      skillMdPath = files.find((f) => {
+        const upper = f.toUpperCase();
+        return upper.includes('/SKILLS/') && upper.endsWith('/SKILL.MD');
+      });
+
+      // 兜底找任意子目录下的 SKILL.md
+      if (!skillMdPath) {
+        skillMdPath = files.find((f) => f.toUpperCase().endsWith('/SKILL.MD'));
+      }
+    }
+
+    if (!skillMdPath) {
+      return {
+        valid: false,
+        hasSkillMd: false,
+        files,
+        error: 'Missing required file: SKILL.md (expected at root or inside a top-level directory)'
+      };
+    }
+
+    return {
+      valid: true,
+      hasSkillMd: true,
+      files,
+      skillMdPath
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      hasSkillMd: false,
+      files: [],
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+/**
+ * 从 ZIP Buffer 中提取单 skill 包内容。
+ */
+export async function extractSkillPackage(zipBuffer: Buffer): Promise<ExtractSkillPackageResult> {
+  try {
+    // 先校验结构，避免后续读取空包或缺少入口文件时抛出不清晰的错误。
+    const validation = await validateZipStructure(zipBuffer);
+    if (!validation.valid || !validation.skillMdPath) {
+      return {
+        success: false,
+        error: validation.error
+      };
+    }
+
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const assets: Record<string, Buffer> = {};
+    const skillMdPath = validation.skillMdPath;
+
+    // 如果 SKILL.md 在子目录中，资源路径返回时要去掉这一层包根目录。
+    const rootPrefix = skillMdPath.includes('/')
+      ? skillMdPath.substring(0, skillMdPath.lastIndexOf('/') + 1)
+      : '';
+
+    const skillMdFile = zip.file(skillMdPath);
+    if (!skillMdFile) {
+      return {
+        success: false,
+        error: 'SKILL.md not found in ZIP archive'
+      };
+    }
+    const skillMd = await skillMdFile.async('string');
+
+    // SKILL.md 之外的所有文件都作为资源保留。
+    const filePromises = Object.entries(zip.files)
+      .filter(([path, file]) => !file.dir && path !== skillMdPath)
+      .map(async ([path, file]) => {
+        const content = await file.async('nodebuffer');
+        const assetPath =
+          rootPrefix && path.startsWith(rootPrefix) ? path.slice(rootPrefix.length) : path;
+        assets[assetPath] = content;
+      });
+
+    await Promise.all(filePromises);
+
+    return {
+      success: true,
+      skillMd,
+      assets
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to extract skill package: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+/**
+ * 将任意兼容的单 skill ZIP 标准化为 `{name}/SKILL.md` 结构。
+ */
+export async function standardizeSkillPackage(
+  zipBuffer: Buffer,
+  name: string
+): Promise<{ buffer: Buffer; skillMd: string; assets: Record<string, Buffer> }> {
+  const extractResult = await extractSkillPackage(zipBuffer);
+
+  if (!extractResult.success || !extractResult.skillMd) {
+    throw new Error(extractResult.error || 'Invalid skill package');
+  }
+
+  const { skillMd, assets = {} } = extractResult;
+
+  const rootName = name.startsWith('skills/') ? name : `skills/${name}`;
+  const standardizedBuffer = await createSkillPackage({
+    name: rootName,
+    skillMd,
+    assets
+  });
+
+  return {
+    buffer: standardizedBuffer,
+    skillMd,
+    assets
+  };
+}
+
+/**
+ * 将编辑区打出的 ZIP 标准化为 `{SKILL.md:name}/...` 结构。
+ *
+ * 编辑发布时数据库里的 skill.name 只是产品展示名，真实可执行 skill 目录必须跟随
+ * SKILL.md frontmatter.name，否则下次打开编辑器会重新出现展示名目录包住真实 skill 的错位结构。
+ */
+export async function standardizeSkillPackageBySkillMdName(
+  zipBuffer: Buffer
+): Promise<{ buffer: Buffer; skillMd: string; assets: Record<string, Buffer>; name: string }> {
+  const extractResult = await extractSkillPackage(zipBuffer);
+
+  if (!extractResult.success || !extractResult.skillMd) {
+    throw new Error(extractResult.error || 'Invalid skill package');
+  }
+
+  const { skillMd, assets = {} } = extractResult;
+  const name = extractSkillNameFromSkillMd(skillMd);
+  const buffer = await createSkillPackage({
+    name: `skills/${name}`,
+    skillMd,
+    assets
+  });
+
+  return {
+    buffer,
+    skillMd,
+    assets,
+    name
+  };
+}
+
+/**
+ * 将内存文件表重新打成 ZIP。
+ *
+ * fileMap 的 key 会原样作为 ZIP 内路径写入，调用方需要在传入前完成路径安全处理。
+ */
+export async function repackFileMapAsZip(fileMap: Record<string, Buffer>): Promise<Buffer> {
+  const zip = new JSZip();
+  for (const [path, content] of Object.entries(fileMap)) {
+    zip.file(path, content);
+  }
+  return generateZipBuffer(zip);
+}
+
+function normalizeZipEntryPath(path: string): string {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter((part) => part && part !== '.')
+    .join('/');
+}
+
+function isSafeZipEntryPath(path: string): boolean {
+  return !!path && !path.split('/').includes('..');
+}
+
+/**
+ * 为 sandbox 解压归一化 skill ZIP 路径。
+ *
+ * 有些包会存成 `skill-name/SKILL.md` 或 `archive-root/skill-name/SKILL.md`。
+ * sandbox 已经会给每个选中 skill 创建目标目录，如果保留单包根目录，会得到
+ * `skills/<target>/skill-name/SKILL.md` 这种多一层的结构。
+ *
+ * 单 SKILL.md 包会剥掉 SKILL.md 所在目录作为 sandbox 根；多 skill 包如果只有一个公共外壳目录，
+ * 只剥掉公共外壳，保留内部每个 skill 目录。
+ */
+export async function normalizeSkillPackageZipForSandbox(zipBuffer: Buffer): Promise<Buffer> {
+  const zip = await JSZip.loadAsync(zipBuffer);
+  const entries = Object.entries(zip.files)
+    .filter(([, file]) => !file.dir)
+    .map(([path, file]) => ({
+      path: normalizeZipEntryPath(path),
+      file
+    }))
+    .filter(({ path }) => isSafeZipEntryPath(path));
+
+  const skillMdEntries = entries.filter((entry) => {
+    const filename = entry.path.split('/').pop()?.toLowerCase();
+    return filename === 'skill.md';
+  });
+  // 1. 检查是否有任何文件以 'skills/' 开头
+  const hasSkillsDirectory = entries.some((entry) => entry.path.startsWith('skills/'));
+
+  const rootPrefix = (() => {
+    if (hasSkillsDirectory) {
+      return 'skills/';
+    }
+    // 2. 如果没有 'skills/' 目录，说明是非标准旧包，退回到降维兼容逻辑
+    if (skillMdEntries.length === 1 && skillMdEntries[0].path.includes('/')) {
+      const path = skillMdEntries[0].path;
+      const lastSlashIdx = path.lastIndexOf('/');
+      if (lastSlashIdx !== -1) {
+        const secondLastSlashIdx = path.lastIndexOf('/', lastSlashIdx - 1);
+        if (secondLastSlashIdx !== -1) {
+          return path.slice(0, secondLastSlashIdx + 1);
+        }
+      }
+      return '';
+    }
+
+    const topLevelNames = new Set<string>();
+    let hasRootFile = false;
+    for (const { path } of entries) {
+      const slashIndex = path.indexOf('/');
+      if (slashIndex === -1) {
+        hasRootFile = true;
+      } else {
+        topLevelNames.add(path.slice(0, slashIndex));
+      }
+    }
+
+    return skillMdEntries.length > 1 && !hasRootFile && topLevelNames.size === 1
+      ? `${Array.from(topLevelNames)[0]}/`
+      : '';
+  })();
+
+  const normalizedZip = new JSZip();
+
+  await Promise.all(
+    entries.map(async ({ path, file }) => {
+      // 3. 如果是有 'skills/' 文件夹的标准包，我们只解压以 'skills/' 开头的文件，忽略不相干的文件
+      if (hasSkillsDirectory && !path.startsWith('skills/')) {
+        return;
+      }
+
+      const targetPath =
+        rootPrefix && path.startsWith(rootPrefix) ? path.slice(rootPrefix.length) : path;
+      if (!targetPath) return;
+      normalizedZip.file(targetPath, await file.async('nodebuffer'));
+    })
+  );
+
+  return generateZipBuffer(normalizedZip);
+}
+
+/**
+ * 将 skill ZIP 归一化后展开成文件写入清单。
+ *
+ * 运行态不再依赖 sandbox 内的 `unzip` 命令处理文件名，避免中文路径在不同
+ * unzip/locale 组合下被错误解码。
+ */
+export async function extractNormalizedSkillPackageFilesForSandbox(
+  zipBuffer: Buffer
+): Promise<NormalizedSkillPackageFile[]> {
+  const normalizedBuffer = await normalizeSkillPackageZipForSandbox(zipBuffer);
+  const zip = await JSZip.loadAsync(normalizedBuffer);
+  const entries = Object.entries(zip.files)
+    .filter(([, file]) => !file.dir)
+    .map(([path, file]) => ({
+      path: normalizeZipEntryPath(path),
+      file
+    }))
+    .filter(({ path }) => isSafeZipEntryPath(path));
+
+  return Promise.all(
+    entries.map(async ({ path, file }) => ({
+      path,
+      data: await file.async('nodebuffer')
+    }))
+  );
+}
+
+/**
+ * 获取 ZIP 内文件列表，读取失败时返回空数组供调试接口容错展示。
+ */
+export async function getZipFileList(zipBuffer: Buffer): Promise<string[]> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    return Object.keys(zip.files).filter((path) => !zip.files[path].dir);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 读取 ZIP 内指定文件，找不到或解析失败时返回 null。
+ */
+export async function readFileFromZip(zipBuffer: Buffer, filePath: string): Promise<Buffer | null> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const file = zip.file(filePath);
+    if (!file) return null;
+    return file.async('nodebuffer');
+  } catch {
+    return null;
+  }
+}

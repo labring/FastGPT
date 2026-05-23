@@ -6,19 +6,16 @@ import type {
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { Agent, type AgentEvent, type AgentMessage } from '@mariozechner/pi-agent-core';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
-import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
-import { buildAgentUserContextInput } from '../adapter/userContext';
-import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
-import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
+import { useUserContext } from '../adapter/userContext';
+import { useSandbox } from '../sub/sandbox';
 import { getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
@@ -45,11 +42,10 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     runningUserInfo,
     workflowStreamResponse,
     usagePush,
-    mode,
     chatId,
+    uid,
     responseChatItemId,
     timezone,
-    showSkillReferences,
     params: {
       model,
       systemPrompt,
@@ -57,8 +53,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       history = 6,
       fileUrlList: fileLinksInput,
       agent_selectedTools: selectedTools = [],
-      skills: skillIds = [],
-      useEditDebugSandbox,
+      skills: selectedSkills = [],
+      editSkillId,
       agent_datasetParams: datasetParams,
       useAgentSandbox = false,
       aiChatVision,
@@ -68,11 +64,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   } = props;
 
   const piMessagesKey = `piMessages-${nodeId}`;
-  const normalizedSkillIds = normalizeSkillIds(skillIds);
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
-  const capabilities: AgentCapability[] = [];
   let agent: InstanceType<typeof Agent> | undefined;
   let piRuntime: PiAgentWorkflowRuntimeArtifacts | undefined;
   let stopPoller: ReturnType<typeof setInterval> | undefined;
@@ -107,49 +101,39 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
         ? fileLinksInput
         : undefined;
+    const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
+    const userContext = await useUserContext({
+      history,
+      histories,
+      currentFiles: fileLinks,
+      currentUserInput: userChatInput,
+      currentQuery: query,
+      currentDataId: responseChatItemId,
+      selectedDataset: datasetParams?.datasets,
+      tmbId: runningUserInfo.tmbId,
+      timezone,
+      requestOrigin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
+    });
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = await useSandbox({
+      appId: runningAppInfo.id,
+      userId: uid,
+      chatId,
+      teamId: runningAppInfo.teamId,
+      useAgentSandbox,
+      skillIds,
+      editSkillId,
+      currentFiles: userContext.currentFiles
+    });
 
-    const { chatHistories, currentUserMessage, filesMap, allFilesMap } =
-      await buildAgentUserContextInput({
-        history,
-        histories,
-        currentFiles: fileLinks,
-        currentUserInput: userChatInput,
-        currentQuery: query,
-        currentDataId: responseChatItemId,
-        selectedDataset: datasetParams?.datasets,
-        tmbId: runningUserInfo.tmbId,
-        timezone,
-        requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
-      });
+    const { chatHistories, filesMap } = userContext;
+    const { currentUserMessage } = userContext.getCurrentMessages({
+      skillInfos,
+      currentWorkingDirectory
+    });
     const { text: formatUserChatInput } = chatValue2RuntimePrompt(currentUserMessage.value);
 
-    // 2. 初始化独立能力。技能能力只贡献 system prompt / tools / assistantResponses，不直接参与 PiAgent loop 状态。
-    if (serviceEnv.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
-
-      const sandboxCap = await createSandboxSkillsCapability({
-        skillIds: normalizedSkillIds,
-        teamId: runningAppInfo.teamId,
-        tmbId: runningAppInfo.tmbId,
-        sessionId: sandboxSessionId,
-        mode: sandboxMode,
-        workflowStreamResponse,
-        allFilesMap
-      });
-      capabilities.push(sandboxCap);
-    }
-
-    const capabilitySystemPrompt = capabilities
-      .map((item) => item.systemPrompt)
-      .filter(Boolean)
-      .join('\n\n');
-    const capabilityTools = capabilities.flatMap((item) => item.completionTools ?? []);
-    const capabilityToolCallHandler =
-      capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
-
-    // 3. 收集 workflow 可用工具。PiAgent 工具执行仍复用现有 workflow 子工具调度器。
+    // 2. 收集 workflow 可用工具。PiAgent 工具执行仍复用现有 workflow 子工具调度器。
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
         tools: selectedTools,
@@ -157,8 +141,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         lang,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
-        extraTools: capabilityTools
+        useAgentSandbox: !!sandboxClient
       }
     );
 
@@ -185,16 +168,14 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
-    // 4. 拼接 PiAgent 的 system prompt。这里补齐 workflow 专属约束、capability prompt 和 sandbox prompt。
-    const sandboxSystemPrompt =
-      useAgentSandbox && !!global.feConfigs?.show_agent_sandbox ? SANDBOX_SYSTEM_PROMPT : '';
+    // 3. 拼接 PiAgent 的 system prompt。这里只补齐 workflow 专属约束和 sandbox prompt。
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: [systemPrompt || '', capabilitySystemPrompt, sandboxSystemPrompt]
+      userSystemPrompt: [systemPrompt || '', sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
         .filter(Boolean)
         .join('\n\n')
     });
 
-    // 5. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。
+    // 4. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。
     piRuntime = createPiAgentWorkflowRuntime({
       props,
       nodeResponses,
@@ -213,8 +194,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubAppInfo,
       getSubApp,
       completionTools: agentCompletionTools,
-      filesMap,
-      capabilityToolCallHandler
+      sandboxClient,
+      filesMap
     };
 
     const piTools = await buildAgentTools({
@@ -329,8 +310,5 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     };
   } finally {
     if (stopPoller) clearInterval(stopPoller);
-    for (const cap of capabilities) {
-      await cap.dispose?.();
-    }
   }
 };

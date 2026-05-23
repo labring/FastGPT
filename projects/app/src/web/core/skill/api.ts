@@ -1,5 +1,6 @@
 import { GET, DELETE, POST } from '@/web/common/api/request';
 import { downloadFetch } from '@/web/common/system/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -21,20 +22,22 @@ import type {
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
+  SkillDebugSessionControlBody,
+  SkillDebugSessionStopResponse,
   ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
   SwitchSkillVersionBody,
   UpdateSkillVersionBody
-} from '@fastgpt/global/core/agentSkills/api';
-import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/agentSkills/api';
+} from '@fastgpt/global/core/ai/skill/api';
+import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/ai/skill/api';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
-  POST<ListSkillsResponse>('/core/agentSkills/list', data);
+  POST<ListSkillsResponse>('/core/ai/skill/list', data);
 
 /** 获取 Skill 文件夹列表（用于移动弹窗） */
 export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
@@ -46,33 +49,32 @@ export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
 
 /** 获取 Skill 详情 */
 export const getSkillDetail = (data: GetSkillDetailQuery) =>
-  GET<GetSkillDetailResponse>('/core/agentSkills/detail', data);
+  GET<GetSkillDetailResponse>('/core/ai/skill/detail', data);
 
 /** 创建 Skill（支持 AI 辅助生成 SKILL.md） */
 export const postCreateSkill = (data: CreateSkillBody) =>
-  POST<string>('/core/agentSkills/create', data);
+  POST<string>('/core/ai/skill/create', data);
 
 /** 更新 Skill 基本信息（名称、描述、分类、配置、头像） */
-export const postUpdateSkill = (data: UpdateSkillBody) => POST('/core/agentSkills/update', data);
+export const postUpdateSkill = (data: UpdateSkillBody) => POST('/core/ai/skill/update', data);
 
 /** 创建 Skill 副本 */
 export const postCopySkill = (data: CopySkillBody) =>
-  POST<CopySkillResponse>('/core/agentSkills/copy', data);
+  POST<CopySkillResponse>('/core/ai/skill/copy', data);
 
 /** 删除 Skill */
-export const deleteSkill = (skillId: string) => DELETE('/core/agentSkills/delete', { skillId });
+export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', { skillId });
 
 /** 导入 Skill 压缩包 */
-export const importSkill = (formData: FormData) =>
-  POST<string>('/core/agentSkills/import', formData);
+export const importSkill = (formData: FormData) => POST<string>('/core/ai/skill/import', formData);
 
 /** 从 Sandbox 打包并发布新版本 */
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
-  POST<SaveDeploySkillResponse>('/core/agentSkills/save-deploy', data);
+  POST<SaveDeploySkillResponse>('/core/ai/skill/save-deploy', data);
 
 /** 创建编辑调试沙箱（SSE 流式返回状态，最终推送 endpoint 信息） */
 export const postCreateEditDebugSandbox = (data: CreateEditDebugSandboxBody) =>
-  POST<CreateEditDebugSandboxResponse>('/core/agentSkills/edit', data);
+  POST<CreateEditDebugSandboxResponse>('/core/ai/skill/edit', data);
 
 /** 创建编辑调试沙箱 — SSE 流式版本，逐阶段回调 */
 export const streamCreateEditDebugSandbox = ({
@@ -91,7 +93,7 @@ export const streamCreateEditDebugSandbox = ({
       abortCtrl.abort('Timeout');
     }, 60000);
 
-    fetchEventSource(getWebReqUrl('/api/core/agentSkills/edit'), {
+    fetchEventSource(getWebReqUrl('/api/core/ai/skill/edit'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -135,51 +137,65 @@ export const streamCreateEditDebugSandbox = ({
   });
 
 /** Skill 调试对话 SSE 接口 URL */
-export const SKILL_DEBUG_CHAT_URL = '/api/core/agentSkills/debugChat';
+export const SKILL_DEBUG_CHAT_URL = '/api/core/ai/skill/debugChat';
 
 /** 创建 Skill 文件夹 */
 export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
-  POST('/core/agentSkills/folder/create', data);
+  POST('/core/ai/skill/folder/create', data);
 
 /** 获取 Skill 文件夹路径 */
 export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>
-  GET<GetSkillFolderPathResponse>('/core/agentSkills/folder/path', data);
+  GET<GetSkillFolderPathResponse>('/core/ai/skill/folder/path', data);
 
 /** 导出 Skill 压缩包（触发浏览器下载） */
-export const exportSkill = (skillId: string, skillName: string) =>
-  downloadFetch({
-    url: `/api/core/agentSkills/export?skillId=${encodeURIComponent(skillId)}`,
-    filename: `${skillName}.zip`
+export const exportSkill = (
+  skillId: string,
+  skillName: string,
+  source: 'version' | 'workspace' = 'version'
+) => {
+  const { setLoading } = useSystemStore.getState();
+  setLoading(true);
+  return downloadFetch({
+    url: `/api/core/ai/skill/export?skillId=${encodeURIComponent(skillId)}&source=${source}`,
+    filename: `${skillName}.zip`,
+    waitResponse: true
+  }).finally(() => {
+    setLoading(false);
   });
+};
 
 /** 获取引用了某个 Skill 的应用列表 */
 export const getAppsBySkillId = (skillId: string) =>
-  GET<ListAppsBySkillIdResponse>('/core/agentSkills/apps', { skillId });
+  GET<ListAppsBySkillIdResponse>('/core/ai/skill/apps', { skillId });
 
 /** 删除 Skill 调试会话中的单条对话消息（用于"重新生成"时清除旧记录） */
 export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
-  POST('/core/agentSkills/debugSession/chatItem/delete', data);
+  POST('/core/ai/skill/debugSession/chatItem/delete', data);
+
+/** 停止 Skill 调试会话中正在运行的对话 */
+export const postStopSkillDebugChat = (data: SkillDebugSessionControlBody) =>
+  POST<SkillDebugSessionStopResponse>('/core/ai/skill/debugSession/stop', data);
 
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
-  POST<GetRecordsV2ResponseType>('/core/agentSkills/debugSession/records', data);
+  POST<GetRecordsV2ResponseType>('/core/ai/skill/debugSession/records', data);
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>
-  POST<ListSkillVersionsResponse>('/core/agentSkills/version/list', data);
+  POST<ListSkillVersionsResponse>('/core/ai/skill/version/list', data);
 
 /** 切换 Skill 当前激活版本 */
 export const postSwitchSkillVersion = (data: SwitchSkillVersionBody) =>
-  POST('/core/agentSkills/version/switch', data);
+  POST('/core/ai/skill/version/switch', data);
 
 /** 更新 Skill 版本名称 */
 export const postUpdateSkillVersion = (data: UpdateSkillVersionBody) =>
-  POST('/core/agentSkills/version/update', data);
+  POST('/core/ai/skill/version/update', data);
 
 /** 恢复 Skill 权限继承 */
 export const resumeInheritPer = (skillId: string) =>
-  GET('/core/agentSkills/resumeInheritPermission', { skillId });
+  GET('/core/ai/skill/resumeInheritPermission', { skillId });
 
 /** 转让 Skill 所有者 */
 export const postChangeSkillOwner = (data: { skillId: string; ownerId: string }) =>
-  POST('/proApi/core/agentSkills/changeOwner', data);
+  POST('/proApi/core/ai/skill/changeOwner', data);

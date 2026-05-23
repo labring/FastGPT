@@ -9,6 +9,26 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
+/**
+ * 判断系统是否显式配置了 Agent 虚拟机能力。
+ * 注意 serviceEnv 会给部分字段填默认值，这里必须读取原始 env，避免把未配置误判为已配置。
+ */
+export const hasAgentSandboxConfig = () => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+
+  if (provider === 'sealosdevbox') {
+    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
+  }
+
+  if (provider === 'opensandbox') {
+    return !!(
+      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
+    );
+  }
+
+  return false;
+};
+
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
@@ -61,6 +81,7 @@ export const serviceEnv = createEnv({
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.default('http://127.0.0.1:8080'),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -71,13 +92,11 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
     // Skill 配置
-    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50 * 1024 * 1024),
-    AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: NumSchema.default(200 * 1024 * 1024),
-    AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.default(200 * 1024 * 1024),
-    AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.default(200 * 1024 * 1024),
+    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50).meta({
+      description: 'Skill 包大小上限（MB），用于上传、解压、下载和 sandbox 打包校验'
+    }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.default(300),
 
@@ -192,7 +211,6 @@ export const serviceEnv = createEnv({
     }),
 
     //==================== Beta features ====================
-    SHOW_SKILL: BoolSchema.default(false).meta({ description: '是否展示 Skill 功能入口' }),
     AGENT_ENGINE: z.enum(['default', 'pi']).default('default').meta({
       description: 'Agent 引擎选择：default（unified agent loop）| pi（pi-agent-core 引擎）'
     }),
@@ -247,6 +265,10 @@ export const serviceEnv = createEnv({
     }),
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
+    }),
+    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
+      description:
+        '是否把 endpoint 中的 host.docker.internal 改写为 localhost；当 sandbox-proxy 直接运行在宿主机进程时开启，容器或 k8s 内运行时保持关闭'
     }),
 
     // ==================== 资源限制 ====================

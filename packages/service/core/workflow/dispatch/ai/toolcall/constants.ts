@@ -1,12 +1,12 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChildResponseItemType } from './type';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const getSandboxToolWorkflowResponse = ({
   name,
   logo,
-  toolId = SANDBOX_TOOL_NAME,
+  toolId = SANDBOX_SHELL_TOOL_NAME,
   input,
   response,
   durationSeconds

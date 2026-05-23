@@ -122,6 +122,64 @@ describe('mergeAssistantFieldMessages', () => {
     ]);
   });
 
+  it('should merge reasoning with consecutive content and following tool call', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to explain before tool.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Part 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: ' Part 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'search result'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need to explain before tool.',
+        content: 'Part 1 Part 2',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search',
+        content: 'search result'
+      }
+    ]);
+  });
+
   it('should merge consecutive assistant text fields', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -142,7 +200,7 @@ describe('mergeAssistantFieldMessages', () => {
     ]);
   });
 
-  it('should start a new assistant payload when reasoning appears after content', () => {
+  it('should merge reasoning after content into the same assistant payload', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -161,17 +219,13 @@ describe('mergeAssistantFieldMessages', () => {
     expect(mergeAssistantFieldMessages(messages)).toEqual([
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'Draft answer.'
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        reasoning_content: 'Second step thinking.',
-        content: 'Final answer.'
+        content: 'Draft answer.Final answer.',
+        reasoning_content: 'Second step thinking.'
       }
     ]);
   });
 
-  it('should drop orphan reasoning when the next assistant message has different visibility', () => {
+  it('should keep reasoning separate when the next assistant message has different visibility', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -187,12 +241,17 @@ describe('mergeAssistantFieldMessages', () => {
     expect(mergeAssistantFieldMessages(messages)).toEqual([
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning.',
+        hideInUI: true
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'Visible answer.'
       }
     ]);
   });
 
-  it('should drop orphan reasoning when the next assistant message has different dataId', () => {
+  it('should keep reasoning separate when the next assistant message has different dataId', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         dataId: 'old-ai',
@@ -207,6 +266,11 @@ describe('mergeAssistantFieldMessages', () => {
     ];
 
     expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        dataId: 'old-ai',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Reason from another response.'
+      },
       {
         dataId: 'current-ai',
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -245,6 +309,11 @@ describe('mergeAssistantFieldMessages', () => {
     ];
 
     expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        dataId: 'old-ai',
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Reason from another response.'
+      },
       {
         dataId: 'current-ai',
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -287,13 +356,13 @@ describe('mergeAssistantFieldMessages', () => {
     expect(mergeAssistantFieldMessages(messages)).toEqual([
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        reasoning_content: 'reason 1\n\nreason 2',
+        reasoning_content: 'reason 1reason 2',
         content: 'Final answer.'
       }
     ]);
   });
 
-  it('should drop orphan assistant reasoning fields', () => {
+  it('should keep orphan assistant reasoning fields', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -301,7 +370,12 @@ describe('mergeAssistantFieldMessages', () => {
       }
     ];
 
-    expect(mergeAssistantFieldMessages(messages)).toEqual([]);
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason only'
+      }
+    ]);
   });
 
   it('should keep DeepSeek reasoning on tool call message when there is no answer text', () => {
@@ -384,6 +458,7 @@ describe('mergeAssistantFieldMessages', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         reasoning_content: 'Need to call a tool.',
+        content: '',
         tool_calls: [
           {
             id: 'call_search',
@@ -423,17 +498,7 @@ describe('mergeAssistantFieldMessages', () => {
               name: 'weather',
               arguments: '{"city":"Beijing"}'
             }
-          }
-        ]
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Tool,
-        tool_call_id: 'call_weather',
-        content: 'compressed weather'
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        tool_calls: [
+          },
           {
             id: 'call_time',
             type: 'function',
@@ -443,6 +508,11 @@ describe('mergeAssistantFieldMessages', () => {
             }
           }
         ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'compressed weather'
       },
       {
         role: ChatCompletionRequestMessageRoleEnum.Tool,
@@ -551,6 +621,174 @@ describe('mergeAssistantFieldMessages', () => {
     ];
 
     expect(mergeAssistantFieldMessages(messages)).toEqual(messages);
+  });
+
+  it('should keep three consecutive reasoning and tool call turns separate', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: 'time 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_2',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_2',
+        content: 'time 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 3'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_3',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_3',
+        content: 'time 3'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 1',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: 'time 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 2',
+        tool_calls: [
+          {
+            id: 'call_2',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_2',
+        content: 'time 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 3',
+        tool_calls: [
+          {
+            id: 'call_3',
+            type: 'function',
+            function: {
+              name: 'get_time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_3',
+        content: 'time 3'
+      }
+    ]);
+  });
+
+  it('should merge three consecutive reasoning and content turns together', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'answer 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'answer 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 3'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'answer 3'
+      }
+    ];
+
+    expect(mergeAssistantFieldMessages(messages)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'reason 1reason 2reason 3',
+        content: 'answer 1answer 2answer 3'
+      }
+    ]);
   });
 });
 
@@ -1107,7 +1345,13 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
-    expect(result).toHaveLength(0);
+    expect(result).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Need a tool'
+      }
+    ]);
   });
 
   it('should normalize non-string historical tool params before restoring tool_calls', () => {
@@ -1171,7 +1415,7 @@ describe('chats2GPTMessages', () => {
     });
   });
 
-  it('should attach assistant text and reasoning to following tool_calls', () => {
+  it('should keep continuous assistant text, reasoning and following tool_calls together', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1357,7 +1601,7 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
-  it('should drop value-level reasoning when hideInUI prevents attaching to visible text', () => {
+  it('should keep value-level reasoning separate when hideInUI prevents attaching to visible text', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1381,6 +1625,13 @@ describe('chats2GPTMessages', () => {
 
     expect(result).toEqual([
       {
+        dataId: undefined,
+        hideInUI: true,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Hidden reasoning'
+      },
+      {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'Visible answer'
       }
@@ -1477,7 +1728,7 @@ describe('chats2GPTMessages', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('should drop AI message with reasoning only', () => {
+  it('should keep AI message with reasoning only', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1487,7 +1738,13 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false });
 
-    expect(result).toHaveLength(0);
+    expect(result).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Let me think...'
+      }
+    ]);
   });
 
   it('should merge reasoning + text into a single assistant message', () => {
@@ -1525,8 +1782,9 @@ describe('chats2GPTMessages', () => {
 
     expect(result).toEqual([
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        reasoning_content: 'reason 1\n\nreason 2',
+        reasoning_content: 'reason 1reason 2',
         content: 'Final answer'
       }
     ]);
@@ -1638,7 +1896,7 @@ describe('chats2GPTMessages', () => {
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
   });
 
-  it('should attach preceding text to following tool_calls', () => {
+  it('should keep preceding text together with following continuous tool_calls', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1694,6 +1952,7 @@ describe('chats2GPTMessages', () => {
 
     expect(result).toEqual([
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'updating plan',
         tool_calls: [
@@ -1708,11 +1967,13 @@ describe('chats2GPTMessages', () => {
         ]
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_plan',
         content: 'Plan updated.'
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'continuing after plan'
       }
@@ -1750,6 +2011,7 @@ describe('chats2GPTMessages', () => {
   it('should restore agent loop control fields from chat value when reserving tools', () => {
     const expectedMessages: ChatCompletionMessageParam[] = [
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'draft before plan',
         reasoning_content: 'planning',
@@ -1765,20 +2027,24 @@ describe('chats2GPTMessages', () => {
         ]
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_plan',
         content: 'Plan updated.'
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'too early',
         reasoning_content: 'checking'
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.User,
         content: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>'
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'final answer'
       }
@@ -1826,6 +2092,7 @@ describe('chats2GPTMessages', () => {
     );
     expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: false })).toEqual([
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'final answer'
       }
@@ -1863,6 +2130,7 @@ describe('chats2GPTMessages', () => {
 
     expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         reasoning_content: 'The plan needs user input.',
         content: 'Need confirmation.',
@@ -1878,6 +2146,7 @@ describe('chats2GPTMessages', () => {
         ]
       },
       {
+        dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask',
         content: 'Confirmed.'
@@ -1885,7 +2154,7 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
-  it('should handle multiple reasoning values producing separate assistant entries', () => {
+  it('should handle multiple reasoning values by merging consecutive assistant entries', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1900,11 +2169,9 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false });
 
-    expect(result).toHaveLength(2);
-    expect((result[0] as any).reasoning_content).toBe('Step 1 thinking');
-    expect((result[0] as any).content).toBe('Intermediate answer');
-    expect((result[1] as any).reasoning_content).toBe('Step 2 thinking');
-    expect((result[1] as any).content).toBe('Final answer');
+    expect(result).toHaveLength(1);
+    expect((result[0] as any).reasoning_content).toBe('Step 1 thinkingStep 2 thinking');
+    expect((result[0] as any).content).toBe('Intermediate answerFinal answer');
   });
 
   it('should keep multi-step reasoning and tool calls attached without reasoning-only messages', () => {
@@ -2110,7 +2377,7 @@ describe('GPTMessages2Chats', () => {
     ]);
   });
 
-  it('should drop separated reasoning assistant messages before following content', () => {
+  it('should merge separated reasoning assistant messages before following content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2131,6 +2398,9 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     expect(result[0].value).toEqual([
       {
+        reasoning: {
+          content: 'reason 1reason 2'
+        },
         text: {
           content: 'Final answer'
         }
@@ -2138,7 +2408,7 @@ describe('GPTMessages2Chats', () => {
     ]);
   });
 
-  it('should keep only reasoning that already exists on the attach target', () => {
+  it('should merge separated reasoning before a target that already has reasoning', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2157,7 +2427,7 @@ describe('GPTMessages2Chats', () => {
     expect(result[0].value).toEqual([
       {
         reasoning: {
-          content: 'target reason'
+          content: 'pending reasontarget reason'
         },
         text: {
           content: 'Final answer'
@@ -2187,6 +2457,17 @@ describe('GPTMessages2Chats', () => {
     expect(result).toEqual([
       {
         dataId: undefined,
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            reasoning: {
+              content: 'Reason before user boundary'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
         obj: ChatRoleEnum.Human,
         hideInUI: undefined,
         value: [
@@ -2211,7 +2492,7 @@ describe('GPTMessages2Chats', () => {
     ]);
   });
 
-  it('should drop separated reasoning assistant message before following tool calls', () => {
+  it('should merge separated reasoning assistant message before following tool calls', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2242,6 +2523,9 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     expect(result[0].value).toEqual([
       {
+        reasoning: {
+          content: 'Need current time.'
+        },
         tools: [
           {
             id: 'call_time',
@@ -2291,6 +2575,11 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     expect(result[0].value).toEqual([
       {
+        reasoning: {
+          content: 'Reasoning for a tool call only.'
+        }
+      },
+      {
         text: {
           content: 'Final visible answer.'
         }
@@ -2298,7 +2587,7 @@ describe('GPTMessages2Chats', () => {
     ]);
   });
 
-  it('should not attach separated reasoning after filtered tool calls without tool response', () => {
+  it('should merge reasoning and text while filtering tool calls without tool response', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2328,9 +2617,64 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     expect(result[0].value).toEqual([
       {
+        reasoning: {
+          content: 'Reasoning for a filtered tool call.'
+        },
         text: {
           content: 'Final visible answer.'
         }
+      }
+    ]);
+  });
+
+  it('should keep tool calls without tool response when reserveTool is true', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        reasoning_content: 'Reasoning for a filtered tool call.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search_web',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Final visible answer.'
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages, reserveTool: true, reserveReason: true });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Reasoning for a filtered tool call.'
+        },
+        text: {
+          content: 'Final visible answer.'
+        }
+      },
+      {
+        tools: [
+          {
+            id: 'call_search',
+            toolName: '',
+            toolAvatar: '',
+            functionName: 'search_web',
+            params: '{}',
+            response: ''
+          }
+        ]
       }
     ]);
   });
@@ -2352,7 +2696,7 @@ describe('GPTMessages2Chats', () => {
     expect((result[0].value[0] as any).reasoning).toBeUndefined();
   });
 
-  it('should drop reasoning when assistant message has no content', () => {
+  it('should keep reasoning when assistant message has no content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2363,7 +2707,14 @@ describe('GPTMessages2Chats', () => {
 
     const result = GPTMessages2Chats({ messages });
 
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Thinking only'
+        }
+      }
+    ]);
   });
 
   it('should merge messages with same dataId', () => {
@@ -2383,7 +2734,13 @@ describe('GPTMessages2Chats', () => {
     const result = GPTMessages2Chats({ messages });
 
     expect(result).toHaveLength(1);
-    expect(result[0].value).toHaveLength(2);
+    expect(result[0].value).toEqual([
+      {
+        text: {
+          content: 'Part 1Part 2'
+        }
+      }
+    ]);
   });
 
   it('should filter out empty value items', () => {
@@ -2511,7 +2868,7 @@ describe('GPTMessages2Chats', () => {
     );
   });
 
-  it('should keep assistant content, reasoning and parallel tools continuous after chat roundtrip', () => {
+  it('should keep assistant content and reasoning separate from tools after chat roundtrip', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2563,7 +2920,9 @@ describe('GPTMessages2Chats', () => {
         },
         text: {
           content: 'Checking both tools.'
-        },
+        }
+      },
+      {
         tools: [
           {
             id: 'call_weather',
@@ -2618,6 +2977,144 @@ describe('GPTMessages2Chats', () => {
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_time',
         content: 'compressed time'
+      }
+    ]);
+  });
+
+  it('should preserve serial tool turns after chat roundtrip', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'First call.',
+        reasoning_content: 'Think before first call.',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: 'time 1'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Second call.',
+        reasoning_content: 'Think after first result.',
+        tool_calls: [
+          {
+            id: 'call_2',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_2',
+        content: 'time 2'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Third call.',
+        reasoning_content: 'Think after second result.',
+        tool_calls: [
+          {
+            id: 'call_3',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_3',
+        content: 'time 3'
+      }
+    ];
+
+    const chats = GPTMessages2Chats({ messages, reserveTool: true, reserveReason: true });
+    const restoredMessages = chats2GPTMessages({
+      messages: chats,
+      reserveId: false,
+      reserveTool: true
+    });
+
+    expect(restoredMessages).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'First call.',
+        reasoning_content: 'Think before first call.',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: 'time 1'
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Second call.',
+        reasoning_content: 'Think after first result.',
+        tool_calls: [
+          {
+            id: 'call_2',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_2',
+        content: 'time 2'
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Third call.',
+        reasoning_content: 'Think after second result.',
+        tool_calls: [
+          {
+            id: 'call_3',
+            type: 'function',
+            function: {
+              name: 'time',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_3',
+        content: 'time 3'
       }
     ]);
   });
@@ -2718,7 +3215,7 @@ describe('GPTMessages2Chats', () => {
     expect((result[0] as any).hideInUI).toBe(true);
   });
 
-  it('should drop assistant reasoning when dataId prevents attaching to visible content', () => {
+  it('should keep assistant reasoning separate when dataId prevents attaching to visible content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         dataId: 'reasoning-message',
@@ -2734,9 +3231,17 @@ describe('GPTMessages2Chats', () => {
 
     const result = GPTMessages2Chats({ messages });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].dataId).toBe('answer-message');
+    expect(result).toHaveLength(2);
+    expect(result[0].dataId).toBe('reasoning-message');
     expect(result[0].value).toEqual([
+      {
+        reasoning: {
+          content: 'Reasoning from another assistant item'
+        }
+      }
+    ]);
+    expect(result[1].dataId).toBe('answer-message');
+    expect(result[1].value).toEqual([
       {
         text: {
           content: 'Visible answer'
@@ -2745,7 +3250,7 @@ describe('GPTMessages2Chats', () => {
     ]);
   });
 
-  it('should drop assistant reasoning when hideInUI prevents attaching to visible content', () => {
+  it('should keep assistant reasoning separate when hideInUI prevents attaching to visible content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         dataId: 'assistant-data-id',
@@ -2765,6 +3270,12 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     expect(result[0].hideInUI).toBeUndefined();
     expect(result[0].value).toEqual([
+      {
+        hideInUI: true,
+        reasoning: {
+          content: 'Hidden reasoning'
+        }
+      },
       {
         text: {
           content: 'Visible answer'

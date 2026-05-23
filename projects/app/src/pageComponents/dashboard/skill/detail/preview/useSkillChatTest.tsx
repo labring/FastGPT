@@ -2,7 +2,11 @@ import { useCallback, useEffect } from 'react';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { streamFetch } from '@/web/common/api/fetch';
-import { SKILL_DEBUG_CHAT_URL, delSkillDebugChatItem } from '@/web/core/skill/api';
+import {
+  SKILL_DEBUG_CHAT_URL,
+  delSkillDebugChatItem,
+  postStopSkillDebugChat
+} from '@/web/core/skill/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -76,6 +80,13 @@ export const useSkillChatTest = ({
   const handleDeleteChatItem = useMemoizedFn((contentId: string) =>
     delSkillDebugChatItem({ skillId, chatId, contentId })
   );
+  const handleStopChat = useMemoizedFn(async () => {
+    const result = await postStopSkillDebugChat({ skillId, chatId });
+    return {
+      chatGenerateStatus: result.chatGenerateStatus,
+      completed: result.completed
+    };
+  });
 
   const ChatContainer = useCallback(
     () => (
@@ -84,11 +95,13 @@ export const useSkillChatTest = ({
         appId={skillId}
         chatId={chatId}
         chatType={ChatTypeEnum.test}
+        enableMarkChatRead={false}
         onStartChat={startChat}
         onDeleteChatItem={handleDeleteChatItem}
+        onStopChat={handleStopChat}
       />
     ),
-    [skillId, chatId, isReady, startChat, handleDeleteChatItem]
+    [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat]
   );
 
   return {

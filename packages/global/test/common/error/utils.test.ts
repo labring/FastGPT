@@ -45,6 +45,13 @@ describe('getErrText', () => {
 
     expect(getErrText(err)).toBe('https://xxx xxx');
   });
+
+  it('should parse errorText field', () => {
+    const err = {
+      errorText: 'Sandbox is not configured'
+    };
+    expect(getErrText(err)).toBe('Sandbox is not configured');
+  });
 });
 
 describe('UserError', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
+import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
 
 const { dispatchAgentDatasetSearchMock, dispatchFileReadMock } = vi.hoisted(() => ({
   dispatchAgentDatasetSearchMock: vi.fn(),
@@ -107,6 +108,31 @@ describe('Agent read_files tool protocol', () => {
     );
   });
 
+  it('exposes dataset search with query array parameter', async () => {
+    const { completionTools } = await getSubapps({
+      tmbId: 'tmb_1',
+      tools: [],
+      hasFiles: false,
+      hasDataset: true
+    });
+
+    expect(completionTools).toContain(datasetSearchTool);
+    expect(datasetSearchTool.function.name).toBe(SubAppIds.datasetSearch);
+    expect(datasetSearchTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        query: {
+          type: 'array',
+          items: {
+            type: 'string'
+          },
+          description: '要搜索的查询文本数组，描述需要查找的信息'
+        }
+      },
+      required: ['query']
+    });
+  });
+
   it('passes external OpenAI account to dataset search tool', async () => {
     const userKey = {
       key: 'user-key',
@@ -163,7 +189,7 @@ describe('Agent read_files tool protocol', () => {
     await executeTool({
       callId: 'call_dataset_search',
       toolId: SubAppIds.datasetSearch,
-      args: '{"query":"FastGPT"}'
+      args: '{"query":["FastGPT"]}'
     });
 
     expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(

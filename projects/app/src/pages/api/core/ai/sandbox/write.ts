@@ -1,8 +1,7 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { authSandboxSession } from '@/service/core/sandbox/auth';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import {
   SandboxWriteBodySchema,
   type SandboxWriteResponse
@@ -10,25 +9,23 @@ import {
 import { writeSandboxFile } from '@/service/core/sandbox/fileService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(
-  req: ApiRequestProps,
-  res: NextApiResponse<SandboxWriteResponse>
-): Promise<SandboxWriteResponse> {
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+
+async function handler(req: ApiRequestProps): Promise<SandboxWriteResponse> {
   const { appId, chatId, path, content, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxWriteBodySchema
   }).body;
 
-  const { uid } = await authChatCrud({
+  const { uid, teamId } = await authSandboxSession({
     req,
-    authToken: true,
-    authApiKey: true,
     appId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData,
+    per: WritePermissionVal
   });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
+  const sandbox = await getSandboxClient({ appId, userId: uid, chatId, teamId });
   await sandbox.ensureAvailable();
 
   await writeSandboxFile(sandbox, path, content);

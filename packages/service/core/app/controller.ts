@@ -30,7 +30,7 @@ import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
-import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/controller';
+import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/service/resource';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 

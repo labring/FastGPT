@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { SANDBOX_SYSTEM_PROMPT, SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';

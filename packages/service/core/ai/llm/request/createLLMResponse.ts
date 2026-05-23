@@ -189,7 +189,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const isEmptyToolCallsFinish = finish_reason === 'tool_calls' && !toolCalls?.length;
     const isNotResponse =
       !answerText &&
-      !reasoningText &&
       !toolCalls?.length &&
       !error &&
       (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);

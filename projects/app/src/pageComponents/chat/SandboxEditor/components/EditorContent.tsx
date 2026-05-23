@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, IconButton, Center } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Editor from '@monaco-editor/react';
@@ -7,9 +7,11 @@ import { useLatest } from 'ahooks';
 import type { OpenedFile } from './FileTabs';
 import Markdown from '@fastgpt/web/components/common/Markdown';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { getHtmlPreviewLink } from '../api';
-import { getSupportsPreviewToggle } from '../utils';
+import { getSupportsPreviewToggle, parseMarkdownFrontmatter } from '../utils';
+import MarkdownMetadataCard from './MarkdownMetadataCard';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -26,10 +28,11 @@ type Props = {
   setOpenedFiles: React.Dispatch<React.SetStateAction<OpenedFile[]>>;
   openedFiles: OpenedFile[];
   editorRef: React.MutableRefObject<EditorInstance | undefined>;
-  isUpdatingRef: React.MutableRefObject<boolean>;
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  showDownload?: boolean;
+  defaultViewMode?: 'source' | 'preview';
 };
 
 const EditorContent = ({
@@ -42,25 +45,21 @@ const EditorContent = ({
   setOpenedFiles,
   openedFiles,
   editorRef,
-  isUpdatingRef,
   appId,
   chatId,
-  outLinkAuthData
+  outLinkAuthData,
+  showDownload = true,
+  defaultViewMode
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<'source' | 'preview'>('source');
+  const [viewModeByPath, setViewModeByPath] = useState<Record<string, 'source' | 'preview'>>({});
   const [generatingLink, setGeneratingLink] = useState(false);
   const openedFilesRef = useLatest(openedFiles);
-
-  // 切换文件时，如果新文件支持预览则切换到预览模式，否则重置为源码模式。
-  useEffect(() => {
-    if (getSupportsPreviewToggle(activeFile?.language)) {
-      setViewMode('preview');
-    } else {
-      setViewMode('source');
-    }
-  }, [activeFilePath]);
+  const supportsPreviewToggle = getSupportsPreviewToggle(activeFile?.language);
+  const viewMode = supportsPreviewToggle
+    ? (viewModeByPath[activeFilePath] ?? defaultViewMode ?? 'preview')
+    : 'source';
 
   const handleHtmlPreview = async () => {
     if (!activeFile) return;
@@ -90,16 +89,20 @@ const EditorContent = ({
 
     // 非媒体文件 UTF-8 解码失败 → 走兜底（如 xlsx/zip 等真二进制）
     if (activeFile.isUnknown) {
-      return t('chat:sandbox_binary_file_no_preview');
+      return (
+        <Box p={4} color="myGray.500" fontSize="sm">
+          {t('chat:sandbox_binary_file_no_preview')}
+        </Box>
+      );
     }
 
-    // 二进制文件预览 (图片/音频/视频)
+    // 二二进制文件预览 (图片/音频/视频)
     if (activeFile.isBinary) {
       const { language, content, name } = activeFile;
 
       if (content.startsWith('blob:') && language === 'image') {
         return (
-          <Box h="full" overflow="auto">
+          <Box h="full" overflow="auto" p={4}>
             <MyPhotoView src={content} alt={name} maxW="100%" objectFit="contain" />
           </Box>
         );
@@ -109,7 +112,7 @@ const EditorContent = ({
         return (
           <Center h="full">
             <audio controls src={content}>
-              Your browser does not support the audio element.
+              {t('chat:sandbox_audio_not_supported')}
             </audio>
           </Center>
         );
@@ -119,30 +122,36 @@ const EditorContent = ({
         return (
           <Center h="full">
             <video controls src={content} style={{ maxWidth: '100%', maxHeight: '100%' }}>
-              Your browser does not support the video element.
+              {t('chat:sandbox_video_not_supported')}
             </video>
           </Center>
         );
       }
 
       // 无渲染器的二进制文件（如 PDF）
-      return t('chat:sandbox_binary_file_no_preview');
+      return (
+        <Box p={4} color="myGray.500" fontSize="sm">
+          {t('chat:sandbox_binary_file_no_preview')}
+        </Box>
+      );
     }
 
     // 文本文件预览模式
     if (viewMode === 'preview') {
       const { language, content } = activeFile;
       if (language === 'markdown') {
+        const { metadata, bodyContent, hasMetadata } = parseMarkdownFrontmatter(content);
         return (
-          <Box h="full" overflowY="auto" bg="white">
-            <Markdown source={content} />
+          <Box h="full" overflowY="auto" bg="white" px={4} py={4}>
+            {hasMetadata && <MarkdownMetadataCard metadata={metadata} />}
+            <Markdown source={bodyContent} />
           </Box>
         );
       }
       if (language === 'svg') {
         const svgUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
         return (
-          <Box h="full" overflow="auto">
+          <Box h="full" overflow="auto" p={4}>
             <MyPhotoView src={svgUri} alt={activeFile.name} maxW="100%" objectFit="contain" />
           </Box>
         );
@@ -151,135 +160,150 @@ const EditorContent = ({
 
     // 文本文件源码模式 (Monaco Editor)
     return (
-      <Editor
-        height="100%"
-        language={activeFile.language || 'plaintext'}
-        value={activeFile.content || ''}
-        theme="vs-light"
-        options={{
-          minimap: { enabled: false },
-          overviewRulerLanes: 0,
-          overviewRulerBorder: false,
-          fontSize: 13,
-          lineNumbers: 'on',
-          lineNumbersMinChars: 4,
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          lineHeight: 20,
-          fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
-          tabSize: 2,
-          wordWrap: 'on',
-          smoothScrolling: true,
-          cursorBlinking: 'smooth',
-          renderLineHighlight: 'line',
-          scrollbar: {
-            verticalScrollbarSize: 10,
-            horizontalScrollbarSize: 10
-          }
-        }}
-        onMount={(editor, monaco) => {
-          editorRef.current = editor;
-
-          // 保存快捷键 Ctrl/Cmd + S
-          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            saveFile();
-          });
-
-          // 全部保存快捷键 Ctrl/Cmd + Shift + S
-          editor.addCommand(
-            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
-            () => {
-              openedFilesRef.current?.forEach((file) => {
-                if (file.isDirty) {
-                  saveFile(file.path);
-                }
-              });
+      <Box h="full" pt={2}>
+        <Editor
+          height="100%"
+          language={activeFile.language || 'plaintext'}
+          value={activeFile.content || ''}
+          path={activeFile.path}
+          theme="vs-light"
+          options={{
+            minimap: { enabled: false },
+            overviewRulerLanes: 0,
+            overviewRulerBorder: false,
+            fontSize: 13,
+            lineNumbers: 'on',
+            lineNumbersMinChars: 4,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            lineHeight: 20,
+            fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
+            tabSize: 2,
+            wordWrap: 'on',
+            smoothScrolling: true,
+            cursorBlinking: 'smooth',
+            renderLineHighlight: 'line',
+            scrollbar: {
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10
             }
-          );
-        }}
-        onChange={(value) => {
-          // 防止循环更新
-          if (isUpdatingRef.current) return;
+          }}
+          onMount={(editor, monaco) => {
+            editorRef.current = editor;
 
-          // 更新当前文件内容
-          if (activeFilePath && value !== undefined) {
-            setOpenedFiles((prev) =>
-              prev.map((f) =>
-                f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
-              )
+            // 保存快捷键 Ctrl/Cmd + S
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+              saveFile();
+            });
+
+            // 全部保存快捷键 Ctrl/Cmd + Shift + S
+            editor.addCommand(
+              monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
+              () => {
+                openedFilesRef.current?.forEach((file) => {
+                  if (file.isDirty) {
+                    saveFile(file.path);
+                  }
+                });
+              }
             );
-          }
-        }}
-      />
+
+            // 失去焦点时自动保存脏文件
+            editor.onDidBlurEditorText(() => {
+              const files = openedFilesRef.current;
+              if (!files) return;
+              const currentFile = files.find((f) => f.path === activeFilePath);
+              if (currentFile?.isDirty) {
+                saveFile(activeFilePath);
+              }
+            });
+          }}
+          onChange={(value) => {
+            // 更新当前文件内容
+            if (activeFilePath && value !== undefined && value !== activeFile?.content) {
+              setOpenedFiles((prev) =>
+                prev.map((f) =>
+                  f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
+                )
+              );
+            }
+          }}
+        />
+      </Box>
     );
   };
 
   return (
-    <Flex
-      flex={'1 0 0'}
-      m={3}
-      p={3}
-      border="base"
-      flexDirection="column"
-      borderRadius={'md'}
-      bg={'white'}
-      minH={0}
-      h="100%"
-    >
-      <Flex
-        align="center"
-        justify="space-between"
-        borderBottom={'sm'}
-        mt={'-3px'}
-        pb={'9px'}
-        mb={3}
-      >
-        <Box fontSize="20px" fontWeight="500" color="black">
-          {activeFile?.name || ''}
-        </Box>
+    <Flex flex={'1 0 0'} flexDirection="column" bg={'white'} minH={0} h="100%">
+      <Flex align="center" justify="space-between" px={4} h={'44px'}>
+        <Flex align="center" gap={2}>
+          <Box fontSize="14px" fontWeight="600" color="myGray.800">
+            {activeFile?.name || ''}
+          </Box>
+          {activeFile && (
+            <Flex alignItems={'center'} h={'20px'}>
+              {activeFile.isDirty || saving ? (
+                <Flex alignItems={'center'} gap={1} color={'myGray.500'} fontSize={'xs'}>
+                  <MyIcon name={'common/loading'} w={'12px'} />
+                  <Box>{t('common:core.app.saving')}</Box>
+                </Flex>
+              ) : (
+                <MyTag py={0} px={1.5} showDot bg={'transparent'} colorSchema={'green'}>
+                  {t('common:core.app.have_saved')}
+                </MyTag>
+              )}
+            </Flex>
+          )}
+        </Flex>
         <Flex align="center" gap={2}>
           {/* HTML Preview Icon */}
           {activeFile?.language === 'html' && (
             <IconButton
               size="sm"
               icon={<MyIcon name="common/htmlPreview" w="16px" />}
-              aria-label={'Preview'}
+              aria-label={t('chat:sandbox_html_preview')}
               isLoading={generatingLink}
               onClick={handleHtmlPreview}
               variant="whiteBase"
             />
           )}
           {/* Source/Preview Toggle Switch */}
-          {getSupportsPreviewToggle(activeFile?.language) && (
+          {supportsPreviewToggle && (
             <FillRowTabs
               list={[
-                { label: t('chat:sandbox_preview'), value: 'preview' },
-                { label: t('chat:sandbox_source'), value: 'source' }
+                {
+                  icon: 'visible',
+                  iconSize: '16px',
+                  label: '',
+                  value: 'preview'
+                },
+                {
+                  icon: 'common/edit',
+                  iconSize: '14px',
+                  label: '',
+                  value: 'source'
+                }
               ]}
               value={viewMode}
-              onChange={(v) => setViewMode(v as 'source' | 'preview')}
+              onChange={(v) =>
+                setViewModeByPath((prev) => ({
+                  ...prev,
+                  [activeFilePath]: v as 'source' | 'preview'
+                }))
+              }
               py="1"
-              px="2"
+              px="2.5"
               fontSize="xs"
+              iconSize="16px"
             />
           )}
-          {activeFilePath && (
+          {showDownload && activeFilePath && (
             <IconButton
               size="sm"
               icon={<MyIcon name="common/downloadLine" w="16px" />}
-              aria-label="Download"
+              aria-label={t('chat:sandbox_download')}
               onClick={downloadCurrentFile}
               isLoading={downloadingFile}
-              variant="whiteBase"
-            />
-          )}
-          {activeFile?.isDirty && (
-            <IconButton
-              size="sm"
-              icon={<MyIcon name="save" w="16px" />}
-              aria-label="Save"
-              onClick={() => saveFile()}
-              isLoading={saving}
               variant="whiteBase"
             />
           )}

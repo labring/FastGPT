@@ -91,10 +91,6 @@ const ChatController = ({
           border={'base'}
           alignItems={'center'}
           sx={{
-            '& > :first-child svg': {
-              borderTopLeftRadius: 'sm',
-              borderBottomLeftRadius: 'sm'
-            },
             '& > :last-child svg': {
               borderRight: 'none',
               borderTopRightRadius: 'sm',
@@ -106,6 +102,7 @@ const ChatController = ({
             <MyIcon
               {...controlIconStyle}
               name={'copy'}
+              borderLeftRadius={'sm'}
               _hover={{ color: 'primary.600' }}
               onClick={() => copyData(chatText)}
             />

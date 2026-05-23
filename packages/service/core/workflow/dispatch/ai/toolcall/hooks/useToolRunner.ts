@@ -15,6 +15,7 @@ import type { ChildResponseItemType, DispatchToolModuleProps, FileInputType } fr
 import { dispatchReadFileTool, ReadFileToolParamsSchema } from '../tools/file';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
 import type { ToolInfo } from './useToolCatalog';
+import { checkTeamSandboxPermission } from '../../../../../../support/permission/teamLimit';
 
 type WorkflowProps = Omit<
   DispatchToolModuleProps,
@@ -124,6 +125,12 @@ export const useToolRunner = ({
        * 先处理系统工具：sandbox/file。
        */
       if (toolInfo.type === 'sandbox') {
+        try {
+          await checkTeamSandboxPermission(workflowProps.runningUserInfo.teamId);
+        } catch (err) {
+          throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+        }
+
         const { input, response, durationSeconds } = await runSandboxTools({
           toolName: call.function.name,
           args: call.function.arguments ?? '',

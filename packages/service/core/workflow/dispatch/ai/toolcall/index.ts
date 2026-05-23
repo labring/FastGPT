@@ -1,4 +1,4 @@
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
@@ -11,6 +11,7 @@ import { filterToolResponseToPreview } from './utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
+import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -18,7 +19,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, isEntry },
+    node: { nodeId, isEntry, inputs },
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -33,7 +34,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       systemPrompt,
       userChatInput,
       history = 6,
-      fileUrlList: fileLinks,
+      fileUrlList: rawFileLinks,
       aiChatVision,
       aiChatReasoning,
       isResponseAnswerText = true,
@@ -41,15 +42,30 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
   } = props;
 
+  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    try {
+      await checkTeamSandboxPermission(runningUserInfo.teamId);
+    } catch (err) {
+      throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+    }
+  }
+
   const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
   try {
     const toolModel = getLLMModel(model);
     const useVision = aiChatVision && toolModel.vision;
     const chatHistories = getHistories(history, histories);
+    const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+    const fileLinks =
+      !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0
+        ? undefined
+        : rawFileLinks;
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    props.params.fileUrlList = fileLinks;
+    props.params.useAgentSandbox = useSandbox;
 
     const toolNodes = useToolNodeList({
       nodeId,

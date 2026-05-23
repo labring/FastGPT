@@ -179,10 +179,16 @@ export const dispatchAgentDatasetSearch = async ({
     };
   }
 
-  const query = toolParams.data.query;
+  const queries = toolParams.data.query;
+  if (queries.length === 0) {
+    return {
+      response: 'Query is empty'
+    };
+  }
+  const query = queries.join('\n');
 
   logger.debug('[Agent Dataset Search] Starting', {
-    query,
+    queries,
     datasetParams
   });
 
@@ -199,7 +205,7 @@ export const dispatchAgentDatasetSearch = async ({
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
       teamId,
-      textQueries: [query],
+      textQueries: queries,
       model: vectorModel.model,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
@@ -247,7 +253,7 @@ export const dispatchAgentDatasetSearch = async ({
         usages.push(queryExtensionUsage);
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
-            requestId: queryExtensionResult.requestId,
+            requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             seconds: queryExtensionResult.seconds,
             query: queryExtensionResult.query
@@ -314,7 +320,7 @@ export const dispatchAgentDatasetSearch = async ({
         usages.push(pickResults.usage);
         childrenResponses.push(
           createChunkSelectionChildNodeResponse({
-            requestId: pickResults.requestId,
+            requestIds: [pickResults.requestId],
             usage: pickResults.usage,
             seconds: pickResults.seconds,
             selectedChunkIds: pickResults.ids
@@ -327,7 +333,7 @@ export const dispatchAgentDatasetSearch = async ({
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
-      query,
+      datasetQueries: queries,
       embeddingModel: vectorModel.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? searchData.similarity : undefined,

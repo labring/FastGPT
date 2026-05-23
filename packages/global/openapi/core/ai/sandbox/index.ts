@@ -3,6 +3,8 @@ import { TagsMap } from '../../../tag';
 import {
   SandboxListBodySchema,
   SandboxListResponseSchema,
+  SandboxListRecursiveBodySchema,
+  SandboxListRecursiveResponseSchema,
   SandboxWriteBodySchema,
   SandboxWriteResponseSchema,
   SandboxReadBodySchema,
@@ -12,7 +14,9 @@ import {
   SandboxCheckExistBodySchema,
   SandboxCheckExistResponseSchema,
   SandboxGetHtmlPreviewLinkBodySchema,
-  SandboxGetHtmlPreviewLinkResponseSchema
+  SandboxGetHtmlPreviewLinkResponseSchema,
+  SandboxFileOpBodySchema,
+  SandboxFileOpResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
@@ -34,6 +38,31 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/listRecursive': {
+    post: {
+      summary: '递归列出沙盒目录',
+      description: '递归列出指定目录下的文件和子目录，并返回可直接渲染的目录树',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxListRecursiveBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '递归目录树',
+          content: {
+            'application/json': {
+              schema: SandboxListRecursiveResponseSchema
             }
           }
         }
@@ -157,6 +186,31 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxCheckExistResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/fileOp': {
+    post: {
+      summary: '文件系统操作',
+      description: '在沙盒中执行创建目录、删除、移动和复制等文件系统操作',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxFileOpBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: {
+            'application/json': {
+              schema: SandboxFileOpResponseSchema
             }
           }
         }

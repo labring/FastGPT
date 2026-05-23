@@ -1,299 +1,156 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Center, VStack } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Center, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { SkillDetailContext } from '../../dashboard/skill/detail/context';
+import { useContextSelector } from 'use-context-selector';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type Editor from '@monaco-editor/react';
-import { listSandboxFiles, writeSandboxFile, downloadSandbox, getSandboxFile } from './api';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useMount, useLatest } from 'ahooks';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-import FileTree, { type TreeNode } from './components/FileTree';
-import FileTabs, { type OpenedFile } from './components/FileTabs';
+import FileTree from './components/FileTree';
+import FileTabs from './components/FileTabs';
 import EditorContent from './components/EditorContent';
-import { getLanguageByFileName, updateTreeNode, filterTree, getIsBinaryByLanguage } from './utils';
+import { filterTree } from './utils';
+import { useSandboxFileStore } from './hook';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+
+const FILE_TREE_DEFAULT_WIDTH = 250;
+const FILE_TREE_MIN_WIDTH = 250;
+const FILE_TREE_MAX_WIDTH = 600;
+const EDITOR_MIN_WIDTH = 360;
 
 export type Props = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  showFileOps?: boolean;
+  showDownload?: boolean;
+  defaultViewMode?: 'source' | 'preview';
+  isPreparing?: boolean;
+  preparingText?: string;
 };
 
-const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
+const SandboxEditor = ({
+  appId,
+  chatId,
+  outLinkAuthData,
+  showFileOps = true,
+  showDownload = true,
+  defaultViewMode,
+  isPreparing = false,
+  preparingText
+}: Props) => {
   const { t } = useTranslation();
+  const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
   const editorRef = useRef<EditorInstance>();
-  const isUpdatingRef = useRef(false); // 防止循环更新
-
-  const [fileTree, setFileTree] = useState<TreeNode[]>([]);
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([]));
-  const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // 多标签页状态
-  const [openedFiles, setOpenedFiles] = useState<OpenedFile[]>([]);
-  const [activeFilePath, setActiveFilePath] = useState<string>('');
-
-  const activeFile = useMemoEnhance(() => {
-    return openedFiles.find((f) => f.path === activeFilePath);
-  }, [openedFiles, activeFilePath]);
-
-  const openedFilesRef = useLatest(openedFiles);
-
-  // Clean up blob URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      openedFilesRef.current?.forEach((file) => {
-        if (file.isBinary && file.content.startsWith('blob:')) {
-          URL.revokeObjectURL(file.content);
-        }
-      });
-    };
-  }, []);
-
-  // 加载目录 - 改为普通异步函数,避免 useRequest 的并发问题
-  const { runAsync: loadDirectory } = useRequest(
-    async (path: string, level: number) => {
-      const data = await listSandboxFiles({ appId, chatId, outLinkAuthData, path });
-      const nodes: TreeNode[] = (data.files || []).map((file) => ({
-        ...file,
-        level,
-        children: file.type === 'directory' ? [] : undefined,
-        loaded: false // 子目录初始未加载
-      }));
-
-      setFileTree((prevTree) => {
-        if (level === 0) {
-          return nodes;
-        }
-        // 更新目标节点,标记为已加载
-        return updateTreeNode(prevTree, path, nodes, true);
-      });
-
-      return nodes;
-    },
-    { manual: true }
-  );
-
-  // 初始加载根目录的 loading 状态
-  const [loadingRoot, setLoadingRoot] = useState(false);
-
-  // 读取文件内容 - 根据 language 决定解码策略
-  // - 媒体（image/audio/video）→ blob URL
-  // - 其他 → 严格 UTF-8 解码；解不出来视为不可预览（如 xlsx/zip 等真二进制）
-  const { runAsync: loadFile, loading: loadingFile } = useRequest(
-    async (
-      filePath: string,
-      language: string
-    ): Promise<{ content: string; isUnknown: boolean }> => {
-      const response = await getSandboxFile({ appId, chatId, outLinkAuthData, path: filePath });
-
-      const isBinary = getIsBinaryByLanguage(language);
-
-      if (isBinary) {
-        const blob = await response.blob();
-        return { content: URL.createObjectURL(blob), isUnknown: false };
-      }
-
-      const buffer = await response.arrayBuffer();
-      try {
-        const content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-        return { content, isUnknown: false };
-      } catch {
-        return { content: '', isUnknown: true };
-      }
-    },
-    { manual: true }
-  );
-
-  // 保存文件
-  const { run: saveFile, loading: saving } = useRequest(
-    async (filePath?: string) => {
-      const targetPath = filePath || activeFilePath;
-      if (!targetPath) return;
-
-      const targetFile = openedFiles.find((f) => f.path === targetPath);
-      if (!targetFile || targetFile.isBinary || targetFile.isUnknown) return;
-
-      await writeSandboxFile({
-        appId,
-        chatId,
-        outLinkAuthData,
-        path: targetPath,
-        content: targetFile.content
-      });
-
-      // 标记为已保存
-      setOpenedFiles((prev) =>
-        prev.map((f) => (f.path === targetPath ? { ...f, isDirty: false } : f))
-      );
-    },
-    { manual: true }
-  );
-
-  // 下载工作区
-  const { run: downloadWorkspace, loading: downloadingWorkspace } = useRequest(
-    async () => {
-      await downloadSandbox({ appId, chatId, outLinkAuthData });
-    },
-    { manual: true }
-  );
-
-  // 下载当前文件
-  const { run: downloadCurrentFile, loading: downloadingFile } = useRequest(
-    async () => {
-      if (!activeFile) return;
-
-      // 通过服务端下载接口获取原始文件,支持二进制文件(图片等)
-      await downloadSandbox({ appId, chatId, outLinkAuthData, path: activeFile.path });
-    },
-    { manual: true }
-  );
-
-  // 打开文件
-  const openFile = async (filePath: string) => {
-    // 检查是否已打开
-    const existingFile = openedFiles.find((f) => f.path === filePath);
-
-    if (existingFile) {
-      // 已打开,直接切换
-      setActiveFilePath(filePath);
-      return;
-    }
-
-    // 新打开文件
-    try {
-      const fileName = filePath.split('/').pop() || '';
-      const language = getLanguageByFileName(fileName);
-      const isBinary = getIsBinaryByLanguage(language);
-
-      const { content, isUnknown } = await loadFile(filePath, language);
-
-      const newFile: OpenedFile = {
-        path: filePath,
-        name: fileName,
-        content,
-        language,
-        isBinary,
-        isDirty: false,
-        isUnknown
-      };
-
-      setOpenedFiles((prev) => [...prev, newFile]);
-      setActiveFilePath(filePath);
-    } catch (error) {
-      console.error('Failed to open file:', error);
-    }
-  };
-
-  // 关闭文件
-  const closeFile = (filePath: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-
-    // 如果关闭的是当前文件,切换到其他文件
-    setOpenedFiles((prev) => {
-      const target = prev.find((f) => f.path === filePath);
-      if (target?.isBinary && target.content.startsWith('blob:')) {
-        URL.revokeObjectURL(target.content);
-      }
-
-      const newOpenedFiles = prev.filter((f) => f.path !== filePath);
-
-      if (activeFilePath === filePath) {
-        if (newOpenedFiles.length > 0) {
-          setActiveFilePath(newOpenedFiles[newOpenedFiles.length - 1].path);
-        } else {
-          setActiveFilePath('');
-        }
-      }
-
-      return newOpenedFiles;
-    });
-  };
-
-  // 初始化加载根目录
-  useMount(() => {
-    setLoadingRoot(true);
-    loadDirectory('.', 0).finally(() => {
-      setLoadingRoot(false);
-    });
+  const editorLayoutRef = useRef<HTMLDivElement>(null);
+  const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
+  const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
+  const {
+    fileTree,
+    openedFiles,
+    setOpenedFiles,
+    activeFilePath,
+    setActiveFilePath,
+    selectedPath,
+    setSelectedPath,
+    expandedDirs,
+    setExpandedDirs,
+    loadingDirs,
+    loadingRoot,
+    loadingFile,
+    saving,
+    downloadingFile,
+    searchQuery,
+    setSearchQuery,
+    activeFile,
+    refreshWorkspace,
+    openFile,
+    closeFile,
+    saveFile,
+    saveAllFiles,
+    downloadCurrentFile,
+    onCreateNode,
+    onRenameComplete,
+    onMoveFile,
+    onDeleteFile,
+    onUploadFiles,
+    toggleDirectory
+  } = useSandboxFileStore({
+    appId,
+    chatId,
+    outLinkAuthData
   });
 
-  // 当切换 tab 时,更新编辑器内容
+  // 绑定全部保存方法到 Context 引用上
   useEffect(() => {
-    if (!editorRef.current || !activeFilePath || !activeFile) return;
-    if (activeFile.isBinary || activeFile.isUnknown) return;
-
-    // 使用 ref 标记防止循环更新
-    isUpdatingRef.current = true;
-    editorRef.current.setValue(activeFile.content);
-
-    // 延迟重置标记,确保 setValue 完成
-    setTimeout(() => {
-      isUpdatingRef.current = false;
-    }, 0);
-  }, [activeFilePath]);
-
-  // 切换目录展开/折叠
-  const toggleDirectory = async (node: TreeNode) => {
-    if (node.type !== 'directory') return;
-
-    const isExpanded = expandedDirs.has(node.path);
-
-    if (isExpanded) {
-      setExpandedDirs((prev) => {
-        const next = new Set(prev);
-        next.delete(node.path);
-        return next;
-      });
-    } else {
-      // 如果未加载过,则加载
-      if (!node.loaded) {
-        // 添加 loading 状态
-        setLoadingDirs((prev) => {
-          const next = new Set(prev);
-          next.add(node.path);
-
-          return next;
-        });
-
-        // 使用 Promise 确保 finally 一定执行
-        loadDirectory(node.path, node.level + 1)
-          .then(() => {
-            // 加载成功,展开目录
-            setExpandedDirs((prev) => {
-              const next = new Set(prev);
-              next.add(node.path);
-              return next;
-            });
-          })
-          .catch((error) => {
-            console.error('Failed to load directory:', error);
-          })
-          .finally(() => {
-            // 无论成功失败,都要移除 loading 状态
-            setLoadingDirs((prev) => {
-              const next = new Set(prev);
-              next.delete(node.path);
-
-              return next;
-            });
-          });
-      } else {
-        // 已加载,直接展开
-        setExpandedDirs((prev) => {
-          const next = new Set(prev);
-          next.add(node.path);
-          return next;
-        });
-      }
+    const currentSaveAllRef = saveAllRef;
+    if (currentSaveAllRef) {
+      currentSaveAllRef.current = saveAllFiles;
     }
-  };
+    return () => {
+      if (currentSaveAllRef) {
+        currentSaveAllRef.current = undefined;
+      }
+    };
+  }, [saveAllFiles, saveAllRef]);
+
+  const loadWorkspace = useCallback(() => {
+    if (isPreparing) return;
+    refreshWorkspace();
+  }, [isPreparing, refreshWorkspace]);
+
+  // 初始化加载根目录；Skill edit 等 sandbox ready 后再开始拉取文件列表。
+  useEffect(() => {
+    loadWorkspace();
+  }, [loadWorkspace]);
 
   const filteredTree = filterTree(fileTree, searchQuery);
+
+  const handleFileTreeResizeStart = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const startX = e.clientX;
+      const startWidth = fileTreeWidth;
+      const previousCursor = document.body.style.cursor;
+      const previousUserSelect = document.body.style.userSelect;
+
+      setIsFileTreeResizing(true);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (event: MouseEvent) => {
+        const containerWidth = editorLayoutRef.current?.getBoundingClientRect().width ?? 0;
+        const maxWidth =
+          containerWidth > 0
+            ? Math.min(
+                FILE_TREE_MAX_WIDTH,
+                Math.max(FILE_TREE_MIN_WIDTH, containerWidth - EDITOR_MIN_WIDTH)
+              )
+            : FILE_TREE_MAX_WIDTH;
+
+        setFileTreeWidth(
+          Math.min(Math.max(startWidth + event.clientX - startX, FILE_TREE_MIN_WIDTH), maxWidth)
+        );
+      };
+
+      const handleMouseUp = () => {
+        setIsFileTreeResizing(false);
+        document.body.style.cursor = previousCursor;
+        document.body.style.userSelect = previousUserSelect;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [fileTreeWidth]
+  );
 
   const renderContent = () => {
     if (fileTree.length === 0) {
@@ -310,23 +167,65 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
     return (
       <>
-        {/* 左侧: 文件浏览器 */}
         <FileTree
+          width={fileTreeWidth}
           filteredTree={filteredTree}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           expandedDirs={expandedDirs}
           loadingDirs={loadingDirs}
           activeFilePath={activeFilePath}
+          selectedPath={selectedPath}
+          setSelectedPath={setSelectedPath}
           openFile={openFile}
           toggleDirectory={toggleDirectory}
-          downloadingWorkspace={downloadingWorkspace}
-          downloadWorkspace={downloadWorkspace}
+          onCreateNode={onCreateNode}
+          onRenameComplete={onRenameComplete}
+          onMoveFile={onMoveFile}
+          onDeleteFile={onDeleteFile}
+          onUploadFiles={onUploadFiles}
+          setExpandedDirs={setExpandedDirs}
+          appId={appId}
+          chatId={chatId}
+          outLinkAuthData={outLinkAuthData}
+          showFileOps={showFileOps}
+        />
+
+        <Box
+          role="separator"
+          aria-label="Resize file tree"
+          aria-orientation="vertical"
+          flex="0 0 8px"
+          w="8px"
+          h="full"
+          ml="-4px"
+          mr="-4px"
+          cursor="col-resize"
+          position="relative"
+          zIndex={3}
+          onMouseDown={handleFileTreeResizeStart}
+          _before={{
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            w: '1px',
+            bg: isFileTreeResizing ? 'primary.600' : 'myGray.200',
+            transition: 'background 0.15s'
+          }}
+          _hover={{
+            _before: {
+              bg: 'primary.600'
+            }
+          }}
         />
 
         {/* 右侧: 编辑器区域 */}
         <MyBox
           isLoading={loadingFile}
+          loadingVariant="particle"
           display={'flex'}
           flex={1}
           w={0}
@@ -352,10 +251,11 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
                 setOpenedFiles={setOpenedFiles}
                 openedFiles={openedFiles}
                 editorRef={editorRef}
-                isUpdatingRef={isUpdatingRef}
                 appId={appId}
                 chatId={chatId}
                 outLinkAuthData={outLinkAuthData}
+                showDownload={showDownload}
+                defaultViewMode={defaultViewMode}
               />
             </>
           ) : (
@@ -374,17 +274,16 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
   return (
     <MyBox
-      isLoading={loadingRoot && fileTree.length === 0}
+      isLoading={isPreparing || (loadingRoot && fileTree.length === 0)}
+      text={isPreparing ? preparingText : t('chat:sandbox_loading_files')}
+      loadingVariant="particle"
+      ref={editorLayoutRef}
       display={'flex'}
       h="full"
       w="full"
       bg="myGray.25"
-      borderRadius="12px"
-      overflow="hidden"
-      border="1px solid"
-      borderColor="myGray.200"
     >
-      {renderContent()}
+      {!isPreparing && renderContent()}
     </MyBox>
   );
 };

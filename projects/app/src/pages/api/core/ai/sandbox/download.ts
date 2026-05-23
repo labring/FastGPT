@@ -1,8 +1,8 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { authSandboxSession } from '@/service/core/sandbox/auth';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -12,22 +12,63 @@ import {
   addDirectoryToArchive
 } from '@/service/core/sandbox/fileService';
 
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+
+export const writeDirectoryArchiveResponse = async ({
+  sandbox,
+  archive,
+  res,
+  path
+}: {
+  sandbox: SandboxClient;
+  archive: archiver.Archiver;
+  res: NextApiResponse;
+  path: string;
+}) => {
+  let onArchiveError: ((err: Error) => void) | undefined;
+  let archiveError: Error | undefined;
+  const archiveErrorPromise = new Promise<never>((_, reject) => {
+    onArchiveError = (err: Error) => {
+      archiveError = err;
+      reject(err);
+    };
+    archive.once('error', onArchiveError);
+  });
+  void archiveErrorPromise.catch(() => undefined);
+
+  archive.pipe(res);
+  try {
+    await addDirectoryToArchive(sandbox, archive, path, '');
+    if (archiveError) {
+      throw archiveError;
+    }
+    await Promise.race([Promise.resolve(archive.finalize()), archiveErrorPromise]);
+  } catch (error) {
+    archive.destroy();
+    throw error;
+  } finally {
+    if (onArchiveError) {
+      archive.off('error', onArchiveError);
+    }
+  }
+};
+
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
   const { appId, chatId, path, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxDownloadBodySchema
   }).body;
 
-  const { uid } = await authChatCrud({
+  const { uid, teamId } = await authSandboxSession({
     req,
-    authToken: true,
-    authApiKey: true,
     appId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData,
+    per: ReadPermissionVal
   });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
+  const sandbox = await getSandboxClient({ appId, userId: uid, chatId, teamId });
   await sandbox.ensureAvailable();
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);
@@ -43,13 +84,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
     );
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('error', (err) => {
-      throw err;
+    await writeDirectoryArchiveResponse({
+      sandbox,
+      archive: archiver('zip', { zlib: { level: 9 } }),
+      res,
+      path
     });
-    archive.pipe(res);
-    await addDirectoryToArchive(sandbox, archive, path, '');
-    await archive.finalize();
   } else {
     const { content, fileName } = await getSandboxFileContent(sandbox, path, false);
     const encodedFileName = encodeURIComponent(fileName);

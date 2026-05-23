@@ -14,16 +14,10 @@ import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/cons
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import {
-  normalizeSkillIds,
-  type SelectedAgentSkillItemType
-} from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getSubapps } from './utils';
-import type { AgentCapability } from './capability/type';
-import { createCapabilityToolCallHandler } from './capability/type';
-import { createSandboxSkillsCapability } from './capability/sandboxSkills';
 import { parseUserSystemPrompt } from './adapter/prompt';
-import { buildAgentUserContextInput } from './adapter/userContext';
+import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
@@ -38,6 +32,7 @@ import {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { useSandbox } from './sub/sandbox';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -51,8 +46,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
-  [NodeInputKeyEnum.skills]?: Array<string | SelectedAgentSkillItemType>;
-  [NodeInputKeyEnum.useEditDebugSandbox]?: boolean;
+  [NodeInputKeyEnum.skills]?: SelectedAgentSkillItemType[];
+  [NodeInputKeyEnum.editSkillId]?: string;
 
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
@@ -92,11 +87,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     return dispatchPiAgent(props);
   }
 
-  // 这些数组会贯穿整轮 dispatch，并由 adapter / capability 持续写入。
+  // 这些数组会贯穿整轮 dispatch，并由 adapter 持续写入。
   // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
-  const capabilities: AgentCapability[] = [];
   const assistantResponses: AIChatItemValueItemType[] = [];
-  let childNodeResponses: ChatHistoryItemResType[] = [];
+  const childNodeResponses: ChatHistoryItemResType[] = [];
 
   const {
     node: { nodeId, inputs },
@@ -110,43 +104,33 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     runningUserInfo,
     workflowStreamResponse,
     usagePush,
-    mode,
     chatId,
+    uid,
     responseChatItemId,
     timezone,
-    showSkillReferences,
     params: {
       systemPrompt,
       userChatInput,
       history = 6,
       agent_selectedTools: selectedTools = [],
-      skills: skillIds = [],
-      useEditDebugSandbox,
+      skills: selectedSkills = [],
+      editSkillId,
       agent_datasetParams: datasetParams,
       useAgentSandbox = false,
       aiChatReasoning
     }
   } = props;
+  const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
+
+  // 初始化对话框输入的文件
+  const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
+  const fileLinks =
+    fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
+      ? props.params.fileUrlList
+      : undefined;
 
   try {
-    // 1. 将 workflow 历史与本轮用户输入转成 LLM messages。
-    // reserveTool=true 是为了保留历史工具上下文；system prompt 会在 unified loop 内重新组装。
-    const normalizedSkillIds = normalizeSkillIds(skillIds);
-
-    const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    const fileLinks =
-      fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
-        ? props.params.fileUrlList
-        : undefined;
-
-    const {
-      chatHistories,
-      rewrittenHistories,
-      currentUserMessage,
-      queryInput,
-      filesMap,
-      allFilesMap
-    } = await buildAgentUserContextInput({
+    const userContext = await useUserContext({
       history,
       histories,
       currentFiles: fileLinks,
@@ -159,50 +143,42 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
+
+    // 初始化 sandbox：初始化、注入 skills、files
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = await useSandbox({
+      appId: runningAppInfo.id,
+      userId: uid,
+      chatId,
+      teamId: runningAppInfo.teamId,
+      useAgentSandbox,
+      skillIds,
+      editSkillId,
+      currentFiles: userContext.currentFiles
+    });
+    // 获取请求上下文
+    const { chatHistories, queryInput, filesMap } = userContext;
+    const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
+      skillInfos,
+      currentWorkingDirectory
+    });
+
+    // 转化成请求的 messages
     const requestMessages = [...rewrittenHistories, currentUserMessage];
     const historiesMessages = chats2GPTMessages({
       messages: requestMessages,
       reserveId: false,
       reserveTool: true
     });
-
-    // ask_agent 追问会把 pendingMainContext 写入 memory。
-    // 用户回答后从这里恢复同一条 messages，而不是重新生成一份独立 plan 上下文。
-    const restoredMemory = readWorkflowAgentLoopMemory({
-      histories: chatHistories,
-      nodeId
-    });
-
     // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
     const loopMessages = historiesMessages.filter((message) => message.role !== 'system');
+    // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
+    const formatedSystemPrompt = parseUserSystemPrompt({
+      userSystemPrompt: [systemPrompt, sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
+        .filter(Boolean)
+        .join('\n\n')
+    });
 
-    // Skill/Sandbox 是可插拔能力：它们可以追加 system prompt、completion tools 和 tool handler，
-    // 但不会改变 agent loop 本身的上下文协议。
-    if (serviceEnv.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
-
-      const sandboxCap = await createSandboxSkillsCapability({
-        skillIds: normalizedSkillIds,
-        teamId: runningAppInfo.teamId,
-        tmbId: runningAppInfo.tmbId,
-        sessionId: sandboxSessionId,
-        mode: sandboxMode,
-        workflowStreamResponse,
-        allFilesMap
-      });
-      capabilities.push(sandboxCap);
-    }
-
-    const capabilitySystemPrompt = capabilities
-      .map((c) => c.systemPrompt)
-      .filter(Boolean)
-      .join('\n\n');
-    const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
-    const capabilityToolCallHandler =
-      capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
-
-    // 汇总用户选择工具、内置系统工具、知识库/文件工具和 capability tools。
+    // 汇总用户选择工具、内置系统工具、知识库/文件工具和 sandbox tools。
     // completionTools 只描述给模型看，subAppsMap 则供 runtime 执行工具时定位真实实现。
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
@@ -211,11 +187,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         lang,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
-        extraTools: capabilityTools
+        useAgentSandbox: !!sandboxClient
       }
     );
-
     // runtime 运行详情和工具卡需要根据 function name 反查展示名、头像和描述。
     // 用户工具与系统工具的 id 形态不完全一致，这里统一归一化查询。
     const getSubAppInfo = (id: string) => {
@@ -241,20 +215,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
-    // 用户配置 prompt、capability prompt、sandbox prompt 都作为 Main Agent 的背景输入。
-    // parseUserSystemPrompt 会补充知识库引用规则等 workflow 专属约束。
-    const sandboxSystemPrompt =
-      useAgentSandbox && !!global.feConfigs?.show_agent_sandbox ? SANDBOX_SYSTEM_PROMPT : '';
-    const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: [systemPrompt, capabilitySystemPrompt, sandboxSystemPrompt]
-        .filter(Boolean)
-        .join('\n\n')
-    });
-
     // 2. 创建 workflow adapter。
     // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
-    childNodeResponses = [];
-    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+    const { runtime } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
         systemPrompt: formatedSystemPrompt,
@@ -262,7 +225,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getSubApp,
         completionTools: agentCompletionTools,
         filesMap,
-        capabilityToolCallHandler,
+        sandboxClient,
         streamResponseFn: workflowStreamResponse
       },
       usagePush,
@@ -271,6 +234,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       nodeResponses: childNodeResponses
     });
 
+    // ask_agent 追问会把 pendingMainContext 写入 memory。
+    // 用户回答后从这里恢复同一条 messages，而不是重新生成一份独立 plan 上下文。
+    const restoredMemory = readWorkflowAgentLoopMemory({
+      histories: chatHistories,
+      nodeId
+    });
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_agent 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const result = await runUnifiedAgentLoop({
@@ -285,9 +254,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             : undefined
       }
     });
-
-    // capability 可能在工具执行期间追加技能引用等可见响应，需要在 loop 结束后统一并入保存内容。
-    assistantResponses.push(...artifacts.capabilityAssistantResponses);
 
     if (result.status === 'ask') {
       if (!result.ask) {
@@ -393,10 +359,5 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
     };
-  } finally {
-    // capability 可能持有 sandbox/session 等外部资源，必须在 dispatch 结束时释放。
-    for (const cap of capabilities) {
-      await cap.dispose?.();
-    }
   }
 };

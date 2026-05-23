@@ -17,12 +17,12 @@ import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version'
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -186,10 +186,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const isAgent = AppTypeList.includes(appDetail.type);
-  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    type: 'delete',
-    content: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip')
-  });
+  const { openConfirm, ConfirmModal } = useConfirm();
   const { runAsync: deleteApp } = useRequest(
     async () => {
       if (!appDetail) return Promise.reject('Not load app');
@@ -207,14 +204,15 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       errorToast: t('common:delete_failed')
     }
   );
-  const onDelApp = useCallback(
-    () =>
-      openConfirmDel({
-        onConfirm: deleteApp,
-        inputConfirmText: appDetail.name
-      })(),
-    [deleteApp, openConfirmDel, appDetail.name]
-  );
+  const onDelApp = useCallback(() => {
+    openConfirm({
+      title: t('common:delete_warning'),
+      customContent: isAgent ? t('app:confirm_del_app_tip') : t('app:confirm_del_tool_tip'),
+      onConfirm: deleteApp,
+      confirmButtonVariant: 'dangerFill',
+      inputConfirmText: appDetail.name
+    })();
+  }, [openConfirm, isAgent, deleteApp, appDetail.name, t]);
 
   const contextValue: AppContextType = useMemo(
     () => ({
@@ -256,7 +254,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       {isOpenInfoEdit && <InfoModal onClose={onCloseInfoEdit} />}
       {isOpenTeamTagModal && <TagsEditModal onClose={onCloseTeamTagModal} />}
 
-      <ConfirmDelModal />
+      <ConfirmModal />
     </AppContext.Provider>
   );
 };

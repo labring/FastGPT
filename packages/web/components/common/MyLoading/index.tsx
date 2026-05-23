@@ -1,18 +1,23 @@
 import React from 'react';
 import { Spinner, Flex, Box, type SpinnerProps } from '@chakra-ui/react';
+import ParticleLoading from './ParticleLoading';
+
+export type LoadingVariant = 'spinner' | 'particle';
 
 const Loading = ({
   fixed = true,
   text = '',
   bg = 'rgba(255,255,255,0.5)',
   zIndex = 1000,
-  size = 'lg'
+  size = 'lg',
+  variant = 'spinner'
 }: {
   fixed?: boolean;
   text?: string;
   bg?: string;
   zIndex?: number;
   size?: SpinnerProps['size'];
+  variant?: LoadingVariant;
 }) => {
   return (
     <Flex
@@ -28,15 +33,24 @@ const Loading = ({
       justifyContent={'center'}
       flexDirection={'column'}
     >
-      <Spinner
-        thickness="4px"
-        speed="0.65s"
-        emptyColor="myGray.100"
-        color="primary.500"
-        size={size}
-      />
+      {variant === 'particle' ? (
+        <ParticleLoading size={size} />
+      ) : (
+        <Spinner
+          thickness="4px"
+          speed="0.65s"
+          emptyColor="myGray.100"
+          color="primary.500"
+          size={size}
+        />
+      )}
       {text && (
-        <Box mt={2} color="primary.600" fontWeight={'bold'}>
+        <Box
+          mt={variant === 'particle' ? '20px' : 2}
+          color={variant === 'particle' ? 'myGray.500' : 'primary.600'}
+          fontSize={variant === 'particle' ? 'sm' : undefined}
+          fontWeight={variant === 'particle' ? 'normal' : 'bold'}
+        >
           {text}
         </Box>
       )}

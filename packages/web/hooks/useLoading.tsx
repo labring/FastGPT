@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import LoadingComponent from '../components/common/MyLoading';
+import LoadingComponent, { type LoadingVariant } from '../components/common/MyLoading';
 
 export const useLoading = (props?: { defaultLoading: boolean }) => {
   const [isLoading, setIsLoading] = useState(props?.defaultLoading || false);
@@ -9,15 +9,17 @@ export const useLoading = (props?: { defaultLoading: boolean }) => {
       loading,
       fixed = true,
       text = '',
-      zIndex
+      zIndex,
+      variant
     }: {
       loading?: boolean;
       fixed?: boolean;
       text?: string;
       zIndex?: number;
+      variant?: LoadingVariant;
     }): JSX.Element | null => {
       return isLoading || loading ? (
-        <LoadingComponent fixed={fixed} text={text} zIndex={zIndex} />
+        <LoadingComponent fixed={fixed} text={text} zIndex={zIndex} variant={variant} />
       ) : null;
     },
     [isLoading]

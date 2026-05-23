@@ -66,16 +66,16 @@ const stripSystemMessages = (messages: ChatCompletionMessageParam[]) =>
   messages.filter((message) => message.role !== ChatCompletionRequestMessageRoleEnum.System);
 
 const buildInitialMessages = ({
-  runtime,
-  input
+  input,
+  hasRuntimeTools
 }: {
-  runtime: AgentLoopRuntime;
   input: UnifiedAgentLoopInput;
+  hasRuntimeTools: boolean;
 }): ChatCompletionMessageParam[] => [
   createSystemMessage(
     getMainAgentSystemPrompt({
       systemPrompt: input.systemPrompt,
-      hasRuntimeTools: runtime.toolCatalog.runtimeTools.length > 0
+      hasRuntimeTools
     })
   ),
   ...stripSystemMessages(input.messages)
@@ -127,6 +127,8 @@ export const runUnifiedAgentLoop = async ({
     toolCatalog: normalized
   };
 
+  const hasRuntimeTools = normalized.runtimeTools.length > 0;
+
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
   let pendingAsk:
     | {
@@ -164,7 +166,7 @@ export const runUnifiedAgentLoop = async ({
             content: input.userAnswer || ''
           } as ChatCompletionMessageParam
         ]
-      : buildInitialMessages({ runtime, input });
+      : buildInitialMessages({ input, hasRuntimeTools });
   const askToolName = runtime.toolCatalog.askTool?.function.name;
   const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
   const internalToolNames = new Set([askToolName, updatePlanToolName].filter(Boolean));

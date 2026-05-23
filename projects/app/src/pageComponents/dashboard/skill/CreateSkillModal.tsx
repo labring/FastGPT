@@ -1,7 +1,7 @@
 import React from 'react';
-import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
+import { useForm, useWatch } from 'react-hook-form';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -13,7 +13,6 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
 import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
@@ -27,15 +26,13 @@ type FormType = {
 type Props = {
   parentId?: string | null;
   onClose: () => void;
-  onSuccess?: () => void;
 };
 
-const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
+const CreateSkillModal = ({ parentId, onClose }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels } = useSystemStore();
 
-  const { register, setValue, watch, handleSubmit } = useForm<FormType>({
+  const { register, setValue, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: DEFAULT_SKILL_AVATAR,
       name: '',
@@ -44,8 +41,8 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     }
   });
 
-  const avatar = watch('avatar');
-  const requirement = watch('requirement');
+  const avatar = useWatch({ control, name: 'avatar' });
+  const requirement = useWatch({ control, name: 'requirement' });
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -57,23 +54,25 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { runAsync: onCreate, loading: isCreating } = useRequest(
     async ({ avatar, name, intro, requirement }: FormType) => {
       const trimmedRequirement = requirement.trim();
-      const defaultModel = defaultModels.llm?.model;
+      const defaultRequirement = t('skill:skill_requirement_default').trim();
+      const resolvedRequirement =
+        trimmedRequirement && trimmedRequirement !== defaultRequirement
+          ? trimmedRequirement
+          : undefined;
+
       return postCreateSkill({
         parentId: parentId ?? null,
         name: name.trim(),
         description: intro?.trim() || undefined,
-        requirements: trimmedRequirement || undefined,
-        model: trimmedRequirement && defaultModel ? defaultModel : undefined,
+        requirements: resolvedRequirement,
         avatar: avatar || undefined
       });
     },
     {
       onSuccess(skillId) {
-        onSuccess?.();
         onClose();
         router.push(`/skill/detail?skillId=${skillId}`);
       },
-      successToast: t('common:create_success'),
       errorToast: t('common:create_failed')
     }
   );
@@ -84,35 +83,37 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         isOpen
         onClose={onClose}
         title={t('skill:create_skill')}
-        w={'600px'}
+        size={'md'}
+        contentPx={'32px'}
+        contentPy={'32px'}
+        borderRadius={'10px'}
         closeOnOverlayClick={false}
       >
-        <ModalBody>
+        <Flex flexDirection={'column'} gap={6}>
           {/* 图标 & 名称 */}
-          <Box mb={5}>
-            <FormLabel required mb={2.5}>
-              {t('common:app_icon_and_name')}
-            </FormLabel>
+          <Box>
+            <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
                 <Flex
                   borderRadius={'6px'}
-                  w={10}
-                  h={10}
+                  w={'34px'}
+                  h={'34px'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                   justifyContent={'center'}
                   alignItems={'center'}
-                  mr={2.5}
+                  mr={3}
+                  p={'4px'}
                   cursor={'pointer'}
                   onClick={handleAvatarSelectorOpen}
                 >
-                  <Avatar src={avatar} borderRadius={'4.667px'} />
+                  <Avatar src={avatar} w={'24px'} borderRadius={'6px'} />
                 </Flex>
               </MyTooltip>
               <Input
                 flex={1}
-                h={'34px'}
+                size={'sm'}
                 placeholder={t('skill:skill_name_placeholder')}
                 {...register('name', { required: true })}
               />
@@ -120,11 +121,12 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
           </Box>
 
           {/* 介绍 */}
-          <Box mb={5}>
-            <FormLabel mb={2.5}>{t('skill:skill_intro_label')}</FormLabel>
+          <Box>
+            <FormLabel mb={2}>{t('skill:skill_intro_label')}</FormLabel>
             <Textarea
               {...register('intro')}
-              rows={3}
+              h={'60px'}
+              minH={'60px'}
               placeholder={t('skill:skill_intro_placeholder')}
               resize={'vertical'}
             />
@@ -132,8 +134,13 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
 
           {/* Skill 需求 */}
           <Box>
-            <Flex alignItems={'center'} mb={2.5}>
-              <FormLabel required>{t('skill:skill_requirement_label')}</FormLabel>
+            <Flex alignItems={'center'} mb={2}>
+              <FormLabel>
+                <Box as="span" color={'red.600'} mr={0.5}>
+                  *
+                </Box>
+                {t('skill:skill_requirement_label')}
+              </FormLabel>
               <MyPopover
                 trigger={'hover'}
                 placement={'right-start'}
@@ -169,19 +176,21 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
             <Textarea
               value={requirement}
               onChange={(e) => setValue('requirement', e.target.value)}
-              minH={'120px'}
+              h={'150px'}
+              minH={'150px'}
               resize={'vertical'}
             />
           </Box>
-        </ModalBody>
-        <ModalFooter gap={2}>
+        </Flex>
+
+        <Flex justifyContent={'flex-end'} gap={3} mt={6}>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
           <Button isLoading={isCreating} onClick={handleSubmit((data) => onCreate(data))}>
             {t('common:Confirm')}
           </Button>
-        </ModalFooter>
+        </Flex>
       </MyModal>
       <AvatarUploader />
     </>

@@ -34,7 +34,7 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -112,8 +112,8 @@ const EditForm = ({
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
-    return selectedModel?.quoteMaxToken || 3000;
-  }, [selectedModel?.quoteMaxToken]);
+    return selectedModel.quoteMaxToken || 3000;
+  }, [selectedModel.quoteMaxToken]);
 
   // Force close image select when model not support vision
   useEffect(() => {

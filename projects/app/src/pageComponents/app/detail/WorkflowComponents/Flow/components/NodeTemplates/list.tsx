@@ -220,14 +220,11 @@ const NodeTemplateList = ({
   onUpdateParentId
 }: TemplateListProps) => {
   const { t, i18n } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const { getIntersectingNodes } = useReactFlow();
-
-  const showSkill = !!feConfigs?.show_skill;
 
   const handleAddNode = useCallback(
     async ({
@@ -447,7 +444,7 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (!showSkill && item.flowNodeType === FlowNodeTypeEnum.agent) {
+          if (item.flowNodeType === FlowNodeTypeEnum.agent) {
             return;
           }
           if (item.templateType && map[item.templateType]) {

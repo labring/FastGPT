@@ -5,24 +5,23 @@ import { getAgentRuntimeTools } from './sub/tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { readFileTool, ReadFileToolSchema } from './sub/file/utils';
 import { datasetSearchTool } from './sub/dataset/utils';
-import { SANDBOX_TOOLS, sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_TOOLS, sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { dispatchFileRead } from './sub/file';
 import type { DispatchAgentModuleProps } from '.';
 import { dispatchAgentDatasetSearch } from './sub/dataset';
 import { dispatchSandboxTool } from './sub/sandbox';
-import type { CapabilityToolCallHandlerType } from './capability/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
 
 /**
- * 收集 Agent 节点可用的系统工具、能力工具和用户选择的子应用工具。
+ * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
  * 返回给 LLM 的 completionTools 与运行时查找用的 subAppsMap 会在这里保持一致。
  */
 export const getSubapps = async ({
@@ -31,8 +30,7 @@ export const getSubapps = async ({
   lang,
   hasDataset,
   hasFiles,
-  useAgentSandbox,
-  extraTools
+  useAgentSandbox
 }: {
   tmbId: string;
   tools: SkillToolType[];
@@ -40,7 +38,6 @@ export const getSubapps = async ({
   hasDataset?: boolean;
   hasFiles: boolean;
   useAgentSandbox?: boolean;
-  extraTools?: ChatCompletionTool[];
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -60,13 +57,8 @@ export const getSubapps = async ({
     }
 
     /* Sandbox Shell */
-    if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+    if (useAgentSandbox) {
       completionTools.push(...SANDBOX_TOOLS);
-    }
-
-    /* Capability extra tools (e.g. sandbox skills) */
-    if (extraTools && extraTools.length > 0) {
-      completionTools.push(...extraTools);
     }
   }
 
@@ -121,19 +113,19 @@ export type ToolDispatchContext = Pick<
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
-  capabilityToolCallHandler?: CapabilityToolCallHandlerType;
+  sandboxClient?: SandboxClient;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
 /**
  * 创建 workflow 工具执行器。
- * 该执行器屏蔽工具来源差异，将沙盒、文件读取、知识库搜索、能力工具和用户子应用统一成 agentLoop 可消费的工具结果。
+ * 该执行器屏蔽工具来源差异，将沙盒、文件读取、知识库搜索和用户子应用统一成 agentLoop 可消费的工具结果。
  */
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
   filesMap,
-  capabilityToolCallHandler,
+  sandboxClient,
   checkIsStopping,
   chatConfig,
   runningUserInfo,
@@ -160,7 +152,6 @@ export const getExecuteTool = ({
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
    */
   return async ({ callId, toolId, args }: { callId: string; toolId: string; args: string }) => {
-    const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
     const startTime = Date.now();
 
     const {
@@ -182,7 +173,8 @@ export const getExecuteTool = ({
             appId: runningAppInfo.id,
             userId: uid,
             chatId,
-            lang
+            lang,
+            sandboxClient
           });
 
           return {
@@ -236,27 +228,6 @@ export const getExecuteTool = ({
             nodeResponse: result.nodeResponse
           };
         }
-        // TODO: 所有skill工具，合并成一个 function，不要依赖 capabilityToolCallHandler
-        // Capability tools (e.g. sandbox skills)
-        const capResult = await capabilityToolCallHandler?.(toolId, args ?? '', callId);
-        if (capResult != null) {
-          if (capResult.assistantResponses?.length) {
-            capabilityAssistantResponses.push(...capResult.assistantResponses);
-          }
-          const subInfo = getSubAppInfo(toolId);
-          return {
-            response: capResult.response,
-            usages: capResult.usages,
-            nodeResponse: {
-              moduleType: FlowNodeTypeEnum.tool,
-              moduleName: subInfo.name,
-              moduleLogo: subInfo.avatar,
-              toolInput: parseJsonArgs(args),
-              toolRes: capResult.response
-            }
-          };
-        }
-
         // User Sub App
         const tool = getSubApp(toolId);
         if (!tool) {
@@ -399,8 +370,7 @@ export const getExecuteTool = ({
       response,
       usages,
       stop,
-      nodeResponse: formatNodeResponse,
-      capabilityAssistantResponses
+      nodeResponse: formatNodeResponse
     };
   };
 };

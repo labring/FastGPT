@@ -8,10 +8,13 @@ import type {
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
+import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
+
+const isSandboxToolId = (toolId?: string) =>
+  !!toolId && Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId);
 
 export function transformPreviewHistories(
   histories: ChatItemMiniType[],
@@ -92,7 +95,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
               }
             }
           });
-        } else if (item.toolId === SANDBOX_TOOL_NAME) {
+        } else if (isSandboxToolId(item.toolId)) {
           acc.useAgentSandbox = true;
         }
       }

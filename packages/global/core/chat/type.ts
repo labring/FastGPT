@@ -61,20 +61,12 @@ export type SandboxStatusPhase =
 // Note: 'expiredDetected' and 'restarting' are internal and filtered server-side
 
 export type SandboxStatusItemType = {
-  sandboxId: string; // sessionId or skillId (correlates events for same sandbox)
+  sandboxId: string; // FastGPT sandbox key; ready events use the persisted sandbox instance key
   phase: SandboxStatusPhase;
   isWarmStart?: boolean; // present on 'connecting' and 'ready'
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
-  // Present on 'ready' phase for edit-debug sandboxes
-  endpoint?: {
-    host: string;
-    port: number;
-    protocol: 'http' | 'https';
-    url: string;
-  };
-  providerSandboxId?: string; // present on 'ready' for edit-debug
 };
 
 /* Skill module response */

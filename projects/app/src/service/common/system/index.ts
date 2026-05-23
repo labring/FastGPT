@@ -22,7 +22,7 @@ import type {
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { serviceEnv } from '@fastgpt/service/env';
+import { hasAgentSandboxConfig, serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 
@@ -125,6 +125,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
+    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024,
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   },
   scripts: [],
@@ -162,9 +163,8 @@ export async function initSystemConfig() {
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      show_agent_sandbox: !!serviceEnv.AGENT_SANDBOX_PROVIDER,
-      show_skill: serviceEnv.SHOW_SKILL,
-      payFormUrl: appEnv.PAY_FORM_URL,
+      show_agent_sandbox: hasAgentSandboxConfig(),
+      payFormUrl: appEnv.PAY_FORM_URL || '',
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP
     },

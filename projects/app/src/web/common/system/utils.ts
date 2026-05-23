@@ -8,21 +8,30 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 export const downloadFetch = async ({
   url,
   filename,
-  body
+  body,
+  waitResponse = false
 }: {
   url: string;
   filename: string;
   body?: Record<string, any>;
+  waitResponse?: boolean;
 }) => {
-  if (body) {
-    // fetch data with POST method if body exists
+  if (body || waitResponse) {
     const response = await fetch(getWebReqUrl(url), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
+      method: body ? 'POST' : 'GET',
+      ...(body
+        ? {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          }
+        : {})
     });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || response.statusText);
+    }
 
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);

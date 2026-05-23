@@ -1,6 +1,6 @@
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -23,8 +23,12 @@ import HelperBot from '@/components/core/chat/HelperBot';
 import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
+import { checkAgentSkillSandboxUnavailable } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -34,7 +38,17 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { chatId } = useChatStore();
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
+  const isAgentSkillSandboxUnavailable = checkAgentSkillSandboxUnavailable({
+    appForm,
+    showSandbox,
+    enableSandbox
+  });
 
   const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('chat_debug');
   const HelperBotRef = useRef<HelperBotRefType>(null);
@@ -72,8 +86,22 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
-    isReady: true
+    isReady: !isAgentSkillSandboxUnavailable
   });
+  const onRestartChat = useCallback(() => {
+    if (isAgentSkillSandboxUnavailable) {
+      toast({
+        status: 'warning',
+        title: t('skill:sandbox_skill_unavailable_toast')
+      });
+      return;
+    }
+    if (activeTab === 'helper') {
+      HelperBotRef.current?.restartChat();
+    } else {
+      restartChat();
+    }
+  }, [activeTab, isAgentSkillSandboxUnavailable, restartChat, t, toast]);
 
   // 构建 TopAgent metadata,从 appForm 中提取配置
   const topAgentMetadata = useMemo(
@@ -141,11 +169,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               aria-label={'delete'}
               onClick={(e) => {
                 e.stopPropagation();
-                if (activeTab === 'helper') {
-                  HelperBotRef.current?.restartChat();
-                } else {
-                  restartChat();
-                }
+                onRestartChat();
               }}
             />
           </MyTooltip>

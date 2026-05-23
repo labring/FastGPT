@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Flex, Grid, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack, Switch, useDisclosure } from '@chakra-ui/react';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -40,6 +40,12 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -131,6 +137,7 @@ const CustomInputLabel = React.memo(function CustomInputLabel({
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, catchError, inputs, outputs } = data;
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
@@ -140,6 +147,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, defaultModels } = useSystemStore();
+  const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
+  const { teamPlanStatus, isTeamAdmin } = useUserStore();
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
+  const showWorkflowAgentSkills = false;
+  const { openConfirm, ConfirmModal } = useConfirm();
 
   // Split tool/common inputs and outputs
   const { isTool, commonInputs } = useMemoEnhance(
@@ -178,11 +191,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const externalVariables = useMemo(
     () =>
-      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+      externalProviderWorkflowVariables?.map((item) => ({
         key: item.key,
         label: item.name
       })) || [],
-    [feConfigs?.externalProviderWorkflowVariables]
+    [externalProviderWorkflowVariables]
   );
   const allVariables = useMemo(
     () => [...(editorVariables || []), ...(externalVariables || [])],
@@ -234,6 +247,16 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => inputs.find((i) => i.key === NodeInputKeyEnum.skills),
     [inputs]
   );
+  const sandboxInput = useMemo(
+    () => inputs.find((i) => i.key === NodeInputKeyEnum.useAgentSandbox),
+    [inputs]
+  );
+  const sandboxRenderType = sandboxInput ? getRenderType(sandboxInput) : undefined;
+  const showSandboxInput =
+    !!sandboxInput &&
+    !(sandboxInput.isPro && !feConfigs?.isPlus) &&
+    sandboxRenderType !== FlowNodeInputTypeEnum.hidden &&
+    !sandboxInput.canEdit;
   const toolsInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.selectedTools),
     [inputs]
@@ -246,6 +269,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
+        NodeInputKeyEnum.useAgentSandbox,
         NodeInputKeyEnum.selectedTools
       ]),
     []
@@ -355,15 +379,105 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
     [skillsInput]
   );
-  const skillsRenderType = useMemo(
-    () => (skillsInput ? getRenderType(skillsInput) : FlowNodeInputTypeEnum.selectSkill),
-    [skillsInput]
-  );
   const {
     isOpen: isOpenSkillSelect,
     onOpen: onOpenSkillSelect,
     onClose: onCloseSkillSelect
   } = useDisclosure();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
+  const openSkillSelect = useCallback(() => {
+    if (!showSandbox) {
+      toast({
+        status: 'warning',
+        title: t('skill:sandbox_skill_system_not_configured_toast')
+      });
+      return;
+    }
+    if (!enableSandbox) {
+      openConfirm({
+        title: t('skill:sandbox_plan_not_supported_title'),
+        customContent: t('skill:sandbox_skill_plan_not_supported_content'),
+        onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+        confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+        cancelText: t('common:Close'),
+        showCancel: isTeamAdmin
+      })();
+      return;
+    }
+    onOpenSkillSelect();
+  }, [
+    enableSandbox,
+    onOpenSkillSelect,
+    showSandbox,
+    t,
+    toast,
+    isTeamAdmin,
+    onOpenRecharge,
+    openConfirm
+  ]);
+  const onChangeAgentSandbox = useCallback(
+    (checked: boolean) => {
+      if (!sandboxInput) return;
+      if (checked) {
+        if (!showSandbox) {
+          toast({
+            status: 'warning',
+            title: t('skill:sandbox_system_not_configured_toast')
+          });
+          return;
+        }
+        if (!enableSandbox) {
+          openConfirm({
+            title: t('skill:sandbox_plan_not_supported_title'),
+            customContent: t('skill:sandbox_plan_not_supported_content'),
+            onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+            confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+            cancelText: t('common:Close'),
+            showCancel: isTeamAdmin
+          })();
+          return;
+        }
+      }
+      if (!checked && selectedAgentSkills.length > 0) {
+        toast({
+          status: 'warning',
+          title: t('skill:sandbox_disable_blocked_toast')
+        });
+        return;
+      }
+
+      onChangeNode({
+        nodeId,
+        key: NodeInputKeyEnum.useAgentSandbox,
+        type: 'updateInput',
+        value: {
+          ...sandboxInput,
+          value: checked
+        }
+      });
+    },
+    [
+      enableSandbox,
+      nodeId,
+      onChangeNode,
+      sandboxInput,
+      selectedAgentSkills.length,
+      showSandbox,
+      t,
+      toast,
+      openConfirm,
+      isTeamAdmin,
+      onOpenRecharge
+    ]
+  );
+  const skillsRenderType = useMemo(
+    () => (skillsInput ? getRenderType(skillsInput) : FlowNodeInputTypeEnum.selectSkill),
+    [skillsInput]
+  );
 
   // ---- Tools ----
   const toolsRenderType = useMemo(
@@ -429,8 +543,27 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {/* 3. Chat inputs (fileLink, userChatInput) */}
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
 
+        {showSandboxInput && sandboxInput && (
+          <Box
+            mb={5}
+            position={'relative'}
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <InputLabel nodeId={nodeId} input={sandboxInput} />
+            <Flex alignItems={'center'} gap={1} className={'nodrag'}>
+              {showSandbox && enableSandbox && <SandboxTipTag />}
+              <Switch
+                isChecked={!!sandboxInput.value}
+                onChange={(e) => onChangeAgentSandbox(e.target.checked)}
+              />
+            </Flex>
+          </Box>
+        )}
+
         {/* 4. Skills section (manual select / reference dual mode) */}
-        {feConfigs?.show_skill && skillsInput && (
+        {showWorkflowAgentSkills && skillsInput && (
           <Box mb={5}>
             <CustomInputLabel
               nodeId={nodeId}
@@ -456,80 +589,120 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       border="1px solid #91BBF2"
                       _hover={{ bg: 'myGray.50' }}
                       leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-                      onClick={onOpenSkillSelect}
+                      onClick={openSkillSelect}
                     >
                       {t('common:Choose')}
                     </Button>
-                    {selectedAgentSkills.map((item) => (
-                      <MyTooltip key={item.skillId} label={item.description}>
-                        <Flex
-                          alignItems={'center'}
-                          h={10}
-                          boxShadow={'sm'}
-                          bg={'white'}
-                          border={'base'}
-                          px={2}
-                          borderRadius={'md'}
-                          _hover={{
-                            borderColor: 'primary.300',
-                            '& .delete-btn': { display: 'flex' }
-                          }}
+                    {selectedAgentSkills.map((item) => {
+                      const isDeleted = !!item.isDeleted;
+
+                      return (
+                        <MyTooltip
+                          key={item.skillId}
+                          label={
+                            isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description
+                          }
                         >
-                          {item.avatar ? (
-                            <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                          ) : (
-                            <MyIcon name={'core/skill/default'} w={'18px'} />
-                          )}
-                          <Box
-                            ml={1.5}
-                            flex={'1 0 0'}
-                            w={0}
-                            className="textEllipsis"
-                            fontWeight={'bold'}
-                            fontSize={['sm', 'sm']}
+                          <Flex
+                            alignItems={'center'}
+                            h={10}
+                            boxShadow={'sm'}
+                            bg={'white'}
+                            border={'base'}
+                            borderColor={isDeleted ? 'red.600' : undefined}
+                            px={2}
+                            borderRadius={'md'}
+                            _hover={{
+                              borderColor: isDeleted ? 'red.600' : 'primary.300',
+                              '& .delete-btn': { display: 'flex' },
+                              '& .unHoverStyle': { display: 'none' }
+                            }}
                           >
-                            {item.name}
-                          </Box>
-                          <Box className="delete-btn" display={'none'}>
-                            <MyIconButton
-                              icon="delete"
-                              hoverBg="red.50"
-                              hoverColor="red.600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!skillsInput) return;
-                                onChangeNode({
-                                  nodeId,
-                                  key: NodeInputKeyEnum.skills,
-                                  type: 'updateInput',
-                                  value: {
-                                    ...skillsInput,
-                                    value: selectedAgentSkills.filter(
-                                      (s) => s.skillId !== item.skillId
-                                    )
-                                  }
-                                });
-                              }}
-                            />
-                          </Box>
-                        </Flex>
-                      </MyTooltip>
-                    ))}
+                            {item.avatar ? (
+                              <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
+                            ) : (
+                              <MyIcon name={'core/skill/default'} w={'18px'} />
+                            )}
+                            <Box
+                              ml={1.5}
+                              flex={'1 0 0'}
+                              w={0}
+                              className="textEllipsis"
+                              fontWeight={'bold'}
+                              fontSize={['sm', 'sm']}
+                            >
+                              {item.name}
+                            </Box>
+                            {isDeleted && (
+                              <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                                <MyIcon name={'common/error'} w={'14px'} mr={1} />
+                                <Box color={'red.600'} maxW={'100px'} className="textEllipsis">
+                                  {t('skill:skill_deleted')}
+                                </Box>
+                              </MyTag>
+                            )}
+                            <Box className="delete-btn" display={'none'}>
+                              <MyIconButton
+                                icon="delete"
+                                hoverBg="red.50"
+                                hoverColor="red.600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!skillsInput) return;
+                                  onChangeNode({
+                                    nodeId,
+                                    key: NodeInputKeyEnum.skills,
+                                    type: 'updateInput',
+                                    value: {
+                                      ...skillsInput,
+                                      value: selectedAgentSkills.filter(
+                                        (s) => s.skillId !== item.skillId
+                                      )
+                                    }
+                                  });
+                                }}
+                              />
+                            </Box>
+                          </Flex>
+                        </MyTooltip>
+                      );
+                    })}
                   </Grid>
                   {isOpenSkillSelect && (
                     <SkillSelectModal
                       selectedSkills={selectedAgentSkills}
                       onAddSkill={(skill: SelectedAgentSkillItemType) => {
                         if (!skillsInput) return;
-                        onChangeNode({
-                          nodeId,
-                          key: NodeInputKeyEnum.skills,
-                          type: 'updateInput',
-                          value: {
-                            ...skillsInput,
-                            value: [skill, ...selectedAgentSkills]
-                          }
-                        });
+                        onChangeNode([
+                          {
+                            nodeId,
+                            key: NodeInputKeyEnum.skills,
+                            type: 'updateInput',
+                            value: {
+                              ...skillsInput,
+                              value: [skill, ...selectedAgentSkills]
+                            }
+                          },
+                          ...(sandboxInput
+                            ? [
+                                {
+                                  nodeId,
+                                  key: NodeInputKeyEnum.useAgentSandbox,
+                                  type: 'updateInput' as const,
+                                  value: {
+                                    ...sandboxInput,
+                                    value: true
+                                  }
+                                }
+                              ]
+                            : [])
+                        ]);
+                        if (sandboxInput && !sandboxInput.value) {
+                          toast({
+                            status: 'success',
+                            title: t('skill:sandbox_auto_enabled_for_skill')
+                          });
+                        }
                       }}
                       onRemoveSkill={(skillId: string) => {
                         if (!skillsInput) return;
@@ -759,6 +932,16 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
 
       <SkillModal />
+
+      <ConfirmModal />
+      {isOpenRecharge && (
+        <RechargeModal
+          onClose={onCloseRecharge}
+          onPaySuccess={() => {
+            onCloseRecharge();
+          }}
+        />
+      )}
 
       {isOpenDatasetParams && (
         <DatasetParamsModal

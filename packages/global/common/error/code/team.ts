@@ -150,6 +150,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.datasetFolderAmountNotEnough,
     message: i18nT('common:code_error.team_error.dataset_folder_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.sandboxNotSupport,
+    message: i18nT('common:code_error.team_error.sandbox_not_support')
   }
 ];
 

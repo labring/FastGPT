@@ -173,3 +173,13 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
     return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
   }
 };
+
+export const checkTeamSandboxPermission = async (teamId: string) => {
+  const { standard } = await getTeamStandPlan({
+    teamId
+  });
+
+  if (standard && !standard?.enableSandbox) {
+    return Promise.reject(TeamErrEnum.sandboxNotSupport);
+  }
+};

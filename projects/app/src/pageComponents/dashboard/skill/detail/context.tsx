@@ -2,12 +2,15 @@ import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useStat
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import type { AgentSkillDetailType } from '@fastgpt/global/core/agentSkills/type';
+import type { AgentSkillDetailType } from '@fastgpt/global/core/ai/skill/type';
 import type { SandboxStatusItemType, SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillCreationStatusEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
-import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
+import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 
 export enum TabEnum {
   config = 'config',
@@ -33,9 +36,11 @@ type SkillDetailContextType = {
   setShowHistories: (v: boolean) => void;
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
-  sandboxEndpointUrl: string | null;
   sandboxError: string | null;
+  isSkillReady: boolean;
   startSandbox: () => void;
+  restartSandbox: () => void;
+  saveAllRef: React.MutableRefObject<(() => Promise<void>) | undefined>;
 };
 
 export const SkillDetailContext = createContext<SkillDetailContextType>({
@@ -49,9 +54,11 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   setShowHistories: () => {},
   sandboxState: 'idle',
   sandboxLogs: [],
-  sandboxEndpointUrl: null,
   sandboxError: null,
-  startSandbox: () => {}
+  isSkillReady: false,
+  startSandbox: () => {},
+  restartSandbox: () => {},
+  saveAllRef: { current: undefined }
 });
 
 const formatTimestamp = () => {
@@ -72,10 +79,10 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   // Sandbox states
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
-  const [sandboxEndpointUrl, setSandboxEndpointUrl] = useState<string | null>(null);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const hasStartedRef = useRef(false);
+  const saveAllRef = useRef<() => Promise<void>>();
 
   const phaseToMessage = useCallback(
     (status: SandboxStatusItemType): string => {
@@ -109,7 +116,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
     setSandboxState('idle');
     setSandboxLogs([]);
-    setSandboxEndpointUrl(null);
     setSandboxError(null);
 
     let hasReceivedFirstEvent = false;
@@ -130,8 +136,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         };
         setSandboxLogs((prev) => [...prev, entry]);
 
-        if (status.phase === 'ready' && status.providerSandboxId && status.endpoint?.port) {
-          setSandboxEndpointUrl(`/proxy/${status.providerSandboxId}/${status.endpoint.port}/`);
+        if (status.phase === 'ready') {
           setSandboxState('ready');
         } else if (status.phase === 'failed') {
           setSandboxError(status.message || t('skill:sandbox_error_title'));
@@ -150,6 +155,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [skillId, phaseToMessage, t]);
 
+  const restartSandbox = useCallback(() => {
+    hasStartedRef.current = true;
+    startSandbox();
+  }, [startSandbox]);
+
   // Skill detail fetch
   const {
     data: skillDetail,
@@ -162,11 +172,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         const detail: AgentSkillDetailType = {
           ...res,
           type: AgentSkillTypeEnum.skill,
-          config: res.config ?? {},
           teamId: res.teamId ?? '',
           tmbId: res.tmbId ?? '',
-          currentVersion: 0,
-          versionCount: 0,
+          currentVersionId: res.currentVersionId,
+          creationStatus: res.creationStatus,
+          creationError: res.creationError,
           createTime: new Date(res.createTime),
           updateTime: new Date(res.updateTime),
           appCount: res.appCount ?? 0,
@@ -177,17 +187,54 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [skillId]
+      refreshDeps: [skillId],
+      errorToast: '',
+      onError() {
+        router.replace('/dashboard/skill');
+      }
     }
   );
 
+  const creationStatus = skillDetail?.creationStatus;
+  const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
+  const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
+  const isSkillNoCurrentVersion =
+    !!skillDetail &&
+    creationStatus === AgentSkillCreationStatusEnum.ready &&
+    !skillDetail.currentVersionId;
+  const isSkillReady =
+    !!skillDetail &&
+    creationStatus === AgentSkillCreationStatusEnum.ready &&
+    !!skillDetail.currentVersionId;
+  const visibleSandboxState: SandboxState =
+    isSkillCreateFailed || isSkillNoCurrentVersion ? 'failed' : sandboxState;
+  const visibleSandboxError = (() => {
+    if (isSkillCreateFailed) return skillDetail?.creationError || t('common:create_failed');
+    if (isSkillNoCurrentVersion) return t('skill:no_current_version');
+    return sandboxError;
+  })();
+  const visibleCurrentTab =
+    (!isSkillReady || visibleSandboxState !== 'ready') && currentTab === TabEnum.preview
+      ? TabEnum.config
+      : currentTab;
+
+  useEffect(() => {
+    if (!isSkillCreating) return;
+
+    const timer = setInterval(() => {
+      refreshSkillDetail();
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [isSkillCreating, refreshSkillDetail]);
+
   // Auto-start sandbox when skillId is ready
   useEffect(() => {
-    if (skillId && !hasStartedRef.current) {
+    if (skillId && isSkillReady && !hasStartedRef.current) {
       hasStartedRef.current = true;
       startSandbox();
     }
-  }, [skillId, startSandbox]);
+  }, [skillId, isSkillReady, startSandbox]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -202,28 +249,31 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       skillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
-      currentTab,
+      currentTab: visibleCurrentTab,
       setCurrentTab,
       showHistories,
       setShowHistories,
-      sandboxState,
+      sandboxState: visibleSandboxState,
       sandboxLogs,
-      sandboxEndpointUrl,
-      sandboxError,
-      startSandbox
+      sandboxError: visibleSandboxError,
+      isSkillReady,
+      startSandbox,
+      restartSandbox,
+      saveAllRef
     }),
     [
       skillId,
       skillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
-      currentTab,
+      visibleCurrentTab,
       showHistories,
-      sandboxState,
+      visibleSandboxState,
       sandboxLogs,
-      sandboxEndpointUrl,
-      sandboxError,
-      startSandbox
+      visibleSandboxError,
+      isSkillReady,
+      startSandbox,
+      restartSandbox
     ]
   );
 

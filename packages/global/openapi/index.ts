@@ -6,7 +6,7 @@ import { AppPath } from './core/app';
 import { SupportPath } from './support';
 import { DatasetPath } from './core/dataset';
 import { AIPath } from './core/ai';
-import { AgentSkillsPath } from './core/agentSkills';
+import { SkillPath } from './core/ai/skill';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -22,7 +22,7 @@ export const openAPIDocument = createDocument({
     ...PluginPath,
     ...SupportPath,
     ...AIPath,
-    ...AgentSkillsPath
+    ...SkillPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
@@ -36,7 +36,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: 'AI 相关',
-      tags: [TagsMap.aiSkill, TagsMap.sandbox]
+      tags: [TagsMap.aiSkill, TagsMap.sandbox, TagsMap.aiCommon]
     },
     {
       name: '对话模块配置',
@@ -77,11 +77,6 @@ export const openAPIDocument = createDocument({
         TagsMap.userLogin
       ]
     },
-    {
-      name: '通用-核心功能',
-      tags: [TagsMap.aiCommon]
-    },
-
     {
       name: '通用-辅助功能',
       tags: [TagsMap.customDomain, TagsMap.apiKey]

@@ -1,6 +1,5 @@
 import type { I18nStringType, localeType } from '../../../../common/i18n/type';
-import { sandboxToolMap } from '../../../ai/sandbox/constants';
-import { skillToolsMap } from './skillTools';
+import { sandboxToolMap } from '../../../ai/sandbox/tools';
 import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SubAppIds {
@@ -51,8 +50,7 @@ export const systemSubInfo: Record<
     avatar: 'core/workflow/template/agent',
     toolDescription: '调用 LLM 模型完成一些通用任务。'
   },
-  ...sandboxToolMap,
-  ...skillToolsMap
+  ...sandboxToolMap
 };
 export const getSystemToolInfo = (id: string, lang: localeType = 'en') => {
   if (id in systemSubInfo) {

@@ -7,40 +7,40 @@ FROM ubuntu:24.04
 
 # Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
+ENV BUN_INSTALL=/usr/local
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
+# Install sandbox runtime tools.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
     git \
     jq \
+    python3 \
+    python3-pip \
     ripgrep \
-    vim-tiny \
     tree \
-    zip \
+    vim-tiny \
     unzip \
-    curl \
-    ca-certificates
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-RUN apt install -y python3 nodejs
-RUN rm -rf /var/lib/apt/lists/*
+    zip \
+    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && curl -fsSL https://bun.sh/install | bash \
+    && for tool in bash python3 node bun git curl; do command -v "$tool"; done \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install code-server using the official script
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+# Create a non-root user for security. Keep /workspace owned by this user so
+# Docker named volumes initialized from the image remain writable by sandbox.
+RUN useradd --create-home --shell /bin/bash --uid 10001 sandbox \
+    && mkdir -p /workspace \
+    && chown -R sandbox:sandbox /home/sandbox /workspace
 
-# Create a non-root user for security
-RUN useradd --create-home --shell /bin/bash sandbox
-
-USER root
+USER sandbox
 WORKDIR /home/sandbox
-
-# Copy VS Code settings
-RUN mkdir -p /home/sandbox/.local/share/code-server/User
-COPY --chown=sandbox:sandbox settings.json /home/sandbox/.local/share/code-server/User/settings.json
 
 # Copy and configure entrypoint
 COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
 RUN chmod +x /home/sandbox/entrypoint.sh
-
-# Expose code-server port
-EXPOSE 8080
 
 ENTRYPOINT ["/home/sandbox/entrypoint.sh"]

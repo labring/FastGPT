@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -9,10 +8,10 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
-import { deleteSandboxesByChatIds } from '@fastgpt/service/core/ai/sandbox/controller';
+import { deleteSandboxesByChatIds } from '@fastgpt/service/core/ai/sandbox/service/resource';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
+async function handler(req: ApiRequestProps) {
   const { appId, chatIds } = parseApiInput({ req, bodySchema: ChatBatchDeleteBodySchema }).body;
 
   await authApp({

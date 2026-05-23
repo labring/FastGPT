@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -10,16 +9,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { getSkillList } from '@/web/core/skill/api';
-import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import type { ListSkillsResponse } from '@fastgpt/global/core/agentSkills/api';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import FolderPath from '@/components/common/folder/Path';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useSkillSelectData, type SkillSelectItemType } from './hooks/useSkillSelectData';
 
 const MAX_SKILL_COUNT = 100;
-
-type SkillItem = ListSkillsResponse['list'][number];
-type NavItem = { id: string; name: string };
 
 const SkillSelectModal = ({
   selectedSkills,
@@ -33,51 +27,15 @@ const SkillSelectModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const [searchKey, setSearchKey] = useState('');
-  // 导航栈：每个元素代表一级文件夹 {id, name}，空数组表示根目录
-  const [navStack, setNavStack] = useState<NavItem[]>([]);
-
-  // 根目录传 ''（空字符串），与 context.tsx 的调用保持一致
-  const parentId = navStack.length > 0 ? navStack[navStack.length - 1].id : '';
-
-  const { data: skillList = [], loading: isLoading } = useRequest(
-    () =>
-      getSkillList({
-        source: 'mine',
-        parentId: parentId,
-        searchKey: searchKey || undefined
-      }).then((res) => res.list),
-    {
-      manual: false,
-      refreshDeps: [parentId, searchKey],
-      throttleWait: 300
-    }
-  );
-
-  const onEnterFolder = useCallback((item: SkillItem) => {
-    setNavStack((prev) => [...prev, { id: item._id, name: item.name }]);
-    setSearchKey('');
-  }, []);
-
-  // 将 navStack 转为 FolderPath 所需的 paths 格式
-  const paths = useMemo(
-    () => navStack.map((item) => ({ parentId: item.id, parentName: item.name })),
-    [navStack]
-  );
-
-  // FolderPath 点击某一层级时，根据 parentId 裁剪 navStack
-  const onUpdateParentId = useCallback((targetParentId: ParentIdType) => {
-    if (!targetParentId) {
-      setNavStack([]);
-    } else {
-      setNavStack((prev) => {
-        const idx = prev.findIndex((item) => item.id === targetParentId);
-        return idx >= 0 ? prev.slice(0, idx + 1) : prev;
-      });
-    }
-    setSearchKey('');
-  }, []);
-
+  const {
+    skillList,
+    isLoadingSkillList,
+    searchKey,
+    setSearchKey,
+    paths,
+    onEnterFolder,
+    onUpdateParentId
+  } = useSkillSelectData();
   const isAtLimit = selectedSkills.length >= MAX_SKILL_COUNT;
 
   return (
@@ -92,8 +50,8 @@ const SkillSelectModal = ({
       h={['90vh', '80vh']}
     >
       {/* Header: search */}
-      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'flex-end'} w={'full'}>
-        <Box w={200}>
+      <Box px={[3, 6]} pt={4} w={'full'}>
+        <Box w={'full'}>
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
@@ -103,13 +61,13 @@ const SkillSelectModal = ({
       </Box>
 
       {/* 面包屑导航 */}
-      {!searchKey && navStack.length > 0 && (
+      {!searchKey && paths.length > 0 && (
         <Flex mt={1} px={[3, 6]}>
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
 
-      <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
+      <MyBox isLoading={isLoadingSkillList} mt={2} pb={3} flex={'1 0 0'} h={0}>
         <Box overflow={'overlay'} height={'100%'}>
           {skillList.length > 0 ? (
             <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3} px={[3, 6]}>
@@ -124,7 +82,8 @@ const SkillSelectModal = ({
                       skillId: item._id,
                       name: item.name,
                       description: item.description,
-                      avatar: item.avatar
+                      avatar: item.avatar,
+                      isDeleted: false
                     })
                   }
                   onRemove={() => onRemoveSkill(item._id)}
@@ -151,7 +110,7 @@ const SkillCard = React.memo(function SkillCard({
   onRemove,
   onOpenFolder
 }: {
-  item: SkillItem;
+  item: SkillSelectItemType;
   isSelected: boolean;
   isAtLimit: boolean;
   onAdd: () => void;

@@ -1,10 +1,11 @@
 import React, { forwardRef } from 'react';
-import { Flex, Box, type BoxProps, HStack } from '@chakra-ui/react';
+import { Box, type BoxProps, HStack } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
 type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   list: {
     icon?: string;
+    iconSize?: string;
     label: string | React.ReactNode;
     value: T;
   }[];
@@ -71,8 +72,16 @@ const FillRowTabs = (
                 onClick: () => onChange(item.value)
               })}
         >
-          {item.icon && <MyIcon name={item.icon as any} w={iconSize} />}
-          <Box fontSize={labelSize}>{item.label}</Box>
+          {item.icon && (
+            <MyIcon
+              name={item.icon as any}
+              w={item.iconSize || iconSize}
+              h={item.iconSize || iconSize}
+            />
+          )}
+          {item.label !== undefined && item.label !== '' && (
+            <Box fontSize={labelSize}>{item.label}</Box>
+          )}
         </HStack>
       ))}
     </Box>

@@ -1,16 +1,17 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
+const { Schema } = connectionMongo;
 import { type PromotionRecordSchema as PromotionRecordType } from '@fastgpt/global/support/activity/type';
+import { userCollectionName } from '../../user/schema';
 
 const PromotionRecordSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: userCollectionName,
     required: true
   },
   objUId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: userCollectionName,
     required: false
   },
   createTime: {

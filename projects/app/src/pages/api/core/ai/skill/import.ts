@@ -1,0 +1,185 @@
+import { NextAPI } from '@/service/middleware/entry';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
+import {
+  findSkillMdKey,
+  getRootPrefix,
+  repackFileMapAsZip,
+  getSupportedArchiveFormat,
+  extractToFileMap,
+  normalizeSkillWorkspaceRoot,
+  hasSkillsDirectoryContent,
+  stripRootPrefix
+} from '@fastgpt/service/core/ai/skill/package';
+import {
+  ImportSkillBodySchema,
+  type ImportSkillBody,
+  type ImportSkillResponse
+} from '@fastgpt/global/core/ai/skill/api';
+import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
+import {
+  AgentSkillCategoryEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/ai/skill/constants';
+import { multer } from '@fastgpt/service/common/file/multer';
+import { getSkillSizeLimits } from '@fastgpt/service/core/ai/skill/sandbox/config';
+import fs from 'fs/promises';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
+async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSkillResponse> {
+  const filepaths: string[] = [];
+
+  try {
+    // Read env limit before multer so both use the same value
+    const { maxUploadBytes: maxArchiveSize, maxUncompressedBytes } = getSkillSizeLimits();
+    // Convert bytes to MB for multer (multer expects MB)
+    const maxArchiveSizeMB = Math.ceil(maxArchiveSize / 1024 / 1024);
+
+    const result = await multer.resolveFormData<ImportSkillBody>({
+      request: req,
+      maxFileSize: maxArchiveSizeMB
+    });
+
+    filepaths.push(result.fileMetadata.path);
+
+    const file = result.fileMetadata;
+    const body = parseApiInput({
+      req: { body: result.data },
+      bodySchema: ImportSkillBodySchema
+    }).body;
+
+    const format = getSupportedArchiveFormat(file.originalname ?? '');
+    if (!format) {
+      return Promise.reject(SkillErrEnum.invalidArchiveFormat);
+    }
+
+    // Authenticate user and check permission
+    let teamId: string;
+    let tmbId: string;
+
+    if (body.parentId) {
+      // If importing into a folder, check write permission on the parent folder
+      const authResult = await authSkill({
+        req,
+        authToken: true,
+        authApiKey: true,
+        skillId: body.parentId,
+        per: WritePermissionVal
+      });
+      teamId = authResult.teamId;
+      tmbId = authResult.tmbId;
+    } else {
+      // If importing to root, check team-level skill create permission
+      const authResult = await authUserPer({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: TeamSkillCreatePermissionVal
+      });
+      teamId = authResult.teamId;
+      tmbId = authResult.tmbId;
+    }
+
+    // Check archive size (multer already enforces the limit, this is a secondary guard)
+    const stats = await fs.stat(file.path);
+    if (stats.size > maxArchiveSize) {
+      logger.warn('Archive file size exceeds maximum', {
+        sizeMB: (stats.size / 1024 / 1024).toFixed(2),
+        maxMB: (maxArchiveSize / 1024 / 1024).toFixed(2)
+      });
+      return Promise.reject(SkillErrEnum.archiveTooLarge);
+    }
+
+    // Extract archive to file map
+    let fileMap: Record<string, Buffer>;
+    try {
+      fileMap = await extractToFileMap(file.path, maxUncompressedBytes);
+    } catch (err: any) {
+      logger.warn('Failed to extract archive', { error: err.message });
+      return Promise.reject(SkillErrEnum.archiveExtractionFailed);
+    }
+    if (Object.keys(fileMap).length === 0) {
+      return Promise.reject(SkillErrEnum.archiveEmpty);
+    }
+    // Derive package-level name from caller-supplied value or archive filename
+    const pkgName =
+      body.name ||
+      (file.originalname ?? 'package').replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim() ||
+      'package';
+    const pkgDescription = body.description ?? '';
+
+    fileMap = normalizeSkillWorkspaceRoot(fileMap);
+    const finalFileMap: Record<string, Buffer> = {};
+    if (hasSkillsDirectoryContent(fileMap)) {
+      Object.assign(finalFileMap, fileMap);
+    } else {
+      const skillMdKey = findSkillMdKey(fileMap);
+      if (!skillMdKey) {
+        return Promise.reject(SkillErrEnum.invalidSkillPackage);
+      }
+
+      const singleSkillFileMap = stripRootPrefix(fileMap, getRootPrefix(skillMdKey));
+      const prefix = `skills/${pkgName}/`;
+      for (const [key, value] of Object.entries(singleSkillFileMap)) {
+        finalFileMap[`${prefix}${key}`] = value;
+      }
+    }
+
+    // Repack the workspace fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
+    const zipBuffer = await repackFileMapAsZip(finalFileMap);
+
+    // Build skill package using package-level metadata only
+    const skillPackage: SkillPackageType = {
+      skill: {
+        name: pkgName,
+        description: pkgDescription,
+        category: [AgentSkillCategoryEnum.other],
+        avatar: body.avatar
+      }
+    };
+
+    // Create ONE DB record
+    const skillId = await importSkill(
+      skillPackage,
+      teamId,
+      tmbId,
+      zipBuffer,
+      body.parentId || null
+    );
+
+    // Add audit log
+    (async () => {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.IMPORT_SKILL,
+        params: {
+          skillName: pkgName,
+          skillType: getI18nSkillType(AgentSkillTypeEnum.skill)
+        }
+      });
+    })();
+
+    return skillId;
+  } finally {
+    multer.clearDiskTempFiles(filepaths);
+  }
+}
+
+export default NextAPI(handler);

@@ -1,6 +1,8 @@
 import type {
   SandboxListBody,
   SandboxListResponse,
+  SandboxListRecursiveBody,
+  SandboxListRecursiveResponse,
   SandboxWriteBody,
   SandboxWriteResponse,
   SandboxReadBody,
@@ -8,16 +10,30 @@ import type {
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
   SandboxGetHtmlPreviewLinkBody,
-  SandboxGetHtmlPreviewLinkResponse
+  SandboxGetHtmlPreviewLinkResponse,
+  SandboxFileOpBody,
+  SandboxFileOpResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
+
+/**
+ * 文件系统操作
+ */
+export const fileOpSandbox = async (data: SandboxFileOpBody) =>
+  POST<SandboxFileOpResponse>('/core/ai/sandbox/fileOp', data);
 
 /**
  * 列出目录文件
  */
 export const listSandboxFiles = async (data: SandboxListBody) =>
   POST<SandboxListResponse>('/core/ai/sandbox/list', data);
+
+/**
+ * 递归列出目录文件
+ */
+export const listSandboxFilesRecursive = async (data: SandboxListRecursiveBody) =>
+  POST<SandboxListRecursiveResponse>('/core/ai/sandbox/listRecursive', data);
 
 /**
  * 写入文件内容

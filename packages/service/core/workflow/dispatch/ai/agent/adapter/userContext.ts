@@ -8,6 +8,10 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { getHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
+import type { DeployedSkillInfo } from '../../../../../ai/skill/runtime/types';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export type AgentInputFile = {
   id: string;
@@ -16,15 +20,50 @@ export type AgentInputFile = {
   url: string;
 };
 
-// Agent 文件上下文只暴露模型可访问的 URL 形态。data: 主要用于图片类输入，
-// ws/http/相对路径则覆盖用户上传、预签名和部分运行时文件地址。
-const isValidAgentFileUrl = (url: unknown): url is string => {
+export type ParseAgentInputFilesParams = {
+  files: UserChatItemFileItemType[];
+  prefixId: string;
+  requestOrigin?: string;
+  maxFiles: number;
+};
+
+export type BuildCurrentAgentInputFilesParams = {
+  currentFiles?: string[];
+  currentQuery?: ChatItemMiniType['value'];
+  currentDataId?: string;
+  requestOrigin?: string;
+  maxFiles: number;
+};
+
+const escapeXml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+type AgentSelectedDatasetInput = Pick<SelectedDatasetType, 'datasetId'> &
+  Partial<Omit<SelectedDatasetType, 'datasetId'>>;
+
+type AgentSelectedDatasetContext = AgentSelectedDatasetInput & {
+  name: string;
+  intro?: string;
+};
+
+export const isValidAgentFileUrl = (url: unknown): url is string => {
   if (typeof url !== 'string') return false;
   const validPrefixList = ['/', 'http', 'ws', 'data:'];
   return validPrefixList.some((prefix) => url.startsWith(prefix));
 };
 
-const normalizeAgentFileUrl = ({ url, requestOrigin }: { url: string; requestOrigin?: string }) => {
+export const normalizeAgentFileUrl = ({
+  url,
+  requestOrigin
+}: {
+  url: string;
+  requestOrigin?: string;
+}) => {
   if (!isValidAgentFileUrl(url)) return '';
 
   try {
@@ -42,50 +81,18 @@ const normalizeAgentFileUrl = ({ url, requestOrigin }: { url: string; requestOri
   }
 };
 
-const escapeXml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-const getMessagePrefixId = (message: ChatItemMiniType, index: number) =>
-  message.dataId || `${index}`;
-
-const getHistoricalHumanPrefixId = (messages: ChatItemMiniType[], index: number) => {
-  const message = messages[index];
-
-  // 历史 Human 的文件 id 必须和当轮 AI response 的 dataId 对齐。
-  // 这样上一轮 assistant tool call 里保存的 read_files ids，在下一轮恢复历史时仍能命中。
-  for (let nextIndex = index + 1; nextIndex < messages.length; nextIndex++) {
-    const nextMessage = messages[nextIndex];
-    if (nextMessage.obj === ChatRoleEnum.Human) break;
-    // The current turn uses responseChatItemId as file id prefix, so restored history must use the
-    // paired AI dataId to keep previous assistant tool-call args aligned with the rewritten Human.
-    if (nextMessage.obj === ChatRoleEnum.AI && nextMessage.dataId) {
-      return nextMessage.dataId;
-    }
-  }
-
-  return getMessagePrefixId(message, index);
-};
-
-// 将 chat value 中的文件统一整理成 prompt/tool 共用的文件元数据：
-// 1. 先标准化 URL；
-// 2. 再按 URL 去重，保证同一轮 query/files 输入不会生成两个 id；
-// 3. 最后根据 prefixId 生成稳定 id，供 read_files 和 sandbox_fetch_user_file 使用。
-const parseAgentInputFiles = ({
+/**
+ * 将 chat value 中携带的文件转换成 Agent 内部稳定文件 id。
+ *
+ * 该函数只负责 URL 归一化、去重、限量和类型解析；调用方决定这些文件用于
+ * read_files 映射、sandbox 注入，还是 user reminder。
+ */
+export function parseAgentInputFiles({
   files,
   prefixId,
   requestOrigin,
   maxFiles
-}: {
-  files: UserChatItemFileItemType[];
-  prefixId: string;
-  requestOrigin?: string;
-  maxFiles: number;
-}) => {
+}: ParseAgentInputFilesParams): AgentInputFile[] {
   const normalizedFiles = files
     .map((file) => ({
       file,
@@ -118,59 +125,43 @@ const parseAgentInputFiles = ({
       };
     })
     .filter(Boolean) as AgentInputFile[];
-};
+}
 
-const getReadableAgentFileType = (type: `${ChatFileTypeEnum}`) => {
-  return type === ChatFileTypeEnum.file ? 'document' : 'image';
-};
+/**
+ * 解析本轮用户输入文件。
+ *
+ * sandbox 初始化和 user reminder 都依赖这组结果，因此单独抽出，避免两边各自
+ * 重新拼 currentQuery/currentFiles 的文件合并规则。
+ */
+export function buildCurrentAgentInputFiles({
+  currentFiles = [],
+  currentQuery,
+  currentDataId,
+  requestOrigin,
+  maxFiles
+}: BuildCurrentAgentInputFilesParams): AgentInputFile[] {
+  const { files: queryFiles = [] } = currentQuery
+    ? chatValue2RuntimePrompt(currentQuery)
+    : { files: [] };
+  const currentInputFiles = [...queryFiles.map((file) => file.url), ...currentFiles].filter(
+    (url, index, list) => url && list.indexOf(url) === index
+  );
+  const currentQueryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
 
-type AgentSelectedDatasetInput = Pick<SelectedDatasetType, 'datasetId'> &
-  Partial<Omit<SelectedDatasetType, 'datasetId'>>;
+  return parseAgentInputFiles({
+    files: currentInputFiles.map(
+      (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
+    ),
+    prefixId: currentDataId || getNanoid(),
+    requestOrigin,
+    maxFiles
+  });
+}
 
-type AgentSelectedDatasetContext = AgentSelectedDatasetInput & {
-  name: string;
-  intro?: string;
-};
-
-// 文件 prompt 只放文件元信息，不直接注入正文。正文仍由 read_files 按需读取，
-// 避免每轮请求都把大文件内容塞进主模型上下文。
-export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
-  if (files.length === 0) return '';
-
-  return `# Input Files
-用户本次可用的文件：
-
-${files
-  .map(
-    (file) => `<file>
-<id>${escapeXml(file.id)}</id>
-<name>${escapeXml(file.name)}</name>
-<type>${escapeXml(getReadableAgentFileType(file.type))}</type>
-</file>`
-  )
-  .join('\n')}`;
-};
-
-const buildAgentInputDatasetsPrompt = (selectedDataset: AgentSelectedDatasetContext[] = []) => {
-  if (selectedDataset.length === 0) return '';
-
-  return `# Input datasets
-用户当前可用的知识库：
-
-${selectedDataset
-  .map((item) =>
-    [
-      '<dataset>',
-      `<id>${escapeXml(item.datasetId)}</id>`,
-      `<name>${escapeXml(item.name)}</name>`,
-      ...(item.intro ? [`<description>${escapeXml(item.intro)}</description>`] : []),
-      '</dataset>'
-    ].join('\n')
-  )
-  .join('\n')}`;
-};
-
-const loadAgentDatasetContext = async (
+/**
+ * 加载知识库
+ */
+export const loadAgentDatasetContext = async (
   selectedDataset: AgentSelectedDatasetInput[] = [],
   tmbId: string
 ): Promise<AgentSelectedDatasetContext[]> => {
@@ -215,73 +206,136 @@ const loadAgentDatasetContext = async (
     });
 };
 
-const buildAgentCurrentTimePrompt = (currentTime?: string) => {
-  if (!currentTime) return '';
+/* Prompt */
+export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
+  if (files.length === 0) return '';
 
-  return `# Current time
-${currentTime}`;
+  const getReadableAgentFileType = (type: `${ChatFileTypeEnum}`) => {
+    return type === ChatFileTypeEnum.file ? 'document' : 'image';
+  };
+
+  return `## 文件
+用户本次对话上传的的文件， 可通过 ${SubAppIds.readFiles} 读取文件内容：
+
+${files
+  .map(
+    (file) => `<file>
+<id>${escapeXml(file.id)}</id>
+<name>${escapeXml(file.name)}</name>
+<type>${escapeXml(getReadableAgentFileType(file.type))}</type>
+</file>`
+  )
+  .join('\n')}`;
 };
+export function buildAgentSkillsPrompt(skillInfos: DeployedSkillInfo[] = []): string {
+  if (skillInfos.length === 0) return '';
 
+  return `## 技能
+你可以使用可复用的技能。每个技能都提供针对特定任务的操作说明。当用户任务与某个技能的描述匹配时，先读取该技能的 SKILL.md 路径，然后再继续执行。不要仅凭技能描述推断完整工作流。
+当技能引用相对路径文件时，应以该技能的 SKILL.md 所在目录作为基准目录进行解析。
+你可以通过 ${SANDBOX_READ_FILE_TOOL_NAME} 工具来读取完整的技能。
+下面是可用的技能：
+
+${skillInfos
+  .map(
+    (info) => `<skill>
+<name>${escapeXml(info.name)}</name>
+<description>${escapeXml(info.description)}</description>
+<directory>${escapeXml(info.directory)}</directory>
+<path>${escapeXml(info.skillMdPath)}</path>
+</skill>`
+  )
+  .join('\n')}`;
+}
+const buildAgentInputDatasetsPrompt = (selectedDataset: AgentSelectedDatasetContext[] = []) => {
+  if (selectedDataset.length === 0) return '';
+
+  return `## 知识库
+用户当前可用的知识库：
+
+${selectedDataset
+  .map((item) =>
+    [
+      '<dataset>',
+      `<id>${escapeXml(item.datasetId)}</id>`,
+      `<name>${escapeXml(item.name)}</name>`,
+      ...(item.intro ? [`<description>${escapeXml(item.intro)}</description>`] : []),
+      '</dataset>'
+    ].join('\n')
+  )
+  .join('\n')}`;
+};
+const buildAgentEnvPrompt = ({
+  currentTime,
+  currentWorkingDirectory
+}: {
+  currentTime?: string;
+  currentWorkingDirectory?: string;
+}) => {
+  if (!currentTime && !currentWorkingDirectory) return '';
+
+  return `## 背景信息
+${currentTime ? `当前时间: ${currentTime}` : ''}
+${currentWorkingDirectory ? `当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''}`;
+};
 // 当前轮动态上下文统一包在 user message 内。它不是系统角色 prompt，
 // 但对模型来说是回答本轮问题时可用的事实提醒。
 export const buildAgentUserReminderInput = ({
   query = '',
-  filePrompt,
+  skillInfos,
+  filesInfo,
   selectedDataset,
-  currentTime
+  currentTime,
+  currentWorkingDirectory
 }: {
   query?: string;
-  filePrompt?: string;
+  skillInfos?: DeployedSkillInfo[];
+  filesInfo?: AgentInputFile[];
   selectedDataset?: AgentSelectedDatasetContext[];
   currentTime?: string;
+  currentWorkingDirectory?: string;
 }) => {
   const reminder = [
-    filePrompt,
+    buildAgentSkillsPrompt(skillInfos),
+    buildAgentInputFilesPrompt(filesInfo),
     buildAgentInputDatasetsPrompt(selectedDataset),
-    buildAgentCurrentTimePrompt(currentTime)
+    buildAgentEnvPrompt({ currentTime, currentWorkingDirectory })
   ]
     .filter(Boolean)
     .join('\n\n');
 
   if (!reminder) return query || '';
 
-  const reminderWithQuery = [reminder, query].filter(Boolean).join('\n\n');
-
   return `<system-reminder>
-${reminderWithQuery}
-</system-reminder>`.trim();
+依据以下内容完成任务
+
+${reminder}
+</system-reminder>
+${query}`.trim();
 };
 
-export const rewriteAgentUserMessagesWithFiles = ({
-  messages,
-  filesByMessage
-}: {
-  messages: ChatItemMiniType[];
-  filesByMessage: Map<ChatItemMiniType, AgentInputFile[]>;
-}) => {
-  return messages.map((message) => {
-    if (message.obj !== ChatRoleEnum.Human) return message;
-
-    const files = filesByMessage.get(message) || [];
-    const filePrompt = buildAgentInputFilesPrompt(files);
-    if (!filePrompt) return message;
-
-    // 历史消息每轮只补文件段，不补 datasets/time。
-    // datasets/time 是当前轮状态，写入历史会让下一轮恢复时混入过期资源或旧时间。
-    const { text } = chatValue2RuntimePrompt(message.value);
-    return {
-      ...message,
-      value: runtimePrompt2ChatsValue({
-        text: buildAgentUserReminderInput({
-          query: text,
-          filePrompt
-        })
-      })
-    };
-  });
+export type UseUserContextResult = {
+  chatHistories: ChatItemMiniType[];
+  currentFiles: AgentInputFile[];
+  queryInput: string;
+  filesMap: Record<string, string>;
+  getCurrentMessages: (params?: {
+    skillInfos?: DeployedSkillInfo[];
+    currentWorkingDirectory?: string;
+  }) => {
+    rewrittenHistories: ChatItemMiniType[];
+    currentUserMessage: ChatItemMiniType;
+  };
 };
 
-export const buildAgentUserContextInput = async ({
+/**
+ * 准备 Agent 本轮 user context。
+ *
+ * 第一阶段先解析历史文件、本轮输入文件、read_files 映射和知识库上下文；
+ * sandbox/skill 初始化依赖 currentFiles。等 sandbox 返回 cwd、skill 返回 SKILL.md
+ * 元信息后，再通过 getCurrentMessages 生成最终模型 messages。
+ */
+export const useUserContext = async ({
   history,
   histories,
   currentFiles = [],
@@ -305,52 +359,59 @@ export const buildAgentUserContextInput = async ({
   selectedDataset?: AgentSelectedDatasetInput[];
   tmbId: string;
   timezone: string;
-}) => {
+}): Promise<UseUserContextResult> => {
   const chatHistories = getHistories(history, histories);
-  const filesByMessage = new Map<ChatItemMiniType, AgentInputFile[]>();
-  const allFilesMap: Record<string, { url: string; name: string; type: string }> = {};
+  // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
   const filesMap: Record<string, string> = {};
 
-  // filesMap 只给 read_files 使用，因此仅保留 document；
-  // allFilesMap 给 sandbox_fetch_user_file 使用，需要保留 document/image 等所有文件。
-  const registerFiles = (message: ChatItemMiniType, files: AgentInputFile[]) => {
-    files.forEach((file) => {
-      allFilesMap[file.id] = {
-        url: file.url,
-        name: file.name,
-        type: file.type
-      };
+  const getMessagePrefixId = (message: ChatItemMiniType, index: number) =>
+    message.dataId || `${index}`;
+
+  const registerFiles = (files: AgentInputFile[]) => {
+    if (files.length === 0) return;
+
+    for (const file of files) {
       if (file.type === ChatFileTypeEnum.file) {
         filesMap[file.id] = file.url;
       }
-    });
-
-    if (files.length > 0) {
-      filesByMessage.set(message, files);
     }
   };
 
   // 先处理历史，确保历史 assistant tool call 中已有的 file id 能在本轮重新映射到 URL。
-  chatHistories.forEach((message, index) => {
-    if (message.obj !== ChatRoleEnum.Human) return;
+  const rewrittenHistories = chatHistories.map((message, index) => {
+    if (message.obj !== ChatRoleEnum.Human) return message;
 
     const { files } = chatValue2RuntimePrompt(message.value);
-    registerFiles(
-      message,
-      parseAgentInputFiles({
-        files,
-        prefixId: getHistoricalHumanPrefixId(chatHistories, index),
-        requestOrigin,
-        maxFiles
+
+    const formatFiles = parseAgentInputFiles({
+      files,
+      prefixId: getMessagePrefixId(message, index),
+      requestOrigin,
+      maxFiles
+    });
+
+    registerFiles(formatFiles);
+    if (formatFiles.length === 0) return message;
+
+    // 历史消息每轮只补文件段，不补 datasets/time。
+    // datasets/time 是当前轮状态，写入历史会让下一轮恢复时混入过期资源或旧时间。
+    const { text } = chatValue2RuntimePrompt(message.value);
+
+    return {
+      ...message,
+      value: runtimePrompt2ChatsValue({
+        text: buildAgentUserReminderInput({
+          query: text,
+          filesInfo: formatFiles
+        })
       })
-    );
+    };
   });
 
+  // 获取本轮的文件输入
   const { text: queryInput = '', files: queryFiles = [] } = currentQuery
     ? chatValue2RuntimePrompt(currentQuery)
     : { text: '', files: [] };
-  // currentUserInput 是 workflow 节点入参，currentQuery 是原始 chat 输入。
-  // 二者都可能携带文件信息，所以文本取 currentUserInput，文件则从 currentQuery/currentFiles 汇总。
   const currentMessage: ChatItemMiniType = {
     dataId: currentDataId,
     obj: ChatRoleEnum.Human,
@@ -359,45 +420,43 @@ export const buildAgentUserContextInput = async ({
       files: queryFiles
     })
   };
-  const currentInputFiles = [...queryFiles.map((file) => file.url), ...currentFiles].filter(
-    (url, index, list) => url && list.indexOf(url) === index
-  );
-  const currentQueryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
-  const currentFilesForPrompt = parseAgentInputFiles({
-    files: currentInputFiles.map(
-      (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
-    ),
-    prefixId: currentDataId || 'current',
+  const currentInputFiles = buildCurrentAgentInputFiles({
+    currentFiles,
+    currentQuery,
+    currentDataId,
     requestOrigin,
     maxFiles
   });
-  registerFiles(currentMessage, currentFilesForPrompt);
+  registerFiles(currentInputFiles);
 
-  const rewrittenHistories = rewriteAgentUserMessagesWithFiles({
-    messages: chatHistories,
-    filesByMessage
-  });
+  // 获取知识库
   const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId);
-  const currentFilePrompt = buildAgentInputFilesPrompt(filesByMessage.get(currentMessage) || []);
-  const currentUserMessage: ChatItemMiniType = {
-    ...currentMessage,
-    value: runtimePrompt2ChatsValue({
-      // 当前 Human 才注入完整 reminder：文件、知识库、当前时间和原始问题。
-      text: buildAgentUserReminderInput({
-        query: currentUserInput,
-        filePrompt: currentFilePrompt,
-        selectedDataset: selectedDatasetWithIntro,
-        currentTime: getSystemTime(timezone)
-      })
-    })
-  };
 
   return {
     chatHistories,
-    rewrittenHistories,
-    currentUserMessage,
+    currentFiles: currentInputFiles,
     queryInput,
     filesMap,
-    allFilesMap
+    getCurrentMessages: ({ skillInfos, currentWorkingDirectory } = {}) => {
+      const currentUserMessage: ChatItemMiniType = {
+        ...currentMessage,
+        value: runtimePrompt2ChatsValue({
+          // 当前 Human 才注入完整 reminder：sandbox、skill、文件、知识库、当前时间和原始问题。
+          text: buildAgentUserReminderInput({
+            query: currentUserInput,
+            skillInfos,
+            filesInfo: currentInputFiles,
+            selectedDataset: selectedDatasetWithIntro,
+            currentWorkingDirectory,
+            currentTime: getSystemTime(timezone)
+          })
+        })
+      };
+
+      return {
+        rewrittenHistories,
+        currentUserMessage
+      };
+    }
   };
 };

@@ -362,7 +362,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     ]);
   });
 
-  it('keeps reasoning-only parallel tool calls continuous when restoring messages', () => {
+  it('restores reasoning-only tool call values as one assistant tool_calls array', () => {
     const mapper = createWorkflowAgentLoopEventMapper({
       getSubAppInfo: (id) => ({
         name: id,
@@ -809,7 +809,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     ]);
   });
 
-  it('restores agent assistant responses back to continuous GPT tool messages', () => {
+  it('restores continuous assistant text with consecutive tool calls as one assistant message', () => {
     const mapper = createWorkflowAgentLoopEventMapper({
       getSubAppInfo: (id) => ({
         name: id,

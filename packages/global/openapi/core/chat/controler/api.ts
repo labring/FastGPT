@@ -49,7 +49,8 @@ export const InitChatResponseSchema = z.object({
       intro: z.string().describe('应用简介'),
       canUse: z.boolean().optional().describe('是否可用'),
       type: z.enum(AppTypeEnum).describe('应用类型'),
-      pluginInputs: z.array(FlowNodeInputItemTypeSchema).describe('插件输入')
+      pluginInputs: z.array(FlowNodeInputItemTypeSchema).describe('插件输入'),
+      useAgentSandbox: z.boolean().optional().describe('是否使用虚拟机')
     })
     .describe('应用配置')
 });

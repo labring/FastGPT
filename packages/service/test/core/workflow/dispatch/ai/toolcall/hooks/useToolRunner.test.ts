@@ -13,6 +13,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: runWorkflowMock
 }));
 
+vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
+  checkTeamSandboxPermission: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/toolCall')>();
@@ -473,5 +477,24 @@ describe('useToolRunner', () => {
       interactive: undefined,
       stop: false
     });
+  });
+
+  it('should throw error when checkTeamSandboxPermission fails for sandbox tool', async () => {
+    const { checkTeamSandboxPermission } =
+      await import('@fastgpt/service/support/permission/teamLimit');
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+
+    const { runTool } = createRunner({
+      getToolInfo: () => ({
+        type: 'sandbox',
+        name: 'shell',
+        avatar: 'avatar'
+      })
+    });
+
+    const promise = runTool({ call: createCall({ name: 'shell' }) });
+    await expect(promise).rejects.toThrow(
+      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+    );
   });
 });

@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBackButton from '@fastgpt/web/components/common/MyBackButton';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
@@ -71,7 +72,10 @@ const Header = () => {
     (v) => v
   );
 
-  const { isSaved, leaveSaveSign } = useContextSelector(WorkflowPersistenceContext, (v) => v);
+  const { isSaved, leaveSaveSign: leaveSaveSignRef } = useContextSelector(
+    WorkflowPersistenceContext,
+    (v) => v
+  );
 
   const { lastAppListRouteType } = useSystemStore();
 
@@ -113,7 +117,7 @@ const Header = () => {
   );
 
   const onBack = useCallback(async () => {
-    leaveSaveSign.current = false;
+    leaveSaveSignRef.current = false;
     router.push({
       pathname: '/dashboard/agent',
       query: {
@@ -121,7 +125,7 @@ const Header = () => {
         type: lastAppListRouteType
       }
     });
-  }, [appDetail.parentId, lastAppListRouteType, leaveSaveSign, router]);
+  }, [appDetail.parentId, lastAppListRouteType, leaveSaveSignRef, router]);
 
   const Render = useMemo(() => {
     return (
@@ -155,22 +159,7 @@ const Header = () => {
               })}
         >
           {/* back */}
-          <Box
-            _hover={{
-              bg: 'myGray.200'
-            }}
-            p={0.5}
-            borderRadius={'sm'}
-          >
-            <IconButton
-              icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
-              aria-label={''}
-              size={'xs'}
-              w={'1rem'}
-              variant={'ghost'}
-              onClick={isSaved ? onBack : onOpenBackConfirm}
-            />
-          </Box>
+          <MyBackButton onClick={isSaved ? onBack : onOpenBackConfirm} />
 
           {/* app info */}
           <Box ml={1}>
@@ -283,7 +272,7 @@ const Header = () => {
                   title: t('app:saved_success'),
                   position: 'top-right'
                 });
-              } catch (error) {}
+              } catch {}
             }}
           >
             {t('common:Save_and_exit')}

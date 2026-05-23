@@ -925,7 +925,7 @@ export class WorkflowQueue {
                 // so runLoopRun / parallelRun failure detection and OTel span
                 // status see `.error` uniformly across both failure paths.
                 const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-                const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
+                const errText = nodeResponseBase?.errorText ?? getErrText(result.error);
 
                 return {
                   ...result,

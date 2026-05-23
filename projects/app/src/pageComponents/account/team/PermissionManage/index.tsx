@@ -23,7 +23,6 @@ import {
   updateOneMemberPermission
 } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
@@ -48,12 +47,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import CollaboratorContextProvider, {
   CollaboratorContext
 } from '@/components/support/permission/MemberManager/context';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { type CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
@@ -66,8 +63,6 @@ function PermissionManage({
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { feConfigs } = useSystemStore();
-  const showSkill = !!feConfigs?.show_skill;
 
   const collaboratorList = useContextSelector(
     CollaboratorContext,
@@ -237,14 +232,12 @@ function PermissionManage({
                     <QuestionTip ml="1" label={t('account_team:permission_appCreate_tip')} />
                   </Box>
                 </Th>
-                {showSkill && (
-                  <Th bg="myGray.100">
-                    <Box mx="auto" w="fit-content">
-                      {t('account_team:permission_skillCreate')}
-                      <QuestionTip ml="1" label={t('account_team:permission_skillCreate_Tip')} />
-                    </Box>
-                  </Th>
-                )}
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
+                    {t('account_team:permission_skillCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_skillCreate_Tip')} />
+                  </Box>
+                </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
                     {t('account_team:permission_datasetCreate')}
@@ -296,16 +289,12 @@ function PermissionManage({
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
-                      {showSkill && (
-                        <PermissionCheckBox
-                          isDisabled={
-                            member.permission.hasManagePer && !userInfo?.permission.isOwner
-                          }
-                          role={TeamSkillCreateRoleVal}
-                          clbPer={member.permission}
-                          id={member.tmbId!}
-                        />
-                      )}
+                      <PermissionCheckBox
+                        isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
+                        role={TeamSkillCreateRoleVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
                       <PermissionCheckBox
                         isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
                         role={TeamDatasetCreateRoleVal}
@@ -363,14 +352,12 @@ function PermissionManage({
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
-                      {showSkill && (
-                        <PermissionCheckBox
-                          isDisabled={org.permission.isOwner || !userManage}
-                          role={TeamSkillCreatePermissionVal}
-                          clbPer={org.permission}
-                          id={org.orgId!}
-                        />
-                      )}
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
+                        role={TeamSkillCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
                         role={TeamDatasetCreatePermissionVal}
@@ -421,7 +408,7 @@ function PermissionManage({
                         <MemberTag
                           name={
                             group.name === DefaultGroupName
-                              ? userInfo?.team.teamName ?? ''
+                              ? (userInfo?.team.teamName ?? '')
                               : group.name
                           }
                           avatar={group.avatar}
@@ -433,14 +420,12 @@ function PermissionManage({
                         clbPer={group.permission}
                         id={group.groupId!}
                       />
-                      {showSkill && (
-                        <PermissionCheckBox
-                          isDisabled={group.permission.isOwner || !userManage}
-                          role={TeamSkillCreatePermissionVal}
-                          clbPer={group.permission}
-                          id={group.groupId!}
-                        />
-                      )}
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        role={TeamSkillCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
                         role={TeamDatasetCreatePermissionVal}

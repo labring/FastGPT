@@ -1,16 +1,32 @@
-import React, { type DragEvent, useCallback, useState } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import React, { type DragEvent, useCallback, useEffect, useState } from 'react';
+import { Box, Button, Flex, Input } from '@chakra-ui/react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { importSkill } from '@/web/core/skill/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { type FieldErrors, useForm } from 'react-hook-form';
 
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
+const DEFAULT_SKILL_AVATAR = 'core/skill/default';
+
+type ImportSkillFormType = {
+  name: string;
+  avatar: string;
+  file?: File;
+};
+
+type ValidImportSkillFormType = ImportSkillFormType & {
+  file: File;
+};
 
 type Props = {
   parentId?: string | null;
@@ -33,8 +49,28 @@ const getFileExt = (file: File): string => {
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { feConfigs } = useSystemStore();
   const [isDragging, setIsDragging] = useState(false);
+  const maxUploadBytes = feConfigs?.limit?.agentSkillMaxUploadBytes;
+  const { register, handleSubmit, setValue, watch } = useForm<ImportSkillFormType>({
+    defaultValues: {
+      name: '',
+      avatar: DEFAULT_SKILL_AVATAR
+    }
+  });
+  const avatar = watch('avatar');
+  const selectedFile = watch('file');
+
+  useEffect(() => {
+    register('file', { required: true });
+  }, [register]);
+
+  const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
+    useUploadAvatar(getUploadAvatarPresignedUrl, {
+      onSuccess(newAvatar) {
+        setValue('avatar', newAvatar);
+      }
+    });
 
   const { File: FileInput, onOpen } = useSelectFile({
     fileType: ACCEPT_TYPES,
@@ -43,9 +79,11 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   });
 
   const { runAsync: onImport, loading: isImporting } = useRequest(
-    () => {
+    ({ name, avatar, file }: ValidImportSkillFormType) => {
       const formData = new FormData();
-      formData.append('file', selectedFile!);
+      formData.append('file', file);
+      formData.append('name', name);
+      formData.append('avatar', avatar);
       if (parentId) formData.append('parentId', parentId);
       return importSkill(formData);
     },
@@ -59,6 +97,25 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     }
   );
 
+  const handleImport = async (data: ImportSkillFormType) => {
+    if (!data.file) return;
+    await onImport({
+      ...data,
+      file: data.file
+    });
+  };
+
+  const handleInvalid = (errors: FieldErrors<ImportSkillFormType>) => {
+    if (errors.name) return;
+
+    if (errors.file) {
+      toast({
+        status: 'warning',
+        title: t('skill:import_skill_select_file')
+      });
+    }
+  };
+
   const handleFile = useCallback(
     (file: File) => {
       if (!isValidFile(file)) {
@@ -69,16 +126,21 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         });
         return;
       }
-      if (file.size > MAX_SIZE) {
+      if (typeof maxUploadBytes === 'number' && file.size > maxUploadBytes) {
         toast({
           status: 'warning',
-          title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(MAX_SIZE) })
+          title: t('file:some_file_size_exceeds_limit', {
+            maxSize: formatFileSize(maxUploadBytes)
+          })
         });
         return;
       }
-      setSelectedFile(file);
+      setValue('file', file, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
     },
-    [t, toast]
+    [maxUploadBytes, setValue, t, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -104,10 +166,42 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         isOpen
         onClose={onClose}
         title={t('skill:import_skill')}
-        w={'480px'}
+        iconSrc="common/importLight"
+        iconColor={'primary.600'}
+        size={'md'}
+        contentPx={'32px'}
+        contentPy={'32px'}
+        borderRadius={'10px'}
         closeOnOverlayClick={false}
       >
-        <ModalBody>
+        <Flex flexDirection={'column'} gap={6}>
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            {t('common:input_name')}
+            <Flex mt={2} alignItems={'center'}>
+              <MyTooltip label={t('common:set_avatar')}>
+                <Avatar
+                  flexShrink={0}
+                  src={avatar}
+                  w={['1.75rem', '2.25rem']}
+                  h={['1.75rem', '2.25rem']}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={handleAvatarSelectorOpen}
+                />
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                autoFocus
+                placeholder={t('skill:skill_name_placeholder')}
+                {...register('name', {
+                  required: true,
+                  setValueAs: (value: string) => value.trim()
+                })}
+              />
+            </Flex>
+          </Box>
+
           {selectedFile ? (
             <Flex
               alignItems={'center'}
@@ -128,7 +222,12 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
                 cursor={'pointer'}
                 color={'myGray.400'}
                 _hover={{ color: 'myGray.700' }}
-                onClick={() => setSelectedFile(null)}
+                onClick={() =>
+                  setValue('file', undefined, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  })
+                }
                 flexShrink={0}
               >
                 <MyIcon name={'common/closeLight'} w={'16px'} />
@@ -162,25 +261,28 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
               <Box color={'myGray.500'} fontSize={'xs'} mt={1}>
                 {t('skill:import_skill_file_type_tip', { ext: ACCEPT_TYPES.split(',').join(' ') })}
               </Box>
-              <Box color={'myGray.500'} fontSize={'xs'}>
-                {t('skill:import_skill_max_size_tip', {
-                  maxCount: 1,
-                  maxSize: formatFileSize(MAX_SIZE)
-                })}
-              </Box>
+              {typeof maxUploadBytes === 'number' && (
+                <Box color={'myGray.500'} fontSize={'xs'}>
+                  {t('skill:import_skill_max_size_tip', {
+                    maxCount: 1,
+                    maxSize: formatFileSize(maxUploadBytes)
+                  })}
+                </Box>
+              )}
             </Flex>
           )}
           <FileInput onSelect={(files) => files[0] && handleFile(files[0])} />
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button isDisabled={!selectedFile} isLoading={isImporting} onClick={onImport}>
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
+          <Flex justifyContent={'flex-end'} gap={3}>
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
+              {t('common:Confirm')}
+            </Button>
+          </Flex>
+        </Flex>
       </MyModal>
+      <AvatarUploader />
     </>
   );
 };

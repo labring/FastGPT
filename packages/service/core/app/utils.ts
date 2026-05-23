@@ -10,6 +10,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { authSkillByTmbId } from '../../support/permission/skill/auth';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -75,6 +77,32 @@ export async function rewriteAppWorkflowToDetail({
       return {
         success: false,
         error: getErrText(error)
+      };
+    }
+  };
+
+  const loadAgentSkill = async (
+    selectedSkill: SelectedAgentSkillItemType
+  ): Promise<SelectedAgentSkillItemType> => {
+    try {
+      const { skill } = await authSkillByTmbId({
+        tmbId: ownerTmbId,
+        skillId: selectedSkill.skillId,
+        per: ReadPermissionVal,
+        isRoot
+      });
+
+      return {
+        skillId: String(skill._id),
+        name: skill.name,
+        description: skill.description,
+        avatar: skill.avatar,
+        isDeleted: false
+      };
+    } catch {
+      return {
+        ...selectedSkill,
+        isDeleted: true
       };
     }
   };
@@ -185,6 +213,14 @@ export async function rewriteAppWorkflowToDetail({
             input.value = nodes;
           }
         });
+
+        const skillsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.skills);
+        const skills = (
+          Array.isArray(skillsInput?.value) ? skillsInput!.value : []
+        ) as SelectedAgentSkillItemType[];
+        if (skillsInput && skills.length > 0) {
+          skillsInput.value = await Promise.all(skills.map(loadAgentSkill));
+        }
       }
     })
   );
