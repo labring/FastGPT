@@ -219,8 +219,8 @@ export const useModelTableState = ({
   );
 
   const handleOpenTrainDrawer = useCallback(
-    (type: ModelTypeEnum.embedding | ModelTypeEnum.rerank, modelId: string) => {
-      setTrainModelData({ type, modelId });
+    (type: ModelTypeEnum.embedding | ModelTypeEnum.rerank, modelId: string, model: string) => {
+      setTrainModelData({ type, modelId, model });
       onOpenTrainModel();
     },
     [onOpenTrainModel]

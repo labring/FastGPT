@@ -345,7 +345,7 @@ async function handler(
       aiproxyChannels: global.aiproxyChannelsCache
     };
   } catch (error) {
-    const referer = req.headers.referer;
+    const referer = req.headers?.referer;
     if (referer?.includes('/price')) {
       return {
         feConfigs: global.feConfigs,

@@ -3,11 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import {
-  OwnerRoleVal,
-  PerResourceTypeEnum,
-  WritePermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { TeamModelCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type createQuery = {};
@@ -27,7 +24,7 @@ async function handler(
   const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
-    per: WritePermissionVal
+    per: TeamModelCreatePermissionVal
   });
 
   let { model, metadata, isShared = false } = req.body;

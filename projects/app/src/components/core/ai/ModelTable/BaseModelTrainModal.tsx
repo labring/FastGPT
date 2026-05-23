@@ -32,6 +32,7 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 export type BaseModelTrainDefaultBaseModel = {
   type: ModelTypeEnum.rerank | ModelTypeEnum.embedding;
   modelId: string;
+  model: string;
 };
 
 type BaseModelTrainModalProps = {
@@ -84,7 +85,8 @@ const BaseModelTrainModal = ({
     () => defaultBaseModel?.type ?? ModelTypeEnum.rerank,
     [defaultBaseModel]
   );
-  const selectedBaseModel = useMemo(() => defaultBaseModel?.modelId ?? '', [defaultBaseModel]);
+  const selectedBaseModel = useMemo(() => defaultBaseModel?.model ?? '', [defaultBaseModel]);
+  const selectedBaseModelId = useMemo(() => defaultBaseModel?.modelId ?? '', [defaultBaseModel]);
   const [modelName, setModelName] = useState('');
   const hasAutoFilledRef = useRef(false);
 
@@ -391,7 +393,7 @@ const BaseModelTrainModal = ({
   const { runAsync: submitTrainTask, loading: isSubmitting } = useRequest(
     async () => {
       const data = {
-        baseModelId: selectedBaseModel,
+        baseModelId: selectedBaseModelId,
         datasetIds: selectedDatasets.map((item) => item.datasetId),
         newModelName: modelName.trim()
       };

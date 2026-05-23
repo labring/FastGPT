@@ -1,7 +1,11 @@
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getEmbeddingModelById, getLLMModelById, getRerankModelById } from '../../../../../../ai/model';
+import {
+  getEmbeddingModelById,
+  getLLMModelById,
+  getRerankModelById
+} from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -321,7 +325,7 @@ export const dispatchAgentDatasetSearch = async ({
           : undefined,
       // Rerank
       ...(searchUsingReRank && {
-        rerankModel: rerankModelData?.name,
+        rerankModelId: rerankModelData?.id,
         rerankWeight: config.rerankWeight,
         reRankInputTokens
       }),

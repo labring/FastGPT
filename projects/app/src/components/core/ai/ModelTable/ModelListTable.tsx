@@ -513,7 +513,7 @@ const ModelTableActionCell = ({
       size={'sm'}
       variant={'whiteBase'}
       fontSize={'12px'}
-      onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.id)}
+      onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.id, item.model)}
     >
       {t('account_model:train')}
     </Button>

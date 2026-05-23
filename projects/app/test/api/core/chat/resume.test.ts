@@ -762,9 +762,9 @@ describe('stream resume helpers', () => {
       const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
       expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
-      expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
+      expect(redis.call).toHaveBeenCalledWith('DEL', rawStream);
       expect(redis.call).toHaveBeenNthCalledWith(
-        1,
+        2,
         'XADD',
         rawStream,
         '*',
@@ -772,7 +772,7 @@ describe('stream resume helpers', () => {
         'event: answer\n'
       );
       expect(redis.call).toHaveBeenNthCalledWith(
-        2,
+        3,
         'XADD',
         rawStream,
         '*',
@@ -848,9 +848,9 @@ describe('stream resume helpers', () => {
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
     expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
-    expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
-    expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
-    expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
+    expect(redis.call).toHaveBeenCalledWith('DEL', rawStream);
+    expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
+    expect(redis.call).toHaveBeenNthCalledWith(3, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
 
   it('should require the opt-in header before creating a mirror', async () => {

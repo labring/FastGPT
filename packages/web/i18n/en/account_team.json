@@ -284,6 +284,8 @@
   "permission_apikeyCreate_Tip": "Create global API keys and MCP services.",
   "permission_appCreate": "Create app",
   "permission_appCreate_tip": "Create apps in the root directory but not in folders.",
+  "permission_modelCreate": "Create model",
+  "permission_modelCreate_tip": "Create custom models in the model configuration page.",
   "permission_datasetCreate": "Create knowledge base",
   "permission_datasetCreate_Tip": "Create knowledge bases in the root directory but not in folders",
   "permission_manage": "Admin",

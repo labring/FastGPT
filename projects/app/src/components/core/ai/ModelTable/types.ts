@@ -56,7 +56,8 @@ export type TrainDetailModel = {
 
 export type OpenTrainModelHandler = (
   type: ModelTypeEnum.embedding | ModelTypeEnum.rerank,
-  modelId: string
+  modelId: string,
+  model: string
 ) => void;
 
 export type I18nT = TFunction;

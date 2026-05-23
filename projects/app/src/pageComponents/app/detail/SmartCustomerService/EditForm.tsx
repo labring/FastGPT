@@ -108,30 +108,30 @@ const EditForm = ({
   const showDatasetSearchParams = feConfigs.show_dataset_search_params;
 
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的非数据库知识库，避免数据库类型排在首位时取到空值）
-  const datasetVectorModel = useMemo(
+  const datasetVectorModelId = useMemo(
     () => selectDatasets.find((d) => d.vectorModel?.id)?.vectorModel?.id,
     [selectDatasets]
   );
 
   // 向量模型可选项：知识库为空时展示空列表；否则展示与知识库向量模型匹配的模型
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   // 当知识库向量模型变更时，校验并联动更新 embeddingModelId 选中值
   useEffect(() => {
-    if (!datasetVectorModel) return;
+    if (!datasetVectorModelId) return;
 
     setAppForm((state) => {
       const current = (state.dataset as AppDatasetSearchParamsType).embeddingModelId;
       const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
       // 当前值有效则保留，否则重置为基模（基模不在列表则置空）
       if (current && validIds.has(current)) return state;
-      const newModel = validIds.has(datasetVectorModel) ? datasetVectorModel : '';
+      const newModel = validIds.has(datasetVectorModelId) ? datasetVectorModelId : '';
       return { ...state, dataset: { ...state.dataset, embeddingModelId: newModel } };
     });
-  }, [datasetVectorModel, embeddingModelSelectList, setAppForm]);
+  }, [datasetVectorModelId, embeddingModelSelectList, setAppForm]);
 
   const knowledgeTypeConfig = useMemo(() => {
     return {
@@ -707,10 +707,10 @@ const EditForm = ({
           searchMode={
             appForm.dataset.searchMode === DatasetSearchModeEnum.database
               ? DatasetSearchModeEnum.embedding
-              : appForm.dataset.searchMode
+              : appForm.dataset.searchModedd
           }
           maxTokens={tokenLimit}
-          datasetVectorModel={datasetVectorModel}
+          datasetVectorModelId={datasetVectorModelId}
           hasDatabaseKnowledge={knowledgeTypeConfig.hasDatabaseKnowledge}
           hasOtherKnowledge={knowledgeTypeConfig.hasOtherKnowledge}
           onClose={onCloseDatasetParamsModal}

@@ -29,7 +29,7 @@ export const resolveDatasetParams = (
     limit: params[NodeInputKeyEnum.datasetMaxTokens],
     searchMode: params[NodeInputKeyEnum.datasetSearchMode],
     embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
-    embeddingModel: params[NodeInputKeyEnum.datasetSearchEmbeddingModelId],
+    embeddingModelId: params[NodeInputKeyEnum.datasetSearchEmbeddingModelId],
     usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
     rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],

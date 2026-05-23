@@ -19,7 +19,7 @@ type AgenticSearchParamsType = {
 type MultipleRetrievalModalProps = {
   defaultValues: AgenticSearchParamsType;
   hideAiModel?: boolean;
-  datasetVectorModel?: string;
+  datasetVectorModelId?: string;
   onClose: () => void;
   onSuccess: (data: AgenticSearchParamsType) => void;
 };
@@ -27,7 +27,7 @@ type MultipleRetrievalModalProps = {
 const MultipleRetrievalModal = ({
   defaultValues,
   hideAiModel = false,
-  datasetVectorModel,
+  datasetVectorModelId,
   onClose,
   onSuccess
 }: MultipleRetrievalModalProps) => {
@@ -50,12 +50,12 @@ const MultipleRetrievalModal = ({
   const agenticSearchReasoning = watch('agenticSearchReasoning');
 
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   useEffect(() => {
-    if (!datasetVectorModel) {
+    if (!datasetVectorModelId) {
       setValue('embeddingModelId', '');
       return;
     }
@@ -64,15 +64,15 @@ const MultipleRetrievalModal = ({
     const current = getValues('embeddingModelId');
     // 当前值为空，联动设置为知识库向量模型
     if (!current) {
-      setValue('embeddingModelId', datasetVectorModel);
+      setValue('embeddingModelId', datasetVectorModelId);
       return;
     }
     // 当前值有值时，校验是否在有效选项中；若无效则回退为当前知识库向量模型
     const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
     if (!validIds.has(current)) {
-      setValue('embeddingModelId', datasetVectorModel);
+      setValue('embeddingModelId', datasetVectorModelId);
     }
-  }, [datasetVectorModel, embeddingModelSelectList, getValues, setValue]);
+  }, [datasetVectorModelId, embeddingModelSelectList, getValues, setValue]);
 
   const onSubmit = handleSubmit((data) => {
     onSuccess(data);
@@ -119,7 +119,7 @@ const MultipleRetrievalModal = ({
               value={embeddingModelId}
               list={embeddingModelSelectList}
               placeholder={
-                !datasetVectorModel
+                !datasetVectorModelId
                   ? t('app:smart_customer_service_embedding_model_placeholder')
                   : undefined
               }

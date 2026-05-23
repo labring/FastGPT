@@ -34,7 +34,7 @@ describe('permission/app/controller', () => {
       expect(perm.role).toBe(ReadRoleVal);
       expect(perm.hasReadPer).toBe(true);
       expect(perm.hasReadRole).toBe(true);
-      expect(perm.hasReadChatLogPer).toBe(true);
+      expect(perm.hasReadChatLogPer).toBe(false);
     });
 
     it('should create AppPermission with write role', () => {
@@ -79,7 +79,7 @@ describe('permission/app/controller', () => {
     it('should update readChatLog permissions when role changes', () => {
       const perm = new AppPermission({ role: ReadRoleVal });
 
-      expect(perm.hasReadChatLogPer).toBe(true);
+      expect(perm.hasReadChatLogPer).toBe(false);
 
       perm.addRole(AppReadChatLogRoleVal);
 

@@ -59,7 +59,7 @@ const ModelTable = () => {
   const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
-  const canCreateModel = isRoot || !!userInfo?.team.permission.hasWritePer;
+  const canCreateModel = isRoot || !!userInfo?.team.permission.hasModelCreatePer;
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: React.ReactNode; value: string | '' }[]>([

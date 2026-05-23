@@ -283,7 +283,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(datasetSelectInput?.value) ? datasetSelectInput!.value : []),
     [datasetSelectInput]
   );
-  const datasetVectorModel = useMemo(
+  const datasetVectorModelId = useMemo(
     () => selectedDatasets[0]?.vectorModel?.id as string | undefined,
     [selectedDatasets]
   );
@@ -798,7 +798,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <DatasetParamsModal
           {...datasetParamsData}
           {...datasetKnowledgeTypeConfig}
-          datasetVectorModel={datasetVectorModel}
+          datasetVectorModelId={datasetVectorModelId}
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {

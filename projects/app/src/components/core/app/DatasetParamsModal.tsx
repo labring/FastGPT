@@ -58,12 +58,12 @@ const DatasetParamsModal = ({
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
   generateSqlModelId = '',
-  datasetVectorModel,
+  datasetVectorModelId,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
   maxTokens?: number; // limit max tokens
-  datasetVectorModel?: string;
+  datasetVectorModelId?: string;
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
   hasDatabaseKnowledge?: boolean;
@@ -92,8 +92,8 @@ const DatasetParamsModal = ({
   );
 
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   const { register, setValue, getValues, handleSubmit, watch } =
@@ -160,7 +160,7 @@ const DatasetParamsModal = ({
   ]);
 
   useEffect(() => {
-    if (!datasetVectorModel) {
+    if (!datasetVectorModelId) {
       setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, '');
       return;
     }
@@ -170,15 +170,15 @@ const DatasetParamsModal = ({
     const current = getValues(NodeInputKeyEnum.datasetSearchEmbeddingModelId);
     // 当前值为空，联动设置为知识库向量模型
     if (!current) {
-      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModel);
+      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModelId);
       return;
     }
     // 当前值有值时，校验是否在有效选项中；若无效则回退为当前知识库向量模型
     const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
     if (!validIds.has(current)) {
-      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModel);
+      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModelId);
     }
-  }, [datasetVectorModel, embeddingModelSelectList, getValues, setValue]);
+  }, [datasetVectorModelId, embeddingModelSelectList, getValues, setValue]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -262,7 +262,7 @@ const DatasetParamsModal = ({
             value={embeddingModelWatch}
             list={embeddingModelSelectList}
             placeholder={
-              !datasetVectorModel
+              !datasetVectorModelId
                 ? t('app:smart_customer_service_embedding_model_placeholder')
                 : undefined
             }
@@ -273,7 +273,7 @@ const DatasetParamsModal = ({
         </Box>
       </HStack>
     ),
-    [datasetVectorModel, embeddingModelWatch, embeddingModelSelectList, setValue, t]
+    [datasetVectorModelId, embeddingModelWatch, embeddingModelSelectList, setValue, t]
   );
 
   return (

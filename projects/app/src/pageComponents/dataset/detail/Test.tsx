@@ -389,7 +389,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <DatasetParamsModal
           {...(searchParams as any)}
           maxTokens={20000}
-          datasetVectorModel={datasetDetail.vectorModel?.id}
+          datasetVectorModelId={datasetDetail.vectorModel?.id}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {
             setValue('searchParams', {

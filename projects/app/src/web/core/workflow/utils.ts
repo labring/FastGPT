@@ -883,7 +883,7 @@ export const autoAdjustDatasetNodeLimit = ({
 
   const llmModelList = useSystemStore.getState().llmModelList;
   const { show_dataset_search_params } = useSystemStore.getState().feConfigs;
-  const llmModelMap = llmModelList.reduce(
+  const llmModelIdMap = llmModelList.reduce(
     (acc, model) => {
       acc[model.id] = model;
       return acc;
@@ -915,7 +915,7 @@ export const autoAdjustDatasetNodeLimit = ({
       continue;
     }
 
-    const quoteMaxToken = llmModelMap[modelValue]?.quoteMaxToken;
+    const quoteMaxToken = llmModelIdMap[modelValue]?.quoteMaxToken;
     if (!quoteMaxToken) {
       continue;
     }
@@ -992,8 +992,8 @@ export const autoAdjustDatasetNodeLimit = ({
 /**
  * 数据层兜底：根据 retrievalMode 清理不匹配模式的字段，
  * 确保保存/发布/调试时数据一致，不依赖 UI onChange 是否触发。
- * - 标准检索 → 清空 agenticSearchLLMModel / agenticSearchRerankModel / agenticSearchReasoning
- * - 多轮智能检索 → 清空 datasetSearchExtensionModel / rerankModel
+ * - 标准检索 → 清空 agenticSearchLLMModelId / agenticSearchRerankModelId / agenticSearchReasoning
+ * - 多轮智能检索 → 清空 datasetSearchExtensionModelId / rerankModelId
  */
 export const cleanDatasetSearchParams = (nodes: StoreNodeItemType[]): StoreNodeItemType[] => {
   let globalChanged = false;

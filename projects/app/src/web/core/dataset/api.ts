@@ -18,7 +18,6 @@ import type {
   ApiDatasetCreateDatasetCollectionV2Params,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
-  DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
@@ -532,11 +531,6 @@ export const postGetDatabaseConfiguration = (data: { datasetId: string }) =>
 export const postCheckDatabaseConnection = (data: CheckConnectionBody) => {
   return POST(`/core/dataset/database/checkConnection`, data);
 };
-
-/**
- * 更新知识库配置
- */
-export const updateDatasetConfig = (data: DatasetUpdateBody) => POST(`/core/dataset/update`, data);
 
 /**
  * 创建结构化文档集合

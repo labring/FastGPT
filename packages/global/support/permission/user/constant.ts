@@ -14,7 +14,8 @@ export enum TeamPerKeyEnum {
   datasetCreate = 'datasetCreate',
   apikeyCreate = 'apikeyCreate',
   evaluationCreate = 'evaluationCreate',
-  skillCreate = 'skillCreate'
+  skillCreate = 'skillCreate',
+  modelCreate = 'modelCreate'
 }
 
 export enum TeamRoleKeyEnum {
@@ -22,7 +23,8 @@ export enum TeamRoleKeyEnum {
   datasetCreate = 'datasetCreate',
   apikeyCreate = 'apikeyCreate',
   evaluationCreate = 'evaluationCreate',
-  skillCreate = 'skillCreate'
+  skillCreate = 'skillCreate',
+  modelCreate = 'modelCreate'
 }
 
 export const TeamPerList: PermissionListType<TeamPerKeyEnum> = {
@@ -31,7 +33,8 @@ export const TeamPerList: PermissionListType<TeamPerKeyEnum> = {
   appCreate: 0b001000,
   datasetCreate: 0b010000,
   evaluationCreate: 0b1000000,
-  skillCreate: 0b10000000
+  skillCreate: 0b10000000,
+  modelCreate: 0b100000000
 };
 
 export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
@@ -78,6 +81,12 @@ export const TeamRoleList: RoleListType<TeamRoleKeyEnum> = {
     description: '',
     name: i18nT('account_team:permission_skillCreate'),
     value: 0b10000000
+  },
+  [TeamRoleKeyEnum.modelCreate]: {
+    checkBoxType: 'multiple',
+    description: '',
+    name: i18nT('account_team:permission_modelCreate'),
+    value: 0b100000000
   }
 };
 
@@ -110,6 +119,10 @@ export const TeamRolePerMap: RolePerMapType = new Map([
   [
     TeamRoleList['skillCreate'].value,
     sumPer(TeamPerList.skillCreate, CommonPerList.read, CommonPerList.write) as PermissionValueType
+  ],
+  [
+    TeamRoleList['modelCreate'].value,
+    sumPer(TeamPerList.modelCreate, CommonPerList.read, CommonPerList.write) as PermissionValueType
   ]
 ]);
 
@@ -121,6 +134,7 @@ export const TeamEvaluationCreateRoleVal = TeamRoleList['evaluationCreate'].valu
 export const TeamDatasetCreateRoleVal = TeamRoleList['datasetCreate'].value;
 export const TeamApikeyCreateRoleVal = TeamRoleList['apikeyCreate'].value;
 export const TeamSkillCreateRoleVal = TeamRoleList['skillCreate'].value;
+export const TeamModelCreateRoleVal = TeamRoleList['modelCreate'].value;
 export const TeamDefaultRoleVal = TeamReadRoleVal;
 
 export const TeamReadPermissionVal = TeamPerList.read;
@@ -131,4 +145,5 @@ export const TeamDatasetCreatePermissionVal = TeamPerList.datasetCreate;
 export const TeamApikeyCreatePermissionVal = TeamPerList.apikeyCreate;
 export const TeamEvaluationCreatePermissionVal = TeamPerList.evaluationCreate;
 export const TeamSkillCreatePermissionVal = TeamPerList.skillCreate;
+export const TeamModelCreatePermissionVal = TeamPerList.modelCreate;
 export const TeamDefaultPermissionVal = TeamReadPermissionVal;

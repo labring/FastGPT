@@ -322,6 +322,8 @@
   "permission_apikeyCreate_Tip": "可以创建全局的 APIKey和 MCP 服务",
   "permission_appCreate": "创建应用",
   "permission_appCreate_tip": "可以在根目录创建应用，（文件夹下的创建权限由文件夹控制）",
+  "permission_modelCreate": "创建模型",
+  "permission_modelCreate_tip": "可以在模型配置页面创建自定义模型",
   "permission_datasetCreate": "创建知识库",
   "permission_datasetCreate_Tip": "可以在根目录创建知识库，（文件夹下的创建权限由文件夹控制）",
   "permission_evaluationCreate": "创建评估",

@@ -1441,14 +1441,14 @@ export function getEmbeddingModelSelectList(
     isTuned?: boolean;
     trainTaskSummary?: { baseModelIds?: string[] };
   }[],
-  datasetVectorModel: string | undefined
+  datasetVectorModelId: string | undefined
 ): { value: string; label: string }[] {
-  if (!datasetVectorModel) return [];
+  if (!datasetVectorModelId) return [];
   return embeddingModelList
     .filter((item) => {
-      if (item.id === datasetVectorModel) return true;
+      if (item.id === datasetVectorModelId) return true;
       if (!item.isTuned) return false;
-      return (item.trainTaskSummary?.baseModelIds || []).includes(datasetVectorModel);
+      return (item.trainTaskSummary?.baseModelIds || []).includes(datasetVectorModelId);
     })
     .map((item) => ({ value: item.id, label: item.name }));
 }

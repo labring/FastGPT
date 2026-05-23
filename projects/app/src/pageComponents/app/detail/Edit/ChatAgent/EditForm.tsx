@@ -109,7 +109,7 @@ const EditForm = ({
     [appForm.dataset.datasets]
   );
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的知识库，避免数据库类型排在首位时取到空值）
-  const datasetVectorModel = useMemo(
+  const datasetVectorModelId = useMemo(
     () => selectDatasets.find((d) => d.vectorModel?.id)?.vectorModel?.id,
     [selectDatasets]
   );
@@ -118,31 +118,31 @@ const EditForm = ({
   const prevDatasetVectorModelRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevDatasetVectorModelRef.current;
-    prevDatasetVectorModelRef.current = datasetVectorModel;
-    if (prev === undefined || prev === datasetVectorModel) return;
+    prevDatasetVectorModelRef.current = datasetVectorModelId;
+    if (prev === undefined || prev === datasetVectorModelId) return;
     setAppForm((state) => ({
       ...state,
-      dataset: { ...state.dataset, embeddingModelId: datasetVectorModel || '' }
+      dataset: { ...state.dataset, embeddingModelId: datasetVectorModelId || '' }
     }));
-  }, [datasetVectorModel, setAppForm]);
+  }, [datasetVectorModelId, setAppForm]);
 
   // 向量模型可选项
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   // 校验并联动更新 embeddingModelId
   useEffect(() => {
-    if (!datasetVectorModel) return;
+    if (!datasetVectorModelId) return;
     setAppForm((state) => {
       const current = (state.dataset as AppDatasetSearchParamsType).embeddingModelId;
       const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
       if (current && validIds.has(current)) return state;
-      const newModel = validIds.has(datasetVectorModel) ? datasetVectorModel : '';
+      const newModel = validIds.has(datasetVectorModelId) ? datasetVectorModelId : '';
       return { ...state, dataset: { ...state.dataset, embeddingModelId: newModel } };
     });
-  }, [datasetVectorModel, embeddingModelSelectList, setAppForm]);
+  }, [datasetVectorModelId, embeddingModelSelectList, setAppForm]);
 
   // 知识库类型联动检索模式
   const knowledgeTypeConfig = useMemo(() => {
@@ -577,7 +577,7 @@ const EditForm = ({
                     value={appForm.dataset.embeddingModelId}
                     list={embeddingModelSelectList}
                     placeholder={
-                      !datasetVectorModel
+                      !datasetVectorModelId
                         ? t('app:smart_customer_service_embedding_model_placeholder')
                         : undefined
                     }
@@ -631,7 +631,7 @@ const EditForm = ({
                     value={appForm.dataset.embeddingModelId}
                     list={embeddingModelSelectList}
                     placeholder={
-                      !datasetVectorModel
+                      !datasetVectorModelId
                         ? t('app:smart_customer_service_embedding_model_placeholder')
                         : undefined
                     }
@@ -916,7 +916,7 @@ const EditForm = ({
               : appForm.dataset.searchMode
           }
           maxTokens={tokenLimit}
-          datasetVectorModel={datasetVectorModel}
+          datasetVectorModelId={datasetVectorModelId}
           hasDatabaseKnowledge={knowledgeTypeConfig.hasDatabaseKnowledge}
           hasOtherKnowledge={knowledgeTypeConfig.hasOtherKnowledge}
           onClose={onCloseDatasetParamsModal}

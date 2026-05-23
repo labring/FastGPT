@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -11,13 +11,14 @@ import getInitDataHandler from '@/pages/api/common/system/getInitData';
 describe('getInitData API - trainTaskSummary', () => {
   let rootUser: any;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     process.env.NODE_ENV = 'test';
     rootUser = await getRootUser();
 
     // Set up global models with an embedding model and a rerank model
     global.systemActiveDesensitizedModels = [
       {
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         name: 'Test Embedding',
         type: ModelTypeEnum.embedding,
@@ -29,6 +30,7 @@ describe('getInitData API - trainTaskSummary', () => {
         supportTrain: true
       } as any,
       {
+        id: 'test-rerank-model',
         model: 'test-rerank-model',
         name: 'Test Rerank',
         type: ModelTypeEnum.rerank,
@@ -37,6 +39,7 @@ describe('getInitData API - trainTaskSummary', () => {
         supportTrain: true
       } as any,
       {
+        id: 'test-llm-model',
         model: 'test-llm-model',
         name: 'Test LLM',
         type: ModelTypeEnum.llm,
@@ -119,7 +122,7 @@ describe('getInitData API - trainTaskSummary', () => {
     ]);
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await MongoEmbeddingTrainTask.deleteMany({
       teamId: rootUser.teamId,
       baseModelId: { $in: ['test-embedding-model', 'test-rerank-model'] }

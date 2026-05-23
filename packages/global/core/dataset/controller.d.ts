@@ -13,7 +13,6 @@ export type CreateDatasetDataProps = {
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
   metadata?: Record<string, any>;
   indexPrefix?: string;
-  embeddingModel?: string;
 };
 
 export type UpdateDatasetDataProps = {

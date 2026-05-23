@@ -27,11 +27,11 @@ const TEST_CONFIG = {
   // 数据集 ID - 从环境变量读取或使用占位符
   datasetIds: process.env.TEST_DATASET_IDS?.split(',') || ['dataset-id-placeholder'],
   // Embedding 模型
-  embedModel: process.env.TEST_EMBED_MODEL || 'text-embedding-3-small',
+  embedModelId: process.env.TEST_EMBED_MODELID || 'text-embedding-3-small',
   // LLM 模型
-  llmModel: process.env.TEST_LLM_MODEL || 'qwen-max',
+  llmModelId: process.env.TEST_LLM_MODELID || 'qwen-max',
   // Rerank 模型（可选）
-  rerankModel: process.env.TEST_RERANK_MODEL || ''
+  rerankModelId: process.env.TEST_RERANK_MODELID || ''
 };
 
 async function main() {
@@ -42,8 +42,8 @@ async function main() {
     console.log('⚠️  请配置测试参数后再运行:\n');
     console.log('  export TEST_TEAM_ID=你的团队ID');
     console.log('  export TEST_DATASET_IDS=dataset1,dataset2');
-    console.log('  export TEST_EMBED_MODEL=text-embedding-3-small');
-    console.log('  export TEST_LLM_MODEL=qwen-max\n');
+    console.log('  export TEST_EMBED_MODELID=text-embedding-3-small');
+    console.log('  export TEST_LLM_MODELID=qwen-max\n');
     console.log(
       '  然后运行: pnpm exec tsx test/cases/service/core/dataset/agenticSearch.script.ts\n'
     );
@@ -53,9 +53,9 @@ async function main() {
   console.log('测试配置:');
   console.log(`  Team ID: ${TEST_CONFIG.teamId}`);
   console.log(`  Dataset IDs: ${TEST_CONFIG.datasetIds.join(', ')}`);
-  console.log(`  Embed Model: ${TEST_CONFIG.embedModel}`);
-  console.log(`  LLM Model: ${TEST_CONFIG.llmModel}`);
-  console.log(`  Rerank Model: ${TEST_CONFIG.rerankModel || '(未配置)'}`);
+  console.log(`  Embed ModelId: ${TEST_CONFIG.embedModelId}`);
+  console.log(`  LLM ModelId: ${TEST_CONFIG.llmModelId}`);
+  console.log(`  Rerank ModelId: ${TEST_CONFIG.rerankModelId || '(未配置)'}`);
   console.log('');
 
   try {
@@ -69,10 +69,10 @@ async function main() {
     await testMultiTurnConversation();
 
     // 测试 4: 使用 Rerank 模型
-    if (TEST_CONFIG.rerankModel) {
+    if (TEST_CONFIG.rerankModelId) {
       await testWithRerankModel();
     } else {
-      console.log('--- 测试 4: Rerank 模型 (已跳过，未配置 TEST_RERANK_MODEL) ---\n');
+      console.log('--- 测试 4: Rerank 模型 (已跳过，未配置 TEST_RERANK_MODELID) ---\n');
     }
 
     console.log('\n✅ 所有测试完成!');
@@ -95,7 +95,7 @@ async function testBasicAgenticSearch() {
     teamId: TEST_CONFIG.teamId,
     uid: 'test-user-id',
     tmbId: 'test-team-member-id',
-    model: TEST_CONFIG.embedModel,
+    modelId: TEST_CONFIG.embedModelId,
     datasetIds: TEST_CONFIG.datasetIds,
     reRankQuery: '什么是 FastGPT？',
     queries: ['什么是 FastGPT？'],
@@ -107,7 +107,7 @@ async function testBasicAgenticSearch() {
   try {
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModelId,
       agenticSearchReasoning: true
     });
 
@@ -141,7 +141,7 @@ async function testWithoutThinking() {
   const props: SearchDatasetDataProps = {
     histories: [],
     teamId: TEST_CONFIG.teamId,
-    model: TEST_CONFIG.embedModel,
+    modelId: TEST_CONFIG.embedModelId,
     datasetIds: TEST_CONFIG.datasetIds,
     reRankQuery: 'FastGPT 的特点是什么？',
     queries: ['FastGPT 的特点是什么？'],
@@ -151,7 +151,7 @@ async function testWithoutThinking() {
   try {
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModelId,
       agenticSearchReasoning: false // 关闭思考过程
     });
 
@@ -183,7 +183,7 @@ async function testMultiTurnConversation() {
   const props: SearchDatasetDataProps = {
     histories: histories as any,
     teamId: TEST_CONFIG.teamId,
-    model: TEST_CONFIG.embedModel,
+    modelId: TEST_CONFIG.embedModelId,
     datasetIds: TEST_CONFIG.datasetIds,
     reRankQuery: '它支持哪些功能？',
     queries: ['它支持哪些功能？'],
@@ -193,7 +193,7 @@ async function testMultiTurnConversation() {
   try {
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModelId,
       agenticSearchReasoning: true
     });
 
@@ -218,7 +218,7 @@ async function testWithRerankModel() {
   const props: SearchDatasetDataProps = {
     histories: [],
     teamId: TEST_CONFIG.teamId,
-    model: TEST_CONFIG.embedModel,
+    modelId: TEST_CONFIG.embedModelId,
     datasetIds: TEST_CONFIG.datasetIds,
     reRankQuery: 'FastGPT 的核心功能',
     queries: ['FastGPT 的核心功能'],
@@ -228,8 +228,8 @@ async function testWithRerankModel() {
   try {
     const result = await agenticSearchDispatch({
       ...props,
-      agenticSearchLLMModel: TEST_CONFIG.llmModel,
-      agenticSearchRerankModel: TEST_CONFIG.rerankModel,
+      agenticSearchLLMModelId: TEST_CONFIG.llmModelId,
+      agenticSearchRerankModelId: TEST_CONFIG.rerankModelId,
       agenticSearchReasoning: true
     });
 

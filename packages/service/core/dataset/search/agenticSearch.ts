@@ -214,7 +214,7 @@ export async function agenticSearchDispatch(
           searchMode: DatasetSearchModeEnum.mixedRecall,
           limit: 0,
           similarity: 0,
-          usingReRank: !!rerankModel,
+          usingReRank: !!rerankModelId,
           usingSimilarityFilter: false
         };
       }
@@ -380,10 +380,7 @@ export async function agenticSearchDispatch(
     const errorMsg = error instanceof Error ? error.message : String(error);
     // diting-rag-ts agent 节点 LLM 重试全部耗尽且无 chunks：
     // 底模完全不可用，不应静默降级，需将错误抛给前端展示
-    if (
-      errorMsg.includes('LLM call failed after') &&
-      errorMsg.includes('no chunks collected')
-    ) {
+    if (errorMsg.includes('LLM call failed after') && errorMsg.includes('no chunks collected')) {
       addLog.error('[AgenticSearch] LLM fatal error, propagating to caller');
       throw new Error(i18nT('chat:language_model_error'));
     }
