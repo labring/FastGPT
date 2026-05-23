@@ -19,6 +19,7 @@ import type {
   FileWriteEntry,
   FileWriteResult,
   ResourceLimits,
+  SandboxCreateSpec,
   SandboxEndpointSelector,
   SandboxId,
   SandboxInfo,
@@ -31,15 +32,14 @@ import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
 import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { BoundedOutputBuffer } from '@/utils/outputBuffer';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
-import { joinUrlPath } from '@/utils/url';
 import type { OpenSandboxConfigType } from './type';
-import { OPEN_SANDBOX_EXECD_PORT } from '../ports';
+import {
+  getWriteEntryByteLength,
+  toOpenSandboxWriteData,
+  verifyCommittedUpload
+} from './uploadRecovery';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
-
-// Only failed uploads at or below this size are downloaded back for byte comparison.
-// Larger files use metadata-only confirmation to avoid doubling upload bandwidth and latency.
-const VERIFY_UPLOAD_CONTENT_MAX_BYTES = 1024 * 1024;
 
 export type { OpenSandboxConfigType } from './type';
 
@@ -108,7 +108,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
 
   constructor(
     private connectionConfig: OpenSandboxConnectionConfig,
-    private createConfig?: OpenSandboxConfigType
+    private createConfig?: SandboxCreateSpec
   ) {
     super();
     this.runtime = connectionConfig.runtime ?? 'docker';
@@ -117,7 +117,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   get rootPath(): string {
-    const mountPath = this.createConfig?.volumes?.[0]?.mountPath;
+    const firstVolume = this.createConfig?.volumes?.[0] as { mountPath?: string } | undefined;
+    const mountPath = firstVolume?.mountPath;
     return mountPath ? mountPath.replace(/\/+$/, '') : '/home/sandbox';
   }
 
@@ -351,6 +352,12 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         this.connectionConfig.baseUrl
       );
     }
+    if (!cfg.image) {
+      throw new ConnectionError(
+        'Cannot create sandbox: createConfig.image is required for opensandbox provider',
+        this.connectionConfig.baseUrl
+      );
+    }
     try {
       this._status = { state: 'Creating' };
 
@@ -368,7 +375,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           ...cfg.metadata,
           sessionId: this.connectionConfig.sessionId
         },
-        volumes: cfg.volumes,
+        volumes: cfg.volumes as OpenSandboxConfigType['volumes'] | undefined,
         skipHealthCheck: cfg.skipHealthCheck,
         readyTimeoutSeconds: cfg.readyTimeoutSeconds,
         healthCheckPollingInterval: cfg.healthCheckPollingInterval
@@ -658,49 +665,6 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     const results: FileWriteResult[] = [];
 
     /**
-     * Detect streams structurally instead of relying on `instanceof ReadableStream`; Node and
-     * browser/polyfilled streams can come from different realms.
-     */
-    const isReadableStream = (data: FileWriteEntry['data']): data is ReadableStream<Uint8Array> =>
-      typeof data === 'object' &&
-      data !== null &&
-      typeof (data as ReadableStream<Uint8Array>).getReader === 'function';
-
-    /**
-     * Computes expected bytes without buffering large in-memory inputs again.
-     *
-     * Strings need UTF-8 encoding length, while binary types already expose byte length/size.
-     * Streams return 0 because the guard never accepts stream uploads after a failed write.
-     */
-    const getWriteEntryByteLength = async (entry: FileWriteEntry): Promise<number> => {
-      if (typeof entry.data === 'string') return new TextEncoder().encode(entry.data).byteLength;
-      if (entry.data instanceof Uint8Array) return entry.data.byteLength;
-      if (entry.data instanceof ArrayBuffer) return entry.data.byteLength;
-      if (entry.data instanceof Blob) return entry.data.size;
-      if (isReadableStream(entry.data)) return 0;
-      return 0;
-    };
-
-    /** Converts replayable write data to bytes for small-file strict comparison. */
-    const toWriteEntryBytes = async (
-      data: Exclude<FileWriteEntry['data'], ReadableStream<Uint8Array>>
-    ): Promise<Uint8Array> => {
-      if (typeof data === 'string') return new TextEncoder().encode(data);
-      if (data instanceof Uint8Array) return data;
-      if (data instanceof ArrayBuffer) return new Uint8Array(data);
-      if (data instanceof Blob) return new Uint8Array(await data.arrayBuffer());
-      return data;
-    };
-
-    /** True only for OpenSandbox upload failures that may represent committed-but-failed responses. */
-    const isUploadFailure = (error: unknown) => {
-      const err = error as { message?: string; statusCode?: number; error?: { message?: string } };
-      const message = err?.message || err?.error?.message || '';
-      if (!message.includes('Upload failed')) return false;
-      return typeof err.statusCode === 'number' ? err.statusCode >= 500 : true;
-    };
-
-    /**
      * Reads back committed file content for small-file verification.
      *
      * The SDK download endpoint is preferred. If that endpoint is temporarily unhealthy alongside
@@ -739,63 +703,6 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     };
 
     /**
-     * Detects the OpenSandbox upload false-negative observed in local integration tests.
-     *
-     * OpenSandbox `/files/upload` can return 500 after the file has already been committed. Treating
-     * that response as a hard failure makes callers retry an operation that already mutated the
-     * sandbox filesystem. This helper only converts that failure to success when the committed file
-     * state is strong enough:
-     * - non-upload errors are never swallowed;
-     * - permission/owner/group writes are not downgraded because content size cannot prove metadata;
-     * - streams are skipped because they cannot be replayed for byte verification;
-     * - large files use size-only confirmation to avoid a full download;
-     * - small files must match byte-for-byte.
-     */
-    const didUploadActuallyCommit = async ({
-      entry,
-      normalizedPath,
-      bytesWritten,
-      error
-    }: {
-      entry: FileWriteEntry;
-      normalizedPath: string;
-      bytesWritten: number;
-      error: unknown;
-    }): Promise<boolean> => {
-      // Keep the guard narrow: only OpenSandbox upload 5xx responses are candidates.
-      if (!isUploadFailure(error)) return false;
-
-      // Size/content checks do not prove chmod/chown semantics, so preserve the original failure
-      // whenever callers ask the SDK to set file metadata as part of the upload.
-      if (entry.mode !== undefined || entry.owner !== undefined || entry.group !== undefined) {
-        return false;
-      }
-
-      // ReadableStream data cannot be safely replayed after the SDK has consumed it.
-      if (isReadableStream(entry.data)) return false;
-
-      const committedSize = await getCommittedFileSize(normalizedPath);
-      if (committedSize !== bytesWritten) return false;
-
-      // For large files, a second full read is too expensive. The false-negative symptom happens
-      // after the server writes the file, so matching size is the bounded-cost acceptance signal.
-      if (bytesWritten > VERIFY_UPLOAD_CONTENT_MAX_BYTES) {
-        return true;
-      }
-
-      // Small files are cheap enough to verify strictly, reducing the chance of accepting corrupt
-      // data with the same byte length.
-      const expectedBytes = await toWriteEntryBytes(entry.data);
-      const actualBytes = await readCommittedFileBytes(normalizedPath);
-      if (!actualBytes || actualBytes.byteLength !== expectedBytes.byteLength) return false;
-
-      for (let i = 0; i < expectedBytes.byteLength; i += 1) {
-        if (actualBytes[i] !== expectedBytes[i]) return false;
-      }
-      return true;
-    };
-
-    /**
      * Writes one file through the OpenSandbox SDK and keeps the normal success path unchanged.
      *
      * The extra verification is intentionally local to `writeFiles`: only SDK upload failures enter
@@ -823,7 +730,16 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           }
         ]);
       } catch (error) {
-        if (await didUploadActuallyCommit({ entry, normalizedPath, bytesWritten, error })) {
+        if (
+          await verifyCommittedUpload({
+            entry,
+            normalizedPath,
+            bytesWritten,
+            error,
+            getCommittedFileSize,
+            readCommittedFileBytes
+          })
+        ) {
           return;
         }
         throw error;
@@ -833,22 +749,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     for (const entry of entries) {
       const normalizedPath = this.normalizePath(entry.path);
       try {
-        let data = entry.data;
-
         // Calculate bytes from the caller's original input before converting Uint8Array to
         // ArrayBuffer for the OpenSandbox SDK. The value is later used by the false-negative
         // guard to verify that the committed file has the expected size.
         const bytesWritten = await getWriteEntryByteLength(entry);
-        if (data instanceof Uint8Array) {
-          if (data.byteOffset === 0 && data.byteLength === data.buffer.byteLength) {
-            data = data.buffer as ArrayBuffer;
-          } else {
-            data = data.buffer.slice(
-              data.byteOffset,
-              data.byteOffset + data.byteLength
-            ) as ArrayBuffer;
-          }
-        }
+        const data = toOpenSandboxWriteData(entry.data);
 
         await writeFileWithUploadFalseNegativeGuard({
           entry,

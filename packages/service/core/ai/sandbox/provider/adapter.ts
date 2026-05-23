@@ -2,7 +2,6 @@ import { serviceEnv } from '../../../../env';
 import {
   createSandbox,
   type ISandbox,
-  type OpenSandboxConfigType,
   type ResourceLimits,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
@@ -12,12 +11,6 @@ import type { VolumeManagerResult } from '../volume/service';
 
 function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
-}
-
-function toOpenSandboxCreateConfig(
-  createConfig?: SandboxCreateSpec
-): OpenSandboxConfigType | undefined {
-  return createConfig as OpenSandboxConfigType | undefined;
 }
 
 /**
@@ -46,7 +39,7 @@ export function buildSandboxAdapter(
             serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
           sessionId: props.sandboxId
         },
-        toOpenSandboxCreateConfig(props.createConfig)
+        props.createConfig
       );
 
     case 'sealosdevbox':
@@ -92,6 +85,7 @@ export function buildRuntimeSandboxAdapter(
   const config = getSandboxAdapterConfig({
     provider: providerName,
     runtime: true,
+    sessionId: sandboxId,
     resourceLimits: opts.resourceLimits,
     vmConfig: opts.vmConfig,
     createConfig: opts.createConfig

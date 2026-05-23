@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import type archiver from 'archiver';
 import mime from 'mime';
-import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
 
 export type SandboxFileEntry = {
   name: string;
@@ -22,7 +22,7 @@ export type SandboxFileContent = {
 
 const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
 
-const getSandboxWorkDirectory = () => getSandboxDefaults().workDirectory;
+const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 /**
  * 将编辑器传入的相对路径锚定到 sandbox workspace。

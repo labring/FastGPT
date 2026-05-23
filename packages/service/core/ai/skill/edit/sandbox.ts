@@ -1,15 +1,14 @@
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { downloadSkillPackage } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
-import {
-  EDIT_DEBUG_SANDBOX_CHAT_ID,
-  getEditDebugSandboxId,
-  buildEditDebugCreateConfig
-} from './config';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
-import { getSandboxDefaults } from '../../sandbox/runtime/config';
+import {
+  buildBaseSandboxRuntimeEnv,
+  getSandboxRuntimeProfile
+} from '../../sandbox/runtime/profile';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
@@ -31,7 +30,7 @@ import {
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import { getSkillsRootPath, joinSandboxPath, shellQuote } from '../runtime';
+import { joinSandboxPath, shellQuote } from '../runtime';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -72,10 +71,10 @@ export async function createEditDebugSandbox(
   }
 
   const providerConfig = getSandboxProviderConfig();
-  const defaults = getSandboxDefaults();
+  const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
   validateSandboxConfig(providerConfig);
 
-  const sandboxImage = image || defaults.defaultImage;
+  const sandboxImage = image || runtimeProfile.defaultImage;
 
   addLog.info('[Sandbox] Creating edit-debug sandbox', {
     skillId,
@@ -108,7 +107,7 @@ export async function createEditDebugSandbox(
 
   const sessionId = getEditDebugSandboxId(skillId);
   const getEditSkillSandboxPaths = () => ({
-    skillsRootPath: getSkillsRootPath(defaults.workDirectory)
+    skillsRootPath: runtimeProfile.skillsRootPath
   });
 
   /**
@@ -239,15 +238,23 @@ export async function createEditDebugSandbox(
 
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
 
-    const createConfig = buildEditDebugCreateConfig({
-      providerConfig,
-      sessionId,
-      sandboxImage,
-      defaults,
-      entrypoint,
+    const runtimeEnv = buildBaseSandboxRuntimeEnv(sessionId, runtimeProfile.workDirectory);
+    const runtimeMetadata = {
       skillId,
-      teamId
-    });
+      teamId,
+      sessionId
+    };
+    const createConfig: SandboxCreateSpec = runtimeProfile.buildConfig({
+      scenario: 'edit-debug',
+      sessionId,
+      image: sandboxImage,
+      entrypoint: entrypoint ?? runtimeProfile.entrypoint,
+      env: runtimeEnv,
+      metadata: runtimeMetadata
+    }) ?? {
+      env: runtimeEnv,
+      metadata: runtimeMetadata
+    };
     const client = await getSandboxClient(
       {
         appId: skillId,
@@ -269,10 +276,10 @@ export async function createEditDebugSandbox(
     });
 
     const { skillsRootPath } = getEditSkillSandboxPaths();
-    const zipPath = joinSandboxPath(defaults.workDirectory, 'package.zip');
+    const zipPath = joinSandboxPath(runtimeProfile.workDirectory, 'package.zip');
 
     const prepareWorkDirectoryResult = await client.provider.execute(
-      `mkdir -p ${shellQuote(defaults.workDirectory)}`
+      `mkdir -p ${shellQuote(runtimeProfile.workDirectory)}`
     );
     if (prepareWorkDirectoryResult.exitCode !== 0) {
       throw new Error(
@@ -292,7 +299,7 @@ export async function createEditDebugSandbox(
     const extractResult = await client.provider.execute(
       [
         `rm -rf ${shellQuote(skillsRootPath)}`,
-        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(defaults.workDirectory)}`,
+        `unzip -o ${shellQuote(zipPath)} -d ${shellQuote(runtimeProfile.workDirectory)}`,
         `rm ${shellQuote(zipPath)}`
       ].join(' && ')
     );
@@ -382,8 +389,8 @@ export async function packageSkillInSandbox(params: {
   const { maxSandboxPackageBytes: maxBytes } = getSkillSizeLimits();
 
   const providerConfig = getSandboxProviderConfig();
-  const defaults = getSandboxDefaults();
-  const preferredTargetDir = workDirectory || defaults.workDirectory;
+  const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
+  const preferredTargetDir = workDirectory || runtimeProfile.workDirectory;
 
   let sandbox: ISandbox | null = null;
 

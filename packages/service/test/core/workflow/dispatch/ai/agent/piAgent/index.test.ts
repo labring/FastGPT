@@ -6,7 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
-import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
 
 const {
   agentPromptMock,
@@ -132,8 +132,7 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
   };
 });
 
-const getEditSkillsRootPath = () =>
-  `${getSandboxDefaults().workDirectory.replace(/\/+$/, '')}/skills`;
+const getEditSkillsRootPath = () => getSandboxRuntimeProfile().skillsRootPath;
 
 const createProps = () =>
   ({

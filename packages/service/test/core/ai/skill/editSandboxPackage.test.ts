@@ -37,8 +37,7 @@ vi.mock('@fastgpt/service/core/ai/skill/sandbox/config', () => ({
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
   EDIT_DEBUG_SANDBOX_CHAT_ID: 'edit-debug',
-  getEditDebugSandboxId: (skillId: string) => `edit-debug-${skillId}`,
-  buildEditDebugCreateConfig: vi.fn()
+  getEditDebugSandboxId: (skillId: string) => `edit-debug-${skillId}`
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
@@ -48,11 +47,14 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
   validateSandboxConfig: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/config', () => ({
-  getSandboxDefaults: () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
+  getSandboxRuntimeProfile: () => ({
+    provider: 'opensandbox',
     workDirectory: '/workspace',
+    skillsRootPath: '/workspace/skills',
     defaultImage: 'test-image',
-    entrypoint: 'sleep infinity'
+    entrypoint: 'sleep infinity',
+    buildConfig: vi.fn()
   })
 }));
 

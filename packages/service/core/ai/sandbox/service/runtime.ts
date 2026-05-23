@@ -73,6 +73,8 @@ export class SandboxClient {
    * 历史资源 stop/delete 必须走 resource service，避免误创建已失效资源。
    */
   async ensureAvailable() {
+    // 先写 running 记录是有意设计：运行态入口需要先占位并暴露资源归属，
+    // 后续 provider ready 检查失败时会由调用方返回错误，后台兜底检查/cron 再修正不可用实例。
     await upsertRunningSandboxInstance({
       provider: this.providerName,
       sandboxId: this.sandboxId,

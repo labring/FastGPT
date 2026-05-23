@@ -4,10 +4,7 @@ import type {
   Endpoint,
   ExecuteOptions,
   ExecuteResult,
-  ImageSpec,
-  KubeAccessPolicy,
-  LabelSpec,
-  LifecyclePolicy,
+  SandboxCreateSpec,
   SandboxEndpointSelector,
   SandboxId,
   SandboxInfo,
@@ -38,16 +35,6 @@ export interface SealosDevboxConfig {
   httpgateDomain?: string;
 }
 
-export interface SealosDevboxCreateConfig {
-  image?: ImageSpec;
-  env?: Record<string, string>;
-  labels?: LabelSpec[];
-  upstreamID?: string;
-  kubeAccess?: KubeAccessPolicy;
-  lifecycle?: LifecyclePolicy;
-  workingDir?: string;
-}
-
 export class SealosDevboxAdapter extends BaseSandboxAdapter {
   readonly provider = 'sealosdevbox' as const;
 
@@ -60,7 +47,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
   constructor(
     private config: SealosDevboxConfig,
-    private createConfig?: SealosDevboxCreateConfig
+    private createConfig?: SandboxCreateSpec
   ) {
     super();
     this.api = new DevboxApi({ baseUrl: config.baseUrl, token: config.token });

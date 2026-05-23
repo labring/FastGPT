@@ -1,10 +1,7 @@
 import { serviceEnv } from '../../../../env';
-import type {
-  OpenSandboxConfigType,
-  SandboxCreateSpec,
-  SandboxProviderType
-} from '@fastgpt-sdk/sandbox-adapter';
+import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
+import { getSandboxRuntimeProfile } from '../runtime/profile';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -79,54 +76,25 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
 }
 
 /**
- * 构造 OpenSandbox 运行态 createConfig。
- *
- * OpenSandbox 需要在 create 阶段注入镜像、资源限制和 PVC 挂载；其他 provider
- * 的 createConfig 语义由 SDK adapter 自己处理，不在这里补默认镜像。
- */
-export const buildOpenSandboxCreateConfig = (
-  opts: {
-    volumes?: OpenSandboxConfigType['volumes'];
-    resourceLimits?: SandboxCreateSpec['resourceLimits'];
-    createConfig?: SandboxCreateSpec;
-  } = {}
-): OpenSandboxConfigType => {
-  if (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO && !opts.createConfig?.image) {
-    throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required for opensandbox provider');
-  }
-  const { image, entrypoint, env, metadata } = opts.createConfig ?? {};
-  return {
-    image: {
-      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    },
-    ...(opts.resourceLimits ? { resourceLimits: opts.resourceLimits } : {}),
-    ...(image ? { image } : {}),
-    ...(entrypoint ? { entrypoint } : {}),
-    ...(env ? { env } : {}),
-    ...(metadata ? { metadata: metadata as OpenSandboxConfigType['metadata'] } : {}),
-    ...(opts.volumes ? { volumes: opts.volumes } : {})
-  };
-};
-
-/**
  * 获取构造 sandbox adapter 所需的完整配置。
  *
- * provider 的环境变量读取、配置校验，以及运行态 createConfig 的 provider 差异都收敛在这里。
- * factory 只消费返回值构造 adapter，不再理解 provider 间配置细节。
+ * 这里只处理 provider 连接配置和校验；运行态 createConfig 统一交给
+ * SandboxRuntimeProfile.buildConfig，避免这里再散落 provider 运行时分支。
  */
 export function getSandboxAdapterConfig({
   provider = serviceEnv.AGENT_SANDBOX_PROVIDER,
   runtime = false,
   resourceLimits,
   vmConfig,
-  createConfig
+  createConfig,
+  sessionId
 }: {
   provider?: SandboxProviderType;
   runtime?: boolean;
   resourceLimits?: SandboxCreateSpec['resourceLimits'];
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateConfig;
+  sessionId?: string;
 } = {}): SandboxAdapterConfig {
   switch (provider) {
     case 'opensandbox': {
@@ -142,9 +110,9 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? buildOpenSandboxCreateConfig({
+          ? getSandboxRuntimeProfile(provider).buildConfig({
               resourceLimits,
-              volumes: vmConfig?.volumes,
+              vmConfig,
               createConfig
             })
           : undefined
@@ -161,7 +129,12 @@ export function getSandboxAdapterConfig({
 
       return {
         providerConfig,
-        createConfig: runtime ? createConfig : undefined
+        createConfig: runtime
+          ? getSandboxRuntimeProfile(provider).buildConfig({
+              createConfig,
+              sessionId
+            })
+          : undefined
       };
     }
 
@@ -174,7 +147,11 @@ export function getSandboxAdapterConfig({
 
       return {
         providerConfig,
-        createConfig: runtime ? createConfig : undefined
+        createConfig: runtime
+          ? getSandboxRuntimeProfile(provider).buildConfig({
+              createConfig
+            })
+          : undefined
       };
     }
 

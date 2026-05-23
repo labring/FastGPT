@@ -5,7 +5,7 @@ import { removeSkillPackageTTL, validateZipStructure, uploadSkillPackage } from 
 import { packageSkillInSandbox } from './sandbox';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from './config';
 import { createVersion } from '../version';
-import { getSandboxDefaults } from '../../sandbox/runtime/config';
+import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import { findSandboxInstanceByAppChatType } from '../../sandbox/instance/repository';
 import { MongoAgentSkills } from '../model/schema';
@@ -50,10 +50,10 @@ export async function saveDeploySkillFromSandbox({
 
   let packageBuffer: Buffer;
   try {
-    const defaults = getSandboxDefaults();
+    const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
     packageBuffer = await packageSkillInSandbox({
       sandboxId: sandboxInfo.sandboxId,
-      workDirectory: defaults.workDirectory
+      workDirectory: runtimeProfile.workDirectory
     });
     const validation = await validateZipStructure(packageBuffer);
     if (!validation.valid) {

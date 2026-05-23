@@ -4,6 +4,7 @@ const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
+  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
@@ -25,6 +26,10 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
+    vi.stubEnv(
+      'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
+      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
+    );
     vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
@@ -85,6 +90,32 @@ describe('sandbox provider config', () => {
       },
       createConfig: {
         env: { A: 'B' }
+      }
+    });
+  });
+
+  it('builds sealosdevbox runtime create config from runtime profile', async () => {
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
+
+    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
+
+    expect(
+      getSandboxAdapterConfig({
+        provider: 'sealosdevbox',
+        runtime: true,
+        sessionId: 'session-1'
+      })
+    ).toEqual({
+      providerConfig: {
+        provider: 'sealosdevbox',
+        baseUrl: 'https://devbox.example.com',
+        token: 'sealos-token'
+      },
+      createConfig: {
+        workingDir: '/home/devbox/workspace',
+        upstreamID: 'session-1'
       }
     });
   });
@@ -165,13 +196,15 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('builds opensandbox default create config from env image when no override is provided', async () => {
+  it('builds opensandbox runtime create config from profile env image', async () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
 
-    const { buildOpenSandboxCreateConfig } = await loadSandboxConfigModule();
+    vi.resetModules();
+    const { getSandboxRuntimeProfile } =
+      await import('@fastgpt/service/core/ai/sandbox/runtime/profile');
 
-    expect(buildOpenSandboxCreateConfig()).toEqual({
+    expect(getSandboxRuntimeProfile('opensandbox').buildConfig()).toEqual({
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
@@ -246,18 +279,19 @@ describe('sandbox provider config', () => {
     }));
 
     try {
-      const { buildOpenSandboxCreateConfig } =
-        await import('@fastgpt/service/core/ai/sandbox/provider/config');
+      const { getSandboxRuntimeProfile } =
+        await import('@fastgpt/service/core/ai/sandbox/runtime/profile');
+      const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
 
-      expect(() => buildOpenSandboxCreateConfig()).toThrow(
+      expect(() => runtimeProfile.buildConfig()).toThrow(
         'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required'
       );
       expect(
-        buildOpenSandboxCreateConfig({
+        runtimeProfile.buildConfig({
           createConfig: {
             image: { repository: 'explicit-image' }
           }
-        }).image
+        })?.image
       ).toEqual({ repository: 'explicit-image' });
     } finally {
       vi.doUnmock('@fastgpt/service/env');

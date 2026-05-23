@@ -13,7 +13,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
-import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   EDIT_DEBUG_SANDBOX_CHAT_ID,
@@ -68,10 +68,10 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
       return jsonRes(res, { code: 404, error: 'Edit sandbox not found or not running' });
     }
 
-    const defaults = getSandboxDefaults();
+    const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
     zipBuffer = await packageSkillInSandbox({
       sandboxId: sandboxInfo.sandboxId,
-      workDirectory: defaults.workDirectory
+      workDirectory: runtimeProfile.workDirectory
     });
   } else {
     const currentVersion = await MongoAgentSkillsVersion.findOne({

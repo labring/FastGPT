@@ -8,12 +8,12 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
 };
 
-const loadSandboxDefaultsModule = async () => {
+const loadSandboxRuntimeProfileModule = async () => {
   vi.resetModules();
-  return import('@fastgpt/service/core/ai/sandbox/runtime/config');
+  return import('@fastgpt/service/core/ai/sandbox/runtime/profile');
 };
 
-describe('sandbox runtime config', () => {
+describe('sandbox runtime profile', () => {
   afterEach(() => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
     vi.stubEnv(
@@ -40,9 +40,11 @@ describe('sandbox runtime config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
     vi.stubEnv('AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH', '/workspace');
 
-    const { getSandboxDefaults } = await loadSandboxDefaultsModule();
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
+    const runtimeProfile = getSandboxRuntimeProfile();
 
-    expect(getSandboxDefaults()).toEqual({
+    expect(runtimeProfile).toMatchObject({
+      provider: 'opensandbox',
       defaultImage: {
         repository: 'runtime-image',
         tag: 'stable'
@@ -50,34 +52,66 @@ describe('sandbox runtime config', () => {
       workDirectory: '/workspace',
       entrypoint: '/home/sandbox/entrypoint.sh'
     });
+    expect(runtimeProfile.skillsRootPath).toBe('/workspace/skills');
   });
 
   it('uses devbox defaults for sealosdevbox provider', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
 
-    const { getSandboxDefaults } = await loadSandboxDefaultsModule();
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
+    const runtimeProfile = getSandboxRuntimeProfile();
 
-    expect(getSandboxDefaults()).toEqual({
+    expect(runtimeProfile).toMatchObject({
+      provider: 'sealosdevbox',
       defaultImage: {
         repository: ''
       },
       workDirectory: '/home/devbox/workspace',
       entrypoint: ''
     });
+    expect(runtimeProfile.skillsRootPath).toBe('/home/devbox/workspace/skills');
   });
 
   it('uses sealos work directory from env', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
 
-    const { getSandboxDefaults } = await loadSandboxDefaultsModule();
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
 
-    expect(getSandboxDefaults()).toEqual({
+    expect(getSandboxRuntimeProfile()).toMatchObject({
+      provider: 'sealosdevbox',
       defaultImage: {
         repository: ''
       },
       workDirectory: '/custom/devbox/workspace',
       entrypoint: ''
+    });
+  });
+
+  it('builds provider-specific create config through runtime profile', async () => {
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
+
+    const { buildBaseSandboxRuntimeEnv, getSandboxRuntimeProfile } =
+      await loadSandboxRuntimeProfileModule();
+    const runtimeProfile = getSandboxRuntimeProfile('sealosdevbox');
+
+    expect(
+      runtimeProfile.buildConfig({
+        scenario: 'session-runtime',
+        sessionId: 'session-1',
+        env: buildBaseSandboxRuntimeEnv('session-1', runtimeProfile.workDirectory),
+        metadata: { teamId: 'team-1' }
+      })
+    ).toEqual({
+      env: {
+        FASTGPT_SESSION_ID: 'session-1',
+        FASTGPT_WORKDIR: '/custom/devbox/workspace'
+      },
+      metadata: {
+        teamId: 'team-1'
+      },
+      workingDir: '/custom/devbox/workspace',
+      upstreamID: 'session-1'
     });
   });
 });

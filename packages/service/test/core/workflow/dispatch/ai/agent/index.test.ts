@@ -5,7 +5,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { getSandboxDefaults } from '@fastgpt/service/core/ai/sandbox/runtime/config';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
 
 const {
   runUnifiedAgentLoopMock,
@@ -208,8 +208,7 @@ const createProps = () =>
     }
   }) as any;
 
-const getEditSkillsRootPath = () =>
-  `${getSandboxDefaults().workDirectory.replace(/\/+$/, '')}/skills`;
+const getEditSkillsRootPath = () => getSandboxRuntimeProfile().skillsRootPath;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {

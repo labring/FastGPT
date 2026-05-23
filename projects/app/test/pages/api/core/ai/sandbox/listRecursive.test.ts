@@ -11,7 +11,7 @@ const mockSandboxRuntimeConfig = vi.hoisted(() => {
   const state = { workDirectory: '.' };
   return {
     state,
-    getSandboxDefaults: vi.fn(() => ({ workDirectory: state.workDirectory }))
+    getSandboxRuntimeProfile: vi.fn(() => ({ workDirectory: state.workDirectory }))
   };
 });
 
@@ -23,8 +23,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
   getSandboxClient: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/config', () => ({
-  getSandboxDefaults: mockSandboxRuntimeConfig.getSandboxDefaults
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
+  getSandboxRuntimeProfile: mockSandboxRuntimeConfig.getSandboxRuntimeProfile
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/listRecursive';
@@ -136,7 +136,7 @@ describe('sandbox/listRecursive api', () => {
       teamId: 'team-id'
     });
     expect(sandbox.ensureAvailable).toHaveBeenCalledOnce();
-    expect(mockSandboxRuntimeConfig.getSandboxDefaults).toHaveBeenCalledOnce();
+    expect(mockSandboxRuntimeConfig.getSandboxRuntimeProfile).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledOnce();
     expect(execute.mock.calls[0][0]).toContain('find');
     expect(execute.mock.calls[0][0]).toContain(tempDir);

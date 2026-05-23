@@ -48,9 +48,10 @@ vi.mock('@fastgpt/service/core/ai/skill/version', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/config', () => ({
-  getSandboxDefaults: () => ({
-    workDirectory: '/workspace'
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
+  getSandboxRuntimeProfile: () => ({
+    workDirectory: '/workspace',
+    skillsRootPath: '/workspace/skills'
   })
 }));
 
