@@ -20,6 +20,24 @@ import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      AGENT_SANDBOX_PROVIDER: 'opensandbox',
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
+      AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
+      AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'runtime-image',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
+      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
+    }
+  };
+});
+
 // ── Constants mirrored from the implementation ──
 const START_NODE_ID = 'skill-debug-start';
 const AGENT_NODE_ID = 'skill-debug-agent';

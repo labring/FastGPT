@@ -15,6 +15,24 @@ const skillExportMocks = vi.hoisted(() => ({
   packageSkillInSandboxMock: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      AGENT_SANDBOX_PROVIDER: 'opensandbox',
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
+      AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
+      AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'runtime-image',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
+      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
+    }
+  };
+});
+
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/instance/repository')>();
