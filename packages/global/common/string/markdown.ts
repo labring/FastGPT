@@ -173,6 +173,19 @@ export const markdownProcess = async ({
   return simpleMarkdownText(imageProcess);
 };
 
+export const matchHtmlImg = (html: string) => {
+  const base64Regex = /src="data:([^;]+);base64,([A-Za-z0-9+/=]+)"/g;
+  const imageList: ImageType[] = [];
+
+  const text = html.replace(base64Regex, (_match, mime, base64Data) => {
+    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
+    imageList.push({ uuid, base64: base64Data, mime });
+    return `src="${uuid}"`;
+  });
+
+  return { text, imageList };
+};
+
 export const matchMdImg = (text: string) => {
   // 优化后的正则:
   // 1. 使用 [\s\S]*? 惰性匹配 alt 文本，允许其中包含 ] 和换行（如图表描述、公式等复杂文本）

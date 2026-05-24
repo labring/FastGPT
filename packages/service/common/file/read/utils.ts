@@ -3,7 +3,7 @@ import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { axios } from '../../api/axios';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { matchMdImg } from '@fastgpt/global/common/string/markdown';
+import { matchMdImg, matchHtmlImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
@@ -113,8 +113,9 @@ const parseByCustomService = async ({
       });
     });
 
-    const { text, imageList } = matchMdImg(response.markdown);
-    return { rawText: text, formatText: text, imageList };
+    const { text: htmlParsed, imageList: htmlImages } = matchHtmlImg(response.markdown);
+    const { text, imageList } = matchMdImg(htmlParsed);
+    return { rawText: text, formatText: text, imageList: [...htmlImages, ...imageList] };
   } catch (error) {
     addLog.error('Custom parse service request failed', {
       url,
