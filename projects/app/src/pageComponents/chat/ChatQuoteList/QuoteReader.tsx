@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
@@ -16,7 +16,7 @@ const QuoteReader = ({
   metadata,
   onClose
 }: {
-  rawSearch: SearchDataResponseItemType[];
+  rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetAllQuoteDataProps;
   onClose: () => void;
 }) => {

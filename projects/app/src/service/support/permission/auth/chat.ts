@@ -1,4 +1,4 @@
-import { type ChatHistoryItemResType, type ChatSchemaType } from '@fastgpt/global/core/chat/type';
+import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
@@ -8,13 +8,12 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
-import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { Types } from 'mongoose';
 
 /* 
   检查chat的权限：
@@ -237,69 +236,54 @@ export async function authChatCrud({
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
 
+/**
+ * 校验文档是否来自当前会话引用。
+ *
+ * 只依赖 ChatItem 上的 citeCollectionIds 判断 collection 是否在当前会话中被引用，
+ * 避免读取和解析完整 responseData。
+ */
 export const authCollectionInChat = async ({
   collectionIds,
   appId,
-  chatId,
-  chatItemDataId
+  chatId
 }: {
   collectionIds: string[];
   appId: string;
   chatId: string;
-  chatItemDataId: string;
 }) => {
-  try {
-    // 1. 使用 citeCollectionIds 字段来判断
-    const chatItems = await MongoChatItem.find(
-      {
-        appId,
+  const appObjectId = Types.ObjectId.isValid(String(appId))
+    ? new Types.ObjectId(String(appId))
+    : appId;
+  const targetCollectionIds = collectionIds.map(String);
+
+  const [authResult] = await MongoChatItem.aggregate<{ isAuthorized: boolean }>([
+    {
+      $match: {
+        appId: appObjectId,
         chatId,
         obj: ChatRoleEnum.AI
-      },
-      'citeCollectionIds'
-    )
-      .sort({ _id: -1 })
-      .limit(50)
-      .lean();
-    const citeCollectionIds = new Set(
-      chatItems.map((item) => ('citeCollectionIds' in item ? item.citeCollectionIds : [])).flat()
-    );
-    if (collectionIds.every((id) => citeCollectionIds.has(id))) {
-      return;
+      }
+    },
+    { $sort: { _id: -1 } },
+    { $limit: 50 },
+    { $unwind: '$citeCollectionIds' },
+    {
+      $group: {
+        _id: null,
+        citeCollectionIds: { $addToSet: { $toString: '$citeCollectionIds' } }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        isAuthorized: { $setIsSubset: [targetCollectionIds, '$citeCollectionIds'] }
+      }
     }
+  ]);
 
-    // Adapt <=4.13.0
-    const chatItem = (await MongoChatItem.findOne(
-      {
-        appId,
-        chatId,
-        dataId: chatItemDataId
-      },
-      'responseData'
-    ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
-
-    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-
-    // Concat response data
-    if (!chatItem.responseData || chatItem.responseData.length === 0) {
-      const chatItemResponses = await MongoChatItemResponse.find(
-        { appId, chatId, chatItemDataId },
-        { data: 1 }
-      ).lean();
-      chatItem.responseData = chatItemResponses.map((item) => item.data);
-    }
-
-    // 找 responseData 里，是否有该文档 id
-    const flatResData = getFlatAppResponses(chatItem.responseData || []);
-
-    const quoteListSet = new Set(
-      flatResData.map((item) => item.quoteList?.map((quote) => quote.collectionId) || []).flat()
-    );
-
-    if (collectionIds.every((id) => quoteListSet.has(id))) {
-      return;
-    }
-  } catch (error) {}
+  if (authResult?.isAuthorized) {
+    return;
+  }
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
 

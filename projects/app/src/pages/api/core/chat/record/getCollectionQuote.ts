@@ -50,7 +50,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
       teamToken
     }),
     MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
-    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
+    authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
   ]);
 
   if (!showFullText || !chat || !chatItem || initialAnchor === undefined) {

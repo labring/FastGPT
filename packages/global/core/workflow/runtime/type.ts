@@ -24,7 +24,7 @@ import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
-import { SearchDataResponseItemSchema } from '../../dataset/type';
+import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import { type ChatFileStoreValue, type UserChatItemValueItemType } from '../../chat/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
@@ -198,7 +198,7 @@ export const DispatchNodeResponseSchema = z
     temperature: z.number().optional().meta({ description: '温度' }),
     maxToken: z.number().optional().meta({ description: '最大 token' }),
     quoteList: z
-      .array(SearchDataResponseItemSchema)
+      .array(SearchDataResponseQuoteListItemSchema)
       .optional()
       .meta({ description: '知识库引用列表' }),
     reasoningText: z.string().optional().meta({ description: '思考文本' }),

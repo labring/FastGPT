@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
   // Auth
   const { collection, q, a } = await (async () => {
     if (body.chatId && body.appId && body.chatItemDataId) {
-      const { appId, chatId, shareId, outLinkUid, teamId, teamToken, chatItemDataId } = body;
+      const { appId, chatId, shareId, outLinkUid, teamId, teamToken } = body;
       await authChatCrud({
         req,
         authToken: true,
@@ -55,7 +55,6 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
         authCollectionInChat({
           appId,
           chatId,
-          chatItemDataId,
           collectionIds: [datasetData.collectionId]
         })
       ]);

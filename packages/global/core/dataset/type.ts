@@ -428,6 +428,25 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;
 
+export const SearchDataResponseQuoteItemSchema = SearchDataResponseItemSchema.pick({
+  id: true,
+  chunkIndex: true,
+  datasetId: true,
+  collectionId: true,
+  sourceId: true,
+  sourceName: true,
+  score: true
+}).meta({ description: '搜索数据引用响应项（精简）' });
+export type SearchDataResponseQuoteItemType = z.infer<typeof SearchDataResponseQuoteItemSchema>;
+
+export const SearchDataResponseQuoteListItemSchema = z.union([
+  SearchDataResponseItemSchema,
+  SearchDataResponseQuoteItemSchema
+]);
+export type SearchDataResponseQuoteListItemType = z.infer<
+  typeof SearchDataResponseQuoteListItemSchema
+>;
+
 export const DatasetCiteItemSchema = z
   .object({
     _id: ObjectIdSchema.meta({ description: '数据 ID' }),

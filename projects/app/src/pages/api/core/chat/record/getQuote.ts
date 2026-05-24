@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
       teamToken
     }),
     MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
-    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
+    authCollectionInChat({ appId, chatId, collectionIds: collectionIdList })
   ]);
   if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);
 

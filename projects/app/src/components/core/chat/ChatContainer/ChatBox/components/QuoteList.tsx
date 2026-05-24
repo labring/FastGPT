@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
 
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
@@ -15,7 +15,7 @@ const QuoteList = React.memo(function QuoteList({
   rawSearch = []
 }: {
   chatItemDataId?: string;
-  rawSearch: SearchDataResponseItemType[];
+  rawSearch: SearchDataResponseQuoteListItemType[];
 }) {
   const theme = useTheme();
   const { appId, outLinkAuthData } = useChatStore();
@@ -62,7 +62,7 @@ const QuoteList = React.memo(function QuoteList({
         };
       }
 
-      return { ...item, q: item.q || '' };
+      return { ...item, q: 'q' in item ? item.q : '' };
     });
 
     return processedData.sort((a, b) => {

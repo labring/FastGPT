@@ -1,6 +1,6 @@
 import { type ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { type ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { useForm, type UseFormReturn } from 'react-hook-form';
@@ -8,7 +8,7 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -65,7 +65,7 @@ export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
 };
 export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
 export type QuoteDataType = {
-  rawSearch: SearchDataResponseItemType[];
+  rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetQuoteProps;
 };
 export type OnOpenCiteModalProps = {
@@ -131,7 +131,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   }
 });
 
-/* 
+/*
     Chat 对象的上下文
 */
 const ChatItemContextProvider = ({

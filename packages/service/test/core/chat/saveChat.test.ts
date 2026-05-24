@@ -349,6 +349,11 @@ describe('pushChatRecords', () => {
 
       await pushChatRecords(props);
 
+      expect(props.aiContent.responseData?.[0]?.quoteList?.[0]).toMatchObject({
+        q: quote.q,
+        a: quote.a
+      });
+
       const responses = await MongoChatItemResponse.find({
         appId: testAppId,
         chatId: props.chatId
