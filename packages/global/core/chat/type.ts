@@ -3,14 +3,14 @@ import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  type ChatSourceEnum
+  ChatSourceEnum
 } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import { AppSchemaTypeSchema, type AppSchemaType, type VariableItemType } from '../app/type';
+import { AppSchemaTypeSchema, VariableItemTypeSchema } from '../app/type';
 import { DispatchNodeResponseSchema } from '../workflow/runtime/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
-import type { FlowNodeInputItemType } from '../workflow/type/io';
+import { FlowNodeInputItemTypeSchema } from '../workflow/type/io';
 import z from 'zod';
 import {
   AgentLoopAskSchema,
@@ -19,6 +19,7 @@ import {
   AgentPlanSchema,
   AgentPlanStatusSchema
 } from '../ai/agent/type';
+import { ObjectIdSchema } from '../../common/type/mongo';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -80,49 +81,56 @@ export const SkillModuleResponseItemSchema = z.object({
 export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItemSchema>;
 
 /* --------- chat ---------- */
-export type ChatSchemaType = {
-  _id: string;
-  chatId: string;
-  userId: string;
-  teamId: string;
-  tmbId: string;
-  appId: string;
-  appVersionId?: string;
-  createTime: Date;
-  updateTime: Date;
-  title: string;
-  customTitle: string;
-  top: boolean;
-  source: `${ChatSourceEnum}`;
-  sourceName?: string;
+export const ChatSchema = z.object({
+  _id: ObjectIdSchema,
+  chatId: z.string(),
+  userId: ObjectIdSchema,
+  teamId: ObjectIdSchema,
+  tmbId: ObjectIdSchema,
+  appId: ObjectIdSchema.meta({
+    description: '目前已经变成 sourceId，可能是 app 的，也可能是 skill 的'
+  }),
+  appVersionId: ObjectIdSchema.optional().meta({ description: 'appId 为 app 时候才有' }),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
+  title: z.string(),
+  customTitle: z.string().optional(),
+  top: z.boolean().default(false),
+  source: z.enum(ChatSourceEnum),
+  sourceName: z.string().optional(),
 
-  shareId?: string;
-  outLinkUid?: string;
+  shareId: z.string().optional(),
+  outLinkUid: z.string().optional(),
 
-  variableList?: VariableItemType[];
-  welcomeText?: string;
-  variables: Record<string, any>;
-  pluginInputs?: FlowNodeInputItemType[];
-  metadata?: Record<string, any>;
+  variableList: z.array(VariableItemTypeSchema).optional(),
+  welcomeText: z.string().optional(),
+  variables: z.record(z.string(), z.any()),
+  pluginInputs: z.array(FlowNodeInputItemTypeSchema).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 
   // Boolean flags for efficient filtering
-  hasGoodFeedback?: boolean;
-  hasBadFeedback?: boolean;
-  hasUnreadGoodFeedback?: boolean;
-  hasUnreadBadFeedback?: boolean;
+  hasGoodFeedback: z.boolean().optional(),
+  hasBadFeedback: z.boolean().optional(),
+  hasUnreadGoodFeedback: z.boolean().optional(),
+  hasUnreadBadFeedback: z.boolean().optional(),
   // Error count (redundant field for performance)
-  errorCount?: number;
+  errorCount: z.number().optional(),
 
   /** 旧数据可能无此字段；业务上按 done 处理 */
-  chatGenerateStatus?: ChatGenerateStatusEnum;
-  hasBeenRead: boolean;
+  chatGenerateStatus: z
+    .enum(ChatGenerateStatusEnum)
+    .default(ChatGenerateStatusEnum.done)
+    .meta({ description: '生成状态' }),
+  hasBeenRead: z.boolean().default(true),
 
-  deleteTime?: Date | null;
-};
+  deleteTime: z.coerce.date().nullish()
+});
+export type ChatSchemaType = z.infer<typeof ChatSchema>;
 
-export type ChatWithAppSchema = Omit<ChatSchemaType, 'appId'> & {
-  appId: AppSchemaType;
-};
+export const ChatWithAppSchema = ChatSchema.omit({ appId: true }).extend({
+  appId: AppSchemaTypeSchema
+});
+export type ChatWithAppSchema = z.infer<typeof ChatWithAppSchema>;
 
 /* --------- chat item ---------- */
 // User
