@@ -1,5 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -28,7 +28,7 @@ const CollectionReader = ({
   metadata,
   onClose
 }: {
-  rawSearch: SearchDataResponseItemType[];
+  rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetCollectionQuoteDataProps;
   onClose: () => void;
 }) => {
@@ -39,7 +39,7 @@ const CollectionReader = ({
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
-  const [quoteIndex, setQuoteIndex] = useState(0);
+  const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
   const { data: datasetData } = useRequest(async () => await getDatasetPermission(datasetId), {
@@ -48,7 +48,7 @@ const CollectionReader = ({
   });
 
   const filterResults = useMemo(() => {
-    const res = rawSearch
+    return rawSearch
       .filter((item) => item.collectionId === collectionId)
       .sort((a, b) => {
         const chunkDiff = (a.chunkIndex || 0) - (b.chunkIndex || 0);
@@ -56,15 +56,28 @@ const CollectionReader = ({
 
         return a.id.localeCompare(b.id);
       });
+  }, [collectionId, rawSearch]);
 
-    if (quoteId) {
-      setQuoteIndex(res.findIndex((item) => item.id === quoteId));
-    } else {
-      setQuoteIndex(0);
-    }
+  const quoteIndex = useMemo(() => {
+    const selectedQuoteId =
+      selectedQuote && selectedQuote.sourceQuoteId === quoteId ? selectedQuote.id : quoteId;
+    if (!selectedQuoteId) return 0;
 
-    return res;
-  }, [collectionId, quoteId, rawSearch]);
+    return Math.max(
+      filterResults.findIndex((item) => item.id === selectedQuoteId),
+      0
+    );
+  }, [filterResults, quoteId, selectedQuote]);
+
+  const setQuoteIndex = (index: number) => {
+    const nextQuote = filterResults[index];
+    if (!nextQuote) return;
+
+    setSelectedQuote({
+      sourceQuoteId: quoteId,
+      id: nextQuote.id
+    });
+  };
 
   const currentQuoteItem = useMemo(() => {
     const item = filterResults[quoteIndex];
@@ -281,7 +294,7 @@ const CollectionReader = ({
       {isLoading || datasetDataList.length > 0 ? (
         <ScrollData flex={'1 0 0'} mt={2} px={5} py={1}>
           <Flex flexDir={'column'}>
-            {formatedDataList.map((item, index) => (
+            {formatedDataList.map((item) => (
               <CollectionQuoteItem
                 key={item._id}
                 quoteRefs={itemRefs as React.MutableRefObject<Map<string, HTMLDivElement | null>>}

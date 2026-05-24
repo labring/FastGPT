@@ -41,8 +41,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       };
     }
 
-    const { appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken, chatTime } =
-      parseBody;
+    const { appId, chatId, shareId, outLinkUid, teamId, teamToken, chatTime } = parseBody;
     /*
       1. auth chat read permission
       2. auth collection quote in chat
@@ -60,7 +59,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         teamToken
       }),
       getCollectionWithDataset(collectionId),
-      authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
+      authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
     ]);
 
     if (!authRes.canDownloadSource) {

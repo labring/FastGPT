@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Link, Progress } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { SearchDataResponseQuoteItemType } from '@fastgpt/global/core/dataset/type';
 import NextLink from 'next/link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -85,7 +85,11 @@ const QuoteItem = ({
   canEditDataset,
   ...RawSourceBoxProps
 }: {
-  quoteItem: SearchDataResponseItemType;
+  quoteItem: SearchDataResponseQuoteItemType & {
+    q: string;
+    a?: string;
+    imagePreivewUrl?: string;
+  };
   canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;

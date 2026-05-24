@@ -1,7 +1,7 @@
 import Markdown from '@/components/Markdown';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { type Dispatch, type MutableRefObject, type SetStateAction, useState } from 'react';
+import { type MutableRefObject, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
@@ -23,7 +23,7 @@ const CollectionQuoteItem = ({
 }: {
   quoteRefs: MutableRefObject<Map<string, HTMLDivElement | null>>;
   quoteIndex: number;
-  setQuoteIndex: Dispatch<SetStateAction<number>>;
+  setQuoteIndex: (quoteIndex: number) => void;
   refreshList: () => void;
   canEdit: boolean;
 

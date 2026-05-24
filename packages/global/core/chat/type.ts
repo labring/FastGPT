@@ -1,4 +1,4 @@
-import { SearchDataResponseItemSchema } from '../dataset/type';
+import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
@@ -320,7 +320,7 @@ export type ToolCiteLinksType = z.infer<typeof ToolCiteLinksSchema>;
 
 export const ResponseTagItemSchema = z.object({
   useAgentSandbox: z.boolean().optional(),
-  totalQuoteList: z.array(SearchDataResponseItemSchema).optional(),
+  totalQuoteList: z.array(SearchDataResponseQuoteListItemSchema).optional(),
   toolCiteLinks: z.array(ToolCiteLinksSchema).optional(),
   errorText: ErrorTextItemSchema.optional(),
   llmModuleAccount: z.number().optional().meta({ deprecated: true }),

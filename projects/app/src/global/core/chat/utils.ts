@@ -5,7 +5,7 @@ import type {
   ToolCiteLinksType,
   ErrorTextItemType
 } from '@fastgpt/global/core/chat/type';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
@@ -32,8 +32,8 @@ export function transformPreviewHistories(
 const extractCitationIdsFromText = (text: string): string[] => {
   if (!text) return [];
 
-  // Match [24-bit hexadecimal ID](CITE) format
-  const citeRegex = /\[([a-f0-9]{24})\]\(CITE\)/gi;
+  // Match [24-bit hexadecimal ID](CITE|QUOTE) format. Markdown rendering supports both.
+  const citeRegex = /\[([a-f0-9]{24})\]\((?:CITE|QUOTE)\)/gi;
   const matches = text.match(citeRegex);
 
   if (!matches) return [];
@@ -111,7 +111,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     },
     {
       useAgentSandbox: false,
-      totalQuoteList: [] as SearchDataResponseItemType[],
+      totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
       errorText: undefined as ErrorTextItemType | undefined,

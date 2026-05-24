@@ -38,6 +38,7 @@ import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
+import { cloneDeep } from 'lodash';
 
 export type Props = {
   chatId: string;
@@ -178,10 +179,10 @@ const formatAiContent = ({
   const { responseData, ...aiResponse } = aiContent;
 
   const citeCollectionIds = new Set<string>();
+  const cloneResponseData = cloneDeep(responseData || []);
 
-  const dealResponseData = (responseItem: ChatHistoryItemResType) => {
+  getFlatAppResponses(cloneResponseData).forEach((responseItem: ChatHistoryItemResType) => {
     if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
-      // @ts-ignore
       responseItem.quoteList = responseItem.quoteList.map((quote) => {
         citeCollectionIds.add(quote.collectionId);
         return {
@@ -195,10 +196,9 @@ const formatAiContent = ({
         };
       });
     }
-  };
-  getFlatAppResponses(responseData || []).forEach(dealResponseData);
+  });
 
-  const errorCount = responseData?.filter((item) => item.errorText).length ?? 0;
+  const errorCount = cloneResponseData?.filter((item) => item.errorText).length ?? 0;
 
   return {
     aiResponse: {
@@ -207,7 +207,7 @@ const formatAiContent = ({
       errorMsg,
       citeCollectionIds: Array.from(citeCollectionIds)
     },
-    nodeResponses: responseData,
+    nodeResponses: cloneResponseData,
     citeCollectionIds,
     errorCount
   };

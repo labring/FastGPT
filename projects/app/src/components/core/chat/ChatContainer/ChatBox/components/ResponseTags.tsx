@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -95,7 +95,7 @@ const ResponseTags = ({
 
     // Dataset citations
     const datasetItems = Object.values(
-      quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
+      quoteList.reduce((acc: Record<string, SearchDataResponseQuoteListItemType[]>, cur) => {
         if (!acc[cur.collectionId]) {
           acc[cur.collectionId] = [cur];
         }
@@ -107,9 +107,10 @@ const ResponseTags = ({
         type: 'dataset' as const,
         key: item.collectionId,
         displayText: item.sourceName,
-        icon: item.imageId
-          ? 'core/dataset/imageFill'
-          : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+        icon:
+          'imageId' in item && item.imageId
+            ? 'core/dataset/imageFill'
+            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
         onClick: () => {
           onOpenCiteModal({
             collectionId: item.collectionId,

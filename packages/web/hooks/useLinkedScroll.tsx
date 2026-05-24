@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { type LinkedListResponse, type LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useScroll, useMemoizedFn, useDebounceEffect, useLatest } from 'ahooks';
+import { useScroll, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useRequest } from './useRequest';
 
@@ -42,37 +42,44 @@ export function useLinkedScroll<
   const isInit = useRef(false);
 
   const scrollToItem = useCallback(
-    async (id?: string) => {
-      if (!id) {
-        id = defaultScroll === 'top' ? dataList[0]?.id : dataList[dataList.length - 1]?.id;
+    (id?: string) => {
+      const targetId =
+        id || (defaultScroll === 'top' ? dataList[0]?.id : dataList[dataList.length - 1]?.id);
+
+      if (!targetId) {
+        return;
       }
 
-      const itemIndex = dataList.findIndex((item) => item.id === id);
+      const itemIndex = dataList.findIndex((item) => item.id === targetId);
       if (itemIndex === -1) {
         return;
       }
 
-      const element = itemRefs.current.get(id);
-      if (!element || !containerRef.current) {
-        requestAnimationFrame(() => scrollToItem(id));
-        return;
-      }
+      const tryScroll = () => {
+        const element = itemRefs.current.get(targetId);
+        if (!element || !containerRef.current) {
+          requestAnimationFrame(tryScroll);
+          return;
+        }
 
-      const elementRect = element.getBoundingClientRect();
-      const containerRect = containerRef.current.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
 
-      const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
+        const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
 
-      containerRef.current.scrollTo({
-        top: scrollTop
-      });
+        containerRef.current.scrollTo({
+          top: scrollTop
+        });
+      };
+
+      tryScroll();
     },
     [dataList, defaultScroll]
   );
 
-  const { runAsync: callApi, loading: isLoading } = useRequest(api);
+  const { runAsync: callApi, loading: isLoading } = useRequest(api, { errorToast: '' });
 
-  let scrollSign = useRef(false);
+  const scrollSign = useRef(false);
   const { runAsync: loadInitData } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       if (isLoading) return;

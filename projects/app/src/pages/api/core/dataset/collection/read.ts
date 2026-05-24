@@ -48,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
         teamToken
       }),
       getCollectionWithDataset(collectionId),
-      authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
+      authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
     ]);
 
     if (!authRes.canDownloadSource) {

@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -10,12 +9,10 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import { Types } from 'mongoose';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -25,14 +22,7 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
 
 vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
   MongoChatItem: {
-    findOne: vi.fn(),
-    find: vi.fn()
-  }
-}));
-
-vi.mock('@fastgpt/service/core/chat/chatItemResponseSchema', () => ({
-  MongoChatItemResponse: {
-    find: vi.fn()
+    aggregate: vi.fn()
   }
 }));
 
@@ -49,9 +39,6 @@ vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
 vi.mock('@fastgpt/service/support/permission/app/auth');
 vi.mock('@/service/support/permission/auth/outLink');
 vi.mock('@/service/support/permission/auth/team');
-vi.mock('@fastgpt/global/core/chat/utils', () => ({
-  getFlatAppResponses: vi.fn()
-}));
 
 const buildOutLinkConfig = (
   overrides: Partial<OutLinkSchemaType> = {},
@@ -83,22 +70,6 @@ const buildOutLinkConfig = (
 
   return config;
 };
-
-const buildQuoteList = (...ids: (string | undefined)[]): any[] =>
-  ids.map((id) => (id ? { collectionId: id } : {}));
-
-const buildResponse = (
-  overrides: Partial<ChatHistoryItemResType> = {}
-): ChatHistoryItemResType => ({
-  nodeId: 'node1',
-  id: 'response1',
-  moduleType: FlowNodeTypeEnum.appModule,
-  moduleName: 'module',
-  ...overrides
-});
-
-const buildQuoteResponse = (...ids: (string | undefined)[]): ChatHistoryItemResType =>
-  buildResponse({ quoteList: buildQuoteList(...ids) });
 
 describe('authChatCrud', () => {
   beforeEach(() => {
@@ -715,334 +686,82 @@ describe('authChatCrud', () => {
 describe('authCollectionInChat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(MongoChatItem.find).mockReturnValue({
-      sort: () => ({
-        limit: () => ({
-          lean: () => Promise.resolve([])
-        })
+    vi.mocked(MongoChatItem.aggregate).mockResolvedValue([]);
+  });
+
+  it('should authorize when aggregation confirms all collection ids are cited', async () => {
+    vi.mocked(MongoChatItem.aggregate).mockResolvedValue([{ isAuthorized: true }]);
+
+    const result = await authCollectionInChat({
+      collectionIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
+      appId: '507f1f77bcf86cd799439010',
+      chatId: 'chat1'
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should reject when aggregation does not confirm all collection ids', async () => {
+    vi.mocked(MongoChatItem.aggregate).mockResolvedValue([{ isAuthorized: false }]);
+
+    await expect(
+      authCollectionInChat({
+        collectionIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
+        appId: '507f1f77bcf86cd799439010',
+        chatId: 'chat1'
       })
-    } as any);
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
   });
 
-  describe('validation', () => {
-    it('should reject if chat item not found', async () => {
-      // Mock the find method to return empty array (no cite collection ids found)
-      vi.mocked(MongoChatItem.find).mockReturnValue({
-        sort: () => ({
-          limit: () => ({
-            lean: () => Promise.resolve([])
-          })
-        })
-      } as any);
+  it('should reject when aggregation returns no result', async () => {
+    vi.mocked(MongoChatItem.aggregate).mockResolvedValue([]);
 
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(null)
-      } as any);
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-
-    it('should reject with empty collectionIds array', async () => {
-      // Mock the find method to return empty array (no cite collection ids found)
-      vi.mocked(MongoChatItem.find).mockReturnValue({
-        sort: () => ({
-          limit: () => ({
-            lean: () => Promise.resolve([])
-          })
-        })
-      } as any);
-
-      const mockChatItem = {
-        time: new Date(),
-        responseData: []
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(MongoChatItemResponse.find).mockReturnValue({
-        lean: () => Promise.resolve([])
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([]);
-
-      const result = await authCollectionInChat({
-        collectionIds: [],
-        appId: 'app1',
-        chatId: 'chat1',
-        chatItemDataId: 'item1'
-      });
-
-      expect(result).toEqual(undefined);
-    });
-
-    it('should handle missing appId, chatId, or chatItemDataId', async () => {
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: '',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
+    await expect(
+      authCollectionInChat({
+        collectionIds: ['507f1f77bcf86cd799439011'],
+        appId: '507f1f77bcf86cd799439010',
+        chatId: 'chat1'
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
   });
 
-  describe('response data handling', () => {
-    it('should auth collection ids in chat item with existing responseData', async () => {
-      // Mock the find method to return empty array (no cite collection ids found)
-      vi.mocked(MongoChatItem.find).mockReturnValue({
-        sort: () => ({
-          limit: () => ({
-            lean: () => Promise.resolve([])
-          })
-        })
-      } as any);
+  it('should cast appId and compare mixed ObjectId/string collection ids as strings', async () => {
+    vi.mocked(MongoChatItem.aggregate).mockResolvedValue([{ isAuthorized: true }]);
+    const appId = '507f1f77bcf86cd799439010';
+    const stringCollectionId = '507f1f77bcf86cd799439011';
+    const objectCollectionId = new Types.ObjectId('507f1f77bcf86cd799439012');
 
-      const mockChatItem = {
-        time: new Date(),
-        citeCollectionIds: ['col1', 'col2']
-      };
+    await authCollectionInChat({
+      collectionIds: [stringCollectionId, objectCollectionId as any],
+      appId,
+      chatId: 'chat1'
+    });
 
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([buildQuoteResponse('col1', 'col2')]);
+    const pipeline = vi.mocked(MongoChatItem.aggregate).mock.calls[0][0];
 
-      const result = await authCollectionInChat({
-        collectionIds: ['col1', 'col2'],
-        appId: 'app1',
+    expect(pipeline[0]).toEqual({
+      $match: {
+        appId: new Types.ObjectId(appId),
         chatId: 'chat1',
-        chatItemDataId: 'item1'
-      });
-
-      expect(result).toEqual(undefined);
+        obj: 'AI'
+      }
     });
-
-    it('should fetch responseData from MongoChatItemResponse when missing', async () => {
-      const mockChatItem: { time: Date; citeCollectionIds: string[]; responseData?: any[] } = {
-        time: new Date(),
-        citeCollectionIds: ['col1', 'col2']
-      };
-      const mockChatItemResponses = [
-        { data: buildQuoteResponse('col1') },
-        { data: buildQuoteResponse('col2') }
-      ];
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(MongoChatItemResponse.find).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItemResponses)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([
-        buildQuoteResponse('col1'),
-        buildQuoteResponse('col2')
-      ]);
-
-      const result = await authCollectionInChat({
-        collectionIds: ['col1', 'col2'],
-        appId: 'app1',
-        chatId: 'chat1',
-        chatItemDataId: 'item1'
-      });
-
-      expect(mockChatItem.responseData).toEqual([
-        buildQuoteResponse('col1'),
-        buildQuoteResponse('col2')
-      ]);
-      expect(result).toEqual(undefined);
+    expect(pipeline).toContainEqual({ $sort: { _id: -1 } });
+    expect(pipeline).toContainEqual({ $limit: 50 });
+    expect(pipeline).toContainEqual({ $unwind: '$citeCollectionIds' });
+    expect(pipeline).toContainEqual({
+      $group: {
+        _id: null,
+        citeCollectionIds: { $addToSet: { $toString: '$citeCollectionIds' } }
+      }
     });
-
-    it('should handle empty responseData array', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: []
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(MongoChatItemResponse.find).mockReturnValue({
-        lean: () => Promise.resolve([])
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([]);
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-
-    it('should handle plugin, tool and loop details in response data', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [
-          buildResponse({
-            quoteList: buildQuoteList('col1'),
-            pluginDetail: [buildQuoteResponse('col2')],
-            toolDetail: [buildQuoteResponse('col3')],
-            loopDetail: [buildQuoteResponse('col4')]
-          })
-        ]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([
-        buildQuoteResponse('col1'),
-        buildQuoteResponse('col2'),
-        buildQuoteResponse('col3'),
-        buildQuoteResponse('col4')
-      ]);
-
-      const result = await authCollectionInChat({
-        collectionIds: ['col1', 'col2', 'col3', 'col4'],
-        appId: 'app1',
-        chatId: 'chat1',
-        chatItemDataId: 'item1'
-      });
-
-      expect(result).toEqual(undefined);
-    });
-
-    it('should reject if collection ids not found in quotes', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [buildQuoteResponse('col1')]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([buildQuoteResponse('col1')]);
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col2'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-
-    it('should reject if only some collection ids are found', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [buildQuoteResponse('col1', 'col2')]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([buildQuoteResponse('col1', 'col2')]);
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1', 'col2', 'col3'], // col3 not found
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-
-    it('should handle quotes with missing collectionId', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [buildQuoteResponse('col1', undefined)]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([buildQuoteResponse('col1', undefined)]);
-
-      const result = await authCollectionInChat({
-        collectionIds: ['col1'],
-        appId: 'app1',
-        chatId: 'chat1',
-        chatItemDataId: 'item1'
-      });
-
-      expect(result).toEqual(undefined);
-    });
-
-    it('should handle missing quoteList in response data', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [
-          {
-            // no quoteList
-          }
-        ]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockReturnValue([]);
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should reject if database query throws error', async () => {
-      vi.mocked(MongoChatItem.findOne).mockImplementation(() => {
-        throw new Error('Database error');
-      });
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
-    });
-
-    it('should reject if getFlatAppResponses throws error', async () => {
-      const mockChatItem = {
-        time: new Date(),
-        responseData: [{}]
-      };
-
-      vi.mocked(MongoChatItem.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChatItem)
-      } as any);
-      vi.mocked(getFlatAppResponses).mockImplementation(() => {
-        throw new Error('Processing error');
-      });
-
-      await expect(
-        authCollectionInChat({
-          collectionIds: ['col1'],
-          appId: 'app1',
-          chatId: 'chat1',
-          chatItemDataId: 'item1'
-        })
-      ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
+    expect(pipeline).toContainEqual({
+      $project: {
+        _id: 0,
+        isAuthorized: {
+          $setIsSubset: [[stringCollectionId, String(objectCollectionId)], '$citeCollectionIds']
+        }
+      }
     });
   });
 });
