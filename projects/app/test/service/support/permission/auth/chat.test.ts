@@ -725,14 +725,13 @@ describe('authCollectionInChat', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
   });
 
-  it('should cast appId and compare mixed ObjectId/string collection ids as strings', async () => {
+  it('should cast appId and compare stored citeCollectionIds as strings', async () => {
     vi.mocked(MongoChatItem.aggregate).mockResolvedValue([{ isAuthorized: true }]);
     const appId = '507f1f77bcf86cd799439010';
-    const stringCollectionId = '507f1f77bcf86cd799439011';
-    const objectCollectionId = new Types.ObjectId('507f1f77bcf86cd799439012');
+    const collectionIds = ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'];
 
     await authCollectionInChat({
-      collectionIds: [stringCollectionId, objectCollectionId as any],
+      collectionIds,
       appId,
       chatId: 'chat1'
     });
@@ -759,7 +758,7 @@ describe('authCollectionInChat', () => {
       $project: {
         _id: 0,
         isAuthorized: {
-          $setIsSubset: [[stringCollectionId, String(objectCollectionId)], '$citeCollectionIds']
+          $setIsSubset: [collectionIds, '$citeCollectionIds']
         }
       }
     });

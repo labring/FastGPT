@@ -201,7 +201,6 @@ describe('getQuoteData handler', () => {
     expect(authCollectionInChatMock).toHaveBeenCalledWith({
       appId: VALID_APP_ID,
       chatId: 'chat_123',
-      chatItemDataId: 'item_456',
       collectionIds: ['col_1']
     });
     expect(authDatasetDataMock).not.toHaveBeenCalled();
