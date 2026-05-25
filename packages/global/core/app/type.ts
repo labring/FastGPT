@@ -199,7 +199,8 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   agenticSearchReasoning: z.boolean().optional(),
   agenticSearchRerankModel: z.string().optional(),
 
-  collectionFilterMatch: z.string().optional()
+  collectionFilterMatch: z.string().optional(),
+  authTmbId: z.boolean().optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 

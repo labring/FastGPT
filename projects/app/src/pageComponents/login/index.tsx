@@ -181,10 +181,12 @@ const ChineseRedirectModal = () => {
 // login container component
 export const LoginContainer = ({
   children,
-  onSuccess
+  onSuccess,
+  teamId
 }: {
   children?: React.ReactNode;
   onSuccess: (res: LoginSuccessResponseType) => void;
+  teamId?: string;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -221,7 +223,7 @@ export const LoginContainer = ({
     const Component = TypeMap[pageType];
     if (!Component) return null;
 
-    return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
+    return <Component setPageType={setPageType} loginSuccess={loginSuccess} teamId={teamId} />;
   }, [pageType, loginSuccess]);
 
   return (

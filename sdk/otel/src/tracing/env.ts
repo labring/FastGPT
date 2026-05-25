@@ -19,6 +19,24 @@ function normalizeSampleRatio(value: number, defaultValue: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function parseOtlpHeaders(env: TracingEnv): Record<string, string> | undefined {
+  const raw =
+    parseStringEnv(env.OTEL_EXPORTER_OTLP_TRACES_HEADERS) ??
+    parseStringEnv(env.OTEL_EXPORTER_OTLP_HEADERS);
+  if (!raw) return undefined;
+
+  const headers: Record<string, string> = {};
+  // OTEL header format: key1=value1,key2=value2 (values are URL-encoded if needed)
+  for (const pair of raw.split(',')) {
+    const sep = pair.indexOf('=');
+    if (sep === -1) continue;
+    const key = pair.slice(0, sep).trim();
+    const value = decodeURIComponent(pair.slice(sep + 1).trim());
+    if (key) headers[key] = value;
+  }
+  return Object.keys(headers).length > 0 ? headers : undefined;
+}
+
 function getSampleRatioFromStandardEnv(env: TracingEnv, defaultValue: number): number {
   const sampler = parseStringEnv(env.OTEL_TRACES_SAMPLER)?.toLowerCase();
   const samplerArg = normalizeSampleRatio(
@@ -60,6 +78,7 @@ export function createTracingOptionsFromEnv(
             parseStringEnv(env.TRACING_OTEL_URL) ??
             parseStringEnv(env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) ??
             options.defaultTracingUrl,
+          headers: parseOtlpHeaders(env),
           sampleRatio: normalizeSampleRatio(
             parseNumberEnv(env.TRACING_OTEL_SAMPLE_RATIO, NaN),
             getSampleRatioFromStandardEnv(env, defaultSampleRatio)

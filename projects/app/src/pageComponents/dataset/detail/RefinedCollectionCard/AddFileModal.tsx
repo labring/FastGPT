@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -35,11 +35,13 @@ import type { ImportSourceItemType } from '@/web/core/dataset/type';
 import {
   postCreateCustomFileIdCollection,
   postCheckDuplicateCollection,
+  postCheckMd5Duplicate,
   postCreateCustomWebsiteCollection,
   getAllTags
 } from '@/web/core/dataset/api';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
+import Md5DuplicateModal, { type Md5DuplicateItem } from './Md5DuplicateModal';
 import FileSelectorBox, {
   type SelectFileItemType as FaqSelectFileItemType
 } from '@/components/Select/FileSelectorBox';
@@ -47,6 +49,7 @@ import { postImportFaqByTemplate } from '@/web/core/dataset/api';
 import ExcelJS from 'exceljs';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import TagManageModal from './TagManageModal';
+import SparkMD5 from 'spark-md5';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 
@@ -85,10 +88,16 @@ const ADD_MODE_CARDS: { mode: AddMode; icon: string; nameKey: string; descKey: s
 
 // ─── 标签工具函数 ─────────────────────────────────────────────────────────────
 
-function tagsToCollectionTags(rows: TagEditorRow[]): CollectionTagValueType[] {
+function tagsToCollectionTags(
+  rows: TagEditorRow[],
+  tagOptions: { label: string; value: string; tagType?: string }[]
+): CollectionTagValueType[] {
   return rows
     .filter((r) => r.tagId && r.value.trim())
-    .map((r) => ({ tagId: r.tagId, value: r.value.trim() }));
+    .map((r) => {
+      const option = tagOptions.find((opt) => opt.value === r.tagId);
+      return { tagId: option?.label || r.tagId, value: r.value.trim() };
+    });
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
@@ -127,6 +136,12 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const { toast } = useToast();
+
+  // ── MD5 去重弹窗 ────────────────────────────
+  const [md5DuplicateFiles, setMd5DuplicateFiles] = useState<Md5DuplicateItem[]>([]);
+  const [showMd5DuplicateModal, setShowMd5DuplicateModal] = useState(false);
+  // 缓存前端计算的 MD5 值，供弹窗确认后上传时使用
+  const md5MapRef = useRef<Map<string, string>>(new Map());
 
   // ── FAQ 专有状态 ──────────────────────────────
   const [faqSelectFiles, setFaqSelectFiles] = useState<FaqSelectFileItemType[]>([]);
@@ -267,39 +282,110 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
     }
   }, [t]);
 
+  /** 流式计算单个文件的 MD5，避免全量加载到内存 */
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk
+    const spark = new SparkMD5.ArrayBuffer();
+    const stream = file.stream();
+    const reader = stream.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value.buffer as ArrayBuffer);
+    }
+
+    return spark.end();
+  };
+
+  /**
+   * 批量计算文件 MD5，返回 fileName→md5 的映射。
+   * 文档文件已预上传至 S3 但 file 引用仍保留，因此也能计算 MD5。
+   */
+  const computeFilesMd5 = async (
+    files: { name: string; file: File }[]
+  ): Promise<Map<string, string>> => {
+    const map = new Map<string, string>();
+    await Promise.all(
+      files.map(async (f) => {
+        const md5 = await computeFileMd5(f.file);
+        map.set(f.name, md5);
+      })
+    );
+    return map;
+  };
+
   const handleConfirm = useCallback(async () => {
     setIsSubmitting(true);
     try {
-      const tags = tagsToCollectionTags(tagRows);
+      const tags = tagsToCollectionTags(tagRows, tagOptions);
 
       if (addMode === 'file') {
         const allSuccess = [...docSuccessFiles, ...imageSuccessFiles];
         if (allSuccess.length === 0) return;
+
+        // 过滤出有 file 引用的条目（文档预上传后仍保留引用，图片直接持有）
+        const filesWithRef = allSuccess.filter((f) => !!f.file);
         const fileNames = allSuccess.map((f) => f.sourceName);
+
+        // 1. 计算所有文件 MD5
+        const md5Map = await computeFilesMd5(
+          filesWithRef.map((f) => ({ name: f.sourceName, file: f.file! }))
+        );
+        md5MapRef.current = md5Map;
+
+        // 2. 统一调用 md5Duplicate API 检测同批次内重复 + 与知识库已有文件重复
+        const md5Record: Record<string, string> = {};
+        for (const name of fileNames) {
+          const md5 = md5Map.get(name);
+          if (md5) md5Record[name] = md5;
+        }
+
+        if (Object.keys(md5Record).length > 0) {
+          const md5CheckResult = await postCheckMd5Duplicate({ datasetId, md5Map: md5Record });
+
+          if (md5CheckResult.duplicates?.length > 0) {
+            // 弹出 MD5 重复确认弹窗，用户确认后过滤并继续上传
+            setMd5DuplicateFiles(md5CheckResult.duplicates);
+            setShowMd5DuplicateModal(true);
+            return;
+          }
+        }
+
+        // 3. 文件名重复检查
+        const finalNames = fileNames;
+        const finalFiles = filesWithRef;
+
+        if (finalNames.length === 0) return;
+
         const checkResult = await postCheckDuplicateCollection({
           datasetId,
           parentId: parentId || undefined,
-          fileNames
+          fileNames: finalNames
         });
         if (checkResult.duplicateFileNames?.length > 0) {
           setDuplicateFiles(checkResult.duplicateFileNames);
           setShowDuplicateModal(true);
           return;
         }
+
         await Promise.all([
-          ...docSuccessFiles.map((file) =>
-            postCreateCustomFileIdCollection({
-              datasetId,
-              parentId,
-              fileId: file.dbFileId!,
-              name: file.sourceName,
-              overwriteDuplicate: false,
-              enableEnhance: true,
-              tags
-            })
-          ),
-          ...imageSuccessFiles
-            .filter((item) => !!item.file)
+          ...finalFiles
+            .filter((f) => !isImageFile(f.sourceName))
+            .map((file) =>
+              postCreateCustomFileIdCollection({
+                datasetId,
+                parentId,
+                fileId: file.dbFileId!,
+                name: file.sourceName,
+                overwriteDuplicate: false,
+                enableEnhance: true,
+                tags,
+                fileMd5: md5Map.get(file.sourceName)
+              })
+            ),
+          ...finalFiles
+            .filter((f) => isImageFile(f.sourceName))
             .map((item) =>
               createImageDatasetCollection({
                 datasetId,
@@ -307,12 +393,38 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
                 collectionName: item.sourceName,
                 files: [item.file!],
                 overwriteDuplicate: false,
-                tags
+                tags,
+                fileMd5: md5Map.get(item.sourceName)
               })
             )
         ]);
       } else if (addMode === 'faq') {
         if (faqSelectFiles.length === 0) return;
+
+        // 1. 计算所有文件 MD5
+        const md5Map = await computeFilesMd5(
+          faqSelectFiles.map((f) => ({ name: f.file.name, file: f.file }))
+        );
+        md5MapRef.current = md5Map;
+
+        // 2. MD5 去重检测
+        const md5Record: Record<string, string> = {};
+        for (const f of faqSelectFiles) {
+          const md5 = md5Map.get(f.file.name);
+          if (md5) md5Record[f.file.name] = md5;
+        }
+
+        if (Object.keys(md5Record).length > 0) {
+          const md5CheckResult = await postCheckMd5Duplicate({ datasetId, md5Map: md5Record });
+
+          if (md5CheckResult.duplicates?.length > 0) {
+            setMd5DuplicateFiles(md5CheckResult.duplicates);
+            setShowMd5DuplicateModal(true);
+            return;
+          }
+        }
+
+        // 3. 文件名重复检查
         const fileNames = faqSelectFiles.map((f) => f.file.name);
         const checkResult = await postCheckDuplicateCollection({
           datasetId,
@@ -337,6 +449,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
             overwriteDuplicate: false,
             enableEnhance: true,
             tags,
+            fileMd5: md5Map.get(faqSelectFiles[i].file.name),
             percentListen: (p) =>
               setFaqUploadProgress({
                 totalPercent: Math.floor(
@@ -386,8 +499,137 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
     toast
   ]);
 
+  // MD5 去重弹窗确认：过滤掉重复文件后继续执行文件名检查并上传
+  const handleMd5Confirm = useCallback(async () => {
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
+    const md5DupNewNames = new Set(md5DuplicateFiles.map((d) => d.newFileName));
+
+    setShowMd5DuplicateModal(false);
+    setIsSubmitting(true);
+    try {
+      if (addMode === 'file') {
+        // 过滤掉 MD5 重复的文件
+        const finalDoc = docSuccessFiles.filter((f) => !md5DupNewNames.has(f.sourceName));
+        const finalImg = imageSuccessFiles.filter((f) => !md5DupNewNames.has(f.sourceName));
+
+        if (finalDoc.length === 0 && finalImg.length === 0) {
+          toast({ title: t('dataset:upload_other_files'), status: 'warning' });
+          setSelectFiles([]);
+          return;
+        }
+
+        // 文件名重复检查
+        const allFinal = [...finalDoc, ...finalImg];
+        const fileNames = allFinal.map((f) => f.sourceName);
+        const checkResult = await postCheckDuplicateCollection({
+          datasetId,
+          parentId: parentId || undefined,
+          fileNames
+        });
+        if (checkResult.duplicateFileNames?.length > 0) {
+          setDuplicateFiles(checkResult.duplicateFileNames);
+          setShowDuplicateModal(true);
+          return;
+        }
+
+        await Promise.all([
+          ...finalDoc.map((file) =>
+            postCreateCustomFileIdCollection({
+              datasetId,
+              parentId,
+              fileId: file.dbFileId!,
+              name: file.sourceName,
+              overwriteDuplicate: false,
+              enableEnhance: true,
+              tags,
+              fileMd5: md5MapRef.current.get(file.sourceName)
+            })
+          ),
+          ...finalImg
+            .filter((item) => !!item.file)
+            .map((item) =>
+              createImageDatasetCollection({
+                datasetId,
+                parentId,
+                collectionName: item.sourceName,
+                files: [item.file!],
+                overwriteDuplicate: false,
+                tags,
+                fileMd5: md5MapRef.current.get(item.sourceName)
+              })
+            )
+        ]);
+      } else if (addMode === 'faq') {
+        // 过滤掉 MD5 重复的 FAQ 文件
+        const finalFaq = faqSelectFiles.filter((f) => !md5DupNewNames.has(f.file.name));
+
+        if (finalFaq.length === 0) {
+          toast({ title: t('dataset:upload_other_files'), status: 'warning' });
+          setFaqSelectFiles([]);
+          return;
+        }
+
+        // 文件名重复检查
+        const fileNames = finalFaq.map((f) => f.file.name);
+        const checkResult = await postCheckDuplicateCollection({
+          datasetId,
+          parentId: parentId || undefined,
+          fileNames
+        });
+        if (checkResult.duplicateFileNames?.length > 0) {
+          setDuplicateFiles(checkResult.duplicateFileNames);
+          setShowDuplicateModal(true);
+          return;
+        }
+
+        setIsImportingFaq(true);
+        for (let i = 0; i < finalFaq.length; i++) {
+          setFaqUploadProgress({
+            totalPercent: Math.floor((i / finalFaq.length) * 100),
+            currentFileIndex: i
+          });
+          await postImportFaqByTemplate({
+            datasetId,
+            parentId,
+            file: finalFaq[i].file,
+            overwriteDuplicate: false,
+            enableEnhance: true,
+            tags,
+            fileMd5: md5MapRef.current.get(finalFaq[i].file.name),
+            percentListen: (p) =>
+              setFaqUploadProgress({
+                totalPercent: Math.floor((i / finalFaq.length) * 100 + p / finalFaq.length),
+                currentFileIndex: i
+              })
+          });
+        }
+        setIsImportingFaq(false);
+      }
+
+      onFinish();
+      onClose();
+    } catch (error) {
+      toast({ title: getErrText(error), status: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    addMode,
+    md5DuplicateFiles,
+    docSuccessFiles,
+    imageSuccessFiles,
+    faqSelectFiles,
+    datasetId,
+    parentId,
+    tagRows,
+    onFinish,
+    onClose,
+    t,
+    toast
+  ]);
+
   const handleSkipDuplicates = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       const toUploadDoc = docSuccessFiles.filter((f) => !duplicateFiles.includes(f.sourceName));
       const toUploadImg = imageSuccessFiles.filter((f) => !duplicateFiles.includes(f.sourceName));
@@ -417,7 +659,8 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
               collectionName: f.sourceName,
               files: [f.file!],
               overwriteDuplicate: false,
-              tags
+              tags,
+              fileMd5: md5MapRef.current.get(f.sourceName)
             })
           )
       ]);
@@ -459,7 +702,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleReplaceFiles = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       await Promise.all([
         ...docSuccessFiles.map((f) =>
@@ -482,7 +725,8 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
               collectionName: f.sourceName,
               files: [f.file!],
               overwriteDuplicate: true,
-              tags
+              tags,
+              fileMd5: md5MapRef.current.get(f.sourceName)
             })
           )
       ]);
@@ -515,7 +759,7 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   ]);
 
   const handleContinueUpload = useCallback(async () => {
-    const tags = tagsToCollectionTags(tagRows);
+    const tags = tagsToCollectionTags(tagRows, tagOptions);
     if (addMode === 'file') {
       await Promise.all([
         ...docSuccessFiles.map((f) =>
@@ -538,7 +782,8 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
               collectionName: f.sourceName,
               files: [f.file!],
               overwriteDuplicate: false,
-              tags
+              tags,
+              fileMd5: md5MapRef.current.get(f.sourceName)
             })
           )
       ]);
@@ -722,6 +967,12 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
         onContinueUpload={handleContinueUpload}
         onReplaceFiles={handleReplaceFiles}
       />
+      <Md5DuplicateModal
+        isOpen={showMd5DuplicateModal}
+        onClose={() => setShowMd5DuplicateModal(false)}
+        md5DuplicateFiles={md5DuplicateFiles}
+        onConfirm={handleMd5Confirm}
+      />
       {showTagManageModal && (
         <TagManageModal
           onClose={(refresh) => {
@@ -758,12 +1009,12 @@ const FileFields: React.FC<{
             onSelectFiles={onSelectFiles}
           />
           {selectFiles.length > 0 && (
-            <VStack gap={2} alignItems="stretch" mt={3}>
+            <VStack gap={2} alignItems="stretch" mt={2}>
               {selectFiles.map((item, index) => (
                 <HStack key={item.id} w="100%" spacing={2} justifyContent="space-between">
                   <HStack spacing={2} flex={1} overflow="hidden">
                     <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
-                    <MyTooltip label={item.sourceName}>
+                    <MyTooltip label={item.sourceName} maxW="500px">
                       <Box
                         fontSize="sm"
                         lineHeight={1.6}
@@ -849,7 +1100,7 @@ const FaqFields: React.FC<{
                 <HStack key={index} w="100%" spacing={2} justifyContent="space-between">
                   <HStack spacing={2} flex={1} overflow="hidden">
                     <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
-                    <MyTooltip label={item.name}>
+                    <MyTooltip label={item.name} maxW="500px">
                       <Box
                         fontSize="sm"
                         lineHeight={1.6}

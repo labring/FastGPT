@@ -197,7 +197,7 @@ const AppCard = React.memo(function AppCard({
 
   const menuList = useMemo(
     () => [
-      ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+      ...([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(app.type)
         ? [
             {
               children: [
@@ -338,6 +338,15 @@ const AppCard = React.memo(function AppCard({
                   type: 'danger' as 'danger',
                   icon: 'delete',
                   label: t('common:Delete'),
+                  disabled:
+                    (isTool && !isFolder && (relatedAppCount ?? 0) > 0) ||
+                    (app.type === AppTypeEnum.toolFolder && (relatedAppCount ?? 0) > 0),
+                  disabledTip:
+                    app.type === AppTypeEnum.toolFolder && (relatedAppCount ?? 0) > 0
+                      ? t('app:folder_delete_disabled_tip')
+                      : isTool && !isFolder && (relatedAppCount ?? 0) > 0
+                        ? t('common:delete_disabled_by_related_apps')
+                        : undefined,
                   onClick: () =>
                     openConfirmDel({
                       onConfirm: () => onclickDelApp(app._id),
@@ -533,6 +542,7 @@ const AppCard = React.memo(function AppCard({
                   <Box
                     color={'#999'}
                     maxW={'60px'}
+                    lineHeight={'16px'}
                     overflow={'hidden'}
                     textOverflow={'ellipsis'}
                     whiteSpace={'nowrap'}
@@ -565,6 +575,7 @@ const AppCard = React.memo(function AppCard({
                   <Box
                     color={'#999'}
                     maxW={'60px'}
+                    lineHeight={'16px'}
                     overflow={'hidden'}
                     textOverflow={'ellipsis'}
                     whiteSpace={'nowrap'}

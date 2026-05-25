@@ -96,7 +96,7 @@ const ExceptionInfoModal = ({
               <Tbody>
                 {errorList.map((item, index) => (
                   <Tr key={index}>
-                    <Td>{item.chunkIndex + 1}</Td>
+                    <Td>{item.chunkIndex}</Td>
                     <Td maxW={50}>
                       <MyTooltip
                         shouldWrapChildren={false}

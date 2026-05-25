@@ -40,7 +40,9 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  ApiDatasetTypeMap,
+  CollectionStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -87,10 +89,7 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, allDatasetTags } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, allDatasetTags } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
@@ -176,6 +175,13 @@ const CollectionCard = () => {
             };
           }
           if (collection.trainingAmount > 0) {
+            if (collection.status === CollectionStatusEnum.queued) {
+              return {
+                statusText: t('dataset:queued'),
+                colorSchema: 'gray',
+                statusKey: 'queued'
+              };
+            }
             return {
               statusText: t('dataset:processing'),
               colorSchema: 'blue',
@@ -279,20 +285,31 @@ const CollectionCard = () => {
     [sortBy, sortOrder]
   );
 
+  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
+  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
+  const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
+
   // Handler for reading/downloading collection source
   const handleReadSource = useCallback(
     async (collectionId: string) => {
       try {
-        const { value: url } = await getCollectionSource({ collectionId });
+        const { value } = await getCollectionSource({ collectionId });
 
-        if (!url) {
+        if (!value) {
           throw new Error('No file found');
         }
 
-        if (url.startsWith('/')) {
-          window.open(`${location.origin}${url}`, '_blank');
+        if (isApiDataset) {
+          const baseUrl = datasetDetail?.apiDatasetServer?.apiServer?.baseUrl || '';
+          const fullUrl = `${baseUrl.replace(/\/+$/, '')}${value}`;
+          window.open(fullUrl, '_blank');
+          return;
+        }
+
+        if (value.startsWith('/')) {
+          window.open(`${location.origin}${value}`, '_blank');
         } else {
-          window.open(url, '_blank');
+          window.open(value, '_blank');
         }
       } catch (error) {
         toast({
@@ -301,7 +318,7 @@ const CollectionCard = () => {
         });
       }
     },
-    [t, toast]
+    [t, toast, isApiDataset, datasetDetail?.apiDatasetServer?.apiServer?.baseUrl]
   );
 
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
@@ -313,9 +330,6 @@ const CollectionCard = () => {
       successToast: t('common:update_success')
     }
   );
-
-  const isDatabase = datasetDetail?.type === DatasetTypeEnum.database;
-  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
@@ -359,7 +373,10 @@ const CollectionCard = () => {
 
   // Check if there are any collections in processing state
   const hasProcessingCollections = useMemo(
-    () => !!formatCollections.find((item) => item.statusKey === 'processing'),
+    () =>
+      !!formatCollections.find(
+        (item) => item.statusKey === 'processing' || item.statusKey === 'queued'
+      ),
     [formatCollections]
   );
 
@@ -385,12 +402,9 @@ const CollectionCard = () => {
     async () => {
       if (!hasTrainingData && datasetDetail.status === DatasetStatusEnum.active) return;
       getData(pageNum);
-      if (datasetDetail.status !== DatasetStatusEnum.active) {
-        loadDatasetDetail(datasetDetail._id);
-      }
     },
     {
-      retryInterval: 6000,
+      retryInterval: 10000,
       refreshDeps: [hasTrainingData, datasetDetail.status]
     }
   );
@@ -805,35 +819,56 @@ const CollectionCard = () => {
                             const isFolder = collection.type === DatasetCollectionTypeEnum.folder;
                             const isLink = collection.type === DatasetCollectionTypeEnum.link;
 
-                            const permissionItem = {
-                              label: (
-                                <Flex
-                                  alignItems={'center'}
-                                  opacity={collection.permission.hasManagePer ? 1 : 0.4}
-                                >
-                                  <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                  {t('common:Permission')}
-                                </Flex>
-                              ),
-                              onClick: collection.permission.hasManagePer
-                                ? () => setEditPerCollection(collection)
-                                : undefined,
-                              menuItemStyles: collection.permission.hasManagePer
-                                ? undefined
-                                : { cursor: 'not-allowed' }
-                            };
+                            const permissionItem = (() => {
+                              const isPermissionSyncDisabled =
+                                datasetDetail?.apiDatasetServer?.apiServer?.permissionSync === true;
 
-                            const tagItem = feConfigs?.isPlus
-                              ? {
+                              if (isPermissionSyncDisabled) {
+                                return {
                                   label: (
-                                    <Flex alignItems={'center'}>
-                                      <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
-                                      {t('dataset:tag.tags')}
-                                    </Flex>
+                                    <MyTooltip label={t('dataset:permission_sync_disabled_tip')}>
+                                      <Flex alignItems={'center'} opacity={0.4}>
+                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                        {t('common:Permission')}
+                                      </Flex>
+                                    </MyTooltip>
                                   ),
-                                  onClick: () => setSetTagsCollectionId(collection._id)
-                                }
-                              : null;
+                                  onClick: undefined,
+                                  menuItemStyles: { cursor: 'not-allowed' }
+                                };
+                              }
+
+                              return {
+                                label: (
+                                  <Flex
+                                    alignItems={'center'}
+                                    opacity={collection.permission.hasManagePer ? 1 : 0.4}
+                                  >
+                                    <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                    {t('common:Permission')}
+                                  </Flex>
+                                ),
+                                onClick: collection.permission.hasManagePer
+                                  ? () => setEditPerCollection(collection)
+                                  : undefined,
+                                menuItemStyles: collection.permission.hasManagePer
+                                  ? undefined
+                                  : { cursor: 'not-allowed' }
+                              };
+                            })();
+
+                            const tagItem =
+                              feConfigs?.isPlus && !isStructureDocument
+                                ? {
+                                    label: (
+                                      <Flex alignItems={'center'}>
+                                        <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
+                                        {t('dataset:tag.tags')}
+                                      </Flex>
+                                    ),
+                                    onClick: () => setSetTagsCollectionId(collection._id)
+                                  }
+                                : null;
 
                             const moveItem = {
                               label: (
@@ -897,11 +932,13 @@ const CollectionCard = () => {
                                     w={'0.9rem'}
                                     mr={2}
                                   />
-                                  {isLink || collection.name.toLowerCase().endsWith('.txt')
+                                  {isApiDataset
                                     ? t('dataset:view_original')
-                                    : collection.type === DatasetCollectionTypeEnum.images
-                                      ? t('dataset:view_image')
-                                      : t('dataset:download_file')}
+                                    : isLink || collection.name.toLowerCase().endsWith('.txt')
+                                      ? t('dataset:view_original')
+                                      : collection.type === DatasetCollectionTypeEnum.images
+                                        ? t('dataset:view_image')
+                                        : t('dataset:download_file')}
                                 </Flex>
                               ),
                               onClick: () => handleReadSource(collection._id)
@@ -957,7 +994,13 @@ const CollectionCard = () => {
                               {
                                 children: [...(tagItem ? [tagItem] : []), permissionItem]
                               },
-                              { children: [sourceItem, moveItem, renameItem, deleteItem] }
+                              {
+                                children: [
+                                  sourceItem,
+                                  ...(isStructureDocument ? [] : [moveItem, renameItem]),
+                                  deleteItem
+                                ]
+                              }
                             ];
                           })()}
                         />
@@ -975,7 +1018,7 @@ const CollectionCard = () => {
         <FloatingActionBar
           Controler={
             <HStack>
-              {feConfigs?.isPlus && (
+              {feConfigs?.isPlus && !isStructureDocument && (
                 <Button variant={'whiteBase'} onClick={() => setShowBatchSetTags(true)}>
                   {t('dataset:tag.batch_set_tags')}
                 </Button>

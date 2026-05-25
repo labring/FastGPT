@@ -29,9 +29,9 @@ describe('buildLanguageConfig', () => {
     expect(trackerConfig.confidence).toBe('authoritative');
     expect(trackerConfig.defaultLang).toBe('zh');
     expect(trackerConfig.userLang).toBe('en');
-    expect(directive).toContain('DEFAULT SEARCH LANGUAGE: zh');
+    expect(directive).toContain('DEFAULT SEARCH LANGUAGE: Chinese (中文)');
     expect(directive).toContain('83% zh');
-    expect(directive).toContain('Final answer MUST be in: en');
+    expect(directive).toContain('Final answer MUST be in: English');
   });
 
   it('L2 tentative: no language >70%', () => {
@@ -46,7 +46,7 @@ describe('buildLanguageConfig', () => {
     expect(trackerConfig.confidence).toBe('fallback');
     expect(trackerConfig.defaultLang).toBe('ja');
     expect(directive).toContain('No KB language data');
-    expect(directive).toContain('Start with user language (ja)');
+    expect(directive).toContain('Start with user language Japanese (日本語)');
   });
 
   it('L3 fallback: undefined stats', () => {
@@ -63,7 +63,7 @@ describe('buildLanguageConfig', () => {
     const { trackerConfig, directive } = buildLanguageConfig({ en: 200 }, 'zh');
     expect(trackerConfig.confidence).toBe('authoritative');
     expect(trackerConfig.defaultLang).toBe('en');
-    expect(directive).toContain('DEFAULT SEARCH LANGUAGE: en');
+    expect(directive).toContain('DEFAULT SEARCH LANGUAGE: English');
   });
 
   it('exact 70% threshold is tentative (not authoritative)', () => {
@@ -78,8 +78,8 @@ describe('buildLanguageConfig', () => {
 
   it('L1 includes userHint when dominantLang differs from userLang', () => {
     const { directive } = buildLanguageConfig({ th: 150, en: 30 }, 'en');
-    expect(directive).toContain('User asked in: en');
-    expect(directive).toContain('try en queries');
+    expect(directive).toContain('User asked in English');
+    expect(directive).toContain('try English queries');
   });
 
   it('L1 omits userHint when dominantLang equals userLang', () => {
@@ -89,8 +89,8 @@ describe('buildLanguageConfig', () => {
 
   it('L2 includes userHint when dominantLang differs from userLang', () => {
     const { directive } = buildLanguageConfig({ zh: 60, en: 40, ja: 30 }, 'en');
-    expect(directive).toContain('User asked in: en');
-    expect(directive).toContain('try en queries');
+    expect(directive).toContain('User asked in English');
+    expect(directive).toContain('try English queries');
   });
 
   it('L2 omits userHint when dominantLang equals userLang', () => {
@@ -136,7 +136,7 @@ describe('LanguageTracker', () => {
       const chunks = [makeChunk({ id: '1' })];
       t.recordSearch('test', chunks);
       const rec = t.getLastRecord()!;
-      expect(rec.resultStats['unknown']).toBe(1);
+      expect(rec.resultStats['unknown']).toBe(0.5);
     });
   });
 

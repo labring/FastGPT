@@ -95,7 +95,7 @@ const NodeTemplateListHeader = ({
               },
               {
                 icon: 'core/chat/sidebar/star',
-                label: 'Agent',
+                label: t('common:App'),
                 value: TemplateTypeEnum.agent
               }
             ]}

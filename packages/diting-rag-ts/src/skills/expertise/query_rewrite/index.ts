@@ -157,14 +157,19 @@ export class QueryRewriteSkill extends BaseSkill {
         selected = [specifiedStrategy];
         reasoning = `User-specified strategy: ${specifiedStrategy}`;
       } else {
-        const result = await this.selectStrategies(query);
-        selected = result.strategies;
-        reasoning = result.reasoning;
+        try {
+          const result = await this.selectStrategies(query);
+          selected = result.strategies;
+          reasoning = result.reasoning;
+        } catch {
+          // selectStrategies LLM 失败 → 默认 gqr
+          selected = ['gqr'];
+          reasoning = 'Strategy selection failed; using default';
+        }
       }
 
       // 多语言探测：targetLanguages 非空时，注入 multilingual_expand 策略
       if (targetLanguages && targetLanguages.length > 0) {
-        // 用 multilingual_expand 替代其他策略（避免 query 数量爆炸）
         selected = ['multilingual_expand'];
         reasoning = 'Multilingual KB — probing document languages';
       }
@@ -181,24 +186,62 @@ export class QueryRewriteSkill extends BaseSkill {
       // Step 1.5: 互斥组约束
       selected = this.registry.enforceExclusiveGroups(selected);
 
-      // Step 2: 批量改写（单次 LLM 调用，对齐 Python BATCH_REWRITE_PROMPT）
-      const rewriteResult = await this.batchRewrite(query, selected, priorContext, targetLanguages);
-      const rewrites = rewriteResult.rewrites;
+      // Step 2: 批量改写，失败时 fallback 到原始 query
+      let rewrites: RewriteEntry[] = [];
+      let strategiesUsed = selected;
+      let selectionReasoning = reasoning;
+      let compareObjects: string[] | undefined;
+      let explicitDimensions: string[] | undefined;
+      let implicitDimensions: string[] | undefined;
+
+      try {
+        const rewriteResult = await this.batchRewrite(
+          query,
+          selected,
+          priorContext,
+          targetLanguages
+        );
+        rewrites = rewriteResult.rewrites || [];
+        compareObjects = rewriteResult.compare_objects;
+        explicitDimensions = rewriteResult.explicit_dimensions;
+        implicitDimensions = rewriteResult.implicit_dimensions;
+      } catch {
+        // batchRewrite LLM 调用失败 → fallback 到原始 query
+        strategiesUsed = ['fallback'];
+        selectionReasoning = 'Batch rewrite LLM call failed; using original query as fallback';
+      }
 
       // 扁平化 queries（兼容旧接口）
       const queries = rewrites.flatMap((r) => r.queries);
 
+      // 如果改写结果为空（无 queries 或无 rewrites），fallback 到原始 query
+      if (queries.length === 0 && rewrites.length === 0) {
+        return this.success({
+          rewrites: [{ strategy: 'fallback', queries: [query] }],
+          strategies_used: ['fallback'],
+          selection_reasoning:
+            'Batch rewrite produced no results; using original query as fallback',
+          queries: [query]
+        });
+      }
+
       return this.success({
         rewrites,
-        strategies_used: selected,
-        selection_reasoning: reasoning,
+        strategies_used: strategiesUsed,
+        selection_reasoning: selectionReasoning,
         queries,
-        compare_objects: rewriteResult.compare_objects,
-        explicit_dimensions: rewriteResult.explicit_dimensions,
-        implicit_dimensions: rewriteResult.implicit_dimensions
+        ...(compareObjects ? { compare_objects: compareObjects } : {}),
+        ...(explicitDimensions ? { explicit_dimensions: explicitDimensions } : {}),
+        ...(implicitDimensions ? { implicit_dimensions: implicitDimensions } : {})
       });
     } catch (error) {
-      return this.fail(`Query rewrite failed: ${error}`);
+      // 整体异常：fallback 到原始 query，而非直接 fail
+      return this.success({
+        rewrites: [{ strategy: 'fallback', queries: [query] }],
+        strategies_used: ['fallback'],
+        selection_reasoning: `Query rewrite failed unexpectedly; using original query as fallback`,
+        queries: [query]
+      });
     }
   }
 

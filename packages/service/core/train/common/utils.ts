@@ -65,7 +65,7 @@ export function pLimit(concurrency: number): <T>(fn: () => Promise<T>) => Promis
  * Corresponds to ChunkFilter constructor parameters in filter_chunks.py.
  */
 export type ChunkFilterConfig = {
-  minLength?: number; // 默认 50
+  minLength?: number; // 默认 20
   maxLength?: number; // 默认 3000
   minWords?: number; // 默认 10
   maxRepetitionRatio?: number; // 默认 0.5
@@ -76,7 +76,7 @@ export type ChunkFilterConfig = {
 };
 
 const DEFAULT_FILTER_CONFIG: Required<ChunkFilterConfig> = {
-  minLength: 50,
+  minLength: 20,
   maxLength: 3000,
   minWords: 10,
   maxRepetitionRatio: 0.5,

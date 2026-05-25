@@ -1,6 +1,7 @@
 import type { RerankEvalResult } from '@fastgpt/global/core/train/rerank/type';
 import type { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoEvalDatasetData } from '../../../../../core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoDatasetData } from '../../../../../core/dataset/data/schema';
 import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
@@ -36,7 +37,10 @@ export async function evaluateRerankModelHelper(
   evalDatasetId: string,
   modelId: string,
   stage: RerankTaskCheckpointStageEnum
-): Promise<RerankEvalResult> {
+): Promise<{
+  evalResult: RerankEvalResult;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
+}> {
   addLog.info('Evaluate rerank model', { taskId, modelId, stage });
 
   const evalDataItems = await MongoEvalDatasetData.find({
@@ -71,8 +75,22 @@ export async function evaluateRerankModelHelper(
       taskId,
       totalItems: evalDataItems.length
     });
-    return computeRankingMetrics([], K_VALUES, 'rerank') as RerankEvalResult;
+    return {
+      evalResult: computeRankingMetrics([], K_VALUES, 'rerank') as RerankEvalResult,
+      rankingResults: []
+    };
   }
+
+  // Batch fetch q/a text from original dataset data (retrievalContextsFull now only stores id+score)
+  const allCandidateIds = [
+    ...new Set(validItems.flatMap((item) => (item.retrievalContextsFull || []).map((c) => c.id)))
+  ];
+  const dataTextMap = new Map(
+    (await MongoDatasetData.find({ _id: { $in: allCandidateIds } }, 'q a').lean()).map((d) => [
+      String(d._id),
+      d
+    ])
+  );
 
   // Run reranker for each query with bounded concurrency to avoid overwhelming the rerank API
   const limit = pLimit(trainEnv.TRAIN_EVAL_CONCURRENCY);
@@ -87,10 +105,11 @@ export async function evaluateRerankModelHelper(
           const rerankResult = await reRankRecall({
             model: modelConfig,
             query,
-            documents: candidates.map((c) => ({
-              id: c.id,
-              text: [c.q, c.a].filter(Boolean).join('\n')
-            }))
+            documents: candidates.map((c) => {
+              const doc = dataTextMap.get(c.id);
+              const text = [doc?.q, doc?.a].filter(Boolean).join('\n');
+              return { id: c.id, text };
+            })
           });
 
           const rankedIds = (rerankResult.results || []).map((r) => r.id);
@@ -110,6 +129,11 @@ export async function evaluateRerankModelHelper(
 
   const metrics = computeRankingMetrics(cases, K_VALUES, 'rerank');
 
+  const rankingResults = validItems.map((item, idx) => ({
+    itemId: item._id.toString(),
+    rankedIds: cases[idx].rankedIds
+  }));
+
   addLog.info('Rerank model evaluated', {
     taskId,
     modelId,
@@ -120,5 +144,8 @@ export async function evaluateRerankModelHelper(
     hasRetrievalRanks: !!metrics.retrieval_ranks
   });
 
-  return metrics as RerankEvalResult;
+  return {
+    evalResult: metrics as RerankEvalResult,
+    rankingResults
+  };
 }

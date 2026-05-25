@@ -7,7 +7,6 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../app/schema';
-import { userCollectionName } from '../../../support/user/schema';
 
 export const ChatCorrectionCollectionName = 'chat_corrections';
 
@@ -24,11 +23,6 @@ const ChatCorrectionSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
-  },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: userCollectionName,
     required: true
   },
   chatId: {

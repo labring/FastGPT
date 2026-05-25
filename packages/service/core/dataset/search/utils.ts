@@ -139,7 +139,8 @@ export const datasetSearchQueryExtension = async ({
   histories = [],
   isAssistant = false,
   teamId,
-  datasetIds
+  datasetIds,
+  lang
 }: {
   query: string;
   llmModel?: string;
@@ -149,6 +150,7 @@ export const datasetSearchQueryExtension = async ({
   isAssistant?: boolean;
   teamId?: string;
   datasetIds?: string[];
+  lang: string;
 }) => {
   // 仅assistant场景下统计整个问题改写流程的耗时
   const startTime = isAssistant ? Date.now() : undefined;
@@ -246,7 +248,8 @@ export const datasetSearchQueryExtension = async ({
         histories,
         model: llmModel,
         teamId,
-        datasetIds
+        datasetIds,
+        lang
       });
       if (result.extensionQueries?.length === 0) return;
       return result;

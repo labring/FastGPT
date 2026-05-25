@@ -9,9 +9,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type LoginModalProps = {
   onSuccess: (e: LoginSuccessResponseType) => any;
+  teamId?: string;
 };
 
-const LoginModal = ({ onSuccess }: LoginModalProps) => {
+const LoginModal = ({ onSuccess, teamId }: LoginModalProps) => {
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
 
@@ -45,7 +46,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
         minH={'100%'}
       >
         <Flex flexDirection={'column'} w={'60%'} minWidth={'320px'}>
-          <LoginContainer onSuccess={onSuccess} />
+          <LoginContainer onSuccess={onSuccess} teamId={teamId} />
         </Flex>
       </Flex>
     </Flex>

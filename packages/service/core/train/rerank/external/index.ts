@@ -1,7 +1,9 @@
-import { synthesizeEvalData } from '../../common/external/diting';
+import { synthesizeEvalData, callLLMJudge } from '../../common/external/diting';
 import type {
   DiTingSyntheticEvalDataRequest,
-  DiTingSyntheticEvalDataResponse
+  DiTingSyntheticEvalDataResponse,
+  DiTingLLMJudgeRequest,
+  DiTingLLMJudgeResponse
 } from '../../common/external/diting';
 
 const RERANK_SYNTHESIZER_NAME = 'eval_qa_pairs_synthesizer';
@@ -18,6 +20,16 @@ export async function synthesizeRerankEvalData(
     ...request,
     synthesizerConfig: { synthesizerName: RERANK_SYNTHESIZER_NAME }
   });
+}
+
+/** Call DiTing LLM judge to determine truly relevant chunks for a query */
+export type RerankLLMJudgeRequest = DiTingLLMJudgeRequest;
+export type RerankLLMJudgeResponse = DiTingLLMJudgeResponse;
+
+export async function judgeRelevantChunks(
+  request: DiTingLLMJudgeRequest
+): Promise<DiTingLLMJudgeResponse> {
+  return callLLMJudge(request);
 }
 
 // SFT Bridge - re-export from common package

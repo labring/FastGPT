@@ -46,7 +46,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type HeaderControlProps = {
-  appId: string;
   showSourceSelector?: boolean;
   chatSources: ChatSourceEnum[];
   setChatSources: (value: ChatSourceEnum[]) => void;
@@ -132,9 +131,9 @@ const generateCompleteTimeSeries = (
   return [...new Set(dates)];
 };
 
-const LogChart = () => {
+const LogChart = (props: { appId?: string }) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appId = useContextSelector(AppContext, (v) => v.appId || props.appId);
 
   const { feConfigs } = useSystemStore();
   const dateRange = useContextSelector(LogsContext, (v) => v.dateRange);
@@ -150,7 +149,7 @@ const LogChart = () => {
   const { data: chartData, loading } = useRequest(
     async () => {
       return getAppChartData({
-        appId,
+        appId: appId!,
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
         offset: parseInt(offset),
@@ -226,10 +225,22 @@ const LogChart = () => {
             : item.summary.newUserCount,
         retentionUserCount: item.summary.retentionUserCount,
         points: item.summary.points,
+        inputTokens: item.summary.inputTokens || 0,
+        outputTokens: item.summary.outputTokens || 0,
+        totalTokens: (item.summary.inputTokens || 0) + (item.summary.outputTokens || 0),
         sourceCountMap: item.summary.sourceCountMap
       }),
       createDefaultValues(
-        ['userCount', 'newUserCount', 'retentionUserCount', 'points', 'sourceCountMap'],
+        [
+          'userCount',
+          'newUserCount',
+          'retentionUserCount',
+          'points',
+          'inputTokens',
+          'outputTokens',
+          'totalTokens',
+          'sourceCountMap'
+        ],
         {
           sourceCountMap: Object.keys(ChatSourceMap).reduce(
             (acc, key) => ({ ...acc, [key]: 0 }),
@@ -297,7 +308,12 @@ const LogChart = () => {
     };
 
     const cumulative = {
-      ...calculateStats(user, { userCount: 'sum', points: 'sum' }),
+      ...calculateStats(user, {
+        userCount: 'sum',
+        points: 'sum',
+        inputTokens: 'sum',
+        outputTokens: 'sum'
+      }),
       ...calculateStats(chat, {
         chatItemCount: 'sum',
         chatCount: 'sum',
@@ -443,6 +459,26 @@ const LogChart = () => {
                 <Box {...chartBoxStyles}>
                   <LineChartComponent
                     data={formatChartData.user}
+                    title={t('app:logs_source_count')}
+                    description={t('app:logs_source_count_description')}
+                    lines={Object.entries(ChatSourceMap).map(([key, value]) => ({
+                      dataKey: `sourceCountMap.${key}`,
+                      name: t(value.name as any),
+                      color: value.color
+                    }))}
+                    tooltipItems={Object.entries(ChatSourceMap).map(([key, value]) => ({
+                      dataKey: `sourceCountMap.${key}`,
+                      label: t(value.name as any),
+                      color: value.color,
+                      customValue: (data) => data.sourceCountMap[key as ChatSourceEnum]
+                    }))}
+                    blur={!feConfigs?.isPlus}
+                    allowDecimals={false}
+                  />
+                </Box>
+                <Box {...chartBoxStyles}>
+                  <LineChartComponent
+                    data={formatChartData.user}
                     title={t('app:logs_points')}
                     description={t('app:logs_points_description')}
                     lines={[
@@ -469,27 +505,58 @@ const LogChart = () => {
                     blur={!feConfigs?.isPlus}
                   />
                 </Box>
-                <Box {...chartBoxStyles}>
-                  <LineChartComponent
-                    data={formatChartData.user}
-                    title={t('app:logs_source_count')}
-                    description={t('app:logs_source_count_description')}
-                    lines={Object.entries(ChatSourceMap).map(([key, value]) => ({
-                      dataKey: `sourceCountMap.${key}`,
-                      name: t(value.name as any),
-                      color: value.color
-                    }))}
-                    tooltipItems={Object.entries(ChatSourceMap).map(([key, value]) => ({
-                      dataKey: `sourceCountMap.${key}`,
-                      label: t(value.name as any),
-                      color: value.color,
-                      customValue: (data) => data.sourceCountMap[key as ChatSourceEnum]
-                    }))}
-                    blur={!feConfigs?.isPlus}
-                    allowDecimals={false}
-                  />
-                </Box>
               </Grid>
+              <Box {...chartBoxStyles} mt={5}>
+                <LineChartComponent
+                  data={formatChartData.user}
+                  title={t('app:logs_token_trend')}
+                  lines={[
+                    {
+                      dataKey: 'totalTokens',
+                      name: t('app:logs_total_token'),
+                      color: theme.colors.primary['400']
+                    },
+                    {
+                      dataKey: 'inputTokens',
+                      name: t('app:logs_input_token'),
+                      color: theme.colors.green['400']
+                    },
+                    {
+                      dataKey: 'outputTokens',
+                      name: t('app:logs_output_token'),
+                      color: theme.colors.yellow['400']
+                    }
+                  ]}
+                  tooltipItems={[
+                    {
+                      label: t('app:logs_total_token'),
+                      dataKey: 'totalTokens',
+                      color: theme.colors.primary['400']
+                    },
+                    {
+                      label: t('app:logs_input_token'),
+                      dataKey: 'inputTokens',
+                      color: theme.colors.green['400']
+                    },
+                    {
+                      label: t('app:logs_output_token'),
+                      dataKey: 'outputTokens',
+                      color: theme.colors.yellow['400']
+                    }
+                  ]}
+                  HeaderRightChildren={
+                    <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
+                      {t('app:logs_total')}:{' '}
+                      {Math.round(
+                        formatChartData.cumulative.inputTokens +
+                          formatChartData.cumulative.outputTokens
+                      )}
+                    </Flex>
+                  }
+                  blur={!feConfigs?.isPlus}
+                  allowDecimals={false}
+                />
+              </Box>
             </AccordionPanel>
           </AccordionItem>
           <AccordionItem border={'none'} mt={4}>
@@ -754,7 +821,7 @@ const LogChart = () => {
 
 export default React.memo(LogChart);
 
-const HeaderControl = ({
+export const HeaderControl = ({
   chatSources,
   setChatSources,
   isSelectAllSource,
@@ -776,7 +843,7 @@ const HeaderControl = ({
   );
 
   return (
-    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
+    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} px={px}>
       {showSourceSelector && (
         <Flex>
           <MultipleSelect<ChatSourceEnum>
@@ -785,7 +852,7 @@ const HeaderControl = ({
             onSelect={setChatSources}
             isSelectAll={isSelectAllSource}
             setIsSelectAll={setIsSelectAllSource}
-            h={10}
+            h={'36px'}
             w={'226px'}
             bg={'white'}
             rounded={'8px'}
@@ -809,7 +876,7 @@ const HeaderControl = ({
             setDateRange(date);
           }}
           bg={'white'}
-          h={10}
+          h={'36px'}
           w={'240px'}
           rounded={'8px'}
           borderColor={'myGray.200'}
@@ -823,7 +890,7 @@ const HeaderControl = ({
   );
 };
 
-const TotalData = ({ appId }: { appId: string }) => {
+const TotalData = ({ appId }: { appId?: string }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
@@ -831,17 +898,21 @@ const TotalData = ({ appId }: { appId: string }) => {
     data: totalData = {
       totalUsers: 0,
       totalChats: 0,
-      totalPoints: 0
+      totalPoints: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0
     }
   } = useRequest(
     async () => {
       if (feConfigs?.isPlus) {
-        return await getAppTotalData({ appId });
+        return await getAppTotalData({ appId: appId! });
       }
       return {
         totalUsers: 455,
         totalChats: 22112,
-        totalPoints: 112233
+        totalPoints: 112233,
+        totalInputTokens: 0,
+        totalOutputTokens: 0
       };
     },
     {
@@ -860,7 +931,8 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'primary.200',
           bg: 'primary.50'
         },
-        value: totalData.totalUsers
+        value: totalData.totalUsers,
+        subText: undefined as string | undefined
       },
       {
         label: t('app:logs_total_chat'),
@@ -870,7 +942,8 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: totalData.totalChats
+        value: totalData.totalChats,
+        subText: undefined as string | undefined
       },
       {
         label: t('app:logs_total_points'),
@@ -880,10 +953,22 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'yellow.200',
           bg: 'yellow.50'
         },
-        value: totalData.totalPoints
+        value: totalData.totalPoints,
+        subText: undefined as string | undefined
+      },
+      {
+        label: t('app:logs_total_token_consumption'),
+        icon: 'support/bill/tokens',
+        colorSchema: {
+          icon: 'blue.600',
+          border: 'blue.200',
+          bg: 'blue.50'
+        },
+        value: (totalData.totalInputTokens || 0) + (totalData.totalOutputTokens || 0),
+        subText: `${t('app:logs_input')}${totalData.totalInputTokens || 0} | ${t('app:logs_output')}${totalData.totalOutputTokens || 0}`
       }
     ];
-  }, [t, totalData.totalChats, totalData.totalPoints, totalData.totalUsers]);
+  }, [t, totalData]);
 
   return (
     <>
@@ -912,6 +997,11 @@ const TotalData = ({ appId }: { appId: string }) => {
               >
                 {item.value.toLocaleString()}
               </Box>
+              {item.subText && (
+                <Box fontSize={'xs'} color={'myGray.400'} mt={1}>
+                  {item.subText}
+                </Box>
+              )}
             </Flex>
             <Flex
               w={12}

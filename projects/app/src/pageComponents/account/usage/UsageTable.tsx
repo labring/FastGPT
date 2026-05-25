@@ -50,14 +50,14 @@ const UsageTableList = ({
     onClose: onCloseRecharge
   } = useDisclosure();
 
-  const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
+  const { dateRange, memberFilter, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
       dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
       sources: isSelectAllSource ? undefined : usageSources,
-      teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+      memberFilter: isSelectAllTmb ? undefined : memberFilter,
       projectName
     };
   }, [
@@ -66,7 +66,7 @@ const UsageTableList = ({
     isSelectAllSource,
     isSelectAllTmb,
     projectName,
-    selectTmbIds,
+    memberFilter,
     usageSources
   ]);
 
@@ -149,9 +149,12 @@ const UsageTableList = ({
             <Tr>
               <Th>{t('common:user.Time')}</Th>
               <Th>{t('account_usage:member')}</Th>
-              <Th>{t('account_usage:user_type')}</Th>
+              <Th>{t('account_usage:source')}</Th>
               <Th>{t('account_usage:project_name')}</Th>
               <Th>{t('account_usage:total_points')}</Th>
+              <Th>{t('account_usage:total_tokens')}</Th>
+              <Th>{t('account_usage:input_tokens')}</Th>
+              <Th>{t('account_usage:output_tokens')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -170,6 +173,9 @@ const UsageTableList = ({
                   {t(item.appName as any) || '-'}
                 </Td>
                 <Td>{formatNumber(item.totalPoints) || 0}</Td>
+                <Td>{(item.inputTokens || 0) + (item.outputTokens || 0)}</Td>
+                <Td>{item.inputTokens || 0}</Td>
+                <Td>{item.outputTokens || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
                     {t('account_usage:details')}

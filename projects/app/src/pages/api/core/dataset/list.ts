@@ -1,8 +1,14 @@
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { Types } from 'mongoose';
+import { addMinutes } from 'date-fns';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -170,13 +176,14 @@ async function handler(req: ApiRequestProps) {
   const nonFolderDatasets = myDatasets.filter((d) => d.type !== DatasetTypeEnum.folder);
   const appCountMap = new Map<string, number>();
   const fileCountMap = new Map<string, number>();
+  const processingCountMap = new Map<string, number>();
   if (nonFolderDatasets.length > 0) {
     const datasetIdStrings = nonFolderDatasets.map((d) => String(d._id));
     const datasetIdSet = new Set(datasetIdStrings);
     // find() post-hook converts _id to string, so we need to re-wrap for aggregate $in
     const datasetObjectIds = datasetIdStrings.map((id) => new Types.ObjectId(id));
 
-    const [fileAgg, apps] = await Promise.all([
+    const [fileAgg, apps, processingAgg] = await Promise.all([
       // fileCount: 单次聚合替代 N 次 countDocuments
       MongoDatasetCollection.aggregate<{ _id: string; count: number }>([
         {
@@ -204,11 +211,42 @@ async function handler(req: ApiRequestProps) {
           }
         },
         { _id: 1, 'modules.inputs': 1 }
-      ).lean()
+      ).lean(),
+      // processingCount: 统计 status === "training" 的 collection 数量
+      MongoDatasetTraining.aggregate<{ _id: string; count: number }>([
+        { $match: { datasetId: { $in: datasetObjectIds } } },
+        {
+          $group: {
+            _id: { datasetId: '$datasetId', collectionId: '$collectionId' },
+            count: { $sum: 1 },
+            hasError: {
+              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+            },
+            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
+            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
+          }
+        },
+        {
+          $match: {
+            count: { $gt: 0 },
+            hasError: { $ne: true },
+            $or: [{ hasActive: true }, { allParse: { $ne: true } }]
+          }
+        },
+        {
+          $group: {
+            _id: { $toString: '$_id.datasetId' },
+            count: { $sum: 1 }
+          }
+        }
+      ])
     ]);
 
     for (const item of fileAgg) {
       fileCountMap.set(String(item._id), item.count);
+    }
+    for (const item of processingAgg) {
+      processingCountMap.set(item._id, item.count);
     }
 
     // 应用侧用 Set 对 appId 去重，确保同一 App 引用同一数据集多次只计 1 次
@@ -232,6 +270,60 @@ async function handler(req: ApiRequestProps) {
     for (const [datasetId, appIdSet] of appIdSetMap) {
       appCountMap.set(datasetId, appIdSet.size);
     }
+  }
+
+  // Compute appCount for dataset folders (sum of all non-folder dataset descendants)
+  const folderDatasets = myDatasets.filter((d) => d.type === DatasetTypeEnum.folder);
+  const folderAppCountMap = new Map<string, number>();
+  if (folderDatasets.length > 0) {
+    const folderCounts = await Promise.all(
+      folderDatasets.map(async (folder) => {
+        const agg = await MongoDataset.aggregate<{
+          descendants: Array<{ _id: any; type: string }>;
+        }>([
+          { $match: { _id: new Types.ObjectId(String(folder._id)) } },
+          {
+            $graphLookup: {
+              from: 'datasets',
+              startWith: '$_id',
+              connectFromField: '_id',
+              connectToField: 'parentId',
+              as: 'descendants',
+              restrictSearchWithMatch: { deleteTime: null }
+            }
+          },
+          { $project: { _id: 0, descendants: { _id: 1, type: 1 } } }
+        ]);
+
+        const datasetDescendantIds = (agg[0]?.descendants ?? [])
+          .filter((d) => d.type !== DatasetTypeEnum.folder)
+          .map((d) => String(d._id));
+
+        if (datasetDescendantIds.length === 0) return 0;
+
+        const refApps = await MongoApp.find(
+          {
+            teamId,
+            modules: {
+              $elemMatch: {
+                inputs: {
+                  $elemMatch: {
+                    key: 'datasets',
+                    'value.datasetId': { $in: datasetDescendantIds }
+                  }
+                }
+              }
+            }
+          },
+          { _id: 1 }
+        ).lean();
+
+        return refApps.length;
+      })
+    );
+    folderDatasets.forEach((folder, i) => {
+      folderAppCountMap.set(String(folder._id), folderCounts[i]);
+    });
   }
 
   const formatDatasets = myDatasets
@@ -295,7 +387,11 @@ async function handler(req: ApiRequestProps) {
           dataCountMap && { dataCount: dataCountMap.get(String(dataset._id)) || 0 }), // dataCount used by evaluation scene
         ...(dataset.type !== DatasetTypeEnum.folder && {
           appCount: appCountMap.get(String(dataset._id)) ?? 0,
-          fileCount: fileCountMap.get(String(dataset._id)) ?? 0
+          fileCount: fileCountMap.get(String(dataset._id)) ?? 0,
+          processingCount: processingCountMap.get(String(dataset._id)) ?? 0
+        }),
+        ...(dataset.type === DatasetTypeEnum.folder && {
+          appCount: folderAppCountMap.get(String(dataset._id)) ?? 0
         })
       };
     })

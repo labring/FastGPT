@@ -54,6 +54,7 @@ export enum RerankTrainErrEnum {
   rerankFinetuneModelConfigInvalid = 'rerankFinetuneModelConfigInvalid',
   rerankFinetuneDataFileNotFound = 'rerankFinetuneDataFileNotFound',
   rerankFinetuneSftBridgeCreateFailed = 'rerankFinetuneSftBridgeCreateFailed',
+  rerankFinetuneQueueFull = 'rerankFinetuneQueueFull',
   rerankFinetuneCancelled = 'rerankFinetuneCancelled',
   rerankFinetuneDeploymentFailed = 'rerankFinetuneDeploymentFailed',
   rerankFinetuneTrainingFailed = 'rerankFinetuneTrainingFailed',
@@ -94,6 +95,12 @@ export enum RerankTrainErrEnum {
   rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
   rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
   rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  rerankLLMJudgeNoEvalData = 'rerankLLMJudgeNoEvalData',
+  rerankLLMJudgeNoRankingResults = 'rerankLLMJudgeNoRankingResults',
+  rerankLLMJudgeDiTingFailed = 'rerankLLMJudgeDiTingFailed',
+  rerankLLMJudgeEmptyResult = 'rerankLLMJudgeEmptyResult',
 
   // === General Errors ===
   rerankUnknownError = 'rerankUnknownError'
@@ -152,6 +159,7 @@ export enum EmbeddingTrainErrEnum {
   embeddingFinetuneModelConfigInvalid = 'embeddingFinetuneModelConfigInvalid',
   embeddingFinetuneDataFileNotFound = 'embeddingFinetuneDataFileNotFound',
   embeddingFinetuneSftBridgeCreateFailed = 'embeddingFinetuneSftBridgeCreateFailed',
+  embeddingFinetuneQueueFull = 'embeddingFinetuneQueueFull',
   embeddingFinetuneCancelled = 'embeddingFinetuneCancelled',
   embeddingFinetuneDeploymentFailed = 'embeddingFinetuneDeploymentFailed',
   embeddingFinetuneTrainingFailed = 'embeddingFinetuneTrainingFailed',
@@ -192,6 +200,12 @@ export enum EmbeddingTrainErrEnum {
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
   embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
   embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  embeddingLLMJudgeNoEvalData = 'embeddingLLMJudgeNoEvalData',
+  embeddingLLMJudgeNoRankingResults = 'embeddingLLMJudgeNoRankingResults',
+  embeddingLLMJudgeDiTingFailed = 'embeddingLLMJudgeDiTingFailed',
+  embeddingLLMJudgeEmptyResult = 'embeddingLLMJudgeEmptyResult',
 
   // === General Errors ===
   embeddingUnknownError = 'embeddingUnknownError'
@@ -252,6 +266,7 @@ export enum RerankTrainSuggestionEnum {
   rerankFinetuneModelConfigInvalid = 'rerankFinetuneModelConfigInvalid',
   rerankFinetuneDataFileNotFound = 'rerankFinetuneDataFileNotFound',
   rerankFinetuneSftBridgeCreateFailed = 'rerankFinetuneSftBridgeCreateFailed',
+  rerankFinetuneQueueFull = 'rerankFinetuneQueueFull',
   rerankFinetuneCancelled = 'rerankFinetuneCancelled',
   rerankFinetuneDeploymentFailed = 'rerankFinetuneDeploymentFailed',
   rerankFinetuneTrainingFailed = 'rerankFinetuneTrainingFailed',
@@ -292,6 +307,12 @@ export enum RerankTrainSuggestionEnum {
   rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
   rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
   rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  rerankLLMJudgeNoEvalData = 'rerankLLMJudgeNoEvalData',
+  rerankLLMJudgeNoRankingResults = 'rerankLLMJudgeNoRankingResults',
+  rerankLLMJudgeDiTingFailed = 'rerankLLMJudgeDiTingFailed',
+  rerankLLMJudgeEmptyResult = 'rerankLLMJudgeEmptyResult',
 
   // === General Errors ===
   rerankUnknownError = 'rerankUnknownError'
@@ -352,6 +373,7 @@ export enum EmbeddingTrainSuggestionEnum {
   embeddingFinetuneModelConfigInvalid = 'embeddingFinetuneModelConfigInvalid',
   embeddingFinetuneDataFileNotFound = 'embeddingFinetuneDataFileNotFound',
   embeddingFinetuneSftBridgeCreateFailed = 'embeddingFinetuneSftBridgeCreateFailed',
+  embeddingFinetuneQueueFull = 'embeddingFinetuneQueueFull',
   embeddingFinetuneCancelled = 'embeddingFinetuneCancelled',
   embeddingFinetuneDeploymentFailed = 'embeddingFinetuneDeploymentFailed',
   embeddingFinetuneTrainingFailed = 'embeddingFinetuneTrainingFailed',
@@ -392,6 +414,12 @@ export enum EmbeddingTrainSuggestionEnum {
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
   embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
   embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
+
+  // === LLM Judge Stage Errors ===
+  embeddingLLMJudgeNoEvalData = 'embeddingLLMJudgeNoEvalData',
+  embeddingLLMJudgeNoRankingResults = 'embeddingLLMJudgeNoRankingResults',
+  embeddingLLMJudgeDiTingFailed = 'embeddingLLMJudgeDiTingFailed',
+  embeddingLLMJudgeEmptyResult = 'embeddingLLMJudgeEmptyResult',
 
   // === General Errors ===
   embeddingUnknownError = 'embeddingUnknownError'

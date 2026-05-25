@@ -78,6 +78,7 @@ export type EmbeddingModelItemType = PriceType &
 export type RerankModelItemType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.rerank;
+    maxToken?: number; // max input token for rerank query + one document
     instruction?: string; // Instruction for instruction-aware models
     supportTrain?: boolean; // Whether the model supports training
   };

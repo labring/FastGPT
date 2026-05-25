@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { Box, Flex, useDisclosure, ModalBody, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -25,7 +25,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 // 兜底回复切换节点 ID（用于判断是否走了 LLM 回复分支）
 const FALLBACK_REPLY_SWITCH_NODE_ID = 'ekVOtsUJMYWg4col';
 
-const maxCount = 5;
+const maxCount = 10;
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
@@ -227,7 +227,7 @@ const KnowledgeRecallNode = ({
   const shouldUseFaqCard = data?.retrievalType === 'correction' || data?.retrievalType === 'faq';
 
   const [isShowAll, setIsShowAll] = useState(false);
-  const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // 判断检索模式是否为 agentic（不要求 agenticSearchResult 存在，用于无结果时的标题显示）
   const isAgenticRetrievalMode = useMemo(() => {
@@ -309,18 +309,23 @@ const KnowledgeRecallNode = ({
       </Flex>
 
       {isOpen && (
-        <Box pl={'28px'} pt={2} pb={0}>
+        <Box pl={'28px'} pt={2} pb={0} ref={listRef}>
           <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
             {!isLoading && (
               <>
                 {mergedList.length > 0 ? (
                   <>
                     <Flex flexDirection={'column'} gap={3}>
-                      {displayList.map((item, index) => {
+                      {mergedList.slice(0, isShowAll ? undefined : maxCount).map((item, index) => {
                         // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
                         if (shouldUseFaqCard) {
                           return (
-                            <Box key={item._id || index}>
+                            <Box
+                              key={
+                                item._id ||
+                                `${item.collectionId || 'collection'}-${item.index || index}`
+                              }
+                            >
                               <FaqContentCard
                                 q={item.q}
                                 a={item.a || ''}
@@ -367,22 +372,46 @@ const KnowledgeRecallNode = ({
                         }
 
                         return (
-                          <ChunkInfoCard
-                            key={item._id || index}
-                            title={title}
-                            descriptionList={descriptionList}
-                            linkText={linkText}
-                            linkUrl={linkUrl}
-                            q={item.q}
-                            a={item.a}
-                          />
+                          <Box
+                            key={
+                              item._id ||
+                              `${item.collectionId || 'collection'}-${item.index || index}`
+                            }
+                          >
+                            <ChunkInfoCard
+                              title={title}
+                              descriptionList={descriptionList}
+                              linkText={linkText}
+                              linkUrl={linkUrl}
+                              q={item.q}
+                              a={item.a}
+                            />
+                          </Box>
                         );
                       })}
                     </Flex>
                     {!isShowAll && mergedList.length > maxCount && (
                       <Button
                         mt={3}
-                        onClick={() => setIsShowAll(true)}
+                        onClick={() => {
+                          const modalBody = listRef.current?.closest(
+                            '.chakra-modal__body'
+                          ) as HTMLElement | null;
+                          const modalScrollTop = modalBody?.scrollTop;
+
+                          setIsShowAll(true);
+
+                          // 使用双重 rAF + setTimeout 确保在 React 渲染和浏览器布局完成后恢复滚动
+                          requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                              setTimeout(() => {
+                                if (modalBody && modalScrollTop !== undefined) {
+                                  modalBody.scrollTop = modalScrollTop;
+                                }
+                              }, 0);
+                            });
+                          });
+                        }}
                         w="100%"
                         variant={'primaryOutline'}
                       >
@@ -532,7 +561,7 @@ const KnowledgeRerankNode = ({
   const searchUsingReRank = data?.searchUsingReRank || false;
 
   const [isShowAll, setIsShowAll] = useState(false);
-  const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // 当未使用重排时，隐藏知识重排节点（agentic 模式始终显示）
   if (!isAgenticMode && !searchUsingReRank && !hasError) return null;
@@ -593,7 +622,7 @@ const KnowledgeRerankNode = ({
       </Flex>
 
       {isOpen && (
-        <Box pl={'28px'} pt={2} pb={0}>
+        <Box pl={'28px'} pt={2} pb={0} ref={listRef}>
           <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
             {!isLoading && (
               <>
@@ -605,68 +634,94 @@ const KnowledgeRerankNode = ({
                   mergedList.length > 0 && (
                     <>
                       <Flex flexDirection={'column'} gap={3}>
-                        {displayList.map((item, index) => {
-                          // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
-                          const descriptionList = [];
+                        {mergedList
+                          .slice(0, isShowAll ? undefined : maxCount)
+                          .map((item, index) => {
+                            // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                            const descriptionList = [];
 
-                          // 从 score 数组中提取分数信息，按固定顺序添加
-                          if (item.score && Array.isArray(item.score)) {
-                            const rrfScore = item.score.find((s) => s.type === 'rrf');
-                            const reRankScore = item.score.find((s) => s.type === 'reRank');
+                            // 从 score 数组中提取分数信息，按固定顺序添加
+                            if (item.score && Array.isArray(item.score)) {
+                              const rrfScore = item.score.find((s) => s.type === 'rrf');
+                              const reRankScore = item.score.find((s) => s.type === 'reRank');
 
-                            if (rrfScore) {
-                              descriptionList.push(
-                                `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
-                              );
+                              if (rrfScore) {
+                                descriptionList.push(
+                                  `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                                );
+                              }
+                              if (reRankScore) {
+                                descriptionList.push(
+                                  `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                                );
+                              }
                             }
-                            if (reRankScore) {
-                              descriptionList.push(
-                                `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
-                              );
+
+                            // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
+                            let recallRank = '-';
+                            if (item.retrievalRank !== undefined) {
+                              recallRank = `${item.retrievalRank + 1}`;
                             }
-                          }
+                            // 多轮智能检索不显示
+                            !isAgenticMode &&
+                              descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                          // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
-                          let recallRank = '-';
-                          if (item.retrievalRank !== undefined) {
-                            recallRank = `${item.retrievalRank + 1}`;
-                          }
-                          // 多轮智能检索不显示
-                          !isAgenticMode &&
-                            descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+                            // 使用 TOP1、TOP2 格式作为标题
+                            const title = `TOP${index + 1}`;
 
-                          // 使用 TOP1、TOP2 格式作为标题
-                          const title = `TOP${index + 1}`;
+                            // 计算 linkText 和 linkUrl
+                            let linkText = '';
+                            let linkUrl = '';
 
-                          // 计算 linkText 和 linkUrl
-                          let linkText = '';
-                          let linkUrl = '';
+                            if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                              linkText = `${item.sourceName || ''} / #${item.index}`;
+                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                            } else if (item.sourceType === 'sql') {
+                              linkText = item.sourceName || '';
+                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                            }
 
-                          if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                            linkText = `${item.sourceName || ''} / #${item.index}`;
-                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                          } else if (item.sourceType === 'sql') {
-                            linkText = item.sourceName || '';
-                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                          }
-
-                          return (
-                            <ChunkInfoCard
-                              key={item._id || index}
-                              title={title}
-                              descriptionList={descriptionList}
-                              linkText={linkText}
-                              linkUrl={linkUrl}
-                              q={item.q}
-                              a={item.a}
-                            />
-                          );
-                        })}
+                            return (
+                              <Box
+                                key={
+                                  item._id ||
+                                  `${item.collectionId || 'collection'}-${item.index || index}`
+                                }
+                              >
+                                <ChunkInfoCard
+                                  title={title}
+                                  descriptionList={descriptionList}
+                                  linkText={linkText}
+                                  linkUrl={linkUrl}
+                                  q={item.q}
+                                  a={item.a}
+                                />
+                              </Box>
+                            );
+                          })}
                       </Flex>
                       {!isShowAll && mergedList.length > maxCount && (
                         <Button
                           mt={3}
-                          onClick={() => setIsShowAll(true)}
+                          onClick={() => {
+                            const modalBody = listRef.current?.closest(
+                              '.chakra-modal__body'
+                            ) as HTMLElement | null;
+                            const modalScrollTop = modalBody?.scrollTop;
+
+                            setIsShowAll(true);
+
+                            // 使用双重 rAF + setTimeout 确保在 React 渲染和浏览器布局完成后恢复滚动
+                            requestAnimationFrame(() => {
+                              requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                  if (modalBody && modalScrollTop !== undefined) {
+                                    modalBody.scrollTop = modalScrollTop;
+                                  }
+                                }, 0);
+                              });
+                            });
+                          }}
                           w="100%"
                           variant={'primaryOutline'}
                         >

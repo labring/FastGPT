@@ -48,7 +48,6 @@ export type ChunkSettingsType = {
   indexPrefixTitle?: boolean;
   hypeIndexes?: boolean;
   small2bigIndexes?: boolean;
-  syntheticIndex?: boolean;
   hypeIndexPrompt?: string;
   small2bigConfig?: small2bigConfigType;
   autoIndexesPrompt?: string;

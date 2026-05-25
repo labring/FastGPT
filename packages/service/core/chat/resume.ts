@@ -224,9 +224,11 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 
 /** 新一轮流式开始前清空 Redis 镜像，否则 XADD 会接在旧 Stream 后面，续传会重复历史 */
 const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
+  const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
+  logger.debug(`DEL key=${rawKeyOfStream}`);
   await Promise.all([
     clearStreamResumeUnavailableState(keys),
-    getGlobalRedisConnection().del(keys.keyOfStream)
+    getGlobalRedisConnection().call('DEL', rawKeyOfStream)
   ]);
 };
 
@@ -239,10 +241,15 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
     logger.error('Failed to clear stream resume redis keys before mirror', { params, error });
   });
   let lastTouchedAt = 0;
+  let enqueueCount = 0;
 
   const enqueueRaw = (chunk: string) => {
+    const currentCount = ++enqueueCount;
     queue = queue
       .then(async () => {
+        if (currentCount === 1) {
+          logger.debug(`XADD key=${rawKeys.rawKeyOfStream} (first chunk)`);
+        }
         await redis.call('XADD', rawKeys.rawKeyOfStream, '*', 'raw', chunk);
         const now = Date.now();
         if (lastTouchedAt === 0 || now - lastTouchedAt >= STREAM_RESUME_TTL_TOUCH_INTERVAL_MS) {
@@ -359,6 +366,9 @@ export const catchUpAllHistoryItems = async ({
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
 
   let lastStreamId = '';
+  let totalReplayed = 0;
+
+  logger.debug(`XRANGE key=${rawKeyOfStream}`);
 
   while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
@@ -378,6 +388,7 @@ export const catchUpAllHistoryItems = async ({
 
     for (const [streamId, rawFields] of historyItems) {
       lastStreamId = streamId;
+      totalReplayed++;
       const fields = parseRedisStreamFields(rawFields);
 
       writeRedisStreamFields({

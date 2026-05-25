@@ -40,10 +40,7 @@ const RenderFilePreview = ({
             aspectRatio={isFile ? 4 : 1}
           >
             <Box
-              border={'sm'}
-              boxShadow={
-                '0px 2.571px 6.429px 0px rgba(19, 51, 107, 0.08), 0px 0px 0.643px 0px rgba(19, 51, 107, 0.08)'
-              }
+              bg={'myGray.50'}
               rounded={'md'}
               position={'relative'}
               _hover={{

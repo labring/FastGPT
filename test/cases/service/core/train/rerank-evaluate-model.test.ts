@@ -6,6 +6,12 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
   }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: {
+    find: vi.fn()
+  }
+}));
+
 vi.mock('@fastgpt/service/core/ai/rerank', () => ({
   reRankRecall: vi.fn()
 }));
@@ -19,6 +25,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 }));
 
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
@@ -41,10 +48,18 @@ function makeEvalItem(userInput: string, expectedContextIds: string[], retrieval
     expectedContextIds,
     retrievalContextsFull: retrievalList.map((id, i) => ({
       id,
-      q: `q_${id}`,
-      a: `a_${id}`,
       score: [{ type: 'embedding', value: 1 - i * 0.05, index: 0 }]
     }))
+  };
+}
+
+/** Build a mock MongoDatasetData.find response from candidate IDs */
+function mockDatasetDataFind(ids: string[]) {
+  return {
+    lean: () =>
+      Promise.resolve(
+        ids.map((id) => ({ _id: id, q: `q_${id}`, a: `a_${id}` }))
+      )
   };
 }
 
@@ -59,6 +74,17 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (getRerankModel as any).mockReturnValue(mockModel);
+    // Default: auto-generate q/a from any candidate IDs
+    (MongoDatasetData.find as any).mockReturnValue({
+      lean: () =>
+        Promise.resolve(
+          ['doc1', 'doc2', 'doc3', 'doc5', 'doc_not_here'].map((id) => ({
+            _id: id,
+            q: `q_${id}`,
+            a: `a_${id}`
+          }))
+        )
+    });
   });
 
   test('期望文档在重排后第 1 位: MRR = 1.0', async () => {
@@ -68,14 +94,14 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     // reranker 重排后 doc1 在第 1 位
     (reRankRecall as any).mockResolvedValue(makeRerankResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.detailed_results.rerank_top10_mrr).toBeCloseTo(1.0, 4);
+    expect(evalResult.detailed_results.rerank_top10_mrr).toBeCloseTo(1.0, 4);
   });
 
   test('重排把期望文档从第 3 位提到第 1 位', async () => {
@@ -86,14 +112,14 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     });
     (reRankRecall as any).mockResolvedValue(makeRerankResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.detailed_results.rerank_top10_mrr).toBeCloseTo(1.0, 4);
+    expect(evalResult.detailed_results.rerank_top10_mrr).toBeCloseTo(1.0, 4);
   });
 
   test('2 条 query：平均指标计算', async () => {
@@ -110,14 +136,14 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
       .mockResolvedValueOnce(makeRerankResponse(['doc1', 'doc2', 'doc3']))
       .mockResolvedValueOnce(makeRerankResponse(['doc2', 'doc5', 'doc3']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.detailed_results.rerank_top10_mrr).toBeCloseTo((1.0 + 1 / 3) / 2, 3);
+    expect(evalResult.detailed_results.rerank_top10_mrr).toBeCloseTo((1.0 + 1 / 3) / 2, 3);
   });
 
   test('返回结构包含 NDCG/MAP 等完整字段（与 embedding 对齐）', async () => {
@@ -126,23 +152,23 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     });
     (reRankRecall as any).mockResolvedValue(makeRerankResponse(['doc1', 'doc2']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.detailed_results.rerank_top5_mrr).toBeDefined();
-    expect(result.detailed_results.rerank_top5_ndcg).toBeDefined();
-    expect(result.detailed_results.rerank_top5_map).toBeDefined();
-    expect(result.detailed_results.rerank_top5_precision).toBeDefined();
-    expect(result.detailed_results.rerank_top10_mrr).toBeDefined();
-    expect(result.detailed_results.overall_mrr).toBeDefined();
-    expect(result.retrieval_ranks).toBeDefined();
-    expect(result.mrr_scores).toBeDefined();
-    expect(result.ndcg_scores).toBeDefined();
-    expect(result.map_scores).toBeDefined();
+    expect(evalResult.detailed_results.rerank_top5_mrr).toBeDefined();
+    expect(evalResult.detailed_results.rerank_top5_ndcg).toBeDefined();
+    expect(evalResult.detailed_results.rerank_top5_map).toBeDefined();
+    expect(evalResult.detailed_results.rerank_top5_precision).toBeDefined();
+    expect(evalResult.detailed_results.rerank_top10_mrr).toBeDefined();
+    expect(evalResult.detailed_results.overall_mrr).toBeDefined();
+    expect(evalResult.retrieval_ranks).toBeDefined();
+    expect(evalResult.mrr_scores).toBeDefined();
+    expect(evalResult.ndcg_scores).toBeDefined();
+    expect(evalResult.map_scores).toBeDefined();
   });
 
   test('retrieval_ranks 记录重排后的排名', async () => {
@@ -153,14 +179,14 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     });
     (reRankRecall as any).mockResolvedValue(makeRerankResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.retrieval_ranks).toEqual([[2, -1]]);
+    expect(evalResult.retrieval_ranks).toEqual([[2, -1]]);
   });
 
   test('retrievalContextsFull 为空时跳过该 case', async () => {
@@ -174,14 +200,14 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     // 只有第二条 query 才调用 reranker
     (reRankRecall as any).mockResolvedValue(makeRerankResponse(['doc1', 'doc2']));
 
-    const result = await evaluateRerankModelHelper(
+    const { evalResult } = await evaluateRerankModelHelper(
       'task1',
       'evalDataset1',
       'bge-reranker-v2',
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    expect(result.total_rows).toBe(1); // 只计算有候选列表的 case
+    expect(evalResult.total_rows).toBe(1); // 只计算有候选列表的 case
   });
 
   test('eval 数据为空时抛出错误', async () => {

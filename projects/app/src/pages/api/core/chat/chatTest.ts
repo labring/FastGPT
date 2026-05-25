@@ -184,6 +184,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
+    // compute newTitle early so title is visible from the start of conversation
+    const newTitle = isPlugin
+      ? variables.cTime || formatTime2YMDHM(new Date())
+      : getChatTitleFromChatMessage(userQuestion);
+
     if (usePreparedRound) {
       await prepareChatRound({
         appId: String(app._id),
@@ -193,7 +198,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         source,
         sourceName: appName || '',
         userContent: userQuestion,
-        responseChatItemId
+        responseChatItemId,
+        newTitle
       });
     } else {
       await ensureGenerateChat({
@@ -277,10 +283,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     // save chat
-    const newTitle = isPlugin
-      ? variables.cTime || formatTime2YMDHM(new Date())
-      : getChatTitleFromChatMessage(userQuestion);
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,

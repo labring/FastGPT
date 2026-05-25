@@ -37,3 +37,25 @@ export type DiTingSyntheticEvalDataResponse = {
   }>;
   error?: string;
 };
+
+/** LLM judge relevance evaluation request */
+export type DiTingLLMJudgeRequest = {
+  question: string;
+  retrieval_reference_list: Array<{
+    id: string;
+    q: string;
+    a: string;
+  }>;
+  llm_config: {
+    name: string;
+    base_url: string;
+    api_key: string;
+  };
+};
+
+/** LLM judge relevance evaluation response */
+export type DiTingLLMJudgeResponse = {
+  status: string;
+  detected_data_ids?: string[];
+  error?: string;
+};

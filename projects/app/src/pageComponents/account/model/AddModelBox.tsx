@@ -914,7 +914,7 @@ export const ModelEditModal = ({
                 <Input
                   {...register('model', { required: true })}
                   {...InputStyles}
-                  isReadOnly={!isCustom}
+                  isReadOnly={!isCustom || !!modelData.model}
                 />
               </Field>
               <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>

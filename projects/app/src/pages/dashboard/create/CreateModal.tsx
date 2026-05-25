@@ -313,6 +313,7 @@ const CreateModal = ({
                 flexDirection={'column'}
                 alignItems={'center'}
                 justifyContent={'center'}
+                p={'20px 20px 16px'}
                 bg="#FFFFFF"
                 border="1px solid"
                 borderColor="#DCE0E6"

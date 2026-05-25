@@ -23,6 +23,7 @@ import { evaluateRerankModelHelper } from '../helpers/evaluate-model';
  */
 export async function runEvalTunedModelStage(task: RerankTrainTaskSchemaType): Promise<{
   tunedModelEvalResult: RerankEvalResult;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
 }> {
   addLog.info('Run eval tuned model stage', { taskId: String(task._id) });
 
@@ -46,12 +47,12 @@ export async function runEvalTunedModelStage(task: RerankTrainTaskSchemaType): P
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const tunedModelEvalResult = await evaluateRerankModelHelper(
+  const { evalResult: tunedModelEvalResult, rankingResults } = await evaluateRerankModelHelper(
     String(task._id),
     evalDatasetId,
     tunedModelId,
     RerankTaskCheckpointStageEnum.eval_tunedmodel
   );
 
-  return { tunedModelEvalResult };
+  return { tunedModelEvalResult, rankingResults };
 }

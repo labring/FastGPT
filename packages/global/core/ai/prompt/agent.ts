@@ -285,6 +285,7 @@ Analyze the conversation history and use it as context to generate relevant and 
 export const QuestionGuideFooterPrompt = `Please strictly follow the format rules:
 Return a JSON object with the detected language and the 3 questions:
 {
+  "questionPreview": "The first 5 characters of the user's last question",
   "language": "The detected language of the user's last question",
   "questions": ["Question 1", "Question 2", "Question 3"]
 }

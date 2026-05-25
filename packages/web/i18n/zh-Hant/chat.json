@@ -159,9 +159,9 @@
   "setting.home.quick_apps": "快捷應用",
   "setting.home.quick_apps.add": "配置快捷應用",
   "setting.home.quick_apps.placeholder": "請選擇應用",
-  "setting.home.slogan": "Slogan",
-  "setting.home.slogan.default": "你好👋，我是 FastGPT ! 請問有什麼可以幫你？",
-  "setting.home.slogan_placeholder": "請輸入 Slogan",
+  "setting.home.slogan": "開場白",
+  "setting.home.slogan.default": "您好，請問有什麼可以幫您？",
+  "setting.home.slogan_placeholder": "請輸入開場白",
   "setting.home.title": "首頁配置",
   "setting.log_details.title": "首頁日誌",
   "setting.save": "保存",
@@ -283,5 +283,9 @@
   "retrieval_results": "檢索結果",
   "view_all_knowledge": "查看全部 {{count}} 個知識",
   "tag_faq_direct": "匹配到可直接回答的 FAQ",
-  "tag_no_recall": "未召回知識"
+  "tag_no_recall": "未召回知識",
+  "request_body": "請求體",
+  "llm_request_detail": "LLM 請求詳情",
+  "response_content": "響應內容",
+  "setting.favourite.all_apps": "所有應用"
 }

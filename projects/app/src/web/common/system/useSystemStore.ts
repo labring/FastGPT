@@ -261,25 +261,47 @@ export const useSystemStore = create<State>()(
       })),
       {
         name: 'globalStore',
-        partialize: (state) => ({
-          gitStar: state.gitStar,
+        partialize: (state) => {
+          const stripTrainTaskSummary = (list: any[]) =>
+            list?.map(({ trainTaskSummary, ...rest }: any) => ({
+              ...rest,
+              trainTaskSummary: trainTaskSummary
+                ? {
+                    totalCount: trainTaskSummary.totalCount,
+                    hasRunning: trainTaskSummary.hasRunning,
+                    hasError: trainTaskSummary.hasError,
+                    baseModelIds: trainTaskSummary.baseModelIds,
+                    latestTask: trainTaskSummary.latestTask
+                      ? {
+                          createTime: trainTaskSummary.latestTask.createTime,
+                          creatorName: trainTaskSummary.latestTask.creatorName,
+                          datasetIds: trainTaskSummary.latestTask.datasetIds
+                        }
+                      : undefined
+                  }
+                : undefined
+            }));
 
-          loginStore: state.loginStore,
-          initDataBufferId: state.initDataBufferId,
-          feConfigs: state.feConfigs,
-          subPlans: state.subPlans,
-          systemVersion: state.systemVersion,
+          return {
+            gitStar: state.gitStar,
 
-          modelProviders: state.modelProviders,
-          modelProviderMap: state.modelProviderMap,
-          aiproxyChannels: state.aiproxyChannels,
-          defaultModels: state.defaultModels,
-          llmModelList: state.llmModelList,
-          embeddingModelList: state.embeddingModelList,
-          ttsModelList: state.ttsModelList,
-          reRankModelList: state.reRankModelList,
-          sttModelList: state.sttModelList
-        })
+            loginStore: state.loginStore,
+            initDataBufferId: state.initDataBufferId,
+            feConfigs: state.feConfigs,
+            subPlans: state.subPlans,
+            systemVersion: state.systemVersion,
+
+            modelProviders: state.modelProviders,
+            modelProviderMap: state.modelProviderMap,
+            aiproxyChannels: state.aiproxyChannels,
+            defaultModels: state.defaultModels,
+            llmModelList: stripTrainTaskSummary(state.llmModelList),
+            embeddingModelList: stripTrainTaskSummary(state.embeddingModelList),
+            ttsModelList: stripTrainTaskSummary(state.ttsModelList),
+            reRankModelList: stripTrainTaskSummary(state.reRankModelList),
+            sttModelList: stripTrainTaskSummary(state.sttModelList)
+          };
+        }
       }
     )
   )

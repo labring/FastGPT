@@ -72,6 +72,9 @@ export async function createQuestionGuide({
 
   try {
     const parsed = json5.parse(jsonStr) as { language?: string; questions?: string[] };
+    if (parsed.language) {
+      logger.debug('Question guide language', { language: parsed.language });
+    }
     return {
       result: Array.isArray(parsed.questions) ? parsed.questions : [],
       inputTokens,

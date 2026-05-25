@@ -140,18 +140,18 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
 
-  // 获取应用详情后，根据应用类型设置默认的currentTab
+  // 获取应用详情后，根据应用类型和权限设置默认的currentTab
   const getDefaultTab = useCallback(
     (appDetail: AppDetailType) => {
       // 如果URL中已经有currentTab参数，使用URL中的值
       if (currentTab) {
         return currentTab;
       }
-      // 如果是智能客服类型，默认显示dashboard页面
-      if (appDetail.type === AppTypeEnum.assistant) {
+      // 如果是智能客服类型且有读日志权限，默认显示dashboard页面
+      if (appDetail.type === AppTypeEnum.assistant && appDetail.permission.hasReadChatLogPer) {
         return TabEnum.dashboard;
       }
-      // 其他类型默认显示appEdit页面
+      // 其他情况默认显示appEdit页面
       return TabEnum.appEdit;
     },
     [currentTab]

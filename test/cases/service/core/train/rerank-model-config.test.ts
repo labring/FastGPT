@@ -67,7 +67,8 @@ describe('Rerank Model Config Controller', () => {
           model: 'test-model'
         },
         isActive: true,
-        charsPointsPrice: 1
+        charsPointsPrice: 1,
+        maxToken: 8192
       });
 
       expect(configId).toBe('config_123');
@@ -84,6 +85,7 @@ describe('Rerank Model Config Controller', () => {
             isTuned: true, // Verify isTuned field is set correctly
             type: 'rerank',
             charsPointsPrice: 1,
+            maxToken: 8192,
             instruction: undefined
           })
         },

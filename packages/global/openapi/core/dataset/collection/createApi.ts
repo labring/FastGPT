@@ -19,7 +19,10 @@ const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
 // API 创建集合通用基础 Schema
 export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.extend({
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tags: z.array(z.union([z.string(), CollectionTagValueSchema])).optional().meta({ description: '标签列表' })
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签列表' })
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
 
@@ -50,7 +53,10 @@ export const CreateCollectionBodySchema = z.object({
   type: z
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
-  tags: z.array(z.union([z.string(), CollectionTagValueSchema])).optional().meta({ description: '标签列表' })
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签列表' })
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 
@@ -147,8 +153,9 @@ export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2
  * Content-Type: multipart/form-data
  * ============================================================================ */
 export const CreateImageCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
-collectionName: z.string().meta({ description: '集合名称' }),
-  overwriteDuplicate: z.boolean().optional().meta({ description: '是否覆盖重名集合' })
+  collectionName: z.string().meta({ description: '集合名称' }),
+  overwriteDuplicate: z.boolean().optional().meta({ description: '是否覆盖重名集合' }),
+  fileMd5: z.string().optional().meta({ description: '文件内容 MD5（前端 SparkMD5 计算）' })
 });
 export type ImageCreateDatasetCollectionParams = z.infer<typeof CreateImageCollectionBodySchema>;
 
@@ -156,7 +163,9 @@ export type ImageCreateDatasetCollectionParams = z.infer<typeof CreateImageColle
 export const CreateImageCollectionDataSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
-  collectionName: z.string().meta({ description: '集合名称' })
+  collectionName: z.string().meta({ description: '集合名称' }),
+  overwriteDuplicate: z.boolean().optional().meta({ description: '是否覆盖重名集合' }),
+  fileMd5: z.string().optional().meta({ description: '文件内容 MD5（前端 SparkMD5 计算）' })
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用

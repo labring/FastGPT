@@ -17,6 +17,13 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { deleteDatasetData } from '@/service/core/dataset/data/controller';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { UserError } from '@fastgpt/global/common/error/utils';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = PushDataBodySchema.parse(req.body);
@@ -42,7 +49,84 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     insertLen: predictDataLimitLength(mode, data)
   });
 
+  // Check if any IDs already exist
+  const customIds = data.filter((item) => item.id).map((item) => item.id!);
+  let existingDataList: {
+    _id: any;
+    collectionId: any;
+    teamId: any;
+    datasetId: any;
+    indexes: any;
+    imageId?: string | null;
+  }[] = [];
+
+  if (customIds.length > 0) {
+    const existingData = await MongoDatasetData.find(
+      {
+        _id: { $in: customIds.map((id) => new Types.ObjectId(id)) },
+        teamId
+      },
+      '_id collectionId teamId datasetId indexes imageId'
+    ).lean();
+
+    if (existingData.length > 0) {
+      // Verify collectionId consistency — reject if any existing data belongs to a different collection
+      const mismatchedData = existingData.filter(
+        (item) => String(item.collectionId) !== collectionId
+      );
+      if (mismatchedData.length > 0) {
+        logger.info('[pushData] Data IDs belong to different collections:', {
+          collectionId,
+          mismatchedIds: mismatchedData.map((item) => ({
+            id: String(item._id),
+            collectionId: String(item.collectionId)
+          }))
+        });
+
+        throw new UserError(
+          `Data IDs belong to different collections. Count: ${mismatchedData.length}. Please verify the IDs belong to the target collection.`
+        );
+      }
+
+      logger.info('[pushData] Deleting existing data with custom IDs:', {
+        collectionId,
+        ids: existingData.map((item) => String(item._id)),
+        count: existingData.length
+      });
+
+      existingDataList = existingData;
+    }
+  }
+
   return mongoSessionRun(async (session) => {
+    // Delete existing data within the same session to prevent race conditions
+    if (existingDataList.length > 0) {
+      const results = await Promise.allSettled(
+        existingDataList.map((dataItem) =>
+          deleteDatasetData({
+            id: String(dataItem._id),
+            teamId: dataItem.teamId,
+            datasetId: dataItem.datasetId,
+            collectionId: dataItem.collectionId,
+            indexes: dataItem.indexes,
+            imageId: dataItem.imageId
+          } as any)
+        )
+      );
+
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error('[pushData] Some existing data failed to delete', {
+          collectionId,
+          failedCount: failed.length,
+          errors: failed.map((r) => (r as PromiseRejectedResult).reason)
+        });
+        throw new Error(
+          `Failed to delete ${failed.length} existing data. Aborting push to prevent data duplication.`
+        );
+      }
+    }
+
     const traingUsageId = await (async () => {
       if (billId) return billId;
       const { usageId: newUsageId } = await createTrainingUsage({

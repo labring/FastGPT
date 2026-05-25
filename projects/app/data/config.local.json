@@ -36,7 +36,6 @@
             "autoIndexes": true, // 是否开启AI自动索引生成
             "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "small2bigIndexes": true, // 是否开启small2big索引
-            "syntheticIndex": true, // 是否开启合成索引（默认开启）
             "hypeIndexes": false, // 是否开启超参数索引
             "hypeIndexPrompt": "", // 超参数索引的自定义prompt
             "small2bigConfig": {}, // small2big配置
@@ -79,8 +78,7 @@
             "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false,
             "indexPrefixTitle": false,
-            "small2bigIndexes": false,
-            "syntheticIndex": true
+            "small2bigIndexes": false
           },
           "promptConfig": {
             "autoIndexesPrompt": "",
@@ -116,8 +114,7 @@
             "autoIndexes": true,
             "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false,
-            "imageIndex": false,
-            "syntheticIndex": true
+            "imageIndex": false
           },
           "promptConfig": {
             "autoIndexesPrompt": "",

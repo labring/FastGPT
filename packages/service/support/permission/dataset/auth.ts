@@ -55,12 +55,19 @@ export const authDatasetByTmbId = async ({
     }
 
     if (isRoot) {
-      return {
-        ...dataset,
-        permission: new DatasetPermission({
-          isOwner: true
-        })
-      };
+      // 如果 API 知识库开启了权限同步，不走 root 绕过，继续走正常鉴权
+      const isApiDatasetWithPermissionSync =
+        dataset.type === DatasetTypeEnum.apiDataset &&
+        !!(dataset.apiDatasetServer as any)?.apiServer?.permissionSync;
+
+      if (!isApiDatasetWithPermissionSync) {
+        return {
+          ...dataset,
+          permission: new DatasetPermission({
+            isOwner: true
+          })
+        };
+      }
     }
 
     if (String(dataset.teamId) !== teamId) {
@@ -164,14 +171,21 @@ export async function authDatasetCollection({
   const effectiveIsRoot = isRoot || isRootFromHeader;
 
   if (effectiveIsRoot) {
-    return {
-      userId,
-      teamId,
-      tmbId,
-      collection,
-      permission: new DatasetPermission({ isOwner: true }),
-      isRoot: effectiveIsRoot
-    };
+    // 如果 API 知识库开启了权限同步，不走 root 绕过，继续走正常鉴权
+    const isApiDatasetWithPermissionSync =
+      collection.dataset.type === DatasetTypeEnum.apiDataset &&
+      !!(collection.dataset.apiDatasetServer as any)?.apiServer?.permissionSync;
+
+    if (!isApiDatasetWithPermissionSync) {
+      return {
+        userId,
+        teamId,
+        tmbId,
+        collection,
+        permission: new DatasetPermission({ isOwner: true }),
+        isRoot: effectiveIsRoot
+      };
+    }
   }
 
   const permission = await getCollectionTmbPermission({

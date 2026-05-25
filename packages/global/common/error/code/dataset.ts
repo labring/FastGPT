@@ -32,7 +32,14 @@ export enum DatasetErrEnum {
   collectionNameMissingExtension = 'collectionNameMissingExtension',
   collectionNameExtensionMismatch = 'collectionNameExtensionMismatch',
   // Template import errors
-  templateImportModeNotFound = 'templateImportModeNotFound'
+  templateImportModeNotFound = 'templateImportModeNotFound',
+  // File upload errors
+  fileContentDuplicate = 'fileContentDuplicate',
+  // Image dataset errors
+  imageDatasetRequiresVlmModel = 'imageDatasetRequiresVlmModel',
+  imageDatasetRequiresVlmModelOrCustomParse = 'imageDatasetRequiresVlmModelOrCustomParse',
+  // Collaborator errors
+  cannotChangeOwner = 'cannotChangeOwner'
 }
 const datasetErr = [
   {
@@ -53,35 +60,35 @@ const datasetErr = [
   },
   {
     statusText: DatasetErrEnum.unAuthDataset,
-    message: 'core.dataset.error.unAuthDataset'
+    message: i18nT('common:core.dataset.error.unAuthDataset')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetCollection,
-    message: 'core.dataset.error.unAuthDatasetCollection'
+    message: i18nT('common:core.dataset.error.unAuthDatasetCollection')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetData,
-    message: 'core.dataset.error.unAuthDatasetData'
+    message: i18nT('common:core.dataset.error.unAuthDatasetData')
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetFile,
-    message: 'core.dataset.error.unAuthDatasetFile'
+    message: i18nT('common:core.dataset.error.unAuthDatasetFile')
   },
   {
     statusText: DatasetErrEnum.unCreateCollection,
-    message: 'core.dataset.error.unCreateCollection'
+    message: i18nT('common:core.dataset.error.unCreateCollection')
   },
   {
     statusText: DatasetErrEnum.unLinkCollection,
-    message: 'core.dataset.error.unLinkCollection'
+    message: i18nT('common:core.dataset.error.unLinkCollection')
   },
   {
     statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
-    message: 'core.dataset.error.invalidVectorModelOrQAModel'
+    message: i18nT('common:core.dataset.error.invalidVectorModelOrQAModel')
   },
   {
     statusText: DatasetErrEnum.canNotEditAdminPermission,
-    message: 'core.dataset.error.canNotEditAdminPermission'
+    message: i18nT('common:core.dataset.error.canNotEditAdminPermission')
   },
   {
     statusText: DatasetErrEnum.datasetIdMismatch,
@@ -134,6 +141,22 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.templateImportModeNotFound,
     message: i18nT('dataset:template_import_mode_not_found')
+  },
+  {
+    statusText: DatasetErrEnum.fileContentDuplicate,
+    message: i18nT('common:core.dataset.error.fileContentDuplicate')
+  },
+  {
+    statusText: DatasetErrEnum.imageDatasetRequiresVlmModel,
+    message: i18nT('file:Image_dataset_requires_VLM_model_to_be_configured')
+  },
+  {
+    statusText: DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse,
+    message: i18nT('file:custom_parse_failed_configure_vlm')
+  },
+  {
+    statusText: DatasetErrEnum.cannotChangeOwner,
+    message: i18nT('common:core.dataset.error.cannotChangeOwner')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

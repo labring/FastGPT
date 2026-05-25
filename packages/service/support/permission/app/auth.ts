@@ -18,6 +18,7 @@ import { type AuthModeType, type AuthResponseType } from '../type';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { getAgentUserTmbIds } from '../../user/agentUser';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -51,6 +52,9 @@ export const authAppByTmbId = async ({
 }> => {
   const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
+  // root 用户提前获取 agent user 的 tmbId 列表，用于后续权限判断
+  const agentUserTmbIds = isRoot ? await getAgentUserTmbIds() : new Set<string>();
+
   const app = await (async () => {
     const app = await MongoApp.findOne({ _id: appId }).lean();
 
@@ -59,10 +63,14 @@ export const authAppByTmbId = async ({
     }
 
     if (isRoot) {
-      return {
-        ...app,
-        permission: new AppPermission({ isOwner: true })
-      };
+      if (!agentUserTmbIds.has(String(app.tmbId))) {
+        return {
+          ...app,
+          permission: new AppPermission({ isOwner: true })
+        };
+      }
+      // 对于 agent user 创建的应用，root 不给特殊权限
+      // 直接继续走正常的 permission 校验
     }
 
     if (String(app.teamId) !== teamId) {
@@ -84,7 +92,9 @@ export const authAppByTmbId = async ({
       };
     }
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
+    const isOwner =
+      String(app.tmbId) === String(tmbId) ||
+      (tmbPer.isOwner && !agentUserTmbIds.has(String(app.tmbId)));
 
     const isGetParentClb =
       app.inheritPermission && !AppFolderTypeList.includes(app.type) && !!app.parentId;

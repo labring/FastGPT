@@ -20,7 +20,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authSkillByTmbId } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
-/* 
+/*
   检查chat的权限：
   1. 无 chatId，仅校验 cookie、shareChat、teamChat 秘钥是否合法
   2. 有 chatId，校验用户是否有权限操作该 chat

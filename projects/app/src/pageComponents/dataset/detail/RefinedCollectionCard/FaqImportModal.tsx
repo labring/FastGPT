@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import {
@@ -15,7 +15,11 @@ import FileSelector, { type SelectFileItemType } from '@/components/Select/FileS
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { postImportFaqByTemplate, postCheckDuplicateCollection } from '@/web/core/dataset/api';
+import {
+  postImportFaqByTemplate,
+  postCheckDuplicateCollection,
+  postCheckMd5Duplicate
+} from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
@@ -23,9 +27,11 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { Trans } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
+import Md5DuplicateModal, { type Md5DuplicateItem } from './Md5DuplicateModal';
 import ExcelJS from 'exceljs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import SparkMD5 from 'spark-md5';
 
 const FaqImportModal = ({
   onFinish,
@@ -61,7 +67,37 @@ const FaqImportModal = ({
   });
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [md5DuplicateFiles, setMd5DuplicateFiles] = useState<Md5DuplicateItem[]>([]);
+  const [showMd5DuplicateModal, setShowMd5DuplicateModal] = useState(false);
   const [enableEnhance, setEnableEnhance] = useState(true);
+  const fileMd5MapRef = useRef<Map<string, string>>(new Map());
+  const dedupedFilesRef = useRef<SelectFileItemType[]>([]);
+
+  /** 流式计算单个文件的 MD5，避免全量加载到内存 */
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk
+    const spark = new SparkMD5.ArrayBuffer();
+    const stream = file.stream();
+    const reader = stream.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value.buffer as ArrayBuffer);
+    }
+
+    return spark.end();
+  };
+
+  /** 批量计算文件 MD5 */
+  const computeFilesMd5 = async (files: SelectFileItemType[]): Promise<Map<string, string>> => {
+    const map = new Map<string, string>();
+    for (const f of files) {
+      const md5 = await computeFileMd5(f.file);
+      map.set(f.name, md5);
+    }
+    return map;
+  };
 
   const { runAsync: uploadFiles, loading: isImporting } = useRequest(
     async (filesToUpload: SelectFileItemType[], replaceFiles: string[] = []) => {
@@ -76,6 +112,7 @@ const FaqImportModal = ({
         });
 
         const overwriteDuplicate = replaceFiles.includes(filesToUpload[i].file.name);
+        const md5Val = fileMd5MapRef.current.get(filesToUpload[i].name);
 
         await postImportFaqByTemplate({
           datasetId,
@@ -83,6 +120,7 @@ const FaqImportModal = ({
           file: filesToUpload[i].file,
           overwriteDuplicate,
           enableEnhance,
+          fileMd5: md5Val,
           percentListen: (filePercent) => {
             // 计算总体进度：已完成文件的比例 + 当前文件的上传进度
             const totalPercent = Math.floor((i / totalFiles) * 100 + filePercent / totalFiles);
@@ -112,8 +150,30 @@ const FaqImportModal = ({
   );
 
   const handleCheckAndImport = async () => {
-    // 检查是否有重名文件
-    const fileNames = selectFiles.map((file) => file.file.name);
+    if (selectFiles.length === 0) return;
+
+    // 1. 计算所有文件的 MD5
+    const md5Map = await computeFilesMd5(selectFiles);
+    fileMd5MapRef.current = md5Map;
+
+    // 2. 统一调用 md5Duplicate API 检测同批次内重复 + 与知识库已有文件重复
+    const md5Record: Record<string, string> = {};
+    for (const f of selectFiles) {
+      const md5 = md5Map.get(f.name);
+      if (md5) md5Record[f.name] = md5;
+    }
+    if (Object.keys(md5Record).length > 0) {
+      const md5CheckResult = await postCheckMd5Duplicate({ datasetId, md5Map: md5Record });
+      if (md5CheckResult.duplicates?.length > 0) {
+        // 弹出 MD5 重复确认弹窗
+        setMd5DuplicateFiles(md5CheckResult.duplicates);
+        setShowMd5DuplicateModal(true);
+        return;
+      }
+    }
+
+    // 3. 文件名重复检查
+    const fileNames = selectFiles.map((f) => f.file.name);
     const checkResult = await postCheckDuplicateCollection({
       datasetId,
       parentId: parentId || undefined,
@@ -124,35 +184,62 @@ const FaqImportModal = ({
       setDuplicateFiles(checkResult.duplicateFileNames);
       setShowDuplicateModal(true);
     } else {
-      // 没有重名文件，直接上传
       await uploadFiles(selectFiles);
     }
   };
 
-  const handleSkipDuplicates = async () => {
-    const filesToUpload = selectFiles.filter((file) => !duplicateFiles.includes(file.file.name));
+  const handleMd5Confirm = async () => {
+    const md5DupNewNames = new Set(md5DuplicateFiles.map((d) => d.newFileName));
 
-    if (filesToUpload.length === 0) {
-      toast({
-        title: t('dataset:upload_other_files'),
-        status: 'warning'
-      });
-      setShowDuplicateModal(false);
+    // 过滤掉 MD5 重复的文件
+    const remainingFiles = selectFiles.filter((f) => !md5DupNewNames.has(f.name));
+    setSelectFiles(remainingFiles);
+    dedupedFilesRef.current = remainingFiles;
+    setShowMd5DuplicateModal(false);
+
+    if (remainingFiles.length === 0) {
+      toast({ title: t('dataset:upload_other_files'), status: 'warning' });
       return;
     }
 
+    // 继续文件名重复检查
+    const fileNames = remainingFiles.map((f) => f.file.name);
+    const checkResult = await postCheckDuplicateCollection({
+      datasetId,
+      parentId: parentId || undefined,
+      fileNames
+    });
+
+    if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+      setDuplicateFiles(checkResult.duplicateFileNames);
+      setShowDuplicateModal(true);
+    } else {
+      await uploadFiles(remainingFiles);
+    }
+  };
+
+  const handleSkipDuplicates = async () => {
+    const filesToUpload = dedupedFilesRef.current.filter(
+      (file) => !duplicateFiles.includes(file.file.name)
+    );
+
+    if (filesToUpload.length === 0) {
+      toast({ title: t('dataset:upload_other_files'), status: 'warning' });
+      setShowDuplicateModal(false);
+      return;
+    }
     setShowDuplicateModal(false);
     await uploadFiles(filesToUpload);
   };
 
   const handleContinueUpload = async () => {
     setShowDuplicateModal(false);
-    await uploadFiles(selectFiles);
+    await uploadFiles(dedupedFilesRef.current);
   };
 
   const handleReplaceFiles = async () => {
     setShowDuplicateModal(false);
-    await uploadFiles(selectFiles, duplicateFiles);
+    await uploadFiles(dedupedFilesRef.current, duplicateFiles);
   };
 
   const handleDownloadTemplate = async () => {
@@ -273,7 +360,7 @@ const FaqImportModal = ({
                   <HStack key={index} w={'100%'} spacing={2} justifyContent="space-between">
                     <HStack spacing={2} flex={1} overflow="hidden">
                       <MyIcon name={item.icon as any} w={'1rem'} flexShrink={0} />
-                      <MyTooltip label={item.name}>
+                      <MyTooltip label={item.name} maxW="500px">
                         <Box
                           fontSize={'sm'}
                           color={'myGray.900'}
@@ -348,6 +435,13 @@ const FaqImportModal = ({
         onSkipDuplicates={handleSkipDuplicates}
         onContinueUpload={handleContinueUpload}
         onReplaceFiles={handleReplaceFiles}
+      />
+      {/* MD5 重复弹窗 */}
+      <Md5DuplicateModal
+        isOpen={showMd5DuplicateModal}
+        onClose={() => setShowMd5DuplicateModal(false)}
+        md5DuplicateFiles={md5DuplicateFiles}
+        onConfirm={handleMd5Confirm}
       />
     </>
   );

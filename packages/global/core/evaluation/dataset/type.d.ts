@@ -36,8 +36,6 @@ export type EvalDatasetDataSynthesisMetadata = {
 
 export type RetrievalContextItem = {
   id: string;
-  q: string;
-  a?: string;
   score: Array<{
     type: string;
     value: number;

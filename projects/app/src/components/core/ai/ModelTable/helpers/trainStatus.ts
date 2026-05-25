@@ -1,6 +1,7 @@
 import { EmbeddingTrainTaskStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type { I18nT, TrainTaskItem } from '../types';
+import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
 
 export const runningTrainTaskStatusSet = new Set<string>([
   EmbeddingTrainTaskStatusEnum.running,
@@ -22,11 +23,9 @@ export const errorTrainTaskStatusSet = new Set<string>([
   RerankTrainTaskStatusEnum.failed
 ]);
 
-export const hasRunningTrainTask = (trainTaskList?: TrainTaskItem[]) =>
-  !!trainTaskList?.some((task) => runningTrainTaskStatusSet.has(task.status));
+export const hasRunningTrainTask = (summary?: TrainTaskSummary) => !!summary?.hasRunning;
 
-export const hasErrorTrainTask = (trainTaskList?: TrainTaskItem[]) =>
-  !!trainTaskList?.some((task) => errorTrainTaskStatusSet.has(task.status));
+export const hasErrorTrainTask = (summary?: TrainTaskSummary) => !!summary?.hasError;
 
 export const isRunningTrainTaskStatus = (status: string) => runningTrainTaskStatusSet.has(status);
 

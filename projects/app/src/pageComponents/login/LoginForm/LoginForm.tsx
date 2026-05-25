@@ -20,6 +20,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: LoginSuccessResponseType) => void;
+  teamId?: string;
 }
 
 interface LoginFormType {
@@ -27,7 +28,7 @@ interface LoginFormType {
   password: string;
 }
 
-const LoginForm = ({ setPageType, loginSuccess }: Props) => {
+const LoginForm = ({ setPageType, loginSuccess, teamId }: Props) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
@@ -47,7 +48,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           username,
           password,
           code,
-          language: i18n.language as LangEnum
+          language: i18n.language as LangEnum,
+          teamId
         })
       );
     },

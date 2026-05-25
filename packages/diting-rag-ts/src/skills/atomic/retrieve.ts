@@ -112,10 +112,32 @@ export class RetrieveSkill extends BaseSkill {
     // 避免分开调用 vector+fulltext 再手动 RRF 导致的分数异常及搜索无结果问题
     if (searchMode === 'mixedRecall' && this.mixedSearch) {
       this.logger?.debug('[RetrieveSkill] calling mixedRecall...');
-      return this.performMixedSearch(queries, datasetIds, options);
+      const mixedResult = await this.performMixedSearch(queries, datasetIds, options);
+
+      // mixedSearch 全部失败 → 降级到分离检索（本地 RRF）
+      if (mixedResult.chunks.length === 0) {
+        this.logger?.warn(
+          '[RetrieveSkill] mixedSearch returned no results for all queries, falling back to local separation retrieval'
+        );
+        return this.performLocalSeparationSearch(queries, datasetIds, options, searchMode);
+      }
+
+      return mixedResult;
     }
 
     // fallback: 分开检索 + 本地 RRF 融合（mixedSearch 未注入时使用）
+    return this.performLocalSeparationSearch(queries, datasetIds, options, searchMode);
+  }
+
+  /**
+   * 分离检索：vector + fulltext → 本地 RRF 融合
+   */
+  private async performLocalSeparationSearch(
+    queries: string[],
+    datasetIds: string[],
+    options: { limit: number; forbidCollectionIds?: string[] },
+    searchMode: string
+  ): Promise<{ chunks: ChunkItem[]; embeddingTokens: number }> {
     const embeddingResults: ChunkResult[] = [];
     const fullTextResults: ChunkResult[] = [];
     let embeddingTokens = 0;
@@ -133,7 +155,7 @@ export class RetrieveSkill extends BaseSkill {
           embeddingResults.push(...results.chunks);
         }
       } catch (e) {
-        this.logger?.warn('[RetrieveSkill] vector search error (ignored):', {
+        this.logger?.error('[RetrieveSkill] vector search failed:', {
           message: e instanceof Error ? e.message : String(e)
         });
       }
@@ -144,11 +166,12 @@ export class RetrieveSkill extends BaseSkill {
       for (const query of queries) {
         try {
           const results = await this.fullTextSearch!.search(query, datasetIds, {
-            limit: options.limit
+            limit: options.limit,
+            filter: { forbidCollectionIds: options.forbidCollectionIds }
           });
           fullTextResults.push(...results.chunks);
         } catch (e) {
-          this.logger?.warn('[RetrieveSkill] full-text search error (ignored):', {
+          this.logger?.error('[RetrieveSkill] full-text search failed:', {
             message: e instanceof Error ? e.message : String(e)
           });
         }

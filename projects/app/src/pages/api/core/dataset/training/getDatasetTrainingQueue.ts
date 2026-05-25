@@ -30,7 +30,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
       }
     ),
     MongoDatasetTraining.countDocuments(
-      { teamId, datasetId },
+      { teamId, datasetId, retryCount: { $gt: 0 } },
       {
         ...readFromSecondary
       }

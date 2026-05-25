@@ -17,8 +17,9 @@ export interface FileItem {
   progress: number;
   error?: string;
   result?: any;
-  icon?: string; // 添加图标字段
-  overwriteDuplicate?: boolean; // 是否覆盖重名文件
+  icon?: string;
+  overwriteDuplicate?: boolean;
+  fileMd5?: string;
 }
 
 export interface UploadConfig {
@@ -26,7 +27,8 @@ export interface UploadConfig {
   uploadApi: (
     file: File,
     onProgress?: (progress: number) => void,
-    overwriteDuplicate?: boolean
+    overwriteDuplicate?: boolean,
+    fileMd5?: string
   ) => Promise<any>;
 }
 
@@ -66,7 +68,8 @@ export const useFileUpload = (config: UploadConfig) => {
               prev.map((item) => (item.id === fileItem.id ? { ...item, progress } : item))
             );
           },
-          fileItem.overwriteDuplicate // 传递 overwriteDuplicate 参数
+          fileItem.overwriteDuplicate,
+          fileItem.fileMd5
         );
 
         return {
@@ -91,6 +94,15 @@ export const useFileUpload = (config: UploadConfig) => {
       prev.map((item) =>
         fileNames.includes(item.file.name) ? { ...item, overwriteDuplicate: true } : item
       )
+    );
+  }, []);
+
+  const updateFileMd5Map = useCallback((md5Map: Map<string, string>) => {
+    setUploadQueue((prev) =>
+      prev.map((item) => {
+        const md5 = md5Map.get(item.file.name);
+        return md5 ? { ...item, fileMd5: md5 } : item;
+      })
     );
   }, []);
 
@@ -252,6 +264,7 @@ export const useFileUpload = (config: UploadConfig) => {
     clearQueue,
     retryFailedFiles,
     getUploadStats,
-    markFilesForReplacement
+    markFilesForReplacement,
+    updateFileMd5Map
   };
 };

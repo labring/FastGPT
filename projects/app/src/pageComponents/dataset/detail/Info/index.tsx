@@ -62,6 +62,32 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const agentModel = watch('agentModel');
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+  const filteredEmbeddingModelList = useMemo(
+    () =>
+      embeddingModelList
+        .filter((item) => !item.isTuned)
+        .map((item) => ({
+          label: item.name,
+          value: item.model
+        })),
+    [embeddingModelList]
+  );
+  const llmModelSelectList = useMemo(
+    () =>
+      llmModelList.map((item) => ({
+        label: item.name,
+        value: item.model
+      })),
+    [llmModelList]
+  );
+  const vlmModelSelectList = useMemo(
+    () =>
+      vllmModelList.map((item) => ({
+        label: item.name,
+        value: item.model
+      })),
+    [vllmModelList]
+  );
   const vlmModel = watch('vlmModel');
 
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
@@ -146,21 +172,23 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               </Box>
             </MyTooltip>
           </Box>
-          <MyIcon
-            pl={1.5}
-            name={'edit'}
-            _hover={{ color: 'primary.600' }}
-            w={'0.875rem'}
-            cursor={'pointer'}
-            onClick={() =>
-              setEditedDataset({
-                id: datasetDetail._id,
-                name: datasetDetail.name,
-                avatar: datasetDetail.avatar,
-                intro: datasetDetail.intro
-              })
-            }
-          />
+          {datasetDetail.permission.hasManagePer && (
+            <MyIcon
+              pl={1.5}
+              name={'edit'}
+              _hover={{ color: 'primary.600' }}
+              w={'0.875rem'}
+              cursor={'pointer'}
+              onClick={() =>
+                setEditedDataset({
+                  id: datasetDetail._id,
+                  name: datasetDetail.name,
+                  avatar: datasetDetail.avatar,
+                  intro: datasetDetail.intro
+                })
+              }
+            />
+          )}
         </Flex>
         {DatasetTypeMap[datasetDetail.type] && (
           <Flex alignItems={'center'} justifyContent={'space-between'}>
@@ -229,10 +257,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                       )
                     : undefined
                 }
-                list={embeddingModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                list={filteredEmbeddingModelList}
                 onChange={(e) => {
                   const vectorModel = embeddingModelList.find((item) => item.model === e);
                   if (!vectorModel) return;
@@ -257,10 +282,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               <AIModelSelector
                 w={'100%'}
                 value={agentModel.model}
-                list={llmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                list={llmModelSelectList}
                 fontSize={'mini'}
                 onChange={(e) => {
                   const agentModel = llmModelList.find((item) => item.model === e);
@@ -282,10 +304,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               <AIModelSelector
                 w={'100%'}
                 value={vlmModel?.model}
-                list={vllmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                list={vlmModelSelectList}
                 fontSize={'mini'}
                 onChange={(e) => {
                   const vlmModel = vllmModelList.find((item) => item.model === e);

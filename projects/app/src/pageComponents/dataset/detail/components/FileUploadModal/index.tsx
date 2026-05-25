@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { VStack, HStack, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -7,10 +7,14 @@ import FileList from './FileList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { Trans } from 'next-i18next';
-import { postCheckDuplicateCollection } from '@/web/core/dataset/api';
+import { postCheckDuplicateCollection, postCheckMd5Duplicate } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from '../../RefinedCollectionCard/DuplicateConfirmModal';
+import Md5DuplicateModal, {
+  type Md5DuplicateItem
+} from '../../RefinedCollectionCard/Md5DuplicateModal';
 import ExcelJS from 'exceljs';
+import SparkMD5 from 'spark-md5';
 
 export interface FileUploadModalProps {
   isOpen: boolean;
@@ -58,6 +62,10 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
+  // MD5 去重弹窗状态
+  const [md5DuplicateFiles, setMd5DuplicateFiles] = useState<Md5DuplicateItem[]>([]);
+  const [showMd5DuplicateModal, setShowMd5DuplicateModal] = useState(false);
+
   // 文件上传 hook
   const {
     uploadQueue,
@@ -69,7 +77,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     removeFile,
     retryFailedFiles,
     getUploadStats,
-    clearQueue
+    clearQueue,
+    updateFileMd5Map
   } = useFileUpload({
     concurrency,
     uploadApi
@@ -80,6 +89,36 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     const reg = /^[a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*$/;
     return reg.test(fileName);
   }, []);
+
+  const pendingFilesRef = useRef<string[]>([]);
+
+  /** 流式计算单个文件的 MD5，避免全量加载到内存 */
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk
+    const spark = new SparkMD5.ArrayBuffer();
+    const stream = file.stream();
+    const reader = stream.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value.buffer as ArrayBuffer);
+    }
+
+    return spark.end();
+  };
+
+  /** 批量计算文件 MD5 */
+  const computeFilesMd5 = async (
+    files: { name: string; file: File }[]
+  ): Promise<Map<string, string>> => {
+    const map = new Map<string, string>();
+    for (const f of files) {
+      const md5 = await computeFileMd5(f.file);
+      map.set(f.name, md5);
+    }
+    return map;
+  };
 
   // FileSelector 状态
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
@@ -175,14 +214,18 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     [removeFile, uploadQueue]
   );
 
+  /** 获取当前所有 pending 文件（不依赖 useCallback 闭包中的旧值） */
+  const getPendingFiles = useCallback(() => {
+    // uploadQueue 在 useCallback 中会捕获旧值，所以这里返回空数组作为后备
+    // 实际的 pending 文件名在 handleCheckAndImport 中重新计算
+    return uploadQueue.filter((item) => item.status === FileStatus.PENDING);
+  }, [uploadQueue]);
+
   // 实际执行上传
   const handleStartUpload = useCallback(
     async (replaceFiles: string[] = []) => {
-      // 如果有需要替换的文件，标记这些文件为覆盖模式
-      // 执行上传并获取结果，传递 replaceFiles 参数
       const { failed } = await startUpload(replaceFiles);
 
-      // 检查上传结果
       if (failed.length === 0) {
         onClose?.();
         onSuccess?.();
@@ -191,31 +234,69 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     [startUpload, onClose, onSuccess]
   );
 
-  // 处理确认上传 - 先检查重名
+  // 处理确认上传 - 先做 MD5 去重，再检查文件名重名
   const handleCheckAndImport = useCallback(async () => {
-    // 检查是否有重名文件
-    const fileNames = uploadQueue
-      .filter((item) => item.status === FileStatus.PENDING)
-      .map((item) => item.file.name);
+    const pendingFiles = getPendingFiles();
 
-    if (fileNames.length === 0) {
+    if (pendingFiles.length === 0) {
       return;
     }
 
+    // 1. 计算所有文件的 MD5
+    const md5Map = await computeFilesMd5(
+      pendingFiles.map((f) => ({ name: f.file.name, file: f.file }))
+    );
+
+    // 设置所有文件的 fileMd5
+    updateFileMd5Map(md5Map);
+
+    // 2. 统一调用 md5Duplicate API 检测同批次内重复 + 与知识库已有文件重复
+    const md5Record: Record<string, string> = {};
+    const pendingFileNames = pendingFiles.map((f) => f.file.name);
+    for (const name of pendingFileNames) {
+      const md5 = md5Map.get(name);
+      if (md5) md5Record[name] = md5;
+    }
+    if (Object.keys(md5Record).length > 0) {
+      const md5CheckResult = await postCheckMd5Duplicate({ datasetId, md5Map: md5Record });
+
+      if (md5CheckResult.duplicates && md5CheckResult.duplicates.length > 0) {
+        // 弹出 MD5 重复确认弹窗
+        setMd5DuplicateFiles(md5CheckResult.duplicates);
+        setShowMd5DuplicateModal(true);
+        return;
+      }
+    }
+
+    // 3. 获取最终文件名列表
+    const finalNames = pendingFileNames;
+
+    // 存储最终的文件列表供后续 handlers 使用
+    pendingFilesRef.current = finalNames;
+
+    // 4. 文件名重复检查
     const checkResult = await postCheckDuplicateCollection({
       datasetId,
       parentId: parentId || undefined,
-      fileNames
+      fileNames: finalNames
     });
 
     if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
       setDuplicateFiles(checkResult.duplicateFileNames);
       setShowDuplicateModal(true);
     } else {
-      // 没有重名文件，直接上传
       await handleStartUpload();
     }
-  }, [datasetId, handleStartUpload, uploadQueue]);
+  }, [
+    getPendingFiles,
+    datasetId,
+    parentId,
+    removeFile,
+    toast,
+    t,
+    handleStartUpload,
+    updateFileMd5Map
+  ]);
 
   // 处理跳过重名文件
   const handleSkipDuplicates = useCallback(async () => {
@@ -255,6 +336,59 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     // 标记需要替换的文件
     await handleStartUpload(duplicateFiles);
   }, [duplicateFiles, handleStartUpload]);
+
+  // MD5 去重弹窗确认：过滤掉重复文件后继续上传
+  const handleMd5Confirm = useCallback(async () => {
+    const md5DupNewNames = new Set(md5DuplicateFiles.map((d) => d.newFileName));
+
+    // 从队列中移除 MD5 重复的文件
+    const dupIds = uploadQueue
+      .filter((item) => md5DupNewNames.has(item.file.name))
+      .map((item) => item.id);
+    dupIds.forEach((id) => removeFile(id));
+
+    setShowMd5DuplicateModal(false);
+
+    // 继续文件名重复检查
+    const remainingFiles = uploadQueue.filter(
+      (item) => !dupIds.includes(item.id) && item.status === FileStatus.PENDING
+    );
+    const remainingNames = remainingFiles.map((f) => f.file.name);
+
+    if (remainingNames.length === 0) {
+      setSelectFiles([]);
+      toast({
+        title: t('dataset:upload_other_files'),
+        status: 'warning'
+      });
+      return;
+    }
+
+    // 存储剩余文件列表供后续 handlers 使用
+    pendingFilesRef.current = remainingNames;
+
+    const checkResult = await postCheckDuplicateCollection({
+      datasetId,
+      parentId: parentId || undefined,
+      fileNames: remainingNames
+    });
+
+    if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+      setDuplicateFiles(checkResult.duplicateFileNames);
+      setShowDuplicateModal(true);
+    } else {
+      await handleStartUpload();
+    }
+  }, [
+    md5DuplicateFiles,
+    uploadQueue,
+    removeFile,
+    datasetId,
+    parentId,
+    toast,
+    t,
+    handleStartUpload
+  ]);
 
   // 重置状态
   const resetState = useCallback(() => {
@@ -366,6 +500,13 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
         onSkipDuplicates={handleSkipDuplicates}
         onContinueUpload={handleContinueUpload}
         onReplaceFiles={handleReplaceFiles}
+      />
+      {/* MD5 重复弹窗 */}
+      <Md5DuplicateModal
+        isOpen={showMd5DuplicateModal}
+        onClose={() => setShowMd5DuplicateModal(false)}
+        md5DuplicateFiles={md5DuplicateFiles}
+        onConfirm={handleMd5Confirm}
       />
     </>
   );

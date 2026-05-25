@@ -28,13 +28,11 @@ import {
   DatasetTypeEnum,
   DatasetStatusEnum,
   ApiDatasetTypeMap,
-  DatasetCollectionTypeEnum,
-  ImportDataSourceEnum
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TabEnum } from '../../../../pages/dataset/detail/index';
 
 import {
   postDatasetCollection,
@@ -61,6 +59,7 @@ const AddFileModal = dynamic(() => import('./AddFileModal'));
 const FileUploadModal = dynamic(() => import('../components/FileUploadModal/index'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateModal'));
+const APIFileSelectModal = dynamic(() => import('./APIFileSelectModal'));
 
 const CollectionNavActions = () => {
   const { t } = useTranslation();
@@ -84,6 +83,7 @@ const CollectionNavActions = () => {
   const [showTagManage, setShowTagManage] = useState(false);
   const [editPerOpen, setEditPerOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAPIFileSelectModal, setShowAPIFileSelectModal] = useState(false);
   const { editFolderData, setEditFolderData } = useEditFolder();
   const {
     isOpen: isOpenAddFileModal,
@@ -238,13 +238,16 @@ const CollectionNavActions = () => {
   const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const showTagManageBtn =
-    !isDatabase && !!feConfigs?.isPlus && datasetDetail.permission.hasWritePer;
+    !isDatabase &&
+    !isStructureDocument &&
+    !!feConfigs?.isPlus &&
+    datasetDetail.permission.hasWritePer;
 
   return (
     <HStack spacing={2} flexShrink={0}>
       {/* 搜索框 */}
       <MyInput
-        maxW={'250px'}
+        maxW={'180px'}
         size={'sm'}
         h={'36px'}
         bg={'white'}
@@ -263,7 +266,7 @@ const CollectionNavActions = () => {
         <>
           {datasetDetail.status === DatasetStatusEnum.active && !hasTrainingData && (
             <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
-              {t('dataset:immediate_sync')}
+              {t('dataset:sync')}
             </Button>
           )}
           {datasetDetail.status === DatasetStatusEnum.syncing && (
@@ -298,6 +301,17 @@ const CollectionNavActions = () => {
           )}
         </>
       )}
+
+      {/* websiteDataset immediate_sync 按钮 */}
+      {isWebSite &&
+        datasetDetail.permission.hasWritePer &&
+        feConfigs?.isPlus &&
+        datasetDetail.status === DatasetStatusEnum.active &&
+        !hasTrainingData && (
+          <Button variant={'whitePrimary'} onClick={openDatasetSyncConfirm}>
+            {t('dataset:sync')}
+          </Button>
+        )}
 
       {/* website 状态 Tag */}
       {isWebSite && (
@@ -357,7 +371,7 @@ const CollectionNavActions = () => {
       )}
 
       {/* 编辑按钮 */}
-      {datasetDetail.permission.hasWritePer && (
+      {datasetDetail.permission.hasManagePer && (
         <Button variant={'whiteBase'} onClick={() => setShowCreateModal(true)}>
           {t('common:Edit')}
         </Button>
@@ -400,23 +414,11 @@ const CollectionNavActions = () => {
         <Button onClick={onOpenFileUploadModal}>{t('dataset:add')}</Button>
       )}
 
-      {/* 添加按钮（API 数据集：跳转 import tab） */}
+      {/* 添加按钮（API 数据集：直接弹窗选择文件） */}
       {isApiDataset &&
         datasetDetail.permission.hasWritePer &&
         datasetDetail.status === DatasetStatusEnum.active && (
-          <Button
-            onClick={() =>
-              router.replace({
-                query: {
-                  ...router.query,
-                  currentTab: TabEnum.import,
-                  source: ImportDataSourceEnum.apiDataset
-                }
-              })
-            }
-          >
-            {t('dataset:add_file')}
-          </Button>
+          <Button onClick={() => setShowAPIFileSelectModal(true)}>{t('dataset:add')}</Button>
         )}
 
       {/* 配置按钮（database） */}
@@ -521,6 +523,15 @@ const CollectionNavActions = () => {
           confirmText={t('common:Confirm')}
           datasetId={datasetDetail._id}
           parentId={parentId}
+        />
+      )}
+
+      {showAPIFileSelectModal && (
+        <APIFileSelectModal
+          isOpen={showAPIFileSelectModal}
+          onClose={() => setShowAPIFileSelectModal(false)}
+          parentId={parentId}
+          onSuccess={() => getData(1)}
         />
       )}
     </HStack>

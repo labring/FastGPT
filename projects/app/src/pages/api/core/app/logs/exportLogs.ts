@@ -96,7 +96,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   // Build feedbackFilter MongoDB condition (used when feedbackType is not provided)
   const feedbackFilterCondition =
-    !feedbackType && feedbackFilter && feedbackFilter.length < 3
+    !feedbackType && feedbackFilter && feedbackFilter.length > 0 && feedbackFilter.length < 3
       ? (() => {
           const hasGood = feedbackFilter.includes(FeedbackFilterEnum.good);
           const hasBad = feedbackFilter.includes(FeedbackFilterEnum.bad);

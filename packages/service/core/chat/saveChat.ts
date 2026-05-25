@@ -232,11 +232,17 @@ const getChatDataLog = async ({
   const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
   const totalPoints =
     nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+  const inputTokens =
+    nodeResponses?.reduce((sum: number, item: any) => sum + (item.inputTokens || 0), 0) || 0;
+  const outputTokens =
+    nodeResponses?.reduce((sum: number, item: any) => sum + (item.outputTokens || 0), 0) || 0;
 
   return {
     fifteenMinutesAgo,
     errorCount,
     totalPoints,
+    inputTokens,
+    outputTokens,
     now
   };
 };
@@ -256,6 +262,7 @@ type PrepareChatRoundParams = Pick<
 > & {
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;
+  newTitle: string;
 };
 
 type FailChatRoundParams = {
@@ -315,7 +322,8 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
     sourceName,
     shareId,
     outLinkUid,
-    responseChatItemId
+    responseChatItemId,
+    newTitle
   } = params;
 
   if (isSkipSaveChatId(chatId)) return;
@@ -351,6 +359,7 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
           tmbId,
           appId,
           chatId,
+          title: newTitle,
           source,
           sourceName,
           shareId,
@@ -537,7 +546,7 @@ export const finalizeChatRound = async (props: Props) => {
           welcomeText,
           variables: variables || {},
           pluginInputs,
-          title: newTitle,
+          // title: newTitle,  // 改为创建时更新
           source,
           sourceName,
           shareId,
@@ -570,7 +579,7 @@ export const finalizeChatRound = async (props: Props) => {
   });
 
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
       nodeResponses
     });
     const userId = String(outLinkUid || tmbId);
@@ -594,6 +603,8 @@ export const finalizeChatRound = async (props: Props) => {
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          inputTokens,
+          outputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {
@@ -800,7 +811,7 @@ export const pushChatRecords = async (props: Props) => {
 
     // Create chat data log
     try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+      const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
         nodeResponses
       });
       const userId = String(outLinkUid || tmbId);
@@ -824,6 +835,8 @@ export const pushChatRecords = async (props: Props) => {
             chatItemCount: 1,
             errorCount,
             totalPoints,
+            inputTokens,
+            outputTokens,
             totalResponseTime: durationSeconds
           },
           $set: {
@@ -1086,7 +1099,7 @@ export const updateInteractiveChat = async ({
 
   // Push chat data logs
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
       nodeResponses
     });
 
@@ -1102,6 +1115,8 @@ export const updateInteractiveChat = async ({
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          inputTokens,
+          outputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {

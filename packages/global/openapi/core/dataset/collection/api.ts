@@ -13,6 +13,7 @@ import {
 } from '../../../../core/dataset/constants';
 import {
   ChunkSettingsSchema,
+  CollectionTagValueSchema,
   DatasetCollectionItemSchema,
   DatasetCollectionSchema
 } from '../../../../core/dataset/type';
@@ -124,7 +125,10 @@ export const DatasetCollectionsListItemSchema = z.object({
   updateTime: DatasetCollectionSchema.shape.updateTime,
   forbid: DatasetCollectionSchema.shape.forbid,
   trainingType: DatasetCollectionSchema.shape.trainingType,
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签' }),
 
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
 
@@ -187,7 +191,7 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
     .object({
       customPdfParse: z.boolean().meta({ description: '自定义 PDF 解析' }),
       imageIndex: z.boolean().meta({ description: '图片索引' }),
-autoIndexes: z.boolean().meta({ description: '自动索引' }),
+      autoIndexes: z.boolean().meta({ description: '自动索引' }),
       small2bigIndexes: z.boolean().meta({ description: '小到大索引' }),
       hypeIndexes: z.boolean().meta({ description: '虚拟索引' })
     })

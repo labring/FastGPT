@@ -1,10 +1,9 @@
 import type { TFunction } from 'i18next';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type { RerankTrainTaskListItem } from '@fastgpt/global/core/train/rerank/api';
-import type { EmbeddingTrainTaskListItem } from '@fastgpt/global/core/train/embedding/api';
+import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
 import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
-export type TrainTaskItem = RerankTrainTaskListItem | EmbeddingTrainTaskListItem;
+export type TrainTaskItem = TrainTaskSummary['latestTask'];
 
 export const modelTableTabValues = {
   base: 'base',
@@ -36,7 +35,7 @@ export type ModelRow = {
   tagColor: string;
   isTuned?: boolean;
   trainableModelType?: ModelTypeEnum.embedding | ModelTypeEnum.rerank;
-  trainTaskList?: TrainTaskItem[];
+  trainTaskSummary?: TrainTaskSummary;
 };
 
 export type { TeamPermission };

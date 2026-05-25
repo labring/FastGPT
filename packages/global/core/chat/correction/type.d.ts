@@ -28,7 +28,6 @@ export type ChatCorrectionSchemaType = {
   dataId: string;
   teamId: string;
   tmbId: string;
-  userId: string;
   chatId: string;
   appId: string;
   correctionData: CorrectionDataType;

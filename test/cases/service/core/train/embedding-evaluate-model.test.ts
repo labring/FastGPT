@@ -72,7 +72,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     });
     (dispatchDatasetSearch as any).mockResolvedValue(makeSearchResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateEmbeddingModelHelper(
+    const { evalResult } = await evaluateEmbeddingModelHelper(
       'task1',
       'evalDataset1',
       'bge-m3',
@@ -82,8 +82,8 @@ describe('evaluateEmbeddingModelHelper', () => {
       ['ds1']
     );
 
-    expect(result.detailed_results.embed_top10_mrr).toBeCloseTo(1.0, 4);
-    expect(result.detailed_results.embed_top5_mrr).toBeCloseTo(1.0, 4);
+    expect(evalResult.detailed_results.embed_top10_mrr).toBeCloseTo(1.0, 4);
+    expect(evalResult.detailed_results.embed_top5_mrr).toBeCloseTo(1.0, 4);
   });
 
   test('2 条 query：平均指标正确计算', async () => {
@@ -97,7 +97,7 @@ describe('evaluateEmbeddingModelHelper', () => {
       .mockResolvedValueOnce(makeSearchResponse(['doc1', 'doc2', 'doc3']))
       .mockResolvedValueOnce(makeSearchResponse(['doc2', 'doc5', 'doc3']));
 
-    const result = await evaluateEmbeddingModelHelper(
+    const { evalResult } = await evaluateEmbeddingModelHelper(
       'task1',
       'evalDataset1',
       'bge-m3',
@@ -108,7 +108,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     );
 
     // MRR@10 = (1.0 + 1/3) / 2 ≈ 0.667
-    expect(result.detailed_results.embed_top10_mrr).toBeCloseTo((1.0 + 1 / 3) / 2, 3);
+    expect(evalResult.detailed_results.embed_top10_mrr).toBeCloseTo((1.0 + 1 / 3) / 2, 3);
   });
 
   test('未命中时 MRR = 0', async () => {
@@ -117,7 +117,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     });
     (dispatchDatasetSearch as any).mockResolvedValue(makeSearchResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateEmbeddingModelHelper(
+    const { evalResult } = await evaluateEmbeddingModelHelper(
       'task1',
       'evalDataset1',
       'bge-m3',
@@ -127,7 +127,7 @@ describe('evaluateEmbeddingModelHelper', () => {
       ['ds1']
     );
 
-    expect(result.detailed_results.embed_top10_mrr).toBe(0);
+    expect(evalResult.detailed_results.embed_top10_mrr).toBe(0);
   });
 
   test('返回结构包含所有必要字段', async () => {
@@ -136,7 +136,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     });
     (dispatchDatasetSearch as any).mockResolvedValue(makeSearchResponse(['doc1']));
 
-    const result = await evaluateEmbeddingModelHelper(
+    const { evalResult } = await evaluateEmbeddingModelHelper(
       'task1',
       'evalDataset1',
       'bge-m3',
@@ -146,18 +146,18 @@ describe('evaluateEmbeddingModelHelper', () => {
       ['ds1']
     );
 
-    expect(result.detailed_results).toBeDefined();
-    expect(result.detailed_results.embed_top5_mrr).toBeDefined();
-    expect(result.detailed_results.embed_top5_ndcg).toBeDefined();
-    expect(result.detailed_results.embed_top5_map).toBeDefined();
-    expect(result.detailed_results.embed_top5_precision).toBeDefined();
-    expect(result.detailed_results.embed_top10_mrr).toBeDefined();
-    expect(result.detailed_results.overall_mrr).toBeDefined();
-    expect(result.retrieval_ranks).toBeDefined();
-    expect(result.mrr_scores).toBeDefined();
-    expect(result.ndcg_scores).toBeDefined();
-    expect(result.map_scores).toBeDefined();
-    expect(result.total_rows).toBe(1);
+    expect(evalResult.detailed_results).toBeDefined();
+    expect(evalResult.detailed_results.embed_top5_mrr).toBeDefined();
+    expect(evalResult.detailed_results.embed_top5_ndcg).toBeDefined();
+    expect(evalResult.detailed_results.embed_top5_map).toBeDefined();
+    expect(evalResult.detailed_results.embed_top5_precision).toBeDefined();
+    expect(evalResult.detailed_results.embed_top10_mrr).toBeDefined();
+    expect(evalResult.detailed_results.overall_mrr).toBeDefined();
+    expect(evalResult.retrieval_ranks).toBeDefined();
+    expect(evalResult.mrr_scores).toBeDefined();
+    expect(evalResult.ndcg_scores).toBeDefined();
+    expect(evalResult.map_scores).toBeDefined();
+    expect(evalResult.total_rows).toBe(1);
   });
 
   test('retrieval_ranks 正确记录每个 expectedId 的排名', async () => {
@@ -167,7 +167,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     // doc2 在 rank=2，doc_not_here 不在结果中
     (dispatchDatasetSearch as any).mockResolvedValue(makeSearchResponse(['doc1', 'doc2', 'doc3']));
 
-    const result = await evaluateEmbeddingModelHelper(
+    const { evalResult } = await evaluateEmbeddingModelHelper(
       'task1',
       'evalDataset1',
       'bge-m3',
@@ -177,7 +177,7 @@ describe('evaluateEmbeddingModelHelper', () => {
       ['ds1']
     );
 
-    expect(result.retrieval_ranks).toEqual([[2, -1]]);
+    expect(evalResult.retrieval_ranks).toEqual([[2, -1]]);
   });
 
   test('eval 数据为空时抛出 TrainTaskUnrecoverableError', async () => {

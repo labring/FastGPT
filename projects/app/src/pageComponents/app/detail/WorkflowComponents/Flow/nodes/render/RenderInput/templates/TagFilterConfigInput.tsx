@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -19,6 +19,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type {
   ReferenceItemValueType,
   SelectedDatasetType
@@ -63,17 +64,24 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
   useRequest(
     async () => {
       if (datasetIds.length === 0) return [];
-      const results = await Promise.all(datasetIds.map((id) => getAllTags(id).then((r) => r.list)));
+      const results = await Promise.allSettled(
+        datasetIds.map((id) => getAllTags(id).then((r) => r.list))
+      );
       const nameMap = new Map<string, DatasetTagType>();
-      results.flat().forEach((tag) => {
-        if (!nameMap.has(tag.tag)) nameMap.set(tag.tag, tag);
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          result.value.forEach((tag) => {
+            if (!nameMap.has(tag.tag)) nameMap.set(tag.tag, tag);
+          });
+        }
       });
       return Array.from(nameMap.values());
     },
     {
       manual: false,
       refreshDeps: [datasetIds.join(',')],
-      onSuccess: setAllTags
+      onSuccess: setAllTags,
+      errorToast: ''
     }
   );
 
@@ -144,12 +152,6 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
         const tagType = tagDef?.tagType || 'string';
         const ops = operatorsByType[tagType] || operatorsByType.string;
         const hideValue = noValueOps.has(row.op);
-        const selectedTagIds = new Set(
-          rows
-            .filter((_, i) => i !== index)
-            .map((r) => r.tagId)
-            .filter(Boolean)
-        );
         const noTagSelected = !row.tagId;
 
         // 根据标签类型过滤可选引用变量
@@ -182,8 +184,7 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
               placeholder={t('workflow:tag_filter_select_tag')}
               list={allTags.map((tag) => ({
                 label: tag.tag,
-                value: tag._id,
-                isDisabled: selectedTagIds.has(tag._id)
+                value: tag._id
               }))}
               onChange={(val) => {
                 const newTagDef = tagMap.get(val);
@@ -369,10 +370,42 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
 
 export default TagFilterConfigInput;
 
-export const TagFilterLogicToggle = ({ item, nodeId }: RenderInputProps) => {
+export const TagFilterLogicToggle = ({ item, nodeId, inputs }: RenderInputProps) => {
+  const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const logic = useMemo(() => getLogicOp(item.value), [item.value]);
+
+  const datasets = useMemo(() => {
+    const datasetsInput = inputs?.find((i) => i.key === NodeInputKeyEnum.datasetSelectList);
+    return (datasetsInput?.value as SelectedDatasetType[]) || [];
+  }, [inputs]);
+
+  const [unAuthDatasetNames, setUnAuthDatasetNames] = useState<string[]>([]);
+
+  useRequest(
+    async () => {
+      if (datasets.length === 0) return;
+      const results = await Promise.allSettled(
+        datasets.map((dataset) => getAllTags(dataset.datasetId).then((r) => r.list))
+      );
+      const unAuthNames: string[] = [];
+      results.forEach((result, i) => {
+        if (
+          result.status === 'rejected' &&
+          result.reason?.statusText === DatasetErrEnum.unAuthDataset
+        ) {
+          unAuthNames.push(datasets[i].name);
+        }
+      });
+      setUnAuthDatasetNames(unAuthNames);
+    },
+    {
+      manual: false,
+      refreshDeps: [datasets.map((d) => d.datasetId).join(',')],
+      errorToast: ''
+    }
+  );
 
   const toggle = useCallback(() => {
     try {
@@ -389,19 +422,32 @@ export const TagFilterLogicToggle = ({ item, nodeId }: RenderInputProps) => {
   }, [item, logic, nodeId, onChangeNode]);
 
   return (
-    <Flex
-      ml={1.5}
-      px={1}
-      color={'primary.600'}
-      fontWeight={'medium'}
-      alignItems={'center'}
-      cursor={'pointer'}
-      _hover={{ bg: 'myGray.200' }}
-      rounded={'md'}
-      onClick={toggle}
-    >
-      {logic}
-      <MyIcon ml={1} boxSize={5} name="change" />
+    <Flex alignItems={'center'}>
+      <Flex
+        ml={1.5}
+        px={1}
+        color={'primary.600'}
+        fontWeight={'medium'}
+        alignItems={'center'}
+        cursor={'pointer'}
+        _hover={{ bg: 'myGray.200' }}
+        rounded={'md'}
+        onClick={toggle}
+      >
+        {logic}
+        <MyIcon ml={1} boxSize={5} name="change" />
+      </Flex>
+      {unAuthDatasetNames.length > 0 && (
+        <MyTooltip
+          label={t('workflow:tag_filter_unauth_datasets', {
+            names: unAuthDatasetNames
+              .map((n) => t('common:enum_quote', { name: n }))
+              .join(t('common:comma'))
+          })}
+        >
+          <MyIcon ml={2} name="common/circleAlert" boxSize={4} color={'orange.400'} />
+        </MyTooltip>
+      )}
     </Flex>
   );
 };

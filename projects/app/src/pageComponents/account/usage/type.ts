@@ -1,11 +1,12 @@
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import type { MemberFilterType } from '@fastgpt/global/support/wallet/usage/api';
 
 export type UnitType = 'day' | 'month';
 
 export type UsageFilterParams = {
   dateRange: DateRangeType;
-  selectTmbIds: string[];
+  memberFilter?: MemberFilterType;
   isSelectAllTmb: boolean;
   usageSources: UsageSourceEnum[];
   isSelectAllSource: boolean;

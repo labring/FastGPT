@@ -83,7 +83,7 @@ const ConfigPerModal = ({
           isInheritPermission={isInheritPermission}
           hasParent={hasParent}
         >
-          {({ MemberListCard, onOpenManageModal, collaboratorList }) => (
+          {({ MemberListCard, onOpenManageModal, collaboratorList, refetchCollaboratorList }) => (
             <>
               <ModalBody>
                 {/* 资源信息 */}
@@ -186,19 +186,22 @@ const ConfigPerModal = ({
                   </Button>
                 )}
               </ModalFooter>
+
+              {isChangeOwnerModalOpen && onChangeOwner && (
+                <ChangeOwnerModal
+                  onClose={() => {
+                    onCloseChangeOwnerModal();
+                    refetchCollaboratorList();
+                  }}
+                  avatar={avatar}
+                  name={name}
+                  onChangeOwner={onChangeOwner}
+                />
+              )}
             </>
           )}
         </CollaboratorContextProvider>
       </MyModal>
-
-      {isChangeOwnerModalOpen && onChangeOwner && (
-        <ChangeOwnerModal
-          onClose={onCloseChangeOwnerModal}
-          avatar={avatar}
-          name={name}
-          onChangeOwner={onChangeOwner}
-        />
-      )}
     </>
   );
 };

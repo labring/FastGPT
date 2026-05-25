@@ -293,6 +293,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     hasAcquiredGenerateSlot = true;
 
+    // compute newTitle early so title is visible from the start of conversation
+    const newTitle = isPlugin
+      ? variables.cTime || formatTime2YMDHM(new Date())
+      : getChatTitleFromChatMessage(userQuestion);
+
     if (usePreparedRound) {
       await prepareChatRound({
         appId: runningAppId,
@@ -304,7 +309,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         shareId,
         outLinkUid: outLinkUserId,
         userContent: userQuestion,
-        responseChatItemId: finalResponseChatItemId
+        responseChatItemId: finalResponseChatItemId,
+        newTitle
       });
     }
 
@@ -376,10 +382,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    const newTitle = isPlugin
-      ? variables.cTime || formatTime2YMDHM(new Date())
-      : getChatTitleFromChatMessage(userQuestion);
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,

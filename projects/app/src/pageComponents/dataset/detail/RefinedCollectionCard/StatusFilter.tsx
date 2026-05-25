@@ -26,6 +26,7 @@ const StatusFilter = ({ value, onChange, hideNotExist = false }: Props) => {
   const options: { key: CollectionStatusEnum | undefined; label: string }[] = [
     { key: undefined, label: t('common:All') },
     { key: CollectionStatusEnum.ready, label: t('common:core.dataset.collection.status.active') },
+    { key: CollectionStatusEnum.queued, label: t('dataset:queued') },
     { key: CollectionStatusEnum.training, label: t('dataset:processing') },
     { key: CollectionStatusEnum.error, label: t('dataset:exception_state') },
     ...(!hideNotExist

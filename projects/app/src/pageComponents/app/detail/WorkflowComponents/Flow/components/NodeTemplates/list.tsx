@@ -47,6 +47,7 @@ import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 
 export type TemplateListProps = {
@@ -260,7 +261,8 @@ const NodeTemplateList = ({
 
         const defaultValueMap: Record<string, any> = {
           [NodeInputKeyEnum.userChatInput]: undefined,
-          [NodeInputKeyEnum.fileUrlList]: undefined
+          [NodeInputKeyEnum.fileUrlList]: undefined,
+          [NodeInputKeyEnum.aiModel]: getWebDefaultLLMModel()?.model
         };
 
         getNodeList().forEach((node) => {

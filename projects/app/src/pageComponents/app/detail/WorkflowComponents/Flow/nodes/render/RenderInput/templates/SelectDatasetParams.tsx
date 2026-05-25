@@ -115,48 +115,72 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   }, [getNodeList, nodeAmount]);
 
   useEffect(() => {
-    inputs.forEach((input) => {
-      // @ts-ignore
-      if (data[input.key] !== undefined) {
-        setData((state) => ({
-          ...state,
+    setData((state) => {
+      const next = { ...state };
+      inputs.forEach((input) => {
+        // 同步通用 data 字段
+        // @ts-ignore
+        if (data[input.key] !== undefined) {
           // @ts-ignore
-          [input.key]: input.value ?? state[input.key]
-        }));
-      }
+          next[input.key] = input.value ?? state[input.key];
+        }
+        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
+          next.embeddingModel = input.value ?? state.embeddingModel;
+        }
+      });
+      return next;
+    });
+
+    setAgenticSearchConfig((state) => {
+      const next = { ...state };
+      inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
+          next.embeddingModel = input.value ?? state.embeddingModel;
+        }
+        if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel) {
+          next.agenticSearchLLMModel = input.value || state.agenticSearchLLMModel;
+        }
+        if (input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning) {
+          next.agenticSearchReasoning = input.value ?? state.agenticSearchReasoning;
+        }
+        if (input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModel) {
+          next.agenticSearchRerankModel = input.value || state.agenticSearchRerankModel;
+        }
+      });
+      return next;
+    });
+
+    inputs.forEach((input) => {
       if (input.key === NodeInputKeyEnum.datasetRetrievalMode) {
         setRetrievalMode(input.value || DatasetRetrievalModeEnum.standard);
       }
-      if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
-        setData((prev) => ({
-          ...prev,
-          embeddingModel: input.value ?? prev.embeddingModel
-        }));
-        setAgenticSearchConfig((prev) => ({
-          ...prev,
-          embeddingModel: input.value ?? prev.embeddingModel
-        }));
+    });
+
+    // 新建节点时 input.value 为 undefined，将默认值写入 inputs 确保参数下发
+    [
+      { key: NodeInputKeyEnum.datasetSearchExtensionModel, defaultValue: defaultModels.llm?.model },
+      {
+        key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+        defaultValue: defaultModels.llm?.model
+      },
+      { key: NodeInputKeyEnum.datasetSearchRerankModel, defaultValue: defaultModels.rerank?.model },
+      {
+        key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+        defaultValue: defaultModels.rerank?.model
       }
-      if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel) {
-        setAgenticSearchConfig((prev) => ({
-          ...prev,
-          agenticSearchLLMModel: input.value || prev.agenticSearchLLMModel
-        }));
-      }
-      if (input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning) {
-        setAgenticSearchConfig((prev) => ({
-          ...prev,
-          agenticSearchReasoning: input.value ?? prev.agenticSearchReasoning
-        }));
-      }
-      if (input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModel) {
-        setAgenticSearchConfig((prev) => ({
-          ...prev,
-          agenticSearchRerankModel: input.value || prev.agenticSearchRerankModel
-        }));
+    ].forEach(({ key, defaultValue }) => {
+      if (!defaultValue) return;
+      const input = inputs.find((i) => i.key === key);
+      if (input && !input.value) {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key,
+          value: { ...input, value: defaultValue }
+        });
       }
     });
-  }, [inputs]);
+  }, [inputs, nodeId, onChangeNode, defaultModels.rerank?.model, defaultModels.llm?.model]);
 
   // 知识库变更时同步 embeddingModel：清空则清空；切换则更新为新的向量模型
   const prevDatasetVectorModelRef = React.useRef<string | undefined>(undefined);
@@ -186,7 +210,14 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     }
 
     // 知识库从有值A切换为有值B时，更新 embeddingModel 为新的向量模型
-    if (prev !== undefined && prev !== datasetVectorModel) {
+    // 初次选择知识库（prev === undefined）且 inputs 中 embeddingModel 无已保存值时，也自动配置
+    const currentInputEmbeddingModel = inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+    )?.value;
+    const isFirstSelect = prev === undefined && !currentInputEmbeddingModel;
+    const isSwitchDataset = prev !== undefined && prev !== datasetVectorModel;
+
+    if (isFirstSelect || isSwitchDataset) {
       setData((state) => ({ ...state, embeddingModel: datasetVectorModel }));
       const embeddingModelInput = inputs.find(
         (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
@@ -224,61 +255,92 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <>
-        <Flex alignItems={'center'} mb={3} fontSize={'sm'}>
-          {t('app:retrieval_config')}
-          <QuestionTip
-            ml={1}
-            label={
-              <Box lineHeight={'24px'} fontSize={'12px'}>
-                <Box>
-                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
-                  <span>{t('app:retrieval_mode_single_desc')}</span>
+        <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+          <FormLabel w="96px" color={'myGray.600'}>
+            {t('app:retrieval_mode')}
+            <QuestionTip
+              ml={1}
+              label={
+                <Box lineHeight={'24px'} fontSize={'12px'}>
+                  <Box>
+                    <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
+                    <span>{t('app:retrieval_mode_single_desc')}</span>
+                  </Box>
+                  <Box>
+                    <span style={{ fontWeight: 600 }}>
+                      {t('app:retrieval_mode_multiple_title')}
+                    </span>
+                    <span>{t('app:retrieval_mode_multiple_desc')}</span>
+                  </Box>
                 </Box>
-                <Box>
-                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_multiple_title')}</span>
-                  <span>{t('app:retrieval_mode_multiple_desc')}</span>
-                </Box>
-              </Box>
-            }
-          />
-        </Flex>
-        <Box mb={3}>
-          <RetrievalModeSelector
-            value={retrievalMode}
-            onChange={(mode) => {
-              setRetrievalMode(mode);
-              const item = inputs.find(
-                (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
-              );
-              if (item) {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: NodeInputKeyEnum.datasetRetrievalMode,
-                  value: { ...item, value: mode }
-                });
               }
-              if (knowledgeTypeConfig.hasDatabaseKnowledge) {
-                const newAiModel =
-                  mode === DatasetRetrievalModeEnum.agentic
-                    ? agenticSearchConfig.agenticSearchLLMModel
-                    : data.datasetSearchExtensionModel || '';
-                if (newAiModel) {
-                  updateNodeInput(NodeInputKeyEnum.generateSqlModel, newAiModel);
+            />
+          </FormLabel>
+          <Box flex="1">
+            <RetrievalModeSelector
+              value={retrievalMode}
+              onChange={(mode) => {
+                const prevMode = retrievalMode;
+                setRetrievalMode(mode);
+                const item = inputs.find(
+                  (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
+                );
+                if (item) {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: NodeInputKeyEnum.datasetRetrievalMode,
+                    value: { ...item, value: mode }
+                  });
                 }
-              }
-            }}
-          />
-        </Box>
+
+                // 切换检索模式时，清空另一模式的字段
+                if (mode !== prevMode) {
+                  if (mode === DatasetRetrievalModeEnum.standard) {
+                    // 标准检索 → 清空多轮智能检索相关字段
+                    setAgenticSearchConfig((prev) => ({
+                      ...prev,
+                      agenticSearchLLMModel: '',
+                      agenticSearchRerankModel: '',
+                      agenticSearchReasoning: false
+                    }));
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchReasoning, false);
+                  } else {
+                    // 多轮智能检索 → 清空标准检索相关字段
+                    setData((prev) => ({
+                      ...prev,
+                      datasetSearchExtensionModel: '',
+                      rerankModel: ''
+                    }));
+                    updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, '');
+                    updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, '');
+                  }
+                }
+
+                if (knowledgeTypeConfig.hasDatabaseKnowledge) {
+                  const newAiModel =
+                    mode === DatasetRetrievalModeEnum.agentic
+                      ? agenticSearchConfig.agenticSearchLLMModel
+                      : data.datasetSearchExtensionModel || '';
+                  if (newAiModel) {
+                    updateNodeInput(NodeInputKeyEnum.generateSqlModel, newAiModel);
+                  }
+                }
+              }}
+            />
+          </Box>
+        </Flex>
 
         {/* 内联表单（两种模式共享，仅值/Key/部分提示不同） */}
         <Box>
           {/* AI 模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={3} fontSize="12px">
-            <FormLabel w="96px" fontSize="12px" fontWeight="normal">
+          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+            <FormLabel w="96px" color={'myGray.600'}>
               {t('app:smart_customer_service_ai_model')}
               <QuestionTip
-                ml={0.5}
+                ml={1}
                 label={
                   retrievalMode === DatasetRetrievalModeEnum.agentic
                     ? t('app:smart_customer_service_ai_model_tip_agentic')
@@ -314,12 +376,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           </Flex>
 
           {/* 向量模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={3} fontSize="12px">
-            <FormLabel w="96px" fontSize="12px" fontWeight="normal">
+          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+            <FormLabel w="96px" color={'myGray.600'}>
               {t('common:core.ai.model.Vector Model')}
-              {retrievalMode === DatasetRetrievalModeEnum.agentic && (
-                <QuestionTip ml={0.5} label={t('app:smart_customer_service_embedding_model_tip')} />
-              )}
+              <QuestionTip ml={1} label={t('app:smart_customer_service_embedding_model_tip')} />
             </FormLabel>
             <Box flex="1">
               <SelectAiModel
@@ -345,8 +405,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           </Flex>
 
           {/* 重排模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={3} fontSize="12px">
-            <FormLabel w="96px" fontSize="12px" fontWeight="normal">
+          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+            <FormLabel w="96px" color={'myGray.600'}>
               {t('app:smart_customer_service_rerank_model')}
             </FormLabel>
             <Box flex="1">
@@ -378,12 +438,13 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
           {/* 输出思考过程 —— 仅多轮智能检索 */}
           {retrievalMode === DatasetRetrievalModeEnum.agentic && (
-            <Flex alignItems="center" justifyContent="space-between" mb={3} fontSize="12px">
-              <FormLabel w="96px" fontSize="12px" fontWeight="normal">
+            <Flex alignItems="center" mb={2} fontWeight={'medium'}>
+              <FormLabel w="96px" color={'myGray.600'}>
                 {t('app:retrieval_output_thinking')}
-                <QuestionTip ml={0.5} label={t('app:retrieval_output_thinking_tooltip')} />
+                <QuestionTip ml={1} label={t('app:retrieval_output_thinking_tooltip')} />
               </FormLabel>
               <Switch
+                ml={2}
                 isChecked={agenticSearchConfig.agenticSearchReasoning}
                 onChange={(e) => {
                   setAgenticSearchConfig((prev) => ({

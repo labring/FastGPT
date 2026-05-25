@@ -8,7 +8,9 @@ import {
   checkWorkflowNodeAndConnection,
   adaptCatchError,
   storeNode2FlowNode,
-  storeEdge2RenderEdge
+  storeEdge2RenderEdge,
+  autoAdjustDatasetNodeLimit,
+  cleanDatasetSearchParams
 } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -176,7 +178,11 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   // 将 UI 流程数据转换为存储格式
   const flowData2StoreData = useCallback(() => {
     const nodes = getNodes();
-    return uiWorkflow2StoreWorkflow({ nodes, edges });
+    const workflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+    if (workflow) {
+      workflow.nodes = cleanDatasetSearchParams(autoAdjustDatasetNodeLimit(workflow));
+    }
+    return workflow;
   }, [getNodes, edges]);
 
   // 转换并验证工作流数据
@@ -188,6 +194,10 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       if (!checkResults) {
         onRemoveError();
         const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+        if (storeWorkflow) {
+          storeWorkflow.nodes = cleanDatasetSearchParams(autoAdjustDatasetNodeLimit(storeWorkflow));
+        }
 
         return storeWorkflow;
       } else if (!hideTip) {
