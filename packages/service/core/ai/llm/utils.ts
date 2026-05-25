@@ -1,4 +1,7 @@
-import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
+import {
+  countGptMessagesTokens,
+  countGptMessagesTokensBatch
+} from '../../../common/string/tiktoken/index';
 import type {
   ChatCompletionAssistantMessageParam,
   ChatCompletionContentPart,
@@ -61,7 +64,9 @@ export const filterGPTMessageByMaxContext = async ({
   }
 
   // reduce token of systemPrompt
-  maxContext -= await countGptMessagesTokens([...systemPrompts, ...leadingContextCheckpoints]);
+  maxContext -= await countGptMessagesTokens({
+    messages: [...systemPrompts, ...leadingContextCheckpoints]
+  });
 
   /* 截取时候保证一轮内容的完整性
     1. user - assistant - user
@@ -70,11 +75,10 @@ export const filterGPTMessageByMaxContext = async ({
     3. user - assistant - tool - assistant - tool
     4. user - assistant - assistant - tool - tool
   */
-  // Save the last chat prompt(question)
-  let chats: ChatCompletionMessageParam[] = [];
+  const messageGroups: ChatCompletionMessageParam[][] = [];
   let tmpChats: ChatCompletionMessageParam[] = [];
 
-  // 从后往前截取对话内容, 每次到 user 则认为是一组完整信息
+  // 从后往前分组，每次到 user 则认为是一组完整信息；后续批量统计可减少 worker 往返。
   while (chatPrompts.length > 0) {
     const lastMessage = chatPrompts.pop();
     if (!lastMessage) {
@@ -83,18 +87,25 @@ export const filterGPTMessageByMaxContext = async ({
 
     // 遇到 user，说明到了一轮完整信息，可以开始判断是否需要保留
     if (lastMessage.role === ChatCompletionRequestMessageRoleEnum.User) {
-      const tokens = await countGptMessagesTokens([lastMessage, ...tmpChats]);
-      maxContext -= tokens;
-      // 该轮信息整体 tokens 超出范围，这段数据不要了。但是至少保证一组。
-      if (maxContext < 0 && chats.length > 0) {
-        break;
-      }
-
-      chats = [lastMessage, ...tmpChats].concat(chats);
+      messageGroups.unshift([lastMessage, ...tmpChats]);
       tmpChats = [];
     } else {
       tmpChats.unshift(lastMessage);
     }
+  }
+
+  const reversedMessageGroups = [...messageGroups].reverse();
+  const groupTokens = (await countGptMessagesTokensBatch(reversedMessageGroups)).reverse();
+  const chats: ChatCompletionMessageParam[] = [];
+
+  for (let i = messageGroups.length - 1; i >= 0; i--) {
+    maxContext -= groupTokens[i] || 0;
+    // 该轮信息整体 tokens 超出范围，这段数据不要了。但是至少保证一组。
+    if (maxContext < 0 && chats.length > 0) {
+      break;
+    }
+
+    chats.unshift(...messageGroups[i]);
   }
 
   return [...systemPrompts, ...leadingContextCheckpoints, ...chats];

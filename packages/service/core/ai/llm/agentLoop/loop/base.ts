@@ -547,7 +547,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
       while (toolIndex < toolCalls.length) {
         const currentTool = toolCalls[toolIndex];
-        const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+        const currentMessagesTokens = await countGptMessagesTokens({
+          messages: requestMessages
+        });
 
         // 只能串行的工具
         if (!canBatchTool(currentTool)) {

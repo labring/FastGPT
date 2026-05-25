@@ -93,6 +93,9 @@ catalogs:
     file-type:
       specifier: 21.3.0
       version: 21.3.0
+    gpt-tokenizer:
+      specifier: 3.4.0
+      version: 3.4.0
     i18next:
       specifier: 23.16.8
       version: 23.16.8
@@ -518,6 +521,9 @@ importers:
       form-data:
         specifier: ^4.0.4
         version: 4.0.4
+      gpt-tokenizer:
+        specifier: 'catalog:'
+        version: 3.4.0
       http-proxy-agent:
         specifier: ^7.0.2
         version: 7.0.2
@@ -614,9 +620,6 @@ importers:
       proxy-from-env:
         specifier: ^1.1.0
         version: 1.1.0
-      tiktoken:
-        specifier: 1.0.17
-        version: 1.0.17
       turndown:
         specifier: ^7.1.2
         version: 7.2.0
@@ -1462,9 +1465,6 @@ importers:
       qs:
         specifier: ^6.15.2
         version: 6.15.2
-      tiktoken:
-        specifier: 1.0.17
-        version: 1.0.17
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
@@ -9657,6 +9657,9 @@ packages:
     resolution: {integrity: sha512-QLV1qeYSo5l13mQzWgP/y0LbMr5Plr5fJilgAIwgnwseproEbtNym8xpLsDzeZ6MWXgNE6kdWGBjdh3zT/Qerg==}
     engines: {node: '>=20'}
 
+  gpt-tokenizer@3.4.0:
+    resolution: {integrity: sha512-wxFLnhIXTDjYebd9A9pGl3e31ZpSypbpIJSOswbgop5jLte/AsZVDvjlbEuVFlsqZixVKqbcoNmRlFDf6pz/UQ==}
+
   graceful-fs@4.2.10:
     resolution: {integrity: sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA==}
 
@@ -13824,9 +13827,6 @@ packages:
 
   through@2.3.8:
     resolution: {integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==}
-
-  tiktoken@1.0.17:
-    resolution: {integrity: sha512-UuFHqpy/DxOfNiC3otsqbx3oS6jr5uKdQhB/CvDEroZQbVHt+qAK+4JbIooabUWKU9g6PpsFylNu9Wcg4MxSGA==}
 
   timezones-list@3.1.0:
     resolution: {integrity: sha512-PcDBt9tae330KTOIufK/wArTlJp+unuuRcG0EEu+4oLHZACHefKQyP2D51gMZID+urye92mHND60KRVuDDAmbA==}
@@ -25062,6 +25062,8 @@ snapshots:
       responselike: 4.0.2
       type-fest: 4.41.0
 
+  gpt-tokenizer@3.4.0: {}
+
   graceful-fs@4.2.10: {}
 
   graceful-fs@4.2.11: {}
@@ -30341,8 +30343,6 @@ snapshots:
       readable-stream: 3.6.2
 
   through@2.3.8: {}
-
-  tiktoken@1.0.17: {}
 
   timezones-list@3.1.0: {}
 

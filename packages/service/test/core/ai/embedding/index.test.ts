@@ -6,6 +6,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock the AI API client factory so tests don't hit the real network.
 // We control the embeddings.create implementation per-test via `mockCreate`.
 const mockCreate = vi.fn();
+const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (text: string) => text.length));
+
+// getVectors 在缺少 usage 时会回退本地 token 计数；测试里只验证回退路径生效，
+// 不启动真实 worker，避免 service 包单测依赖 app/pro 的 worker 构建目录。
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countPromptTokens: mockCountPromptTokens
+}));
+
 vi.mock('@fastgpt/service/core/ai/config', () => ({
   getAIApi: () => ({
     ai: {
@@ -370,6 +378,7 @@ describe('getVectors function test', () => {
 
   beforeEach(() => {
     mockCreate.mockReset();
+    mockCountPromptTokens.mockImplementation(async (text: string) => text.length);
   });
 
   const buildModel = (overrides: Partial<EmbeddingModelItemType> = {}): EmbeddingModelItemType =>

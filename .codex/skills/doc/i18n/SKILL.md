@@ -9,7 +9,7 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 
 ## 文件结构
 
-文档位于 `document/content/docs/` 目录下：
+文档位于 `document/content/` 目录下，可能分布在 `docs/`、`self-host/` 等子目录：
 
 - 内容文件：`{name}.mdx`（中文） → `{name}.en.mdx`（英文）
 - 导航文件：`meta.json`（中文） → `meta.en.json`（英文）
@@ -26,6 +26,8 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 - 检查对应的英文文件是否存在或是否需要更新
 
 **手动指定**：用户直接给出文件路径或目录。
+
+无论使用哪种方式，只要翻译范围包含 `.mdx` 内容文件，都必须把同目录的 `meta.json` / `meta.en.json` 纳入检查范围，避免新增英文内容后导航缺失。
 
 ### 2. 翻译内容文件（.mdx → .en.mdx）
 
@@ -47,9 +49,16 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 - 表格中的文字内容
 - 代码块中的中文注释
 
-### 3. 翻译导航文件（meta.json → meta.en.json）
+### 3. 同步导航文件（meta.json → meta.en.json）
 
-对每个中文 `meta.json`，生成或更新对应的 `meta.en.json`。
+对每个中文 `meta.json`，生成或更新对应的 `meta.en.json`。翻译 `.mdx` 文件时，也要同步检查其同目录导航文件：
+
+- 如果同目录存在 `meta.json`，检查本次翻译的中文文件 basename（如 `41503.mdx` → `41503`）是否在 `pages` 数组中。
+- 如果中文文件是新增页面且 `meta.json` 未引用，应按目录内现有排序和上下文更新 `meta.json`；无法可靠判断位置时，先询问用户，不要只创建 `.en.mdx` 后忽略导航。
+- `meta.en.json` 的 `pages` 必须与 `meta.json` 保持一致，只翻译 `title`、`description` 和分隔符字符串，不要翻译或删除页面文件名引用。
+- 如果 `meta.en.json` 缺失，必须创建；如果已存在但 `pages` 落后于 `meta.json`，必须同步。
+- 如果用户只指定了 `meta.json`，仍按导航文件翻译规则更新 `meta.en.json`，并检查 `pages` 中引用的中文 `.mdx` 是否有对应 `.en.mdx`。
+- 修改导航 JSON 时优先使用结构化 JSON 方式或严格保持原文件格式，避免手改导致尾逗号、缩进漂移或 `pages` 顺序错误。
 
 **需要翻译的字段**：`title`、`description`、分隔符字符串（如 `"---入门---"` → `"---Getting Started---"`）
 
@@ -58,7 +67,9 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 ### 4. 翻译完成后
 
 - 列出所有已翻译的文件
+- 列出所有已更新或确认无需更新的 `meta.json` / `meta.en.json`
 - 如果发现中文文件有对应英文文件缺失的情况，提醒用户
+- 如果发现中文 `.mdx` 未被同目录 `meta.json` 引用，且本次未能安全更新导航，明确提醒用户
 
 ## 翻译原则
 

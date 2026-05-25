@@ -158,12 +158,15 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）
     const inputTokens =
       usage?.prompt_tokens ||
-      (await countGptMessagesTokens(
-        requestBody.messages as ChatCompletionMessageParam[],
-        requestBody.tools as ChatCompletionTool[] | undefined
-      ));
+      (await countGptMessagesTokens({
+        messages: requestBody.messages as ChatCompletionMessageParam[],
+        tools: requestBody.tools as ChatCompletionTool[] | undefined
+      }));
     const outputTokens =
-      usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
+      usage?.completion_tokens ||
+      (await countGptMessagesTokens({
+        messages: [assistantMessage]
+      }));
 
     /**
      * 空响应不一定是请求异常，可能是模型返回 stop 但没有内容。

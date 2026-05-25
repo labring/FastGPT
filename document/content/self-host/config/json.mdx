@@ -13,7 +13,7 @@ description: FastGPT config.json 文件配置
 
 ## 4.8.20+ 版本新配置文件示例
 
-> 从4.8.20版本开始，模型在页面中进行配置。
+> 从 4.8.20 版本开始，模型在页面中进行配置。
 
 ```json
 {
@@ -24,7 +24,6 @@ description: FastGPT config.json 文件配置
     "vectorMaxProcess": 15, // 向量处理线程数量
     "qaMaxProcess": 15, // 问答拆分线程数量
     "vlmMaxProcess": 15, // 图片理解模型最大处理进程
-    "tokenWorkers": 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。
     "hnswEfSearch": 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
     "customPdfParse": {
       // 4.9.0 新增配置
@@ -45,16 +44,16 @@ description: FastGPT config.json 文件配置
 
 #### 1. 申请 Sealos AI proxy API Key
 
-[点击打开 Sealos Pdf parser 官网](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
+[点击打开 Sealos PDF parser 官网](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
 
 #### 2. 修改 FastGPT 配置文件
 
-`systemEnv.customPdfParse.url`填写成`https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf`  
-`systemEnv.customPdfParse.key`填写成在 Sealos AI proxy 中申请的 API Key。
+`systemEnv.customPdfParse.url` 填写成 `https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf`  
+`systemEnv.customPdfParse.key` 填写成在 Sealos AI proxy 中申请的 API Key。
 
 ### 使用 Doc2x 解析 PDF 文件
 
-`Doc2x`是一个国内提供专业 PDF 解析。
+`Doc2x` 是一个国内提供专业 PDF 解析。
 
 #### 1. 申请 Doc2x 服务
 
@@ -68,7 +67,7 @@ description: FastGPT config.json 文件配置
 
 #### 3. 开始使用
 
-在知识库导入数据或应用文件上传配置中，可以勾选`PDF 增强解析`，则在对 PDF 解析时候，会使用 Doc2x 服务进行解析。
+在知识库导入数据或应用文件上传配置中，可以勾选 `PDF 增强解析`，则在对 PDF 解析时候，会使用 Doc2x 服务进行解析。
 
 ### 使用 Marker 解析 PDF 文件
 

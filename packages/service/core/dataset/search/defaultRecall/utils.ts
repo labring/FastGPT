@@ -1,6 +1,9 @@
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { countPromptTokens } from '../../../../common/string/tiktoken/index';
+import { countPromptTokensBatch } from '../../../../common/string/tiktoken/index';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 /**
  * 根据搜索模式分配每条召回链路的候选数量。
@@ -37,12 +40,12 @@ export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
   maxTokens: number
 ) => {
-  const tokensScoreFilter = await Promise.all(
-    data.map(async (item) => ({
-      ...item,
-      tokens: await countPromptTokens(item.q + item.a)
-    }))
-  );
+  const startTime = Date.now();
+  const tokenList = await countPromptTokensBatch(data.map((item) => item.q + item.a));
+  const tokensScoreFilter = data.map((item, index) => ({
+    ...item,
+    tokens: tokenList[index] || 0
+  }));
 
   const results: SearchDataResponseItemType[] = [];
   let totalTokens = 0;
@@ -57,5 +60,20 @@ export const filterDatasetDataByMaxTokens = async (
     }
   }
 
-  return results.length === 0 ? data.slice(0, 1) : results;
+  const filteredResults = results.length === 0 ? data.slice(0, 1) : results;
+
+  const obj = {
+    candidateCount: data.length,
+    resultCount: filteredResults.length,
+    maxTokens,
+    totalTokens,
+    durationMs: Date.now() - startTime
+  };
+  if (obj.durationMs > 100) {
+    logger.warn('Dataset search token filter completed', obj);
+  } else {
+    logger.debug('Dataset search token filter completed', obj);
+  }
+
+  return filteredResults;
 };

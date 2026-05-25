@@ -3,11 +3,11 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-// Mock countPromptTokens (uses worker threads, not available in test)
+// Mock token counting (uses worker threads, not available in test)
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
-  countPromptTokens: vi.fn(async (text: string) => {
+  countPromptTokensBatch: vi.fn(async (texts: string[]) => {
     // Simple approximation: 1 token ≈ 1 char for test purposes
-    return typeof text === 'string' ? text.length : 0;
+    return texts.map((text) => (typeof text === 'string' ? text.length : 0));
   })
 }));
 
@@ -21,13 +21,13 @@ import {
   filterSearchResultsByMaxChars,
   getSystemToolRunTimeNodeFromSystemToolset
 } from '@fastgpt/service/core/workflow/utils';
-import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
+import { countPromptTokensBatch } from '@fastgpt/service/common/string/tiktoken/index';
 import {
   getSystemTools,
   getSystemToolByIdAndVersionId
 } from '@fastgpt/service/core/app/tool/controller';
 
-const mockedCountPromptTokens = vi.mocked(countPromptTokens);
+const mockedCountPromptTokensBatch = vi.mocked(countPromptTokensBatch);
 const mockedGetSystemTools = vi.mocked(getSystemTools);
 const mockedGetSystemToolByIdAndVersionId = vi.mocked(getSystemToolByIdAndVersionId);
 
@@ -118,7 +118,7 @@ describe('filterSearchResultsByMaxChars', () => {
   it('should concatenate q and a for token counting', async () => {
     const list = [makeSearchItem('hello', 'world')];
     await filterSearchResultsByMaxChars(list, 100);
-    expect(mockedCountPromptTokens).toHaveBeenCalledWith('helloworld');
+    expect(mockedCountPromptTokensBatch.mock.calls[0][0]).toEqual(['helloworld']);
   });
 
   it('should handle items with undefined a field', async () => {
@@ -127,7 +127,7 @@ describe('filterSearchResultsByMaxChars', () => {
     const list = [item];
     await filterSearchResultsByMaxChars(list, 100);
     // q + a = "hello" + undefined = "helloundefined"
-    expect(mockedCountPromptTokens).toHaveBeenCalledWith('helloundefined');
+    expect(mockedCountPromptTokensBatch.mock.calls[0][0]).toEqual(['helloundefined']);
   });
 });
 

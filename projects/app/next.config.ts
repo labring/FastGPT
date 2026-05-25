@@ -76,7 +76,6 @@ const nextConfig: NextConfig = {
     '@node-rs/jieba',
     'bullmq',
     '@zilliz/milvus2-sdk-node',
-    'tiktoken',
     '@opentelemetry/api-logs',
     '@mariozechner/pi-agent-core',
     '@mariozechner/pi-ai'

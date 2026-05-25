@@ -99,7 +99,7 @@ describe('compressRequestMessages', () => {
     mockDefaultUsagePoints();
     countPromptTokensMock.mockResolvedValue(100);
     countGptMessagesTokensMock.mockImplementation(
-      async (messages: ChatCompletionMessageParam[]) => messages.length * 1000
+      async ({ messages }: { messages: ChatCompletionMessageParam[] }) => messages.length * 1000
     );
   });
 
@@ -261,8 +261,9 @@ describe('compressRequestMessages', () => {
         content: 'short user history'
       }
     ];
-    countGptMessagesTokensMock.mockImplementation(async (input: ChatCompletionMessageParam[]) =>
-      input === messages ? 4000 : 100
+    countGptMessagesTokensMock.mockImplementation(
+      async (input: { messages: ChatCompletionMessageParam[] }) =>
+        input.messages === messages ? 4000 : 100
     );
 
     const result = await compressRequestMessages({
@@ -271,7 +272,9 @@ describe('compressRequestMessages', () => {
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(countGptMessagesTokensMock).toHaveBeenCalledWith(messages);
+    expect(countGptMessagesTokensMock).toHaveBeenCalledWith({
+      messages
+    });
     expect(result.messages).toEqual([
       messages[0],
       messages[1],

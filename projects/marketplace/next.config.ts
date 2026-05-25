@@ -76,7 +76,6 @@ const nextConfig: NextConfig = {
     'pg',
     'bullmq',
     '@zilliz/milvus2-sdk-node',
-    'tiktoken',
     '@opentelemetry/api-logs'
   ],
   experimental: {

@@ -1,129 +1,70 @@
-/* Only the token of gpt-3.5-turbo is used */
-import { Tiktoken } from 'tiktoken/lite';
-import cl100k_base from './cl100k_base.json';
 import {
   type ChatCompletionMessageParam,
-  type ChatCompletionContentPart,
   type ChatCompletionCreateParams,
   type ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { parentPort } from 'worker_threads';
 import { getLogger, LogCategories } from '../../common/logger';
+import { countGptMessagesTokensInWorker, countPromptTokensInWorker } from './count';
 
-const enc = new Tiktoken(cl100k_base.bpe_ranks, cl100k_base.special_tokens, cl100k_base.pat_str);
 const logger = getLogger(LogCategories.INFRA.WORKER);
 
-/* count messages tokens */
+type CountGptMessagesTokensWorkerPayload = {
+  id: string;
+  messages?: ChatCompletionMessageParam[];
+  messageGroups?: ChatCompletionMessageParam[][];
+  prompts?: (string | null | undefined)[];
+  tools?: ChatCompletionTool[];
+  functionCall?: ChatCompletionCreateParams.Function[];
+};
+
+/**
+ * Token 计数 worker 入口。
+ *
+ * 单条 messages、批量 messageGroups、批量 prompts 共用同一个 worker 文件，减少 worker
+ * 类型数量和初始化成本。批量请求在 worker 内同步 map，避免主线程为大量短文本反复
+ * postMessage，也保证返回顺序和输入顺序一致。
+ */
 parentPort?.on(
   'message',
   ({
     id,
     messages,
+    messageGroups,
+    prompts,
     tools,
     functionCall
-  }: {
-    id: string;
-    messages: ChatCompletionMessageParam[];
-    tools?: ChatCompletionTool[];
-    functionCall?: ChatCompletionCreateParams.Function[];
-  }) => {
+  }: CountGptMessagesTokensWorkerPayload) => {
     try {
-      /* count one prompt tokens */
-      const countPromptTokens = (
-        prompt: string | ChatCompletionContentPart[] | null | undefined = '',
-        role: '' | `${ChatCompletionRequestMessageRoleEnum}` = ''
-      ) => {
-        const promptText = (() => {
-          if (!prompt) return '';
-          if (typeof prompt === 'string') return prompt;
-          let promptText = '';
-          prompt.forEach((item) => {
-            if (item.type === 'text') {
-              promptText += item.text;
-            } else if (item.type === 'image_url') {
-              promptText += item.image_url.url;
-            }
-          });
-          return promptText;
-        })();
-
-        const text = `${role}\n${promptText}`.trim();
-
-        try {
-          const encodeText = enc.encode(text);
-          const supplementaryToken = role ? 4 : 0;
-          return encodeText.length + supplementaryToken;
-        } catch (error) {
-          return text.length;
+      const data = (() => {
+        // 上下文裁剪会频繁计算多组 messages，批量放进一次 worker 消息能降低 IPC 开销。
+        if (messageGroups) {
+          return messageGroups.map((messages) => countGptMessagesTokensInWorker({ messages }));
         }
-      };
-      const countToolsTokens = (
-        tools?: ChatCompletionTool[] | ChatCompletionCreateParams.Function[]
-      ) => {
-        if (!tools || tools.length === 0) return 0;
 
-        const toolText = tools
-          ? JSON.stringify(tools)
-              .replace('"', '')
-              .replace('\n', '')
-              .replace(/( ){2,}/g, ' ')
-          : '';
+        // embedding/rerank 等路径多为纯文本 prompt，走轻量分支可少做 chat message 拼装。
+        if (prompts) {
+          return prompts.map((prompt) => countPromptTokensInWorker(prompt));
+        }
 
-        return enc.encode(toolText).length;
-      };
-
-      const total =
-        messages.reduce((sum, item, index) => {
-          // Evaluates the text of toolcall and functioncall
-          const functionCallPrompt = (() => {
-            let prompt = '';
-            if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-              const toolCalls = item.tool_calls;
-              prompt +=
-                toolCalls
-                  ?.map((item) => `${item?.function?.name} ${item?.function?.arguments}`.trim())
-                  ?.join('') || '';
-
-              const functionCall = item.function_call;
-              prompt += `${functionCall?.name} ${functionCall?.arguments}`.trim();
-            }
-            return prompt;
-          })();
-
-          const contentPrompt = (() => {
-            if (!item.content) return '';
-            if (typeof item.content === 'string') return item.content;
-            return item.content
-              .map((item) => {
-                if (item.type === 'text') return item.text;
-                return '';
-              })
-              .join('');
-          })();
-
-          // Only the last message computed reasoning_content
-          const reasoningText = index === messages.length - 1 ? item.reasoning_content || '' : '';
-
-          return (
-            sum +
-            countPromptTokens(`${reasoningText}${contentPrompt}${functionCallPrompt}`, item.role)
-          );
-        }, 0) +
-        countToolsTokens(tools) +
-        countToolsTokens(functionCall);
+        return countGptMessagesTokensInWorker({
+          messages: messages || [],
+          tools,
+          functionCall
+        });
+      })();
 
       parentPort?.postMessage({
         id,
         type: 'success',
-        data: total
+        data
       });
     } catch (error) {
       logger.error('Token count worker failed', { error });
       parentPort?.postMessage({
         id,
-        type: 'success',
-        data: 0
+        type: 'error',
+        data: error instanceof Error ? error.message : String(error)
       });
     }
   }
