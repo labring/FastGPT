@@ -1,6 +1,19 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { getTestMaxWorkers } from '../../test/vitestWorkers';
+
+/**
+ * Keep this helper local to the app project because the app Docker build context
+ * does not include the repository root `test/` directory, but Next still
+ * type-checks this config during image builds.
+ */
+const getTestMaxWorkers = () => {
+  const raw = process.env.FASTGPT_TEST_MAX_WORKERS;
+  if (!raw) return 4;
+  if (raw.endsWith('%')) return raw as `${number}%`;
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+};
 
 export default defineConfig({
   resolve: {
