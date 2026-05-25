@@ -174,8 +174,8 @@ export const useConfirm = (props?: {
           onClose={handleClose}
           isCentered
           size={'sm'}
-          contentPx={'32px'}
-          contentPy={'32px'}
+          px={'32px'}
+          py={'32px'}
           borderRadius={'10px'}
         >
           <Flex direction={'column'} gap={'24px'}>

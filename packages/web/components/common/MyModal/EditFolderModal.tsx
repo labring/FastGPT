@@ -71,10 +71,20 @@ const EditFolderModal = ({
       iconSrc="common/folderFill"
       title={typeMap.title}
       size={'md'}
-      contentPx={'32px'}
-      contentPy={'32px'}
+      px={'32px'}
+      py={'32px'}
       borderRadius={'10px'}
       closeOnOverlayClick={false}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button isLoading={loading} onClick={handleSubmit(onSave)}>
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
       <Flex flexDirection={'column'} gap={6}>
         <Box>
@@ -85,14 +95,6 @@ const EditFolderModal = ({
           <FormLabel mb={2}>{t('common:folder_description')}</FormLabel>
           <Textarea {...register('intro')} h={'100px'} minH={'100px'} maxLength={200} />
         </Box>
-        <Flex justifyContent={'flex-end'} gap={3}>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button isLoading={loading} onClick={handleSubmit(onSave)}>
-            {t('common:Confirm')}
-          </Button>
-        </Flex>
       </Flex>
     </MyModal>
   );

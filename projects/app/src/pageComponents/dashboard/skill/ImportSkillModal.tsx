@@ -169,10 +169,20 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         iconSrc="common/importLight"
         iconColor={'primary.600'}
         size={'md'}
-        contentPx={'32px'}
-        contentPy={'32px'}
+        px={'32px'}
+        py={'32px'}
         borderRadius={'10px'}
         closeOnOverlayClick={false}
+        footer={
+          <>
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
+              {t('common:Confirm')}
+            </Button>
+          </>
+        }
       >
         <Flex flexDirection={'column'} gap={6}>
           <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -272,14 +282,6 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
             </Flex>
           )}
           <FileInput onSelect={(files) => files[0] && handleFile(files[0])} />
-          <Flex justifyContent={'flex-end'} gap={3}>
-            <Button variant={'whiteBase'} onClick={onClose}>
-              {t('common:Cancel')}
-            </Button>
-            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
-              {t('common:Confirm')}
-            </Button>
-          </Flex>
         </Flex>
       </MyModal>
       <AvatarUploader />

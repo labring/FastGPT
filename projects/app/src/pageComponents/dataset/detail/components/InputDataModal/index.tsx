@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import DataInputPanel from './DataInputPanel';
 import IndexInputPanel from './IndexInputPanel';
 import { TabEnum, useInputDataModal, type InputDataType } from './useInputDataModal';
@@ -67,9 +66,9 @@ const InputDataModal = ({
       borderRadius={'10px'}
       bg={'white'}
       boxShadow={'3.5'}
-      contentPx={[5, '32px']}
-      contentPy={[5, '32px']}
-      headerPx={0}
+      px={[5, '32px']}
+      py={[5, '32px']}
+      headerStyles={{ px: 0 }}
       title={
         <Box
           className={'textEllipsis'}
@@ -87,12 +86,13 @@ const InputDataModal = ({
           {collection.sourceName || t('common:unknow_source')}
         </Box>
       }
+      isLoading={initLoading}
+      overflow={'hidden'}
     >
-      <MyBox
+      <Box
         display={'flex'}
         flexDir={'column'}
-        isLoading={initLoading}
-        h={'100%'}
+        flex={'1 0 0'}
         minH={['300px', showTabs ? '506px' : '450px']}
         overflow={'hidden'}
       >
@@ -179,7 +179,7 @@ const InputDataModal = ({
             </Flex>
           </Flex>
         )}
-      </MyBox>
+      </Box>
     </MyModal>
   );
 };
