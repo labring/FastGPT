@@ -9,9 +9,10 @@ type Props = {
   title?: string;
   banner?: string;
   menuConfirmButtonText?: string;
+  footerSlot?: React.ReactNode;
 };
 
-const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText }: Props) => {
+const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, footerSlot }: Props) => {
   const theme = useTheme();
 
   return (
@@ -27,6 +28,7 @@ const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText }: Props) => 
       <ChatSliderHeader title={title} banner={banner} />
       <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />
       <ChatSliderList />
+      {footerSlot}
     </MyBox>
   );
 };

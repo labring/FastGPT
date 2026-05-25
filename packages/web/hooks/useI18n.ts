@@ -1,60 +1,36 @@
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
-import Cookies from 'js-cookie';
+import {
+  getLangFromStorage,
+  getLangMapping,
+  LANG_KEY,
+  setLangToStorage,
+  SHARE_LANG_KEY
+} from '../i18n/utils';
 import { useTranslation } from 'next-i18next';
 
-const LANG_KEY = 'NEXT_LOCALE';
-const isInIframe = () => {
-  try {
-    return window.self !== window.top;
-  } catch (e) {
-    return true;
-  }
-};
-const setLang = (value: string) => {
-  if (isInIframe()) {
-    localStorage.setItem(LANG_KEY, value);
-  } else {
-    // 不在 iframe 中，同时使用 Cookie 和 localStorage
-    Cookies.set(LANG_KEY, value, { expires: 30 });
-    localStorage.setItem(LANG_KEY, value);
-  }
-};
-const getLang = () => {
-  return localStorage.getItem(LANG_KEY) || Cookies.get(LANG_KEY);
+type ChangeLngOptions = {
+  reloadOnMissing?: boolean;
 };
 
 export const useI18nLng = () => {
   const { i18n } = useTranslation();
-  const languageMap: Record<string, string> = {
-    zh: LangEnum.zh_CN,
-    'zh-CN': LangEnum.zh_CN,
-    'zh-Hans': LangEnum.zh_CN,
-    'zh-HK': LangEnum.zh_Hant,
-    'zh-TW': LangEnum.zh_Hant,
-    'zh-Hant': LangEnum.zh_Hant,
-    en: LangEnum.en,
-    'en-US': LangEnum.en
-  };
 
-  const onChangeLng = async (lng: string) => {
-    let lang = languageMap[lng];
+  /**
+   * 切换并持久化当前语言。
+   * `reloadOnMissing` 只给用户主动切换入口使用，初始化语言时不刷新页面，避免首屏抖动。
+   */
+  const onChangeLng = async (lng: string, storageKey = LANG_KEY, options?: ChangeLngOptions) => {
+    const lang = getLangMapping(lng);
+    const prevLang = getLangFromStorage(storageKey);
 
-    // 如果没有直接映射，尝试智能回退
-    if (!lang) {
-      const langPrefix = lng.split('-')[0];
-      // 中文相关语言优先回退到简体中文
-      if (langPrefix === 'zh') {
-        lang = LangEnum.zh_CN;
-      }
-    }
-
-    const prevLang = getLang();
-
-    setLang(lang);
+    setLangToStorage(lang, storageKey);
 
     await i18n?.changeLanguage?.(lang);
 
-    if (!i18n?.hasResourceBundle?.(lang, 'common') && prevLang !== lang) {
+    if (
+      options?.reloadOnMissing &&
+      !i18n?.hasResourceBundle?.(lang, 'common') &&
+      prevLang !== lang
+    ) {
       window?.location?.reload?.();
     }
   };
@@ -62,26 +38,24 @@ export const useI18nLng = () => {
   const setUserDefaultLng = (forceGetDefaultLng: boolean = false) => {
     if (!navigator || !localStorage) return;
 
-    if (getLang() && !forceGetDefaultLng) return onChangeLng(getLang() as string);
-
-    // 尝试精确匹配浏览器语言
-    let lang = languageMap[navigator.language];
-
-    // 如果没有精确匹配，尝试匹配语言前缀
-    if (!lang) {
-      const browserLangPrefix = navigator.language.split('-')[0];
-      // 中文语言环境下优先回退到简体中文
-      if (browserLangPrefix === 'zh') {
-        lang = LangEnum.zh_CN;
-      }
-    }
+    const currentLang = getLangFromStorage();
+    if (currentLang && !forceGetDefaultLng) return onChangeLng(currentLang);
 
     // currentLng not in userLang
-    return onChangeLng(lang);
+    return onChangeLng(navigator.language);
+  };
+
+  const setShareDefaultLng = () => {
+    if (!navigator || !localStorage) return;
+
+    // 分享页使用独立 key：首次按浏览器语言初始化，后续只读取访问者自己的分享页偏好。
+    const currentLang = getLangFromStorage(SHARE_LANG_KEY);
+    return onChangeLng(currentLang || navigator.language, SHARE_LANG_KEY);
   };
 
   return {
     onChangeLng,
-    setUserDefaultLng
+    setUserDefaultLng,
+    setShareDefaultLng
   };
 };

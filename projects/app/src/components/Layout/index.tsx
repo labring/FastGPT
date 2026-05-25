@@ -103,6 +103,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     !!userInfo?.team.permission.isOwner;
 
   useMount(() => {
+    if (router.pathname === '/chat/share') return;
+
     setUserDefaultLng();
   });
 

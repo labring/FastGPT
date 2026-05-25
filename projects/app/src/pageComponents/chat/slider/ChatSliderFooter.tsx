@@ -22,40 +22,42 @@ const ChatSliderFooter = () => {
   const isSettingPane = pane === ChatSidebarPaneEnum.SETTING;
 
   return (
-    <Flex flexShrink={0} gap={2} alignItems="center" justifyContent="space-between" p={2} mt="auto">
-      <UserAvatarPopover isCollapsed={false} placement="top-end">
-        <Flex alignItems="center" gap={2} borderRadius="50%" p={2}>
-          <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />
-          <Box className="textEllipsis" flexGrow={1} fontSize={'sm'} fontWeight={500} minW={0}>
-            {userInfo?.team?.memberName}
-          </Box>
-        </Flex>
-      </UserAvatarPopover>
+    <Box flexShrink={0} p={2} mt="auto">
+      <Flex gap={2} alignItems="center" justifyContent="space-between">
+        <UserAvatarPopover isCollapsed={false} placement="top-end">
+          <Flex alignItems="center" gap={2} borderRadius="50%" p={2}>
+            <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />
+            <Box className="textEllipsis" flexGrow={1} fontSize={'sm'} fontWeight={500} minW={0}>
+              {userInfo?.team?.memberName}
+            </Box>
+          </Flex>
+        </UserAvatarPopover>
 
-      {feConfigs.isPlus && isAdmin && (
-        <Flex
-          _hover={{ bg: 'myGray.200' }}
-          bg={isSettingPane ? 'myGray.200' : 'transparent'}
-          borderRadius={'8px'}
-          p={2}
-          cursor={'pointer'}
-          w="40px"
-          h="40px"
-          alignItems="center"
-          justifyContent="center"
-          onClick={() => {
-            handlePaneChange(ChatSidebarPaneEnum.SETTING);
-            onCloseSlider();
-          }}
-        >
-          <MyIcon
-            w="20px"
-            name="common/setting"
-            fill={isSettingPane ? 'primary.500' : 'myGray.400'}
-          />
-        </Flex>
-      )}
-    </Flex>
+        {feConfigs.isPlus && isAdmin && (
+          <Flex
+            _hover={{ bg: 'myGray.200' }}
+            bg={isSettingPane ? 'myGray.200' : 'transparent'}
+            borderRadius={'8px'}
+            p={2}
+            cursor={'pointer'}
+            w="40px"
+            h="40px"
+            alignItems="center"
+            justifyContent="center"
+            onClick={() => {
+              handlePaneChange(ChatSidebarPaneEnum.SETTING);
+              onCloseSlider();
+            }}
+          >
+            <MyIcon
+              w="20px"
+              name="common/setting"
+              fill={isSettingPane ? 'primary.500' : 'myGray.400'}
+            />
+          </Flex>
+        )}
+      </Flex>
+    </Box>
   );
 };
 

@@ -1,7 +1,8 @@
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import Cookies from 'js-cookie';
 
-const LANG_KEY = 'NEXT_LOCALE';
+export const LANG_KEY = 'NEXT_LOCALE';
+export const SHARE_LANG_KEY = 'FASTGPT_SHARE_LOCALE';
 
 const isInIframe = () => {
   try {
@@ -11,18 +12,25 @@ const isInIframe = () => {
   }
 };
 
-export const setLangToStorage = (value: string) => {
-  if (isInIframe()) {
-    localStorage.setItem(LANG_KEY, value);
-  } else {
-    // 不在 iframe 中，同时使用 Cookie 和 localStorage
-    Cookies.set(LANG_KEY, value, { expires: 30 });
-    localStorage.setItem(LANG_KEY, value);
+export const setLangToStorage = (value: string, key = LANG_KEY) => {
+  const inIframe = isInIframe();
+  const isShareLang = key === SHARE_LANG_KEY;
+  // iframe 内平台语言不写 Cookie，避免污染宿主；分享页语言需要 SSR 读取，所以仍写专用 Cookie。
+  const shouldWriteCookie = !inIframe || isShareLang;
+  const cookieOptions =
+    inIframe && isShareLang && location.protocol === 'https:'
+      ? { expires: 30, sameSite: 'none' as const, secure: true }
+      : { expires: 30 };
+
+  if (shouldWriteCookie) {
+    Cookies.set(key, value, cookieOptions);
   }
+
+  localStorage.setItem(key, value);
 };
 
-export const getLangFromStorage = () => {
-  return localStorage.getItem(LANG_KEY) || Cookies.get(LANG_KEY);
+export const getLangFromStorage = (key = LANG_KEY) => {
+  return localStorage.getItem(key) || Cookies.get(key);
 };
 
 export const getLangMapping = (lng: string): string => {

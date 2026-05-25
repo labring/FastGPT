@@ -43,6 +43,7 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import ChatLanguageSelector from '@/pageComponents/chat/LanguageSelector';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -92,9 +93,10 @@ const OutLink = (props: Props) => {
     return Object.fromEntries(Object.entries(customVariables).filter(([_, value]) => value !== ''));
   }, [customVariables]);
 
-  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
@@ -112,7 +114,7 @@ const OutLink = (props: Props) => {
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;
-      if (!outLinkUid || !shareId || forbidLoadChat.current) return;
+      if (!outLinkUid || !shareId || forbidLoadChatRef.current) return;
 
       const res = await getInitOutLinkChatInfo({
         chatId,
@@ -136,7 +138,7 @@ const OutLink = (props: Props) => {
       manual: false,
       refreshDeps: [shareId, outLinkAuthData, chatId],
       onFinally() {
-        forbidLoadChat.current = false;
+        forbidLoadChatRef.current = false;
       }
     }
   );
@@ -214,7 +216,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      return { responseText, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChatRef.current };
     },
     [
       chatId,
@@ -224,7 +226,7 @@ const OutLink = (props: Props) => {
       props.showSkillReferences,
       onUpdateHistoryTitle,
       setChatBoxData,
-      forbidLoadChat,
+      forbidLoadChatRef,
       onChangeChatId
     ]
   );
@@ -236,8 +238,18 @@ const OutLink = (props: Props) => {
   });
 
   const RenderHistoryList = useMemo(() => {
+    // 语言入口跟随历史侧栏挂载：PC 放侧栏底部，移动端放抽屉底部且选择后关闭抽屉。
+    const footerSlot = (
+      <Box flexShrink={0} p={3} mt="auto">
+        <ChatLanguageSelector mode="share" onSelected={isPc ? undefined : onCloseSlider} />
+      </Box>
+    );
+
     const Children = (
-      <ChatHistorySidebar menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')} />
+      <ChatHistorySidebar
+        menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')}
+        footerSlot={footerSlot}
+      />
     );
 
     if (showHistory !== '1') return null;
@@ -248,10 +260,11 @@ const OutLink = (props: Props) => {
       <ChatSliderMobileDrawer
         showHeader={false}
         showFooter={false}
+        footerSlot={footerSlot}
         menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
       />
     );
-  }, [isPc, datasetCiteData, showHistory, t]);
+  }, [isPc, datasetCiteData, onCloseSlider, showHistory, t]);
 
   return (
     <>
@@ -339,7 +352,7 @@ const Render = (props: Props) => {
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
-  const { setUserDefaultLng } = useI18nLng();
+  const { setShareDefaultLng } = useI18nLng();
 
   const chatHistoryProviderParams = useMemoEnhance(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId || '' };
@@ -356,7 +369,8 @@ const Render = (props: Props) => {
 
   useMount(() => {
     setSource('share');
-    setUserDefaultLng(true);
+    // 免登录分享页只读写访问者语言偏好，不能覆盖平台登录态语言。
+    setShareDefaultLng();
   });
 
   // Set default localUId
@@ -455,7 +469,9 @@ export async function getServerSideProps(context: any) {
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow'], {
+        langCookieKey: 'FASTGPT_SHARE_LOCALE'
+      }))
     }
   };
 }
