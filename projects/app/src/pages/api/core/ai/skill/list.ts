@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import {
@@ -17,7 +18,6 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { AgentSkillTypeEnum, AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -221,33 +221,6 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     })
     .filter((skill) => skill.permission.hasReadPer);
 
-  // 默认保持历史行为返回 appCount；编辑页状态校验可显式关闭，避免批量校验时产生额外 count 查询。
-  const nonFolderSkills =
-    withAppCount !== false ? formatSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
-  const appCountMap = new Map<string, number>();
-  if (nonFolderSkills.length > 0) {
-    const counts = await Promise.all(
-      nonFolderSkills.map((skill) =>
-        MongoApp.countDocuments({
-          deleteTime: null,
-          modules: {
-            $elemMatch: {
-              inputs: {
-                $elemMatch: {
-                  key: NodeInputKeyEnum.skills,
-                  'value.skillId': skill._id.toString()
-                }
-              }
-            }
-          }
-        })
-      )
-    );
-    nonFolderSkills.forEach((skill, i) => {
-      appCountMap.set(skill._id.toString(), counts[i]);
-    });
-  }
-
   const total = formatSkills.length;
 
   // Apply pagination if requested
@@ -258,6 +231,38 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     }
     return formatSkills;
   })();
+
+  // 默认保持历史行为返回 appCount；只统计本次返回的 skill，编辑页状态校验可显式关闭。
+  const nonFolderSkills =
+    withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
+  const appCountMap = new Map<string, number>();
+  if (nonFolderSkills.length > 0) {
+    const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
+    const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
+      {
+        $match: {
+          teamId: new Types.ObjectId(String(teamId)),
+          deleteTime: null,
+          'publishedResourceRefs.skillIds': { $in: skillIdStrings }
+        }
+      },
+      { $unwind: '$publishedResourceRefs.skillIds' },
+      {
+        $match: {
+          'publishedResourceRefs.skillIds': { $in: skillIdStrings }
+        }
+      },
+      {
+        $group: {
+          _id: '$publishedResourceRefs.skillIds',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    counts.forEach((item) => {
+      appCountMap.set(String(item._id), item.count);
+    });
+  }
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,

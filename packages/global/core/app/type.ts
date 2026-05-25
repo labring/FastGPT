@@ -84,6 +84,11 @@ export const AppChatConfigTypeSchema = z.object({
 });
 export type AppChatConfigType = z.infer<typeof AppChatConfigTypeSchema>;
 
+export const AppResourceRefsSchema = z.object({
+  skillIds: z.array(z.string()).default([])
+});
+export type AppResourceRefsType = z.infer<typeof AppResourceRefsSchema>;
+
 // Mongo Collection
 export const AppSchemaTypeSchema = z.object({
   _id: ObjectIdSchema,
@@ -115,6 +120,7 @@ export const AppSchemaTypeSchema = z.object({
   chatConfig: AppChatConfigTypeSchema,
   scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional(),
   scheduledTriggerNextTime: z.coerce.date().optional(),
+  publishedResourceRefs: AppResourceRefsSchema.optional(),
 
   inheritPermission: z.boolean().optional(),
 

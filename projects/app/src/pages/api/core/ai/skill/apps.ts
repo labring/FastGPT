@@ -12,7 +12,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type {
   ListAppsBySkillIdQuery,
@@ -65,16 +64,7 @@ async function handler(
     {
       teamId,
       deleteTime: null,
-      modules: {
-        $elemMatch: {
-          inputs: {
-            $elemMatch: {
-              key: NodeInputKeyEnum.skills,
-              'value.skillId': skillId
-            }
-          }
-        }
-      }
+      'publishedResourceRefs.skillIds': skillId
     },
     '_id parentId avatar type name intro tmbId updateTime inheritPermission'
   )

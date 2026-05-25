@@ -9,7 +9,6 @@ import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -22,7 +21,7 @@ async function handler(
     return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
-  const { skill, permission } = await authSkill({
+  const { skill, permission, teamId } = await authSkill({
     req,
     authToken: true,
     authApiKey: true,
@@ -31,17 +30,9 @@ async function handler(
   });
 
   const appCount = await MongoApp.countDocuments({
+    teamId,
     deleteTime: null,
-    modules: {
-      $elemMatch: {
-        inputs: {
-          $elemMatch: {
-            key: NodeInputKeyEnum.skills,
-            'value.skillId': skill._id.toString()
-          }
-        }
-      }
-    }
+    'publishedResourceRefs.skillIds': skill._id.toString()
   });
 
   return {
