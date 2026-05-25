@@ -285,7 +285,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       type,
       ...(type === ModelTypeEnum.llm
         ? {
-            vision: true,
+            vision: false,
             audio: false,
             video: false
           }
@@ -317,10 +317,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           {Tab}
           <Box flex={1} />
           <Button variant={'whiteBase'} mr={2} onClick={onOpenDefaultModel}>
-            {t('account:model.default_model')}
+            {t('account_model:model.default_model')}
           </Button>
           <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
-            {t('account:model.json_config')}
+            {t('account_model:model.json_config')}
           </Button>
           <AddModelButton onCreate={onCreateModel} />
         </Flex>
@@ -373,7 +373,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       onClick={() => setShowModelId(!showModelId)}
                     >
                       <Box>
-                        {showModelId ? t('account:model.model_id') : t('common:model.name')}
+                        {showModelId ? t('account_model:model.model_id') : t('common:model.name')}
                       </Box>
                       <MyIcon name={'modal/changePer'} w={'1rem'} />
                     </HStack>
@@ -386,7 +386,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       onClick={() => setShowActive(!showActive)}
                       color={showActive ? 'primary.600' : 'myGray.600'}
                     >
-                      {t('account:model.active')}({activeModelLength})
+                      {t('account_model:model.active')}({activeModelLength})
                     </Box>
                   </Th>
                   <Th fontSize={'xs'}></Th>
@@ -439,12 +439,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       <HStack>
                         <MyIconButton
                           icon={'core/chat/sendLight'}
-                          tip={t('account:model.test_model')}
+                          tip={t('account_model:model.test_model')}
                           onClick={() => onTestModel({ model: item.model })}
                         />
                         <MyIconButton
                           icon={'common/settingLight'}
-                          tip={t('account:model.edit_model')}
+                          tip={t('account_model:model.edit_model')}
                           onClick={() => onEditModel(item.model)}
                         />
                         {item.isCustom && (
@@ -455,7 +455,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               </Box>
                             }
                             type="delete"
-                            content={t('account:model.delete_model_confirm')}
+                            content={t('account_model:model.delete_model_confirm')}
                             onConfirm={() => deleteModel({ model: item.model })}
                           />
                         )}
@@ -516,13 +516,13 @@ const JsonConfigModal = ({
       isLoading={loading}
       onClose={onClose}
       iconSrc="modal/edit"
-      title={t('account:model.json_config')}
+      title={t('account_model:model.json_config')}
       w={'100%'}
       h={'100%'}
     >
       <ModalBody display={'flex'} flexDirection={'column'}>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          {t('account:model.json_config_tip')}
+          {t('account_model:model.json_config_tip')}
         </Box>
         <Box mt={2} flex={1} w={'100%'} overflow={'hidden'}>
           <JsonEditor value={data} onChange={setData} resize h={'100%'} />
@@ -536,7 +536,7 @@ const JsonConfigModal = ({
         <PopoverConfirm
           Trigger={<Button>{t('common:Confirm')}</Button>}
           type="info"
-          content={t('account:model.json_config_confirm')}
+          content={t('account_model:model.json_config_confirm')}
           onConfirm={() => runAsync({ config: data })}
         />
       </ModalFooter>
@@ -583,7 +583,7 @@ const DefaultModelModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      title={t('account:default_model_config')}
+      title={t('account_model:default_model_config')}
       iconSrc="modal/edit"
     >
       <ModalBody>

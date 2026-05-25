@@ -118,7 +118,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
     }
 
     return items;
-  }, [bill?.couponDetail?.subscriptions]);
+  }, [bill?.couponDetail?.subscriptions, bill?.metadata.standSubLevel]);
 
   return (
     <MyModal
@@ -172,7 +172,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account:has_invoice')}:</FormLabel>
             {bill?.metadata.payWay === 'balance' ? (
-              t('user:bill.not_need_invoice')
+              t('account:bill.not_need_invoice')
             ) : (
               <Box>{bill.hasInvoice ? t('account:yes') : t('account:no')}</Box>
             )}

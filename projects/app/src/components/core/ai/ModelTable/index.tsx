@@ -40,6 +40,9 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
   const { t, i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useSystemStore();
   const { userInfo } = useUserStore();
+  const modelPermissionConfigHint = permissionConfig
+    ? t('account_model:model_permission_config_hint')
+    : '';
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useMemo<{ label: React.ReactNode; value: string | '' }[]>(
@@ -348,7 +351,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                 {permissionConfig && userInfo?.team.permission.hasManagePer && (
                   <Td fontSize={'sm'}>
                     <LazyCollaboratorProvider
-                      selectedHint={t('account_model:model_permission_config_hint')}
+                      selectedHint={modelPermissionConfigHint}
                       defaultRole={ReadRoleVal}
                       onGetCollaboratorList={() => getModelCollaborators(item.model)}
                       onUpdateCollaborators={({ collaborators }) =>
@@ -384,7 +387,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
         }}
         Controler={
           <LazyCollaboratorProvider
-            selectedHint={t('account_model:model_permission_config_hint')}
+            selectedHint={modelPermissionConfigHint}
             defaultRole={ReadRoleVal}
             onGetCollaboratorList={() =>
               Promise.resolve({

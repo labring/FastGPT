@@ -115,7 +115,7 @@ const EditChannelModal = ({
       isActive: true,
       ...(type === ModelTypeEnum.llm
         ? {
-            vision: true,
+            vision: false,
             audio: false,
             video: false
           }

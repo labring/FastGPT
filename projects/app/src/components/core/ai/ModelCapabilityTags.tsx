@@ -39,11 +39,11 @@ const ModelCapabilityTags = ({
 }: Props) => {
   const { t, i18n } = useTranslation();
   const multimodalCapabilities: string[] = [];
-  if (showVision) multimodalCapabilities.push(t('account:model.capability.image'));
-  if (showVideo) multimodalCapabilities.push(t('account:model.capability.video'));
-  if (showAudio) multimodalCapabilities.push(t('account:model.capability.audio'));
+  if (showVision) multimodalCapabilities.push(t('common:core.ai.model.capability_image'));
+  if (showVideo) multimodalCapabilities.push(t('common:core.ai.model.capability_video'));
+  if (showAudio) multimodalCapabilities.push(t('common:core.ai.model.capability_audio'));
   const showMultimodal = multimodalCapabilities.length > 0;
-  const multimodalTooltip = t('account:model.multimodal_support_tip', {
+  const multimodalTooltip = t('common:core.ai.model.multimodal_support_tip', {
     modalities: multimodalCapabilities.join(i18n.language === 'en' ? ', ' : '、')
   });
 
@@ -86,7 +86,7 @@ const ModelCapabilityTags = ({
       )}
       {showReasoning && (
         <Box {...baseCapabilityTagStyles} bg={'#F7F7F7'} borderColor={'#E8EBF0'} color={'#404040'}>
-          {t('account:model.reasoning_tag')}
+          {t('common:core.ai.model.reasoning_tag')}
         </Box>
       )}
     </Flex>

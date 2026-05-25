@@ -36,5 +36,10 @@
   "total_amount": "总金额",
   "type": "类型",
   "unit_code": "统一信用代码",
-  "wecom_not_pay_tip": "未支付，即将跳转支付地址"
+  "wecom_not_pay_tip": "未支付，即将跳转支付地址",
+  "status": "状态",
+  "support_wallet_amount": "金额",
+  "yes": "是",
+  "no": "否",
+  "yuan": "{{amount}}元"
 }

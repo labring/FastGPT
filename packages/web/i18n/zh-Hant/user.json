@@ -1,6 +1,5 @@
 {
   "bill.buy_plan": "購買方案",
-  "bill.not_need_invoice": "餘額支付無法開立發票",
   "bill.renew_plan": "續訂方案",
   "bill.standard_valid_tip": "方案使用規則：系統會優先使用較高等級的方案，原未使用完的方案將延後生效",
   "manage_team": "管理團隊",

@@ -18,5 +18,6 @@
   "registration_hint": "請自備域名並透過 <bold>{{provider}}</bold> 完成備案後，將域名填入下方輸入框中",
   "status.active": "已生效",
   "status.inactive": "未生效",
-  "upgrade_to_use_custom_domain": "目前套餐不支援自訂域名，請先升級"
+  "upgrade_to_use_custom_domain": "目前套餐不支援自訂域名，請先升級",
+  "upgrade_plan": "升級套餐"
 }

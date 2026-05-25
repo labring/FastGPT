@@ -23,7 +23,6 @@ import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import type { CustomDomainType } from '@fastgpt/global/support/customDomain/type';
 import { useState, useMemo } from 'react';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRouter } from 'next/router';
 import Tag from '@fastgpt/web/components/common/Tag';
 
@@ -60,7 +59,7 @@ const CustomDomain = () => {
   //   onClose: onCloseDomainVerify
   // } = useDisclosure();
 
-  const { runAsync: onDelete, loading: loadingDelete } = useRequest(deleteCustomDomain, {
+  const { runAsync: onDelete } = useRequest(deleteCustomDomain, {
     manual: true,
     successToast: t('common:Success'),
     onSuccess: () => refreshCustomDomainList()
@@ -194,7 +193,7 @@ const CustomDomain = () => {
                                   onClick={() => router.push('/price')}
                                   size="md"
                                 >
-                                  {t('account:upgrade_plan')}
+                                  {t('account_custom_domain:upgrade_plan')}
                                 </Button>
                               </Flex>
                             )

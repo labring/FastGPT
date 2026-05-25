@@ -111,7 +111,7 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentInputFilesPrompt', () => {
-  it('generates file XML block with stable ids', () => {
+  it('generates file XML block for document files only', () => {
     const result = buildAgentInputFilesPrompt([
       {
         id: 'current-0',
@@ -124,14 +124,30 @@ describe('buildAgentInputFilesPrompt', () => {
         name: 'chart.png',
         type: ChatFileTypeEnum.image,
         url: '/chart.png'
+      },
+      {
+        id: 'current-2',
+        name: 'voice.mp3',
+        type: ChatFileTypeEnum.audio,
+        url: '/voice.mp3'
+      },
+      {
+        id: 'current-3',
+        name: 'demo.mp4',
+        type: ChatFileTypeEnum.video,
+        url: '/demo.mp4'
       }
     ]);
 
     expect(result).toContain('## 文件');
     expect(result).toContain('<id>current-0</id>');
     expect(result).toContain('<type>document</type>');
-    expect(result).toContain('<id>current-1</id>');
-    expect(result).toContain('<type>image</type>');
+    expect(result).not.toContain('<id>current-1</id>');
+    expect(result).not.toContain('<id>current-2</id>');
+    expect(result).not.toContain('<id>current-3</id>');
+    expect(result).not.toContain('<type>image</type>');
+    expect(result).not.toContain('<type>audio</type>');
+    expect(result).not.toContain('<type>video</type>');
   });
 
   it('escapes XML fields in file metadata', () => {
@@ -367,11 +383,19 @@ describe('useUserContext', () => {
         expect(currentText).toContain('## 背景信息');
         expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
-        expect(currentText).toContain('<id>current_chat_item-1</id>');
+        expect(currentText).not.toContain('<id>current_chat_item-1</id>');
         expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
         expect(currentText).toContain('当前问题');
+        expect(result.currentFiles).toEqual([
+          {
+            id: 'current_chat_item-0',
+            name: 'current.pdf',
+            type: ChatFileTypeEnum.file,
+            url: '/current.pdf'
+          }
+        ]);
       }
     );
   });
@@ -683,12 +707,14 @@ describe('useUserContext', () => {
     );
   });
 
-  it('filters invalid urls, keeps data images in reminder, and excludes images from read_files map', async () => {
+  it('filters invalid urls and excludes image/audio/video files from agent context', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
         queryUrlTypeMap: {
-          '/doc.pdf': ChatFileTypeEnum.file
+          '/doc.pdf': ChatFileTypeEnum.file,
+          '/voice.mp3': ChatFileTypeEnum.audio,
+          '/demo.mp4': ChatFileTypeEnum.video
         },
         mcpClientMemory: {}
       },
@@ -696,7 +722,14 @@ describe('useUserContext', () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
           histories: [],
-          currentFiles: ['not-a-url', 'data:text/plain;base64,AAAA', dataImage, '/doc.pdf'],
+          currentFiles: [
+            'not-a-url',
+            'data:text/plain;base64,AAAA',
+            dataImage,
+            '/doc.pdf',
+            '/voice.mp3',
+            '/demo.mp4'
+          ],
           currentUserInput: '分析这些文件',
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
@@ -707,12 +740,24 @@ describe('useUserContext', () => {
         expect(result.filesMap).toEqual({
           'current_ai-2': '/doc.pdf'
         });
+        expect(result.currentFiles).toEqual([
+          {
+            id: 'current_ai-2',
+            name: 'doc.pdf',
+            type: ChatFileTypeEnum.file,
+            url: '/doc.pdf'
+          }
+        ]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).not.toContain('<id>current_ai-0</id>');
-        expect(text).toContain('<id>current_ai-1</id>');
-        expect(text).toContain('<type>image</type>');
+        expect(text).not.toContain('<id>current_ai-1</id>');
         expect(text).toContain('<id>current_ai-2</id>');
+        expect(text).not.toContain('<id>current_ai-3</id>');
+        expect(text).not.toContain('<id>current_ai-4</id>');
+        expect(text).not.toContain('<type>image</type>');
+        expect(text).not.toContain('<type>audio</type>');
+        expect(text).not.toContain('<type>video</type>');
         expect(text).not.toContain('not-a-url');
         expect(text).not.toContain('data:text/plain');
       }

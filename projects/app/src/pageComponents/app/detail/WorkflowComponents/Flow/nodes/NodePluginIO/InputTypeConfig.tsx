@@ -27,7 +27,7 @@ import MultipleSelect, {
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -37,13 +37,11 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
 
-import MySlider from '@/components/Slider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -73,7 +71,7 @@ const InputTypeConfig = ({
 
   // Update methods
   onSubmitSuccess: (data: any, action: 'confirm' | 'continue') => void;
-  onSubmitError: (e: Object) => void;
+  onSubmitError: (e: object) => void;
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
@@ -168,7 +166,7 @@ const InputTypeConfig = ({
 
   const handleRemoveEnum = useCallback(
     (index: number) => {
-      const removedValue = mergedSelectEnums[index]?.value;
+      const removedValue = getValues(`list.${index}.value`);
       removeEnums(index);
 
       if (!removedValue) return;
@@ -187,7 +185,7 @@ const InputTypeConfig = ({
         }
       }
     },
-    [mergedSelectEnums, removeEnums, inputType, getValues, setValue]
+    [removeEnums, inputType, getValues, setValue]
   );
 
   const isLastEnumEmpty = !mergedSelectEnums[mergedSelectEnums.length - 1]?.label;
@@ -639,6 +637,7 @@ const InputTypeConfig = ({
               {inputType === FlowNodeInputTypeEnum.multipleSelect && (
                 <MultipleSelect<string>
                   flex={'1 0 0'}
+                  size={'md'}
                   itemWrap={true}
                   bg={'myGray.50'}
                   list={listValue

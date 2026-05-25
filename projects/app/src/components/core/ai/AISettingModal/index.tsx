@@ -6,10 +6,7 @@ import {
   Box,
   Button,
   Flex,
-  type FlexProps,
   HStack,
-  type MenuItemProps,
-  type MenuListProps,
   Switch,
   TableContainer,
   Tbody,
@@ -50,41 +47,6 @@ const ModelPriceModal = dynamic(() =>
 );
 
 const RIGHT_AREA_WIDTH = '320px';
-
-const MULTIMODAL_SELECT_TAG_STYLE: FlexProps = {
-  bg: 'white',
-  color: 'myGray.700',
-  borderColor: 'myGray.200',
-  borderRadius: 'sm',
-  px: 2,
-  py: 1,
-  fontSize: '10px',
-  fontWeight: 500,
-  lineHeight: '14px',
-  letterSpacing: '0.2px'
-};
-
-const MULTIMODAL_SELECT_MENU_LIST_STYLE: MenuListProps = {
-  p: '6px'
-};
-
-const MULTIMODAL_SELECT_MENU_ITEM_STYLE: MenuItemProps = {
-  h: '40px',
-  px: 3,
-  py: '6px',
-  fontSize: 'xs',
-  fontWeight: 500,
-  lineHeight: '16px',
-  letterSpacing: '0.5px',
-  color: 'myGray.900',
-  borderRadius: 'xs',
-  _notLast: {
-    mb: 0
-  },
-  _hover: {
-    bg: 'rgba(17, 24, 36, 0.05)'
-  }
-};
 
 const SectionCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <Box w="full" bg="white" border="1px solid" borderColor="myGray.200" borderRadius="md" p={4}>
@@ -160,7 +122,6 @@ const AIChatSettingsModal = ({
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
-  const [isMultimodalManuallyEnabled, setIsMultimodalManuallyEnabled] = useState(false);
   const { feConfigs } = useSystemStore();
 
   const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
@@ -213,51 +174,23 @@ const AIChatSettingsModal = ({
       }[],
     [supportParams.audio, supportParams.video, supportParams.vision, t]
   );
-  const selectedMultimodalValues = useMemo(
-    () =>
-      [
-        useVision && supportParams.vision && NodeInputKeyEnum.aiChatVision,
-        useAudio && supportParams.audio && NodeInputKeyEnum.aiChatAudio,
-        useVideo && supportParams.video && NodeInputKeyEnum.aiChatVideo
-      ].filter(Boolean) as MultimodalValue[],
-    [supportParams.audio, supportParams.video, supportParams.vision, useAudio, useVideo, useVision]
-  );
-  const hasEnabledMultimodal = selectedMultimodalValues.length > 0;
-  const isMultimodalControlEnabled = hasEnabledMultimodal || isMultimodalManuallyEnabled;
-  const isSingleMultimodal = multimodalOptions.length === 1;
-  const isMultipleMultimodal = multimodalOptions.length > 1;
   const singleMultimodalOption = multimodalOptions[0];
-  const multimodalSettingLabel =
-    isSingleMultimodal && singleMultimodalOption
-      ? {
-          [NodeInputKeyEnum.aiChatVision]: t('app:llm_use_vision'),
-          [NodeInputKeyEnum.aiChatAudio]: t('app:llm_use_audio'),
-          [NodeInputKeyEnum.aiChatVideo]: t('app:llm_use_video')
-        }[singleMultimodalOption.value]
-      : t('app:llm_use_multimodal');
+  const selectedMultimodalValues = [
+    useVision && supportParams.vision && NodeInputKeyEnum.aiChatVision,
+    useAudio && supportParams.audio && NodeInputKeyEnum.aiChatAudio,
+    useVideo && supportParams.video && NodeInputKeyEnum.aiChatVideo
+  ].filter(Boolean) as MultimodalValue[];
   const showAdvancedConfig =
     (supportParams.temperature && showTemperature) ||
     (supportParams.topP && showTopP) ||
     (supportParams.stop && showStopSign) ||
     (supportParams.responseFormat && showResponseFormat);
+  const showExtractFilesSetting = showMultimodalSetting && supportParams.multimodal;
 
   const onChangeMultimodalValues = (values: MultimodalValue[]) => {
     setValue(NodeInputKeyEnum.aiChatVision, values.includes(NodeInputKeyEnum.aiChatVision));
     setValue(NodeInputKeyEnum.aiChatAudio, values.includes(NodeInputKeyEnum.aiChatAudio));
     setValue(NodeInputKeyEnum.aiChatVideo, values.includes(NodeInputKeyEnum.aiChatVideo));
-  };
-
-  const closeMultimodal = () => {
-    setIsMultimodalManuallyEnabled(false);
-    onChangeMultimodalValues([]);
-  };
-
-  const openMultipleMultimodal = () => {
-    setIsMultimodalManuallyEnabled(true);
-
-    if (selectedMultimodalValues.length === 0 && supportParams.vision) {
-      onChangeMultimodalValues([NodeInputKeyEnum.aiChatVision]);
-    }
   };
 
   const topP = watch(NodeInputKeyEnum.aiChatTopP);
@@ -277,24 +210,19 @@ const AIChatSettingsModal = ({
       setValue('maxToken', modelData.maxResponse / 2);
       if (showMultimodalSetting) {
         const support = getLLMSupportParams(modelData);
-        const shouldDefaultVision =
-          !supportParams.multimodal &&
-          support.vision &&
-          !getValues(NodeInputKeyEnum.aiChatVision) &&
-          !getValues(NodeInputKeyEnum.aiChatAudio) &&
-          !getValues(NodeInputKeyEnum.aiChatVideo);
-        const nextMultimodalValues = [
-          (shouldDefaultVision || !!getValues(NodeInputKeyEnum.aiChatVision)) &&
-            support.vision &&
-            NodeInputKeyEnum.aiChatVision,
-          !!getValues(NodeInputKeyEnum.aiChatAudio) &&
-            support.audio &&
-            NodeInputKeyEnum.aiChatAudio,
-          !!getValues(NodeInputKeyEnum.aiChatVideo) && support.video && NodeInputKeyEnum.aiChatVideo
-        ].filter(Boolean) as MultimodalValue[];
-
-        onChangeMultimodalValues(nextMultimodalValues);
-        setIsMultimodalManuallyEnabled(nextMultimodalValues.length > 0);
+        onChangeMultimodalValues(
+          [
+            !!getValues(NodeInputKeyEnum.aiChatVision) &&
+              support.vision &&
+              NodeInputKeyEnum.aiChatVision,
+            !!getValues(NodeInputKeyEnum.aiChatAudio) &&
+              support.audio &&
+              NodeInputKeyEnum.aiChatAudio,
+            !!getValues(NodeInputKeyEnum.aiChatVideo) &&
+              support.video &&
+              NodeInputKeyEnum.aiChatVideo
+          ].filter(Boolean) as MultimodalValue[]
+        );
       }
     }
 
@@ -326,7 +254,7 @@ const AIChatSettingsModal = ({
       w={'580px'}
       maxW={'90vw'}
     >
-      <Box maxH={'60vh'} overflowY={'auto'} overflowX={'hidden'} sx={{ scrollbarGutter: 'stable' }}>
+      <Box maxH={'60vh'} overflowY={'auto'} overflowX={'hidden'}>
         <VStack spacing={4} align="stretch">
           {/* 基础配置 */}
           <SectionCard title={t('app:ai_setting_basic_config')}>
@@ -449,48 +377,36 @@ const AIChatSettingsModal = ({
             )}
             {showMultimodalSetting && (
               <SettingRow
-                label={multimodalSettingLabel}
+                label={t('app:llm_use_multimodal')}
                 switchControl={
-                  supportParams.multimodal ? (
-                    <Switch
-                      isChecked={isMultimodalControlEnabled}
-                      onChange={(e) => {
-                        if (!e.target.checked) {
-                          closeMultimodal();
-                          return;
-                        }
-
-                        if (isSingleMultimodal && singleMultimodalOption) {
-                          setIsMultimodalManuallyEnabled(true);
-                          onChangeMultimodalValues([singleMultimodalOption.value]);
-                          return;
-                        }
-
-                        openMultipleMultimodal();
-                      }}
-                    />
-                  ) : (
+                  !supportParams.multimodal ? (
                     <Box fontSize={'sm'} color={'myGray.500'}>
                       {t('app:llm_not_support_multimodal')}
                     </Box>
-                  )
+                  ) : multimodalOptions.length === 1 && singleMultimodalOption ? (
+                    <Switch
+                      isChecked={selectedMultimodalValues.length > 0}
+                      onChange={(e) => {
+                        onChangeMultimodalValues(
+                          e.target.checked ? [singleMultimodalOption.value] : []
+                        );
+                      }}
+                    />
+                  ) : undefined
                 }
               >
-                {isMultipleMultimodal && isMultimodalControlEnabled && (
+                {supportParams.multimodal && multimodalOptions.length > 1 && (
                   <MultipleSelect
                     h={'36px'}
                     value={selectedMultimodalValues}
                     list={multimodalOptions}
                     placeholder={t('app:llm_multimodal_select_placeholder')}
-                    tagStyle={MULTIMODAL_SELECT_TAG_STYLE}
-                    menuListStyle={MULTIMODAL_SELECT_MENU_LIST_STYLE}
-                    menuItemStyle={MULTIMODAL_SELECT_MENU_ITEM_STYLE}
                     onSelect={onChangeMultimodalValues}
                   />
                 )}
               </SettingRow>
             )}
-            {showMultimodalSetting && (
+            {showExtractFilesSetting && (
               <SettingRow
                 label={t('app:extract_chat_files')}
                 tip={t('app:extract_chat_files_tip')}
