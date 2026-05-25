@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -14,10 +13,19 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { PublishAppQuerySchema, PublishAppBodySchema } from '@fastgpt/global/core/app/version/type';
 
-async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
-  const { appId } = req.query as { appId: string };
-  const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
+async function handler(req: ApiRequestProps<PostPublishAppProps>) {
+  const {
+    query: { appId },
+    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
+  } = parseApiInput({
+    req,
+    querySchema: PublishAppQuerySchema,
+    bodySchema: PublishAppBodySchema
+  });
 
   const { app, tmbId, teamId } = await authApp({
     appId,
@@ -29,6 +37,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   beforeUpdateAppFormat({
     nodes
   });
+  const resourceRefs = extractAppResourceRefsFromNodes(nodes);
   updateParentFoldersUpdateTime({
     parentId: app.parentId
   });
@@ -47,7 +56,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
           edges,
           chatConfig,
           versionName: i18nT('app:auto_save'),
-          time: new Date()
+          time: new Date(),
+          resourceRefs
         },
 
         { session, upsert: true }
@@ -93,34 +103,38 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
           chatConfig,
           isPublish,
           versionName,
-          tmbId
+          tmbId,
+          resourceRefs
         }
       ],
       { session, ordered: true }
     );
 
     // update app
+    const setUpdate = {
+      modules: nodes,
+      edges,
+      chatConfig,
+      updateTime: new Date(),
+      version: 'v2',
+      ...(isPublish && { resourceRefs }),
+      ...(isPublish && chatConfig?.scheduledTriggerConfig?.cronString
+        ? {
+            scheduledTriggerConfig: chatConfig.scheduledTriggerConfig,
+            scheduledTriggerNextTime: getNextTimeByCronStringAndTimezone(
+              chatConfig.scheduledTriggerConfig
+            )
+          }
+        : {}),
+      'pluginData.nodeVersion': _id
+    };
     await MongoApp.updateOne(
       { _id: appId },
       {
-        modules: nodes,
-        edges,
-        chatConfig,
-        updateTime: new Date(),
-        version: 'v2',
-        // 只有发布才会更新定时器
-        ...(isPublish &&
-          (chatConfig?.scheduledTriggerConfig?.cronString
-            ? {
-                $set: {
-                  scheduledTriggerConfig: chatConfig.scheduledTriggerConfig,
-                  scheduledTriggerNextTime: getNextTimeByCronStringAndTimezone(
-                    chatConfig.scheduledTriggerConfig
-                  )
-                }
-              }
-            : { $unset: { scheduledTriggerConfig: '', scheduledTriggerNextTime: '' } })),
-        'pluginData.nodeVersion': _id
+        $set: setUpdate,
+        ...(isPublish && !chatConfig?.scheduledTriggerConfig?.cronString
+          ? { $unset: { scheduledTriggerConfig: '', scheduledTriggerNextTime: '' } }
+          : {})
       },
       {
         session

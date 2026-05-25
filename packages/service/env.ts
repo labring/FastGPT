@@ -21,9 +21,7 @@ export const hasAgentSandboxConfig = () => {
   }
 
   if (provider === 'opensandbox') {
-    return !!(
-      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
+    return !!process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL;
   }
 
   return false;

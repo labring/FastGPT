@@ -12,7 +12,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type {
   ListAppsBySkillIdQuery,
@@ -20,6 +19,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -60,21 +60,12 @@ async function handler(
       myOrgSet.has(String(item.orgId))
   );
 
-  // Query apps whose modules contain the given skillId
+  // 查询最新发布版本缓存引用该 skillId 的应用。
   const apps = await MongoApp.find(
     {
       teamId,
       deleteTime: null,
-      modules: {
-        $elemMatch: {
-          inputs: {
-            $elemMatch: {
-              key: NodeInputKeyEnum.skills,
-              'value.skillId': skillId
-            }
-          }
-        }
-      }
+      ...buildAppSkillRefMongoQuery(skillId)
     },
     '_id parentId avatar type name intro tmbId updateTime inheritPermission'
   )
@@ -108,8 +99,8 @@ async function handler(
     return {
       _id: String(app._id),
       name: app.name,
-      avatar: app.avatar,
-      intro: app.intro,
+      avatar: app.avatar || '',
+      intro: app.intro || '',
       tmbId: String(app.tmbId),
       type: app.type,
       updateTime: app.updateTime,

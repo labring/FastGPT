@@ -1,4 +1,5 @@
 import { AppSchemaTypeSchema } from '../type';
+import { AppResourceRefsSchema } from '../type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -13,7 +14,8 @@ export const AppVersionSchema = z.object({
   chatConfig: AppSchemaTypeSchema.shape.chatConfig,
   isPublish: z.boolean().optional(),
   isAutoSave: z.boolean().optional(),
-  versionName: z.string()
+  versionName: z.string(),
+  resourceRefs: AppResourceRefsSchema.optional()
 });
 export type AppVersionSchemaType = z.infer<typeof AppVersionSchema>;
 
@@ -27,3 +29,19 @@ export const VersionListItemSchema = z.object({
   sourceMember: SourceMemberSchema
 });
 export type VersionListItemType = z.infer<typeof VersionListItemSchema>;
+
+/* Publish app */
+export const PublishAppQuerySchema = z.object({
+  appId: z.string()
+});
+export type PublishAppQueryType = z.infer<typeof PublishAppQuerySchema>;
+
+export const PublishAppBodySchema = z.object({
+  nodes: AppSchemaTypeSchema.shape.modules.optional(),
+  edges: AppSchemaTypeSchema.shape.edges.optional(),
+  chatConfig: AppSchemaTypeSchema.shape.chatConfig.optional(),
+  isPublish: z.boolean().optional(),
+  versionName: z.string().optional(),
+  autoSave: z.boolean().optional()
+});
+export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;

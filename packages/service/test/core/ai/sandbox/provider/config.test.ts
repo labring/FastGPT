@@ -288,7 +288,7 @@ describe('sandbox provider config', () => {
     ).toThrow('Invalid runtime: invalid');
   });
 
-  it('requires opensandbox api key for docker runtime', async () => {
+  it('does not require opensandbox api key for docker runtime', async () => {
     const { validateSandboxConfig } = await loadSandboxConfigModule();
 
     expect(() =>
@@ -298,7 +298,7 @@ describe('sandbox provider config', () => {
         apiKey: '',
         runtime: 'docker'
       })
-    ).toThrow('Sandbox provider apiKey is required for opensandbox');
+    ).not.toThrow();
   });
 
   it('throws for unsupported provider in config switch', async () => {

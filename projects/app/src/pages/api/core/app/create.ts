@@ -36,10 +36,15 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
+import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
-  const parseResult = await CreateAppBodySchema.safeParseAsync(req.body);
-  const body = parseResult.success ? parseResult.data : req.body;
+  const { body } = parseApiInput({
+    req,
+    bodySchema: CreateAppBodySchema
+  });
   const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     body;
 
@@ -152,6 +157,7 @@ export const onCreateApp = async ({
   }
 
   const create = async (session: ClientSession) => {
+    const resourceRefs = extractAppResourceRefsFromNodes(modules);
     const _avatar = await (async () => {
       if (!templateId) return avatar;
 
@@ -186,7 +192,8 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          templateId
+          templateId,
+          ...(!AppFolderTypeList.includes(type!) && { resourceRefs })
         }
       ],
       { session, ordered: true }
@@ -206,7 +213,8 @@ export const onCreateApp = async ({
             versionName: name,
             username,
             avatar: userAvatar,
-            isPublish: true
+            isPublish: true,
+            resourceRefs
           }
         ],
         { session, ordered: true }

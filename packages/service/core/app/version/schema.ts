@@ -35,7 +35,13 @@ const AppVersionSchema = new Schema(
     },
     isPublish: Boolean,
     isAutoSave: Boolean,
-    versionName: String
+    versionName: String,
+    resourceRefs: {
+      skillIds: {
+        type: [String],
+        default: []
+      }
+    }
   },
   {
     minimize: false

@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import {
@@ -17,9 +18,12 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { AgentSkillTypeEnum, AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  AppResourceRefsSkillIdsPath,
+  buildAppSkillRefMongoQuery
+} from '@fastgpt/service/core/app/resourceRefs';
 
 export type GetSkillListBody = ListSkillsQuery;
 
@@ -93,6 +97,34 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       myGroupMap.has(String(item.groupId)) ||
       myOrgSet.has(String(item.orgId))
   );
+  const myRoleResourceIds = Array.from(
+    new Map(myRoles.map((item) => [String(item.resourceId), item.resourceId])).values()
+  );
+  const roleCountByResourceId = new Map<string, number>();
+  roleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    roleCountByResourceId.set(resourceId, (roleCountByResourceId.get(resourceId) ?? 0) + 1);
+  });
+
+  const myTmbRoleByResourceId = new Map<string, ReturnType<typeof sumPer>>();
+  const myGroupOrgRoleListByResourceId = new Map<string, Parameters<typeof sumPer>>();
+  myRoles.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    if (item.tmbId) {
+      myTmbRoleByResourceId.set(resourceId, item.permission);
+      return;
+    }
+
+    if (item.groupId || item.orgId) {
+      const permissionList = myGroupOrgRoleListByResourceId.get(resourceId) ?? [];
+      permissionList.push(item.permission);
+      myGroupOrgRoleListByResourceId.set(resourceId, permissionList);
+    }
+  });
+  const myGroupOrgRoleByResourceId = new Map<string, ReturnType<typeof sumPer>>();
+  myGroupOrgRoleListByResourceId.forEach((permissionList, resourceId) => {
+    myGroupOrgRoleByResourceId.set(resourceId, sumPer(...permissionList));
+  });
 
   const findSkillQuery = (() => {
     const sourceQuery = (() => {
@@ -134,7 +166,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     }
 
     // Filter skills by permission, if not owner, only get skills that I have permission to access
-    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
+    const idList = { _id: { $in: myRoleResourceIds } };
     const skillPerQuery = teamPer.isOwner
       ? {}
       : parentId
@@ -168,23 +200,15 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     .map((skill) => {
       const { Per, privateSkill } = (() => {
         const getPer = (skillId: string) => {
-          const tmbRole = myRoles.find(
-            (item) => String(item.resourceId) === skillId && !!item.tmbId
-          )?.permission;
-          const groupAndOrgRole = sumPer(
-            ...myRoles
-              .filter(
-                (item) => String(item.resourceId) === skillId && (!!item.groupId || !!item.orgId)
-              )
-              .map((item) => item.permission)
-          );
+          const tmbRole = myTmbRoleByResourceId.get(skillId);
+          const groupAndOrgRole = myGroupOrgRoleByResourceId.get(skillId);
           return new SkillPermission({
             role: tmbRole ?? groupAndOrgRole,
             isOwner: String(skill.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
         const getClbCount = (skillId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(skillId)).length;
+          return roleCountByResourceId.get(skillId) ?? 0;
         };
 
         // inherit
@@ -221,33 +245,6 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     })
     .filter((skill) => skill.permission.hasReadPer);
 
-  // 默认保持历史行为返回 appCount；编辑页状态校验可显式关闭，避免批量校验时产生额外 count 查询。
-  const nonFolderSkills =
-    withAppCount !== false ? formatSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
-  const appCountMap = new Map<string, number>();
-  if (nonFolderSkills.length > 0) {
-    const counts = await Promise.all(
-      nonFolderSkills.map((skill) =>
-        MongoApp.countDocuments({
-          deleteTime: null,
-          modules: {
-            $elemMatch: {
-              inputs: {
-                $elemMatch: {
-                  key: NodeInputKeyEnum.skills,
-                  'value.skillId': skill._id.toString()
-                }
-              }
-            }
-          }
-        })
-      )
-    );
-    nonFolderSkills.forEach((skill, i) => {
-      appCountMap.set(skill._id.toString(), counts[i]);
-    });
-  }
-
   const total = formatSkills.length;
 
   // Apply pagination if requested
@@ -258,6 +255,34 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     }
     return formatSkills;
   })();
+
+  // 默认保持历史行为返回 appCount；只统计本次返回的 skill，编辑页状态校验可显式关闭。
+  const nonFolderSkills =
+    withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
+  const appCountMap = new Map<string, number>();
+  if (nonFolderSkills.length > 0) {
+    const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
+    const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
+      {
+        $match: {
+          teamId: new Types.ObjectId(String(teamId)),
+          deleteTime: null,
+          ...buildAppSkillRefMongoQuery(skillIdStrings)
+        }
+      },
+      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
+      { $match: buildAppSkillRefMongoQuery(skillIdStrings) },
+      {
+        $group: {
+          _id: `$${AppResourceRefsSkillIdsPath}`,
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    counts.forEach((item) => {
+      appCountMap.set(String(item._id), item.count);
+    });
+  }
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,
