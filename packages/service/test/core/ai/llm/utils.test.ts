@@ -7,9 +7,15 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock external dependencies
-vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
-  countGptMessagesTokens: vi.fn()
-}));
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => {
+  const countGptMessagesTokens = vi.fn();
+  return {
+    countGptMessagesTokens,
+    countGptMessagesTokensBatch: vi.fn((messageGroups: ChatCompletionMessageParam[][]) =>
+      Promise.all(messageGroups.map((messages) => countGptMessagesTokens({ messages })))
+    )
+  };
+});
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: vi.fn()
@@ -235,9 +241,9 @@ describe('filterGPTMessageByMaxContext function tests', () => {
         { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' },
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'current user request' }
       ]);
-      expect(mockCountGptMessagesTokens).toHaveBeenNthCalledWith(1, [
-        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' }
-      ]);
+      expect(mockCountGptMessagesTokens).toHaveBeenNthCalledWith(1, {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.System, content: 'System' }]
+      });
     });
 
     it('should not preserve malformed hidden checkpoint-like messages as leading checkpoints', async () => {

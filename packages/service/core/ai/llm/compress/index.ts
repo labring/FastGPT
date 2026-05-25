@@ -98,7 +98,9 @@ export const compressRequestMessages = async ({
 
   // 触发阈值按完整请求上下文判断；压缩内容仍只包含非 system/developer 历史。
   // system/developer 虽然不参与 checkpoint 压缩，但会真实占用模型上下文。
-  const messageTokens = await countGptMessagesTokens(messages);
+  const messageTokens = await countGptMessagesTokens({
+    messages
+  });
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
 
   if (messageTokens < thresholds.threshold) {
@@ -359,10 +361,14 @@ export const compressLargeContent = async ({
     let merged = compressedChunks.join('\n\n');
 
     // LLM 输出长度不可控，合并后仍需做一次真实 token 校验。
-    const finalTokens = await countGptMessagesTokens([{ role: 'user', content: merged }]);
+    const finalTokens = await countGptMessagesTokens({
+      messages: [{ role: 'user', content: merged }]
+    });
 
     logger.info('LLM chunk compression Completed', {
-      originalTokens: await countGptMessagesTokens([{ role: 'user', content: content }]),
+      originalTokens: await countGptMessagesTokens({
+        messages: [{ role: 'user', content: content }]
+      }),
       finalTokens,
       compressedTokenLimit,
       success: finalTokens <= compressedTokenLimit

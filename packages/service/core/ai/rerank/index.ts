@@ -149,7 +149,7 @@ export async function reRankRecall({
         results,
         inputTokens:
           data?.meta?.tokens?.input_tokens ||
-          (await countPromptTokens(documentsTextArray.join('\n') + query, ''))
+          (await countPromptTokens(documentsTextArray.join('\n') + query))
       };
     })
     .catch((err) => {

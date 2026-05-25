@@ -86,9 +86,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks 
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 
-# copy standload packages
-COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
-RUN rm -rf ./node_modules/tiktoken/encoders
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 
 # copy package.json to version file

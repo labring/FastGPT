@@ -1,5 +1,5 @@
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { countPromptTokens } from '../../../common/string/tiktoken/index';
+import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getSystemToolByIdAndVersionId, getSystemTools } from '../../app/tool/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -14,10 +14,11 @@ export const filterSearchResultsByMaxChars = async (
 ) => {
   const results: SearchDataResponseItemType[] = [];
   let totalTokens = 0;
+  const itemTokens = await countPromptTokensBatch(list.map((item) => item.q + item.a));
 
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
-    totalTokens += await countPromptTokens(item.q + item.a);
+    totalTokens += itemTokens[i] || 0;
     if (totalTokens > maxTokens + 500) {
       break;
     }

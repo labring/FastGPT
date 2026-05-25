@@ -13,6 +13,9 @@ const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+const mockCountPromptTokensBatch = vi.hoisted(() =>
+  vi.fn(async (prompts: string[]) => prompts.map((prompt) => prompt.length))
+);
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
@@ -37,6 +40,12 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: mockGetImageBase64
+}));
+
+// defaultRecall 的结果过滤只关心 token 数的相对大小，测试里用稳定 mock
+// 隔离真实 worker 路径，避免单元测试依赖 app/pro 的 worker 构建产物。
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countPromptTokensBatch: mockCountPromptTokensBatch
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
@@ -69,6 +78,9 @@ describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
+      prompts.map((prompt) => prompt.length)
+    );
 
     mockGetEmbeddingModel.mockReturnValue({
       model: 'mock-embedding-model',
