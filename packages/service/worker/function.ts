@@ -9,7 +9,7 @@ import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { axios } from '../common/api/axios';
 
 export const text2Chunks = async (props: SplitProps): Promise<SplitResponse> => {
-  const { url: pdfParseUrl, key: token } = global.systemEnv?.customPdfParse ?? {};
+  const { url: pdfParseUrl, key: token, chunkTimeout } = global.systemEnv?.customPdfParse ?? {};
   const url = pdfParseUrl?.replace(/\/pdfparse$/, '/chunk');
 
   if (!url) {
@@ -24,7 +24,7 @@ export const text2Chunks = async (props: SplitProps): Promise<SplitResponse> => 
       markdown: props.text,
       chunk_sizes: { text: props.chunkSize }
     }, {
-      timeout: 60000,
+      timeout: (chunkTimeout ?? 10) * 60 * 1000,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
