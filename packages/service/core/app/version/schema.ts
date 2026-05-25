@@ -49,7 +49,6 @@ const AppVersionSchema = new Schema(
 );
 
 AppVersionSchema.index({ appId: 1, time: -1 });
-AppVersionSchema.index({ isPublish: 1, appId: 1, time: -1, _id: -1 });
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
   AppVersionCollectionName,
