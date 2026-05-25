@@ -97,6 +97,34 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       myGroupMap.has(String(item.groupId)) ||
       myOrgSet.has(String(item.orgId))
   );
+  const myRoleResourceIds = Array.from(
+    new Map(myRoles.map((item) => [String(item.resourceId), item.resourceId])).values()
+  );
+  const roleCountByResourceId = new Map<string, number>();
+  roleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    roleCountByResourceId.set(resourceId, (roleCountByResourceId.get(resourceId) ?? 0) + 1);
+  });
+
+  const myTmbRoleByResourceId = new Map<string, ReturnType<typeof sumPer>>();
+  const myGroupOrgRoleListByResourceId = new Map<string, Parameters<typeof sumPer>>();
+  myRoles.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    if (item.tmbId) {
+      myTmbRoleByResourceId.set(resourceId, item.permission);
+      return;
+    }
+
+    if (item.groupId || item.orgId) {
+      const permissionList = myGroupOrgRoleListByResourceId.get(resourceId) ?? [];
+      permissionList.push(item.permission);
+      myGroupOrgRoleListByResourceId.set(resourceId, permissionList);
+    }
+  });
+  const myGroupOrgRoleByResourceId = new Map<string, ReturnType<typeof sumPer>>();
+  myGroupOrgRoleListByResourceId.forEach((permissionList, resourceId) => {
+    myGroupOrgRoleByResourceId.set(resourceId, sumPer(...permissionList));
+  });
 
   const findSkillQuery = (() => {
     const sourceQuery = (() => {
@@ -138,7 +166,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     }
 
     // Filter skills by permission, if not owner, only get skills that I have permission to access
-    const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
+    const idList = { _id: { $in: myRoleResourceIds } };
     const skillPerQuery = teamPer.isOwner
       ? {}
       : parentId
@@ -172,23 +200,15 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     .map((skill) => {
       const { Per, privateSkill } = (() => {
         const getPer = (skillId: string) => {
-          const tmbRole = myRoles.find(
-            (item) => String(item.resourceId) === skillId && !!item.tmbId
-          )?.permission;
-          const groupAndOrgRole = sumPer(
-            ...myRoles
-              .filter(
-                (item) => String(item.resourceId) === skillId && (!!item.groupId || !!item.orgId)
-              )
-              .map((item) => item.permission)
-          );
+          const tmbRole = myTmbRoleByResourceId.get(skillId);
+          const groupAndOrgRole = myGroupOrgRoleByResourceId.get(skillId);
           return new SkillPermission({
             role: tmbRole ?? groupAndOrgRole,
             isOwner: String(skill.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
         const getClbCount = (skillId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(skillId)).length;
+          return roleCountByResourceId.get(skillId) ?? 0;
         };
 
         // inherit
