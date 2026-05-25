@@ -20,6 +20,9 @@ export type ToolListItem = ToolListItemType & {
 
 export type ToolListResponse = PaginationResponse<ToolListItem>;
 
+const getToolTags = (item: { tags?: readonly string[] | null }): readonly string[] =>
+  Array.isArray(item.tags) ? item.tags : [];
+
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
   res: ApiResponseType<any>
@@ -41,13 +44,14 @@ async function handler(
       ).includes(searchKey)
     )
       return false;
-    if (tags && !tags.some((tag) => (item.tags as string[]).includes(tag))) return false;
+    if (tags && !tags.some((tag) => getToolTags(item).includes(tag))) return false;
     return true;
   });
 
   return {
     list: filteredData.slice(offset, offset + pageSize).map((item) => ({
       ...item,
+      hasSecret: !!item?.secretSchema?.properties?.length,
       downloadCount: item.downloadCount,
       downloadUrl: item.downloadUrl || getPkgdownloadURL(item.toolId)
     })),
