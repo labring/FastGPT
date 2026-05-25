@@ -13,6 +13,7 @@ import databaseErr from './code/database';
 import evaluationErr from './code/evaluation';
 import trainErr from './code/train';
 import agentSkillErr from './code/agentSkill';
+import modelErr from './code/model';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -128,5 +129,6 @@ export const ERROR_RESPONSE: Record<
   ...SystemErrEnum,
   ...evaluationErr,
   ...trainErr,
-  ...agentSkillErr
+  ...agentSkillErr,
+  ...modelErr
 };

@@ -17,28 +17,21 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import {
+  TestModelQuerySchema,
+  type TestModelQuery
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = {
-  id: string;
-  channelId?: number;
-};
-
-export type testBody = {
-  id: string;
-  channelId?: number;
-};
-
-export type testResponse = any;
-
 async function handler(
-  req: ApiRequestProps<testBody, testQuery>,
+  req: ApiRequestProps<TestModelQuery, TestModelQuery>,
   res: ApiResponseType<any>
-): Promise<testResponse> {
-  const { id, channelId } = {
+): Promise<any> {
+  const { id, channelId } = TestModelQuerySchema.parse({
     ...req.query,
     ...req.body
-  };
+  });
   const { model: rawModelData } = await authModel({
     req,
     authToken: true,
@@ -77,7 +70,7 @@ async function handler(
     return testReRankModel(modelData, headers);
   }
 
-  return Promise.reject('Model type not supported');
+  return Promise.reject(ModelErrEnum.modelTypeNotSupported);
 }
 
 export default NextAPI(handler);
@@ -96,7 +89,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     return answerText;
   }
 
-  return Promise.reject('Model response empty');
+  return Promise.reject(ModelErrEnum.modelResponseEmpty);
 };
 
 const testEmbeddingModel = async (

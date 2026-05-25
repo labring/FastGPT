@@ -33,7 +33,7 @@ import {
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
@@ -258,11 +258,11 @@ const ModelTable = () => {
     onSuccess: refreshModels
   });
 
-  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  const [editModelData, setEditModelData] = useState<GetModelDetailResponse>();
   const { runAsync: onEditModel, loading: loadingData } = useRequest(
     (modelId: string) => getSystemModelDetail(modelId),
     {
-      onSuccess: (data: SystemModelItemType) => {
+      onSuccess: (data: GetModelDetailResponse) => {
         setEditModelData(data);
       }
     }

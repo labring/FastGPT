@@ -6,34 +6,34 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamModelCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-
-export type createQuery = {};
-export type createBody = {
-  model: string;
-  metadata: Record<string, any>;
-  isShared?: boolean;
-};
-export type createResponse = {
-  id: string;
-};
+import {
+  CreateModelBodySchema,
+  CreateModelResponseSchema,
+  type CreateModelBody,
+  type CreateModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
-  req: ApiRequestProps<createBody, createQuery>,
+  req: ApiRequestProps<CreateModelBody, any>,
   res: ApiResponseType<any>
-): Promise<createResponse> {
+): Promise<CreateModelResponse> {
   const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     per: TeamModelCreatePermissionVal
   });
 
-  let { model, metadata, isShared = false } = req.body;
-  if (!model || !metadata) return Promise.reject(new Error('model and metadata are required'));
+  const parsed = CreateModelBodySchema.parse(req.body);
+  let { model, metadata, isShared = false } = parsed;
+  if (!model || !metadata) return Promise.reject(ModelErrEnum.customModelMissingFields);
   model = model.trim();
 
   const name = metadata?.name?.trim();
-  if (!name) return Promise.reject(new Error('metadata.name is required'));
-  if (!metadata.type) return Promise.reject(new Error('metadata.type is required'));
+  if (!name) return Promise.reject(ModelErrEnum.customModelMissingName);
+  if (!metadata.type) return Promise.reject(ModelErrEnum.customModelMissingType);
 
   metadata.model = model;
   metadata.name = name;
@@ -58,6 +58,15 @@ async function handler(
 
   await updatedReloadSystemModel();
 
-  return { id: modelId };
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.CREATE_MODEL,
+      params: { modelName: name, modelType: getI18nModelType(metadata.type) }
+    });
+  })();
+
+  return CreateModelResponseSchema.parse({ id: modelId });
 }
 export default NextAPI(handler);

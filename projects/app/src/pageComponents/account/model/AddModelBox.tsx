@@ -25,7 +25,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, postSystemModel, putSystemModel } from '@/web/core/ai/config';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
   useFieldArray,
   useForm,
@@ -172,9 +172,9 @@ const emptyPriceTier = {
 };
 
 export const getNewModelFormData = (
-  defaultModel: SystemModelItemType | undefined,
+  defaultModel: GetModelDetailResponse | undefined,
   type: ModelTypeEnum
-): SystemModelItemType =>
+): GetModelDetailResponse =>
   ({
     ...defaultModel,
     id: '',
@@ -193,7 +193,7 @@ export const getNewModelFormData = (
     isDefaultEvaluationModel: false,
     // @ts-ignore
     type
-  }) as SystemModelItemType;
+  }) as GetModelDetailResponse;
 
 const getOptionalNumber = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined;
@@ -213,8 +213,8 @@ const getOptionalNumber = (value: unknown) => {
   return undefined;
 };
 
-const buildModelMetadataPayload = (data: SystemModelItemType) => {
-  const metadata = { ...data } as Partial<SystemModelItemType> & Record<string, any>;
+const buildModelMetadataPayload = (data: GetModelDetailResponse) => {
+  const metadata = { ...data } as Partial<GetModelDetailResponse> & Record<string, any>;
 
   delete metadata.id;
   delete metadata.isShared;
@@ -284,7 +284,7 @@ const SwitchField = ({
   label: string;
   tip?: string;
   field: string;
-  register: UseFormRegister<SystemModelItemType>;
+  register: UseFormRegister<GetModelDetailResponse>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -303,8 +303,8 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   providerList: React.MutableRefObject<{ label: React.ReactNode; value: string }[]>;
   t: any;
 }) {
@@ -331,8 +331,8 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const responseFormatList = useWatch({
@@ -382,10 +382,10 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  register: UseFormRegister<SystemModelItemType>;
-  getValues: UseFormGetValues<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  register: UseFormRegister<GetModelDetailResponse>;
+  getValues: UseFormGetValues<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});
@@ -708,8 +708,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   label,
   tip
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   label: string;
   tip: string;
 }) {
@@ -746,8 +746,8 @@ const VoicesField = React.memo(function VoicesField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const voices = useWatch({
@@ -777,7 +777,7 @@ export const ModelEditModal = ({
   onSuccess,
   onClose
 }: {
-  modelData: SystemModelItemType;
+  modelData: GetModelDetailResponse;
   onSuccess: () => void;
   onClose: () => void;
 }) => {
@@ -785,7 +785,7 @@ export const ModelEditModal = ({
   const { feConfigs, getModelProviders } = useSystemStore();
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
-    useForm<SystemModelItemType>({
+    useForm<GetModelDetailResponse>({
       defaultValues: {
         ...modelData,
         priceTiers: (() => {
@@ -834,7 +834,7 @@ export const ModelEditModal = ({
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest(
-    async (data: SystemModelItemType) => {
+    async (data: GetModelDetailResponse) => {
       if (data.type === ModelTypeEnum.llm) {
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 

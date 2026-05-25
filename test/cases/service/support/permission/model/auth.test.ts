@@ -18,6 +18,7 @@ import {
   authModel,
   authModels
 } from '@fastgpt/service/support/permission/model/auth';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getFakeUsers, getRootUser } from '@test/datas/users';
 import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 
@@ -364,7 +365,7 @@ describe('service/support/permission/model', () => {
       isActive: false,
       requestUrl: 'url-inactive'
     });
-    expect(() => assertModelAvailable(models[0])).toThrow('Model not active');
+    expect(() => assertModelAvailable(models[0])).toThrow(ModelErrEnum.modelNotActive);
   });
 
   it('keeps duplicate model/name configurations separated by id for authModels', async () => {

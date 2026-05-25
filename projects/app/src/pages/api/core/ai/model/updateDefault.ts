@@ -5,27 +5,20 @@ import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { Types } from '@fastgpt/service/common/mongo';
-
-export type updateDefaultQuery = {};
-
-export type updateDefaultBody = {
-  llmId?: string;
-  embeddingId?: string;
-  ttsId?: string;
-  sttId?: string;
-  rerankId?: string;
-  datasetTextLLMId?: string;
-  datasetImageLLMId?: string;
-  evaluationId?: string;
-};
-
-export type updateDefaultResponse = {};
+import {
+  UpdateDefaultModelBodySchema,
+  UpdateDefaultModelResponseSchema,
+  type UpdateDefaultModelBody,
+  type UpdateDefaultModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
-  req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>,
+  req: ApiRequestProps<UpdateDefaultModelBody, any>,
   res: ApiResponseType<any>
-): Promise<updateDefaultResponse> {
-  await authSystemAdmin({ req });
+): Promise<UpdateDefaultModelResponse> {
+  const { tmbId, teamId } = await authSystemAdmin({ req });
 
   const {
     llmId,
@@ -36,7 +29,7 @@ async function handler(
     datasetTextLLMId,
     datasetImageLLMId,
     evaluationId
-  } = req.body;
+  } = UpdateDefaultModelBodySchema.parse(req.body);
 
   await mongoSessionRun(async (session) => {
     // Remove all default flags
@@ -113,7 +106,15 @@ async function handler(
 
   await updatedReloadSystemModel();
 
-  return {};
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AdminAuditEventEnum.ADMIN_UPDATE_MODEL_DEFAULT
+    });
+  })();
+
+  return UpdateDefaultModelResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

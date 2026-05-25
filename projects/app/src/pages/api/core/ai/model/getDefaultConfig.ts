@@ -2,21 +2,22 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { getSystemModelConfig } from '@fastgpt/service/core/ai/config/utils';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
-
-export type getDefaultQuery = { modelId: string };
-
-export type getDefaultBody = {};
+import {
+  GetDefaultConfigQuerySchema,
+  GetDefaultConfigResponseSchema,
+  type GetDefaultConfigQuery,
+  type GetDefaultConfigResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 
 async function handler(
-  req: ApiRequestProps<getDefaultBody, getDefaultQuery>,
+  req: ApiRequestProps<any, GetDefaultConfigQuery>,
   res: ApiResponseType<any>
-): Promise<SystemModelItemType> {
+): Promise<GetDefaultConfigResponse> {
   await authSystemAdmin({ req });
 
-  const modelId = req.query.modelId;
+  const { modelId } = GetDefaultConfigQuerySchema.parse(req.query);
 
-  return getSystemModelConfig(modelId);
+  return GetDefaultConfigResponseSchema.parse(getSystemModelConfig(modelId));
 }
 
 export default NextAPI(handler);

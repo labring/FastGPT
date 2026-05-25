@@ -1,7 +1,7 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
@@ -20,7 +20,7 @@ type Props = SelectProps & {
   isMultipleRow?: boolean;
 };
 
-const isTestModeModel = (model?: SystemModelItemType) => {
+const isTestModeModel = (model?: GetModelDetailResponse) => {
   return !!model?.testMode;
 };
 

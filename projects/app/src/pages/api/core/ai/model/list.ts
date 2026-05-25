@@ -1,68 +1,15 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 import { getModelListWithPermission } from '@fastgpt/service/support/permission/model/controller';
-import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
-
-export type listQuery = {};
-
-export type listBody = {
-  pageNum?: number;
-  pageSize?: number;
-};
-
-export type ModelListItem = {
-  id: string;
-  type: `${ModelTypeEnum}`;
-  name: string;
-  avatar: string | undefined;
-  provider: string;
-  model: string;
-  testMode?: boolean;
-  charsPointsPrice?: number;
-  inputPrice?: number;
-  outputPrice?: number;
-  priceTiers?: ModelPriceTierType[];
-
-  isActive: boolean;
-  isCustom: boolean;
-  isTuned: boolean;
-
-  // Tag
-  contextToken?: number;
-  vision?: boolean;
-  toolChoice?: boolean;
-
-  // Permission
-  tmbId?: string;
-  isShared: boolean;
-  sourceMember?: SourceMemberType;
-  permission: ModelPermission;
-};
-
-export type listResponse = ModelListItem[] | { list: ModelListItem[]; total: number };
+import type { ListModelsResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 
 async function handler(
-  req: ApiRequestProps<listBody, listQuery>,
+  req: ApiRequestProps<any, any>,
   res: ApiResponseType<any>
-): Promise<listResponse> {
-  const { pageNum, pageSize } = req.body;
-  const isPaginated = pageNum !== undefined && pageSize !== undefined;
-
-  if (isPaginated) {
-    if (pageNum < 1 || !Number.isInteger(pageNum)) {
-      throw new Error('pageNum must be a positive integer');
-    }
-    if (pageSize < 1 || !Number.isInteger(pageSize)) {
-      throw new Error('pageSize must be a positive integer');
-    }
-  }
-
+): Promise<ListModelsResponse> {
   const {
     tmbId,
     teamId,
@@ -82,7 +29,7 @@ async function handler(
     isRoot
   });
 
-  // Batch-resolve tmbId → member info
+  // Batch-resolve tmbId -> member info
   const tmbIdList = [...new Set(filteredModels.map((m) => m.tmbId).filter(Boolean) as string[])];
   const tmbList = await MongoTeamMember.find(
     { _id: { $in: tmbIdList } },
@@ -90,7 +37,7 @@ async function handler(
   ).lean();
   const tmbMap = new Map(tmbList.map((t) => [String(t._id), t]));
 
-  const list = filteredModels.map((model) => {
+  return filteredModels.map((model) => {
     const member = model.tmbId ? tmbMap.get(String(model.tmbId)) : undefined;
 
     return {
@@ -122,17 +69,6 @@ async function handler(
       permission: model.permission
     };
   });
-
-  if (isPaginated) {
-    const total = list.length;
-    const start = (pageNum! - 1) * pageSize!;
-    return {
-      list: list.slice(start, start + pageSize!),
-      total
-    };
-  }
-
-  return list;
 }
 
 export default NextAPI(handler);

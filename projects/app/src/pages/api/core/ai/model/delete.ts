@@ -8,26 +8,29 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
-
-export type deleteQuery = {
-  id: string;
-};
-
-export type deleteBody = {
-  id: string;
-};
-
-export type deleteResponse = {};
+import {
+  DeleteModelQuerySchema,
+  DeleteModelResponseSchema,
+  type DeleteModelQuery,
+  type DeleteModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
-  req: ApiRequestProps<deleteBody, deleteQuery>,
+  req: ApiRequestProps<DeleteModelQuery, DeleteModelQuery>,
   res: ApiResponseType<any>
-): Promise<deleteResponse> {
-  const { id } = {
+): Promise<DeleteModelResponse> {
+  const { id } = DeleteModelQuerySchema.parse({
     ...req.query,
     ...req.body
-  };
-  const { model: modelItem } = await authModel({
+  });
+  const {
+    model: modelItem,
+    teamId,
+    tmbId
+  } = await authModel({
     req,
     authToken: true,
     authApiKey: true,
@@ -36,11 +39,11 @@ async function handler(
   });
 
   if (modelItem.isCustom === false) {
-    return Promise.reject(new Error('System model cannot be deleted'));
+    return Promise.reject(ModelErrEnum.systemModelCannotDelete);
   }
 
   const dbModel = await MongoSystemModel.findById(modelItem.id).lean();
-  if (!dbModel) return Promise.reject(new Error('Model not found'));
+  if (!dbModel) return Promise.reject(ModelErrEnum.unExist);
   const _id = dbModel._id;
 
   await MongoSystemModel.deleteOne({ _id });
@@ -51,7 +54,16 @@ async function handler(
 
   await updatedReloadSystemModel();
 
-  return {};
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.DELETE_MODEL,
+      params: { modelName: modelItem.name, modelType: getI18nModelType(modelItem.type) }
+    });
+  })();
+
+  return DeleteModelResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

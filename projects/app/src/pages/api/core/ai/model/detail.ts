@@ -1,22 +1,19 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
-
-export type detailQuery = {
-  id: string;
-};
-
-export type detailBody = {};
-
-export type detailResponse = SystemModelItemType;
+import {
+  GetModelDetailQuerySchema,
+  GetModelDetailResponseSchema,
+  type GetModelDetailQuery,
+  type GetModelDetailResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 
 async function handler(
-  req: ApiRequestProps<detailBody, detailQuery>,
+  req: ApiRequestProps<any, GetModelDetailQuery>,
   res: ApiResponseType<any>
-): Promise<detailResponse> {
-  const { id } = req.query;
+): Promise<GetModelDetailResponse> {
+  const { id } = GetModelDetailQuerySchema.parse(req.query);
   const { model: modelItem } = await authModel({
     req,
     authToken: true,
@@ -25,7 +22,7 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  return modelItem;
+  return GetModelDetailResponseSchema.parse(modelItem);
 }
 
 export default NextAPI(handler);

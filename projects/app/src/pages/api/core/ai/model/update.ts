@@ -5,16 +5,15 @@ import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils'
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
 import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
-
-export type updateQuery = {};
-
-export type updateBody = {
-  id: string;
-  metadata?: Record<string, any>;
-  isShared?: boolean;
-};
-
-export type updateResponse = {};
+import {
+  UpdateModelBodySchema,
+  UpdateModelResponseSchema,
+  type UpdateModelBody,
+  type UpdateModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const ignoredMetadataKeys = new Set([
   'avatar',
@@ -36,10 +35,10 @@ const buildMetadataUpdate = ({
   const nextModel = typeof metadata.model === 'string' ? metadata.model.trim() : modelItem.model;
 
   if (!nextModel) {
-    throw new Error('metadata.model is required');
+    throw new Error(ModelErrEnum.metadataModelRequired);
   }
   if (modelItem.isCustom !== true && nextModel !== modelItem.model) {
-    throw new Error('System model does not support updating model');
+    throw new Error(ModelErrEnum.systemModelNotSupportUpdate);
   }
 
   const $set: Record<string, any> = {
@@ -80,11 +79,15 @@ const buildMetadataUpdate = ({
 };
 
 async function handler(
-  req: ApiRequestProps<updateBody, updateQuery>,
+  req: ApiRequestProps<UpdateModelBody, any>,
   res: ApiResponseType<any>
-): Promise<updateResponse> {
-  const { id, metadata, isShared } = req.body;
-  const { model: modelItem } = await authModel({
+): Promise<UpdateModelResponse> {
+  const { id, metadata, isShared } = UpdateModelBodySchema.parse(req.body);
+  const {
+    model: modelItem,
+    teamId,
+    tmbId
+  } = await authModel({
     req,
     authToken: true,
     authApiKey: true,
@@ -112,14 +115,23 @@ async function handler(
   }
 
   if (Object.keys(updateData).length === 0) {
-    return {};
+    return UpdateModelResponseSchema.parse({});
   }
 
   await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
 
   await updatedReloadSystemModel();
 
-  return {};
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.UPDATE_MODEL,
+      params: { modelName: modelItem.name, modelType: getI18nModelType(modelItem.type) }
+    });
+  })();
+
+  return UpdateModelResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

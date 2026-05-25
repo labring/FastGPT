@@ -9,6 +9,7 @@ import type { AuthModeType, AuthResponseType } from '../type';
 import { getModelPermission } from './controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 const normalizeModelIds = (modelIds?: string | Array<string | undefined | null>) => {
   if (!modelIds) return [];
@@ -35,7 +36,7 @@ export const authModelByTmbId = async ({
   const model = getModelById(modelId);
 
   if (!model) {
-    return Promise.reject(`Model not found: ${modelId}`);
+    return Promise.reject(ModelErrEnum.unExist);
   }
 
   const permission = await getModelPermission({
@@ -75,7 +76,7 @@ export const authModel = async ({
   const result = await parseHeaderCert(props);
 
   if (!modelId) {
-    return Promise.reject('Model not found: modelId is empty');
+    return Promise.reject(ModelErrEnum.invalidModelId);
   }
 
   const { model } = await authModelByTmbId({
@@ -103,15 +104,15 @@ export const assertModelAvailable = (
   } = {}
 ) => {
   if (!model.isActive) {
-    throw new Error('Model not active');
+    throw new Error(ModelErrEnum.modelNotActive);
   }
 
   if (type && model.type !== type) {
-    throw new Error('Model type not supported');
+    throw new Error(ModelErrEnum.modelTypeNotSupported);
   }
 
   if (requireVision && (!('vision' in model) || model.vision !== true)) {
-    throw new Error('Model type not supported');
+    throw new Error(ModelErrEnum.modelTypeNotSupported);
   }
 };
 
@@ -143,8 +144,7 @@ export const authModels = async ({
   const models = ids.map((id) => getModelById(id));
 
   if (models.some((model) => !model)) {
-    const missingIds = ids.filter((id, i) => !models[i]);
-    return Promise.reject(`Model not found: ${missingIds.join(', ')}`);
+    return Promise.reject(ModelErrEnum.unExist);
   }
 
   const tmb = await getTmbInfoByTmbId({ tmbId: result.tmbId });
