@@ -141,7 +141,7 @@ describe('buildAgentInputFilesPrompt', () => {
 
     expect(result).toContain('## 文件');
     expect(result).toContain('<id>current-0</id>');
-    expect(result).toContain('<type>document</type>');
+    expect(result).toContain('<name>guide.pdf</name>');
     expect(result).not.toContain('<id>current-1</id>');
     expect(result).not.toContain('<id>current-2</id>');
     expect(result).not.toContain('<id>current-3</id>');
