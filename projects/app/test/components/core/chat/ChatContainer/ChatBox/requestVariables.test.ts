@@ -4,6 +4,7 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { formatChatRequestVariables } from '@/components/core/chat/ChatContainer/ChatBox/requestVariables';
 
 const createVariable = (override: Partial<VariableItemType>): VariableItemType =>
@@ -86,6 +87,9 @@ describe('formatChatRequestVariables', () => {
   });
 
   it('formats time point and time range variables before value type conversion', () => {
+    const startAtInput = '2026-05-19T01:02:03.000Z';
+    const periodStartInput = '2026-05-19T03:04:05.000Z';
+
     const result = formatChatRequestVariables({
       variableList: [
         createVariable({
@@ -100,14 +104,14 @@ describe('formatChatRequestVariables', () => {
         })
       ],
       variables: {
-        startAt: '2026-05-19T01:02:03.000Z',
-        period: ['2026-05-19T03:04:05.000Z', '']
+        startAt: startAtInput,
+        period: [periodStartInput, '']
       }
     });
 
     expect(result).toEqual({
-      startAt: '2026-05-19 09:02:03',
-      period: ['2026-05-19 11:04:05', '']
+      startAt: formatTime2YMDHMS(new Date(startAtInput)),
+      period: [formatTime2YMDHMS(new Date(periodStartInput)), '']
     });
   });
 
