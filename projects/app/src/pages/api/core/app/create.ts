@@ -192,7 +192,8 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          templateId
+          templateId,
+          ...(!AppFolderTypeList.includes(type!) && { resourceRefs })
         }
       ],
       { session, ordered: true }

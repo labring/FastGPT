@@ -117,6 +117,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       chatConfig,
       updateTime: new Date(),
       version: 'v2',
+      ...(isPublish && { resourceRefs }),
       ...(isPublish && chatConfig?.scheduledTriggerConfig?.cronString
         ? {
             scheduledTriggerConfig: chatConfig.scheduledTriggerConfig,

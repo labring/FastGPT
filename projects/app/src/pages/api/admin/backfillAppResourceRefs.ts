@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -32,6 +35,7 @@ type ResponseType = {
   batchSize: number;
   startTime: string;
   versions: MigrationStats;
+  apps: MigrationStats;
 };
 
 /**
@@ -98,6 +102,99 @@ async function backfillVersionResourceRefs({
   return { matched, updated: dryRun ? 0 : updated };
 }
 
+/**
+ * 按指定时间后的最新已发布版本刷新 apps.resourceRefs 缓存。
+ * 草稿和自动保存不会影响缓存，避免 Skill 关联统计偏离线上发布态。
+ */
+async function backfillAppResourceRefs({
+  dryRun,
+  batchSize,
+  startTime
+}: {
+  dryRun: boolean;
+  batchSize: number;
+  startTime: Date;
+}): Promise<MigrationStats> {
+  let lastId: string | undefined;
+  let scanned = 0;
+  let matched = 0;
+  let updated = 0;
+
+  while (true) {
+    const apps = await MongoApp.find(
+      {
+        ...(lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {}),
+        type: { $nin: AppFolderTypeList },
+        deleteTime: null,
+        updateTime: { $gte: startTime }
+      },
+      '_id'
+    )
+      .sort({ _id: 1 })
+      .limit(batchSize)
+      .lean();
+
+    if (apps.length === 0) break;
+
+    scanned += apps.length;
+    lastId = String(apps[apps.length - 1]._id);
+
+    const latestPublishedVersions = await MongoAppVersion.aggregate<{
+      _id: Types.ObjectId;
+      nodes?: StoreNodeItemType[];
+    }>([
+      {
+        $match: {
+          appId: { $in: apps.map((app) => new Types.ObjectId(String(app._id))) },
+          isPublish: true,
+          time: { $gte: startTime }
+        }
+      },
+      {
+        $sort: {
+          appId: 1,
+          time: -1,
+          _id: -1
+        }
+      },
+      {
+        $group: {
+          _id: '$appId',
+          nodes: { $first: '$nodes' }
+        }
+      }
+    ]);
+
+    const operations = latestPublishedVersions.map((version) => ({
+      updateOne: {
+        filter: { _id: version._id },
+        update: {
+          $set: {
+            resourceRefs: extractAppResourceRefsFromNodes(version.nodes)
+          }
+        }
+      }
+    }));
+
+    matched += operations.length;
+
+    if (!dryRun && operations.length > 0) {
+      const result = await MongoApp.bulkWrite(operations, { ordered: false });
+      updated += result.modifiedCount + result.upsertedCount;
+    }
+
+    logger.info('[app resource refs] backfill progress', {
+      scanned,
+      matched,
+      updated: dryRun ? 0 : updated,
+      lastId,
+      startTime
+    });
+  }
+
+  return { matched, updated: dryRun ? 0 : updated };
+}
+
 async function handler(
   req: ApiRequestProps<undefined, z.input<typeof QuerySchema>>
 ): Promise<ResponseType> {
@@ -111,12 +208,14 @@ async function handler(
   logger.info('Start app resource refs backfill', { dryRun, batchSize, startTime });
 
   const versions = await backfillVersionResourceRefs({ dryRun, batchSize, startTime });
+  const apps = await backfillAppResourceRefs({ dryRun, batchSize, startTime });
 
   logger.info('Finish app resource refs backfill', {
     dryRun,
     batchSize,
     startTime,
-    versions
+    versions,
+    apps
   });
 
   return {
@@ -124,7 +223,8 @@ async function handler(
     dryRun,
     batchSize,
     startTime: startTime.toISOString(),
-    versions
+    versions,
+    apps
   };
 }
 

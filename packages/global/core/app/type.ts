@@ -120,6 +120,7 @@ export const AppSchemaTypeSchema = z.object({
   chatConfig: AppChatConfigTypeSchema,
   scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional(),
   scheduledTriggerNextTime: z.coerce.date().optional(),
+  resourceRefs: AppResourceRefsSchema.optional(),
   inheritPermission: z.boolean().optional(),
 
   // if access the app by favourite or quick
