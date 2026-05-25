@@ -4,7 +4,8 @@ import React, {
   useState,
   useMemo,
   useImperativeHandle,
-  useEffect
+  useEffect,
+  useLayoutEffect
 } from 'react';
 import Script from 'next/script';
 import { Box, Flex } from '@chakra-ui/react';
@@ -130,7 +131,7 @@ const ChatBox = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const activeAppIdRef = useRef<string | undefined>(appId);
   const activeChatIdRef = useRef<string | undefined>(chatId);
-  useEffect(() => {
+  useLayoutEffect(() => {
     activeAppIdRef.current = appId;
     activeChatIdRef.current = chatId;
   }, [appId, chatId]);
