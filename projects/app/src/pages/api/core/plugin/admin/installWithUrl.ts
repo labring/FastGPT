@@ -3,6 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { InstallPluginFromUrlBodyType } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import { refreshVersionKey } from '@fastgpt/service/common/cache';
+import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 export type InstallToolBody = InstallPluginFromUrlBodyType;
 
@@ -20,7 +22,9 @@ async function handler(
     return Promise.reject('Download URL is required');
   }
 
-  return await pluginClient.installTools(downloadUrls);
+  const result = await pluginClient.installTools(downloadUrls);
+  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
+  return result;
 }
 
 export default NextAPI(handler);

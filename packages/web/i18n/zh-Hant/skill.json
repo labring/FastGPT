@@ -13,6 +13,7 @@
   "custom_skill": "自定義 Skill",
   "custom_skill_desc": "通過描述 Skill 需求，智能生成 Skill 大綱及框架",
   "delete_disabled_tip": "存在關聯應用，無法刪除",
+  "folder_delete_disabled_tip": "其中的 Skill 存在關聯應用，無法刪除",
   "delete_failed": "刪除失敗",
   "delete_success": "刪除成功",
   "detail_tab_config": "Skill 配置",

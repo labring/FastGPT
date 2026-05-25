@@ -111,8 +111,10 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   canEdit: z.boolean().optional(), // dynamic inputs
   isPro: z.boolean().optional(), // Pro version field
   isToolOutput: z.boolean().optional(),
+  followLabel: z.boolean().optional(), // switch follows label tightly (no space-between)
 
-  deprecated: z.boolean().optional() // node deprecated
+  deprecated: z.boolean().optional(), // node deprecated
+  dividerBefore: z.boolean().optional() // render a divider above this input
 });
 export type FlowNodeInputItemType = z.infer<typeof FlowNodeInputItemTypeSchema>;
 

@@ -129,8 +129,6 @@ export async function performDatasetSearch(
 
   return retrievalResults.map((item: any) => ({
     id: item.id,
-    q: item.q,
-    a: item.a,
     score: item.score
   }));
 }

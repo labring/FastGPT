@@ -109,6 +109,9 @@ export const fakeChartData = {
       newUserCount: 5,
       retentionUserCount: 3,
       points: 100,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 1,
         online: 1,
@@ -129,6 +132,9 @@ export const fakeChartData = {
       newUserCount: 8,
       retentionUserCount: 4,
       points: 160,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 2,
         online: 2,
@@ -149,6 +155,9 @@ export const fakeChartData = {
       newUserCount: 12,
       retentionUserCount: 6,
       points: 220,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 2,
         online: 3,
@@ -169,6 +178,9 @@ export const fakeChartData = {
       newUserCount: 7,
       retentionUserCount: 8,
       points: 180,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 1,
         online: 2,
@@ -189,6 +201,9 @@ export const fakeChartData = {
       newUserCount: 15,
       retentionUserCount: 5,
       points: 250,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 2,
         online: 4,
@@ -209,6 +224,9 @@ export const fakeChartData = {
       newUserCount: 6,
       retentionUserCount: 8,
       points: 170,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 1,
         online: 3,
@@ -229,6 +247,9 @@ export const fakeChartData = {
       newUserCount: 17,
       retentionUserCount: 5,
       points: 280,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
       sourceCountMap: {
         test: 2,
         online: 5,
@@ -362,6 +383,8 @@ export const fakeChartData = {
   cumulative: {
     userCount: 109,
     points: 1360,
+    inputTokens: 0,
+    outputTokens: 0,
     chatItemCount: 280,
     chatCount: 177,
     pointsPerChat: 7.2,

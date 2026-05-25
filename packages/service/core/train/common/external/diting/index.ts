@@ -1,5 +1,8 @@
-import { synthesizeEvalData as synthesizeEvalDataReal } from './client';
-import { mockSynthesizeEvalData } from './mock';
+import {
+  synthesizeEvalData as synthesizeEvalDataReal,
+  callLLMJudge as callLLMJudgeReal
+} from './client';
+import { mockSynthesizeEvalData, mockCallLLMJudge } from './mock';
 
 import { trainEnv } from '../../env';
 
@@ -7,4 +10,11 @@ export const synthesizeEvalData = trainEnv.DITING_MOCK_ENABLE
   ? mockSynthesizeEvalData
   : synthesizeEvalDataReal;
 
-export type { DiTingSyntheticEvalDataRequest, DiTingSyntheticEvalDataResponse } from './types';
+export const callLLMJudge = trainEnv.DITING_MOCK_ENABLE ? mockCallLLMJudge : callLLMJudgeReal;
+
+export type {
+  DiTingSyntheticEvalDataRequest,
+  DiTingSyntheticEvalDataResponse,
+  DiTingLLMJudgeRequest,
+  DiTingLLMJudgeResponse
+} from './types';

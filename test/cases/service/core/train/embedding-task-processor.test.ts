@@ -52,6 +52,11 @@ vi.mock('@fastgpt/service/core/train/embedding/task/controller', () => ({
   deleteEmbeddingTrainTask: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/train/common/task-abort-signal', () => ({
+  setTrainTaskAbortSignal: vi.fn(),
+  getTrainTaskAbortSignal: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/train/embedding/data/schema', () => ({
   MongoEmbeddingTrainsetData: {
     find: vi.fn().mockReturnValue({
@@ -126,10 +131,18 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
   }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: {
+    find: vi.fn()
+  }
+}));
+
 vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
+  deleteSFTTask: vi.fn(),
   synthesizeEmbeddingEvalData: vi.fn(),
+  judgeRelevantChunks: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -288,6 +301,17 @@ describe('Embedding Train Task Processor', () => {
         a: 'mock answer 2'
       }
     ]);
+
+    const { getTrainTaskAbortSignal } = await import(
+      '@fastgpt/service/core/train/common/task-abort-signal'
+    );
+    (getTrainTaskAbortSignal as any).mockResolvedValue(null);
+
+    const { judgeRelevantChunks } = await import('@fastgpt/service/core/train/embedding/external');
+    (judgeRelevantChunks as any).mockResolvedValue({
+      status: 'success',
+      detected_data_ids: ['data_001']
+    });
   });
 
   describe('embeddingTrainTaskProcessor', () => {
@@ -390,11 +414,20 @@ describe('Embedding Train Task Processor', () => {
       (MongoEvalDatasetData.find as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue([
           {
+            _id: 'eval_data_123',
             userInput: 'Test eval question',
             expectedContextIds: ['507f1f77bcf86cd799439020']
             // Note: no retrievalContextsFull - embedding difference from rerank
           }
         ])
+      });
+
+      // Mock MongoDatasetData for llm-judge batch chunk lookup
+      const { MongoDatasetData } = await import('@fastgpt/service/core/dataset/data/schema');
+      (MongoDatasetData.find as any).mockReturnValue({
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
       // Mock getEmbeddingModel
@@ -420,18 +453,26 @@ describe('Embedding Train Task Processor', () => {
 
       // Mock embedding evaluation (returns embed_top10_mrr etc., not rerank_top10_ndcg)
       (evaluateEmbeddingModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          embed_top5_mrr: 0.88,
-          embed_top10_mrr: 0.9,
-          embed_top10_precision: 0.82,
-          embed_top15_mrr: 0.87
+        evalResult: {
+          detailed_results: {
+            embed_top5_mrr: 0.88,
+            embed_top10_mrr: 0.9,
+            embed_top10_precision: 0.82,
+            embed_top15_mrr: 0.87
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['data_001']
+          }
+        ]
       });
 
       // Mock task updates with proper data evolution
@@ -511,7 +552,12 @@ describe('Embedding Train Task Processor', () => {
         mockTaskId,
         EmbeddingTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateEmbeddingCheckpointStage).toHaveBeenCalledTimes(6);
+      expect(updateEmbeddingCheckpointStage).toHaveBeenNthCalledWith(
+        7,
+        mockTaskId,
+        EmbeddingTaskCheckpointStageEnum.llm_judge
+      );
+      expect(updateEmbeddingCheckpointStage).toHaveBeenCalledTimes(7);
 
       // Verify data preparation stage
       expect(fs.createWriteStream).toHaveBeenCalled();
@@ -703,10 +749,19 @@ describe('Embedding Train Task Processor', () => {
       (MongoEvalDatasetData.find as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue([
           {
+            _id: 'eval_data_123',
             userInput: 'Test eval question',
             expectedContextIds: ['507f1f77bcf86cd799439020']
           }
         ])
+      });
+
+      // Mock MongoDatasetData for llm-judge batch chunk lookup
+      const mockedMongoDatasetData = await import('@fastgpt/service/core/dataset/data/schema');
+      (mockedMongoDatasetData.MongoDatasetData.find as any).mockReturnValue({
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
       // Mock getEmbeddingModel
@@ -729,18 +784,26 @@ describe('Embedding Train Task Processor', () => {
         }
       });
       (evaluateEmbeddingModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          embed_top5_mrr: 0.88,
-          embed_top10_mrr: 0.9,
-          embed_top10_precision: 0.82,
-          embed_top15_mrr: 0.87
+        evalResult: {
+          detailed_results: {
+            embed_top5_mrr: 0.88,
+            embed_top10_mrr: 0.9,
+            embed_top10_precision: 0.82,
+            embed_top15_mrr: 0.87
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['data_001']
+          }
+        ]
       });
 
       await embeddingTrainTaskProcessor({
@@ -774,6 +837,10 @@ describe('Embedding Train Task Processor', () => {
       expect(updateEmbeddingCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         EmbeddingTaskCheckpointStageEnum.eval_tunedmodel
+      );
+      expect(updateEmbeddingCheckpointStage).toHaveBeenCalledWith(
+        mockTaskId,
+        EmbeddingTaskCheckpointStageEnum.llm_judge
       );
 
       // Verify final result uses existing generate_trainset data (not regenerated)
@@ -895,6 +962,76 @@ describe('Embedding Train Task Processor', () => {
       // Status update is handled uniformly by the worker's failed event handler
     });
 
+    test('SFT queue full should map to queue full error', async () => {
+      const { updateEmbeddingCheckpointData, getEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/controller'
+      );
+      const { MongoEmbeddingTrainsetData } = await import(
+        '@fastgpt/service/core/train/embedding/data/schema'
+      );
+      const { createSFTTask } = await import('@fastgpt/service/core/train/embedding/external');
+
+      const mockTask = createMockTask();
+      const checkpointData: any = {};
+
+      (getEmbeddingTrainTask as any).mockImplementation(async (id: string) => {
+        if (id === mockTaskId) {
+          return Promise.resolve({
+            ...mockTask,
+            checkpoint: {
+              ...mockTask.checkpoint,
+              data: { ...checkpointData }
+            }
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      (MongoEmbeddingTrainsetData.find as any).mockReturnValue({
+        cursor: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              _id: 'data_1',
+              trainsetId: 'trainset_1',
+              query: 'test',
+              positiveDocs: ['positive'],
+              negativeDocs: ['negative']
+            };
+          }
+        })
+      });
+
+      (fs.writeFile as any).mockResolvedValue(undefined);
+      (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
+      (updateEmbeddingCheckpointData as any).mockImplementation(
+        async (_taskId: string, stage: string, data: any, merge: boolean = false) => {
+          if (merge) {
+            checkpointData[stage] = { ...checkpointData[stage], ...data };
+          } else {
+            checkpointData[stage] = data;
+          }
+          return Promise.resolve();
+        }
+      );
+      (createSFTTask as any).mockRejectedValue(
+        new Error('SFT Bridge API error: Too many concurrent tasks (max: 3)')
+      );
+
+      try {
+        await embeddingTrainTaskProcessor({
+          data: { taskId: mockTaskId, isRetry: false },
+          attemptsMade: 0,
+          opts: { attempts: 3 }
+        } as any);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskRetriableError);
+        expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
+          EmbeddingTrainErrEnum.embeddingFinetuneQueueFull
+        );
+      }
+    });
+
     test('SFT task failure should throw an error', async () => {
       const {
         updateEmbeddingCheckpointData,
@@ -989,6 +1126,7 @@ describe('Embedding Train Task Processor', () => {
       (MongoEvalDatasetData.find as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue([
           {
+            _id: 'eval_data_123',
             userInput: 'Test eval question',
             expectedContextIds: ['507f1f77bcf86cd799439020']
           }
@@ -1007,16 +1145,24 @@ describe('Embedding Train Task Processor', () => {
         '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model'
       );
       (evaluateEmbeddingModelHelper as any).mockResolvedValue({
-        detailed_results: {
-          embed_top10_mrr: 0.9,
-          embed_top10_precision: 0.82
+        evalResult: {
+          detailed_results: {
+            embed_top10_mrr: 0.9,
+            embed_top10_precision: 0.82
+          },
+          retrieval_ranks: [],
+          total_rows: 1,
+          expect_count: 1,
+          mrr_scores: {},
+          ndcg_scores: {},
+          map_scores: {}
         },
-        retrieval_ranks: [],
-        total_rows: 1,
-        expect_count: 1,
-        mrr_scores: {},
-        ndcg_scores: {},
-        map_scores: {}
+        rankingResults: [
+          {
+            itemId: 'eval_data_123',
+            rankedIds: ['data_001']
+          }
+        ]
       });
 
       // Mock SFT created successfully but query returns failed status
@@ -1053,6 +1199,170 @@ describe('Embedding Train Task Processor', () => {
         mockTaskId,
         EmbeddingTaskCheckpointStageEnum.generate_trainset
       );
+    });
+
+    test('SFT polling should stop when task is deleted during finetuning', async () => {
+      const {
+        updateEmbeddingCheckpointData,
+        updateEmbeddingCheckpointStage,
+        getEmbeddingTrainTask
+      } = await import('@fastgpt/service/core/train/embedding/task/controller');
+      const { MongoEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/schema'
+      );
+      const { createEmbeddingModelConfig } = await import(
+        '@fastgpt/service/core/train/embedding/model/controller'
+      );
+      const { createSFTTask, querySFTTaskStatus } = await import(
+        '@fastgpt/service/core/train/embedding/external'
+      );
+      const { getTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
+
+      const checkpointData: any = {
+        generate_trainset: {
+          trainDatasetId: 'trainset_123',
+          trainDatasetFilePath: '/tmp/test.jsonl'
+        },
+        generate_evaldataset: {
+          evalDatasetId: 'eval_dataset_123',
+          autoGenerated: true
+        },
+        eval_basemodel: {
+          baseModelEvalResult: { detailed_results: {} },
+          rankingResults: []
+        }
+      };
+      const mockTask = createMockTask(
+        EmbeddingTrainTaskStatusEnum.running,
+        EmbeddingTaskCheckpointStageEnum.eval_basemodel,
+        checkpointData
+      );
+      let sftTaskCreated = false;
+
+      (getEmbeddingTrainTask as any).mockImplementation(async (id: string) => {
+        if (id !== mockTaskId) return Promise.resolve(null);
+
+        return Promise.resolve({
+          ...mockTask,
+          checkpoint: {
+            ...mockTask.checkpoint,
+            data: { ...checkpointData }
+          }
+        });
+      });
+
+      (updateEmbeddingCheckpointData as any).mockImplementation(
+        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
+          checkpointData[stage] = merge ? { ...checkpointData[stage], ...data } : data;
+        }
+      );
+
+      (createSFTTask as any).mockImplementation(async () => {
+        sftTaskCreated = true;
+        return { task_id: 'sft_task_123' };
+      });
+      (getTrainTaskAbortSignal as any).mockImplementation(async () =>
+        sftTaskCreated ? 'deleted' : null
+      );
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_123',
+        status: 'running'
+      });
+      try {
+        await embeddingTrainTaskProcessor({
+          data: {
+            taskId: mockTaskId,
+            isRetry: false
+          },
+          attemptsMade: 0,
+          opts: {
+            attempts: 3
+          }
+        } as any);
+        expect.fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
+        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
+          EmbeddingTrainErrEnum.embeddingTaskNotExist
+        );
+      }
+
+      expect(updateEmbeddingCheckpointData).toHaveBeenCalledWith(
+        mockTaskId,
+        'finetuning',
+        { sftTaskId: 'sft_task_123' },
+        true
+      );
+      expect(updateEmbeddingCheckpointData).not.toHaveBeenCalledWith(
+        mockTaskId,
+        'finetuning',
+        expect.objectContaining({
+          tunedModelEndpoint: expect.anything()
+        }),
+        expect.anything()
+      );
+      expect(querySFTTaskStatus).not.toHaveBeenCalled();
+      expect(getTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'embedding',
+        taskId: mockTaskId
+      });
+      expect(createEmbeddingModelConfig).not.toHaveBeenCalled();
+      expect(updateEmbeddingCheckpointStage).not.toHaveBeenCalledWith(
+        mockTaskId,
+        EmbeddingTaskCheckpointStageEnum.finetuning
+      );
+      expect(MongoEmbeddingTrainTask.updateOne).not.toHaveBeenCalledWith(
+        { _id: mockTaskId },
+        expect.objectContaining({
+          status: EmbeddingTrainTaskStatusEnum.completed
+        })
+      );
+    });
+
+    test('should reuse checkpoint SFT task when embedding finetuning resumes', async () => {
+      const { runFinetuneStage } = await import(
+        '@fastgpt/service/core/train/embedding/task/stages/finetune'
+      );
+      const { createSFTTask, querySFTTaskStatus } = await import(
+        '@fastgpt/service/core/train/embedding/external'
+      );
+      const { updateEmbeddingCheckpointData, getEmbeddingTrainTask } = await import(
+        '@fastgpt/service/core/train/embedding/task/controller'
+      );
+      const fsPromises = await import('fs/promises');
+
+      const mockTask = createMockTask(
+        EmbeddingTrainTaskStatusEnum.running,
+        EmbeddingTaskCheckpointStageEnum.eval_basemodel,
+        {
+          finetuning: {
+            sftTaskId: 'sft_task_from_checkpoint'
+          }
+        }
+      ) as EmbeddingTrainTaskSchemaType;
+
+      (getEmbeddingTrainTask as any).mockResolvedValue(mockTask);
+      (querySFTTaskStatus as any).mockResolvedValue({
+        task_id: 'sft_task_from_checkpoint',
+        status: 'completed',
+        endpoint: {
+          base_url: 'http://sft-bridge.com/v1',
+          model: 'tuned-model',
+          api_key: 'sft-bridge-key'
+        }
+      });
+
+      const result = await runFinetuneStage(mockTask);
+
+      expect(result.sftTaskId).toBe('sft_task_from_checkpoint');
+      expect(createSFTTask).not.toHaveBeenCalled();
+      expect(fsPromises.readFile).not.toHaveBeenCalled();
+      expect(updateEmbeddingCheckpointData).not.toHaveBeenCalled();
+      expect(querySFTTaskStatus).toHaveBeenCalledWith({
+        taskId: 'sft_task_from_checkpoint'
+      });
     });
 
     test('评测阶段失败应该抛出错误', async () => {

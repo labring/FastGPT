@@ -175,6 +175,7 @@ export type SystemEnvType = {
   chatApiKey?: string;
 
   customPdfParse?: customPdfParseType;
+  langfuse?: LangfuseConfigType;
   fileUrlWhitelist?: string[];
   customDomain?: customDomainType;
 
@@ -210,7 +211,6 @@ export type SystemEnvType = {
         autoIndexes?: boolean;
         autoIndexesConfig?: { questionIndex?: boolean; summaryIndex?: boolean }; // 自动索引细粒度配置
         small2bigIndexes?: boolean;
-        syntheticIndex?: boolean;
         hypeIndexes?: boolean;
         hypeIndexPrompt?: string;
         small2bigConfig?: small2bigConfigType;
@@ -284,7 +284,6 @@ export type CustomEnhanceConfigType = {
   indexPrefixTitle?: boolean;
   small2bigIndexes?: boolean;
   small2bigConfig?: small2bigConfigType;
-  syntheticIndex?: boolean;
 };
 
 // Prompt 配置
@@ -363,6 +362,12 @@ export type customPdfParseType = {
   textinAppId?: string;
   textinSecretCode?: string;
   price?: number;
+};
+
+export type LangfuseConfigType = {
+  secretKey?: string;
+  publicKey?: string;
+  baseUrl?: string;
 };
 
 export type EvaluationConfigType = {

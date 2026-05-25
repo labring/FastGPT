@@ -21,6 +21,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { detectLang } from 'diting-rag-ts';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const formatIndexes = async ({
   indexes = [],
@@ -163,6 +164,7 @@ const formatIndexes = async ({
  * 3. create mongo data
  */
 export async function insertData2Dataset({
+  id,
   teamId,
   tmbId,
   datasetId,
@@ -185,7 +187,7 @@ export async function insertData2Dataset({
   session?: ClientSession;
 }) {
   if (imageId && !q) {
-    return Promise.reject('Image understanding failed, please configure the VLM model');
+    return Promise.reject(DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse);
   }
   if (!q || !datasetId || !collectionId || !embeddingModel) {
     return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
@@ -251,6 +253,7 @@ export async function insertData2Dataset({
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
+        ...(id && { _id: id }),
         teamId,
         tmbId,
         datasetId,

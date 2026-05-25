@@ -1,10 +1,9 @@
-import DiagramModal from '@/pageComponents/chat/ChatSetting/DiagramModal';
-import { type PropsWithChildren, useCallback, useMemo, useState } from 'react';
+import { type PropsWithChildren, useCallback, useMemo } from 'react';
 import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -16,7 +15,6 @@ import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const HomepageSetting = dynamic(() => import('@/pageComponents/chat/ChatSetting/HomepageSetting'));
 const LogDetails = dynamic(() => import('@/pageComponents/chat/ChatSetting/LogDetails'));
@@ -33,7 +31,6 @@ const ChatSetting = () => {
   const { userInfo } = useUserStore();
 
   const { tab: tabQuery } = router.query as { tab: ChatSettingTabOptionEnum };
-  const [isOpenDiagram, setIsOpenDiagram] = useState(false);
   const tab = useMemo(
     () =>
       Object.values(ChatSettingTabOptionEnum).includes(tabQuery)
@@ -70,7 +67,7 @@ const ChatSetting = () => {
 
   return (
     <>
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
 
       <Flex flexDir="column" h="100%">
         {!isPc && (
@@ -88,7 +85,6 @@ const ChatSetting = () => {
             <ChatSliderMobileDrawer
               showList={false}
               showMenu={false}
-              banner={chatSettings?.wideLogoUrl}
               menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
             />
           </>
@@ -97,9 +93,7 @@ const ChatSetting = () => {
         {chatSettings && (
           <Box p={['16px 0 16px 0', 6]} flex="1 0 0" h="0" boxSizing="border-box">
             {/* homepage setting */}
-            {tab === ChatSettingTabOptionEnum.HOME && (
-              <HomepageSetting Header={SettingHeader} onDiagramShow={setIsOpenDiagram} />
-            )}
+            {tab === ChatSettingTabOptionEnum.HOME && <HomepageSetting Header={SettingHeader} />}
 
             {/* data dashboard */}
             {tab === ChatSettingTabOptionEnum.DATA_DASHBOARD && (
@@ -116,8 +110,6 @@ const ChatSetting = () => {
           </Box>
         )}
       </Flex>
-
-      <DiagramModal show={isOpenDiagram} onShow={setIsOpenDiagram} />
     </>
   );
 };

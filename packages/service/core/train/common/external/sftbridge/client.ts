@@ -31,6 +31,31 @@ function getSFTBridgeTimeout(): number {
   return getSFTBridgeConfig().timeout;
 }
 
+function extractSFTBridgeErrorMessage(error: unknown): string {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  const data = error.response?.data;
+  if (typeof data === 'string' && data.trim()) {
+    return data;
+  }
+
+  if (data && typeof data === 'object') {
+    const message = 'message' in data ? data.message : undefined;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+
+    const detail = 'detail' in data ? data.detail : undefined;
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+  }
+
+  return error.message;
+}
+
 /**
  * Create SFT task
  * Calls SFT Bridge platform /api/v1/optimization/tasks endpoint
@@ -94,7 +119,7 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
     });
 
     if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = extractSFTBridgeErrorMessage(error);
       throw new Error(`SFT Bridge API error: ${errorMessage}`);
     }
 
@@ -176,7 +201,7 @@ export async function querySFTTaskStatus(
     }
 
     if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = extractSFTBridgeErrorMessage(error);
       throw new Error(`SFT Bridge API error: ${errorMessage}`);
     }
 
@@ -231,7 +256,7 @@ export async function deleteSFTTask(request: DeleteSFTTaskRequest): Promise<Dele
     }
 
     if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = extractSFTBridgeErrorMessage(error);
       throw new Error(`SFT Bridge API error: ${errorMessage}`);
     }
 

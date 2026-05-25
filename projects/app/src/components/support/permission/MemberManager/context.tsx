@@ -51,6 +51,7 @@ export type ChildrenProps = {
   onOpenManageModal: () => void;
   MemberListCard: (props: MemberListCardProps) => JSX.Element;
   collaboratorList: CollaboratorItemDetailType[];
+  refetchCollaboratorList: () => void;
 };
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
@@ -216,7 +217,8 @@ const CollaboratorContextProvider = ({
       {children({
         onOpenManageModal,
         MemberListCard,
-        collaboratorList
+        collaboratorList,
+        refetchCollaboratorList
       })}
       {isOpenManageModal && (
         <MemberModal

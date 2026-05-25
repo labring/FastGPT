@@ -6,12 +6,13 @@
 import { END } from '@langchain/langgraph';
 import type { AgenticSearchConfig, AgenticSearchProviders } from '../ports/agentic';
 import type { ChunkItem } from '../types/chunk';
-import type { LLMMessage, ToolCall } from '../types/message';
+import type { LLMMessage, ToolCall, LLMResponse, LLMCallOptions } from '../types/message';
 import type { AgenticRAGStateType, AgenticRAGUpdateType } from '../types/state';
 import type { SkillBundle } from './graph';
 import type { RequestContext } from './context';
 import { TOOL_DEFINITIONS, parseAllToolCalls, getSystemPrompt } from './tools';
 import type { ToolDefinition } from '../types/message';
+import type { Logger } from '../ports/logger';
 import { routePlaybook } from './playbooks/router';
 import { extractChatHistoryInfo } from '../utils/compression';
 import { detectLang } from '../utils/lang';
@@ -45,6 +46,152 @@ const ASSESS_PLAYBOOKS = new Set(['deep_research', 'troubleshooting', 'comparati
 function filterToolsByPlaybook(playbook: string): ToolDefinition[] {
   if (ASSESS_PLAYBOOKS.has(playbook)) return TOOL_DEFINITIONS;
   return TOOL_DEFINITIONS.filter((t) => t.function.name !== TOOLS.ASSESS);
+}
+
+// ============================================================
+// Agent LLM 调用重试 + text 降级 + no-tool-call 引导
+// ============================================================
+
+const AGENT_LLM_MAX_RETRIES = 1; // LLM 调用失败时重试次数
+
+/**
+ * 带重试的 LLM 调用。
+ * 返回 response 和 attempts，全部失败返回 null。
+ */
+async function callLLMWithRetry(
+  llm: { chat: (messages: LLMMessage[], options?: LLMCallOptions) => Promise<LLMResponse> },
+  messages: LLMMessage[],
+  options: LLMCallOptions,
+  logger?: Logger
+): Promise<{ response: LLMResponse; attempts: number } | null> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= AGENT_LLM_MAX_RETRIES; attempt++) {
+    try {
+      const response = await llm.chat(messages, options);
+      return { response, attempts: attempt + 1 };
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      if (attempt < AGENT_LLM_MAX_RETRIES) {
+        logger?.warn(
+          `[agent] LLM call failed (attempt ${attempt + 1}/${AGENT_LLM_MAX_RETRIES + 1}), retrying...`
+        );
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+  }
+
+  logger?.error(
+    `[agent] LLM call failed after ${AGENT_LLM_MAX_RETRIES + 1} attempts: ${lastError?.message}`
+  );
+  return null;
+}
+
+/**
+ * 尝试从 LLM 文本响应中解析 tool calls（text fallback）。
+ * 当 native function calling 无返回时使用。
+ */
+function tryTextFallbackToolCalls(content: string): ToolCall[] {
+  if (!content) return [];
+  const parsedCalls = parseAllToolCalls(content);
+  if (parsedCalls.length === 0) return [];
+  const ts = Date.now();
+  return parsedCalls.map((c, i) => ({
+    id: `text_fallback_${ts}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+    type: 'function' as const,
+    function: { name: c.name, arguments: JSON.stringify(c.args) }
+  }));
+}
+
+/** 无 tool call 时的引导消息 */
+const NO_TOOL_CALL_GUIDANCE =
+  'You MUST call a tool to proceed. Use @search to look up information, ' +
+  'or @query_rewrite to improve your query. Do NOT output free text or a direct answer.';
+
+/**
+ * 内部引导重试：当 agent 无 tool call 且无 chunks 时，注入引导消息再调一次 LLM。
+ * 返回 null 表示引导后仍无 tool call。
+ */
+async function retryWithGuidance(
+  llm: { chat: (messages: LLMMessage[], options?: LLMCallOptions) => Promise<LLMResponse> },
+  messages: LLMMessage[],
+  assistantContent: string,
+  playbook: string,
+  logger?: Logger
+): Promise<{
+  toolCalls: ToolCall[];
+  content: string;
+  mode: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
+} | null> {
+  const guidanceMsg: LLMMessage = {
+    role: 'user',
+    content: NO_TOOL_CALL_GUIDANCE,
+    id: 'tool-call-guidance'
+  };
+
+  try {
+    const guidedResponse = await llm.chat(
+      [...messages, { role: 'assistant', content: assistantContent }, guidanceMsg],
+      { tools: filterToolsByPlaybook(playbook), temperature: 0.1 }
+    );
+
+    let guidedToolCalls: ToolCall[] = guidedResponse.toolCalls ?? [];
+    let mode = 'guided_native';
+
+    if (guidedToolCalls.length === 0 && guidedResponse.content) {
+      const parsed = tryTextFallbackToolCalls(guidedResponse.content);
+      if (parsed.length > 0) {
+        guidedToolCalls = parsed;
+        mode = 'guided_text_fallback';
+      }
+    }
+
+    if (guidedToolCalls.length > 0) {
+      logger?.info(
+        `[agent] guidance retry succeeded: ${guidedToolCalls.map((tc) => tc.function.name).join(',')}`
+      );
+      return {
+        toolCalls: guidedToolCalls,
+        content: guidedResponse.content,
+        mode,
+        usage: {
+          inputTokens: guidedResponse.usage?.inputTokens,
+          outputTokens: guidedResponse.usage?.outputTokens
+        }
+      };
+    }
+  } catch {
+    logger?.warn('[agent] guidance retry LLM call failed');
+  }
+
+  return null;
+}
+
+/**
+ * 构建 agent 节点在 retry 全部失败时的 fallback 返回值。
+ * 有 chunks 时标记 done 进入 select_chunks 用已有结果生成回答；
+ * 无 chunks 时直接抛出异常，让上层（runner.ts）的 error 处理路径
+ * 捕获并返回明确的错误信息，而非静默返回空召回。
+ */
+function agentRetryExhaustedUpdate(
+  state: AgenticRAGStateType,
+  nodeName: string,
+  attempts: number,
+  lastErrorMsg: string
+): AgenticRAGUpdateType {
+  if ((state.allChunks?.length ?? 0) > 0) {
+    return {
+      pendingToolCalls: [],
+      executionPath: [`${nodeName}(retry_exhausted_with_chunks)`],
+      nodeHist: [{ node: nodeName, toolCalls: [] }],
+      llmInputTokens: 0,
+      llmOutputTokens: 0
+    };
+  }
+  throw new Error(
+    `${nodeName}: LLM call failed after ${attempts} attempts, no chunks collected — ${lastErrorMsg}`
+  );
 }
 
 // ============================================================
@@ -524,12 +671,14 @@ export function createRoutePlaybookNode(
 
 /**
  * native agent 节点：使用 LLM function calling，从 toolCalls 获取意图
+ * 支持重试 + text 降级 + no-tool-call 引导
  */
 export function createNativeAgentNode(
   providers: AgenticSearchProviders,
   config: Required<AgenticSearchConfig>
 ) {
   return async function nativeAgentNode(state: AgenticRAGStateType): Promise<AgenticRAGUpdateType> {
+    const logger = getNodeLogger(providers);
     if (
       state.iterationCount >= config.maxIterations ||
       state.toolCallCount >= config.maxToolCalls
@@ -541,35 +690,114 @@ export function createNativeAgentNode(
       };
     }
 
-    try {
-      const response = await providers.llm.chat(state.messages, {
+    // ── LLM 调用 + 重试 ──
+    const retryResult = await callLLMWithRetry(
+      providers.llm,
+      state.messages,
+      {
         tools: filterToolsByPlaybook(state.playbook),
         temperature: 0.1
-      });
+      },
+      logger
+    );
 
-      const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
-      const toolCalls = response.toolCalls ?? [];
-      const toolNames = toolCalls.map((tc) => tc.function.name);
+    if (!retryResult) {
+      return agentRetryExhaustedUpdate(
+        state,
+        'native_agent',
+        AGENT_LLM_MAX_RETRIES + 1,
+        'LLM call failed'
+      );
+    }
+
+    const { response } = retryResult;
+    const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
+    let toolCalls: ToolCall[] = response.toolCalls ?? [];
+    let mode = 'native';
+
+    // ── Text fallback：native FC 无返回时尝试文本解析 ──
+    if (toolCalls.length === 0 && response.content) {
+      const parsedCalls = tryTextFallbackToolCalls(response.content);
+      if (parsedCalls.length > 0) {
+        toolCalls = parsedCalls;
+        mode = 'text_fallback';
+      }
+    }
+
+    // ── No-tool-call 引导重试 ──
+    if (toolCalls.length === 0 && (state.allChunks?.length ?? 0) === 0) {
+      const guidanceResult = await retryWithGuidance(
+        providers.llm,
+        state.messages,
+        response.content,
+        state.playbook,
+        logger
+      );
+      if (guidanceResult) {
+        const toolNames = guidanceResult.toolCalls.map((tc) => tc.function.name);
+        return {
+          messages: [{ role: 'assistant', content: guidanceResult.content }],
+          pendingToolCalls: guidanceResult.toolCalls,
+          toolCallCount: state.toolCallCount + guidanceResult.toolCalls.length,
+          iterationCount: state.iterationCount + 1,
+          llmInputTokens:
+            (response.usage?.inputTokens ?? 0) + (guidanceResult.usage?.inputTokens ?? 0),
+          llmOutputTokens:
+            (response.usage?.outputTokens ?? 0) + (guidanceResult.usage?.outputTokens ?? 0),
+          executionPath: [`native_agent(${guidanceResult.mode},${toolNames.join(',')})`],
+          nodeHist: [{ node: 'native_agent', toolCalls: toolNames }]
+        };
+      }
+
+      // 引导后仍无 tool call，且已知无 chunks（guarded by L712 condition）
+      // 防御性检查：万一 state.allChunks 非空（不应发生），走正常 select_chunks 路径
+      if ((state.allChunks?.length ?? 0) > 0) {
+        return {
+          messages: [assistantMsg],
+          pendingToolCalls: [],
+          iterationCount: state.iterationCount + 1,
+          llmInputTokens: response.usage?.inputTokens ?? 0,
+          llmOutputTokens: response.usage?.outputTokens ?? 0,
+          executionPath: [`native_agent(${mode},no_tools)`],
+          nodeHist: [{ node: 'native_agent', toolCalls: [] }]
+        };
+      }
 
       return {
         messages: [assistantMsg],
-        pendingToolCalls: toolCalls,
-        toolCallCount: state.toolCallCount + toolCalls.length,
+        pendingToolCalls: [],
         iterationCount: state.iterationCount + 1,
         llmInputTokens: response.usage?.inputTokens ?? 0,
         llmOutputTokens: response.usage?.outputTokens ?? 0,
-        executionPath: [`native_agent(${toolNames.join(',') || 'no_tools'})`],
-        nodeHist: [{ node: 'native_agent', toolCalls: toolNames }]
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return {
-        pendingToolCalls: [],
-        error: `native_agent error: ${errorMsg}`,
-        executionPath: ['native_agent(error)'],
+        executionPath: ['native_agent(no_tools,give_up)'],
         nodeHist: [{ node: 'native_agent', toolCalls: [] }]
       };
     }
+
+    const toolNames = toolCalls.map((tc) => tc.function.name);
+
+    if (toolCalls.length === 0) {
+      return {
+        messages: [assistantMsg],
+        pendingToolCalls: [],
+        iterationCount: state.iterationCount + 1,
+        llmInputTokens: response.usage?.inputTokens ?? 0,
+        llmOutputTokens: response.usage?.outputTokens ?? 0,
+        executionPath: [`native_agent(${mode},no_tools)`],
+        nodeHist: [{ node: 'native_agent', toolCalls: [] }]
+      };
+    }
+
+    return {
+      messages: [assistantMsg],
+      pendingToolCalls: toolCalls,
+      toolCallCount: state.toolCallCount + toolCalls.length,
+      iterationCount: state.iterationCount + 1,
+      llmInputTokens: response.usage?.inputTokens ?? 0,
+      llmOutputTokens: response.usage?.outputTokens ?? 0,
+      executionPath: [`native_agent(${mode},${toolNames.join(',')})`],
+      nodeHist: [{ node: 'native_agent', toolCalls: toolNames }]
+    };
   };
 }
 
@@ -580,11 +808,15 @@ export function createNativeAgentNode(
 /**
  * text ReAct agent 节点：解析 @tool_name() 或 <tool_call> XML 格式
  */
+/**
+ * text ReAct agent 节点：文本解析 + 重试 + no-tool-call 引导
+ */
 export function createTextAgentNode(
   providers: AgenticSearchProviders,
   config: Required<AgenticSearchConfig>
 ) {
   return async function textAgentNode(state: AgenticRAGStateType): Promise<AgenticRAGUpdateType> {
+    const logger = getNodeLogger(providers);
     if (
       state.iterationCount >= config.maxIterations ||
       state.toolCallCount >= config.maxToolCalls
@@ -596,53 +828,86 @@ export function createTextAgentNode(
       };
     }
 
-    try {
-      const response = await providers.llm.chat(state.messages, {
+    // ── LLM 调用 + 重试 ──
+    const retryResult = await callLLMWithRetry(
+      providers.llm,
+      state.messages,
+      {
         temperature: 0.1
-      });
+      },
+      logger
+    );
 
-      const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
-      const parsedCalls = parseAllToolCalls(response.content);
+    if (!retryResult) {
+      return agentRetryExhaustedUpdate(
+        state,
+        'text_agent',
+        AGENT_LLM_MAX_RETRIES + 1,
+        'LLM call failed'
+      );
+    }
 
-      const toolCalls: ToolCall[] = parsedCalls.map((c, i) => ({
-        id: `text_call_${Date.now()}_${i}`,
-        type: 'function' as const,
-        function: { name: c.name, arguments: JSON.stringify(c.args) }
-      }));
+    const { response } = retryResult;
+    const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
+    const parsedCalls = parseAllToolCalls(response.content);
 
-      const toolNames = toolCalls.map((tc) => tc.function.name);
+    const ts = Date.now();
+    const toolCalls: ToolCall[] = parsedCalls.map((c, i) => ({
+      id: `text_call_${ts}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'function' as const,
+      function: { name: c.name, arguments: JSON.stringify(c.args) }
+    }));
 
-      if (toolCalls.length === 0) {
+    // ── No-tool-call 引导重试 ──
+    if (toolCalls.length === 0 && (state.allChunks?.length ?? 0) === 0) {
+      const guidanceResult = await retryWithGuidance(
+        providers.llm,
+        state.messages,
+        response.content,
+        state.playbook,
+        logger
+      );
+      if (guidanceResult) {
+        const toolNames = guidanceResult.toolCalls.map((tc) => tc.function.name);
         return {
-          messages: [assistantMsg],
-          pendingToolCalls: [],
+          messages: [{ role: 'assistant', content: guidanceResult.content }],
+          pendingToolCalls: guidanceResult.toolCalls,
+          toolCallCount: state.toolCallCount + guidanceResult.toolCalls.length,
           iterationCount: state.iterationCount + 1,
-          llmInputTokens: response.usage?.inputTokens ?? 0,
-          llmOutputTokens: response.usage?.outputTokens ?? 0,
-          executionPath: ['text_agent(no_tool_calls)'],
-          nodeHist: [{ node: 'text_agent', toolCalls: [] }]
+          llmInputTokens:
+            (response.usage?.inputTokens ?? 0) + (guidanceResult.usage?.inputTokens ?? 0),
+          llmOutputTokens:
+            (response.usage?.outputTokens ?? 0) + (guidanceResult.usage?.outputTokens ?? 0),
+          executionPath: [`text_agent(${guidanceResult.mode},${toolNames.join(',')})`],
+          nodeHist: [{ node: 'text_agent', toolCalls: toolNames }]
         };
       }
+    }
 
+    const toolNames = toolCalls.map((tc) => tc.function.name);
+
+    if (toolCalls.length === 0) {
       return {
         messages: [assistantMsg],
-        pendingToolCalls: toolCalls,
-        toolCallCount: state.toolCallCount + toolCalls.length,
+        pendingToolCalls: [],
         iterationCount: state.iterationCount + 1,
         llmInputTokens: response.usage?.inputTokens ?? 0,
         llmOutputTokens: response.usage?.outputTokens ?? 0,
-        executionPath: [`text_agent(${toolNames.join(',')})`],
-        nodeHist: [{ node: 'text_agent', toolCalls: toolNames }]
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return {
-        pendingToolCalls: [],
-        error: `text_agent error: ${errorMsg}`,
-        executionPath: ['text_agent(error)'],
+        executionPath: ['text_agent(no_tool_calls)'],
         nodeHist: [{ node: 'text_agent', toolCalls: [] }]
       };
     }
+
+    return {
+      messages: [assistantMsg],
+      pendingToolCalls: toolCalls,
+      toolCallCount: state.toolCallCount + toolCalls.length,
+      iterationCount: state.iterationCount + 1,
+      llmInputTokens: response.usage?.inputTokens ?? 0,
+      llmOutputTokens: response.usage?.outputTokens ?? 0,
+      executionPath: [`text_agent(${toolNames.join(',')})`],
+      nodeHist: [{ node: 'text_agent', toolCalls: toolNames }]
+    };
   };
 }
 
@@ -651,7 +916,7 @@ export function createTextAgentNode(
 // ============================================================
 
 /**
- * auto agent 节点：native 优先，无 toolCalls 时降级 text 解析
+ * auto agent 节点：native 优先 + 重试 + text 降级 + no-tool-call 引导
  */
 export function createAutoAgentNode(
   providers: AgenticSearchProviders,
@@ -672,69 +937,102 @@ export function createAutoAgentNode(
       };
     }
 
-    try {
-      const response = await providers.llm.chat(state.messages, {
+    // ── LLM 调用 + 重试 ──
+    const retryResult = await callLLMWithRetry(
+      providers.llm,
+      state.messages,
+      {
         tools: filterToolsByPlaybook(state.playbook),
         temperature: 0.1
-      });
+      },
+      logger
+    );
 
-      const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
-      let toolCalls: ToolCall[] = response.toolCalls ?? [];
-
-      // native 无返回时降级 text 解析
-      if (toolCalls.length === 0 && response.content) {
-        const parsedCalls = parseAllToolCalls(response.content);
-        toolCalls = parsedCalls.map((c, i) => ({
-          id: `auto_call_${Date.now()}_${i}`,
-          type: 'function' as const,
-          function: { name: c.name, arguments: JSON.stringify(c.args) }
-        }));
-      }
-
-      const toolNames = toolCalls.map((tc) => tc.function.name);
-      const mode = response.toolCalls?.length ? 'native' : 'text_fallback';
-
-      logger?.info(
-        `[auto_agent] ${mode},${toolNames.join(',') || 'no_tools'} (${Date.now() - startTime}ms)`
+    if (!retryResult) {
+      return agentRetryExhaustedUpdate(
+        state,
+        'auto_agent',
+        AGENT_LLM_MAX_RETRIES + 1,
+        'LLM call failed'
       );
-      // DEBUG: log why no_tools happened
-      if (toolCalls.length === 0) {
-        logger?.debug(
-          `[auto_agent] no_tools debug: contentLen=${response.content?.length ?? 0}, contentPreview="${response.content?.slice(0, 200)?.replace(/\n/g, ' ')}"`
+    }
+
+    const { response } = retryResult;
+    const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
+    let toolCalls: ToolCall[] = response.toolCalls ?? [];
+
+    // native 无返回时降级 text 解析
+    if (toolCalls.length === 0 && response.content) {
+      const ts = Date.now();
+      const parsedCalls = parseAllToolCalls(response.content);
+      toolCalls = parsedCalls.map((c, i) => ({
+        id: `auto_call_${ts}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'function' as const,
+        function: { name: c.name, arguments: JSON.stringify(c.args) }
+      }));
+    }
+
+    const toolNames = toolCalls.map((tc) => tc.function.name);
+    const mode = response.toolCalls?.length ? 'native' : 'text_fallback';
+
+    logger?.info(
+      `[auto_agent] ${mode},${toolNames.join(',') || 'no_tools'} (${Date.now() - startTime}ms)`
+    );
+
+    if (toolCalls.length === 0) {
+      logger?.debug(
+        `[auto_agent] no_tools debug: contentLen=${response.content?.length ?? 0}, contentPreview="${response.content?.slice(0, 200)?.replace(/\n/g, ' ')}"`
+      );
+
+      // ── No-tool-call 引导重试 ──
+      if ((state.allChunks?.length ?? 0) === 0) {
+        const guidanceResult = await retryWithGuidance(
+          providers.llm,
+          state.messages,
+          response.content,
+          state.playbook,
+          logger
         );
+        if (guidanceResult) {
+          const names = guidanceResult.toolCalls.map((tc) => tc.function.name);
+          return {
+            messages: [{ role: 'assistant', content: guidanceResult.content }],
+            pendingToolCalls: guidanceResult.toolCalls,
+            toolCallCount: state.toolCallCount + guidanceResult.toolCalls.length,
+            iterationCount: state.iterationCount + 1,
+            llmInputTokens:
+              (response.usage?.inputTokens ?? 0) + (guidanceResult.usage?.inputTokens ?? 0),
+            llmOutputTokens:
+              (response.usage?.outputTokens ?? 0) + (guidanceResult.usage?.outputTokens ?? 0),
+            executionPath: [`auto_agent(${guidanceResult.mode},${names.join(',')})`],
+            nodeHist: [{ node: 'auto_agent', toolCalls: names }]
+          };
+        }
       }
+    }
 
-      if (toolCalls.length === 0) {
-        return {
-          messages: [assistantMsg],
-          pendingToolCalls: [],
-          iterationCount: state.iterationCount + 1,
-          llmInputTokens: response.usage?.inputTokens ?? 0,
-          llmOutputTokens: response.usage?.outputTokens ?? 0,
-          executionPath: [`auto_agent(${mode},no_tools)`],
-          nodeHist: [{ node: 'auto_agent', toolCalls: [] }]
-        };
-      }
-
+    if (toolCalls.length === 0) {
       return {
         messages: [assistantMsg],
-        pendingToolCalls: toolCalls,
-        toolCallCount: state.toolCallCount + toolCalls.length,
+        pendingToolCalls: [],
         iterationCount: state.iterationCount + 1,
         llmInputTokens: response.usage?.inputTokens ?? 0,
         llmOutputTokens: response.usage?.outputTokens ?? 0,
-        executionPath: [`auto_agent(${mode},${toolNames.join(',')})`],
-        nodeHist: [{ node: 'auto_agent', toolCalls: toolNames }]
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return {
-        pendingToolCalls: [],
-        error: `auto_agent error: ${errorMsg}`,
-        executionPath: ['auto_agent(error)'],
+        executionPath: [`auto_agent(${mode},no_tools)`],
         nodeHist: [{ node: 'auto_agent', toolCalls: [] }]
       };
     }
+
+    return {
+      messages: [assistantMsg],
+      pendingToolCalls: toolCalls,
+      toolCallCount: state.toolCallCount + toolCalls.length,
+      iterationCount: state.iterationCount + 1,
+      llmInputTokens: response.usage?.inputTokens ?? 0,
+      llmOutputTokens: response.usage?.outputTokens ?? 0,
+      executionPath: [`auto_agent(${mode},${toolNames.join(',')})`],
+      nodeHist: [{ node: 'auto_agent', toolCalls: toolNames }]
+    };
   };
 }
 
@@ -881,7 +1179,8 @@ export function createToolsNode(
               enableRerank: !!providers.reranker,
               topK: config.rerankTopK,
               retrieveLimit: config.retrieveLimit,
-              originalQuery: state.question
+              originalQuery: state.question,
+              forbidCollectionIds: config.forbidCollectionIds
             });
 
             if (result.success && result.data) {
@@ -1783,7 +2082,8 @@ export function createPlanExecutorNode(
           enableRerank: !!providers.reranker,
           topK: config.rerankTopK,
           retrieveLimit: config.retrieveLimit,
-          originalQuery: state.question
+          originalQuery: state.question,
+          forbidCollectionIds: config.forbidCollectionIds
         });
 
         let newChunks: ChunkItem[] = [];

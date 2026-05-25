@@ -4,6 +4,7 @@ import {
   deepRagSearch,
   defaultSearchDatasetData
 } from '@fastgpt/service/core/dataset/search/controller';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
@@ -33,6 +34,7 @@ async function handler(
     similarity,
     searchMode,
     embeddingWeight,
+    embeddingModel,
 
     usingReRank,
     rerankModel,
@@ -72,7 +74,7 @@ async function handler(
     teamId,
     reRankQuery: text,
     queries: [text],
-    model: dataset.vectorModel,
+    model: embeddingModel || dataset.vectorModel,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -81,7 +83,8 @@ async function handler(
     usingReRank,
     rerankModel: rerankModelData,
     rerankMethod: rerankMethodEnum,
-    rerankWeight
+    rerankWeight,
+    lang: getLocale(req)
   };
   const {
     searchRes,
@@ -112,7 +115,7 @@ async function handler(
     tmbId,
     source,
     embUsage: {
-      model: dataset.vectorModel,
+      model: embeddingModel || dataset.vectorModel,
       inputTokens: embeddingTokens
     },
     rerankUsage: searchUsingReRank
@@ -127,7 +130,7 @@ async function handler(
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
-          embeddingModel: dataset.vectorModel
+          embeddingModel: embeddingModel || dataset.vectorModel
         }
       : undefined
   });

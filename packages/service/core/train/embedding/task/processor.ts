@@ -19,6 +19,7 @@ import { runEvalBaseModelStage } from './stages/eval-basemodel';
 import { runFinetuneStage } from './stages/finetune';
 import { runRegisterStage } from './stages/register';
 import { runEvalTunedModelStage } from './stages/eval-tunedmodel';
+import { runLLMJudgeStage } from './stages/llm-judge';
 import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
@@ -116,7 +117,8 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
 
       const result = await runEvalBaseModelStage(taskAfterStage2);
       await updateEmbeddingCheckpointData(taskId, 'eval_basemodel', {
-        baseModelEvalResult: result.baseModelEvalResult
+        baseModelEvalResult: result.baseModelEvalResult,
+        rankingResults: result.rankingResults
       });
       await updateEmbeddingCheckpointStage(taskId, EmbeddingTaskCheckpointStageEnum.eval_basemodel);
     }
@@ -174,12 +176,34 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
 
       const result = await runEvalTunedModelStage(taskAfterRegister);
       await updateEmbeddingCheckpointData(taskId, 'eval_tunedmodel', {
-        tunedModelEvalResult: result.tunedModelEvalResult
+        tunedModelEvalResult: result.tunedModelEvalResult,
+        rankingResults: result.rankingResults
       });
       await updateEmbeddingCheckpointStage(
         taskId,
         EmbeddingTaskCheckpointStageEnum.eval_tunedmodel
       );
+    }
+
+    // Stage 7: llm_judge
+    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.llm_judge)) {
+      const taskAfterStage6 = await getEmbeddingTrainTask(taskId);
+      if (!taskAfterStage6) {
+        const enhancedError = createEmbeddingEnhancedError(
+          EmbeddingTaskCheckpointStageEnum.llm_judge,
+          EmbeddingTrainErrEnum.embeddingProcessorTaskLostAfterEval,
+          EmbeddingTrainSuggestionEnum.embeddingProcessorTaskLostAfterEval
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
+      }
+
+      const judgeResult = await runLLMJudgeStage(taskAfterStage6);
+      await updateEmbeddingCheckpointData(taskId, 'llm_judge', {
+        judgedExpectedIds: judgeResult.judgedExpectedIds,
+        baseModelRejudgedResult: judgeResult.baseModelRejudgedResult,
+        tunedModelRejudgedResult: judgeResult.tunedModelRejudgedResult
+      });
+      await updateEmbeddingCheckpointStage(taskId, EmbeddingTaskCheckpointStageEnum.llm_judge);
     }
 
     // Write final result
@@ -206,7 +230,9 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
           tunedModelId: finalCheckpoint.registering?.tunedModelId ?? undefined,
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId ?? undefined,
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
-          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult
+          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
+          baseModelRejudgedResult: finalCheckpoint.llm_judge?.baseModelRejudgedResult,
+          tunedModelRejudgedResult: finalCheckpoint.llm_judge?.tunedModelRejudgedResult
         }
       }
     );
@@ -242,7 +268,8 @@ function shouldRunStage(
     EmbeddingTaskCheckpointStageEnum.eval_basemodel,
     EmbeddingTaskCheckpointStageEnum.finetuning,
     EmbeddingTaskCheckpointStageEnum.registering,
-    EmbeddingTaskCheckpointStageEnum.eval_tunedmodel
+    EmbeddingTaskCheckpointStageEnum.eval_tunedmodel,
+    EmbeddingTaskCheckpointStageEnum.llm_judge
   ];
 
   const currentStageEnum = currentStage as EmbeddingTaskCheckpointStageEnum;

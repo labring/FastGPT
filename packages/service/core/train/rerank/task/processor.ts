@@ -19,6 +19,7 @@ import { runEvalBaseModelStage } from './stages/eval-basemodel';
 import { runFinetuneStage } from './stages/finetune';
 import { runRegisterStage } from './stages/register';
 import { runEvalTunedModelStage } from './stages/eval-tunedmodel';
+import { runLLMJudgeStage } from './stages/llm-judge';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
@@ -110,7 +111,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
       const result = await runEvalBaseModelStage(taskAfterStage2);
       await updateRerankCheckpointData(taskId, 'eval_basemodel', {
-        baseModelEvalResult: result.baseModelEvalResult
+        baseModelEvalResult: result.baseModelEvalResult,
+        rankingResults: result.rankingResults
       });
       await updateRerankCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_basemodel);
     }
@@ -168,9 +170,31 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
       const result = await runEvalTunedModelStage(taskAfterRegister);
       await updateRerankCheckpointData(taskId, 'eval_tunedmodel', {
-        tunedModelEvalResult: result.tunedModelEvalResult
+        tunedModelEvalResult: result.tunedModelEvalResult,
+        rankingResults: result.rankingResults
       });
       await updateRerankCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_tunedmodel);
+    }
+
+    // Stage 7: llm_judge
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.llm_judge)) {
+      const taskAfterStage6 = await getRerankTrainTask(taskId);
+      if (!taskAfterStage6) {
+        const enhancedError = createRerankEnhancedError(
+          RerankTaskCheckpointStageEnum.llm_judge,
+          RerankTrainErrEnum.rerankProcessorTaskLostAfterEval,
+          RerankTrainSuggestionEnum.rerankProcessorTaskLostAfterEval
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
+      }
+
+      const judgeResult = await runLLMJudgeStage(taskAfterStage6);
+      await updateRerankCheckpointData(taskId, 'llm_judge', {
+        judgedExpectedIds: judgeResult.judgedExpectedIds,
+        baseModelRejudgedResult: judgeResult.baseModelRejudgedResult,
+        tunedModelRejudgedResult: judgeResult.tunedModelRejudgedResult
+      });
+      await updateRerankCheckpointStage(taskId, RerankTaskCheckpointStageEnum.llm_judge);
     }
 
     // Write final result
@@ -197,7 +221,9 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
           tunedModelId: finalCheckpoint.registering?.tunedModelId ?? undefined,
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId ?? undefined,
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
-          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult
+          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
+          baseModelRejudgedResult: finalCheckpoint.llm_judge?.baseModelRejudgedResult,
+          tunedModelRejudgedResult: finalCheckpoint.llm_judge?.tunedModelRejudgedResult
         }
       }
     );
@@ -233,7 +259,8 @@ function shouldRunStage(
     RerankTaskCheckpointStageEnum.eval_basemodel,
     RerankTaskCheckpointStageEnum.finetuning,
     RerankTaskCheckpointStageEnum.registering,
-    RerankTaskCheckpointStageEnum.eval_tunedmodel
+    RerankTaskCheckpointStageEnum.eval_tunedmodel,
+    RerankTaskCheckpointStageEnum.llm_judge
   ];
 
   const currentStageEnum = currentStage as RerankTaskCheckpointStageEnum;

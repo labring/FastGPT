@@ -24,7 +24,7 @@ const UsageDashboard = ({
   Selectors: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
+  const { dateRange, memberFilter, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
   const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
@@ -37,7 +37,7 @@ const UsageDashboard = ({
           ? dayjs(addDays(dateRange.to, 1).setHours(0, 0, 0, 0)).format()
           : dayjs(addDays(new Date(), 1).setHours(0, 0, 0, 0)).format(),
         sources: isSelectAllSource ? undefined : usageSources,
-        teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+        memberFilter: isSelectAllTmb ? undefined : memberFilter,
         unit
       }).then((res) =>
         res.map((item) => ({
@@ -53,6 +53,14 @@ const UsageDashboard = ({
 
   const totalUsage = useMemo(() => {
     return totalPoints.reduce((acc, curr) => acc + curr.totalPoints, 0);
+  }, [totalPoints]);
+
+  const totalInputTokens = useMemo(() => {
+    return totalPoints.reduce((acc, curr) => acc + (curr.inputTokens || 0), 0);
+  }, [totalPoints]);
+
+  const totalOutputTokens = useMemo(() => {
+    return totalPoints.reduce((acc, curr) => acc + (curr.outputTokens || 0), 0);
   }, [totalPoints]);
 
   const {
@@ -77,7 +85,12 @@ const UsageDashboard = ({
       </Flex>
       <Box mt={4}>{Selectors}</Box>
       <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
-        <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />
+        <DashboardChart
+          totalPoints={totalPoints}
+          totalUsage={totalUsage}
+          totalInputTokens={totalInputTokens}
+          totalOutputTokens={totalOutputTokens}
+        />
       </MyBox>
       {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
     </>

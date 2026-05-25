@@ -21,6 +21,7 @@ import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalData
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
 import { deleteSFTTask } from '../../common/external/sftbridge';
 import { removeEmbeddingTrainTaskJob } from './mq';
+import { setTrainTaskAbortSignal, type TrainTaskAbortReason } from '../../common/task-abort-signal';
 
 /**
  * Create embedding training task
@@ -181,7 +182,8 @@ export async function updateEmbeddingCheckpointData(
     | 'eval_basemodel'
     | 'finetuning'
     | 'registering'
-    | 'eval_tunedmodel',
+    | 'eval_tunedmodel'
+    | 'llm_judge',
   data: Record<string, unknown>,
   merge: boolean = false
 ): Promise<void> {
@@ -233,6 +235,7 @@ export async function getEmbeddingTrainTask(
  */
 export async function deleteEmbeddingTrainTask(
   taskId: string,
+  options?: { deleteModel?: boolean },
   session?: ClientSession
 ): Promise<void> {
   const task = await MongoEmbeddingTrainTask.findById(taskId, null, { session }).lean();
@@ -240,14 +243,15 @@ export async function deleteEmbeddingTrainTask(
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskNotExist);
   }
 
-  // 1. Remove BullMQ job first to stop worker before any data cleanup
+  // 1. Signal active worker, then remove BullMQ job before any data cleanup
+  await setEmbeddingTrainTaskAbortSignal(taskId, 'deleted');
   await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   const tempFilePath = task.result?.trainDatasetFilePath;
 
   // 2. Clean up FastGPT model config + AI Proxy channel (registering stage artifact)
   const tunedModelId = task.checkpoint?.data?.registering?.tunedModelId;
-  if (tunedModelId) {
+  if (tunedModelId && options?.deleteModel !== false) {
     addLog.info('Deleting tuned model config associated with task', {
       taskId,
       tunedModelId
@@ -371,7 +375,8 @@ export async function cancelEmbeddingTrainTask(taskId: string): Promise<void> {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskCannotCancel);
   }
 
-  // Remove BullMQ job (force clean if active)
+  // Signal active worker, then remove BullMQ job (force clean if active)
+  await setEmbeddingTrainTaskAbortSignal(taskId, 'cancelled');
   await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   // Cancel SFT task if finetuning has started (async non-blocking)
@@ -429,6 +434,21 @@ export async function cleanupEmbeddingTempFiles(filePath?: string, taskId?: stri
       filePath,
       taskId,
       error: (error as Error).message
+    });
+  }
+}
+
+async function setEmbeddingTrainTaskAbortSignal(
+  taskId: string,
+  reason: TrainTaskAbortReason
+): Promise<void> {
+  try {
+    await setTrainTaskAbortSignal({ type: 'embedding', taskId, reason });
+  } catch (error) {
+    addLog.warn('Failed to set embedding train task abort signal', {
+      taskId,
+      reason,
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 }

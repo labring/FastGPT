@@ -148,7 +148,7 @@ const ConversationLogs = () => {
         {subTab === 'list' && (
           <Flex alignItems={'center'} gap={2}>
             <LogFilters appId={appId} onFiltersChange={handleLogFiltersChange} />
-            <PopoverConfirm
+            {/* <PopoverConfirm
               Trigger={
                 <Button h="36px" rounded="4px" variant={'whiteBase'}>
                   {t('common:Export')}
@@ -157,7 +157,7 @@ const ConversationLogs = () => {
               showCancel
               content={t('app:logs_export_confirm_tip', { total: exportTotal })}
               onConfirm={handleExportLogs}
-            />
+            /> */}
           </Flex>
         )}
       </Flex>

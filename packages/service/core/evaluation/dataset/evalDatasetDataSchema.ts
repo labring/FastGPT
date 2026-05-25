@@ -77,8 +77,6 @@ const EvalDatasetDataSchema = new Schema({
     type: [
       {
         id: { type: String, required: true },
-        q: String,
-        a: String,
         score: [
           {
             type: { type: String },

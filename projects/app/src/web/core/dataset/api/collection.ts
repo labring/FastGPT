@@ -74,6 +74,10 @@ export const postCreateDatasetApiDatasetCollection = (data: CreateApiCollectionV
   POST(`/core/dataset/collection/create/apiCollectionV2`, data, {
     timeout: 360000
   });
+export const postCreateDatasetApiDatasetCollectionV2 = (data: CreateApiCollectionV2BodyType) =>
+  POST(`/core/dataset/collection/create/custom/apiCollectionV2`, data, {
+    timeout: 360000
+  });
 /** @deprecated */
 export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams

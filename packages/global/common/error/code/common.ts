@@ -27,19 +27,19 @@ const datasetErr = [
   },
   {
     statusText: CommonErrEnum.fileNotFound,
-    message: 'error.fileNotFound'
+    message: i18nT('common:error.fileNotFound')
   },
   {
     statusText: CommonErrEnum.unAuthFile,
-    message: 'error.unAuthFile'
+    message: i18nT('common:error.unAuthFile')
   },
   {
     statusText: CommonErrEnum.missingParams,
-    message: 'error.missingParams'
+    message: i18nT('common:error.missingParams')
   },
   {
     statusText: CommonErrEnum.inheritPermissionError,
-    message: 'error.inheritPermissionError'
+    message: i18nT('common:error.inheritPermissionError')
   },
   {
     statusText: CommonErrEnum.pdfEncrypted,

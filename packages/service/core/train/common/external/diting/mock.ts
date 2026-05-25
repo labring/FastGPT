@@ -1,4 +1,9 @@
-import type { DiTingSyntheticEvalDataRequest, DiTingSyntheticEvalDataResponse } from './types';
+import type {
+  DiTingSyntheticEvalDataRequest,
+  DiTingSyntheticEvalDataResponse,
+  DiTingLLMJudgeRequest,
+  DiTingLLMJudgeResponse
+} from './types';
 import { addLog } from '../../../../../common/system/log';
 import { trainEnv } from '../../env';
 
@@ -59,5 +64,31 @@ export async function mockSynthesizeEvalData(
         totalTokens: 150 * numCases
       }
     ]
+  };
+}
+
+/**
+ * Mock implementation of LLM judge relevance evaluation
+ * Randomly selects a subset of retrieval references as detected
+ */
+export async function mockCallLLMJudge(
+  request: DiTingLLMJudgeRequest
+): Promise<DiTingLLMJudgeResponse> {
+  addLog.debug('[MOCK] DiTing LLM judge', {
+    question: request.question?.substring(0, 50),
+    referenceCount: request.retrieval_reference_list.length,
+    llmModel: request.llm_config.name
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
+
+  // Randomly select 1~N references as detected
+  const shuffled = [...request.retrieval_reference_list].sort(() => Math.random() - 0.5);
+  const detectedCount = Math.max(1, Math.floor(Math.random() * shuffled.length));
+  const detected_data_ids = shuffled.slice(0, detectedCount).map((c) => c.id);
+
+  return {
+    status: 'success',
+    detected_data_ids
   };
 }

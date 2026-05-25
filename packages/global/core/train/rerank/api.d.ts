@@ -166,5 +166,5 @@ export type CancelRerankTrainTaskRequest = TaskIdQuery;
 export type CancelRerankTrainTaskResponse = MessageResponse;
 
 // Delete Training Task
-export type DeleteRerankTrainTaskRequest = TaskIdQuery & { force?: string };
+export type DeleteRerankTrainTaskRequest = TaskIdQuery & { force?: string; deleteModel?: string };
 export type DeleteRerankTrainTaskResponse = MessageResponse;

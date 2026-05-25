@@ -19,7 +19,7 @@ async function handler(
 ): Promise<SubmitChatCorrectionResponse> {
   const { appId, chatId, dataId, correctionData } = req.body;
   // 1. Authentication
-  const { teamId, tmbId, uid } = await authChatCrud({
+  const { teamId, tmbId } = await authChatCrud({
     req,
     authToken: true,
     appId,
@@ -43,7 +43,6 @@ async function handler(
   const correctionId = await submitChatCorrection({
     teamId,
     tmbId,
-    userId: uid,
     appId,
     chatId,
     dataId,

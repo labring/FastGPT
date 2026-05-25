@@ -6,12 +6,11 @@ import ChatSliderList from '@/pageComponents/chat/slider/ChatSliderList';
 
 type Props = {
   title?: string;
-  banner?: string;
   menuConfirmButtonText?: string;
   isShareMode?: boolean;
 };
 
-const ChatHistorySidebar = ({ title, banner, isShareMode }: Props) => {
+const ChatHistorySidebar = ({ title, isShareMode }: Props) => {
   const shareModeStyles = isShareMode
     ? {
         background:
@@ -34,9 +33,9 @@ const ChatHistorySidebar = ({ title, banner, isShareMode }: Props) => {
       borderWidth={'0px 1px 0px 0px'}
       whiteSpace={'nowrap'}
     >
-      <ChatSliderHeader title={title} banner={banner} />
+      <ChatSliderHeader title={title} />
       <ChatSliderMenu />
-      <ChatSliderList />
+      <ChatSliderList isShareMode={isShareMode} />
     </MyBox>
   );
 };

@@ -91,6 +91,8 @@ const MySelect = <T = any,>(
     footer,
     isInvalid,
     isDisabled,
+    h,
+    minH,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -178,7 +180,7 @@ const MySelect = <T = any,>(
                 display={'block'}
                 mb={0.5}
               >
-                <Flex alignItems={'center'}>
+                <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
                   {item.icon && (
                     <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
                   )}
@@ -222,7 +224,8 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
-          h={'auto'}
+          h={h}
+          minH={minH ?? h}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
           transition={'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out'}
@@ -244,7 +247,7 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
-            <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
+            <Flex alignItems={'center'} flex="1" minW={0} overflow={'hidden'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
                 <>{valueLabel}</>

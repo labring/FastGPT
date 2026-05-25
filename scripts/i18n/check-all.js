@@ -101,6 +101,20 @@ function parseSummary(name, output, errorMsg) {
           issues.push(line.trim());
         }
       }
+      // 捕获具体缺失的 key 名称及其引用文件
+      const missingKeyLines = output.match(/❌\s+"([^"]+)"/g);
+      if (missingKeyLines) {
+        for (const line of missingKeyLines) {
+          issues.push(line.trim());
+        }
+      }
+      // 捕获引用文件路径
+      const refLines = output.match(/引用于:\s*\S+/g);
+      if (refLines) {
+        for (const line of refLines) {
+          issues.push('    ' + line.trim());
+        }
+      }
     }
   } else if (name.includes('英文词条')) {
     // 通过时: "未发现任何中文词条"

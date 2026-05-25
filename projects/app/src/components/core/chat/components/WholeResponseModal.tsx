@@ -545,8 +545,8 @@ export const WholeResponseContent = ({
                     <Box>{searchModeDisplay}</Box>
                     {activeModule.embeddingWeight && (
                       <>{`(${t('chat:response_hybrid_weight', {
-                        emb: activeModule.embeddingWeight,
-                        text: 1 - activeModule.embeddingWeight
+                        emb: formatNumber(activeModule.embeddingWeight, 100),
+                        text: formatNumber(1 - activeModule.embeddingWeight, 100)
                       })})`}</>
                     )}
                   </Flex>

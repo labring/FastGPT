@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-05-05T00:00:00+08:00",
+  "git_commit": "8537ada92844831e812057b29108fb0f0404d5e4",
+  "git_branch": "develop-1.3.0",
+  "generator_version": "2.0.0",
+  "repository_info": {
+    "primary_language": "TypeScript",
+    "frameworks": ["Next.js", "React", "Node.js", "Chakra UI", "TypeORM", "MongoDB", "PostgreSQL", "Milvus", "LangGraph", "ModelContextProtocol"],
+    "is_library": false,
+    "has_api": true
+  },
+  "repository_dependencies": ["MongoDB", "PostgreSQL", "Milvus", "Redis", "OpenAI-compatible LLM"],
+  "documents": {
+    "仓库概览.md": {"status": "completed", "version": 1},
+    "仓库架构.md": {"status": "completed", "version": 1},
+    "仓库依赖.md": {"status": "completed", "version": 1},
+    "外部接入指南.md": {"status": "completed", "version": 1},
+    "业务知识库/核心业务领域.md": {"status": "completed", "version": 1},
+    "业务知识库/业务流程索引.md": {"status": "completed", "version": 1},
+    "业务知识库/业务流程详解.md": {"status": "completed", "version": 1},
+    "技术知识库/API索引.md": {"status": "completed", "version": 2, "iterations": 2},
+    "技术知识库/数据结构.md": {"status": "completed", "version": 1},
+    "技术知识库/代码编写指南.md": {"status": "completed", "version": 2, "iterations": 2},
+    "技术知识库/排障指南.md": {"status": "completed", "version": 1},
+    "测试知识库/单元测试.md": {"status": "completed", "version": 1}
+  }
+}

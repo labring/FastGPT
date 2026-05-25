@@ -49,7 +49,13 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
         getMyApps({
           parentId,
           searchKey: searchAppName,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            AppTypeEnum.chatAgent,
+            AppTypeEnum.assistant
+          ]
         }),
         searchAppName.trim()
           ? Promise.resolve([])

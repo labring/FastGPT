@@ -8,11 +8,11 @@ context: |
   - 修改字段类型或约束时，两端保持一致的 optional/required/type 语义
   - 改动涉及多个模块时，逐模块检查 Mongo schema → Zod schema → `.d.ts` 的一致性
 rules:
+  proposal:
+    - 规范必须使用英文文标题，需求描述得为中文
+    - Always include a "Non-goals" section
   task:
     - 一些复杂的逻辑或者关键改动必须写注释
-  archive:
-    - 合并后的规范必须使用英文文标题，需求描述得为中文
-    - 使用： ADDED/MODIFIED/REMOVED/RENAMED
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.

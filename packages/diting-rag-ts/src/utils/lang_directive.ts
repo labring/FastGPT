@@ -4,16 +4,92 @@
 
 import type { ChunkItem } from '../types/chunk';
 import { detectLang } from './lang';
-import ISO6391 from 'iso-639-1-dir';
 import type { Logger } from '../ports/logger';
 
-// 使用 iso-639-1-dir 提供 ISO 639-1 → 母语名映射，覆盖 184 种语言
+// ISO 639-1 → 语言名映射（覆盖 eld/small 支持的所有语种及显式检测的 CJK 语种）
+const LANG_MAP: Partial<Record<string, { name: string; nativeName: string }>> = {
+  af: { name: 'Afrikaans', nativeName: 'Afrikaans' },
+  am: { name: 'Amharic', nativeName: 'አማርኛ' },
+  ar: { name: 'Arabic', nativeName: 'اَلْعَرَبِيَّةُ' },
+  az: { name: 'Azerbaijani', nativeName: 'azərbaycan dili' },
+  be: { name: 'Belarusian', nativeName: 'беларуская мова' },
+  bg: { name: 'Bulgarian', nativeName: 'български език' },
+  bn: { name: 'Bengali', nativeName: 'বাংলা' },
+  bs: { name: 'Bosnian', nativeName: 'bosanski jezik' },
+  ca: { name: 'Catalan', nativeName: 'Català' },
+  cs: { name: 'Czech', nativeName: 'čeština' },
+  cy: { name: 'Welsh', nativeName: 'Cymraeg' },
+  da: { name: 'Danish', nativeName: 'dansk' },
+  de: { name: 'German', nativeName: 'Deutsch' },
+  el: { name: 'Greek', nativeName: 'Ελληνικά' },
+  en: { name: 'English', nativeName: 'English' },
+  es: { name: 'Spanish', nativeName: 'Español' },
+  et: { name: 'Estonian', nativeName: 'eesti' },
+  eu: { name: 'Basque', nativeName: 'euskara' },
+  fa: { name: 'Persian', nativeName: 'فارسی' },
+  fi: { name: 'Finnish', nativeName: 'suomi' },
+  fr: { name: 'French', nativeName: 'Français' },
+  ga: { name: 'Irish', nativeName: 'Gaeilge' },
+  gl: { name: 'Galician', nativeName: 'galego' },
+  gu: { name: 'Gujarati', nativeName: 'ગુજરાતી' },
+  he: { name: 'Hebrew', nativeName: 'עברית' },
+  hi: { name: 'Hindi', nativeName: 'हिन्दी' },
+  hr: { name: 'Croatian', nativeName: 'Hrvatski' },
+  ht: { name: 'Haitian', nativeName: 'Kreyòl ayisyen' },
+  hu: { name: 'Hungarian', nativeName: 'magyar' },
+  hy: { name: 'Armenian', nativeName: 'Հայերեն' },
+  id: { name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
+  is: { name: 'Icelandic', nativeName: 'Íslenska' },
+  it: { name: 'Italian', nativeName: 'Italiano' },
+  ja: { name: 'Japanese', nativeName: '日本語' },
+  jv: { name: 'Javanese', nativeName: 'basa Jawa' },
+  ka: { name: 'Georgian', nativeName: 'ქართული' },
+  kk: { name: 'Kazakh', nativeName: 'қазақ тілі' },
+  km: { name: 'Khmer', nativeName: 'ខេមរភាសា' },
+  kn: { name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+  ko: { name: 'Korean', nativeName: '한국어' },
+  lt: { name: 'Lithuanian', nativeName: 'lietuvių kalba' },
+  lv: { name: 'Latvian', nativeName: 'latviešu valoda' },
+  mk: { name: 'Macedonian', nativeName: 'македонски јазик' },
+  ml: { name: 'Malayalam', nativeName: 'മലയാളം' },
+  mn: { name: 'Mongolian', nativeName: 'Монгол хэл' },
+  mr: { name: 'Marathi', nativeName: 'मराठी' },
+  ms: { name: 'Malay', nativeName: 'Bahasa Melayu' },
+  mt: { name: 'Maltese', nativeName: 'Malti' },
+  my: { name: 'Burmese', nativeName: 'ဗမာစာ' },
+  ne: { name: 'Nepali', nativeName: 'नेपाली' },
+  nl: { name: 'Dutch', nativeName: 'Nederlands' },
+  no: { name: 'Norwegian', nativeName: 'Norsk' },
+  pa: { name: 'Panjabi', nativeName: 'ਪੰਜਾਬੀ' },
+  pl: { name: 'Polish', nativeName: 'Polski' },
+  pt: { name: 'Portuguese', nativeName: 'Português' },
+  ro: { name: 'Romanian', nativeName: 'Română' },
+  ru: { name: 'Russian', nativeName: 'Русский' },
+  si: { name: 'Sinhala', nativeName: 'සිංහල' },
+  sk: { name: 'Slovak', nativeName: 'slovenčina' },
+  sl: { name: 'Slovenian', nativeName: 'slovenščina' },
+  sq: { name: 'Albanian', nativeName: 'Shqip' },
+  sr: { name: 'Serbian', nativeName: 'српски језик' },
+  su: { name: 'Sundanese', nativeName: 'Basa Sunda' },
+  sv: { name: 'Swedish', nativeName: 'Svenska' },
+  sw: { name: 'Swahili', nativeName: 'Kiswahili' },
+  ta: { name: 'Tamil', nativeName: 'தமிழ்' },
+  te: { name: 'Telugu', nativeName: 'తెలుగు' },
+  th: { name: 'Thai', nativeName: 'ไทย' },
+  tl: { name: 'Tagalog', nativeName: 'Wikang Tagalog' },
+  tr: { name: 'Turkish', nativeName: 'Türkçe' },
+  uk: { name: 'Ukrainian', nativeName: 'Українська' },
+  ur: { name: 'Urdu', nativeName: 'اردو' },
+  vi: { name: 'Vietnamese', nativeName: 'Tiếng Việt' },
+  zh: { name: 'Chinese', nativeName: '中文' },
+  zu: { name: 'Zulu', nativeName: 'isiZulu' }
+};
+
 function langName(code: string): string {
-  const name = ISO6391.getName(code);
-  if (!name) return code;
-  const native = ISO6391.getNativeName(code);
-  if (native && native !== name) return `${name} (${native})`;
-  return name;
+  const entry = LANG_MAP[code];
+  if (!entry) return code;
+  if (entry.nativeName !== entry.name) return `${entry.name} (${entry.nativeName})`;
+  return entry.name;
 }
 
 // ============================================================

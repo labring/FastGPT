@@ -19,10 +19,11 @@ type GetVectorProps = {
   input: string[] | string;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
+  useInstruction?: boolean;
 };
 
 // text to vector
-export async function getVectorsByText({ model, input, type, headers }: GetVectorProps) {
+export async function getVectorsByText({ model, input, type, headers, useInstruction = true }: GetVectorProps) {
   if (!input) {
     return Promise.reject({
       code: 500,
@@ -54,7 +55,7 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
             {
               model: model.model,
               input:
-                type === EmbeddingTypeEnm.query
+                type === EmbeddingTypeEnm.query && useInstruction
                   ? formatEmbeddingQuery(chunk, model.instruction)
                   : chunk,
               encoding_format: 'float',

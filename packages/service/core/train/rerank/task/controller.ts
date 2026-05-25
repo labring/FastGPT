@@ -21,6 +21,7 @@ import { MongoRerankTrainsetData } from '../data/schema';
 import { deleteSFTTask } from '../external';
 import { removeRerankTrainTaskJob } from './mq';
 import { MongoSystemModel } from '../../../ai/config/schema';
+import { setTrainTaskAbortSignal, type TrainTaskAbortReason } from '../../common/task-abort-signal';
 
 /**
  * Create rerank training task
@@ -183,7 +184,8 @@ export async function updateRerankCheckpointData(
     | 'eval_basemodel'
     | 'finetuning'
     | 'registering'
-    | 'eval_tunedmodel',
+    | 'eval_tunedmodel'
+    | 'llm_judge',
   data: Record<string, unknown>,
   merge: boolean = false
 ): Promise<void> {
@@ -230,6 +232,7 @@ export async function getRerankTrainTask(
  */
 export async function deleteRerankTrainTask(
   taskId: string,
+  options?: { deleteModel?: boolean },
   session?: ClientSession
 ): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId, null, { session }).lean();
@@ -239,12 +242,13 @@ export async function deleteRerankTrainTask(
 
   const tempFilePath = task.result?.trainDatasetFilePath;
 
-  // 1. Remove BullMQ job first to stop worker before any data cleanup
+  // 1. Signal active worker, then remove BullMQ job before any data cleanup
+  await setRerankTrainTaskAbortSignal(taskId, 'deleted');
   await removeRerankTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   // 2. Clean up FastGPT model config + AI Proxy channel (registering stage artifact)
   const tunedModelId = task.checkpoint?.data?.registering?.tunedModelId;
-  if (tunedModelId) {
+  if (tunedModelId && options?.deleteModel !== false) {
     addLog.info('Deleting tuned model config associated with task', {
       taskId,
       tunedModelId
@@ -373,7 +377,8 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
     return Promise.reject(RerankTrainErrEnum.rerankTaskCannotCancel);
   }
 
-  // Remove BullMQ job (force clean if active)
+  // Signal active worker, then remove BullMQ job (force clean if active)
+  await setRerankTrainTaskAbortSignal(taskId, 'cancelled');
   await removeRerankTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   // Cancel SFT task if finetuning has started (async non-blocking)
@@ -431,6 +436,21 @@ export async function cleanupRerankTempFiles(filePath?: string, taskId?: string)
       filePath,
       taskId,
       error: (error as Error).message
+    });
+  }
+}
+
+async function setRerankTrainTaskAbortSignal(
+  taskId: string,
+  reason: TrainTaskAbortReason
+): Promise<void> {
+  try {
+    await setTrainTaskAbortSignal({ type: 'rerank', taskId, reason });
+  } catch (error) {
+    addLog.warn('Failed to set rerank train task abort signal', {
+      taskId,
+      reason,
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 }

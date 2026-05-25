@@ -44,9 +44,9 @@ import { LogsContext } from './context';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
-const LogTable = () => {
+const LogTable = (props: { appId?: string }) => {
   const { t } = useTranslation();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appId = useContextSelector(AppContext, (v) => v.appId || props.appId);
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
@@ -114,7 +114,7 @@ const LogTable = () => {
 
   const params = useMemoEnhance(
     () => ({
-      appId,
+      appId: appId!,
       dateStart: dateRange.from!,
       dateEnd: dateRange.to!,
       sources: isSelectAllSource ? undefined : chatSources,
@@ -177,7 +177,7 @@ const LogTable = () => {
 
   const { runAsync: handleDelete } = useRequest(
     async (chatIds: string[]) => {
-      await batchDeleteChatHistories({ appId, chatIds });
+      await batchDeleteChatHistories({ appId: appId!, chatIds });
       await getData(pageNum);
     },
     {
@@ -470,7 +470,7 @@ const LogTable = () => {
 
       {!!detailLogsId && (
         <DetailLogsModal
-          appId={appId}
+          appId={appId!}
           chatId={detailLogsId}
           onClose={() => {
             setDetailLogsId(undefined);

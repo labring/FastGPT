@@ -1,3 +1,4 @@
+// 如需在当前页面直接弹窗选择文件，请使用 RefinedCollectionCard/APIFileSelectModal.tsx。(API知识库)
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import React, { useCallback, useState } from 'react';

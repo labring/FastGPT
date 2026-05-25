@@ -401,19 +401,6 @@ const EditForm = ({
           ))}
         </Grid>
       </Box>
-      {/* 检索过滤 */}
-      <Box {...BOX_STYLES}>
-        <TagFilterSection
-          datasetIds={datasetIds}
-          value={appForm.dataset.collectionFilterMatch}
-          onChange={(v) =>
-            setAppForm((state) => ({
-              ...state,
-              dataset: { ...state.dataset, collectionFilterMatch: v }
-            }))
-          }
-        />
-      </Box>
       {/* 检索配置 */}
       <Box {...BOX_STYLES}>
         <AccordionSection title={t('app:retrieval_config')} nested defaultIndex={[]}>
@@ -515,6 +502,26 @@ const EditForm = ({
             </FormItem>
           )}
         </AccordionSection>
+      </Box>
+      {/* 检索过滤 */}
+      <Box {...BOX_STYLES}>
+        <TagFilterSection
+          datasets={selectDatasets}
+          value={appForm.dataset.collectionFilterMatch}
+          onChange={(v) =>
+            setAppForm((state) => ({
+              ...state,
+              dataset: { ...state.dataset, collectionFilterMatch: v }
+            }))
+          }
+          authTmbId={appForm.dataset.authTmbId ?? false}
+          onAuthTmbIdChange={(v) =>
+            setAppForm((state) => ({
+              ...state,
+              dataset: { ...state.dataset, authTmbId: v }
+            }))
+          }
+        />
       </Box>
       <Box>
         {/* 问答配置 */}

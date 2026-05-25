@@ -28,7 +28,8 @@ export enum EmbeddingTaskCheckpointStageEnum {
   eval_basemodel = 'eval_basemodel',
   finetuning = 'finetuning',
   registering = 'registering',
-  eval_tunedmodel = 'eval_tunedmodel'
+  eval_tunedmodel = 'eval_tunedmodel',
+  llm_judge = 'llm_judge'
 }
 
 export enum EmbeddingTrainDataSourceEnum {

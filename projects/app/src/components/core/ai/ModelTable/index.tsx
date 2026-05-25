@@ -32,6 +32,8 @@ type TableSharedProps = {
   selectAllTrigger: () => void;
   trainTaskCountSortOrder?: 'asc' | 'desc';
   toggleTrainTaskCountSort: () => void;
+  trainTimeSortOrder?: 'asc' | 'desc';
+  toggleTrainTimeSort?: () => void;
   handleOpenTrainDrawer: (
     type:
       | import('@fastgpt/global/core/ai/model').ModelTypeEnum.embedding

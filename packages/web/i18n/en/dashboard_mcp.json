@@ -15,7 +15,6 @@
   "mcp_link_way": "Connection method",
   "mcp_name": "MCP service name",
   "mcp_server": "MCP services",
-  "mcp_server_description": "Enable external access to specific apps via MCP services. This feature is in beta test.",
   "not_sse_server": "The SSE integration service is not configured.",
   "search_app": "App name",
   "select_app": "Select apps",

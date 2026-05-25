@@ -304,8 +304,9 @@ const HomeChatWindow = () => {
                 h={['30px', '36px']}
                 boxShadow={'none'}
                 size="sm"
+                w="200px"
                 bg={'myGray.50'}
-                rounded="full"
+                borderRadius={'4px'}
                 list={availableModels}
                 value={selectedModel}
                 onChange={async (model) => {
@@ -410,7 +411,7 @@ const HomeChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
+      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
 
       {/* show history slider */}
       {isPc ? (
@@ -422,7 +423,6 @@ const HomeChatWindow = () => {
         </SideBar>
       ) : (
         <ChatSliderMobileDrawer
-          banner={chatSettings?.wideLogoUrl}
           menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
       )}
@@ -438,13 +438,14 @@ const HomeChatWindow = () => {
         {isPc ? (
           chatBoxData?.title && (
             <Flex
-              py={3}
-              bg="white"
+              py={'14px'}
+              pl={'24px'}
+              bg="blue.25"
+              fontSize={'14px'}
+              lineHeight={'20px'}
               fontWeight={500}
               color="myGray.600"
               alignItems="center"
-              justifyContent="center"
-              borderBottom="sm"
             >
               {chatBoxData?.title}
             </Flex>
@@ -467,10 +468,8 @@ const HomeChatWindow = () => {
             enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
-            slogan={chatSettings?.slogan}
+            slogan={chatSettings?.slogan || t('chat:setting.home.slogan.default')}
             outLinkAuthData={outLinkAuthData}
-            wideLogo={chatSettings?.wideLogoUrl}
-            dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
             quickAppList={chatSettings?.quickAppList || []}

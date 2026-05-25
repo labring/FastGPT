@@ -59,7 +59,6 @@ export const ChunkSettingsSchema = z.object({
   indexSize: z.number().optional().meta({ description: '索引大小' }),
   hypeIndexes: z.boolean().optional().meta({ description: '超级索引' }),
   small2bigIndexes: z.boolean().optional().meta({ description: '小到大索引' }),
-  syntheticIndex: z.boolean().optional().meta({ description: '合成索引' }),
   hypeIndexPrompt: z.string().optional().meta({ description: '超级索引提示词' }),
   small2bigConfig: z
     .object({
@@ -162,7 +161,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   parentId: ParentIdSchema.meta({ description: '父级 ID' }),
   name: z.string().meta({ description: '名称' }),
   type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签' }),
 
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
@@ -185,6 +187,7 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
 
   rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),
   hashRawText: z.string().optional().meta({ description: '文本哈希' }),
+  fileMd5: z.string().optional().meta({ description: '文件内容 MD5' }),
 
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '其他元数据' }),
 
@@ -342,7 +345,8 @@ export const DatasetListItemSchema = z.object({
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' }),
   dataCount: z.number().optional().meta({ description: '数据数量' }),
   appCount: z.number().optional().meta({ description: '关联应用数量' }),
-  fileCount: z.number().optional().meta({ description: '文件数量' })
+  fileCount: z.number().optional().meta({ description: '文件数量' }),
+  processingCount: z.number().optional().meta({ description: '处理中的文件数量' })
 });
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 

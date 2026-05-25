@@ -110,7 +110,8 @@ export function buildRequiredConfig(config?: AgenticSearchConfig): Required<Agen
     enableInfoGain: config?.enableInfoGain ?? true,
     infoGainThreshold: config?.infoGainThreshold ?? 0.1,
     infoGainMaxHistory: config?.infoGainMaxHistory ?? 10,
-    searchOnly: config?.searchOnly ?? false
+    searchOnly: config?.searchOnly ?? false,
+    forbidCollectionIds: config?.forbidCollectionIds ?? []
   };
 }
 

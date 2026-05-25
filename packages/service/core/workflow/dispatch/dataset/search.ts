@@ -52,7 +52,7 @@ import { MongoDataset } from '../../../dataset/schema';
 import { MongoDatasetCollection } from '../../../dataset/collection/schema';
 import { i18nT } from '../../../../../global/common/i18n/utils';
 import { addLog } from '../../../../common/system/log';
-import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { filterCollectionsByTmbId, filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
@@ -131,6 +131,7 @@ export async function dispatchDatasetSearch(
     variables,
     node,
     workflowStreamResponse,
+    lang,
     params: {
       datasets = [],
       similarity,
@@ -162,6 +163,9 @@ export async function dispatchDatasetSearch(
       datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
+
+  // API 请求时 lang 可能未设置，通过 detectLang 检测 queryLanguage 兜底
+  const queryLanguage = detectLang(userChatInput);
 
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
@@ -211,6 +215,24 @@ export async function dispatchDatasetSearch(
     if (datasetIds.length === 0) {
       return emptyResult;
     }
+
+    // Collection-level permission filtering
+    let authForbidCollectionIds: string[] | undefined;
+    if (authTmbId) {
+      const collectionFilterResult = await filterCollectionsByTmbId({
+        datasetIds,
+        tmbId,
+        teamId
+      });
+      if (!collectionFilterResult.allPass) {
+        if (collectionFilterResult.forbiddenIds.length === 0) {
+          // Safety: allPass=false but empty forbiddenIds shouldn't happen, treat as all pass
+        } else {
+          authForbidCollectionIds = collectionFilterResult.forbiddenIds;
+        }
+      }
+    }
+
     const useVectorModelDataset = datasets.find(
       (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
@@ -270,9 +292,6 @@ export async function dispatchDatasetSearch(
         }
       | undefined = undefined; // 新增：Reranker 错误信息（仅 reranker 报错时有值）
     let agenticSearchResult: SearchDatasetDataResponse['agenticSearchResult'] = undefined; // 新增：agentic 检索的过程信息（仅 agentic 路径有值）
-
-    // 查询语言检测（eld 60 种语言），所有检索路径（agentic/standard/deepRag）均可利用
-    const queryLanguage = detectLang(userChatInput);
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -350,7 +369,8 @@ export async function dispatchDatasetSearch(
               queries: [userChatInput],
               model: vectorModel!.model,
               limit: dynamicLimit,
-              datasetIds: [datasetId]
+              datasetIds: [datasetId],
+              authForbidCollectionIds
             });
 
             if (singleResult) {
@@ -475,7 +495,8 @@ export async function dispatchDatasetSearch(
           histories,
           isAssistant: true,
           teamId,
-          datasetIds: commonDatasetIds
+          datasetIds: commonDatasetIds,
+          lang: lang ?? queryLanguage
         });
       }
 
@@ -494,7 +515,9 @@ export async function dispatchDatasetSearch(
         rerankModel: rerankModelData,
         rerankMethod,
         rerankWeight,
-        collectionFilterMatch
+        collectionFilterMatch,
+        lang: lang ?? queryLanguage,
+        authForbidCollectionIds
       };
 
       // ===== App 级别：校正数据 & FAQ 优先检索 =====
@@ -529,7 +552,8 @@ export async function dispatchDatasetSearch(
         const { vectors: queryVectors, tokens: corrFaqTokens } = await getVectorsByText({
           model: vectorModel,
           input: embedInputs,
-          type: 'query'
+          type: 'query',
+          useInstruction: false
         });
 
         // === 校正数据优先检索 ===
@@ -621,7 +645,9 @@ export async function dispatchDatasetSearch(
                 teamId,
                 datasetIds: commonDatasetIds,
                 queryVector: vec,
-                embeddingTokens: corrFaqTokens
+                embeddingTokens: corrFaqTokens,
+                authForbidCollectionIds,
+                collectionFilterMatch
               })
             )
           );
@@ -764,7 +790,9 @@ export async function dispatchDatasetSearch(
                   rerankModel: rerankModelData,
                   rerankMethod,
                   rerankWeight,
-                  collectionFilterMatch
+                  collectionFilterMatch,
+                  lang: lang ?? queryLanguage,
+                  authForbidCollectionIds
                 };
 
                 const result = await defaultSearchDatasetData({
@@ -776,6 +804,7 @@ export async function dispatchDatasetSearch(
                   synonymDatasetIds: datasetIds, // 所有知识库 ID，用于同义词检索；向量检索使用 groupSearchData.datasetIds（分组 ID）
                   appId,
                   faqAnswerMode,
+                  lang: lang ?? queryLanguage,
                   // 传入预计算结果，defaultSearchDatasetData 内部将跳过重复的 LLM 调用
                   preComputedQueryExtension
                 });
@@ -794,10 +823,14 @@ export async function dispatchDatasetSearch(
             );
 
             if (groupSearchResults.length > 0) {
-              // Merge searchRes from all groups, sorted by score descending
+              // Merge searchRes from all groups, sorted by RRF score descending
               const mergedSearchRes = groupSearchResults
                 .flatMap((g) => g.result.searchRes)
-                .sort((a, b) => (b.score[0]?.value ?? 0) - (a.score[0]?.value ?? 0));
+                .sort((a, b) => {
+                  const aRrf = a.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
+                  const bRrf = b.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
+                  return bRrf - aRrf;
+                });
 
               // Use first group's result as base for metadata fields
               const baseResult = groupSearchResults[0].result as SearchDatasetDataResponse;

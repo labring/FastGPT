@@ -60,6 +60,9 @@ function normalizeAttributes(attributes?: Record<string, unknown>) {
 }
 
 export async function configureTracing() {
+  const { initLangfuseTracing } = await import('../langfuse');
+  await initLangfuseTracing();
+
   await configureTracingFromEnv({
     env,
     defaultServiceName: 'fastgpt-client',

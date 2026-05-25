@@ -30,7 +30,7 @@ import ExcelJS from 'exceljs';
  * Notes:
  * - One row per question (shows only the best match context)
  * - Sorted by rank before training (descending) and improvement (descending)
- * - Best match context is limited to 100 characters
+ * - Best match context is limited to 1000 characters
  * - No cell merging
  * - Supports i18n column headers
  */
@@ -160,9 +160,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get best match context info
     const datasetInfo = bestMatchContextId ? datasetDataMap.get(bestMatchContextId) : null;
     let bestMatchContext = datasetInfo?.chunk || '';
-    // Limit best match context to 100 characters with ellipsis
-    if (bestMatchContext.length > 100) {
-      bestMatchContext = bestMatchContext.substring(0, 100) + '...';
+    // Limit best match context to 1000 characters with ellipsis
+    if (bestMatchContext.length > 1000) {
+      bestMatchContext = bestMatchContext.substring(0, 1000) + '...';
     }
     const collectionName = datasetInfo?.collectionName || 'Unknown';
 

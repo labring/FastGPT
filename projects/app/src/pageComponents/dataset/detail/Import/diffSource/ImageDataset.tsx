@@ -15,6 +15,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext } from '../Context';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import SparkMD5 from 'spark-md5';
 
 const fileType = '.jpg, .jpeg, .png';
 
@@ -63,13 +64,32 @@ const SelectFile = React.memo(function SelectFile() {
     });
   };
 
+  // 流式计算单个文件的 SparkMD5
+  const computeFileMd5 = async (file: File): Promise<string> => {
+    const spark = new SparkMD5.ArrayBuffer();
+    const reader = file.stream().getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      spark.append(value!.buffer as ArrayBuffer);
+    }
+    return spark.end();
+  };
+
   const { runAsync: onCreate, loading: creating } = useRequest(
     async ({ name: collectionName }: { name: string }) => {
+      const files = selectFiles.map((item) => item.file!).filter(Boolean);
+
+      // 为每张图片分别计算 SparkMD5，排序后拼接作为集合的 fileMd5
+      const md5s = await Promise.all(files.map((f) => computeFileMd5(f)));
+      const fileMd5 = md5s.sort().join(',');
+
       return await createImageDatasetCollection({
         parentId,
         datasetId,
         collectionName,
-        files: selectFiles.map((item) => item.file!).filter(Boolean),
+        files,
+        fileMd5,
         onUploadProgress: setUploadProgress
       });
     },

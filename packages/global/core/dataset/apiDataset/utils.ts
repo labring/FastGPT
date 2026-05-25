@@ -10,7 +10,8 @@ export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetSe
       ? {
           baseUrl: apiServer.baseUrl,
           authorization: '',
-          basePath: apiServer.basePath
+          basePath: apiServer.basePath,
+          permissionSync: apiServer.permissionSync
         }
       : undefined,
     yuqueServer: yuqueServer

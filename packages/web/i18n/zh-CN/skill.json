@@ -13,6 +13,7 @@
   "custom_skill": "自定义 Skill",
   "custom_skill_desc": "通过描述 Skill 需求，智能生成 Skill 大纲及框架",
   "delete_disabled_tip": "存在关联应用，无法删除",
+  "folder_delete_disabled_tip": "其中的 Skill 存在关联应用，无法删除",
   "delete_failed": "删除失败",
   "delete_success": "删除成功",
   "detail_tab_config": "Skill 配置",

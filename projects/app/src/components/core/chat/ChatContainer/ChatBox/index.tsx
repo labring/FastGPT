@@ -1881,11 +1881,15 @@ const ChatBox = ({
         flex={'1 0 0'}
         h={0}
         w={'100%'}
-        overflow={'overlay'}
+        overflowX={'hidden'}
         px={[4, 0]}
         pb={6}
+        sx={{
+          maskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)'
+        }}
       >
-        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+        <Box maxW={['100%', 'min(738px, 92%)']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1936,7 +1940,7 @@ const ChatBox = ({
                 <ChatHomeVariablesForm chatForm={chatForm} />
               </Box>
             ) : (
-              <Box w={'100%'} position="relative" mt={entryPoints.length > 0 ? 10 : 0}>
+              <Box w={'100%'} position="relative" mt={entryPoints.length > 0 ? 10 : 0} mb={'32px'}>
                 {entryPoints.length > 0 && (
                   <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
                     <EntryPointBar
@@ -1984,6 +1988,7 @@ const ChatBox = ({
               w={'100%'}
               maxW={['100%', 'min(738px, 92%)']}
               sx={sx}
+              mb={'32px'}
               position="relative"
               mt={entryPoints.length > 0 ? 10 : 0}
             >
@@ -2013,7 +2018,7 @@ const ChatBox = ({
             <Box
               mx={'auto'}
               mt={entryPoints.length > 0 ? 10 : ['0', '10px']}
-              mb={['10px', '10px']}
+              mb={'32px'}
               w={'100%'}
               maxW={['100%', 'min(738px, 92%)']}
               sx={sx}

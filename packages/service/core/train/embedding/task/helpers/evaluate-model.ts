@@ -45,7 +45,10 @@ export async function evaluateEmbeddingModelHelper(
   teamId: string,
   tmbId: string,
   datasetIds: string[]
-): Promise<EmbeddingEvalResult> {
+): Promise<{
+  evalResult: EmbeddingEvalResult;
+  rankingResults: Array<{ itemId: string; rankedIds: string[] }>;
+}> {
   addLog.info('Evaluate embedding model', { taskId, modelId, stage });
 
   const evalDataItems = await MongoEvalDatasetData.find({
@@ -169,6 +172,11 @@ export async function evaluateEmbeddingModelHelper(
 
   const metrics = computeRankingMetrics(cases, K_VALUES, 'embed');
 
+  const rankingResults = evalDataItems.map((item, idx) => ({
+    itemId: (item as any)._id.toString(),
+    rankedIds: cases[idx].rankedIds
+  }));
+
   addLog.info('Embedding model evaluated', {
     taskId,
     modelId,
@@ -178,5 +186,8 @@ export async function evaluateEmbeddingModelHelper(
     precision10: metrics.detailed_results.embed_top10_precision
   });
 
-  return metrics as EmbeddingEvalResult;
+  return {
+    evalResult: metrics as EmbeddingEvalResult,
+    rankingResults
+  };
 }

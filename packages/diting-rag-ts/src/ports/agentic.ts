@@ -41,4 +41,6 @@ export interface AgenticSearchConfig {
   infoGainThreshold?: number;
   infoGainMaxHistory?: number;
   searchOnly?: boolean;
+  /** 权限过滤：用户无权访问的 collection ID 列表，将合并到 forbidCollectionIds */
+  forbidCollectionIds?: string[];
 }

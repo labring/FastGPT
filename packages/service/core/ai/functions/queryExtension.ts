@@ -10,6 +10,7 @@ import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getSynonymMappings, standardizeQuery } from '../../dataset/search/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
@@ -31,14 +32,14 @@ const defaultPrompt = `## 你的任务
 
 ## 参考示例
 
-历史记录: 
+历史记录:
 """
 null
 """
 原问题: 介绍下剧情。
 检索词: ["介绍下故事的背景。","故事的主题是什么？","介绍下故事的主要人物。","故事的转折点在哪里？","故事的结局如何？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 对话背景。
 assistant: 当前对话是关于 Nginx 的介绍和使用等。
@@ -46,7 +47,7 @@ assistant: 当前对话是关于 Nginx 的介绍和使用等。
 原问题: 怎么下载
 检索词: ["Nginx 如何下载？","下载 Nginx 需要什么条件？","有哪些渠道可以下载 Nginx？","Nginx 各版本的下载方式有什么区别？","如何选择合适的 Nginx 版本下载？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 对话背景。
 assistant: 当前对话是关于 Nginx 的介绍和使用等。
@@ -56,7 +57,7 @@ assistant: 报错"no connection"可能是因为……
 原问题: 怎么解决
 检索词: ["Nginx报错'no connection'如何解决？","造成'no connection'报错的原因。","Nginx提示'no connection'，要怎么办？","'no connection'错误的常见解决步骤。","如何预防 Nginx 'no connection' 错误？"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: How long is the maternity leave?
 assistant: The number of days of maternity leave depends on the city in which the employee is located. Please provide your city so that I can answer your questions.
@@ -64,7 +65,7 @@ assistant: The number of days of maternity leave depends on the city in which th
 原问题: ShenYang
 检索词: ["How many days is maternity leave in Shenyang?","Shenyang's maternity leave policy.","The standard of maternity leave in Shenyang.","What benefits are included in Shenyang's maternity leave?","How to apply for maternity leave in Shenyang?"]
 ----------------
-历史记录: 
+历史记录:
 """
 user: 作者是谁？
 assistant: ${title} 的作者是 labring。
@@ -300,7 +301,7 @@ assistant: ${chatBg}
 */
 
 // 合并后的提示词：同时完成指代消除和问题改写
-const MergedQueryOptimizationPrompt = `- Role: 问题优化专家
+const MergedQueryOptimizationPromptZH = `- Role: 问题优化专家
 - Background: 用户问题可能存在指代不明确或需要多角度理解的情况，你需要帮助优化问题以提升检索效果。
 - Skills:
   1. 擅长识别并替换指代词(他/她/它/这/那等)、补充省略条件(时间/地点/前提等)，生成完整的疑问句
@@ -319,8 +320,9 @@ const MergedQueryOptimizationPrompt = `- Role: 问题优化专家
   6. **关键要求**：resolvedQuery 和 rewriteQueries 中的所有内容必须是疑问句，以"？"或"?"结尾，绝不能是陈述句
   7. **语言要求**：输出语言与原问题相同。原问题为中文则输出中文；原问题为英文则输出英文
 
-- OutputFormat: 必须返回严格的JSON格式，包含两个字段:
+- OutputFormat: 必须返回严格的JSON格式，包含三个字段:
   {
+    "questionPreview": "原问题内容的前五个字符",
     "resolvedQuery": "指代消除后的完整疑问句（必须以？或?结尾）",
     "rewriteQueries": ["改写疑问句1", "改写疑问句2", "改写疑问句3"]
   }
@@ -352,15 +354,79 @@ const MergedQueryOptimizationPrompt = `- Role: 问题优化专家
 问题：怎么配置SSL和负载均衡？
 {"resolvedQuery":"怎么配置Nginx的SSL和负载均衡？","rewriteQueries":["如何在Nginx中配置SSL？","Nginx负载均衡如何配置？","Nginx的SSL和负载均衡配置方法是什么？"]}`;
 
+const MergedQueryOptimizationPromptEN = `- Role: Query Optimization Expert
+- Background: User questions may contain unclear references or require multi-perspective understanding. You need to help optimize questions to improve retrieval effectiveness.
+- Skills:
+  1. Skilled at identifying and replacing pronouns (he/she/it/this/that, etc.) and filling in omitted conditions (time/location/premise, etc.) to generate complete interrogative sentences
+  2. Able to break down and rewrite questions from different perspectives, generating multiple interrogative retrieval queries to improve retrieval coverage
+
+- Task: You need to complete two tasks
+  1. Coreference Resolution: Based on context, replace pronouns and demonstratives in the question with specific entities to make it complete and clear. Output must be in interrogative form.
+  2. Question Rewriting: Based on the coreference-resolved question, generate 2-3 rewritten questions from different perspectives. All rewritten questions must be in interrogative form, not declarative statements.
+
+- Constraints:
+  1. Only replace when there are identifiable pronouns or demonstratives
+  2. Only supplement when necessary conditions are missing
+  3. Keep the original question if coreference cannot be determined
+  4. Rewritten questions must preserve the original meaning, only changing the expression perspective
+  5. If the question involves multiple products or subjects, independent sub-questions can be generated for each subject
+  6. **Critical requirement**: All content in resolvedQuery and rewriteQueries must be interrogative sentences ending with "?" and must never be declarative statements
+  7. **Language requirement**: Output language must match the original question. If the original question is in Chinese, output in Chinese; if in English, output in English
+
+- OutputFormat: Must return strict JSON format with three fields:
+  {
+    "questionPreview": "The first 5 characters of the user's question",
+    "resolvedQuery": "Coreference-resolved complete interrogative sentence (must end with ?)",
+    "rewriteQueries": ["Rewritten interrogative sentence 1", "Rewritten interrogative sentence 2", "Rewritten interrogative sentence 3"]
+  }
+
+- Workflow:
+  1. Analyze context to identify pronouns/demonstratives in the question
+  2. Replace pronouns with specific referents, supplement missing conditions, and obtain resolvedQuery (must be an interrogative sentence)
+  3. Based on resolvedQuery, generate 2-3 rewritten interrogative sentences (not declarative statements) from different perspectives
+  4. Output the result in JSON format
+
+- Examples:
+Example 1:
+<Context>Fluent Python is very interesting.</Context>
+Question: Who is the author of this book?
+{"resolvedQuery":"Who is the author of the book Fluent Python?","rewriteQueries":["Who wrote Fluent Python?","Who is the creator of Fluent Python?","What is the name of Fluent Python's author?"]}
+
+Example 2:
+<Context>The user purchased One Hundred Years of Solitude yesterday.</Context>
+Question: When did he buy it?
+{"resolvedQuery":"When did the user purchase One Hundred Years of Solitude?","rewriteQueries":["At what time was One Hundred Years of Solitude purchased by the user?","When was One Hundred Years of Solitude bought?","What was the purchase date of One Hundred Years of Solitude?"]}
+
+Example 3:
+<Context>Plan a travel itinerary for me, I want to go near the Hexi Corridor area for 8 days.</Context>
+Question: What is hyper-convergence?
+{"resolvedQuery":"What is hyper-convergence?","rewriteQueries":["What is the definition of hyper-convergence?","What is hyper-convergence technology?","What is the concept of hyper-convergence?"]}
+
+Example 4:
+<Context>The user is asking about Nginx configuration.</Context>
+Question: How to configure SSL and load balancing?
+{"resolvedQuery":"How to configure SSL and load balancing in Nginx?","rewriteQueries":["How to configure SSL in Nginx?","How to set up load balancing in Nginx?","What is the method to configure SSL and load balancing in Nginx?"]}`;
+
+const getMergedQueryOptimizationPrompt = (lang: string) => {
+  const isEnglish = lang === LangEnum.en;
+  logger.debug('MergedQueryOptimizationPrompt activated', {
+    lang,
+    isEnglish: lang === LangEnum.en
+  });
+  return isEnglish ? MergedQueryOptimizationPromptEN : MergedQueryOptimizationPromptZH;
+};
+
 // 合并后的辅助函数：同时完成指代消除和问题改写
 async function mergedQueryOptimization({
   histories,
   query,
-  model
+  model,
+  lang
 }: {
   histories: ChatItemType[];
   query: string;
   model: string;
+  lang: string;
 }): Promise<{
   resolvedQuery: string;
   rewriteQueries: string[];
@@ -374,10 +440,12 @@ async function mergedQueryOptimization({
       .map((msg) => `${msg.role === 'user' ? '用户' : 'AI'}: ${msg.content}`)
       .join('\n');
 
+    // 如果 lang 未设置（API 请求等场景），通过 query 文本检测语言
+    const effectiveLang = lang || (/[\u4e00-\u9fff]/.test(query) ? LangEnum.zh_CN : LangEnum.en);
     const optimizationMessages: ChatCompletionMessageParam[] = [
       {
         role: 'user',
-        content: `${MergedQueryOptimizationPrompt}\n\n-----\n<Context>\n${historyText}\n</Context>\n\n问题: ${query}`
+        content: `${getMergedQueryOptimizationPrompt(effectiveLang)}\n\n-----\n<Context>\n${historyText}\n</Context>\n\n问题: ${query}`
       }
     ];
 
@@ -462,13 +530,15 @@ export const queryExtensionForAssistant = async ({
   histories = [],
   model,
   teamId,
-  datasetIds
+  datasetIds,
+  lang
 }: {
   query: string;
   histories: ChatItemType[];
   model: string;
   teamId: string;
   datasetIds: string[];
+  lang: string;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
@@ -490,7 +560,8 @@ export const queryExtensionForAssistant = async ({
     const optimizationResult = await mergedQueryOptimization({
       histories,
       query,
-      model
+      model,
+      lang
     });
     totalInputTokens += optimizationResult.inputTokens;
     totalOutputTokens += optimizationResult.outputTokens;

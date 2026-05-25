@@ -27,7 +27,6 @@ const DefaultModelModal = ({
   const {
     defaultModels,
     llmModelList,
-    datasetModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
@@ -80,10 +79,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.embedding?.model}
-              list={embeddingModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
+              list={embeddingModelList
+                .filter((item) => !item.isTuned)
+                .map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -137,10 +138,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.rerank?.model}
-              list={reRankModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
+              list={reRankModelList
+                .filter((item) => !item.isTuned)
+                .map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -160,14 +163,14 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.datasetTextLLM?.model}
-              list={datasetModelList.map((item) => ({
+              list={llmModelList.map((item) => ({
                 value: item.model,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetTextLLM: datasetModelList.find((item) => item.model === e)
+                  datasetTextLLM: llmModelList.find((item) => item.model === e)
                 }));
               }}
             />

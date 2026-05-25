@@ -24,10 +24,9 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import {
-  ChatSidebarPaneEnum,
-  DEFAULT_LOGO_BANNER_COLLAPSED_URL
-} from '@/pageComponents/chat/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
@@ -55,6 +54,7 @@ const ChatHeader = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { source } = useChatStore();
+  const { feConfigs } = useSystemStore();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
@@ -86,12 +86,12 @@ const ChatHeader = ({
           appId={chatData.appId}
           name={
             pane === ChatSidebarPaneEnum.HOME && !isShare
-              ? chatSettings?.homeTabTitle || 'FastGPT'
+              ? feConfigs?.systemTitle || 'FastGPT'
               : chatData.app.name
           }
           avatar={
             pane === ChatSidebarPaneEnum.HOME && !isShare
-              ? chatSettings?.squareLogoUrl || DEFAULT_LOGO_BANNER_COLLAPSED_URL
+              ? feConfigs?.systemLogo || LOGO_ICON
               : chatData.app.avatar
           }
           showHistory={showHistory}

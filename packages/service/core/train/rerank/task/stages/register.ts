@@ -57,6 +57,7 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   const baseModelDoc = await MongoSystemModel.findOne({ model: baseModelId }).lean();
   const baseMeta = (baseModelDoc?.metadata ?? {}) as {
     charsPointsPrice?: number;
+    maxToken?: number;
     instruction?: string;
   };
 
@@ -66,6 +67,7 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
       endpoint: tunedEndpoint,
       isActive: true,
       charsPointsPrice: baseMeta.charsPointsPrice,
+      maxToken: baseMeta.maxToken,
       instruction:
         task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
     });

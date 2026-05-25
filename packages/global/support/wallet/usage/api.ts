@@ -6,11 +6,16 @@ export type CreateTrainingUsageProps = {
   datasetId: string;
 };
 
+export type MemberFilterType =
+  | { type: 'member'; memberIds: string[] }
+  | { type: 'group'; groupIds: string[] }
+  | { type: 'org'; orgIds: string[] };
+
 export type GetUsageProps = {
   dateStart: string;
   dateEnd: string;
   sources?: UsageSourceEnum[];
-  teamMemberIds?: string[];
+  memberFilter?: MemberFilterType;
   projectName?: string;
 };
 
@@ -20,6 +25,8 @@ export type GetUsageDashboardProps = GetUsageProps & {
 export type GetUsageDashboardResponseItem = {
   date: Date;
   totalPoints: number;
+  inputTokens: number;
+  outputTokens: number;
 };
 
 export type CreateUsageProps = Omit<UsageSchemaType, '_id' | 'time'>;

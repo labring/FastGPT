@@ -67,6 +67,14 @@ vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   deleteSFTTask: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/train/rerank/task/mq', () => ({
+  removeRerankTrainTaskJob: vi.fn().mockResolvedValue({})
+}));
+
+vi.mock('@fastgpt/service/core/train/common/task-abort-signal', () => ({
+  setTrainTaskAbortSignal: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
     findOne: vi.fn()
@@ -342,6 +350,9 @@ describe('Rerank Train Task Controller', () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
+      const { setTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
 
       (MongoRerankTrainTask.findById as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue({
@@ -358,6 +369,11 @@ describe('Rerank Train Task Controller', () => {
 
       expect(MongoRerankTrainTask.findById).toHaveBeenCalledWith('task_123', null, {
         session: undefined
+      });
+      expect(setTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'rerank',
+        taskId: 'task_123',
+        reason: 'deleted'
       });
       expect(MongoRerankTrainTask.deleteOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
@@ -573,6 +589,9 @@ describe('Rerank Train Task Controller', () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
+      const { setTrainTaskAbortSignal } = await import(
+        '@fastgpt/service/core/train/common/task-abort-signal'
+      );
 
       (MongoRerankTrainTask.findById as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue({
@@ -585,6 +604,11 @@ describe('Rerank Train Task Controller', () => {
 
       await cancelRerankTrainTask('task_123');
 
+      expect(setTrainTaskAbortSignal).toHaveBeenCalledWith({
+        type: 'rerank',
+        taskId: 'task_123',
+        reason: 'cancelled'
+      });
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
         expect.objectContaining({

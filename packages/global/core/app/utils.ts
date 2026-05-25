@@ -169,6 +169,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.collectionFilterMatch
       );
+      defaultAppForm.dataset.authTmbId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.authTmbId
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||

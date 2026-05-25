@@ -18,12 +18,14 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import { detectLang } from 'diting-rag-ts';
 
 type DatasetSearchParams = {
   teamId: string;
   tmbId: string;
   query: string;
   llmModel: string;
+  lang?: string;
   config: {
     datasets: SelectedDatasetType[];
     similarity: number;
@@ -161,7 +163,8 @@ export const dispatchAgentDatasetSearch = async ({
   config,
   teamId,
   tmbId,
-  llmModel
+  llmModel,
+  lang
 }: DatasetSearchParams): Promise<{
   response: string;
   usages: ChatNodeUsageType[];
@@ -207,7 +210,8 @@ export const dispatchAgentDatasetSearch = async ({
       datasetSearchUsingExtensionQuery: config.usingExtensionQuery,
       datasetSearchExtensionModel: config.extensionModel,
       datasetSearchExtensionBg: config.extensionBg,
-      collectionFilterMatch: config.collectionFilterMatch
+      collectionFilterMatch: config.collectionFilterMatch,
+      lang: lang ?? detectLang(query)
     };
     const {
       searchRes,

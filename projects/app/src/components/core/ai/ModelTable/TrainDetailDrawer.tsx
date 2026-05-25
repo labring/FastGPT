@@ -418,7 +418,15 @@ const TrainDetailDrawer = ({
   const renderMetricRow = useCallback(
     (label: string, before?: number, after?: number, isPercent = true) => {
       if (before === undefined && after === undefined) return null;
-      const isWorse = after !== undefined && before !== undefined && after < before;
+
+      // 先按显示精度四舍五入，再比较，避免因多余小数位导致显示一致但箭头变红
+      const round = (v: number) =>
+        isPercent ? Math.round(v * 1000) / 1000 : Math.round(v * 100) / 100;
+      const roundedBefore = before !== undefined ? round(before) : undefined;
+      const roundedAfter = after !== undefined ? round(after) : undefined;
+      const isWorse =
+        roundedAfter !== undefined && roundedBefore !== undefined && roundedAfter < roundedBefore;
+
       const formatVal = (v?: number) => {
         if (v === undefined) return '-';
         return isPercent ? `${(v * 100).toFixed(1)}%` : v.toFixed(2);
@@ -458,12 +466,7 @@ const TrainDetailDrawer = ({
 
       return (
         <Flex flexDirection={'column'} gap={1}>
-          {renderMetricRow(
-            'Precision@10',
-            metrics.precision10Before,
-            metrics.precision10After,
-            true
-          )}
+          {renderMetricRow('Hit@10', metrics.precision10Before, metrics.precision10After, true)}
           {renderMetricRow('MRR@10', metrics.mrr10Before, metrics.mrr10After, false)}
         </Flex>
       );
@@ -491,7 +494,29 @@ const TrainDetailDrawer = ({
       );
 
       if (isPendingTrainTaskStatus(item.status)) {
-        return null;
+        const isDeleting = deletingTaskIds.has(item._id);
+
+        return (
+          <MyMenu
+            trigger={'click'}
+            Button={menuButton}
+            menuList={[
+              {
+                children: [
+                  {
+                    type: 'danger',
+                    icon: isDeleting ? 'common/loading' : 'common/trash',
+                    label: t('common:Delete'),
+                    onClick: () => handleDeleteTask(item._id),
+                    menuItemStyles: isDeleting
+                      ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
+                      : undefined
+                  }
+                ]
+              }
+            ]}
+          />
+        );
       }
 
       if (isRunningTrainTaskStatus(item.status)) {
@@ -555,6 +580,7 @@ const TrainDetailDrawer = ({
 
       if (isCompletedTrainTaskStatus(item.status)) {
         const isDownloading = downloadingTaskIds.has(item._id);
+        const isDeleting = deletingTaskIds.has(item._id);
 
         return (
           <MyMenu
@@ -568,6 +594,15 @@ const TrainDetailDrawer = ({
                     label: t('account_model:train_detail_download_data'),
                     onClick: () => onDownloadData(item._id),
                     menuItemStyles: isDownloading
+                      ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
+                      : undefined
+                  },
+                  {
+                    type: 'danger',
+                    icon: isDeleting ? 'common/loading' : 'common/trash',
+                    label: t('common:Delete'),
+                    onClick: () => handleDeleteTask(item._id, true),
+                    menuItemStyles: isDeleting
                       ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
                       : undefined
                   }

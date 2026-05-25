@@ -302,6 +302,7 @@
   "tag_filter_select_op": "選擇條件",
   "tag_filter_no_dataset": "請先選擇知識庫",
   "tag_filter_no_tags": "當前所選知識庫沒有可用標籤，請先在知識庫中建立標籤",
+  "tag_filter_unauth_datasets": "暫無知識庫{{names}}的權限，無法獲取其標籤",
   "tag_filter_value_number": "輸入數字",
   "tag_filter_auto_tip": "自動過濾（根據用戶問題自動生成過濾條件，功能開發中）",
   "tag_filter_op_string_eq": "是",
@@ -323,5 +324,7 @@
   "tag_filter_op_not_empty": "不為空",
   "retrieval_filter": "檢索過濾",
   "tag_filter_label": "標籤過濾",
-  "tag_filter_label_tooltip": "標籤過濾可精確查找對應文件，進而提升檢索準確率和效率。\n如：用戶提問「有效期是多久？」，已確定用戶詢問訂單對應產品 A，通過標籤過濾，可鎖定產品 A 相關文件，避免在其他含有「有效期」的文件中檢索。"
+  "tag_filter_label_tooltip": "標籤過濾可精確查找對應文件，進而提升檢索準確率和效率。\n如：用戶提問「有效期是多久？」，已確定用戶詢問訂單對應產品 A，通過標籤過濾，可鎖定產品 A 相關文件，避免在其他含有「有效期」的文件中檢索。",
+  "permission_filter_label": "權限過濾",
+  "permission_filter_tooltip": "開啟後，將根據用戶是否有所選知識庫權限進行過濾，每個用戶僅可在擁有權限知識範圍內檢索內容。\n（開啟後不建議免登入發布，否則所有用戶無法檢索知識庫）"
 }

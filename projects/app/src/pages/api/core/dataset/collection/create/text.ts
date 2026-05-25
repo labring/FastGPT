@@ -16,6 +16,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import crypto from 'crypto';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { name, text, ...body } = CreateTextCollectionBodySchema.parse(req.body);
@@ -52,10 +54,35 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   });
 
   const filename = `${name}.txt`;
+
+  // 文本内容 MD5 去重：将文本转为 buffer 计算 MD5，在 dataset_collections 中
+  // 按 { datasetId, type=file, fileMd5 } 联合索引查重，命中则拒绝。
+  // 注意：文本输入无前端预计算 MD5 流程，此处为本链路的唯一一次计算，
+  // 无前后端不一致风险，因此使用后端 crypto 直接计算。
+  // 算法层面：crypto.createHash('md5') 与前端 SparkMD5 对相同字节序列产生的结果完全一致，
+  // 两者均为标准 MD5 算法，不存在算法差异。
+  // MD5 基于 Buffer.from(text) 的字节序列计算，
+  // 同一段文本内容（相同编码、相同字符）会命中相同 MD5。
+  const buffer = Buffer.from(text);
+  const fileMd5 = crypto.createHash('md5').update(buffer).digest('hex');
+
+  const existingCollection = await MongoDatasetCollection.findOne(
+    {
+      datasetId: body.datasetId,
+      type: DatasetCollectionTypeEnum.file,
+      fileMd5
+    },
+    '_id name'
+  ).lean();
+
+  if (existingCollection) {
+    return Promise.reject(DatasetErrEnum.fileContentDuplicate);
+  }
+
   const s3DatasetSource = getS3DatasetSource();
   const key = await s3DatasetSource.upload({
     datasetId: String(dataset._id),
-    buffer: Buffer.from(text),
+    buffer,
     filename,
     contentType: 'text/plain; charset=UTF-8'
   });
@@ -68,7 +95,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       tmbId,
       type: DatasetCollectionTypeEnum.file,
       fileId: key,
-      name: filename
+      name: filename,
+      fileMd5
     }
   });
   await removeS3TTL({ key, bucketName: 'private' });

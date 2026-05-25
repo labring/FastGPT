@@ -68,10 +68,41 @@ import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
+import { isLangfuseEnabled } from '../../../common/langfuse';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+
+/* ===== Langfuse helpers ===== */
+const LANGFUSE_LLM_NODE_TYPES = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.chatNode,
+  FlowNodeTypeEnum.agent,
+  FlowNodeTypeEnum.classifyQuestion,
+  FlowNodeTypeEnum.contentExtract,
+  FlowNodeTypeEnum.queryExtension
+]);
+
+const LANGFUSE_EXCLUDED_INPUT_KEYS = new Set(['history', 'aiChatDatasetQuote', 'fileUrlList']);
+const LANGFUSE_MAX_STR_LEN = 10000;
+
+function filterLangfuseNodeInput(params: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (LANGFUSE_EXCLUDED_INPUT_KEYS.has(key)) continue;
+    result[key] =
+      typeof value === 'string' && value.length > LANGFUSE_MAX_STR_LEN
+        ? `${value.slice(0, LANGFUSE_MAX_STR_LEN)}...[truncated]`
+        : value;
+  }
+  return result;
+}
+
+function filterLangfuseNodeOutput(dispatchRes: NodeResponseType): Record<string, any> {
+  if (!dispatchRes.data) return {};
+  const data = dispatchRes.data as Record<string, any>;
+  return Object.fromEntries(Object.entries(data).filter(([k]) => k !== 'history'));
+}
 
 type Props = Omit<
   ChatDispatchProps,
@@ -876,12 +907,8 @@ export class WorkflowQueue {
           });
 
           // resolve $ref arrays embedded in collectionFilterMatch JSON string
-          if (
-            input.key === NodeInputKeyEnum.collectionFilterMatch &&
-            typeof value === 'string'
-          ) {
-            value =
-              resolveTagFilterRefs(value, this.runtimeNodesMap, this.data.variables) ?? value;
+          if (input.key === NodeInputKeyEnum.collectionFilterMatch && typeof value === 'string') {
+            value = resolveTagFilterRefs(value, this.runtimeNodesMap, this.data.variables) ?? value;
           }
 
           // Dynamic input is stored in the dynamic key
@@ -1058,6 +1085,37 @@ export class WorkflowQueue {
         });
       }
 
+      // Inject Langfuse node span attributes for root chat observations
+      if (stepSpan && this.isRootRuntime && mode === 'chat' && isLangfuseEnabled()) {
+        stepSpan.setAttribute(
+          'langfuse.observation.input',
+          JSON.stringify(filterLangfuseNodeInput(params))
+        );
+        stepSpan.setAttribute(
+          'langfuse.observation.output',
+          JSON.stringify(filterLangfuseNodeOutput(dispatchRes))
+        );
+        if (LANGFUSE_LLM_NODE_TYPES.has(node.flowNodeType) && formatResponseData?.model) {
+          stepSpan.setAttribute('langfuse.observation.type', 'generation');
+          stepSpan.setAttribute(
+            'langfuse.observation.model.name',
+            String(formatResponseData.model)
+          );
+          const usageDetails: Record<string, number> = {};
+          if (formatResponseData.inputTokens != null) {
+            usageDetails.input = formatResponseData.inputTokens;
+          }
+          if (formatResponseData.outputTokens != null) {
+            usageDetails.output = formatResponseData.outputTokens;
+          }
+          if (Object.keys(usageDetails).length > 0) {
+            stepSpan.setAttribute(
+              'langfuse.observation.usage_details',
+              JSON.stringify(usageDetails)
+            );
+          }
+        }
+      }
       // Update new variables
       if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
         this.data.variables = {
@@ -1580,6 +1638,18 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         async (workflowSpan) => {
           const startTime = Date.now();
 
+          // Inject Langfuse session/trace attributes for root chat observations
+          if (isRootRuntime && data.mode === 'chat' && isLangfuseEnabled()) {
+            workflowSpan.setAttribute('langfuse.session.id', data.chatId || '');
+            workflowSpan.setAttribute('langfuse.user.id', String(data.runningUserInfo.tmbId));
+            workflowSpan.setAttribute(
+              'langfuse.trace.metadata.app_id',
+              String(data.runningAppInfo.id)
+            );
+            workflowSpan.setAttribute('langfuse.trace.metadata.appName', data.runningAppInfo.name);
+            workflowSpan.setAttribute('langfuse.trace.input', JSON.stringify(data.query));
+          }
+
           await rewriteRuntimeWorkFlow({
             teamId: data.runningAppInfo.teamId,
             nodes: data.runtimeNodes,
@@ -1645,6 +1715,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           );
           workflowSpan.setStatus({ code: SpanStatusCode.OK });
 
+          // Inject Langfuse output for root chat observations
+          if (isRootRuntime && data.mode === 'chat' && isLangfuseEnabled()) {
+            workflowSpan.setAttribute(
+              'langfuse.trace.output',
+              JSON.stringify(mergeAssistantResponseAnswerText(workflowQueue.chatAssistantResponse))
+            );
+          }
           if (isRootRuntime) {
             data.workflowStreamResponse?.({
               event: SseResponseEventEnum.workflowDuration,

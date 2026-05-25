@@ -164,9 +164,9 @@
   "setting.home.quick_apps": "Quick Apps",
   "setting.home.quick_apps.add": "Configure quick applications",
   "setting.home.quick_apps.placeholder": "Please select an application",
-  "setting.home.slogan": "Slogan",
-  "setting.home.slogan.default": "Hi 👋, I'm FastGPT. How can I help you today?",
-  "setting.home.slogan_placeholder": "",
+  "setting.home.slogan": "Opening Greeting",
+  "setting.home.slogan.default": "Hello, how can I help you?",
+  "setting.home.slogan_placeholder": "Enter opening greeting",
   "setting.home.title": "Homepage settings",
   "setting.log_details.title": "Logs",
   "setting.save": "Save",
@@ -286,5 +286,6 @@
   "retrieval_results": "Retrieval Results",
   "view_all_knowledge": "View all {{count}} knowledge",
   "tag_faq_direct": "Matched to a directly answerable FAQ",
-  "tag_no_recall": "No knowledge retrieved"
+  "tag_no_recall": "No knowledge retrieved",
+  "setting.favourite.all_apps": "All Apps"
 }

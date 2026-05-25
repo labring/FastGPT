@@ -384,10 +384,12 @@ const List = () => {
                               type: 'danger' as const,
                               icon: 'delete',
                               label: t('common:Delete'),
-                              disabled: !isFolder && relatedAppsCount > 0,
+                              disabled: relatedAppsCount > 0,
                               disabledTip:
-                                !isFolder && relatedAppsCount > 0
-                                  ? t('skill:delete_disabled_tip')
+                                relatedAppsCount > 0
+                                  ? isFolder
+                                    ? t('skill:folder_delete_disabled_tip')
+                                    : t('skill:delete_disabled_tip')
                                   : undefined,
                               onClick: () =>
                                 openConfirmDel({
@@ -446,6 +448,7 @@ const List = () => {
                         <Box
                           color={'#999'}
                           maxW={'60px'}
+                          lineHeight={'16px'}
                           overflow={'hidden'}
                           textOverflow={'ellipsis'}
                           whiteSpace={'nowrap'}

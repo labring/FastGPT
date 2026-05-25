@@ -86,9 +86,18 @@ const MarkdownRender = ({
     return map;
   }, [citeStyle, source, citeSourceMap]);
 
+  // imgComponent 只依赖 chatAuthData，流式期间保持稳定引用，防止 Image 被 unmount/remount 导致闪烁
+  const imgComponent = useCreation(() => {
+    const ImgComponent = (props: any) => (
+      <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />
+    );
+    ImgComponent.displayName = 'ImgComponent';
+    return ImgComponent;
+  }, [chatAuthData]);
+
   const components = useCreation(() => {
     return {
-      img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
+      img: imgComponent,
       pre: RewritePre,
       code: Code,
       table: MarkdownTable as any,
@@ -105,7 +114,15 @@ const MarkdownRender = ({
         />
       )
     };
-  }, [chatAuthData, onOpenCiteModal, showAnimation, citeStyle, citeIndexMap, citeSourceMap]);
+  }, [
+    imgComponent,
+    chatAuthData,
+    onOpenCiteModal,
+    showAnimation,
+    citeStyle,
+    citeIndexMap,
+    citeSourceMap
+  ]);
 
   const formatSource = useMemo(() => {
     const text = showAnimation || forbidZhFormat ? source : mdTextFormat(source);

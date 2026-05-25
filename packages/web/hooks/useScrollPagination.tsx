@@ -1,4 +1,4 @@
-import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -215,6 +215,10 @@ export function useScrollPagination<
 
   const noMore = data.length >= total;
 
+  // 用 ref 存储最新 params，避免 loadData 闭包捕获旧值
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+
   const loadData = useLockFn(
     async ({
       init = false,
@@ -244,7 +248,7 @@ export function useScrollPagination<
         const res = await api({
           offset,
           pageSize,
-          ...params
+          ...paramsRef.current
         } as TParams);
 
         setTotal(res.total);
@@ -387,6 +391,13 @@ export function useScrollPagination<
   const refreshList = useMemoizedFn((options?: { silent?: boolean }) => {
     loadData({ init: true, silent: options?.silent });
   });
+
+  // params 变化时自动重新加载（init: true）
+  const paramsKey = useMemo(() => JSON.stringify(params), [params]);
+  useEffect(() => {
+    loadData({ init: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   return {
     ScrollData,

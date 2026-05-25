@@ -8,7 +8,8 @@ const BoolSchema = z
 
 const NumSchema = z.coerce.number<number>();
 const IntSchema = NumSchema.int().nonnegative();
-
+const stripUrlTrailingSlash = (value?: string) => value?.replace(/\/+$/, '') || '';
+const UrlSchema = z.string().url().transform(stripUrlTrailingSlash);
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
@@ -80,6 +81,11 @@ export const env = createEnv({
     TRACING_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     TRACING_OTEL_URL: z.url().optional(),
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
+
+    // Langfuse
+    LANGFUSE_SECRET_KEY: z.string().optional(),
+    LANGFUSE_PUBLIC_KEY: z.string().optional(),
+    LANGFUSE_BASE_URL: UrlSchema.optional(),
 
     APP_FOLDER_MAX_AMOUNT: NumSchema.int().positive().default(1000),
     DATASET_FOLDER_MAX_AMOUNT: NumSchema.int().positive().default(1000),

@@ -11,7 +11,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> {
-  const { taskId, force } = req.query as DeleteRerankTrainTaskRequest;
+  const { taskId, force, deleteModel } = req.query as DeleteRerankTrainTaskRequest;
 
   if (!taskId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(RerankTrainErrEnum.rerankTaskCannotDelete);
   }
 
-  await deleteRerankTrainTask(taskId);
+  await deleteRerankTrainTask(taskId, { deleteModel: deleteModel !== 'false' });
 
   // Audit log
   (async () => {

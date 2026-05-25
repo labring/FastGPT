@@ -35,7 +35,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   // check rebuilding or training
   const [rebuilding, training] = await Promise.all([
     MongoDatasetData.findOne({ teamId, datasetId, rebuilding: true }),
-    MongoDatasetTraining.findOne({ teamId, datasetId })
+    MongoDatasetTraining.findOne({ teamId, datasetId, retryCount: { $gt: 0 } })
   ]);
 
   if (rebuilding || training) {

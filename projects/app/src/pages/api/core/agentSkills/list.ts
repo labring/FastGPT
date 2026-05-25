@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -231,6 +232,54 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     );
     nonFolderSkills.forEach((skill, i) => {
       appCountMap.set(skill._id.toString(), counts[i]);
+    });
+  }
+
+  // Compute appCount for skill folders (sum of all non-folder skill descendants)
+  const folderSkills = formatSkills.filter((s) => s.type === AgentSkillTypeEnum.folder);
+  if (folderSkills.length > 0) {
+    const folderCounts = await Promise.all(
+      folderSkills.map(async (skill) => {
+        const agg = await MongoAgentSkills.aggregate<{
+          descendants: Array<{ _id: any; type: string }>;
+        }>([
+          { $match: { _id: new Types.ObjectId(String(skill._id)) } },
+          {
+            $graphLookup: {
+              from: 'agent_skills',
+              startWith: '$_id',
+              connectFromField: '_id',
+              connectToField: 'parentId',
+              as: 'descendants',
+              restrictSearchWithMatch: { deleteTime: null }
+            }
+          },
+          { $project: { _id: 0, descendants: { _id: 1, type: 1 } } }
+        ]);
+
+        const skillDescendantIds = (agg[0]?.descendants ?? [])
+          .filter((d) => d.type !== AgentSkillTypeEnum.folder)
+          .map((d) => String(d._id));
+
+        if (skillDescendantIds.length === 0) return 0;
+
+        return MongoApp.countDocuments({
+          deleteTime: null,
+          modules: {
+            $elemMatch: {
+              inputs: {
+                $elemMatch: {
+                  key: NodeInputKeyEnum.skills,
+                  'value.skillId': { $in: skillDescendantIds }
+                }
+              }
+            }
+          }
+        });
+      })
+    );
+    folderSkills.forEach((skill, i) => {
+      appCountMap.set(skill._id.toString(), folderCounts[i]);
     });
   }
 

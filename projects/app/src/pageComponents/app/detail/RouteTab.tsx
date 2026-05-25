@@ -58,6 +58,9 @@ const RouteTab = () => {
 
   const otherTypeTabList = useMemo(
     () => [
+      ...(appDetail.permission.hasReadChatLogPer
+        ? [{ label: t('app:chat_logs'), value: TabEnum.logs }]
+        : []),
       ...(appDetail.permission.hasManagePer
         ? [
             {
@@ -65,9 +68,6 @@ const RouteTab = () => {
               value: TabEnum.publish
             }
           ]
-        : []),
-      ...(appDetail.permission.hasReadChatLogPer
-        ? [{ label: t('app:chat_logs'), value: TabEnum.logs }]
         : []),
       ...(appDetail.permission.hasWritePer
         ? [

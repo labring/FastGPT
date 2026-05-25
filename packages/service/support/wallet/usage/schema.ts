@@ -38,6 +38,14 @@ const UsageSchema = new Schema(
       type: Number,
       required: true
     },
+    inputTokens: {
+      type: Number,
+      default: 0
+    },
+    outputTokens: {
+      type: Number,
+      default: 0
+    },
     time: {
       type: Date,
       default: () => new Date()
