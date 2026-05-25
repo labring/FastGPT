@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { isChatRoundPending } from '@/components/core/chat/ChatContainer/ChatBox/chatStatus';
+import { isChatRoundPending } from '@/components/core/chat/ChatContainer/ChatBox/utils/chatStatus';
 
 describe('isChatRoundPending', () => {
   it('returns true while the local chat is streaming', () => {

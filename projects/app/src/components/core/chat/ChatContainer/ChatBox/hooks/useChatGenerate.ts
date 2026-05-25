@@ -27,15 +27,14 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatBoxContext } from '../Provider';
+import { formatChatValue2InputType, stripChatValueFileUrls } from '../utils/chatValue';
 import {
-  formatChatValue2InputType,
   getInteractiveByHistories,
   refreshSubmittedFormInteractiveValues,
-  rewriteHistoriesByInteractiveResponse,
-  shouldAppendResumeInteractive,
-  stripChatValueFileUrls
-} from '../utils';
-import { formatChatRequestVariables } from '../requestVariables';
+  rewriteHistoriesByInteractiveResponse
+} from '../utils/interactive';
+import { shouldAppendResumeInteractive } from '../utils/resume';
+import { formatChatRequestVariables } from '../utils/requestVariables';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash';

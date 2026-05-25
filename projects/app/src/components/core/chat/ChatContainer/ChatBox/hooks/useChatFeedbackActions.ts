@@ -13,7 +13,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import type { AdminMarkType } from '../components/SelectMarkCollection';
 import { ChatTypeEnum, FeedbackTypeEnum } from '../constants';
-import { formatChatValue2InputType } from '../utils';
+import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
 
 type UseChatFeedbackActionsProps = {

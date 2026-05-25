@@ -7,7 +7,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { delChatRecordById } from '@/web/core/chat/record/api';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
-import { formatChatValue2InputType } from '../utils';
+import { formatChatValue2InputType } from '../utils/chatValue';
 import type { SendPromptFnType } from '../type';
 
 type UseChatRecordActionsProps = {

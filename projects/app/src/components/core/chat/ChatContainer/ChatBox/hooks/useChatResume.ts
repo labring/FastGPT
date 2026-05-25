@@ -15,12 +15,13 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatBoxContext } from '../Provider';
-import { hasMeaningfulAiOutput, shouldCreateResumeAiPlaceholder } from '../resume';
 import {
+  hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
+  shouldCreateResumeAiPlaceholder,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
-} from '../utils';
+} from '../utils/resume';
 import type { ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
 

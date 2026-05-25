@@ -5,7 +5,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { formatChatRequestVariables } from '@/components/core/chat/ChatContainer/ChatBox/requestVariables';
+import { formatChatRequestVariables } from '@/components/core/chat/ChatContainer/ChatBox/utils/requestVariables';
 
 const createVariable = (override: Partial<VariableItemType>): VariableItemType =>
   ({

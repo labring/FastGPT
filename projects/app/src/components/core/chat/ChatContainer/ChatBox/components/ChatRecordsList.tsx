@@ -7,7 +7,7 @@ import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import ChatBoxDivider from '../../../Divider';
 import DeletedItemsCollapse from '../../DeletedItemsCollapse';
-import { formatChatValue2InputType } from '../utils';
+import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
 import ChatItem from './ChatItem';
 import TimeBox from './TimeBox';

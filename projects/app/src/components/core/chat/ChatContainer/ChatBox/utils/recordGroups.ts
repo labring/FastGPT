@@ -1,5 +1,5 @@
-import { ChatTypeEnum } from './constants';
-import type { ChatSiteItemType } from './type';
+import { ChatTypeEnum } from '../constants';
+import type { ChatSiteItemType } from '../type';
 
 /**
  * 为 log 模式的连续删除消息补充折叠元信息。

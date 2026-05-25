@@ -17,7 +17,7 @@ import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/
 import { getHelperBotFilePresign } from '../api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
-import { getUploadChatFileType } from '../../ChatContainer/ChatBox/utils';
+import { getUploadChatFileType } from '../../ChatContainer/ChatBox/utils/file';
 
 type UseFileUploadOptions = {
   fileSelectConfig?: AppFileSelectConfigType;

@@ -3,14 +3,14 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import type { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { stripChatValueFileUrls } from '@/components/core/chat/ChatContainer/ChatBox/utils/chatValue';
+import { refreshSubmittedFormInteractiveValues } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 import {
   mergeResumeCompletedChatRecords,
-  refreshSubmittedFormInteractiveValues,
   shouldAppendResumeInteractive,
   shouldReplaceResumeAiValue,
-  shouldResetResumeAiPlaceholder,
-  stripChatValueFileUrls
-} from '@/components/core/chat/ChatContainer/ChatBox/utils';
+  shouldResetResumeAiPlaceholder
+} from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 
 describe('stripChatValueFileUrls', () => {
   it('removes signed urls from keyed files before sending messages', () => {

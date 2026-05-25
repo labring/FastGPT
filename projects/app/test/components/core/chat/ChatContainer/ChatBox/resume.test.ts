@@ -4,7 +4,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import {
   hasMeaningfulAiOutput,
   shouldCreateResumeAiPlaceholder
-} from '@/components/core/chat/ChatContainer/ChatBox/resume';
+} from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 
 const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =>

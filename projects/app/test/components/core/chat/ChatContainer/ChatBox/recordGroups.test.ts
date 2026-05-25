@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { getProcessedChatRecords } from '@/components/core/chat/ChatContainer/ChatBox/recordGroups';
+import { getProcessedChatRecords } from '@/components/core/chat/ChatContainer/ChatBox/utils/recordGroups';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 
 const createRecord = ({

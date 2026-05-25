@@ -17,7 +17,7 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
-import { getUploadChatFileType } from '../utils';
+import { getUploadChatFileType } from '../utils/file';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;

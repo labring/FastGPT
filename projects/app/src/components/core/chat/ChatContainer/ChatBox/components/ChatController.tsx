@@ -5,7 +5,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { formatChatValue2InputType } from '../utils';
+import { formatChatValue2InputType } from '../utils/chatValue';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';

@@ -3,7 +3,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
-import { formatChatValue2InputType } from '../utils';
+import { formatChatValue2InputType } from '../utils/chatValue';
 import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
 import markdownStyles from '@/components/Markdown/index.module.scss';

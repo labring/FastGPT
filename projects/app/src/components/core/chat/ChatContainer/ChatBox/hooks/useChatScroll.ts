@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useMemoizedFn, useThrottleFn } from 'ahooks';
-import { shouldFollowGeneratingScroll } from '../scrollUtils';
+import { shouldFollowGeneratingScroll } from '../utils/scrollUtils';
 
 /**
  * 管理 ChatBox 的滚动容器和生成中跟随底部逻辑。

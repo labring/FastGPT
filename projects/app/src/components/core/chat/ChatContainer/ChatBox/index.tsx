@@ -22,7 +22,7 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories } from './utils';
+import { getInteractiveByHistories } from './utils/interactive';
 import { ChatTypeEnum, FeedbackTypeEnum } from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
@@ -36,9 +36,9 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { getChatScrollTargetKey, shouldForceScrollAfterRecordsLoaded } from './scrollUtils';
-import { isChatRoundPending } from './chatStatus';
-import { getProcessedChatRecords } from './recordGroups';
+import { getChatScrollTargetKey, shouldForceScrollAfterRecordsLoaded } from './utils/scrollUtils';
+import { isChatRoundPending } from './utils/chatStatus';
+import { getProcessedChatRecords } from './utils/recordGroups';
 import { useChatInputForm } from './hooks/useChatInputForm';
 import { useChatScroll } from './hooks/useChatScroll';
 import { useVariableInputVisibility } from './hooks/useVariableInputVisibility';
