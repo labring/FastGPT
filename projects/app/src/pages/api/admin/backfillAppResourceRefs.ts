@@ -47,16 +47,14 @@ async function backfillVersionResourceRefs({
   batchSize: number;
 }): Promise<MigrationStats> {
   let lastId: string | undefined;
+  let scanned = 0;
   let matched = 0;
   let updated = 0;
 
   while (true) {
     const versions = await MongoAppVersion.find(
-      {
-        ...(lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {}),
-        $or: [{ resourceRefs: { $exists: false } }, { 'resourceRefs.skillIds': { $exists: false } }]
-      },
-      '_id nodes'
+      lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {},
+      '_id nodes resourceRefs'
     )
       .sort({ _id: 1 })
       .limit(batchSize)
@@ -64,10 +62,14 @@ async function backfillVersionResourceRefs({
 
     if (versions.length === 0) break;
 
-    matched += versions.length;
+    scanned += versions.length;
     lastId = String(versions[versions.length - 1]._id);
 
-    const operations = versions.map((version) => ({
+    const versionsToUpdate = versions.filter((v) => !v.resourceRefs || !v.resourceRefs.skillIds);
+
+    matched += versionsToUpdate.length;
+
+    const operations = versionsToUpdate.map((version) => ({
       updateOne: {
         filter: { _id: version._id },
         update: {
@@ -84,7 +86,8 @@ async function backfillVersionResourceRefs({
     }
 
     logger.info('[version resource refs] backfill progress', {
-      scanned: matched,
+      scanned,
+      matched,
       updated: dryRun ? 0 : updated,
       lastId
     });

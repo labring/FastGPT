@@ -29,3 +29,19 @@ export const VersionListItemSchema = z.object({
   sourceMember: SourceMemberSchema
 });
 export type VersionListItemType = z.infer<typeof VersionListItemSchema>;
+
+/* Publish app */
+export const PublishAppQuerySchema = z.object({
+  appId: z.string()
+});
+export type PublishAppQueryType = z.infer<typeof PublishAppQuerySchema>;
+
+export const PublishAppBodySchema = z.object({
+  nodes: AppSchemaTypeSchema.shape.modules.optional(),
+  edges: AppSchemaTypeSchema.shape.edges.optional(),
+  chatConfig: AppSchemaTypeSchema.shape.chatConfig.optional(),
+  isPublish: z.boolean().optional(),
+  versionName: z.string().optional(),
+  autoSave: z.boolean().optional()
+});
+export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;

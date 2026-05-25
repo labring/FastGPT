@@ -14,11 +14,19 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { PublishAppQuerySchema, PublishAppBodySchema } from '@fastgpt/global/core/app/version/type';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
-  const { appId } = req.query as { appId: string };
-  const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
+  const {
+    query: { appId },
+    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
+  } = parseApiInput({
+    req,
+    querySchema: PublishAppQuerySchema,
+    bodySchema: PublishAppBodySchema
+  });
 
   const { app, tmbId, teamId } = await authApp({
     appId,

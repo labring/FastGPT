@@ -38,9 +38,13 @@ import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/control
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
-  const parseResult = await CreateAppBodySchema.safeParseAsync(req.body);
-  const body = parseResult.success ? parseResult.data : req.body;
+  const { body } = parseApiInput({
+    req,
+    bodySchema: CreateAppBodySchema
+  });
   const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
     body;
 
