@@ -1,0 +1,62 @@
+---
+title: 'V4.15.0-beta2'
+description: 'FastGPT V4.15.0-beta2 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### Image Changes
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta2
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta2
+
+If you use OpenSandbox, update the following images:
+
+- Update the fastgpt-agent-sandbox image tag to v0.2.0
+- Update the fastgpt-agent-volume-manager image tag to v0.2.0
+
+### Environment Variable Updates
+
+1. If you use OpenSandbox, `AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH` is no longer effective and can be removed. OpenSandbox now always mounts persistent data to `/workspace`, which affects the old sandbox persistence behavior.
+
+## 🚀 New Features
+
+1. Added Skill editing. Agents can now use Skills. Currently, only static Skills are supported, and reverse calls to system tools are not supported.
+2. Reworked the agentV2 loop logic.
+3. Knowledge Base search now supports native multimodal embedding models and image-to-image search.
+4. Chat API `dataId` validation: `/v1/chat/completions`, `/v2/chat/completions`, and `chatTest` now validate whether the current `dataId` duplicates one in the request or existing records in the current session before running the Workflow. Duplicate values return a business error immediately, preventing invalid data from entering Workflow execution and stream-resume merge logic.
+
+## ⚙️ Improvements
+
+1. Optimized the OTEL log collection format.
+2. Disabled invalid connection mode in Workflows.
+3. Improved layout adaptation for Workflow nodes with very long names.
+4. Improved the Knowledge Base search test interaction.
+5. Improved the Knowledge Base data editing modal.
+6. Improved the reason hide toggle so reasoning can be hidden in the UI while still being preserved when requesting the LLM.
+7. Stream-resume pause experience: after pausing, the client waits for the backend to return the real generation state. If the Workflow has not finished, the input area remains disabled and shows "Stopping", preventing the next round from being sent before the previous one ends.
+8. Faster recovery for abnormally interrupted sessions: after a service crash or restart, Redis stream activity detection (about two minutes without a heartbeat) is used to correct stuck "generating" sessions to completed sooner. The 30-minute MongoDB fallback is still retained, and short Redis outages will not incorrectly update sessions that are still generating.
+9. Remember the most recent chat when switching apps: when switching apps in the same browser, the last opened `chatId` is restored per app instead of sharing a single global session id.
+10. Optimized response detail display: in the full response modal, file fields from form input nodes are displayed as file lists instead of raw JSON text.
+11. Optimized `chat2messages` adaptation to avoid standalone reason output.
+
+## 🐛 Bug Fixes
+
+1. Fixed abnormal default values in Workflow single-node debugging.
+2. Fixed abnormal `defaultConfig` override behavior in model configuration.
+3. Clear the local chat cache when switching teams.
+4. Conversation stream resume:
+   - Submitted form input values, including `fileSelect` file lists, are correctly restored into interactive nodes after refresh or reconnect resume. Empty forms and disappearing files no longer occur.
+   - Loaded AI output and node responses are preserved when automatic resume starts. When completed records overwrite local state, restored interactive form values and flow node responses are no longer lost.
+   - Expired unsubmitted interactions are no longer appended again after a form is submitted. During resume, form default values now stay in sync with `formInputResult`.
+   - After starting a new conversation, the temporary sidebar history item prioritizes the title generated from user input. The server-side title overwrites it after being persisted, avoiding a long-running "New Chat" display.
+   - Fixed an issue where the sidebar or conversation content briefly showed chat records from another app when switching apps.
+5. Stop conversation prompt: removed the warning toast shown during stop and replaced it with a status prompt synchronized with the backend generation state.
+6. Fixed the v1/completions API where `quoteList` in `nodeResponse` did not return `q` and `a`.
+
+## 🛠️ Code Improvements
+
+1. Split AI request logic and Workflow run detail code.
+2. Updated billing logic for user-defined API keys.
+3. Added design documentation and unit tests for stream-resume-related modules, including stop state, stale cleanup, history title, `dataId` validation, and form restoration.
+4. Changed the volume manager runtime from Bun to Node.js.
