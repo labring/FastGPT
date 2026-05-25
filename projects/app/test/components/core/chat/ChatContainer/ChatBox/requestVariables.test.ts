@@ -1,0 +1,117 @@
+import { describe, expect, it } from 'vitest';
+import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { formatChatRequestVariables } from '@/components/core/chat/ChatContainer/ChatBox/requestVariables';
+
+const createVariable = (override: Partial<VariableItemType>): VariableItemType =>
+  ({
+    key: 'key',
+    label: 'label',
+    description: '',
+    type: VariableInputEnum.input,
+    valueType: WorkflowIOValueTypeEnum.string,
+    required: false,
+    defaultValue: '',
+    ...override
+  }) as VariableItemType;
+
+describe('formatChatRequestVariables', () => {
+  it('keeps only declared variables and formats values by valueType', () => {
+    const result = formatChatRequestVariables({
+      variableList: [
+        createVariable({
+          key: 'name',
+          valueType: WorkflowIOValueTypeEnum.string
+        }),
+        createVariable({
+          key: 'age',
+          type: VariableInputEnum.numberInput,
+          valueType: WorkflowIOValueTypeEnum.number
+        }),
+        createVariable({
+          key: 'enabled',
+          type: VariableInputEnum.switch,
+          valueType: WorkflowIOValueTypeEnum.boolean
+        })
+      ],
+      variables: {
+        name: 'FastGPT',
+        age: '18',
+        enabled: 'true',
+        ignored: 'not declared'
+      }
+    });
+
+    expect(result).toEqual({
+      name: 'FastGPT',
+      age: 18,
+      enabled: true
+    });
+  });
+
+  it('uses defaultValue for empty string, null and undefined form values', () => {
+    const result = formatChatRequestVariables({
+      variableList: [
+        createVariable({
+          key: 'emptyText',
+          defaultValue: 'fallback'
+        }),
+        createVariable({
+          key: 'nullNumber',
+          type: VariableInputEnum.numberInput,
+          valueType: WorkflowIOValueTypeEnum.number,
+          defaultValue: '42'
+        }),
+        createVariable({
+          key: 'missingArray',
+          type: VariableInputEnum.multipleSelect,
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          defaultValue: ['a', 'b']
+        })
+      ],
+      variables: {
+        emptyText: '',
+        nullNumber: null
+      }
+    });
+
+    expect(result).toEqual({
+      emptyText: 'fallback',
+      nullNumber: 42,
+      missingArray: ['a', 'b']
+    });
+  });
+
+  it('formats time point and time range variables before value type conversion', () => {
+    const result = formatChatRequestVariables({
+      variableList: [
+        createVariable({
+          key: 'startAt',
+          type: VariableInputEnum.timePointSelect,
+          valueType: WorkflowIOValueTypeEnum.string
+        }),
+        createVariable({
+          key: 'period',
+          type: VariableInputEnum.timeRangeSelect,
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        })
+      ],
+      variables: {
+        startAt: '2026-05-19T01:02:03.000Z',
+        period: ['2026-05-19T03:04:05.000Z', '']
+      }
+    });
+
+    expect(result).toEqual({
+      startAt: '2026-05-19 09:02:03',
+      period: ['2026-05-19 11:04:05', '']
+    });
+  });
+
+  it('returns an empty object when variableList is missing', () => {
+    expect(formatChatRequestVariables({ variables: { name: 'FastGPT' } })).toEqual({});
+  });
+});
