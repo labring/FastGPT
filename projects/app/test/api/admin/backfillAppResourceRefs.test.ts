@@ -30,7 +30,7 @@ const createSkillNode = (skillId: string): StoreNodeItemType =>
   }) as StoreNodeItemType;
 
 describe('GET /api/admin/backfillAppResourceRefs', () => {
-  it('只回填 2026-05-24 之后的版本和已发布应用引用', async () => {
+  it('只回填 2026-05-24 之后的版本资源索引，不写 apps 表', async () => {
     const user = await getUser(`backfill-app-resource-refs-${getNanoid(6)}`);
     const oldSkillId = `old-skill-${getNanoid(6)}`;
     const newSkillId = `new-skill-${getNanoid(6)}`;
@@ -45,8 +45,7 @@ describe('GET /api/admin/backfillAppResourceRefs', () => {
         modules: [createSkillNode(oldSkillId)],
         edges: [],
         chatConfig: {},
-        updateTime: afterStartTime,
-        publishedResourceRefs: { skillIds: ['stale-old-app'] }
+        updateTime: afterStartTime
       },
       {
         name: 'New App',
@@ -56,8 +55,7 @@ describe('GET /api/admin/backfillAppResourceRefs', () => {
         modules: [createSkillNode(newSkillId)],
         edges: [],
         chatConfig: {},
-        updateTime: afterStartTime,
-        publishedResourceRefs: { skillIds: ['stale-new-app'] }
+        updateTime: afterStartTime
       },
       {
         name: 'Draft Only App',
@@ -67,8 +65,7 @@ describe('GET /api/admin/backfillAppResourceRefs', () => {
         modules: [createSkillNode(draftSkillId)],
         edges: [],
         chatConfig: {},
-        updateTime: afterStartTime,
-        publishedResourceRefs: { skillIds: ['stale-draft-app'] }
+        updateTime: afterStartTime
       }
     ]);
 
@@ -119,7 +116,7 @@ describe('GET /api/admin/backfillAppResourceRefs', () => {
     expect(res.code).toBe(200);
     expect(res.data.startTime).toBe(startTime.toISOString());
     expect(res.data.versions.matched).toBe(2);
-    expect(res.data.apps.matched).toBe(1);
+    expect(res.data.apps).toBeUndefined();
 
     const [updatedOldVersion, updatedNewVersion, updatedDraftVersion] = await Promise.all([
       MongoAppVersion.findById(oldVersion._id).lean(),
@@ -129,14 +126,5 @@ describe('GET /api/admin/backfillAppResourceRefs', () => {
     expect(updatedOldVersion?.resourceRefs?.skillIds).toEqual(['stale-old-version']);
     expect(updatedNewVersion?.resourceRefs?.skillIds).toEqual([newSkillId]);
     expect(updatedDraftVersion?.resourceRefs?.skillIds).toEqual([draftSkillId]);
-
-    const [updatedOldApp, updatedNewApp, updatedDraftOnlyApp] = await Promise.all([
-      MongoApp.findById(oldApp._id).lean(),
-      MongoApp.findById(newApp._id).lean(),
-      MongoApp.findById(draftOnlyApp._id).lean()
-    ]);
-    expect(updatedOldApp?.publishedResourceRefs?.skillIds).toEqual(['stale-old-app']);
-    expect(updatedNewApp?.publishedResourceRefs?.skillIds).toEqual([newSkillId]);
-    expect(updatedDraftOnlyApp?.publishedResourceRefs?.skillIds).toEqual(['stale-draft-app']);
   });
 });

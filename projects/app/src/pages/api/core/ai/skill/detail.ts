@@ -8,10 +8,12 @@ import type {
 import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppCollectionName } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { buildAppVersionSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
@@ -30,11 +32,34 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const appCount = await MongoApp.countDocuments({
-    teamId,
-    deleteTime: null,
-    ...buildAppSkillRefMongoQuery(skill._id.toString())
-  });
+  const [countResult] = await MongoAppVersion.aggregate<{ count: number }>([
+    { $match: { isPublish: true } },
+    { $sort: { appId: 1, time: -1, _id: -1 } },
+    {
+      $group: {
+        _id: '$appId',
+        resourceRefs: { $first: '$resourceRefs' }
+      }
+    },
+    { $match: buildAppVersionSkillRefMongoQuery(skill._id.toString()) },
+    {
+      $lookup: {
+        from: AppCollectionName,
+        localField: '_id',
+        foreignField: '_id',
+        as: 'app'
+      }
+    },
+    { $unwind: '$app' },
+    {
+      $match: {
+        'app.teamId': new Types.ObjectId(String(teamId)),
+        'app.deleteTime': null
+      }
+    },
+    { $count: 'count' }
+  ]);
+  const appCount = countResult?.count ?? 0;
 
   return {
     _id: skill._id,

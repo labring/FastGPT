@@ -2,7 +2,7 @@ import type { AppResourceRefsType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
-export const AppResourceRefsSkillIdsPath = 'publishedResourceRefs.skillIds';
+export const AppVersionResourceRefsSkillIdsPath = 'resourceRefs.skillIds';
 
 /**
  * 从应用 workflow 节点中提取该版本引用的资源索引。
@@ -43,11 +43,11 @@ const getSkillIdCondition = (skillIds: string | string[]) => {
 };
 
 /**
- * 构造基于 apps.publishedResourceRefs 的 Skill 引用查询。
- * 升级脚本会一次性回填历史应用，线上查询只依赖该索引字段。
+ * 构造基于 app_versions.resourceRefs 的 Skill 引用查询。
+ * 关联应用以每个应用最新发布版本为准，调用方需先筛出最新版本再使用该条件。
  */
-export function buildAppSkillRefMongoQuery(skillIds: string | string[]) {
+export function buildAppVersionSkillRefMongoQuery(skillIds: string | string[]) {
   return {
-    [AppResourceRefsSkillIdsPath]: getSkillIdCondition(skillIds)
+    [AppVersionResourceRefsSkillIdsPath]: getSkillIdCondition(skillIds)
   };
 }

@@ -1,4 +1,4 @@
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppCollectionName } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -8,6 +8,9 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
@@ -19,7 +22,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { buildAppVersionSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -60,17 +63,61 @@ async function handler(
       myOrgSet.has(String(item.orgId))
   );
 
-  // 查询已发布工作流引用该 skillId 的应用。
-  const apps = await MongoApp.find(
+  // 查询最新发布版本引用该 skillId 的应用。
+  const apps = await MongoAppVersion.aggregate<{
+    app: {
+      _id: Types.ObjectId;
+      parentId?: Types.ObjectId;
+      avatar: string;
+      type: AppTypeEnum;
+      name: string;
+      intro: string;
+      tmbId: Types.ObjectId;
+      updateTime: Date;
+      inheritPermission?: boolean;
+    };
+  }>([
+    { $match: { isPublish: true } },
+    { $sort: { appId: 1, time: -1, _id: -1 } },
     {
-      teamId,
-      deleteTime: null,
-      ...buildAppSkillRefMongoQuery(skillId)
+      $group: {
+        _id: '$appId',
+        resourceRefs: { $first: '$resourceRefs' }
+      }
     },
-    '_id parentId avatar type name intro tmbId updateTime inheritPermission'
-  )
-    .sort({ updateTime: -1 })
-    .lean();
+    { $match: buildAppVersionSkillRefMongoQuery(skillId) },
+    {
+      $lookup: {
+        from: AppCollectionName,
+        localField: '_id',
+        foreignField: '_id',
+        as: 'app'
+      }
+    },
+    { $unwind: '$app' },
+    {
+      $match: {
+        'app.teamId': new Types.ObjectId(String(teamId)),
+        'app.deleteTime': null
+      }
+    },
+    { $sort: { 'app.updateTime': -1 } },
+    {
+      $project: {
+        app: {
+          _id: '$app._id',
+          parentId: '$app.parentId',
+          avatar: '$app.avatar',
+          type: '$app.type',
+          name: '$app.name',
+          intro: '$app.intro',
+          tmbId: '$app.tmbId',
+          updateTime: '$app.updateTime',
+          inheritPermission: '$app.inheritPermission'
+        }
+      }
+    }
+  ]).then((items) => items.map((item) => item.app));
 
   // Filter apps with read permission and resolve per-app permissions
   const appsWithPer = apps.map((app) => {
@@ -99,8 +146,8 @@ async function handler(
     return {
       _id: String(app._id),
       name: app.name,
-      avatar: app.avatar,
-      intro: app.intro,
+      avatar: app.avatar || '',
+      intro: app.intro || '',
       tmbId: String(app.tmbId),
       type: app.type,
       updateTime: app.updateTime,

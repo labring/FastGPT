@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppCollectionName } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
@@ -21,8 +22,8 @@ import { AgentSkillTypeEnum, AgentSkillSourceEnum } from '@fastgpt/global/core/a
 import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  AppResourceRefsSkillIdsPath,
-  buildAppSkillRefMongoQuery
+  AppVersionResourceRefsSkillIdsPath,
+  buildAppVersionSkillRefMongoQuery
 } from '@fastgpt/service/core/app/resourceRefs';
 
 export type GetSkillListBody = ListSkillsQuery;
@@ -242,23 +243,46 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
   const appCountMap = new Map<string, number>();
   if (nonFolderSkills.length > 0) {
     const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
-    const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
+    const counts = await MongoAppVersion.aggregate<{ _id: string; count: number }>([
       {
         $match: {
-          teamId: new Types.ObjectId(String(teamId)),
-          deleteTime: null,
-          ...buildAppSkillRefMongoQuery(skillIdStrings)
+          isPublish: true
         }
       },
-      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
       {
-        $match: {
-          ...buildAppSkillRefMongoQuery(skillIdStrings)
+        $sort: {
+          appId: 1,
+          time: -1,
+          _id: -1
         }
       },
       {
         $group: {
-          _id: `$${AppResourceRefsSkillIdsPath}`,
+          _id: '$appId',
+          resourceRefs: { $first: '$resourceRefs' }
+        }
+      },
+      { $match: buildAppVersionSkillRefMongoQuery(skillIdStrings) },
+      {
+        $lookup: {
+          from: AppCollectionName,
+          localField: '_id',
+          foreignField: '_id',
+          as: 'app'
+        }
+      },
+      { $unwind: '$app' },
+      {
+        $match: {
+          'app.teamId': new Types.ObjectId(String(teamId)),
+          'app.deleteTime': null
+        }
+      },
+      { $unwind: `$${AppVersionResourceRefsSkillIdsPath}` },
+      { $match: buildAppVersionSkillRefMongoQuery(skillIdStrings) },
+      {
+        $group: {
+          _id: `$${AppVersionResourceRefsSkillIdsPath}`,
           count: { $sum: 1 }
         }
       }

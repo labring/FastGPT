@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
 import publishHandler from '@/pages/api/core/app/version/publish';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
@@ -165,5 +166,31 @@ describe('POST /api/core/ai/skill/list', () => {
       publishedRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
     expect(getPublishedCount(String(publishedSkill._id))).toBe(0);
     expect(getPublishedCount(String(draftSkill._id))).toBe(1);
+
+    const latestPublishedVersion = await MongoAppVersion.findOne({
+      appId,
+      isPublish: true
+    })
+      .sort({ time: -1, _id: -1 })
+      .lean();
+    await MongoAppVersion.updateOne(
+      { _id: latestPublishedVersion!._id },
+      { $set: { resourceRefs: { skillIds: [] } } }
+    );
+    const clearedVersionRefsRes = await Call<
+      ListSkillsQuery,
+      Record<string, never>,
+      ListSkillsResponse
+    >(handler, {
+      auth: user,
+      body: {
+        source: 'mine',
+        parentId: null
+      }
+    });
+    const getClearedVersionRefsCount = (skillId: string) =>
+      clearedVersionRefsRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
+    expect(getClearedVersionRefsCount(String(publishedSkill._id))).toBe(0);
+    expect(getClearedVersionRefsCount(String(draftSkill._id))).toBe(0);
   });
 });
