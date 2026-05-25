@@ -395,6 +395,28 @@ describe('parseUrlToFileType', () => {
       expect(result?.name).toBe('file name.jpg');
     });
 
+    it('should detect audio URL by extension', () => {
+      const url = 'https://example.com/chat-audio.mp3';
+      const result = parseUrlToFileType(url);
+
+      expect(result).toEqual({
+        type: ChatFileTypeEnum.audio,
+        name: 'chat-audio.mp3',
+        url
+      });
+    });
+
+    it('should detect video URL by extension', () => {
+      const url = 'https://example.com/chat-video.mp4';
+      const result = parseUrlToFileType(url);
+
+      expect(result).toEqual({
+        type: ChatFileTypeEnum.video,
+        name: 'chat-video.mp4',
+        url
+      });
+    });
+
     it('should handle URL with multiple dots in filename', () => {
       const url = 'https://example.com/my.file.name.png';
       const result = parseUrlToFileType(url);

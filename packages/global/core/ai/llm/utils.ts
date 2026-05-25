@@ -11,6 +11,9 @@ export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) 
 export const getLLMSupportParams = (llm?: LLMModelItemType) => {
   return {
     vision: !!llm?.vision,
+    audio: !!llm?.audio,
+    video: !!llm?.video,
+    multimodal: !!(llm?.vision || llm?.audio || llm?.video),
     temperature: typeof llm?.maxTemperature === 'number',
     reasoning: !!llm?.reasoning,
     reasoningEffort: !!llm?.reasoningEffort,

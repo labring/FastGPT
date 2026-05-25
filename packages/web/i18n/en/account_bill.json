@@ -36,5 +36,10 @@
   "total_amount": "lump sum",
   "type": "type",
   "unit_code": "unified credit code",
-  "wecom_not_pay_tip": "Not paid, payment address will be redirected soon"
+  "wecom_not_pay_tip": "Not paid, payment address will be redirected soon",
+  "status": "state",
+  "support_wallet_amount": "Amount",
+  "yes": "yes",
+  "no": "no",
+  "yuan": "¥{{amount}}"
 }

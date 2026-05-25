@@ -50,6 +50,7 @@ import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -281,7 +282,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       isDefault: false,
       isDefaultDatasetTextModel: false,
       isDefaultDatasetImageModel: false,
-      type
+      type,
+      ...(type === ModelTypeEnum.llm
+        ? {
+            vision: false,
+            audio: false,
+            video: false
+          }
+        : {})
     } as SystemModelItemType;
 
     setEditModelData(modelData);
@@ -309,10 +317,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           {Tab}
           <Box flex={1} />
           <Button variant={'whiteBase'} mr={2} onClick={onOpenDefaultModel}>
-            {t('account:model.default_model')}
+            {t('account_model:model.default_model')}
           </Button>
           <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
-            {t('account:model.json_config')}
+            {t('account_model:model.json_config')}
           </Button>
           <AddModelButton onCreate={onCreateModel} />
         </Flex>
@@ -365,7 +373,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       onClick={() => setShowModelId(!showModelId)}
                     >
                       <Box>
-                        {showModelId ? t('account:model.model_id') : t('common:model.name')}
+                        {showModelId ? t('account_model:model.model_id') : t('common:model.name')}
                       </Box>
                       <MyIcon name={'modal/changePer'} w={'1rem'} />
                     </HStack>
@@ -378,7 +386,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       onClick={() => setShowActive(!showActive)}
                       color={showActive ? 'primary.600' : 'myGray.600'}
                     >
-                      {t('account:model.active')}({activeModelLength})
+                      {t('account_model:model.active')}({activeModelLength})
                     </Box>
                   </Th>
                   <Th fontSize={'xs'}></Th>
@@ -401,25 +409,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           {item.testMode && <TestModeBetaTag />}
                         </Flex>
                       </HStack>
-                      <HStack mt={2}>
-                        {item.contextToken && (
-                          <MyTag type="borderFill" colorSchema="blue" py={0.5}>
-                            {Math.floor(item.contextToken / 1000)}k
-                          </MyTag>
-                        )}
-                        {item.vision && (
-                          <MyTag type="borderFill" colorSchema="green" py={0.5}>
-                            {item.type === ModelTypeEnum.llm
-                              ? t('account:model.vision_tag')
-                              : t('common:core.ai.model.multimodal')}
-                          </MyTag>
-                        )}
-                        {item.toolChoice && (
-                          <MyTag type="borderFill" colorSchema="adora" py={0.5}>
-                            {t('account:model.tool_choice_tag')}
-                          </MyTag>
-                        )}
-                      </HStack>
+                      <ModelCapabilityTags
+                        mt={2}
+                        contextToken={item.contextToken}
+                        showVision={!!item.vision}
+                        showVideo={!!item.video}
+                        showAudio={!!item.audio}
+                        showReasoning={!!item.reasoning}
+                      />
                     </Td>
                     <Td>
                       <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
@@ -442,12 +439,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                       <HStack>
                         <MyIconButton
                           icon={'core/chat/sendLight'}
-                          tip={t('account:model.test_model')}
+                          tip={t('account_model:model.test_model')}
                           onClick={() => onTestModel({ model: item.model })}
                         />
                         <MyIconButton
                           icon={'common/settingLight'}
-                          tip={t('account:model.edit_model')}
+                          tip={t('account_model:model.edit_model')}
                           onClick={() => onEditModel(item.model)}
                         />
                         {item.isCustom && (
@@ -458,7 +455,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               </Box>
                             }
                             type="delete"
-                            content={t('account:model.delete_model_confirm')}
+                            content={t('account_model:model.delete_model_confirm')}
                             onConfirm={() => deleteModel({ model: item.model })}
                           />
                         )}
@@ -519,13 +516,13 @@ const JsonConfigModal = ({
       isLoading={loading}
       onClose={onClose}
       iconSrc="modal/edit"
-      title={t('account:model.json_config')}
+      title={t('account_model:model.json_config')}
       w={'100%'}
       h={'100%'}
     >
       <ModalBody display={'flex'} flexDirection={'column'}>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          {t('account:model.json_config_tip')}
+          {t('account_model:model.json_config_tip')}
         </Box>
         <Box mt={2} flex={1} w={'100%'} overflow={'hidden'}>
           <JsonEditor value={data} onChange={setData} resize h={'100%'} />
@@ -539,7 +536,7 @@ const JsonConfigModal = ({
         <PopoverConfirm
           Trigger={<Button>{t('common:Confirm')}</Button>}
           type="info"
-          content={t('account:model.json_config_confirm')}
+          content={t('account_model:model.json_config_confirm')}
           onConfirm={() => runAsync({ config: data })}
         />
       </ModalFooter>
@@ -586,7 +583,7 @@ const DefaultModelModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      title={t('account:default_model_config')}
+      title={t('account_model:default_model_config')}
       iconSrc="modal/edit"
     >
       <ModalBody>

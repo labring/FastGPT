@@ -18,5 +18,6 @@
   "registration_hint": "Please prepare your own domain and complete the ICP filing through <bold>{{provider}}</bold>, then fill in the domain in the input box below",
   "status.active": "Active",
   "status.inactive": "Inactive",
-  "upgrade_to_use_custom_domain": "Current plan does not support custom domains, please upgrade first"
+  "upgrade_to_use_custom_domain": "Current plan does not support custom domains, please upgrade first",
+  "upgrade_plan": "Upgrade plan"
 }

@@ -180,6 +180,9 @@ export type SettingAIDataType = {
   isResponseAnswerText?: boolean;
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
+  [NodeInputKeyEnum.aiChatAudio]?: boolean; // Is open audio recognition mode
+  [NodeInputKeyEnum.aiChatVideo]?: boolean; // Is open video recognition mode
+  [NodeInputKeyEnum.aiChatExtractFiles]?: boolean; // Parse multimodal links from user question
   [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.aiChatTopP]?: number;

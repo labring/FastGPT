@@ -28,8 +28,8 @@ const RenderFilePreview = ({
       gap={'6px'}
     >
       {fileList.map((item, index) => {
-        const isFile = item.type === ChatFileTypeEnum.file;
         const isImage = item.type === ChatFileTypeEnum.image;
+        const isFile = !isImage;
         const icon = getFileIcon(item.name);
 
         return (

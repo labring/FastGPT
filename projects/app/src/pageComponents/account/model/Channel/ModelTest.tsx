@@ -201,7 +201,7 @@ const ModelTest = ({
             <Thead>
               <Tr>
                 <Th>{t('account_model:model_name')}</Th>
-                <Th>{t('account:model.model_id')}</Th>
+                <Th>{t('account_model:model.model_id')}</Th>
                 <Th>{t('account_model:channel_status')}</Th>
                 <Th></Th>
               </Tr>
@@ -233,7 +233,7 @@ const ModelTest = ({
                         <MyIconButton
                           isLoading={item.loading}
                           icon={'core/chat/sendLight'}
-                          tip={t('account:model.test_model')}
+                          tip={t('account_model:model.test_model')}
                           onClick={() => onTestOneModel(item.model)}
                         />
                       )}

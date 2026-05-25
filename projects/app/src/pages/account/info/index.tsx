@@ -321,7 +321,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 try {
                   await putUpdateMemberName(val);
                   initUserInfo();
-                } catch (error) {}
+                } catch {}
               }}
             />
           </Flex>

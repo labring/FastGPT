@@ -390,6 +390,9 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatMaxToken]?: number;
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatAudio]?: boolean;
+  [NodeInputKeyEnum.aiChatVideo]?: boolean;
+  [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.aiChatTopP]?: number;

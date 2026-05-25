@@ -154,6 +154,9 @@ export const createWorkflowAgentLoopRuntime = ({
       userKey: context.externalProvider.openaiAccount,
       stream: context.stream,
       useVision: context.params.aiChatVision,
+      useAudio: context.params.aiChatAudio,
+      useVideo: context.params.aiChatVideo,
+      extractFiles: context.params.aiChatExtractFiles,
       checkIsStopping: context.checkIsStopping,
       toolCatalog,
       executeTool: async ({ call }) => {

@@ -7,7 +7,11 @@ import type {
 import type { ChatSiteItemType } from './type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   extractDeepestInteractive,
   getLastInteractiveValue
@@ -19,6 +23,13 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { normalizeFormInputResultFile } from '../../components/FormInputResult';
+
+export const getUploadChatFileType = (file: File) => {
+  if (file.type.includes('image')) return ChatFileTypeEnum.image;
+  if (file.type.includes('audio')) return ChatFileTypeEnum.audio;
+  if (file.type.includes('video')) return ChatFileTypeEnum.video;
+  return ChatFileTypeEnum.file;
+};
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {

@@ -2,7 +2,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import type { ChatCompletionContentPart, ChatCompletionMessageParam } from '../../ai/llm/type';
 import { ChatFileTypeEnum, ChatRoleEnum } from '../constants';
 import type { HelperBotChatItemType } from './type';
-import { simpleUserContentPart } from '../adapt';
+import { isFileUrlChatFileType, simpleUserContentPart } from '../adapt';
 
 export const helperChats2GPTMessages = ({
   messages
@@ -38,11 +38,12 @@ export const helperChats2GPTMessages = ({
                   url: item.file.url
                 }
               };
-            } else if (item.file?.type === ChatFileTypeEnum.file) {
+            } else if (isFileUrlChatFileType(item.file?.type)) {
               return {
                 type: 'file_url',
                 name: item.file?.name || '',
                 url: item.file.url,
+                fileType: item.file.type,
                 key: item.file.key
               };
             }

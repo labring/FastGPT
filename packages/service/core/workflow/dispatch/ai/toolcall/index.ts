@@ -36,6 +36,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       history = 6,
       fileUrlList: rawFileLinks,
       aiChatVision,
+      aiChatAudio,
+      aiChatVideo,
       aiChatReasoning,
       isResponseAnswerText = true,
       useAgentSandbox
@@ -55,6 +57,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   try {
     const toolModel = getLLMModel(model);
     const useVision = aiChatVision && toolModel.vision;
+    const useAudio = aiChatAudio && toolModel.audio;
+    const useVideo = aiChatVideo && toolModel.video;
     const chatHistories = getHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     const fileLinks =
@@ -63,6 +67,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         : rawFileLinks;
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
+    props.params.aiChatAudio = useAudio;
+    props.params.aiChatVideo = useVideo;
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
     props.params.fileUrlList = fileLinks;
     props.params.useAgentSandbox = useSandbox;

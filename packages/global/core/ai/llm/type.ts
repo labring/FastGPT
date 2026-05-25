@@ -1,5 +1,6 @@
 import type openai from 'openai';
 import type { Stream } from 'openai/streaming';
+import { audioFileType } from '../../../common/file/constants';
 import z from 'zod';
 
 /* 通用类型 */
@@ -59,7 +60,20 @@ export const ChatCompletionContentPartInputAudioSchema = z.object({
   type: z.literal('input_audio'),
   input_audio: z.object({
     data: z.string(),
-    format: z.enum(['wav', 'mp3'])
+    format: z.enum(
+      audioFileType
+        .split(',')
+        .map((item) => item.trim().replace(/^\./, ''))
+        .filter(Boolean) as [string, ...string[]]
+    )
+  }),
+  key: z.string().optional()
+});
+// Qwen-Omni compatible video input branch.
+export const ChatCompletionContentPartVideoSchema = z.object({
+  type: z.literal('video_url'),
+  video_url: z.object({
+    url: z.string()
   }),
   key: z.string().optional()
 });
@@ -78,12 +92,14 @@ export const ChatCompletionContentPartFileTypeSchema = z.object({
   type: z.literal('file_url'),
   name: z.string().optional(),
   url: z.string(),
+  fileType: z.enum(['file', 'audio', 'video']).optional(),
   key: z.string().optional()
 });
 export const ChatCompletionContentPartSchema = z.discriminatedUnion('type', [
   ChatCompletionContentPartTextSchema,
   ChatCompletionContentPartImageSchema,
   ChatCompletionContentPartInputAudioSchema,
+  ChatCompletionContentPartVideoSchema,
   ChatCompletionContentPartFileSchema,
   ChatCompletionContentPartFileTypeSchema
 ]);

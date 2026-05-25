@@ -22,6 +22,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
+import { getLLMModel } from '../../../../ai/model';
 import { runUnifiedAgentLoop, type PlanAskPayload } from '../../../../ai/llm/agentLoop';
 import {
   buildWorkflowAgentLoopMemories,
@@ -39,6 +40,9 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatAudio]?: boolean;
+  [NodeInputKeyEnum.aiChatVideo]?: boolean;
+  [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
@@ -117,9 +121,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       editSkillId,
       agent_datasetParams: datasetParams,
       useAgentSandbox = false,
+      model,
       aiChatReasoning
     }
   } = props;
+  const agentModel = getLLMModel(model);
+  props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.vision);
+  props.params.aiChatAudio = !!(props.params.aiChatAudio && agentModel.audio);
+  props.params.aiChatVideo = !!(props.params.aiChatVideo && agentModel.video);
+  if (props.params.aiChatExtractFiles !== undefined) {
+    props.params.aiChatExtractFiles = !!(
+      props.params.aiChatExtractFiles &&
+      (props.params.aiChatVision || props.params.aiChatAudio || props.params.aiChatVideo)
+    );
+  }
+
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
 
   // 初始化对话框输入的文件

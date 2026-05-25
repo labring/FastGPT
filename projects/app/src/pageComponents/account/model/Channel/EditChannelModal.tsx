@@ -25,7 +25,7 @@ import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -113,6 +113,13 @@ const EditChannelModal = ({
 
       isCustom: true,
       isActive: true,
+      ...(type === ModelTypeEnum.llm
+        ? {
+            vision: false,
+            audio: false,
+            video: false
+          }
+        : {}),
       // @ts-ignore
       type
     });

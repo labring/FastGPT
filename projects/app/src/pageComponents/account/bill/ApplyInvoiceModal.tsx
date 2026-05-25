@@ -32,7 +32,6 @@ import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/ty
 import { InvoiceHeaderSingleForm } from './InvoiceHeaderForm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamInvoiceHeader } from '@/web/support/user/team/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 
@@ -131,7 +130,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
             <Box w={'100%'} fontSize={'0.875rem'}>
               <Flex w={'100%'} justifyContent={'space-between'}>
                 <Box>{t('account_bill:total_amount')}</Box>
-                <Box>{t('account:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
+                <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
               </Flex>
               <Box w={'100%'} py={4}>
                 <Divider showBorderBottom={false} />
@@ -192,20 +191,23 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                           chosenBillDataList.length === billsList?.length && billsList?.length !== 0
                         }
                         onChange={(e) => {
-                          !e.target.checked
-                            ? setChosenBillDataList([])
-                            : setChosenBillDataList(
-                                billsList?.map((item) => ({
-                                  _id: item._id,
-                                  price: item.price
-                                })) || []
-                              );
+                          if (!e.target.checked) {
+                            setChosenBillDataList([]);
+                            return;
+                          }
+
+                          setChosenBillDataList(
+                            billsList?.map((item) => ({
+                              _id: item._id,
+                              price: item.price
+                            })) || []
+                          );
                         }}
                       />
                     </Th>
                     <Th>{t('account_bill:type')}</Th>
                     <Th>{t('account_bill:time')}</Th>
-                    <Th>{t('account:support_wallet_amount')}</Th>
+                    <Th>{t('account_bill:support_wallet_amount')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody fontSize={'0.875rem'}>
@@ -233,7 +235,9 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                           ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss')
                           : '-'}
                       </Td>
-                      <Td>{t('account:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
+                      <Td>
+                        {t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}
+                      </Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -259,7 +263,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
               px="0"
               isDisabled={!chosenBillDataList.length}
               onClick={() => {
-                let total = chosenBillDataList.reduce((acc, cur) => acc + Number(cur.price), 0);
+                const total = chosenBillDataList.reduce((acc, cur) => acc + Number(cur.price), 0);
                 if (!total) return;
                 setTotalPrice(total);
                 onOpenSettleModal();

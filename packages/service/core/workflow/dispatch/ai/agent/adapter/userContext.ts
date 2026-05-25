@@ -127,6 +127,9 @@ export function parseAgentInputFiles({
     .filter(Boolean) as AgentInputFile[];
 }
 
+const filterAgentDocumentFiles = (files: AgentInputFile[]) =>
+  files.filter((file) => file.type === ChatFileTypeEnum.file);
+
 /**
  * 解析本轮用户输入文件。
  *
@@ -148,14 +151,16 @@ export function buildCurrentAgentInputFiles({
   );
   const currentQueryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
 
-  return parseAgentInputFiles({
-    files: currentInputFiles.map(
-      (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
-    ),
-    prefixId: currentDataId || getNanoid(),
-    requestOrigin,
-    maxFiles
-  });
+  return filterAgentDocumentFiles(
+    parseAgentInputFiles({
+      files: currentInputFiles.map(
+        (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
+      ),
+      prefixId: currentDataId || getNanoid(),
+      requestOrigin,
+      maxFiles
+    })
+  );
 }
 
 /**
@@ -208,21 +213,17 @@ export const loadAgentDatasetContext = async (
 
 /* Prompt */
 export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
-  if (files.length === 0) return '';
-
-  const getReadableAgentFileType = (type: `${ChatFileTypeEnum}`) => {
-    return type === ChatFileTypeEnum.file ? 'document' : 'image';
-  };
+  const documentFiles = filterAgentDocumentFiles(files);
+  if (documentFiles.length === 0) return '';
 
   return `## 文件
 用户本次对话上传的的文件， 可通过 ${SubAppIds.readFiles} 读取文件内容：
 
-${files
+${documentFiles
   .map(
     (file) => `<file>
 <id>${escapeXml(file.id)}</id>
 <name>${escapeXml(file.name)}</name>
-<type>${escapeXml(getReadableAgentFileType(file.type))}</type>
 </file>`
   )
   .join('\n')}`;
@@ -383,12 +384,14 @@ export const useUserContext = async ({
 
     const { files } = chatValue2RuntimePrompt(message.value);
 
-    const formatFiles = parseAgentInputFiles({
-      files,
-      prefixId: getMessagePrefixId(message, index),
-      requestOrigin,
-      maxFiles
-    });
+    const formatFiles = filterAgentDocumentFiles(
+      parseAgentInputFiles({
+        files,
+        prefixId: getMessagePrefixId(message, index),
+        requestOrigin,
+        maxFiles
+      })
+    );
 
     registerFiles(formatFiles);
     if (formatFiles.length === 0) return message;

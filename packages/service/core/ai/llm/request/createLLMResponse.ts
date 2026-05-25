@@ -37,13 +37,16 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   const requestId = createLLMRequestId();
 
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
-  const { messages, useVision, tools, toolCallMode } = body;
+  const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
   const model = getLLMModel(body.model);
 
   // 先把 messages 中的文件/图片等 FastGPT 扩展结构加载成模型可直接消费的消息。
   const requestMessages = await loadRequestMessages({
     messages,
     useVision: useVision && model.vision,
+    useAudio: useAudio && model.audio,
+    useVideo: useVideo && model.video,
+    extractFiles,
     supportReason: model.reasoning
   });
   const rewriteMessages = (() => {

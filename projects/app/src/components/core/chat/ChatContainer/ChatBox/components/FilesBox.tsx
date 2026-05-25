@@ -18,15 +18,10 @@ const FilesBlock = ({ files }: { files: UserInputFileItemType[] }) => {
     list: ['1fr', 'repeat(2, 1fr)', 'repeat(3, 1fr)']
   });
 
-  // sort files, file->image
+  // sort files, document/audio/video->image
   const sortFiles = useMemo(() => {
     return clone(files).sort((a, b) => {
-      if (a.type === ChatFileTypeEnum.image && b.type === ChatFileTypeEnum.file) {
-        return 1;
-      } else if (a.type === ChatFileTypeEnum.file && b.type === ChatFileTypeEnum.image) {
-        return -1;
-      }
-      return 0;
+      return Number(a.type === ChatFileTypeEnum.image) - Number(b.type === ChatFileTypeEnum.image);
     });
   }, [files]);
 
@@ -53,7 +48,7 @@ const FilesBlock = ({ files }: { files: UserInputFileItemType[] }) => {
       {sortFiles.map(({ id, type, name, url, icon }, i) => (
         <Box key={i} bg={'white'} borderRadius={'md'} overflow="hidden">
           {type === 'image' && <MdImage src={url} minH={'100px'} my={0} />}
-          {type === 'file' && (
+          {type !== 'image' && (
             <Flex
               p={2}
               w={'100%'}

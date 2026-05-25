@@ -4,9 +4,9 @@ import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 
-export type listQuery = {};
+export type listQuery = object;
 
-export type listBody = {};
+export type listBody = object;
 
 export type listResponse = {
   type: `${ModelTypeEnum}`;
@@ -26,6 +26,9 @@ export type listResponse = {
   // Tag
   contextToken?: number;
   vision?: boolean;
+  audio?: boolean;
+  video?: boolean;
+  reasoning?: boolean;
   toolChoice?: boolean;
 }[];
 
@@ -54,6 +57,9 @@ async function handler(
     contextToken:
       'maxContext' in model ? model.maxContext : 'maxToken' in model ? model.maxToken : undefined,
     vision: 'vision' in model ? model.vision : undefined,
+    audio: 'audio' in model ? model.audio : undefined,
+    video: 'video' in model ? model.video : undefined,
+    reasoning: 'reasoning' in model ? model.reasoning : undefined,
     toolChoice: 'toolChoice' in model ? model.toolChoice : undefined
   }));
 }

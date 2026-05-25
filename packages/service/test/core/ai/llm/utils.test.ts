@@ -6,6 +6,8 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/typ
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+const mockCreateGetChatFileURL = vi.hoisted(() => vi.fn());
+
 // Mock external dependencies
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => {
   const countGptMessagesTokens = vi.fn();
@@ -30,8 +32,15 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
   axios: {
-    head: vi.fn()
+    head: vi.fn(),
+    get: vi.fn()
   }
+}));
+
+vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
+  getS3ChatSource: () => ({
+    createGetChatFileURL: mockCreateGetChatFileURL
+  })
 }));
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
@@ -42,6 +51,7 @@ import { axios } from '@fastgpt/service/common/api/axios';
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
+const mockAxiosGet = vi.mocked(axios.get);
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
@@ -529,6 +539,185 @@ describe('loadRequestMessages function tests', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].content).toBe('Look at https://example.com/image.png');
+    });
+
+    it('should extract audio and video links when enabled', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content:
+            'Check https://example.com/audio.mp3, https://example.com/voice.ogg and https://example.com/video.mp4?download=1'
+        }
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useAudio: true,
+        useVideo: true,
+        extractFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      expect(Array.isArray(result[0].content)).toBe(true);
+      const content = result[0].content as any[];
+      expect(content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'input_audio',
+            input_audio: {
+              data: 'https://example.com/audio.mp3',
+              format: 'mp3'
+            }
+          }),
+          expect.objectContaining({
+            type: 'input_audio',
+            input_audio: {
+              data: 'https://example.com/voice.ogg',
+              format: 'ogg'
+            }
+          }),
+          expect.objectContaining({
+            type: 'video_url',
+            video_url: {
+              url: 'https://example.com/video.mp4?download=1'
+            }
+          }),
+          expect.objectContaining({ type: 'text' })
+        ])
+      );
+      expect(content.some((item: any) => item.type === 'file_url')).toBe(false);
+      expect(content.some((item: any) => item.type === 'file')).toBe(false);
+      expect(mockAxiosGet).not.toHaveBeenCalled();
+    });
+
+    it('should convert extracted audio and video links when MULTIPLE_DATA_TO_BASE64 is enabled', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('media bytes')
+      });
+      const audioUrl =
+        'http://localhost:9000/fastgpt-private/chat/fastgpt_intro.wav?X-Amz-Signature=test';
+      const videoUrl = 'http://127.0.0.1:9000/fastgpt-private/chat/demo.mp4';
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: `Check ${audioUrl} and ${videoUrl}`
+        }
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useAudio: true,
+        useVideo: true,
+        extractFiles: true
+      });
+
+      expect(result).toHaveLength(1);
+      const content = result[0].content as any[];
+      expect(content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'input_audio',
+            input_audio: {
+              data: `data:;base64,${Buffer.from('media bytes').toString('base64')}`,
+              format: 'wav'
+            }
+          }),
+          expect.objectContaining({
+            type: 'video_url',
+            video_url: {
+              url: `data:;base64,${Buffer.from('media bytes').toString('base64')}`
+            }
+          })
+        ])
+      );
+      expect(mockAxiosGet).toHaveBeenCalledWith(audioUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000
+      });
+      expect(mockAxiosGet).toHaveBeenCalledWith(videoUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000
+      });
+    });
+
+    it('should normalize internal audio and video file_url to base64 content parts', async () => {
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('media bytes')
+      });
+      mockCreateGetChatFileURL
+        .mockResolvedValueOnce({ url: '/chat/audio.mp3' })
+        .mockResolvedValueOnce({ url: '/chat/video.mp4' });
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            {
+              type: 'file_url',
+              name: 'audio.mp3',
+              url: 'http://localhost:9000/preview/audio.mp3',
+              fileType: 'audio',
+              key: 'chat/audio.mp3'
+            },
+            {
+              type: 'file_url',
+              name: 'video.mp4',
+              url: 'http://localhost:9000/preview/video.mp4',
+              fileType: 'video',
+              key: 'chat/video.mp4'
+            },
+            {
+              type: 'text',
+              text: 'Analyze these files'
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useAudio: true,
+        useVideo: true
+      });
+
+      expect(result).toHaveLength(1);
+      const content = result[0].content as any[];
+      expect(content).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'input_audio',
+            input_audio: {
+              data: `data:;base64,${Buffer.from('media bytes').toString('base64')}`,
+              format: 'mp3'
+            }
+          }),
+          expect.objectContaining({
+            type: 'video_url',
+            video_url: {
+              url: `data:;base64,${Buffer.from('media bytes').toString('base64')}`
+            }
+          }),
+          expect.objectContaining({ type: 'text', text: 'Analyze these files' })
+        ])
+      );
+      expect(content.some((item: any) => item.type === 'file_url')).toBe(false);
+    });
+
+    it('should preserve legacy vision extraction when extractFiles is omitted', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: 'Look at https://example.com/image.png'
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(1);
+      const content = result[0].content as any[];
+      expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
     });
 
     it('should not extract images from very long text (>500 chars)', async () => {
