@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
-import { afterAll, beforeAll, beforeEach, inject, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';
 import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
@@ -26,8 +26,6 @@ const clearMongoCollections = async (db: Mongoose | undefined) => {
   const collections = await database.collections();
   await Promise.all(collections.map((collection) => collection.deleteMany({})));
 };
-
-let hasRunTestInCurrentFile = false;
 
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
@@ -67,9 +65,10 @@ afterAll(async () => {
 beforeEach(async () => {
   // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
   // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
-  clean();
 
-  if (hasRunTestInCurrentFile) {
+  onTestFinished(async () => {
+    clean();
+
     try {
       await Promise.all([
         clearMongoCollections(connectionMongo),
@@ -79,7 +78,5 @@ beforeEach(async () => {
       // Ignore errors during cleanup
       console.warn('Error during test cleanup:', error);
     }
-  }
-
-  hasRunTestInCurrentFile = true;
+  });
 });

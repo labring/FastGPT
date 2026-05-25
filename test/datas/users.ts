@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -16,7 +17,7 @@ import type { parseHeaderCertRet } from '@test/mocks/request';
 
 export async function getRootUser(): Promise<parseHeaderCertRet> {
   const rootUser = await MongoUser.create({
-    username: 'root',
+    username: `root-${randomUUID()}`,
     password: '123456'
   });
 
