@@ -19,6 +19,7 @@ export const trainEnv = createEnv({
     // ===== Data Sampling =====
     TRAIN_DATA_SPLIT_RATIO: NumSchema.min(0).max(1).default(0.8),
     TRAIN_MIN_CHUNK_COUNT: PositiveIntSchema.default(300),
+    TRAIN_MAX_CHUNK_COUNT: PositiveIntSchema.default(5000),
     TRAIN_MIN_EVAL_QA_COUNT: PositiveIntSchema.default(200),
 
     // ===== Training Task Threshold =====

@@ -464,7 +464,28 @@ export async function sampleDataFromDataset(
   }
 
   // Step 2: Quota allocation
-  const samplesPerKb = computeQuotas(kbCounts, sampleSize, weights, datasetIds);
+  const totalKbCount = kbCounts.reduce((s, v) => s + v, 0);
+  const effectiveSampleSize =
+    sampleSize != null
+      ? Math.min(sampleSize, trainEnv.TRAIN_MAX_CHUNK_COUNT)
+      : totalKbCount > trainEnv.TRAIN_MAX_CHUNK_COUNT
+        ? trainEnv.TRAIN_MAX_CHUNK_COUNT
+        : undefined;
+
+  const wasExplicitlyCapped = sampleSize != null && sampleSize > trainEnv.TRAIN_MAX_CHUNK_COUNT;
+  const wasAutomaticallyCapped = sampleSize == null && totalKbCount > trainEnv.TRAIN_MAX_CHUNK_COUNT;
+
+  if (effectiveSampleSize != null && (wasExplicitlyCapped || wasAutomaticallyCapped)) {
+    addLog.info('Sampling capped to max chunk count', {
+      totalKbCount,
+      maxAllowed: trainEnv.TRAIN_MAX_CHUNK_COUNT,
+      effectiveSampleSize,
+      userSampleSize: sampleSize,
+      cappedReason: wasExplicitlyCapped ? 'explicit_sample_size' : 'auto_limit'
+    });
+  }
+
+  const samplesPerKb = computeQuotas(kbCounts, effectiveSampleSize, weights, datasetIds);
 
   // Step 3: Take data according to quota
   const allSamples: SampledDataItem[] = [];
