@@ -14,11 +14,33 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import type { parseHeaderCertRet } from '@test/mocks/request';
 
+/**
+ * Create an authenticated system root user fixture.
+ *
+ * `authSystemAdmin` checks for the literal username `root`, so the fixture must
+ * keep that stable. Some tests call this helper multiple times before per-test
+ * Mongo cleanup runs; reuse the existing root document to preserve unique
+ * indexes while still creating an isolated team/member for each caller.
+ */
 export async function getRootUser(): Promise<parseHeaderCertRet> {
-  const rootUser = await MongoUser.create({
-    username: 'root',
-    password: '123456'
-  });
+  const rootUser = await (async () => {
+    const existingRoot = await MongoUser.findOne({ username: 'root' });
+    if (existingRoot) return existingRoot;
+
+    try {
+      return await MongoUser.create({
+        username: 'root',
+        password: '123456'
+      });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) {
+        const concurrentRoot = await MongoUser.findOne({ username: 'root' });
+        if (concurrentRoot) return concurrentRoot;
+      }
+
+      throw error;
+    }
+  })();
 
   const team = await MongoTeam.create({
     name: 'test team',

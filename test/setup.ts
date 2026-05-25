@@ -8,10 +8,24 @@ import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import { loadVectorDBEnv } from './utils/env';
+import type { Mongoose } from '@fastgpt/service/common/mongo';
 
 vi.stubEnv('NODE_ENV', 'test');
 
 loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
+
+/**
+ * Clears documents while keeping collections and indexes warm inside one test file.
+ * File-level DB names are already isolated, so per-case cleanup does not need to
+ * drop the whole database and force MongoDB to rebuild collection metadata.
+ */
+const clearMongoCollections = async (db: Mongoose | undefined) => {
+  const database = db?.connection.db;
+  if (!database) return;
+
+  const collections = await database.collections();
+  await Promise.all(collections.map((collection) => collection.deleteMany({})));
+};
 
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
@@ -44,6 +58,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await connectionMongo?.connection.db?.dropDatabase();
   await connectionLogMongo?.connection.db?.dropDatabase();
+  await connectionMongo?.disconnect();
+  await connectionLogMongo?.disconnect();
 });
 
 beforeEach(async () => {
@@ -53,11 +69,10 @@ beforeEach(async () => {
   onTestFinished(async () => {
     clean();
 
-    // Ensure all sessions are closed before dropping database
     try {
       await Promise.all([
-        connectionMongo?.connection.db?.dropDatabase(),
-        connectionLogMongo?.connection.db?.dropDatabase()
+        clearMongoCollections(connectionMongo),
+        clearMongoCollections(connectionLogMongo)
       ]);
     } catch (error) {
       // Ignore errors during cleanup
