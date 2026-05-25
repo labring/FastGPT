@@ -1,5 +1,6 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
+import { getTestMaxWorkers } from './test/vitestWorkers';
 
 export default defineConfig({
   resolve: {
@@ -48,8 +49,8 @@ export default defineConfig({
     outputFile: 'test-results.json',
     setupFiles: 'test/setup.ts',
     globalSetup: 'test/globalSetup.ts',
-    // File-level execution: serial (one file at a time to avoid MongoDB conflicts)
-    fileParallelism: false,
+    fileParallelism: true,
+    maxWorkers: getTestMaxWorkers(),
     // Test-level execution within a file: parallel (up to 5 concurrent tests)
     maxConcurrency: 10,
     pool: 'threads',

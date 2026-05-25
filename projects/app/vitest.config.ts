@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { getTestMaxWorkers } from '../../test/vitestWorkers';
 
 export default defineConfig({
   resolve: {
@@ -46,7 +47,8 @@ export default defineConfig({
     outputFile: 'test-results.json',
     setupFiles: '../../test/setup.ts',
     globalSetup: '../../test/globalSetup.ts',
-    fileParallelism: false,
+    fileParallelism: true,
+    maxWorkers: getTestMaxWorkers(),
     maxConcurrency: 10,
     pool: 'threads',
     testTimeout: 20000,
