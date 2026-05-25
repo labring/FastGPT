@@ -11,6 +11,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
@@ -32,7 +33,7 @@ async function handler(
   const appCount = await MongoApp.countDocuments({
     teamId,
     deleteTime: null,
-    'publishedResourceRefs.skillIds': skill._id.toString()
+    ...buildAppSkillRefMongoQuery(skill._id.toString())
   });
 
   return {

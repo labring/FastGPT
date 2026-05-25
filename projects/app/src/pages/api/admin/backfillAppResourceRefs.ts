@@ -8,11 +8,12 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getLogger } from '@fastgpt/service/common/logger';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { Types } from '@fastgpt/service/common/mongo';
 import { z } from 'zod';
 
 const logger = getLogger(['backfillAppResourceRefs']);
+const DEFAULT_BACKFILL_START_TIME = new Date('2026-05-24T00:00:00.000+08:00');
 
 const QuerySchema = z.object({
   dryRun: z
@@ -20,7 +21,8 @@ const QuerySchema = z.object({
     .optional()
     .default('false')
     .transform((value) => value === 'true'),
-  batchSize: z.coerce.number().int().min(1).max(2000).optional().default(500)
+  batchSize: z.coerce.number().int().min(1).max(2000).optional().default(500),
+  startTime: z.coerce.date().optional().default(DEFAULT_BACKFILL_START_TIME)
 });
 
 type MigrationStats = {
@@ -32,19 +34,22 @@ type ResponseType = {
   message: string;
   dryRun: boolean;
   batchSize: number;
+  startTime: string;
   versions: MigrationStats;
   apps: MigrationStats;
 };
 
 /**
- * 回填历史 app_versions.resourceRefs，保证旧版本记录也具备统一的资源引用索引。
+ * 回填指定时间后的 app_versions.resourceRefs，保证新版 Skill 发布后的版本记录具备统一索引。
  */
 async function backfillVersionResourceRefs({
   dryRun,
-  batchSize
+  batchSize,
+  startTime
 }: {
   dryRun: boolean;
   batchSize: number;
+  startTime: Date;
 }): Promise<MigrationStats> {
   let lastId: string | undefined;
   let scanned = 0;
@@ -53,8 +58,11 @@ async function backfillVersionResourceRefs({
 
   while (true) {
     const versions = await MongoAppVersion.find(
-      lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {},
-      '_id nodes resourceRefs'
+      {
+        ...(lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {}),
+        time: { $gte: startTime }
+      },
+      '_id nodes'
     )
       .sort({ _id: 1 })
       .limit(batchSize)
@@ -65,11 +73,7 @@ async function backfillVersionResourceRefs({
     scanned += versions.length;
     lastId = String(versions[versions.length - 1]._id);
 
-    const versionsToUpdate = versions.filter((v) => !v.resourceRefs || !v.resourceRefs.skillIds);
-
-    matched += versionsToUpdate.length;
-
-    const operations = versionsToUpdate.map((version) => ({
+    const operations = versions.map((version) => ({
       updateOne: {
         filter: { _id: version._id },
         update: {
@@ -80,6 +84,8 @@ async function backfillVersionResourceRefs({
       }
     }));
 
+    matched += operations.length;
+
     if (!dryRun && operations.length > 0) {
       const result = await MongoAppVersion.bulkWrite(operations, { ordered: false });
       updated += result.modifiedCount + result.upsertedCount;
@@ -89,7 +95,8 @@ async function backfillVersionResourceRefs({
       scanned,
       matched,
       updated: dryRun ? 0 : updated,
-      lastId
+      lastId,
+      startTime
     });
   }
 
@@ -97,16 +104,20 @@ async function backfillVersionResourceRefs({
 }
 
 /**
- * 按每个应用最新的已发布版本刷新 apps.publishedResourceRefs。
+ * 按指定时间后的最新已发布版本刷新 apps.publishedResourceRefs。
+ * 没有命中新版发布记录的应用不会被写入，避免误改功能发布前的历史数据。
  */
 async function backfillPublishedResourceRefs({
   dryRun,
-  batchSize
+  batchSize,
+  startTime
 }: {
   dryRun: boolean;
   batchSize: number;
+  startTime: Date;
 }): Promise<MigrationStats> {
   let lastId: string | undefined;
+  let scanned = 0;
   let matched = 0;
   let updated = 0;
 
@@ -115,7 +126,8 @@ async function backfillPublishedResourceRefs({
       {
         ...(lastId ? { _id: { $gt: new Types.ObjectId(lastId) } } : {}),
         type: { $nin: AppFolderTypeList },
-        deleteTime: null
+        deleteTime: null,
+        updateTime: { $gte: startTime }
       },
       '_id'
     )
@@ -125,7 +137,7 @@ async function backfillPublishedResourceRefs({
 
     if (apps.length === 0) break;
 
-    matched += apps.length;
+    scanned += apps.length;
     lastId = String(apps[apps.length - 1]._id);
 
     const latestPublishedVersions = await MongoAppVersion.aggregate<{
@@ -135,7 +147,8 @@ async function backfillPublishedResourceRefs({
       {
         $match: {
           appId: { $in: apps.map((app) => new Types.ObjectId(String(app._id))) },
-          isPublish: true
+          isPublish: true,
+          time: { $gte: startTime }
         }
       },
       {
@@ -160,16 +173,18 @@ async function backfillPublishedResourceRefs({
       ])
     );
 
-    const operations = apps.map((app) => ({
+    const operations = latestPublishedVersions.map((version) => ({
       updateOne: {
-        filter: { _id: app._id },
+        filter: { _id: version._id },
         update: {
           $set: {
-            publishedResourceRefs: resourceRefsByAppId.get(String(app._id)) ?? { skillIds: [] }
+            publishedResourceRefs: resourceRefsByAppId.get(String(version._id)) ?? { skillIds: [] }
           }
         }
       }
     }));
+
+    matched += operations.length;
 
     if (!dryRun && operations.length > 0) {
       const result = await MongoApp.bulkWrite(operations, { ordered: false });
@@ -177,9 +192,11 @@ async function backfillPublishedResourceRefs({
     }
 
     logger.info('[published resource refs] backfill progress', {
-      scanned: matched,
+      scanned,
+      matched,
       updated: dryRun ? 0 : updated,
-      lastId
+      lastId,
+      startTime
     });
   }
 
@@ -187,24 +204,33 @@ async function backfillPublishedResourceRefs({
 }
 
 async function handler(
-  req: ApiRequestProps<undefined, z.input<typeof QuerySchema>>,
-  _res: ApiResponseType<ResponseType>
+  req: ApiRequestProps<undefined, z.input<typeof QuerySchema>>
 ): Promise<ResponseType> {
   await authCert({ req, authRoot: true });
 
-  const { dryRun, batchSize } = parseApiInput({ req, querySchema: QuerySchema }).query;
+  const { dryRun, batchSize, startTime } = parseApiInput({
+    req,
+    querySchema: QuerySchema
+  }).query;
 
-  logger.info('Start app resource refs backfill', { dryRun, batchSize });
+  logger.info('Start app resource refs backfill', { dryRun, batchSize, startTime });
 
-  const versions = await backfillVersionResourceRefs({ dryRun, batchSize });
-  const apps = await backfillPublishedResourceRefs({ dryRun, batchSize });
+  const versions = await backfillVersionResourceRefs({ dryRun, batchSize, startTime });
+  const apps = await backfillPublishedResourceRefs({ dryRun, batchSize, startTime });
 
-  logger.info('Finish app resource refs backfill', { dryRun, batchSize, versions, apps });
+  logger.info('Finish app resource refs backfill', {
+    dryRun,
+    batchSize,
+    startTime,
+    versions,
+    apps
+  });
 
   return {
     message: 'Completed app resource refs backfill',
     dryRun,
     batchSize,
+    startTime: startTime.toISOString(),
     versions,
     apps
   };

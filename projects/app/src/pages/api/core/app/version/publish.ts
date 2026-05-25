@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -18,7 +17,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 import { PublishAppQuerySchema, PublishAppBodySchema } from '@fastgpt/global/core/app/version/type';
 
-async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
+async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
     body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }

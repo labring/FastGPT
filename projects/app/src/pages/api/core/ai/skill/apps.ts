@@ -19,6 +19,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -59,12 +60,12 @@ async function handler(
       myOrgSet.has(String(item.orgId))
   );
 
-  // Query apps whose modules contain the given skillId
+  // 查询已发布工作流引用该 skillId 的应用。
   const apps = await MongoApp.find(
     {
       teamId,
       deleteTime: null,
-      'publishedResourceRefs.skillIds': skillId
+      ...buildAppSkillRefMongoQuery(skillId)
     },
     '_id parentId avatar type name intro tmbId updateTime inheritPermission'
   )

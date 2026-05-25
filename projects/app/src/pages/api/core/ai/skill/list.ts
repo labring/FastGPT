@@ -20,6 +20,10 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { AgentSkillTypeEnum, AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  AppResourceRefsSkillIdsPath,
+  buildAppSkillRefMongoQuery
+} from '@fastgpt/service/core/app/resourceRefs';
 
 export type GetSkillListBody = ListSkillsQuery;
 
@@ -243,18 +247,18 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
         $match: {
           teamId: new Types.ObjectId(String(teamId)),
           deleteTime: null,
-          'publishedResourceRefs.skillIds': { $in: skillIdStrings }
+          ...buildAppSkillRefMongoQuery(skillIdStrings)
         }
       },
-      { $unwind: '$publishedResourceRefs.skillIds' },
+      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
       {
         $match: {
-          'publishedResourceRefs.skillIds': { $in: skillIdStrings }
+          ...buildAppSkillRefMongoQuery(skillIdStrings)
         }
       },
       {
         $group: {
-          _id: '$publishedResourceRefs.skillIds',
+          _id: `$${AppResourceRefsSkillIdsPath}`,
           count: { $sum: 1 }
         }
       }
