@@ -72,7 +72,7 @@ catalog:
   request-ip: ^3.3.0
   tsdown: 0.21.10
   tsx: ^4.20.6
-  typescript: ^5.9.3
+  typescript: ^6.0.3
   vitest: ^4.1.5
   zod: ^4
 

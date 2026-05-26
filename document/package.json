@@ -51,7 +51,7 @@
     "textlint": "catalog:lint",
     "textlint-plugin-mdx": "catalog:lint",
     "textlint-rule-preset-zh-technical-writing": "catalog:lint",
-    "typescript": "^5.8.3",
+    "typescript": "catalog:",
     "zod": "^4.0.5"
   }
 }

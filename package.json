@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
+    "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:lint",
     "eslint-config-next": "catalog:lint",
