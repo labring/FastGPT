@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import { ModalFooter, ModalBody, Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal/index';
+import { Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -52,40 +52,44 @@ const EditResourceModal = ({
     useUploadAvatar(getUploadAvatarPresignedUrl, { onSuccess: afterUploadAvatar });
 
   return (
-    <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>
-      <ModalBody>
-        <Box>
-          <FormLabel mb={1}>{t('common:core.app.Name and avatar')}</FormLabel>
-          <HStack spacing={4}>
-            <MyTooltip label={t('common:set_avatar')}>
-              <Avatar
-                flex={'0 0 2rem'}
-                src={avatar}
-                w={'2rem'}
-                h={'2rem'}
-                cursor={'pointer'}
-                borderRadius={'sm'}
-                onClick={handleAvatarSelectorOpen}
-              />
-            </MyTooltip>
-            <Input
-              {...register('name', { required: true })}
-              bg={'myGray.50'}
-              autoFocus
-              maxLength={100}
-            />
-          </HStack>
-        </Box>
-        <Box mt={4}>
-          <FormLabel mb={1}>{t('common:Intro')}</FormLabel>
-          <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
-        </Box>
-      </ModalBody>
-      <ModalFooter>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc={avatar}
+      title={title}
+      isCentered
+      footer={
         <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
           {t('common:Confirm')}
         </Button>
-      </ModalFooter>
+      }
+    >
+      <Box>
+        <FormLabel mb={1}>{t('common:core.app.Name and avatar')}</FormLabel>
+        <HStack spacing={4}>
+          <MyTooltip label={t('common:set_avatar')}>
+            <Avatar
+              flex={'0 0 2rem'}
+              src={avatar}
+              w={'2rem'}
+              h={'2rem'}
+              cursor={'pointer'}
+              borderRadius={'sm'}
+              onClick={handleAvatarSelectorOpen}
+            />
+          </MyTooltip>
+          <Input
+            {...register('name', { required: true })}
+            bg={'myGray.50'}
+            autoFocus
+            maxLength={100}
+          />
+        </HStack>
+      </Box>
+      <Box mt={4}>
+        <FormLabel mb={1}>{t('common:Intro')}</FormLabel>
+        <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
+      </Box>
 
       <AvatarUploader />
     </MyModal>

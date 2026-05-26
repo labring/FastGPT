@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import {
   type GetResourceFolderListProps,
   type GetResourceFolderListItemResponse,
@@ -170,20 +170,24 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       w={'30rem'}
       title={title}
       onClose={onClose}
-    >
-      <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'}>
-        {moveHint && (
-          <Box mb={1}>
-            <LightTip text={moveHint} />
-          </Box>
-        )}
-        <RenderList list={folderList} />
-      </ModalBody>
-      <ModalFooter>
+      isCentered
+      bodyStyles={{
+        flex: '1 0 0',
+        overflow: 'auto',
+        minH: '400px'
+      }}
+      footer={
         <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
           {t('common:Confirm')}
         </Button>
-      </ModalFooter>
+      }
+    >
+      {moveHint && (
+        <Box mb={1}>
+          <LightTip text={moveHint} />
+        </Box>
+      )}
+      <RenderList list={folderList} />
     </MyModal>
   );
 };

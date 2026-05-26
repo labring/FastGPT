@@ -169,15 +169,7 @@ export const useConfirm = (props?: {
       const finalVariant = customConfirmButtonVariant || map.variant;
 
       return (
-        <MyModal
-          isOpen={isOpen}
-          onClose={handleClose}
-          isCentered
-          size={'sm'}
-          px={'32px'}
-          py={'32px'}
-          borderRadius={'10px'}
-        >
+        <MyModal isOpen={isOpen} onClose={handleClose} isCentered size={'sm'} borderRadius={'10px'}>
           <Flex direction={'column'} gap={'24px'}>
             <HStack spacing={'12px'} align={'center'}>
               <Flex

@@ -1,6 +1,6 @@
-import { Box, Button, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Input } from '@chakra-ui/react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 
@@ -33,36 +33,37 @@ const SaveAndPublishModal = ({
       maxW={'400px'}
       isOpen
       onClose={onClose}
-    >
-      <ModalBody>
-        <Box mb={2.5} color={'myGray.900'} fontSize={'14px'} fontWeight={'500'}>
-          {t('common:Name')}
-        </Box>
-        <Box mb={3}>
-          <Input
-            autoFocus
-            placeholder={t('app:app.Version name')}
-            bg={'myWhite.600'}
-            {...register('versionName', {
-              required: t('app:app.version_name_tips')
+      isCentered
+      footer={
+        <>
+          <Button onClick={onClose} variant={'whiteBase'}>
+            {t('common:Cancel')}
+          </Button>
+          <Button
+            isLoading={isLoading}
+            onClick={handleSubmit(async (data) => {
+              await onConfirm(data.versionName);
             })}
-          />
-        </Box>
-        <Box fontSize={'14px'}>{t('app:app.version_publish_tips')}</Box>
-      </ModalBody>
-      <ModalFooter gap={3}>
-        <Button onClick={onClose} variant={'whiteBase'}>
-          {t('common:Cancel')}
-        </Button>
-        <Button
-          isLoading={isLoading}
-          onClick={handleSubmit(async (data) => {
-            await onConfirm(data.versionName);
+          >
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
+    >
+      <Box mb={2.5} color={'myGray.900'} fontSize={'14px'} fontWeight={'500'}>
+        {t('common:Name')}
+      </Box>
+      <Box mb={3}>
+        <Input
+          autoFocus
+          placeholder={t('app:app.Version name')}
+          bg={'myWhite.600'}
+          {...register('versionName', {
+            required: t('app:app.version_name_tips')
           })}
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+        />
+      </Box>
+      <Box fontSize={'14px'}>{t('app:app.version_publish_tips')}</Box>
     </MyModal>
   );
 };

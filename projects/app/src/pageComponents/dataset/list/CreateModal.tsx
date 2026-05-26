@@ -96,8 +96,6 @@ const CreateModal = ({
       size={'md'}
       iconSrc={DatasetTypeMap[type].avatar}
       title={t('dataset:create_dataset_title', { name: t(DatasetTypeMap[type].label) })}
-      px={'32px'}
-      py={'32px'}
       borderRadius={'10px'}
       footer={
         <>
