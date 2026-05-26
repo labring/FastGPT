@@ -84,6 +84,91 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().chatId).toBe('chat-b');
   });
 
+  it('should namespace app chat cache by source', () => {
+    const store = useChatStore.getState();
+
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('online-chat-id');
+
+    store.setSource(ChatSourceEnum.api);
+    store.setAppId('app-b');
+    store.setChatId('api-chat-id');
+
+    expect(useChatStore.getState().appChatIdMap).toMatchObject({
+      [`${ChatSourceEnum.online}:app-a`]: 'online-chat-id',
+      [`${ChatSourceEnum.api}:app-b`]: 'api-chat-id'
+    });
+  });
+
+  it('should not restore app cached chatId for share source', () => {
+    const store = useChatStore.getState();
+
+    useChatStore.setState({
+      source: ChatSourceEnum.share,
+      appChatIdMap: {
+        [`${ChatSourceEnum.online}:app-a`]: 'normal-chat-id',
+        [`${ChatSourceEnum.share}:app-a`]: 'legacy-share-chat-id',
+        [`${ChatSourceEnum.share}:share-a:user-a:app-a`]: 'share-chat-id'
+      }
+    });
+
+    store.setAppId('app-a');
+
+    const newState = useChatStore.getState();
+    expect(newState.chatId).toBe('test-generated-id');
+    expect(newState.chatId).not.toBe('normal-chat-id');
+    expect(newState.chatId).not.toBe('legacy-share-chat-id');
+    expect(newState.chatId).not.toBe('share-chat-id');
+  });
+
+  it('should save share chatId with share identity namespace', () => {
+    const store = useChatStore.getState();
+
+    store.setSource(ChatSourceEnum.share);
+    store.setAppId('app-a');
+    store.setOutLinkAuthData({ shareId: 'share-a', outLinkUid: 'user-a' });
+    store.setChatId('share-chat-id');
+
+    expect(useChatStore.getState().appChatIdMap).toEqual({
+      [`${ChatSourceEnum.share}:share-a:user-a:app-a`]: 'share-chat-id'
+    });
+  });
+
+  it('should restore share chatId only with matched share identity namespace', () => {
+    const store = useChatStore.getState();
+
+    useChatStore.setState({
+      source: ChatSourceEnum.share,
+      appId: 'app-a',
+      chatId: 'new-chat-id',
+      appChatIdMap: {
+        [`${ChatSourceEnum.share}:share-a:user-a:app-a`]: 'matched-share-chat',
+        [`${ChatSourceEnum.share}:share-a:user-b:app-a`]: 'other-user-chat'
+      }
+    });
+
+    store.setOutLinkAuthData({ shareId: 'share-a', outLinkUid: 'user-a' });
+
+    expect(useChatStore.getState().chatId).toBe('matched-share-chat');
+  });
+
+  it('should not restore last chatId for share source', () => {
+    const store = useChatStore.getState();
+
+    useChatStore.setState({
+      source: undefined,
+      chatId: '',
+      lastChatId: `${ChatSourceEnum.share}-cached-share-chat`
+    });
+
+    store.setSource(ChatSourceEnum.share);
+
+    const newState = useChatStore.getState();
+    expect(newState.chatId).toBe('test-generated-id');
+    expect(newState.chatId).not.toBe('cached-share-chat');
+  });
+
   it('should keep chatId when setting the same appId', () => {
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.online);
@@ -120,7 +205,7 @@ describe('useChatStore', () => {
 
   it('should restore last chat when setting same source and lastChatId with different id', () => {
     const store = useChatStore.getState();
-    const source = ChatSourceEnum.share;
+    const source = ChatSourceEnum.online;
     const chatId = 'test';
     useChatStore.setState({
       lastChatId: `${source}-${chatId}`,
@@ -135,7 +220,7 @@ describe('useChatStore', () => {
   // The expected value should be 'test', not 'test-generated-id', since lastChatId is '${source}-test'
   it('should restore last chat when setting same source and lastChatId with id that matches getNanoid', () => {
     const store = useChatStore.getState();
-    const source = ChatSourceEnum.share;
+    const source = ChatSourceEnum.online;
     const chatId = 'test';
 
     useChatStore.setState({
