@@ -7,7 +7,26 @@ on:
       - "v*"
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate release version
+        id: version
+        env:
+          VERSION: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          CURRENT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release workflow must run on a tag like v1.2.3. Current ref: ${CURRENT_REF}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
   build-fastgpt-admin-images:
+    needs: validate-version
     permissions:
       packages: write
       contents: read
@@ -107,7 +126,7 @@ jobs:
       contents: read
       attestations: write
       id-token: write
-    needs: build-fastgpt-admin-images
+    needs: [validate-version, build-fastgpt-admin-images]
     strategy:
       matrix:
         sub_routes:
@@ -141,17 +160,11 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-          else
-            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-          fi
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:${VERSION}" >> $GITHUB_ENV
+          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests

@@ -7,7 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate release version
+        id: version
+        env:
+          VERSION: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          CURRENT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release workflow must run on a tag like v1.2.3. Current ref: ${CURRENT_REF}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
   helm:
+    needs: validate-version
     permissions:
       packages: write
       contents: read
@@ -20,14 +39,11 @@ jobs:
         with:
           fetch-tags: true
           fetch-depth: 0
-      - name: Set output
-        id: vars
-        run: echo "tag=$(git describe --tags)" >> $GITHUB_OUTPUT
       - name: Release Helm
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-          export APP_VERSION=${{ steps.vars.outputs.tag }}
-          export HELM_VERSION=${{ steps.vars.outputs.tag }}
+          export APP_VERSION=${{ needs.validate-version.outputs.version }}
+          export HELM_VERSION=${{ needs.validate-version.outputs.version }}
           export HELM_REPO=ghcr.io/${{ github.repository_owner }}
           helm dependency update deploy/helm/fastgpt
           helm package deploy/helm/fastgpt --version ${HELM_VERSION}-helm --app-version ${APP_VERSION} -d bin
