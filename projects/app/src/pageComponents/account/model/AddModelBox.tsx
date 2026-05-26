@@ -9,9 +9,7 @@ import {
   Thead,
   Tr,
   Switch,
-  ModalBody,
   Input,
-  ModalFooter,
   Button,
   type ButtonProps,
   Grid,
@@ -913,327 +911,319 @@ export const ModelEditModal = ({
       maxW={['80vw', '70vw']}
       w="800px"
       h={'100%'}
-      px={0}
-      py={8}
-      headerPx={'32px'}
-    >
-      <ModalBody px={'32px'} py={0}>
-        <Section key={key} title={t('account_model:model.basic_config_section')}>
-          <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
-            <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <Field
-                label={t('account_model:model.model_id')}
-                tip={t('account_model:model.model_id_tip')}
-              >
-                <Input
-                  {...register('model', { required: true })}
-                  {...InputStyles}
-                  isReadOnly={!isCustom}
-                />
-              </Field>
-              <Field
-                label={t('account_model:model.alias')}
-                tip={t('account_model:model.alias_tip')}
-              >
-                <Input {...register('name', { required: true })} {...InputStyles} />
-              </Field>
-              <ProviderField
-                control={control}
-                setValue={setValue}
-                providerList={providerList}
-                t={t}
-              />
-            </Grid>
-          </Flex>
-        </Section>
-
-        {isLLMModel && (
-          <Section title={t('account_model:model.params_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
-              <Field label={t('common:core.ai.Max context')}>
-                <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="maxContext"
-                  {...NumberInputStyles}
-                />
-              </Field>
-
-              <Field
-                label={t('common:core.chat.response.module maxToken')}
-                tip={t('account_model:maxToken_tip')}
-              >
-                <MyNumberInput
-                  register={register}
-                  name="maxResponse"
-                  min={2000}
-                  {...NumberInputStyles}
-                />
-              </Field>
-
-              <Field label={t('account_model:model.max_quote')}>
-                <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="quoteMaxToken"
-                  {...NumberInputStyles}
-                />
-              </Field>
-
-              <Field
-                label={t('account_model:model.max_temperature')}
-                tip={t('account_model:max_temperature_tip')}
-              >
-                <MyNumberInput
-                  register={register}
-                  name="maxTemperature"
-                  min={0}
-                  step={0.1}
-                  {...NumberInputStyles}
-                />
-              </Field>
-
-              <SwitchField
-                label={t('account_model:model.show_top_p')}
-                field={'showTopP'}
-                register={register}
-              />
-
-              <SwitchField
-                label={t('account_model:model.show_stop_sign')}
-                field={'showStopSign'}
-                register={register}
-              />
-
-              <ResponseFormatField control={control} setValue={setValue} t={t} />
-            </Grid>
-          </Section>
-        )}
-
-        {isEmbeddingModel && (
-          <Section title={t('account_model:model.params_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <SwitchField
-                label={t('account_model:model.normalization')}
-                tip={t('account_model:model.normalization_tip')}
-                field={'normalization'}
-                register={register}
-              />
-              <Field label={t('account_model:batch_size')}>
-                <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="batchSize"
-                  min={1}
-                  step={1}
-                  {...NumberInputStyles}
-                />
-              </Field>
-              <Field
-                label={t('account_model:model.default_token')}
-                tip={t('account_model:model.default_token_tip')}
-              >
-                <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="defaultToken"
-                  {...NumberInputStyles}
-                />
-              </Field>
-              <Field label={t('common:core.ai.Max context')}>
-                <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="maxToken"
-                  {...NumberInputStyles}
-                />
-              </Field>
-            </Grid>
-          </Section>
-        )}
-
-        {isRerankModel && (
-          <Section title={t('account_model:model.params_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <Field
-                label={t('account_model:rerank_max_token')}
-                tip={t('account_model:rerank_max_token_tip')}
-              >
-                <MyNumberInput
-                  register={register}
-                  name="maxToken"
-                  min={1000}
-                  {...NumberInputStyles}
-                />
-              </Field>
-            </Grid>
-          </Section>
-        )}
-
-        {isLLMModel && (
-          <Section title={t('account_model:model.feature_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <SwitchField
-                label={t('account_model:model.tool_choice')}
-                tip={t('account_model:model.tool_choice_tip')}
-                field={'toolChoice'}
-                register={register}
-              />
-              <SwitchField
-                label={t('account_model:model.vision')}
-                tip={t('account_model:model.vision_tip')}
-                field={'vision'}
-                register={register}
-              />
-              <SwitchField
-                label={t('account_model:audio')}
-                tip={t('account_model:audio_tip')}
-                field={'audio'}
-                register={register}
-              />
-              <SwitchField
-                label={t('account_model:video')}
-                tip={t('account_model:video_tip')}
-                field={'video'}
-                register={register}
-              />
-              <SwitchField
-                label={t('account_model:model.reasoning')}
-                tip={t('account_model:model.reasoning_tip')}
-                field={'reasoning'}
-                register={register}
-              />
-              {reasoningEnabled && (
-                <SwitchField
-                  label={t('account_model:model.reasoning_effort')}
-                  field={'reasoningEffort'}
-                  register={register}
-                />
-              )}
-              {feConfigs?.isPlus && (
-                <SwitchField
-                  label={t('account_model:model.censor')}
-                  tip={t('account_model:model.censor_tip')}
-                  field={'censor'}
-                  register={register}
-                />
-              )}
-            </Grid>
-          </Section>
-        )}
-
-        {isEmbeddingModel && (
-          <Section title={t('account_model:model.feature_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <SwitchField
-                label={t('account_model:model.vision')}
-                tip={t('account_model:model.embedding_vision_tip')}
-                field={'vision'}
-                register={register}
-              />
-            </Grid>
-          </Section>
-        )}
-
-        {priceUnit && feConfigs?.isPlus && (
-          <Section title={t('account_model:model.price_config_section')}>
-            {isLLMModel ? (
-              <PriceTiersTable
-                control={control}
-                register={register}
-                getValues={getValues}
-                setValue={setValue}
-                t={t}
-              />
-            ) : (
-              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-                <Field
-                  label={`${t('account_model:model.charsPointsPrice')}`}
-                  tip={t('account_model:model.charsPointsPrice_tip')}
-                >
-                  <Flex alignItems={'center'} gap={2}>
-                    <MyNumberInput
-                      register={register}
-                      name="charsPointsPrice"
-                      step={0.01}
-                      {...NumberInputStyles}
-                    />
-                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
-                      / 1k Tokens
-                    </Box>
-                  </Flex>
-                </Field>
-              </Grid>
-            )}
-          </Section>
-        )}
-
-        <Section title={t('common:Other')} showBorder={false}>
-          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-            {isLLMModel && (
-              <Field
-                label={t('account_model:model.default_system_chat_prompt')}
-                tip={t('account_model:model.default_system_chat_prompt_tip')}
-                colSpan={[1, 2]}
-              >
-                <MyTextarea
-                  {...register('defaultSystemChatPrompt')}
-                  {...MultilineInputStyles}
-                  minH={'110px'}
-                />
-              </Field>
-            )}
-            {(isLLMModel || isEmbeddingModel || isRerankModel) && (
-              <DefaultConfigField
-                control={control}
-                setValue={setValue}
-                label={
-                  isEmbeddingModel
-                    ? t('account_model:model.defaultConfig')
-                    : t('account_model:model.default_config')
-                }
-                tip={
-                  isEmbeddingModel
-                    ? t('account_model:model.defaultConfig_tip')
-                    : isRerankModel
-                      ? t('account_model:model.rerank_default_config_tip')
-                      : t('account_model:model.default_config_tip')
-                }
-              />
-            )}
-            {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
-            {CustomApi}
-            <SwitchField
-              label={t('account_model:model.test_mode')}
-              tip={t('account_model:model.test_mode_tip')}
-              field={'testMode'}
-              register={register}
-            />
-          </Grid>
-        </Section>
-      </ModalBody>
-      <ModalFooter display={'flex'} w="full" px={'32px'} py={0} mt={4}>
-        {!modelData.isCustom && (
-          <Button
-            isLoading={loadingDefaultConfig}
-            variant={'whiteBase'}
-            mr={4}
-            size={'md'}
-            onClick={() => loadDefaultConfig(modelData.model)}
-          >
-            {t('account_model:reset_default')}
-          </Button>
-        )}
-
-        <Box ml="auto">
-          <Button variant={'whiteBase'} mr={3} size={'md'} onClick={onClose}>
+      footerStyles={{ display: 'flex', w: 'full' }}
+      footer={
+        <>
+          {!modelData.isCustom && (
+            <Button
+              isLoading={loadingDefaultConfig}
+              variant={'whiteBase'}
+              size={'md'}
+              onClick={() => loadDefaultConfig(modelData.model)}
+              mr={'auto'}
+            >
+              {t('account_model:reset_default')}
+            </Button>
+          )}
+          <Button variant={'whiteBase'} size={'md'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
           <Button size={'md'} isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
             {t('common:Confirm')}
           </Button>
-        </Box>
-      </ModalFooter>
+        </>
+      }
+    >
+      <Section key={key} title={t('account_model:model.basic_config_section')}>
+        <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
+          <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <Field
+              label={t('account_model:model.model_id')}
+              tip={t('account_model:model.model_id_tip')}
+            >
+              <Input
+                {...register('model', { required: true })}
+                {...InputStyles}
+                isReadOnly={!isCustom}
+              />
+            </Field>
+            <Field label={t('account_model:model.alias')} tip={t('account_model:model.alias_tip')}>
+              <Input {...register('name', { required: true })} {...InputStyles} />
+            </Field>
+            <ProviderField
+              control={control}
+              setValue={setValue}
+              providerList={providerList}
+              t={t}
+            />
+          </Grid>
+        </Flex>
+      </Section>
+
+      {isLLMModel && (
+        <Section title={t('account_model:model.params_config_section')}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
+            <Field label={t('common:core.ai.Max context')}>
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="maxContext"
+                {...NumberInputStyles}
+              />
+            </Field>
+
+            <Field
+              label={t('common:core.chat.response.module maxToken')}
+              tip={t('account_model:maxToken_tip')}
+            >
+              <MyNumberInput
+                register={register}
+                name="maxResponse"
+                min={2000}
+                {...NumberInputStyles}
+              />
+            </Field>
+
+            <Field label={t('account_model:model.max_quote')}>
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="quoteMaxToken"
+                {...NumberInputStyles}
+              />
+            </Field>
+
+            <Field
+              label={t('account_model:model.max_temperature')}
+              tip={t('account_model:max_temperature_tip')}
+            >
+              <MyNumberInput
+                register={register}
+                name="maxTemperature"
+                min={0}
+                step={0.1}
+                {...NumberInputStyles}
+              />
+            </Field>
+
+            <SwitchField
+              label={t('account_model:model.show_top_p')}
+              field={'showTopP'}
+              register={register}
+            />
+
+            <SwitchField
+              label={t('account_model:model.show_stop_sign')}
+              field={'showStopSign'}
+              register={register}
+            />
+
+            <ResponseFormatField control={control} setValue={setValue} t={t} />
+          </Grid>
+        </Section>
+      )}
+
+      {isEmbeddingModel && (
+        <Section title={t('account_model:model.params_config_section')}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <SwitchField
+              label={t('account_model:model.normalization')}
+              tip={t('account_model:model.normalization_tip')}
+              field={'normalization'}
+              register={register}
+            />
+            <Field label={t('account_model:batch_size')}>
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="batchSize"
+                min={1}
+                step={1}
+                {...NumberInputStyles}
+              />
+            </Field>
+            <Field
+              label={t('account_model:model.default_token')}
+              tip={t('account_model:model.default_token_tip')}
+            >
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="defaultToken"
+                {...NumberInputStyles}
+              />
+            </Field>
+            <Field label={t('common:core.ai.Max context')}>
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="maxToken"
+                {...NumberInputStyles}
+              />
+            </Field>
+          </Grid>
+        </Section>
+      )}
+
+      {isRerankModel && (
+        <Section title={t('account_model:model.params_config_section')}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <Field
+              label={t('account_model:rerank_max_token')}
+              tip={t('account_model:rerank_max_token_tip')}
+            >
+              <MyNumberInput
+                register={register}
+                name="maxToken"
+                min={1000}
+                {...NumberInputStyles}
+              />
+            </Field>
+          </Grid>
+        </Section>
+      )}
+
+      {isLLMModel && (
+        <Section title={t('account_model:model.feature_config_section')}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <SwitchField
+              label={t('account_model:model.tool_choice')}
+              tip={t('account_model:model.tool_choice_tip')}
+              field={'toolChoice'}
+              register={register}
+            />
+            <SwitchField
+              label={t('account_model:model.vision')}
+              tip={t('account_model:model.vision_tip')}
+              field={'vision'}
+              register={register}
+            />
+            <SwitchField
+              label={t('account_model:audio')}
+              tip={t('account_model:audio_tip')}
+              field={'audio'}
+              register={register}
+            />
+            <SwitchField
+              label={t('account_model:video')}
+              tip={t('account_model:video_tip')}
+              field={'video'}
+              register={register}
+            />
+            <SwitchField
+              label={t('account_model:model.reasoning')}
+              tip={t('account_model:model.reasoning_tip')}
+              field={'reasoning'}
+              register={register}
+            />
+            {reasoningEnabled && (
+              <SwitchField
+                label={t('account_model:model.reasoning_effort')}
+                field={'reasoningEffort'}
+                register={register}
+              />
+            )}
+            {feConfigs?.isPlus && (
+              <SwitchField
+                label={t('account_model:model.censor')}
+                tip={t('account_model:model.censor_tip')}
+                field={'censor'}
+                register={register}
+              />
+            )}
+          </Grid>
+        </Section>
+      )}
+
+      {isEmbeddingModel && (
+        <Section title={t('account_model:model.feature_config_section')}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <SwitchField
+              label={t('account_model:model.vision')}
+              tip={t('account_model:model.embedding_vision_tip')}
+              field={'vision'}
+              register={register}
+            />
+          </Grid>
+        </Section>
+      )}
+
+      {priceUnit && feConfigs?.isPlus && (
+        <Section title={t('account_model:model.price_config_section')}>
+          {isLLMModel ? (
+            <PriceTiersTable
+              control={control}
+              register={register}
+              getValues={getValues}
+              setValue={setValue}
+              t={t}
+            />
+          ) : (
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+              <Field
+                label={`${t('account_model:model.charsPointsPrice')}`}
+                tip={t('account_model:model.charsPointsPrice_tip')}
+              >
+                <Flex alignItems={'center'} gap={2}>
+                  <MyNumberInput
+                    register={register}
+                    name="charsPointsPrice"
+                    step={0.01}
+                    {...NumberInputStyles}
+                  />
+                  <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                    / 1k Tokens
+                  </Box>
+                </Flex>
+              </Field>
+            </Grid>
+          )}
+        </Section>
+      )}
+
+      <Section title={t('common:Other')} showBorder={false}>
+        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+          {isLLMModel && (
+            <Field
+              label={t('account_model:model.default_system_chat_prompt')}
+              tip={t('account_model:model.default_system_chat_prompt_tip')}
+              colSpan={[1, 2]}
+            >
+              <MyTextarea
+                {...register('defaultSystemChatPrompt')}
+                {...MultilineInputStyles}
+                minH={'110px'}
+              />
+            </Field>
+          )}
+          {(isLLMModel || isEmbeddingModel || isRerankModel) && (
+            <DefaultConfigField
+              control={control}
+              setValue={setValue}
+              label={
+                isEmbeddingModel
+                  ? t('account_model:model.defaultConfig')
+                  : t('account_model:model.default_config')
+              }
+              tip={
+                isEmbeddingModel
+                  ? t('account_model:model.defaultConfig_tip')
+                  : isRerankModel
+                    ? t('account_model:model.rerank_default_config_tip')
+                    : t('account_model:model.default_config_tip')
+              }
+            />
+          )}
+          {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
+          {CustomApi}
+          <SwitchField
+            label={t('account_model:model.test_mode')}
+            tip={t('account_model:model.test_mode_tip')}
+            field={'testMode'}
+            register={register}
+          />
+        </Grid>
+      </Section>
     </MyModal>
   );
 };

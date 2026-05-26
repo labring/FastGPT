@@ -1,8 +1,9 @@
-import { Box, Button, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Input, Flex } from '@chakra-ui/react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 type FormType = {
   versionName: string;
@@ -29,40 +30,41 @@ const SaveAndPublishModal = ({
   return (
     <MyModal
       title={title || t('common:core.workflow.Save and publish')}
-      iconSrc={'core/workflow/publish'}
-      maxW={'400px'}
       isOpen
       onClose={onClose}
+      isCentered
+      footer={
+        <>
+          <Button onClick={onClose} variant={'whiteBase'}>
+            {t('common:Cancel')}
+          </Button>
+          <Button
+            isLoading={isLoading}
+            onClick={handleSubmit(async (data) => {
+              await onConfirm(data.versionName);
+            })}
+          >
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
-      <ModalBody>
-        <Box mb={2.5} color={'myGray.900'} fontSize={'14px'} fontWeight={'500'}>
-          {t('common:Name')}
-        </Box>
-        <Box mb={3}>
+      <Flex flexDirection={'column'} gap={6}>
+        <Box>
+          <FormLabel mb={2}>{t('common:Name')}</FormLabel>
           <Input
+            size={'sm'}
             autoFocus
             placeholder={t('app:app.Version name')}
-            bg={'myWhite.600'}
             {...register('versionName', {
               required: t('app:app.version_name_tips')
             })}
           />
         </Box>
-        <Box fontSize={'14px'}>{t('app:app.version_publish_tips')}</Box>
-      </ModalBody>
-      <ModalFooter gap={3}>
-        <Button onClick={onClose} variant={'whiteBase'}>
-          {t('common:Cancel')}
-        </Button>
-        <Button
-          isLoading={isLoading}
-          onClick={handleSubmit(async (data) => {
-            await onConfirm(data.versionName);
-          })}
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+        <Box fontSize={'12px'} color={'myGray.500'} mt={-2}>
+          {t('app:app.version_publish_tips')}
+        </Box>
+      </Flex>
     </MyModal>
   );
 };

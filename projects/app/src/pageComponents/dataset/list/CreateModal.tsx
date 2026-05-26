@@ -94,11 +94,23 @@ const CreateModal = ({
       isOpen
       onClose={onClose}
       size={'md'}
-      iconSrc={DatasetTypeMap[type].avatar}
+      isCentered
       title={t('dataset:create_dataset_title', { name: t(DatasetTypeMap[type].label) })}
-      contentPx={'32px'}
-      contentPy={'32px'}
       borderRadius={'10px'}
+      footer={
+        <>
+          <Button variant={'whiteBase'} fontSize={'12px'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button
+            fontSize={'12px'}
+            isLoading={creating}
+            onClick={handleSubmit((data) => onclickCreate(data))}
+          >
+            {t('common:Create')}
+          </Button>
+        </>
+      }
     >
       <Flex
         flexDirection={'column'}
@@ -264,19 +276,6 @@ const CreateModal = ({
             <ApiDatasetForm type={type} form={form} controlWidth={['100%', '300px']} />
           </Box>
         )}
-
-        <Flex mt={6} w={'100%'} justifyContent={'flex-end'} gap={3}>
-          <Button variant={'whiteBase'} fontSize={'12px'} onClick={onClose}>
-            {t('common:Close')}
-          </Button>
-          <Button
-            fontSize={'12px'}
-            isLoading={creating}
-            onClick={handleSubmit((data) => onclickCreate(data))}
-          >
-            {t('common:Create')}
-          </Button>
-        </Flex>
 
         <ComplianceTip pb={0} pt={0} px={0} type={'dataset'} />
 

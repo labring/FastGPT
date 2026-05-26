@@ -84,10 +84,19 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
         onClose={onClose}
         title={t('skill:create_skill')}
         size={'md'}
-        contentPx={'32px'}
-        contentPy={'32px'}
+        isCentered
         borderRadius={'10px'}
         closeOnOverlayClick={false}
+        footer={
+          <>
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={isCreating} onClick={handleSubmit((data) => onCreate(data))}>
+              {t('common:Confirm')}
+            </Button>
+          </>
+        }
       >
         <Flex flexDirection={'column'} gap={6}>
           {/* 图标 & 名称 */}
@@ -181,15 +190,6 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
               resize={'vertical'}
             />
           </Box>
-        </Flex>
-
-        <Flex justifyContent={'flex-end'} gap={3} mt={6}>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button isLoading={isCreating} onClick={handleSubmit((data) => onCreate(data))}>
-            {t('common:Confirm')}
-          </Button>
         </Flex>
       </MyModal>
       <AvatarUploader />

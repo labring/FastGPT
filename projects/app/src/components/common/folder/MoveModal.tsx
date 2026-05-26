@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import {
   type GetResourceFolderListProps,
   type GetResourceFolderListItemResponse,
@@ -165,25 +165,41 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
   return (
     <MyModal
       isLoading={folderList.length === 0}
-      iconSrc="/imgs/modal/move.svg"
       isOpen
-      w={'30rem'}
+      size={'md'}
       title={title}
       onClose={onClose}
+      isCentered
+      bodyStyles={{
+        flex: '1 0 0',
+        minH: '400px'
+      }}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
-      <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'}>
-        {moveHint && (
-          <Box mb={1}>
-            <LightTip text={moveHint} />
-          </Box>
-        )}
+      {moveHint && (
+        <Box mb={3}>
+          <LightTip text={moveHint} />
+        </Box>
+      )}
+      <Box
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        borderRadius={'md'}
+        p={3}
+        flex={'1 0 0'}
+        overflowY={'auto'}
+      >
         <RenderList list={folderList} />
-      </ModalBody>
-      <ModalFooter>
-        <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+      </Box>
     </MyModal>
   );
 };

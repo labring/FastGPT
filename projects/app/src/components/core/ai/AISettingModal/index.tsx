@@ -258,81 +258,88 @@ const AIChatSettingsModal = ({
       }
       w={'580px'}
       maxW={'90vw'}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button onClick={handleSubmit(onSuccess)}>{t('common:Confirm')}</Button>
+        </>
+      }
     >
-      <Box maxH={'60vh'} overflowY={'auto'} overflowX={'hidden'}>
-        <VStack spacing={4} align="stretch">
-          {/* 基础配置 */}
-          <SectionCard title={t('app:ai_setting_basic_config')}>
-            <SettingRow label={t('common:core.ai.Model')}>
-              <AIModelSelector
-                width={'100%'}
-                h={'36px'}
-                value={model}
-                list={llmModels.map((item) => ({
-                  value: item.model,
-                  label: item.name
-                }))}
-                onChange={onChangeModel}
-              />
-            </SettingRow>
+      <VStack spacing={4} align="stretch">
+        {/* 基础配置 */}
+        <SectionCard title={t('app:ai_setting_basic_config')}>
+          <SettingRow label={t('common:core.ai.Model')}>
+            <AIModelSelector
+              width={'100%'}
+              h={'36px'}
+              value={model}
+              list={llmModels.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onChange={onChangeModel}
+            />
+          </SettingRow>
 
-            <TableContainer borderRadius={'sm'} borderWidth={'1px'} borderColor={'myGray.200'}>
-              <Table variant={'bordered'}>
-                <Thead>
-                  <Tr>
-                    <Th>
-                      <HStack spacing={1}>
-                        <Box>{t('app:ai_point_price')}</Box>
-                        <ModelPriceModal>
-                          {({ onOpen }) => (
-                            <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
-                          )}
-                        </ModelPriceModal>
-                      </HStack>
-                    </Th>
-                    <Th>{t('common:core.ai.Max context')}</Th>
-                    <Th>
-                      <HStack spacing={1}>
-                        <Box>{t('common:core.ai.Support tool')}</Box>
-                        <QuestionTip label={t('common:core.module.template.AI support tool tip')} />
-                      </HStack>
-                    </Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  <Tr>
-                    <Td>
-                      {!!selectedModel && (
-                        <PriceLine
-                          config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
-                          priceKey={'input'}
-                          fontSize={'mini'}
-                        />
-                      )}
-                    </Td>
-                    <Td rowSpan={2}>{Math.round((selectedModel?.maxContext || 4096) / 1000)}K</Td>
-                    <Td rowSpan={2}>
-                      {selectedModel?.toolChoice || selectedModel?.functionCall
-                        ? t('common:support')
-                        : t('common:not_support')}
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      {!!selectedModel && (
-                        <PriceLine
-                          config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
-                          priceKey={'output'}
-                          fontSize={'mini'}
-                        />
-                      )}
-                    </Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
+          <TableContainer borderRadius={'sm'} borderWidth={'1px'} borderColor={'myGray.200'}>
+            <Table variant={'bordered'}>
+              <Thead>
+                <Tr>
+                  <Th>
+                    <HStack spacing={1}>
+                      <Box>{t('app:ai_point_price')}</Box>
+                      <ModelPriceModal>
+                        {({ onOpen }) => (
+                          <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
+                        )}
+                      </ModelPriceModal>
+                    </HStack>
+                  </Th>
+                  <Th>{t('common:core.ai.Max context')}</Th>
+                  <Th>
+                    <HStack spacing={1}>
+                      <Box>{t('common:core.ai.Support tool')}</Box>
+                      <QuestionTip label={t('common:core.module.template.AI support tool tip')} />
+                    </HStack>
+                  </Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <Tr>
+                  <Td>
+                    {!!selectedModel && (
+                      <PriceLine
+                        config={selectedModel}
+                        unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                        priceKey={'input'}
+                        fontSize={'mini'}
+                      />
+                    )}
+                  </Td>
+                  <Td rowSpan={2}>{Math.round((selectedModel?.maxContext || 4096) / 1000)}K</Td>
+                  <Td rowSpan={2}>
+                    {selectedModel?.toolChoice || selectedModel?.functionCall
+                      ? t('common:support')
+                      : t('common:not_support')}
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>
+                    {!!selectedModel && (
+                      <PriceLine
+                        config={selectedModel}
+                        unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                        priceKey={'output'}
+                        fontSize={'mini'}
+                      />
+                    )}
+                  </Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </TableContainer>
 
             {showMaxHistoriesSlider && (
               <SettingRow
@@ -382,7 +389,7 @@ const AIChatSettingsModal = ({
             )}
             {showMultimodalSetting && (
               <SettingRow
-                label={multimodalSettingLabel}
+                label={t('app:llm_use_multimodal')}
                 switchControl={
                   !supportParams.multimodal ? (
                     <Box fontSize={'sm'} color={'myGray.500'}>
@@ -442,182 +449,172 @@ const AIChatSettingsModal = ({
             )}
           </SectionCard>
 
-          {/* 思考配置 */}
-          {showReasoningSection && (
-            <SectionCard title={t('app:ai_setting_reasoning_config')}>
-              <SettingRow
-                label={t('app:reasoning_effort')}
-                tip={t('app:ai_setting_reasoning_config_tip')}
-              >
-                {supportParams.reasoningEffort ? (
-                  <MySelect<ReasoningEffort>
-                    h={'36px'}
-                    list={reasoningEffortList.map((item) => ({
-                      label: t(item.label),
-                      value: item.value
-                    }))}
-                    value={reasoningEffort ?? null}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatReasoningEffort, e);
-                    }}
-                  />
-                ) : (
-                  <Box fontSize={'sm'} color={'myGray.900'}>
-                    {t('app:reasoning_effort_unsupported')}
-                  </Box>
-                )}
-              </SettingRow>
-              {reasoningEffort !== 'none' && (
-                <SettingRow
-                  label={t('app:reasoning_response')}
-                  switchControl={
-                    <Switch
-                      isChecked={!reasoning}
-                      onChange={(e) => {
-                        setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
-                      }}
-                    />
-                  }
+        {/* 思考配置 */}
+        {showReasoningSection && (
+          <SectionCard title={t('app:ai_setting_reasoning_config')}>
+            <SettingRow
+              label={t('app:reasoning_effort')}
+              tip={t('app:ai_setting_reasoning_config_tip')}
+            >
+              {supportParams.reasoningEffort ? (
+                <MySelect<ReasoningEffort>
+                  h={'36px'}
+                  list={reasoningEffortList.map((item) => ({
+                    label: t(item.label),
+                    value: item.value
+                  }))}
+                  value={reasoningEffort ?? null}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatReasoningEffort, e);
+                  }}
                 />
-              )}
-            </SectionCard>
-          )}
-
-          {/* 高级配置 */}
-          {showAdvancedConfig && (
-            <SectionCard title={t('app:ai_setting_advanced_config')}>
-              {supportParams.temperature && showTemperature && (
-                <SettingRow
-                  label={t('app:temperature')}
-                  tip={t('app:temperature_tip')}
-                  switchControl={
-                    <Switch
-                      isChecked={temperature !== undefined}
-                      onChange={(e) => {
-                        setValue('temperature', e.target.checked ? 0 : undefined);
-                      }}
-                    />
-                  }
-                >
-                  <InputSlider
-                    min={0}
-                    max={10}
-                    step={1}
-                    value={temperature}
-                    inputVariant={'whiteOutline'}
-                    isDisabled={temperature === undefined}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatTemperature, e);
-                      setRefresh(!refresh);
-                    }}
-                  />
-                </SettingRow>
-              )}
-              {supportParams.topP && showTopP && (
-                <SettingRow
-                  label="Top_p"
-                  tip={t('app:show_top_p_tip')}
-                  switchControl={
-                    <Switch
-                      isChecked={topP !== undefined}
-                      onChange={(e) => {
-                        setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
-                      }}
-                    />
-                  }
-                >
-                  <InputSlider
-                    min={0}
-                    max={1}
-                    step={0.1}
-                    value={topP}
-                    inputVariant={'whiteOutline'}
-                    isDisabled={topP === undefined}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatTopP, e);
-                      setRefresh(!refresh);
-                    }}
-                  />
-                </SettingRow>
-              )}
-              {showStopSign && supportParams.stop && (
-                <SettingRow
-                  label={t('app:stop_sign')}
-                  switchControl={
-                    <Switch
-                      isChecked={stopSign !== undefined}
-                      onChange={(e) => {
-                        setValue(
-                          NodeInputKeyEnum.aiChatStopSign,
-                          e.target.checked ? '' : undefined
-                        );
-                      }}
-                    />
-                  }
-                >
-                  <Input
-                    isDisabled={stopSign === undefined}
-                    h={'36px'}
-                    {...register(NodeInputKeyEnum.aiChatStopSign)}
-                    placeholder={t('app:stop_sign_placeholder')}
-                  />
-                </SettingRow>
-              )}
-              {showResponseFormat && supportParams.responseFormat && (
-                <SettingRow
-                  label={t('app:response_format')}
-                  switchControl={
-                    <Switch
-                      isChecked={responseFormat !== undefined}
-                      onChange={(e) => {
-                        setValue(
-                          NodeInputKeyEnum.aiChatResponseFormat,
-                          e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
-                        );
-                      }}
-                    />
-                  }
-                >
-                  <MySelect<string>
-                    isDisabled={responseFormat === undefined}
-                    placeholder={t('app:response_format_placeholder')}
-                    h={'36px'}
-                    list={selectedModel.responseFormatList!.map((item) => ({
-                      value: item,
-                      label: item
-                    }))}
-                    value={responseFormat}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
-                    }}
-                  />
-                </SettingRow>
-              )}
-              {showResponseFormat && responseFormat === 'json_schema' && (
-                <Box w="full" pt={2}>
-                  <HStack spacing={1} fontSize="sm" color="myGray.900" fontWeight={500} mb={2}>
-                    <Box>JSON Schema</Box>
-                    <QuestionTip label={t('app:json_schema_tip')} />
-                  </HStack>
-                  <JsonEditor
-                    value={jsonSchema || ''}
-                    onChange={(e) => {
-                      setValue(NodeInputKeyEnum.aiChatJsonSchema, e);
-                    }}
-                    bg={'myGray.25'}
-                  />
+              ) : (
+                <Box fontSize={'sm'} color={'myGray.900'}>
+                  {t('app:reasoning_effort_unsupported')}
                 </Box>
               )}
-            </SectionCard>
-          )}
-        </VStack>
-      </Box>
-      <Flex justifyContent={'flex-end'} pt={6} gap={3}>
-        <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button onClick={handleSubmit(onSuccess)}>{t('common:Confirm')}</Button>
-      </Flex>
+            </SettingRow>
+            {reasoningEffort !== 'none' && (
+              <SettingRow
+                label={t('app:reasoning_response')}
+                switchControl={
+                  <Switch
+                    isChecked={!reasoning}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
+                    }}
+                  />
+                }
+              />
+            )}
+          </SectionCard>
+        )}
+
+        {/* 高级配置 */}
+        {showAdvancedConfig && (
+          <SectionCard title={t('app:ai_setting_advanced_config')}>
+            {supportParams.temperature && showTemperature && (
+              <SettingRow
+                label={t('app:temperature')}
+                tip={t('app:temperature_tip')}
+                switchControl={
+                  <Switch
+                    isChecked={temperature !== undefined}
+                    onChange={(e) => {
+                      setValue('temperature', e.target.checked ? 0 : undefined);
+                    }}
+                  />
+                }
+              >
+                <InputSlider
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={temperature}
+                  inputVariant={'whiteOutline'}
+                  isDisabled={temperature === undefined}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatTemperature, e);
+                    setRefresh(!refresh);
+                  }}
+                />
+              </SettingRow>
+            )}
+            {supportParams.topP && showTopP && (
+              <SettingRow
+                label="Top_p"
+                tip={t('app:show_top_p_tip')}
+                switchControl={
+                  <Switch
+                    isChecked={topP !== undefined}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
+                    }}
+                  />
+                }
+              >
+                <InputSlider
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={topP}
+                  inputVariant={'whiteOutline'}
+                  isDisabled={topP === undefined}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatTopP, e);
+                    setRefresh(!refresh);
+                  }}
+                />
+              </SettingRow>
+            )}
+            {showStopSign && supportParams.stop && (
+              <SettingRow
+                label={t('app:stop_sign')}
+                switchControl={
+                  <Switch
+                    isChecked={stopSign !== undefined}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatStopSign, e.target.checked ? '' : undefined);
+                    }}
+                  />
+                }
+              >
+                <Input
+                  isDisabled={stopSign === undefined}
+                  h={'36px'}
+                  {...register(NodeInputKeyEnum.aiChatStopSign)}
+                  placeholder={t('app:stop_sign_placeholder')}
+                />
+              </SettingRow>
+            )}
+            {showResponseFormat && supportParams.responseFormat && (
+              <SettingRow
+                label={t('app:response_format')}
+                switchControl={
+                  <Switch
+                    isChecked={responseFormat !== undefined}
+                    onChange={(e) => {
+                      setValue(
+                        NodeInputKeyEnum.aiChatResponseFormat,
+                        e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
+                      );
+                    }}
+                  />
+                }
+              >
+                <MySelect<string>
+                  isDisabled={responseFormat === undefined}
+                  placeholder={t('app:response_format_placeholder')}
+                  h={'36px'}
+                  list={selectedModel.responseFormatList!.map((item) => ({
+                    value: item,
+                    label: item
+                  }))}
+                  value={responseFormat}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
+                  }}
+                />
+              </SettingRow>
+            )}
+            {showResponseFormat && responseFormat === 'json_schema' && (
+              <Box w="full" pt={2}>
+                <HStack spacing={1} fontSize="sm" color="myGray.900" fontWeight={500} mb={2}>
+                  <Box>JSON Schema</Box>
+                  <QuestionTip label={t('app:json_schema_tip')} />
+                </HStack>
+                <JsonEditor
+                  value={jsonSchema || ''}
+                  onChange={(e) => {
+                    setValue(NodeInputKeyEnum.aiChatJsonSchema, e);
+                  }}
+                  bg={'myGray.25'}
+                />
+              </Box>
+            )}
+          </SectionCard>
+        )}
+      </VStack>
     </MyModal>
   );
 };

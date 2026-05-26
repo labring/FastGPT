@@ -14,6 +14,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { type FieldErrors, useForm } from 'react-hook-form';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
@@ -166,32 +167,45 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         isOpen
         onClose={onClose}
         title={t('skill:import_skill')}
-        iconSrc="common/importLight"
-        iconColor={'primary.600'}
         size={'md'}
-        contentPx={'32px'}
-        contentPy={'32px'}
+        isCentered
         borderRadius={'10px'}
         closeOnOverlayClick={false}
+        footer={
+          <>
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
+              {t('common:Confirm')}
+            </Button>
+          </>
+        }
       >
         <Flex flexDirection={'column'} gap={6}>
-          <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common:input_name')}
-            <Flex mt={2} alignItems={'center'}>
+          <Box>
+            <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
+            <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
-                <Avatar
-                  flexShrink={0}
-                  src={avatar}
-                  w={['1.75rem', '2.25rem']}
-                  h={['1.75rem', '2.25rem']}
+                <Flex
+                  borderRadius={'6px'}
+                  w={'34px'}
+                  h={'34px'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  justifyContent={'center'}
+                  alignItems={'center'}
+                  mr={3}
+                  p={'4px'}
                   cursor={'pointer'}
-                  borderRadius={'md'}
                   onClick={handleAvatarSelectorOpen}
-                />
+                >
+                  <Avatar src={avatar} w={'24px'} borderRadius={'6px'} />
+                </Flex>
               </MyTooltip>
               <Input
                 flex={1}
-                ml={3}
+                size={'sm'}
                 autoFocus
                 placeholder={t('skill:skill_name_placeholder')}
                 {...register('name', {
@@ -272,14 +286,6 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
             </Flex>
           )}
           <FileInput onSelect={(files) => files[0] && handleFile(files[0])} />
-          <Flex justifyContent={'flex-end'} gap={3}>
-            <Button variant={'whiteBase'} onClick={onClose}>
-              {t('common:Cancel')}
-            </Button>
-            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
-              {t('common:Confirm')}
-            </Button>
-          </Flex>
         </Flex>
       </MyModal>
       <AvatarUploader />

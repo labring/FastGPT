@@ -68,31 +68,37 @@ const EditFolderModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="common/folderFill"
       title={typeMap.title}
       size={'md'}
-      contentPx={'32px'}
-      contentPy={'32px'}
+      isCentered
       borderRadius={'10px'}
       closeOnOverlayClick={false}
-    >
-      <Flex flexDirection={'column'} gap={6}>
-        <Box>
-          <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
-          <Input {...register('name', { required: true })} autoFocus maxLength={100} />
-        </Box>
-        <Box>
-          <FormLabel mb={2}>{t('common:folder_description')}</FormLabel>
-          <Textarea {...register('intro')} h={'100px'} minH={'100px'} maxLength={200} />
-        </Box>
-        <Flex justifyContent={'flex-end'} gap={3}>
+      footer={
+        <>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
           <Button isLoading={loading} onClick={handleSubmit(onSave)}>
             {t('common:Confirm')}
           </Button>
-        </Flex>
+        </>
+      }
+    >
+      <Flex flexDirection={'column'} gap={6}>
+        <Box>
+          <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
+          <Input {...register('name', { required: true })} size={'sm'} autoFocus maxLength={100} />
+        </Box>
+        <Box>
+          <FormLabel mb={2}>{t('common:folder_description')}</FormLabel>
+          <Textarea
+            {...register('intro')}
+            h={'100px'}
+            minH={'100px'}
+            maxLength={200}
+            resize={'vertical'}
+          />
+        </Box>
       </Flex>
     </MyModal>
   );

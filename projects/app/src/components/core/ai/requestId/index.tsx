@@ -58,12 +58,12 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
       maxW={['90vw', '1080px']}
       h={['90vh', '80vh']}
       maxH={['90vh', '700px']}
-      px={0}
       py={8}
-      headerPx={'32px'}
+      headerStyles={{ px: '32px' }}
+      bodyStyles={{ px: '32px' }}
     >
       {record && (
-        <Flex height={'100%'} mx={'32px'} gap={4}>
+        <Flex height={'100%'} gap={4}>
           <Flex flex={1} flexDirection={'column'} gap={2} minW={0}>
             <Box
               fontSize={'12px'}
