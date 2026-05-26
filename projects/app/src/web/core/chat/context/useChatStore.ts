@@ -1,7 +1,7 @@
 import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 type State = {
@@ -26,6 +26,30 @@ type State = {
   setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
 
   resetChatCache: () => any;
+};
+
+/**
+ * 生成按应用恢复会话用的缓存 key。
+ *
+ * 普通会话按 source + appId 隔离；分享会话的权限边界是 shareId + outLinkUid，
+ * 因此分享缓存 key 必须包含完整外链身份，避免同 app 下不同分享链接或外链用户串用 chatId。
+ */
+const getAppChatIdCacheKey = ({
+  source,
+  appId,
+  outLinkAuthData
+}: {
+  source?: `${ChatSourceEnum}`;
+  appId?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => {
+  if (!source || !appId) return;
+  if (source === ChatSourceEnum.share) {
+    const { shareId, outLinkUid } = outLinkAuthData || {};
+    if (!shareId || !outLinkUid) return;
+    return `${source}:${shareId}:${outLinkUid}:${appId}`;
+  }
+  return `${source}:${appId}`;
 };
 
 const createCustomStorage = () => {
@@ -82,8 +106,13 @@ export const useChatStore = create<State>()(
         source: undefined,
         setSource(e) {
           set((state) => {
-            // 首次进入 chat 页面，如果相同的 source，则恢复上一次的 chatId
-            if (!state.chatId && state.lastChatId && state.lastChatId.startsWith(e)) {
+            // 分享会话的恢复必须依赖 shareId + outLinkUid，不能只靠 lastChatId 的 source 前缀。
+            if (
+              e !== ChatSourceEnum.share &&
+              !state.chatId &&
+              state.lastChatId &&
+              state.lastChatId.startsWith(e)
+            ) {
               state.chatId = state.lastChatId.split('-')[1];
             } else if (e !== get().source) {
               // 来源改变，强制重置 chatId
@@ -99,12 +128,21 @@ export const useChatStore = create<State>()(
 
           set((state) => {
             if (state.appId !== e) {
-              // 离开当前应用前，记住该应用最近一次会话
-              if (state.appId && state.chatId) {
-                state.appChatIdMap[state.appId] = state.chatId;
+              const currentCacheKey = getAppChatIdCacheKey({
+                source: state.source,
+                appId: state.appId,
+                outLinkAuthData: state.outLinkAuthData
+              });
+              if (currentCacheKey && state.chatId) {
+                state.appChatIdMap[currentCacheKey] = state.chatId;
               }
               // 切换到目标应用：优先恢复该应用上次的 chatId，否则临时生成（待历史列表加载后再对齐）
-              const restoredChatId = state.appChatIdMap[e];
+              const nextCacheKey = getAppChatIdCacheKey({
+                source: state.source,
+                appId: e,
+                outLinkAuthData: state.outLinkAuthData
+              });
+              const restoredChatId = nextCacheKey ? state.appChatIdMap[nextCacheKey] : undefined;
               state.chatId = restoredChatId || getNanoid(24);
               if (state.source) {
                 state.lastChatId = `${state.source}-${state.chatId}`;
@@ -122,8 +160,13 @@ export const useChatStore = create<State>()(
           set((state) => {
             state.chatId = id;
             state.lastChatId = `${state.source}-${id}`;
-            if (state.appId) {
-              state.appChatIdMap[state.appId] = id;
+            const cacheKey = getAppChatIdCacheKey({
+              source: state.source,
+              appId: state.appId,
+              outLinkAuthData: state.outLinkAuthData
+            });
+            if (cacheKey) {
+              state.appChatIdMap[cacheKey] = id;
             }
           });
         },
@@ -142,7 +185,28 @@ export const useChatStore = create<State>()(
         outLinkAuthData: {},
         setOutLinkAuthData(e) {
           set((state) => {
+            const currentCacheKey = getAppChatIdCacheKey({
+              source: state.source,
+              appId: state.appId,
+              outLinkAuthData: state.outLinkAuthData
+            });
+            if (currentCacheKey && state.chatId) {
+              state.appChatIdMap[currentCacheKey] = state.chatId;
+            }
+
             state.outLinkAuthData = e;
+
+            const nextCacheKey = getAppChatIdCacheKey({
+              source: state.source,
+              appId: state.appId,
+              outLinkAuthData: e
+            });
+            if (nextCacheKey) {
+              const restoredChatId = state.appChatIdMap[nextCacheKey];
+              state.chatId = restoredChatId || state.chatId || getNanoid(24);
+              state.lastChatId = `${state.source}-${state.chatId}`;
+              state.appChatIdMap[nextCacheKey] = state.chatId;
+            }
           });
         },
         resetChatCache() {
