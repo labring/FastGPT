@@ -1,6 +1,22 @@
 name: 'FastGPT-Test'
 on:
   pull_request:
+    paths:
+      - 'packages/global/**'
+      - 'packages/service/**'
+      - 'packages/web/**'
+      - 'projects/app/**'
+      - 'sdk/**'
+      - 'test/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'tsconfig.json'
+      - 'vitest.config.mts'
+      - 'eslint.config.mjs'
+      - '.npmrc'
+      - '.github/workflows/test-fastgpt.yaml'
   workflow_dispatch:
 
     # Only one build per PR branch at a time
@@ -11,12 +27,78 @@ concurrency:
 permissions:
   # Required to checkout the code
   contents: read
-  # Required to put a comment into the pull-request
-  issues: write
-  pull-requests: write
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run_global: ${{ steps.scope.outputs.run_global }}
+      run_service: ${{ steps.scope.outputs.run_service }}
+      run_app: ${{ steps.scope.outputs.run_app }}
+      should_report: ${{ steps.scope.outputs.should_report }}
+
+    steps:
+      - name: Detect affected test scopes
+        id: scope
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const setOutputs = ({ global, service, app }) => {
+              const shouldReport = global || service || app;
+              core.setOutput('run_global', global ? 'true' : 'false');
+              core.setOutput('run_service', service ? 'true' : 'false');
+              core.setOutput('run_app', app ? 'true' : 'false');
+              core.setOutput('should_report', shouldReport ? 'true' : 'false');
+              core.info(`Test scopes selected: global=${global}, service=${service}, app=${app}`);
+            };
+
+            if (context.eventName !== 'pull_request') {
+              setOutputs({ global: true, service: true, app: true });
+              return;
+            }
+
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+            const fileNames = changedFiles.map((file) => file.filename);
+            const hasPath = (paths) => fileNames.some((fileName) =>
+              paths.some((path) => fileName === path || fileName.startsWith(`${path}/`))
+            );
+
+            const affectsAll = hasPath([
+              'package.json',
+              'pnpm-lock.yaml',
+              'pnpm-workspace.yaml',
+              'turbo.json',
+              'tsconfig.json',
+              'vitest.config.mts',
+              'eslint.config.mjs',
+              '.npmrc',
+              'test',
+              '.github/workflows/test-fastgpt.yaml'
+            ]);
+
+            const runGlobal = affectsAll || hasPath(['packages/global']);
+            const runService = affectsAll || hasPath(['packages/global', 'packages/service', 'sdk']);
+            const runApp = affectsAll || hasPath([
+              'packages/global',
+              'packages/service',
+              'packages/web',
+              'projects/app',
+              'sdk'
+            ]);
+
+            setOutputs({ global: runGlobal, service: runService, app: runApp });
+
   test-global:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_global == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +131,8 @@ jobs:
             packages/global/coverage/coverage-summary.json
 
   test-service:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_service == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +165,8 @@ jobs:
             packages/service/coverage/coverage-summary.json
 
   test-app:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_app == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,8 +199,13 @@ jobs:
 
   report-coverage:
     runs-on: ubuntu-latest
-    needs: [test-global, test-service, test-app]
-    if: always()
+    needs: [detect-changes, test-global, test-service, test-app]
+    if: ${{ always() && needs.detect-changes.outputs.should_report == 'true' }}
+    permissions:
+      contents: read
+      # Required to put a comment into the pull-request
+      issues: write
+      pull-requests: write
     steps:
       - name: 'Download Coverage Artifacts'
         uses: actions/download-artifact@v4
@@ -211,8 +302,11 @@ jobs:
 
       - name: 'Check Test Results'
         run: |
-          if [ "${{ needs.test-global.result }}" != "success" ] ||
-             [ "${{ needs.test-service.result }}" != "success" ] ||
-             [ "${{ needs.test-app.result }}" != "success" ]; then
+          if { [ "${{ needs.test-global.result }}" != "success" ] &&
+               [ "${{ needs.test-global.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-service.result }}" != "success" ] &&
+               [ "${{ needs.test-service.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-app.result }}" != "success" ] &&
+               [ "${{ needs.test-app.result }}" != "skipped" ]; }; then
             exit 1
           fi

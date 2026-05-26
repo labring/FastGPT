@@ -14,11 +14,87 @@ permissions:
   contents: read
 
 jobs:
+  detect_changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      should_build: ${{ steps.preview_matrix.outputs.should_build }}
+      matrix: ${{ steps.preview_matrix.outputs.matrix }}
+
+    steps:
+      - name: Build preview image matrix
+        id: preview_matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullNumber = context.payload.pull_request.number;
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100
+            });
+            const fileNames = changedFiles.map((file) => file.filename);
+            const hasPath = (paths) => fileNames.some((fileName) =>
+              paths.some((path) => fileName === path || fileName.startsWith(`${path}/`))
+            );
+
+            const images = [];
+            const addImage = (image) => images.push(image);
+
+            if (hasPath([
+              'projects/app',
+              'packages',
+              'sdk',
+              'package.json',
+              'pnpm-lock.yaml',
+              'pnpm-workspace.yaml',
+              'tsconfig.json',
+              '.npmrc',
+              'turbo.json'
+            ])) {
+              addImage({
+                image: 'fastgpt',
+                image_name: 'fastgpt',
+                dockerfile: 'projects/app/Dockerfile',
+                description: 'fastgpt-pr image'
+              });
+            }
+
+            if (hasPath(['projects/code-sandbox'])) {
+              addImage({
+                image: 'code-sandbox',
+                image_name: 'fastgpt-code-sandbox',
+                dockerfile: 'projects/code-sandbox/Dockerfile',
+                description: 'fastgpt-code-sandbox-pr image'
+              });
+            }
+
+            if (hasPath(['projects/mcp_server'])) {
+              addImage({
+                image: 'mcp_server',
+                image_name: 'fastgpt-mcp-server',
+                dockerfile: 'projects/mcp_server/Dockerfile',
+                description: 'fastgpt-mcp_server-pr image'
+              });
+            }
+
+            const matrix = images.length > 0
+              ? { include: images }
+              : { include: [{ image: 'noop', image_name: 'noop', dockerfile: 'noop', description: 'noop' }] };
+
+            core.info(`Preview images selected: ${images.map((image) => image.image).join(', ') || 'none'}`);
+            core.setOutput('should_build', images.length > 0 ? 'true' : 'false');
+            core.setOutput('matrix', JSON.stringify(matrix));
+
   build:
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.should_build == 'true' }}
     runs-on: ubuntu-24.04
     strategy:
-      matrix:
-        image: [fastgpt, code-sandbox, mcp_server]
+      matrix: ${{ fromJSON(needs.detect_changes.outputs.matrix) }}
       fail-fast: false
 
     steps:
@@ -28,23 +104,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
-      - name: Set image config
-        id: config
-        run: |
-          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
-            echo "DOCKERFILE=projects/app/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
-            echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "code-sandbox" ]]; then
-            echo "DOCKERFILE=projects/code-sandbox/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-code-sandbox-pr image" >> $GITHUB_OUTPUT
-            echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
-            echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
-            echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -52,15 +111,15 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ steps.config.outputs.DOCKERFILE }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          tags: ${{ steps.config.outputs.IMAGE_NAME }}-pr:${{ github.event.pull_request.head.sha }}
+          tags: ${{ matrix.image_name }}-pr:${{ github.event.pull_request.head.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
-            org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}
+            org.opencontainers.image.description=${{ matrix.description }}
             org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
-          outputs: type=docker,dest=/tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+          outputs: type=docker,dest=/tmp/${{ matrix.image_name }}-image.tar
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
@@ -75,7 +134,7 @@ jobs:
         with:
           name: preview-${{ matrix.image }}-image
           path: |
-            /tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+            /tmp/${{ matrix.image_name }}-image.tar
             /tmp/pr-number.txt
             /tmp/pr-sha.txt
             /tmp/image-type.txt

@@ -12,11 +12,30 @@ permissions:
   id-token: write
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate release version
+        id: version
+        env:
+          VERSION: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          CURRENT_REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release workflow must run on a tag like v1.2.3. Current ref: ${CURRENT_REF}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
   build-fastgpt-sso-service-images:
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    needs: validate-version
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Update submodules
@@ -33,9 +52,9 @@ jobs:
         run: |
           sudo apt update && sudo apt install -y nodejs npm
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Cache Docker layers
@@ -46,30 +65,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: labring
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Set image tags
         run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "Git_Latest=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
-            echo "Git_Tag=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
-          else
-            echo "Git_Tag=ghcr.io/labring/fastgpt-sso-service:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Git_Latest=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
-          fi
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          echo "Git_Tag=ghcr.io/labring/fastgpt-sso-service:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:${VERSION}" >> $GITHUB_ENV
+          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
 
       - name: Build and publish image
         run: |

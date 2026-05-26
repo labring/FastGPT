@@ -12,18 +12,83 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
-  attestations: write
-  id-token: write
-  pull-requests: write
-  issues: write
-  actions: read
 
 jobs:
-  push:
+  check_pr_author:
     runs-on: ubuntu-24.04
-    # Only push when the build succeeded
+    # Only inspect the upstream PR when the build succeeded.
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      trusted: ${{ steps.trust.outputs.trusted }}
+      number: ${{ steps.trust.outputs.number }}
+      sha: ${{ steps.trust.outputs.sha }}
+
+    steps:
+      - name: Check trusted PR author
+        id: trust
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const allowedAssociations = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+            const workflowRun = context.payload.workflow_run;
+            let prNumber = workflowRun.pull_requests?.[0]?.number;
+
+            if (!prNumber) {
+              const headOwner = workflowRun.head_repository?.owner?.login;
+              const headBranch = workflowRun.head_branch;
+
+              if (headOwner && headBranch) {
+                core.info(`workflow_run payload did not include a PR number; looking up PR by ${headOwner}:${headBranch}.`);
+                const { data: pullRequests } = await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                  head: `${headOwner}:${headBranch}`
+                });
+                const matchedPullRequest = pullRequests.find((pullRequest) => pullRequest.head.sha === workflowRun.head_sha) ?? pullRequests[0];
+                prNumber = matchedPullRequest?.number;
+              }
+            }
+
+            if (!prNumber) {
+              core.warning('No pull request was found on the workflow_run payload. Skipping privileged docs preview publish.');
+              core.setOutput('trusted', 'false');
+              return;
+            }
+
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const trusted = allowedAssociations.has(pullRequest.author_association);
+            core.setOutput('trusted', trusted ? 'true' : 'false');
+            core.setOutput('number', String(pullRequest.number));
+            core.setOutput('sha', pullRequest.head.sha);
+
+            if (trusted) {
+              core.info(`PR #${pullRequest.number} author association is ${pullRequest.author_association}; privileged docs preview publish is allowed.`);
+            } else {
+              core.warning(`PR #${pullRequest.number} author association is ${pullRequest.author_association}; skipping privileged docs preview publish.`);
+            }
+
+  push:
+    needs: check_pr_author
+    runs-on: ubuntu-24.04
+    # Only trusted repository members/collaborators can promote PR-built artifacts.
+    if: ${{ needs.check_pr_author.outputs.trusted == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      pull-requests: write
+      issues: write
+      actions: read
 
     steps:
       - name: Download build artifact
@@ -33,12 +98,6 @@ jobs:
           path: /tmp
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read PR metadata
-        id: pr
-        run: |
-          echo "number=$(cat /tmp/pr-number.txt)" >> "$GITHUB_OUTPUT"
-          echo "sha=$(cat /tmp/pr-sha.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Load Docker image
         run: docker load --input /tmp/docs-image.tar
@@ -55,9 +114,9 @@ jobs:
 
       - name: Tag and push Docker image
         run: |
-          docker tag fastgpt-docs-pr:${{ steps.pr.outputs.sha }} \
-            ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
-          docker push ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
+          docker tag fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }} \
+            ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
 
       - name: Update deployment image
         env:
@@ -69,10 +128,10 @@ jobs:
           chmod 600 "$KUBECONFIG_FILE"
 
           kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-docs-preview \
-            fastgpt-docs-preview=ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
+            fastgpt-docs-preview=ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
 
           kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-docs-preview \
-            originImageName="ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}" --overwrite
+            originImageName="ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}" --overwrite
 
       - name: Format preview timestamp
         id: preview_time
@@ -80,11 +139,11 @@ jobs:
           echo "value=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S (UTC+8)')" >> "$GITHUB_OUTPUT"
 
       - name: Add PR comment on success
-        if: success() && steps.pr.outputs.number != ''
+        if: success() && needs.check_pr_author.outputs.number != ''
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = parseInt('${{ steps.pr.outputs.number }}');
+            const prNumber = parseInt('${{ needs.check_pr_author.outputs.number }}');
             const marker = '<!-- fastgpt-docs-preview -->';
 
             const { data: comments } = await github.rest.issues.listComments({
@@ -103,7 +162,7 @@ jobs:
             🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
 
             \`\`\`
-            ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
+            ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
             \`\`\`
 
             🕒 Time: ${{ steps.preview_time.outputs.value }}

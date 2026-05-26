@@ -5,13 +5,21 @@ on:
     paths:
       - "pro"
       - "pro/**"
-      - "packages/**"
-      - "sdk/**"
+      - "packages/global/**"
+      - "packages/service/**"
+      - "packages/web/**"
+      - "sdk/otel/**"
+      - "sdk/storage/**"
+      - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
+      - "tsconfig.json"
+      - "vitest.config.mts"
+      - "eslint.config.mjs"
       - "turbo.json"
+      - ".npmrc"
       - ".gitmodules"
-      - ".github/workflows/fastgpt-pro-test.yaml"
+      - ".github/workflows/test-fastgpt-pro.yaml"
   workflow_dispatch:
 
 concurrency:
