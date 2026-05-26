@@ -284,7 +284,7 @@ async function handler(
             _id: { datasetId: '$datasetId', collectionId: '$collectionId' },
             count: { $sum: 1 },
             hasError: {
-              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+              $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
             },
             hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
             allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
