@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
+import { Input, Button, Box, Textarea, Flex } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -36,7 +36,7 @@ const EditResourceModal = ({
   const { runAsync: onSave, loading } = useRequest(
     (data: EditResourceInfoFormType) => onEdit(data),
     {
-      onSuccess: (res) => {
+      onSuccess: () => {
         onClose();
       }
     }
@@ -55,41 +55,65 @@ const EditResourceModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc={avatar}
       title={title}
+      size={'sm'}
       isCentered
+      closeOnOverlayClick={false}
       footer={
-        <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
-          {t('common:Confirm')}
-        </Button>
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button isLoading={loading} onClick={handleSubmit(onSave)}>
+            {t('common:Confirm')}
+          </Button>
+        </>
       }
     >
-      <Box>
-        <FormLabel mb={1}>{t('common:core.app.Name and avatar')}</FormLabel>
-        <HStack spacing={4}>
-          <MyTooltip label={t('common:set_avatar')}>
-            <Avatar
-              flex={'0 0 2rem'}
-              src={avatar}
-              w={'2rem'}
-              h={'2rem'}
-              cursor={'pointer'}
-              borderRadius={'sm'}
-              onClick={handleAvatarSelectorOpen}
+      <Flex flexDirection={'column'} gap={6}>
+        {/* 图标 & 名称 */}
+        <Box>
+          <FormLabel mb={2}>{t('common:core.app.Name and avatar')}</FormLabel>
+          <Flex alignItems={'center'}>
+            <MyTooltip label={t('common:set_avatar')}>
+              <Flex
+                borderRadius={'6px'}
+                w={'34px'}
+                h={'34px'}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                justifyContent={'center'}
+                alignItems={'center'}
+                mr={3}
+                p={'4px'}
+                cursor={'pointer'}
+                onClick={handleAvatarSelectorOpen}
+              >
+                <Avatar src={avatar} w={'24px'} borderRadius={'6px'} />
+              </Flex>
+            </MyTooltip>
+            <Input
+              flex={1}
+              size={'sm'}
+              {...register('name', { required: true })}
+              autoFocus
+              maxLength={100}
             />
-          </MyTooltip>
-          <Input
-            {...register('name', { required: true })}
-            bg={'myGray.50'}
-            autoFocus
-            maxLength={100}
+          </Flex>
+        </Box>
+
+        {/* 介绍 */}
+        <Box>
+          <FormLabel mb={2}>{t('common:Intro')}</FormLabel>
+          <Textarea
+            {...register('intro')}
+            h={'90px'}
+            minH={'90px'}
+            maxLength={200}
+            resize={'vertical'}
           />
-        </HStack>
-      </Box>
-      <Box mt={4}>
-        <FormLabel mb={1}>{t('common:Intro')}</FormLabel>
-        <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
-      </Box>
+        </Box>
+      </Flex>
 
       <AvatarUploader />
     </MyModal>

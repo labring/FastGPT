@@ -70,8 +70,6 @@ export function ChangeOwnerModal({
   return (
     <MyModal
       isOpen
-      iconSrc="modal/changePer"
-      iconColor="primary.600"
       onClose={onClose}
       title={t('common:permission.change_owner')}
       isLoading={loading}

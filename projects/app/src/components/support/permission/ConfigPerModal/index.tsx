@@ -44,13 +44,7 @@ const ConfigPerModal = ({
 
   return (
     <>
-      <MyModal
-        isOpen
-        iconSrc="keyPrimary"
-        onClose={onClose}
-        title={t('common:permission.Permission config')}
-        isCentered
-      >
+      <MyModal isOpen onClose={onClose} title={t('common:permission.Permission config')} isCentered>
         <HStack>
           <Avatar src={avatar} w={'1.75rem'} borderRadius={'md'} />
           <Box>{name}</Box>

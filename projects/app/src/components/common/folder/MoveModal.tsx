@@ -165,29 +165,41 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
   return (
     <MyModal
       isLoading={folderList.length === 0}
-      iconSrc="/imgs/modal/move.svg"
       isOpen
-      w={'30rem'}
+      size={'md'}
       title={title}
       onClose={onClose}
       isCentered
       bodyStyles={{
         flex: '1 0 0',
-        overflow: 'auto',
         minH: '400px'
       }}
       footer={
-        <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
-          {t('common:Confirm')}
-        </Button>
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
+            {t('common:Confirm')}
+          </Button>
+        </>
       }
     >
       {moveHint && (
-        <Box mb={1}>
+        <Box mb={3}>
           <LightTip text={moveHint} />
         </Box>
       )}
-      <RenderList list={folderList} />
+      <Box
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        borderRadius={'md'}
+        p={3}
+        flex={'1 0 0'}
+        overflowY={'auto'}
+      >
+        <RenderList list={folderList} />
+      </Box>
     </MyModal>
   );
 };

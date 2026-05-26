@@ -6,18 +6,14 @@ import {
   ModalCloseButton,
   type ModalContentProps,
   Box,
-  type ImageProps,
   Flex,
   type FlexProps,
   type BoxProps
 } from '@chakra-ui/react';
 import MyBox from '../../../common/MyBox';
 import { useSystem } from '../../../../hooks/useSystem';
-import Avatar from '../../../common/Avatar';
 
 export interface MyModalProps extends ModalContentProps {
-  iconSrc?: string;
-  iconColor?: ImageProps['color'];
   title?: any;
   isCentered?: boolean;
   isLoading?: boolean;
@@ -47,13 +43,11 @@ const sizeMap = {
 const MyModal = ({
   isOpen = true,
   onClose,
-  iconSrc,
   title,
   children,
   isCentered,
   isLoading,
   closeOnOverlayClick = true,
-  iconColor,
   size = 'sm',
   showCloseButton = true,
   headerStyles,
@@ -90,7 +84,6 @@ const MyModal = ({
         py={0}
         display={'flex'}
         flexDirection={'column'}
-        gap={'24px'}
         containerProps={{
           zIndex: props.zIndex
         }}
@@ -106,22 +99,18 @@ const MyModal = ({
             fontSize={'lg'}
             fontWeight={'500'}
             px={8}
-            pt={6}
+            pt={8}
             pb={0}
             gap={3}
             {...headerStyles}
           >
-            {iconSrc && (
-              <Avatar
-                color={iconColor}
-                objectFit={'contain'}
-                alt=""
-                src={iconSrc}
-                w={'20px'}
-                borderRadius={'sm'}
-              />
-            )}
-            <Box color="black" fontWeight={'500'}>
+            <Box
+              color="black"
+              fontWeight={'500'}
+              fontSize={'20px'}
+              lineHeight={'26px'}
+              letterSpacing={'0.15px'}
+            >
               {title}
             </Box>
           </Flex>
@@ -134,15 +123,29 @@ const MyModal = ({
           display={'flex'}
           flexDirection={'column'}
           px={8}
-          pt={title ? 0 : 8}
-          pb={footer ? 0 : 8}
+          pt={title ? 6 : 8}
+          pb={footer ? 6 : 8}
+          fontSize={'14px'}
+          lineHeight={'20px'}
+          letterSpacing={'0.25px'}
+          color={'myGray.900'}
           {...bodyStyles}
         >
           {children}
         </MyBox>
 
         {!!footer && (
-          <Flex justifyContent={'flex-end'} gap={3} px={8} pb={6} pt={0} {...footerStyles}>
+          <Flex
+            justifyContent={'flex-end'}
+            gap={3}
+            px={8}
+            pb={8}
+            pt={0}
+            fontSize={'12px'}
+            lineHeight={'16px'}
+            letterSpacing={'0.5px'}
+            {...footerStyles}
+          >
             {footer}
           </Flex>
         )}

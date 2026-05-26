@@ -94,7 +94,7 @@ const CreateModal = ({
       isOpen
       onClose={onClose}
       size={'md'}
-      iconSrc={DatasetTypeMap[type].avatar}
+      isCentered
       title={t('dataset:create_dataset_title', { name: t(DatasetTypeMap[type].label) })}
       borderRadius={'10px'}
       footer={

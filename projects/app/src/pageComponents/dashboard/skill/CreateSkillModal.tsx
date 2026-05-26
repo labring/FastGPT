@@ -84,8 +84,7 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
         onClose={onClose}
         title={t('skill:create_skill')}
         size={'md'}
-        px={'32px'}
-        py={'32px'}
+        isCentered
         borderRadius={'10px'}
         closeOnOverlayClick={false}
         footer={
