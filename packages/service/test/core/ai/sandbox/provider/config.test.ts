@@ -154,6 +154,9 @@ describe('sandbox provider config', () => {
       expect(() => getSandboxAdapterConfig({ provider: 'sealosdevbox' })).toThrow(
         'Sandbox provider base URL is required'
       );
+      expect(() => getSandboxAdapterConfig({ provider: 'opensandbox' })).toThrow(
+        'Sandbox provider base URL is required'
+      );
       expect(() => getSandboxAdapterConfig({ provider: 'e2b' })).toThrow(
         'Sandbox provider apiKey is required for e2b'
       );
@@ -268,13 +271,14 @@ describe('sandbox provider config', () => {
     ).toThrow('Sandbox provider apiKey is required for e2b');
   });
 
-  it('validates base url and opensandbox runtime requirements', async () => {
+  it('validates base url, api key and opensandbox runtime requirements', async () => {
     const { validateSandboxConfig } = await loadSandboxConfigModule();
 
     expect(() =>
       validateSandboxConfig({
         provider: 'opensandbox',
         baseUrl: '',
+        apiKey: 'opensandbox-key',
         runtime: 'docker'
       })
     ).toThrow('Sandbox provider base URL is required');
@@ -283,12 +287,22 @@ describe('sandbox provider config', () => {
       validateSandboxConfig({
         provider: 'opensandbox',
         baseUrl: 'http://opensandbox.local',
+        apiKey: '',
+        runtime: 'docker'
+      })
+    ).toThrow('Sandbox provider apiKey is required for opensandbox');
+
+    expect(() =>
+      validateSandboxConfig({
+        provider: 'opensandbox',
+        baseUrl: 'http://opensandbox.local',
+        apiKey: 'opensandbox-key',
         runtime: 'invalid' as 'docker'
       })
     ).toThrow('Invalid runtime: invalid');
   });
 
-  it('does not require opensandbox api key for docker runtime', async () => {
+  it('requires opensandbox api key for docker runtime', async () => {
     const { validateSandboxConfig } = await loadSandboxConfigModule();
 
     expect(() =>
@@ -298,7 +312,7 @@ describe('sandbox provider config', () => {
         apiKey: '',
         runtime: 'docker'
       })
-    ).not.toThrow();
+    ).toThrow('Sandbox provider apiKey is required for opensandbox');
   });
 
   it('throws for unsupported provider in config switch', async () => {

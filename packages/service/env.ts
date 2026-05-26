@@ -21,7 +21,9 @@ export const hasAgentSandboxConfig = () => {
   }
 
   if (provider === 'opensandbox') {
-    return !!process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL;
+    return !!(
+      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
+    );
   }
 
   return false;
@@ -81,7 +83,7 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
     // OpenSandbox配置
-    AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.default('http://127.0.0.1:8080'),
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().default('fastgpt-agent-sandbox'),
