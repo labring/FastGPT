@@ -893,6 +893,7 @@
   "no_select_data": "没有可选值",
   "not_active_team": "你没有可用的团队",
   "not_model_config": "未配置相关模型",
+  "please_select_model": "请选择",
   "not_open": "未开启",
   "not_permission": "当前订阅套餐不支持团队操作日志",
   "not_support": "不支持",

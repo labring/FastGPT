@@ -55,11 +55,14 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model,
+    vlmModel: rawVlmModel,
     apiDatasetServer,
     websiteConfig,
     autoSync
   } = CreateDatasetBodySchema.parse(req.body);
+
+  // vlmModel: null=不使用, undefined=取默认值, string=指定模型
+  const vlmModel = rawVlmModel === null ? undefined : rawVlmModel ?? getDefaultVLMModel()?.model;
 
   // auth
   const { teamId, tmbId, userId } = parentId

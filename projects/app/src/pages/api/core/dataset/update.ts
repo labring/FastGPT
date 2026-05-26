@@ -204,23 +204,32 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
+    // vlmModel 为 null 时表示清空，用 $unset 删除字段；有值时用 $set 更新
+    const updateData: Record<string, any> = {
+      ...parseParentIdInMongo(parentId),
+      ...(name && { name }),
+      ...(avatar && { avatar }),
+      ...(agentModel && { agentModel }),
+      ...(vectorModel && { vectorModel }),
+      ...(vlmModel !== undefined && vlmModel !== null && { vlmModel }),
+      ...(websiteConfig && { websiteConfig }),
+      ...(databaseConfig && { databaseConfig }),
+      ...(chunkSettings && { chunkSettings }),
+      ...(intro !== undefined && { intro }),
+      ...(externalReadUrl !== undefined && { externalReadUrl }),
+      ...(isMove && { inheritPermission: inheritParentPermission }),
+      ...(typeof autoSync === 'boolean' && { autoSync }),
+      ...apiDatasetParams
+    };
+    const unsetData: Record<string, any> = {
+      ...(vlmModel === null && { vlmModel: '' })
+    };
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
-        ...parseParentIdInMongo(parentId),
-        ...(name && { name }),
-        ...(avatar && { avatar }),
-        ...(agentModel && { agentModel }),
-        ...(vectorModel && { vectorModel }),
-        ...(vlmModel && { vlmModel }),
-        ...(websiteConfig && { websiteConfig }),
-        ...(databaseConfig && { databaseConfig }),
-        ...(chunkSettings && { chunkSettings }),
-        ...(intro !== undefined && { intro }),
-        ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(isMove && { inheritPermission: inheritParentPermission }),
-        ...(typeof autoSync === 'boolean' && { autoSync }),
-        ...apiDatasetParams
+        ...(Object.keys(updateData).length > 0 ? { $set: updateData } : {}),
+        ...(Object.keys(unsetData).length > 0 ? { $unset: unsetData } : {})
       },
       { session }
     );

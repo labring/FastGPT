@@ -50,8 +50,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDefaultLLMModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model
+    vlmModel: rawVlmModel
   } = datasetParams;
+
+  // vlmModel: null=不使用, undefined=取默认值, string=指定模型
+  const vlmModel = rawVlmModel === null ? undefined : rawVlmModel ?? getDefaultVLMModel()?.model;
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({

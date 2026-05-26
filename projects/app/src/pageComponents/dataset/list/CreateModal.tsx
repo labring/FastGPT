@@ -27,6 +27,7 @@ import {
   postDatasetSync,
   postRebuildEmbedding
 } from '@/web/core/dataset/api';
+import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -181,7 +182,8 @@ const CreateModal = ({
           // 如果向量模型变了，不在这里更新，由 rebuildEmbedding 负责更新
           ...(!vectorModelChanged && { vectorModel: data.vectorModel }),
           agentModel: data.agentModel,
-          vlmModel: data.vlmModel,
+          // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
+          vlmModel: data.vlmModel ?? null,
           apiDatasetServer: data.apiDatasetServer,
           ...(isWebsite && { websiteConfig: data.websiteConfig }),
           ...(hasAutoSync && { autoSync: data.autoSync })
@@ -201,7 +203,7 @@ const CreateModal = ({
         return;
       }
 
-      const submitData: CreateDatasetParams = {
+      const { vectorModel, agentModel, vlmModel, ...restData } = {
         parentId: data.parentId,
         type: data.type,
         name: data.name,
@@ -209,17 +211,16 @@ const CreateModal = ({
         avatar: data.avatar,
         vectorModel: data.vectorModel,
         agentModel: data.agentModel,
-        vlmModel: data.vlmModel,
+        // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
+        vlmModel: data.vlmModel ?? null,
         apiDatasetServer: data.apiDatasetServer,
         ...(isWebsite && { websiteConfig: data.websiteConfig }),
         ...(hasAutoSync && { autoSync: data.autoSync })
       };
 
-      if (isStructureDocument) {
-        delete submitData.vectorModel;
-        delete submitData.agentModel;
-        delete submitData.vlmModel;
-      }
+      const submitData: CreateDatasetBody = isStructureDocument
+        ? restData
+        : { vectorModel, agentModel, vlmModel, ...restData };
 
       return await postCreateDataset(submitData);
     },
@@ -482,7 +483,8 @@ const CreateModal = ({
               <Box flex={1}>
                 <AIModelSelector
                   w={'100%'}
-                  value={vlmModel}
+                  clearable
+                  value={vlmModel ?? undefined}
                   list={vllmModelList.map((item) => ({
                     label: item.name,
                     value: item.model

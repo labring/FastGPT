@@ -894,6 +894,7 @@
   "no_select_data": "No value available.",
   "not_active_team": "You have no available team",
   "not_model_config": "Not specified",
+  "please_select_model": "Please select",
   "not_open": "Disabled",
   "not_permission": "The current plan does not support logging member operations.",
   "not_support": "Not supported",
