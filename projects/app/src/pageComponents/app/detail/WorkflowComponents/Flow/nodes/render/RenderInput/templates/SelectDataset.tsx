@@ -64,7 +64,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
         >
           <Button
             h={10}
-            leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+            leftIcon={<MyIcon name={'core/chat/sendLight'} w={'14px'} transform="rotate(-135deg)" />}
             onClick={onOpenDatasetSelect}
           >
             {t('common:Choose')}
