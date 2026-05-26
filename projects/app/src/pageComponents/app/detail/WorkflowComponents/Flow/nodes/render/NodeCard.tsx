@@ -1,10 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  useDisclosure,
+  Input,
+  Textarea,
+  type FlexProps
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -20,7 +27,6 @@ import {
 import { useReactFlow } from 'reactflow';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
-import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
 import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
@@ -45,7 +51,6 @@ import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
 import {
@@ -428,8 +433,6 @@ const NodeCard = (props: Props) => {
 
 export default React.memo(NodeCard);
 
-const NODE_NAME_MAX_LENGTH = 50;
-
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
   nodeId: string;
@@ -442,6 +445,35 @@ const NodeTitleSection = React.memo<{
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [prevName, setPrevName] = useState(name);
+  const [tempName, setTempName] = useState(name);
+
+  if (name !== prevName) {
+    setPrevName(name);
+    setTempName(name);
+  }
+
+  const handleSave = useCallback(() => {
+    const trimmed = tempName.trim();
+    if (!trimmed) {
+      toast({
+        title: t('app:modules.Title is required'),
+        status: 'warning'
+      });
+      setTempName(name);
+      return;
+    }
+    if (trimmed !== name) {
+      onChangeNode({
+        nodeId,
+        type: 'attr',
+        key: 'name',
+        value: trimmed
+      });
+    }
+  }, [tempName, name, onChangeNode, nodeId, toast, t]);
+
   const childAppId = useMemo(() => {
     if (!appId) return;
     const rawId = getToolRawId(appId);
@@ -451,32 +483,6 @@ const NodeTitleSection = React.memo<{
     }
     return undefined;
   }, [appId]);
-
-  // custom title edit
-  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:custom_title'),
-    placeholder: t('app:module.Custom Title Tip') || ''
-  });
-
-  const handleRenameClick = useCallback(() => {
-    onOpenCustomTitleModal({
-      defaultVal: name,
-      onSuccess: (newName) => {
-        if (!newName) {
-          return toast({
-            title: t('app:modules.Title is required'),
-            status: 'warning'
-          });
-        }
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'name',
-          value: newName
-        });
-      }
-    });
-  }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
   const { runAsync: onGetPermission } = useRequest(getAppPermission, {
     onSuccess(permission) {
@@ -494,33 +500,105 @@ const NodeTitleSection = React.memo<{
   return (
     <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
-      <Box
-        ml={2}
-        flex={1}
-        minW={0}
-        fontSize={'18px'}
-        fontWeight={'medium'}
-        color={'myGray.900'}
-        overflow={'hidden'}
-        textOverflow={'ellipsis'}
-        whiteSpace={'nowrap'}
-        title={t(name as any)}
-        sx={{
-          '& > div': {
-            display: 'inline'
-          }
-        }}
-      >
-        <HighlightText
-          rawText={t(name as any)}
-          matchText={searchedText ?? ''}
-          mode={'bg'}
-          color={'#ffe82d'}
-        />
-      </Box>
-      <Box ml={1} flexShrink={0} visibility={'hidden'}>
-        <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
-      </Box>
+      {isEditing ? (
+        <Box
+          className="nodrag"
+          display={'grid'}
+          ml={2}
+          flex={1}
+          minW={0}
+          position={'relative'}
+          bg={'white'}
+          borderRadius={'sm'}
+          border={'1px solid'}
+          borderColor={'primary.500'}
+          h={'28px'}
+        >
+          <Box
+            gridArea={'1 / 1 / 2 / 2'}
+            fontSize={'18px'}
+            fontWeight={'medium'}
+            color={'transparent'}
+            noOfLines={1}
+            wordBreak={'break-all'}
+            py={0}
+            px={'6px'}
+            h={'26px'}
+            lineHeight={'26px'}
+            pointerEvents={'none'}
+            userSelect={'none'}
+            whiteSpace={'pre'}
+          >
+            {tempName || ' '}
+          </Box>
+          <Input
+            gridArea={'1 / 1 / 2 / 2'}
+            w={'100%'}
+            h={'26px'}
+            lineHeight={'26px'}
+            py={0}
+            px={'6px'}
+            fontSize={'18px'}
+            fontWeight={'medium'}
+            color={'myGray.900'}
+            variant={'unstyled'}
+            value={tempName}
+            maxLength={50}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTempName(e.target.value)}
+            autoFocus
+            onBlur={() => {
+              setIsEditing(false);
+              handleSave();
+            }}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter') {
+                handleSave();
+                setIsEditing(false);
+              } else if (e.key === 'Escape') {
+                setTempName(name);
+                setIsEditing(false);
+              }
+            }}
+          />
+        </Box>
+      ) : (
+        <Box
+          className="nodrag"
+          ml={2}
+          flex={1}
+          minW={0}
+          fontSize={'18px'}
+          fontWeight={'medium'}
+          color={'myGray.900'}
+          noOfLines={1}
+          wordBreak={'break-all'}
+          title={t(name as any)}
+          cursor={'pointer'}
+          onClick={() => setIsEditing(true)}
+          borderRadius={'sm'}
+          border={'1px solid transparent'}
+          h={'28px'}
+          lineHeight={'26px'}
+          py={0}
+          px={'6px'}
+          _hover={{
+            bg: 'myGray.50',
+            borderColor: 'myGray.200'
+          }}
+          sx={{
+            '& > div': {
+              display: 'inline'
+            }
+          }}
+        >
+          <HighlightText
+            rawText={t(name as any)}
+            matchText={searchedText ?? ''}
+            mode={'bg'}
+            color={'#ffe82d'}
+          />
+        </Box>
+      )}
       {childAppId && (
         <Box ml={1} flexShrink={0} visibility={'hidden'}>
           <MyIconButton
@@ -531,8 +609,6 @@ const NodeTitleSection = React.memo<{
           />
         </Box>
       )}
-
-      <EditTitleModal maxLength={NODE_NAME_MAX_LENGTH} />
     </Flex>
   );
 });
@@ -547,59 +623,119 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const nodeIsTool = useContextSelector(
-    WorkflowUtilsContext,
-    (ctx) => ctx.splitToolInputs([], nodeId)?.isTool
-  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  // edit intro
-  const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
-    title: t('common:core.module.Edit intro'),
-    tip: t('common:info.node_info'),
-    canEmpty: false
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [prevIntro, setPrevIntro] = useState(intro);
+  const [tempIntro, setTempIntro] = useState(intro);
 
-  const Render = useMemo(() => {
-    return (
-      <>
-        <Flex alignItems={'center'}>
-          <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
-            {t(intro as any) || t('app:node_not_intro')}
-          </Box>
-          <Flex
-            className="node-hover-controller"
-            visibility={nodeIsTool ? 'visible' : 'hidden'}
-            p={'7px'}
-            rounded={'sm'}
-            alignItems={'center'}
-            _hover={{
-              bg: 'myGray.100'
-            }}
-            cursor={'pointer'}
-            onClick={() => {
-              onOpenIntroModal({
-                defaultVal: intro,
-                onSuccess(e) {
-                  onChangeNode({
-                    nodeId,
-                    type: 'attr',
-                    key: 'intro',
-                    value: e
-                  });
-                }
-              });
-            }}
+  if (intro !== prevIntro) {
+    setPrevIntro(intro);
+    setTempIntro(intro);
+  }
+
+  const handleSave = useCallback(() => {
+    const trimmed = tempIntro.trim();
+    if (trimmed !== intro) {
+      onChangeNode({
+        nodeId,
+        type: 'attr',
+        key: 'intro',
+        value: trimmed
+      });
+    }
+  }, [tempIntro, intro, onChangeNode, nodeId]);
+
+  return (
+    <Box w={'100%'} minW={0} overflow={'hidden'}>
+      {isEditing ? (
+        <Box
+          className="nodrag"
+          display={'grid'}
+          w={'100%'}
+          minW={0}
+          position={'relative'}
+          bg={'white'}
+          borderRadius={'sm'}
+          border={'1px solid'}
+          borderColor={'primary.500'}
+          py={'3px'}
+          px={'6px'}
+        >
+          {/* 影子镜像层，完全由浏览器 CSS 原生渲染撑高 */}
+          <Box
+            gridArea={'1 / 1 / 2 / 2'}
+            fontSize={'sm'}
+            lineHeight={'short'}
+            color={'transparent'}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-all'}
+            p={0}
+            m={0}
+            minH={'20px'}
+            pointerEvents={'none'}
+            userSelect={'none'}
           >
-            <MyIcon name={'edit'} w={'18px'} />
-          </Flex>
-        </Flex>
-        <EditIntroModal maxLength={500} />
-      </>
-    );
-  }, [EditIntroModal, intro, nodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
-
-  return Render;
+            {tempIntro + ' '}
+          </Box>
+          {/* 叠在其正上方的真实 textarea */}
+          <Textarea
+            value={tempIntro}
+            maxLength={500}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTempIntro(e.target.value)}
+            autoFocus
+            onBlur={() => {
+              setIsEditing(false);
+              handleSave();
+            }}
+            onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+              if (e.key === 'Escape') {
+                setTempIntro(intro);
+                setIsEditing(false);
+              }
+            }}
+            variant={'unstyled'}
+            gridArea={'1 / 1 / 2 / 2'}
+            w={'100%'}
+            h={'100%'}
+            resize={'none'}
+            overflow={'hidden'}
+            p={0}
+            m={0}
+            fontSize={'sm'}
+            lineHeight={'short'}
+            color={'myGray.500'}
+            wordBreak={'break-all'}
+          />
+        </Box>
+      ) : (
+        <Box
+          className="nodrag"
+          fontSize={'sm'}
+          lineHeight={'short'}
+          color={'myGray.500'}
+          cursor={'pointer'}
+          onClick={() => setIsEditing(true)}
+          title={t(intro as any)}
+          w={'100%'}
+          minW={0}
+          maxW={'100%'}
+          noOfLines={1}
+          wordBreak={'break-all'}
+          borderRadius={'sm'}
+          border={'1px solid transparent'}
+          py={'3px'}
+          px={'6px'}
+          _hover={{
+            bg: 'myGray.50',
+            borderColor: 'myGray.200'
+          }}
+        >
+          {t(intro as any) || t('app:node_not_intro')}
+        </Box>
+      )}
+    </Box>
+  );
 });
 
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
