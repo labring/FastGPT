@@ -12,6 +12,7 @@ import { resolveEmbeddingTasksByTunedModelId } from '@fastgpt/service/core/train
 import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { Types } from '@fastgpt/service/common/mongo';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 import { ReadPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type {
@@ -43,6 +44,7 @@ export type TrainTaskSummary = {
 export type ActiveModelListItem = SystemModelItemType & {
   permission: ModelPermission;
   trainTaskSummary: TrainTaskSummary;
+  sourceMember?: SourceMemberType;
 };
 
 export type InitDateResponse = {
@@ -225,17 +227,41 @@ async function buildActiveModelList(
   // Batch resolve creator names (1 query)
   await resolveCreatorNames(summaryMap);
 
-  // Build result list
-  return models.map((model) => {
-    if (model.type !== ModelTypeEnum.embedding && model.type !== ModelTypeEnum.rerank) {
-      return { ...model, trainTaskSummary: emptySummary() };
-    }
-    const summary = summaryMap.get(model.id);
-    return {
-      ...model,
-      trainTaskSummary: summary || emptySummary()
-    };
-  });
+  // Build result list with train task summaries
+  const resultList = models.map((model) => ({
+    ...model,
+    trainTaskSummary:
+      model.type === ModelTypeEnum.embedding || model.type === ModelTypeEnum.rerank
+        ? summaryMap.get(model.id) || emptySummary()
+        : emptySummary()
+  }));
+
+  const tmbIds = [...new Set(resultList.map((item) => item.tmbId).filter(Boolean) as string[])];
+  const members = tmbIds.length
+    ? await MongoTeamMember.find(
+        { _id: { $in: tmbIds.map((id) => new Types.ObjectId(id)) } },
+        { name: 1, avatar: 1, status: 1 }
+      ).lean()
+    : [];
+  const sourceMemberMap = new Map<string, SourceMemberType>(
+    members.map((member) => [
+      String(member._id),
+      {
+        name: member.name,
+        avatar: member.avatar ?? undefined,
+        status: member.status
+      }
+    ])
+  );
+
+  return resultList.map((item) => ({
+    ...item,
+    ...(item.tmbId
+      ? {
+          sourceMember: sourceMemberMap.get(String(item.tmbId))
+        }
+      : {})
+  }));
 }
 
 async function filterModelsByPermission({

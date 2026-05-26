@@ -54,7 +54,7 @@ export async function createRerankModelConfig(params: {
     isTuned: true,
     type: ModelTypeEnum.rerank,
     charsPointsPrice: charsPointsPrice ?? 0,
-    maxToken,
+    maxToken: maxToken ?? 3000,
     instruction
   };
 

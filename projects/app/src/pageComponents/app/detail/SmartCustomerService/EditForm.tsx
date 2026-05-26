@@ -104,7 +104,8 @@ const EditForm = ({
     [appForm.dataset.datasets]
   );
   const [, startTst] = useTransition();
-  const { feConfigs, llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
+  const { feConfigs, llmModelList, embeddingModelList, reRankModelList, defaultModels } =
+    useSystemStore();
   const showDatasetSearchParams = feConfigs.show_dataset_search_params;
 
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的非数据库知识库，避免数据库类型排在首位时取到空值）
@@ -707,7 +708,7 @@ const EditForm = ({
           searchMode={
             appForm.dataset.searchMode === DatasetSearchModeEnum.database
               ? DatasetSearchModeEnum.embedding
-              : appForm.dataset.searchModedd
+              : appForm.dataset.searchMode
           }
           maxTokens={tokenLimit}
           datasetVectorModelId={datasetVectorModelId}

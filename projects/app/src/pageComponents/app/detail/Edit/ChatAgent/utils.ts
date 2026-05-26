@@ -84,9 +84,9 @@ export const appWorkflow2AgentForm = ({
           ...parsedDatasetParams,
           searchMode: parsedDatasetParams.searchMode || DatasetSearchModeEnum.mixedRecall,
           usingReRank: !!parsedDatasetParams.usingReRank,
-          embeddingModel:
-            parsedDatasetParams.embeddingModel ||
-            parsedDatasetParams.datasets?.find((d) => d.vectorModel?.model)?.vectorModel?.model ||
+          embeddingModelId:
+            parsedDatasetParams.embeddingModelId ||
+            parsedDatasetParams.datasets?.find((d) => d.vectorModel?.id)?.vectorModel?.id ||
             ''
         };
       }
@@ -257,7 +257,7 @@ export function agentForm2AppWorkflow(
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
-                generateSqlModel: data.dataset.generateSqlModel,
+                generateSqlModelId: data.dataset.generateSqlModelId,
                 collectionFilterMatch: data.dataset.collectionFilterMatch,
                 authTmbId: data.dataset.authTmbId,
                 retrievalMode: data.dataset.retrievalMode,

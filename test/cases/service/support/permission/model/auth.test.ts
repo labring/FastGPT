@@ -368,6 +368,76 @@ describe('service/support/permission/model', () => {
     expect(() => assertModelAvailable(models[0])).toThrow(ModelErrEnum.modelNotActive);
   });
 
+  it('hides system models from non-root users when isShared is false', async () => {
+    const users = await getFakeUsers(2);
+    const [userA, userB] = users.members;
+    const root = await getRootUser();
+    const modelIds = {
+      sharedSystem: '000000000000000000000041',
+      privateSystem: '000000000000000000000042',
+      ownedByUserA: '000000000000000000000043'
+    };
+    // Shared system model — everyone can read
+    const sharedSystem = createLLMModel({
+      id: modelIds.sharedSystem,
+      requestUrl: 'url-shared',
+      isShared: true,
+      isCustom: false
+    });
+    // Private system model — only root can see
+    const privateSystem = createLLMModel({
+      id: modelIds.privateSystem,
+      requestUrl: 'url-private',
+      isShared: false,
+      isCustom: false
+    });
+    // User A's custom model
+    const ownedByA = createLLMModel({
+      id: modelIds.ownedByUserA,
+      requestUrl: 'url-custom',
+      tmbId: userA.tmbId,
+      teamId: userA.teamId,
+      isShared: false,
+      isCustom: true
+    });
+    installModels([sharedSystem, privateSystem, ownedByA]);
+
+    // Non-root user A can see shared system + own custom, but NOT private system
+    await expect(listIds({ teamId: userA.teamId, tmbId: userA.tmbId })).resolves.toEqual([
+      modelIds.sharedSystem,
+      modelIds.ownedByUserA
+    ]);
+
+    // Non-root user B can see shared system only
+    await expect(listIds({ teamId: userB.teamId, tmbId: userB.tmbId })).resolves.toEqual([
+      modelIds.sharedSystem
+    ]);
+
+    // Root can see all three
+    await expect(
+      listIds({ teamId: root.teamId, tmbId: root.tmbId, isRoot: true })
+    ).resolves.toEqual([modelIds.sharedSystem, modelIds.privateSystem, modelIds.ownedByUserA]);
+
+    // Permission check: private system model gives NullRoleVal (no read) for non-root
+    const privatePerm = await getModelPermission({
+      model: privateSystem,
+      teamId: userA.teamId,
+      tmbId: userA.tmbId,
+      teamPer: { isOwner: false }
+    });
+    expect(privatePerm.hasReadPer).toBe(false);
+    expect(privatePerm.hasWritePer).toBe(false);
+
+    // Permission check: shared system model still gives read for non-root
+    const sharedPerm = await getModelPermission({
+      model: sharedSystem,
+      teamId: userA.teamId,
+      tmbId: userA.tmbId,
+      teamPer: { isOwner: false }
+    });
+    expect(sharedPerm.hasReadPer).toBe(true);
+  });
+
   it('keeps duplicate model/name configurations separated by id for authModels', async () => {
     const users = await getFakeUsers(2);
     const [userA, userB] = users.members;

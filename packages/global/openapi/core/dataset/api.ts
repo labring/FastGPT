@@ -50,9 +50,9 @@ export const CreateDatasetBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 Agent 模型Id(平台维护的唯一模型ID),不传则使用默认模型'
   }),
-  vlmModelId: z.string().optional().meta({
+  vlmModelId: z.string().optional().nullable().meta({
     example: '68ad85a7463006c963799a05',
-    description: '视觉语言模型Id(平台维护的唯一模型ID)'
+    description: '视觉语言模型Id(平台维护的唯一模型ID),传 null 表示不使用VLM'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀)'
@@ -269,9 +269,9 @@ export const UpdateDatasetBodySchema = z.object({
     example: 'text-embedding-3-small',
     description: '向量嵌入模型Id'
   }),
-  vlmModelId: z.string().optional().meta({
+  vlmModelId: z.string().optional().nullable().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型Id'
+    description: '视觉语言模型Id,传 null 表示清空VLM配置'
   }),
   websiteConfig: z
     .object({

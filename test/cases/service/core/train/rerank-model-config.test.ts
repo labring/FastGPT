@@ -222,7 +222,7 @@ describe('Rerank Model Config Controller', () => {
         isTuned: true, // Created by training module, should have isTuned flag
         type: 'rerank',
         charsPointsPrice: 2,
-        maxToken: undefined,
+        maxToken: 3000,
         instruction: undefined,
         tmbId: 'tmb_test',
         teamId: 'team_test',

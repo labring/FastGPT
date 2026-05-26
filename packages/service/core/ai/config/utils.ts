@@ -6,7 +6,12 @@ import {
   type EmbeddingModelItemType,
   type TTSModelType,
   type STTModelType,
-  type RerankModelItemType
+  type RerankModelItemType,
+  LLMModelItemSchema,
+  EmbeddingModelItemSchema,
+  TTSModelItemSchema,
+  STTModelItemSchema,
+  RerankModelItemSchema
 } from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash';
 import { getModelProvider } from '../../../core/app/provider/controller';
@@ -27,6 +32,7 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import type { ZodObject } from 'zod';
 
 const leanToModelItem = (doc: any): SystemModelItemType => {
   const { _id, __v, ...rest } = doc;
@@ -38,6 +44,39 @@ const leanToModelItem = (doc: any): SystemModelItemType => {
     ...cleaned,
     id: String(_id)
   } as SystemModelItemType;
+};
+
+/**
+ * Normalize plugin model data before persisting to DB or merging into memory.
+ * - Strips null/undefined values
+ * - Parses with the type-specific Zod schema to apply defaults, strip unknown fields and validate
+ */
+
+// Pre-compiled schemas without `id` (plugin models don't have DB id yet)
+const llmParseSchema = LLMModelItemSchema.omit({ id: true });
+const embeddingParseSchema = EmbeddingModelItemSchema.omit({ id: true });
+const ttsParseSchema = TTSModelItemSchema.omit({ id: true });
+const rerankParseSchema = RerankModelItemSchema.omit({ id: true });
+const sttParseSchema = STTModelItemSchema.omit({ id: true });
+
+const schemaByType: Record<string, ZodObject> = {
+  [ModelTypeEnum.llm]: llmParseSchema,
+  [ModelTypeEnum.embedding]: embeddingParseSchema,
+  [ModelTypeEnum.tts]: ttsParseSchema,
+  [ModelTypeEnum.rerank]: rerankParseSchema,
+  [ModelTypeEnum.stt]: sttParseSchema
+};
+
+const normalizeSystemModel = (model: any): any => {
+  const cleaned = Object.fromEntries(
+    Object.entries(model).filter(([, v]) => v !== null && v !== undefined)
+  );
+
+  const schema = schemaByType[model.type];
+  if (!schema) return cleaned;
+
+  const result = schema.safeParse(cleaned);
+  return result.success ? result.data : cleaned;
 };
 
 export const loadSystemModels = async (init = false, language = 'en') => {
@@ -139,7 +178,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     // Persist system built-in models without MongoDB records so they have _id for modelId-based lookup
     {
       const pluginModelsWithoutDB = systemModels.filter(
-        (model) => !dbModels.find((db) => db.model === model.model && !db.isCustom)
+        (model) => !dbModels.find((db) => db.model === model.model && db.isCustom !== true)
       );
 
       if (pluginModelsWithoutDB.length > 0) {
@@ -151,9 +190,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
               filter: { model: model.model, isCustom: false },
               update: {
                 $setOnInsert: {
-                  ...model,
+                  ...normalizeSystemModel(model),
                   isCustom: false,
-                  isShared: true
+                  isShared: false
                 }
               },
               upsert: true
@@ -166,7 +205,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
           model: { $in: modelNames },
           isCustom: false
         }).lean();
-        dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.isCustom);
+        dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.isCustom !== false);
         dbModels.push(...refreshedDocs);
         addLog.info(`Persisted ${refreshedDocs.length} system models to MongoDB`);
       }
@@ -181,11 +220,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         return { ...formatObj1, ...formatObj2 };
       };
 
-      const dbModel = dbModels.find((item) => item.model === model.model && !item.isCustom);
+      const dbModel = dbModels.find((item) => item.model === model.model && item.isCustom !== true);
       const provider = getModelProvider(dbModel?.provider || model.provider, language);
 
       const modelData: any = {
-        ...model,
+        ...normalizeSystemModel(model),
         ...(dbModel ? leanToModelItem(dbModel) : {}),
         provider: provider.id,
         avatar: provider.avatar,
@@ -213,7 +252,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     {
       const systemModelNames = new Set(systemModels.map((m) => m.model));
       const orphanedIds = dbModels
-        .filter((db) => !db.isCustom && !systemModelNames.has(db.model))
+        .filter((db) => db.isCustom === false && !systemModelNames.has(db.model))
         .map((db) => db._id);
 
       if (orphanedIds.length > 0) {

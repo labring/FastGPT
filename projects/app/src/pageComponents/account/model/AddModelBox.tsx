@@ -864,7 +864,7 @@ export const ModelEditModal = ({
         const val = data[key];
         if (val === null || val === undefined || Number.isNaN(val)) {
           // @ts-ignore
-          data[key] = '';
+          delete data[key];
         }
       }
 

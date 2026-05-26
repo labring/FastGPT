@@ -199,4 +199,51 @@ describe('getInitData API - trainTaskSummary', () => {
     expect(res.data?.bufferId).toBe('test-buffer-id');
     expect(res.data?.systemVersion).toBe('1.0.0-test');
   });
+
+  it('should keep active system models in activeModelList when source members are resolved', async () => {
+    global.systemActiveDesensitizedModels = [
+      {
+        id: 'system-llm-no-tmb',
+        model: 'system-llm-no-tmb',
+        name: 'System LLM',
+        type: ModelTypeEnum.llm,
+        provider: 'test-provider',
+        charsPointsPrice: 1,
+        isCustom: false,
+        isShared: true
+      } as any,
+      {
+        id: 'custom-llm-with-tmb',
+        model: 'custom-llm-with-tmb',
+        name: 'Custom LLM',
+        type: ModelTypeEnum.llm,
+        provider: 'test-provider',
+        charsPointsPrice: 1,
+        isCustom: true,
+        isShared: false,
+        tmbId: rootUser.tmbId,
+        teamId: rootUser.teamId
+      } as any
+    ];
+
+    const res = await Call<{}, {}, InitDateResponse>(getInitDataHandler, {
+      auth: rootUser
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    expect(res.data?.activeModelList?.map((item) => item.id)).toEqual([
+      'system-llm-no-tmb',
+      'custom-llm-with-tmb'
+    ]);
+    expect(
+      res.data?.activeModelList?.find((item) => item.id === 'system-llm-no-tmb')
+    ).toMatchObject({
+      name: 'System LLM'
+    });
+    expect(
+      res.data?.activeModelList?.find((item) => item.id === 'custom-llm-with-tmb')?.sourceMember
+        ?.name
+    ).toBe('Test Creator');
+  });
 });
