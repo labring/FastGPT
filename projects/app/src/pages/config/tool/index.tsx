@@ -133,19 +133,9 @@ const ToolProvider = () => {
           {t('app:toolkit_name')}
         </Box>
         <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
-        <Box w={3 / 10}>{t('common:Intro')}</Box>
+        <Box w={4.1 / 10}>{t('common:Intro')}</Box>
         <Box w={1.1 / 10} pl={6}>
           {t('app:toolkit_status')}
-        </Box>
-        <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
-          {t('app:toolkit_token_fee')}
-          <QuestionTip
-            display={'flex'}
-            alignItems={'center'}
-            ml={1}
-            label={t('app:toolkit_token_fee_tip')}
-            color={'myGray.300'}
-          />
         </Box>
         <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
           {t('app:toolkit_system_key')}
@@ -192,7 +182,6 @@ const ToolProvider = () => {
                         key={item.id}
                         tool={item}
                         setEditingToolId={setEditingToolId}
-                        setLocalTools={setLocalTools}
                         provided={provided}
                         snapshot={snapshot}
                       />

@@ -22,6 +22,7 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
@@ -419,15 +420,18 @@ const WorkflowToolConfigModal = ({
               </Box>
             </HStack>
             <HStack mt={6}>
-              <Box flex={1} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-                {t('app:custom_plugin_has_token_fee_label')}
-              </Box>
-              <Switch {...register('hasTokenFee')} />
-            </HStack>
-            <HStack mt={6}>
-              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-                {t('app:custom_plugin_call_price_label')}
-              </Box>
+              <Flex
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                alignItems={'center'}
+              >
+                <Box as={'span'} lineHeight={'20px'}>
+                  {t('app:custom_plugin_call_price_label')}
+                </Box>
+                <QuestionTip ml={1} flexShrink={0} label={t('app:custom_plugin_call_price_tip')} />
+              </Flex>
               <Box flex={'1 0 0'}>
                 <MyNumberInput
                   value={currentCost ?? 0}
@@ -438,6 +442,23 @@ const WorkflowToolConfigModal = ({
                   w={'full'}
                   h={9}
                 />
+              </Box>
+            </HStack>
+            <HStack mt={6}>
+              <Flex
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                alignItems={'center'}
+              >
+                <Box as={'span'} lineHeight={'20px'}>
+                  {t('app:custom_plugin_has_token_fee_label')}
+                </Box>
+                <QuestionTip ml={1} flexShrink={0} label={t('app:toolkit_token_fee_tip')} />
+              </Flex>
+              <Box flex={'1 0 0'}>
+                <Switch {...register('hasTokenFee')} />
               </Box>
             </HStack>
           </Box>

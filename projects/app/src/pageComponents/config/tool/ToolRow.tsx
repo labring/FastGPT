@@ -1,4 +1,4 @@
-import { Box, Flex, Switch } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   DraggableProvided,
@@ -6,89 +6,27 @@ import type {
 } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import {
-  getAdminSystemToolDetail,
-  putAdminUpdateSystemTool,
-  putAdminUpdateWorkflowTool
-} from '@/web/core/plugin/admin/tool/api';
-import React, { useMemo } from 'react';
-import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import React from 'react';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
-import type {
-  GetAdminSystemToolsResponseType,
-  UpdateSystemToolBodyType,
-  UpdateWorkflowToolBodyType
-} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const ToolRow = ({
   tool,
   setEditingToolId,
-  setLocalTools,
   provided,
   snapshot
 }: {
   tool: AdminSystemToolListItemType;
   setEditingToolId: (toolId: string) => void;
-  setLocalTools: React.Dispatch<React.SetStateAction<GetAdminSystemToolsResponseType>>;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
   const { t } = useTranslation();
-  const isWorkflowTool = useMemo(() => {
-    return splitCombineToolId(tool.id).source !== AppToolSourceEnum.systemTool;
-  }, [tool.id]);
-
-  const { runAsync: updateSystemTool, loading } = useRequest(
-    async (updateFields: { hasTokenFee?: boolean; status?: PluginStatusType }) => {
-      if (isWorkflowTool) {
-        const detail = await getAdminSystemToolDetail({ toolId: tool.id });
-
-        const requestBody: UpdateWorkflowToolBodyType = {
-          id: tool.id,
-          name: detail.name,
-          avatar: detail.avatar,
-          intro: detail.intro,
-          tags: detail.tags ?? [],
-          userGuide: detail.userGuide,
-          author: detail.author,
-          currentCost: detail.currentCost,
-          systemKeyCost: detail.systemKeyCost,
-          secretsVal: detail.secretsVal,
-          promoteTags: detail.promoteTags,
-          hideTags: detail.hideTags,
-          hasTokenFee: updateFields.hasTokenFee ?? detail.hasTokenFee,
-          status: updateFields.status ?? detail.status
-        };
-
-        return putAdminUpdateWorkflowTool(requestBody);
-      }
-
-      const requestBody: UpdateSystemToolBodyType = {
-        id: tool.id,
-        hasTokenFee: updateFields.hasTokenFee ?? tool.hasTokenFee,
-        status: updateFields.status ?? tool.status
-      };
-
-      return putAdminUpdateSystemTool(requestBody);
-    },
-    {
-      onSuccess: (_, updateFields) => {
-        setLocalTools((prev) =>
-          prev.map((item) => (item.id === tool.id ? { ...item, ...updateFields[0] } : item))
-        );
-      },
-      errorToast: t('app:toolkit_update_failed')
-    }
-  );
 
   return (
     <MyBox
-      isLoading={loading}
       display={'flex'}
       ref={provided.innerRef}
       {...provided.draggableProps}
@@ -167,7 +105,7 @@ const ToolRow = ({
           </Box>
         )}
       </Box>
-      <Box w={3 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      <Box w={4.1 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
         {tool?.intro || '-'}
       </Box>
       <Box w={1.1 / 10} pl={6}>
@@ -187,25 +125,6 @@ const ToolRow = ({
               ? t('app:toolkit_status_soon_offline')
               : t('app:toolkit_status_normal')}
         </Box>
-      </Box>
-      <Box w={1.1 / 10}>
-        {isWorkflowTool ? (
-          <Box
-            as={'span'}
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              e.preventDefault();
-              updateSystemTool({
-                hasTokenFee: !tool?.hasTokenFee
-              });
-            }}
-            pl={2}
-          >
-            <Switch isChecked={tool?.hasTokenFee} size={'sm'} />
-          </Box>
-        ) : (
-          <Box pl={4}>-</Box>
-        )}
       </Box>
       <Box w={1.1 / 10}>
         {tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.none ? (
