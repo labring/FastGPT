@@ -162,7 +162,7 @@ export async function initSystemConfig() {
       ...(fastgptConfig.feConfigs || {}),
       limit: {
         ...fileRes?.feConfigs?.limit,
-        agentSandboxMaxCount: env.AGENT_SANDBOX_MAX_SESSION_RUNTIME,
+        agentSandboxMaxCount: env.AGENT_SANDBOX_MAX_COUNT,
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {})
       },
