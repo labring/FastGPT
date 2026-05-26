@@ -11,6 +11,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { serviceSideProps } from '@/web/common/i18n/utils';
+import { LANG_KEY, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -465,7 +466,10 @@ export async function getServerSideProps(context: any) {
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow'], {
+        langCookieKey: SHARE_LANG_KEY,
+        fallbackLangCookieKey: LANG_KEY
+      }))
     }
   };
 }

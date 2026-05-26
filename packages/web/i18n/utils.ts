@@ -2,6 +2,7 @@ import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
 import Cookies from 'js-cookie';
 
 export const LANG_KEY = 'NEXT_LOCALE';
+export const SHARE_LANG_KEY = 'FASTGPT_SHARE_LOCALE';
 const PERSISTENT_LANG_COOKIE_EXPIRES_DAYS = 36500;
 
 const languageMap: Record<string, localeType> = {
@@ -26,45 +27,52 @@ const isInIframe = () => {
 };
 
 /**
- * 持久化用户语言偏好。
- * 普通页面写统一语言 Cookie 和 localStorage；iframe 内不写 Cookie，避免嵌入场景污染宿主域的登录态语言。
+ * 持久化语言偏好。
+ * 普通页面写统一语言 Cookie；分享页使用专用 Cookie，避免覆盖平台登录态语言。
  */
-export const setLangToStorage = (value: string) => {
+export const setLangToStorage = (value: string, key = LANG_KEY) => {
   const lang = getLangMapping(value);
+  const inIframe = isInIframe();
+  const isShareLang = key === SHARE_LANG_KEY;
 
-  if (!isInIframe()) {
-    // 语言偏好按长期设置处理；iframe 内只写 localStorage，避免污染宿主。
-    Cookies.set(LANG_KEY, lang, { expires: PERSISTENT_LANG_COOKIE_EXPIRES_DAYS });
+  if (!inIframe || isShareLang) {
+    // 语言偏好按长期设置处理；iframe 内仅允许分享页专用 Cookie，避免污染平台登录态语言。
+    Cookies.set(key, lang, {
+      expires: PERSISTENT_LANG_COOKIE_EXPIRES_DAYS,
+      ...(inIframe && isShareLang && window.location.protocol === 'https:'
+        ? { sameSite: 'none' as const, secure: true }
+        : {})
+    });
   }
 
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(LANG_KEY, lang);
+    localStorage.setItem(key, lang);
   }
 };
 
 /**
- * 读取服务端和客户端共享的统一语言 Cookie。
+ * 读取服务端和客户端共享的语言 Cookie。
  */
-export const getLangFromCookie = () => {
-  const lang = Cookies.get(LANG_KEY);
+export const getLangFromCookie = (key = LANG_KEY) => {
+  const lang = Cookies.get(key);
   return lang ? getLangMapping(lang) : undefined;
 };
 
 /**
  * 读取旧版或 iframe 场景下的本地语言偏好。
  */
-export const getLangFromLocalStorage = () => {
+export const getLangFromLocalStorage = (key = LANG_KEY) => {
   if (typeof localStorage === 'undefined') return undefined;
 
-  const lang = localStorage.getItem(LANG_KEY);
+  const lang = localStorage.getItem(key);
   return lang ? getLangMapping(lang) : undefined;
 };
 
 /**
  * 获取客户端可用的持久化语言，优先使用 Cookie，localStorage 仅作为兼容兜底。
  */
-export const getPersistedLang = () => {
-  return getLangFromCookie() || getLangFromLocalStorage();
+export const getPersistedLang = (key = LANG_KEY) => {
+  return getLangFromCookie(key) || getLangFromLocalStorage(key);
 };
 
 /**

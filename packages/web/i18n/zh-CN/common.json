@@ -299,6 +299,7 @@
   "core.app.outLink.Default open": "默认打开",
   "core.app.outLink.Iframe block title": "复制下面 iframe 加入到你的网站中",
   "core.app.outLink.Link block title": "将下面链接复制到浏览器打开",
+  "core.app.outLink.Language isolated tip": "免登录链接内语言切换不会影响系统语言",
   "core.app.outLink.Script Close Icon": "关闭图标",
   "core.app.outLink.Script Open Icon": "打开图标",
   "core.app.outLink.Script block title": "将下面代码加入到你的网站中",

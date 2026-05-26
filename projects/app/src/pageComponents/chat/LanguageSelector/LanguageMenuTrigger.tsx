@@ -24,7 +24,7 @@ const LanguageMenuTrigger = ({ iconName, label, isCollapsed = false }: Props) =>
       color="myGray.600"
       title={label}
     >
-      <Flex alignItems="center" gap={1} flex="1 1 0" minW={0}>
+      <Flex alignItems="center" gap={1} flex="0 1 auto" minW={0} maxW="100%">
         <MyIcon name={iconName} w="18px" color="currentColor" flexShrink={0} />
         {!isCollapsed && (
           <Box fontSize="14px" lineHeight="20px" className="textEllipsis">

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { langMap, LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import { getLangMapping } from '@fastgpt/web/i18n/utils';
+import { getLangMapping, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
@@ -12,7 +12,7 @@ export const chatLanguageList: localeType[] = [LangEnum.zh_CN, LangEnum.zh_Hant,
 
 /**
  * 聊天页语言切换业务逻辑。
- * account 模式需要同步用户语言偏好；share 模式只切换全局 NEXT_LOCALE。
+ * account 模式需要同步用户语言偏好；share 模式只写分享页专用语言 Cookie。
  */
 export const useChatLanguageSwitch = (mode: ChatLanguageSelectorMode) => {
   const { i18n, t } = useTranslation();
@@ -35,7 +35,10 @@ export const useChatLanguageSwitch = (mode: ChatLanguageSelectorMode) => {
           });
         }
 
-        await onChangeLng(lng, { reloadOnChange: true });
+        await onChangeLng(lng, {
+          reloadOnChange: true,
+          storageKey: mode === 'share' ? SHARE_LANG_KEY : undefined
+        });
         onSelected?.();
       } catch {
         toast({

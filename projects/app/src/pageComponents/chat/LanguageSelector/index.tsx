@@ -19,6 +19,8 @@ const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) 
   const { isOpen, onOpen, onClose: onCloseDrawer } = useDisclosure();
   const { currentLang, currentLabel, onChangeLanguage } = useChatLanguageSwitch(mode);
   const entryIcon = mode === 'share' ? 'common/language/translate' : 'common/globalLine';
+  const triggerBoxProps =
+    mode === 'share' ? { display: 'inline-flex', w: 'fit-content', maxW: '100%' } : { w: '100%' };
 
   const onSelect = useCallback(
     (lng: localeType, close?: () => void) => {
@@ -38,7 +40,7 @@ const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) 
     return (
       <MyPopover
         Trigger={
-          <Box cursor="pointer" w="100%">
+          <Box cursor="pointer" {...triggerBoxProps}>
             {entry}
           </Box>
         }
@@ -62,7 +64,7 @@ const ChatLanguageSelector = ({ mode, isCollapsed = false, onSelected }: Props) 
 
   return (
     <>
-      <Box cursor="pointer" w="100%" onClick={onOpen}>
+      <Box cursor="pointer" onClick={onOpen} {...triggerBoxProps}>
         {entry}
       </Box>
 
