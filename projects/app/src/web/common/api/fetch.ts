@@ -63,7 +63,6 @@ const shouldSendStreamResumeHeader = (url: string) =>
 
 type CommonResponseType = {
   responseValueId?: string;
-  stepId?: string;
 };
 type ResponseQueueItemType = CommonResponseType &
   (
@@ -124,7 +123,7 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
     const parsed: any = JSON.parse(data);
     if (typeof parsed !== 'object') throw new Error('Invalid JSON');
 
-    const { responseValueId, stepId, ...obj } = parsed;
+    const { responseValueId, ...obj } = parsed;
 
     switch (event) {
       case SseResponseEventEnum.toolCall:
@@ -134,22 +133,22 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.plan:
       case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
-        enqueue({ responseValueId, stepId, event, ...obj });
+        enqueue({ responseValueId, event, ...obj });
         break;
       }
 
       case SseResponseEventEnum.answer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, stepId, event, reasoningText });
+        enqueue({ responseValueId, event, reasoningText });
 
         const content = obj.choices?.[0]?.delta?.content || '';
 
         if (splitAnswerTextByCharacter) {
           for (const item of content) {
-            enqueue({ responseValueId, stepId, event, text: item });
+            enqueue({ responseValueId, event, text: item });
           }
         } else {
-          enqueue({ responseValueId, stepId, event, text: content });
+          enqueue({ responseValueId, event, text: content });
         }
 
         break;
@@ -157,10 +156,10 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
 
       case SseResponseEventEnum.fastAnswer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, stepId, event, reasoningText });
+        enqueue({ responseValueId, event, reasoningText });
 
         const text = obj.choices?.[0]?.delta?.content || '';
-        enqueue({ responseValueId, stepId, event, text });
+        enqueue({ responseValueId, event, text });
 
         break;
       }

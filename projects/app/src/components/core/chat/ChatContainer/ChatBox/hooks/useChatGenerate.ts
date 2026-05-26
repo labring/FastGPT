@@ -249,24 +249,57 @@ export const useChatGenerate = ({
             };
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+            const answerUpdateIndex = (() => {
+              if (responseValueId) {
+                return item.value.findIndex((item) => item.id === responseValueId);
+              }
+
+              const latestIndex = item.value.length - 1;
+              const latestValue = item.value[latestIndex];
+
+              // reason 流只能续写“纯 reasoning”占位；否则说明上一段回答已成型，需要新起一段。
+              if (
+                reasoningText &&
+                latestValue?.reasoning &&
+                !latestValue.text?.content &&
+                !latestValue.tools?.length &&
+                !latestValue.tool &&
+                !latestValue.skills?.length &&
+                !latestValue.interactive &&
+                !latestValue.plan &&
+                !latestValue.planStatus &&
+                !latestValue.agentPlanUpdate &&
+                !latestValue.agentAsk &&
+                !latestValue.agentStopGate &&
+                !latestValue.contextCheckpoint
+              ) {
+                return latestIndex;
+              }
+
+              if (text) return latestIndex;
+
+              return -1;
+            })();
+            const answerUpdateValue: AIChatItemValueItemType | undefined =
+              answerUpdateIndex >= 0 ? cloneDeep(item.value[answerUpdateIndex]) : undefined;
             const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
               ...item,
               value: [
-                ...item.value.slice(0, updateIndex),
+                ...item.value.slice(0, answerUpdateIndex),
                 nextValue,
-                ...item.value.slice(updateIndex + 1)
+                ...item.value.slice(answerUpdateIndex + 1)
               ]
             });
 
             if (reasoningText) {
-              if (updateValue?.reasoning) {
-                updateValue.reasoning.content += reasoningText;
-                return replaceUpdateValue(updateValue);
-              } else if (updateValue?.text && !updateValue.text.content) {
-                updateValue.reasoning = {
+              if (answerUpdateValue?.reasoning) {
+                answerUpdateValue.reasoning.content += reasoningText;
+                return replaceUpdateValue(answerUpdateValue);
+              } else if (answerUpdateValue?.text && !answerUpdateValue.text.content) {
+                answerUpdateValue.reasoning = {
                   content: reasoningText
                 };
-                return replaceUpdateValue(updateValue);
+                return replaceUpdateValue(answerUpdateValue);
               } else {
                 const val: AIChatItemValueItemType = {
                   id: responseValueId,
@@ -281,14 +314,14 @@ export const useChatGenerate = ({
               }
             }
             if (text) {
-              if (updateValue?.text) {
-                updateValue.text.content += text;
-                return replaceUpdateValue(updateValue);
-              } else if (updateValue?.reasoning) {
-                updateValue.text = {
+              if (answerUpdateValue?.text) {
+                answerUpdateValue.text.content += text;
+                return replaceUpdateValue(answerUpdateValue);
+              } else if (answerUpdateValue?.reasoning) {
+                answerUpdateValue.text = {
                   content: text
                 };
-                return replaceUpdateValue(updateValue);
+                return replaceUpdateValue(answerUpdateValue);
               } else {
                 const newValue: AIChatItemValueItemType = {
                   id: responseValueId,

@@ -47,7 +47,6 @@ export type DispatchFlowResponse = {
 
 const WorkflowResponseItemSchema = z.object({
   id: z.string().optional(),
-  stepId: z.string().optional(),
   event: z.custom<SseResponseEventEnum>().optional(),
   data: z.union([z.string(), z.looseObject({})])
 });

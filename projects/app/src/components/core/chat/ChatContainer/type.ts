@@ -17,7 +17,6 @@ import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
   responseValueId?: string;
-  stepId?: string;
 
   text?: string;
   reasoningText?: string;
