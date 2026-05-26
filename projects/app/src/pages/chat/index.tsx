@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -89,6 +89,7 @@ const Chat = () => {
 
 type ChatPageProps = {
   appId: string;
+  shouldInitUserInfo: boolean;
   isStandalone?: string;
   showRunningStatus: boolean;
   showSkillReferences: boolean;
@@ -98,11 +99,22 @@ type ChatPageProps = {
   showWholeResponse: boolean;
 };
 
+const ChatLogin = ({ onSuccess }: { onSuccess: (res: LoginSuccessResponseType) => void }) => {
+  const { feConfigs } = useSystemStore();
+
+  return (
+    <>
+      <NextHead title={feConfigs?.systemTitle}></NextHead>
+
+      <LoginModal onSuccess={onSuccess} />
+    </>
+  );
+};
+
 const ChatContent = (props: ChatPageProps) => {
   const { appId: pageAppId, isStandalone } = props;
   const { appId: storeAppId, chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
-  const { feConfigs } = useSystemStore();
 
   const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
   const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
@@ -134,20 +146,14 @@ const ChatContent = (props: ChatPageProps) => {
   if (!isInitedUser) {
     return (
       <PageContainer isLoading flex={'1'} p={4}>
-        <NextHead title={feConfigs?.systemTitle} icon={feConfigs?.favicon} />
+        <NextHead />
       </PageContainer>
     );
   }
 
   // Not login
   if (!userInfo) {
-    return (
-      <>
-        <NextHead title={feConfigs?.systemTitle}></NextHead>
-
-        <LoginModal onSuccess={loginSuccess} />
-      </>
-    );
+    return <ChatLogin onSuccess={loginSuccess} />;
   }
 
   // show main chat interface
@@ -171,6 +177,51 @@ const ChatContent = (props: ChatPageProps) => {
 };
 
 const Render = (props: ChatPageProps) => {
+  const { feConfigs } = useSystemStore();
+  const { userInfo, setUserInfo, initUserInfo } = useUserStore();
+  const [isInitedUser, setIsInitedUser] = useState(!props.shouldInitUserInfo);
+
+  const loginSuccess = useCallback(
+    async (res: LoginSuccessResponseType) => {
+      setUserInfo(res.user);
+    },
+    [setUserInfo]
+  );
+
+  useEffect(() => {
+    if (!props.shouldInitUserInfo) return;
+
+    let isUnmounted = false;
+
+    const init = async () => {
+      try {
+        await initUserInfo();
+      } finally {
+        if (!isUnmounted) {
+          setIsInitedUser(true);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      isUnmounted = true;
+    };
+  }, [initUserInfo, props.shouldInitUserInfo]);
+
+  if (!isInitedUser) {
+    return (
+      <PageContainer isLoading flex={'1'} p={4}>
+        <NextHead title={feConfigs?.systemTitle} icon={feConfigs?.favicon} />
+      </PageContainer>
+    );
+  }
+
+  if (!userInfo) {
+    return <ChatLogin onSuccess={loginSuccess} />;
+  }
+
   return (
     <ChatPageContextProvider appId={props.appId}>
       <ChatContent {...props} />
@@ -182,6 +233,7 @@ export default Render;
 
 export async function getServerSideProps(context: any) {
   const appId = context?.query?.appId || '';
+  const shouldInitUserInfo = !!context.req?.cookies?.fastgpt_token;
 
   const chatQuoteReaderConfig = await (async () => {
     try {
@@ -205,13 +257,14 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       appId,
+      shouldInitUserInfo,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
       showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
       showCite: chatQuoteReaderConfig?.showCite ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
       showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'user']))
     }
   };
 }

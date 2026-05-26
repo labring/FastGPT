@@ -67,20 +67,20 @@ export const ChatPageContextProvider = ({
   const router = useRouter();
   const { feConfigs } = useSystemStore();
   const { setSource, setAppId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
-  const { userInfo, initUserInfo } = useUserStore();
+  const { userInfo } = useUserStore();
 
   const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
     pane: ChatSidebarPaneEnum;
   };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
-  const [isInitedUser, setIsInitedUser] = useState(false);
 
   // Get recently used apps
   const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
     () => getRecentlyUsedApps(),
     {
       manual: false,
+      ready: !!userInfo,
       errorToast: '',
       refreshDeps: [userInfo?.team?.tmbId],
       pollingInterval: 30000,
@@ -88,17 +88,10 @@ export const ChatPageContextProvider = ({
     }
   );
 
-  // Initialize user info
+  // Initialize chat page state
   useMount(async () => {
     if (routeAppId) setAppId(routeAppId);
-    try {
-      await initUserInfo();
-    } catch (error) {
-      console.log('User not logged in:', error);
-    } finally {
-      setSource('online');
-      setIsInitedUser(true);
-    }
+    setSource('online');
   });
 
   // Sync appId to store as route/appId changes
@@ -115,7 +108,8 @@ export const ChatPageContextProvider = ({
     },
     {
       manual: false,
-      refreshDeps: [feConfigs.isPlus],
+      ready: !!userInfo && !!feConfigs.isPlus,
+      refreshDeps: [feConfigs.isPlus, userInfo?.team?.tmbId],
       onSuccess: (data) => {
         if (!data) return;
 
@@ -198,7 +192,7 @@ export const ChatPageContextProvider = ({
       chatSettings,
       refreshChatSetting,
       logos,
-      isInitedUser,
+      isInitedUser: true,
       userInfo,
       myApps,
       refreshRecentlyUsed
@@ -211,7 +205,6 @@ export const ChatPageContextProvider = ({
       chatSettings,
       refreshChatSetting,
       logos,
-      isInitedUser,
       userInfo,
       myApps,
       refreshRecentlyUsed
