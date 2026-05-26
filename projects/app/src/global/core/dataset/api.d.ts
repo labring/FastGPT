@@ -32,7 +32,7 @@ export type CreateDatasetParams = {
   avatar: string;
   vectorModel?: string;
   agentModel?: string;
-  vlmModel?: string;
+  vlmModel?: string | null;
   apiDatasetServer?: ApiDatasetServerType;
   websiteConfig?: {
     url: string;

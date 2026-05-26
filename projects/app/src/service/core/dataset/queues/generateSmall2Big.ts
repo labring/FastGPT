@@ -22,7 +22,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel: string };
+  dataset: { vectorModel: string; agentModel: string; vlmModel?: string };
   collection: {
     small2bigConfig?: small2bigConfigType;
     indexSize?: number;

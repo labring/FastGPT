@@ -30,7 +30,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel: string };
+  dataset: { vectorModel: string; agentModel: string; vlmModel?: string };
   collection: { qaPrompt?: string };
 };
 

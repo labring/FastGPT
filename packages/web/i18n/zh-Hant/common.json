@@ -884,6 +884,7 @@
   "no_select_data": "沒有可選擇的資料",
   "not_active_team": "你沒有可用的團隊",
   "not_model_config": "未設定相關模型",
+  "please_select_model": "請選擇",
   "not_open": "未開啟",
   "not_permission": "當前訂閱套餐不支持團隊操作日誌",
   "not_support": "不支援",

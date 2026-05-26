@@ -21,9 +21,11 @@ export const getVlmModelList = () => {
   return Array.from(global.llmModelMap.values())?.filter((item) => item.vision) || [];
 };
 export const getDefaultVLMModel = () => global?.systemDefaultModel.datasetImageLLM;
+/** 获取图片理解模型，传入空值时返回 undefined（VLM 为可选字段，不回退默认模型） */
 export const getVlmModel = (model?: string) => {
+  if (!model) return undefined;
   const list = getVlmModelList();
-  return list.find((item) => item.model === model || item.name === model) || list[0];
+  return list.find((item) => item.model === model || item.name === model);
 };
 
 export const getDefaultHelperBotModel = (): LLMModelItemType =>
