@@ -66,6 +66,10 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
     throw new Error(`Invalid runtime: ${config.runtime}`);
   }
 
+  if (config.provider === 'opensandbox' && !config.apiKey) {
+    throw new Error('Sandbox provider apiKey is required for opensandbox');
+  }
+
   if (config.provider === 'sealosdevbox' && !config.token) {
     throw new Error('Sandbox provider token is required for sealosdevbox');
   }
@@ -100,7 +104,7 @@ export function getSandboxAdapterConfig({
     case 'opensandbox': {
       const providerConfig: OpenSandboxProviderConfig = {
         provider,
-        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? '',
         apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ?? '',
         runtime: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
         useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
