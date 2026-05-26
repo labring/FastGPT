@@ -1,61 +1,52 @@
 import {
-  getLangFromStorage,
+  getLangFromCookie,
+  getLangFromLocalStorage,
   getLangMapping,
-  LANG_KEY,
-  setLangToStorage,
-  SHARE_LANG_KEY
+  getPersistedLang,
+  setLangToStorage
 } from '../i18n/utils';
 import { useTranslation } from 'next-i18next';
 
 type ChangeLngOptions = {
-  reloadOnMissing?: boolean;
+  reloadOnChange?: boolean;
 };
 
+/**
+ * 提供客户端语言切换能力，并负责把手动选择和首次访问初始化写入统一语言偏好。
+ */
 export const useI18nLng = () => {
   const { i18n } = useTranslation();
 
   /**
    * 切换并持久化当前语言。
-   * `reloadOnMissing` 只给用户主动切换入口使用，初始化语言时不刷新页面，避免首屏抖动。
+   * `reloadOnChange` 只给用户主动切换入口使用，确保 SSR 数据、页面命名空间和客户端状态重新按新语言初始化。
    */
-  const onChangeLng = async (lng: string, storageKey = LANG_KEY, options?: ChangeLngOptions) => {
+  const onChangeLng = async (lng: string, options?: ChangeLngOptions) => {
     const lang = getLangMapping(lng);
-    const prevLang = getLangFromStorage(storageKey);
+    const prevLang = getPersistedLang();
+    const currentLang = getLangMapping(i18n?.language || prevLang || lang);
 
-    setLangToStorage(lang, storageKey);
+    setLangToStorage(lang);
 
     await i18n?.changeLanguage?.(lang);
 
-    if (
-      options?.reloadOnMissing &&
-      !i18n?.hasResourceBundle?.(lang, 'common') &&
-      prevLang !== lang
-    ) {
-      window?.location?.reload?.();
+    if (options?.reloadOnChange && (prevLang !== lang || currentLang !== lang)) {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     }
   };
 
-  const setUserDefaultLng = (forceGetDefaultLng: boolean = false) => {
-    if (!navigator || !localStorage) return;
+  const setUserDefaultLng = () => {
+    if (typeof navigator === 'undefined' || typeof localStorage === 'undefined') return;
+    // 有 Cookie 时以服务端渲染语言为准；没有 Cookie 时先迁移旧的本地偏好。
+    if (getLangFromCookie()) return;
 
-    const currentLang = getLangFromStorage();
-    if (currentLang && !forceGetDefaultLng) return onChangeLng(currentLang);
-
-    // currentLng not in userLang
-    return onChangeLng(navigator.language);
-  };
-
-  const setShareDefaultLng = () => {
-    if (!navigator || !localStorage) return;
-
-    // 分享页使用独立 key：首次按浏览器语言初始化，后续只读取访问者自己的分享页偏好。
-    const currentLang = getLangFromStorage(SHARE_LANG_KEY);
-    return onChangeLng(currentLang || navigator.language, SHARE_LANG_KEY);
+    return onChangeLng(getLangFromLocalStorage() || navigator.language);
   };
 
   return {
     onChangeLng,
-    setUserDefaultLng,
-    setShareDefaultLng
+    setUserDefaultLng
   };
 };

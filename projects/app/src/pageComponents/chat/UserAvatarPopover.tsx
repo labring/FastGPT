@@ -7,10 +7,10 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import ChatLanguageSelector, {
-  ChatLanguageMobileSheet
-} from '@/pageComponents/chat/LanguageSelector';
+import LanguageMenuItems from '@/pageComponents/chat/LanguageSelector/LanguageMenuItems';
+import { useChatLanguageSwitch } from '@/pageComponents/chat/LanguageSelector/useChatLanguageSwitch';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import PhoneDrawer from '@fastgpt/web/components/common/PhoneDrawer';
 
 type UserAvatarPopoverProps = {
   isCollapsed: boolean;
@@ -28,6 +28,7 @@ const UserAvatarPopover = ({
   const { setUserInfo, userInfo } = useUserStore();
   const { isPc } = useSystem();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { currentLang, onChangeLanguage } = useChatLanguageSwitch('account');
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
@@ -46,12 +47,12 @@ const UserAvatarPopover = ({
 
   const logoutContent = (
     <>
-      <MyIcon name="common/language/logout" w="18px" />
+      <MyIcon name="core/chat/sidebar/logout" w="18px" />
       <Text fontSize="14px">{t('common:logout')}</Text>
     </>
   );
 
-  // 移动端没有 hover，头像点击后复用语言底部弹层，并额外挂载登出操作。
+  // 移动端没有 hover，头像点击后复用通用底部抽屉，并额外挂载登出操作。
   if (!isPc) {
     return (
       <>
@@ -59,8 +60,16 @@ const UserAvatarPopover = ({
           {children}
         </Box>
 
-        <ChatLanguageMobileSheet isOpen={isOpen} onClose={onClose}>
-          <ChatLanguageSelector mode="account" variant="mobileSheetList" onSelected={onClose} />
+        <PhoneDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          bodyProps={{ display: 'flex', flexDirection: 'column', gap: 3 }}
+        >
+          <LanguageMenuItems
+            currentLang={currentLang}
+            variant="mobileList"
+            onSelect={(lng) => onChangeLanguage(lng, onClose)}
+          />
 
           <Box borderTop="1px solid" borderColor="myGray.150" w="100%" />
 
@@ -79,12 +88,12 @@ const UserAvatarPopover = ({
             onClick={() => onLogout(onClose)}
             w="100%"
           >
-            <MyIcon name="common/language/logoutMobile" w="16px" />
+            <MyIcon name="core/chat/sidebar/logout" w="16px" />
             <Text fontSize="16px" lineHeight="24px">
               {t('common:logout')}
             </Text>
           </Flex>
-        </ChatLanguageMobileSheet>
+        </PhoneDrawer>
 
         <ConfirmModal />
       </>
@@ -124,7 +133,11 @@ const UserAvatarPopover = ({
               </Flex>
             )}
 
-            <ChatLanguageSelector mode="account" variant="menuList" onSelected={onClose} />
+            <LanguageMenuItems
+              currentLang={currentLang}
+              variant="list"
+              onSelect={(lng) => onChangeLanguage(lng, onClose)}
+            />
 
             <Box borderTop="1px solid" borderColor="myGray.100" w="100%" />
 

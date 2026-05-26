@@ -1,19 +1,10 @@
 import { type I18nNsType } from '@fastgpt/web/i18n/i18next';
+import { getLangMapping } from '@fastgpt/web/i18n/utils';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
-type ServiceSidePropsOptions = {
-  langCookieKey?: string;
-};
-
-export const serviceSideProps = async (
-  content: any,
-  ns: I18nNsType = [],
-  options: ServiceSidePropsOptions = {}
-) => {
-  const langCookieKey = options.langCookieKey || 'NEXT_LOCALE';
-  const cookieLang = content.req?.cookies?.[langCookieKey];
-  const lang = cookieLang || content.locale;
-  // 预加载同级语言资源，用户手动切换语言时优先走客户端切换，缺资源才刷新兜底。
+export const serviceSideProps = async (content: any, ns: I18nNsType = []) => {
+  const lang = getLangMapping(content.req?.cookies?.NEXT_LOCALE || content.locale || '');
+  // 预加载同级语言资源，首次自动初始化语言时可以直接完成客户端切换。
   const extraLng = content.locales?.filter((locale: string) => locale !== lang);
 
   // Device size

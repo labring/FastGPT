@@ -34,7 +34,6 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -352,7 +351,6 @@ const Render = (props: Props) => {
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
-  const { setShareDefaultLng } = useI18nLng();
 
   const chatHistoryProviderParams = useMemoEnhance(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId || '' };
@@ -369,8 +367,6 @@ const Render = (props: Props) => {
 
   useMount(() => {
     setSource('share');
-    // 免登录分享页只读写访问者语言偏好，不能覆盖平台登录态语言。
-    setShareDefaultLng();
   });
 
   // Set default localUId
@@ -469,9 +465,7 @@ export async function getServerSideProps(context: any) {
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow'], {
-        langCookieKey: 'FASTGPT_SHARE_LOCALE'
-      }))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };
 }

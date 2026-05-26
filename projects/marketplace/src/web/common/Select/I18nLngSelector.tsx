@@ -28,7 +28,7 @@ const I18nLngSelector = () => {
       list={list}
       onChange={(val: any) => {
         const lang = val;
-        onChangeLng(lang);
+        onChangeLng(lang, { reloadOnChange: true });
       }}
     />
   );
