@@ -70,6 +70,7 @@ export const iconPaths = {
   'common/language/America': () => import('./icons/common/language/America.svg'),
   'common/language/China': () => import('./icons/common/language/China.svg'),
   'common/language/en': () => import('./icons/common/language/en.svg'),
+  'common/language/translate': () => import('./icons/common/language/translate.svg'),
   'common/language/zh': () => import('./icons/common/language/zh.svg'),
   'common/latest_page': () => import('./icons/common/latest_page.svg'),
   'common/layer': () => import('./icons/common/layer.svg'),

@@ -21,7 +21,7 @@ const I18nLngSelector = () => {
           language: lng
         });
       }
-      await onChangeLngI18n(lng);
+      await onChangeLngI18n(lng, { reloadOnChange: true });
     },
     [userInfo?.username, onChangeLngI18n, updateUserInfo]
   );

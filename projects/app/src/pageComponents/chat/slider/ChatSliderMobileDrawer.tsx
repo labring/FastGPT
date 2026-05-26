@@ -17,6 +17,7 @@ type Props = {
   showFooter?: boolean;
   showList?: boolean;
   showMenu?: boolean;
+  footerSlot?: React.ReactNode;
 };
 
 const ChatSliderMobileDrawer = ({
@@ -26,7 +27,8 @@ const ChatSliderMobileDrawer = ({
   showHeader = true,
   showFooter = true,
   showList = true,
-  showMenu = true
+  showMenu = true,
+  footerSlot
 }: Props) => {
   const theme = useTheme();
 
@@ -59,6 +61,8 @@ const ChatSliderMobileDrawer = ({
           {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}
 
           {showList && <ChatSliderList />}
+
+          {footerSlot}
 
           {showFooter && <ChatSliderFooter />}
         </MyBox>

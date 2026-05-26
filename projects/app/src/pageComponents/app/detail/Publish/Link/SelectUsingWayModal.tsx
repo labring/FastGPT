@@ -145,11 +145,27 @@ const SelectUsingWayModal = ({
           }}
         />
 
+        <Flex
+          alignItems={'center'}
+          gap={2}
+          mt={4}
+          px={3}
+          py={2}
+          borderRadius={'md'}
+          bg={'primary.50'}
+          color={'myGray.600'}
+          fontSize={'sm'}
+        >
+          <MyIcon name={'common/info'} w={'16px'} color={'primary.600'} flexShrink={0} />
+          <Box>{t('common:core.app.outLink.Language isolated tip')}</Box>
+        </Flex>
+
         {/* config */}
         <Grid
           gridTemplateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']}
           gridGap={4}
-          my={5}
+          mt={5}
+          mb={5}
           fontSize={'sm'}
         >
           <Flex {...gridItemStyle}>
