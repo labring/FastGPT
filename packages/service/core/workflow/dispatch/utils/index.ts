@@ -16,7 +16,6 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
@@ -40,7 +39,6 @@ export const getWorkflowResponseWrite = ({
   res,
   detail,
   streamResponse,
-  id = getNanoid(24),
   showNodeStatus = true,
   streamResumeMirror
 }: {
@@ -69,7 +67,7 @@ export const getWorkflowResponseWrite = ({
     });
   };
 
-  const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
+  const fn: WorkflowResponseType = ({ id, event, data }) => {
     if (typeof data === 'string') {
       writeStreamChunk({ event, data });
       return;
@@ -98,7 +96,6 @@ export const getWorkflowResponseWrite = ({
       event: detail ? event : undefined,
       data: JSON.stringify({
         ...data,
-        ...(stepId && detail && { stepId }),
         ...(id && detail && { responseValueId: id })
       })
     });
@@ -107,16 +104,17 @@ export const getWorkflowResponseWrite = ({
 };
 export const getWorkflowChildResponseWrite = ({
   id,
-  stepId,
   fn
 }: {
   id: string;
-  stepId: string;
   fn?: WorkflowResponseType;
 }): WorkflowResponseType | undefined => {
   if (!fn) return;
   return (e: Parameters<WorkflowResponseType>[0]) => {
-    return fn({ ...e, id, stepId });
+    return fn({
+      ...e,
+      id: e.id || id
+    });
   };
 };
 

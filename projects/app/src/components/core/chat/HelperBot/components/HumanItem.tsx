@@ -1,13 +1,7 @@
 import React from 'react';
-import type { HelperBotChatItemSiteType } from '@fastgpt/global/core/chat/helperBot/type';
-import { formatChatValue2InputType } from '../../ChatContainer/ChatBox/utils';
-import { Box, Card, Flex } from '@chakra-ui/react';
-import Markdown from '@/components/Markdown';
+import { formatChatValue2InputType } from '../../ChatContainer/ChatBox/utils/chatValue';
+import { Box, Flex } from '@chakra-ui/react';
 import FileBlock from '../../ChatContainer/ChatBox/components/FilesBox';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'next-i18next';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import ChatAvatar from '@/components/core/chat/ChatContainer/ChatBox/components/ChatAvatar';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -15,8 +9,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
-  const { t } = useTranslation();
-  const { copyData } = useCopyData();
   const { text, files = [] } = formatChatValue2InputType(chat.value);
   const userInfo = useUserStore((state) => state.userInfo);
   const humanAvatar = userInfo?.avatar || getWebReqUrl('/imgs/botClosed.svg');

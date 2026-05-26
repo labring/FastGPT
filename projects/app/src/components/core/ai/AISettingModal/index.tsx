@@ -175,6 +175,11 @@ const AIChatSettingsModal = ({
     [supportParams.audio, supportParams.video, supportParams.vision, t]
   );
   const singleMultimodalOption = multimodalOptions[0];
+  const multimodalSettingLabel =
+    multimodalOptions.length === 1 &&
+    singleMultimodalOption?.value === NodeInputKeyEnum.aiChatVision
+      ? t('app:llm_use_vision')
+      : t('app:llm_use_multimodal');
   const selectedMultimodalValues = [
     useVision && supportParams.vision && NodeInputKeyEnum.aiChatVision,
     useAudio && supportParams.audio && NodeInputKeyEnum.aiChatAudio,
@@ -377,7 +382,7 @@ const AIChatSettingsModal = ({
             )}
             {showMultimodalSetting && (
               <SettingRow
-                label={t('app:llm_use_multimodal')}
+                label={multimodalSettingLabel}
                 switchControl={
                   !supportParams.multimodal ? (
                     <Box fontSize={'sm'} color={'myGray.500'}>

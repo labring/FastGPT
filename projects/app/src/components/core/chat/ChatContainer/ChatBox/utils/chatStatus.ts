@@ -1,5 +1,5 @@
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatSiteItemType } from './type';
+import type { ChatSiteItemType } from '../type';
 
 type ChatRoundStatusItem = Pick<ChatSiteItemType, 'obj' | 'status'>;
 

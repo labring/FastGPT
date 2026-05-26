@@ -4,7 +4,7 @@ import {
   getChatScrollTargetKey,
   shouldFollowGeneratingScroll,
   shouldForceScrollAfterRecordsLoaded
-} from '@/components/core/chat/ChatContainer/ChatBox/scrollUtils';
+} from '@/components/core/chat/ChatContainer/ChatBox/utils/scrollUtils';
 
 describe('ChatBox scrollUtils', () => {
   it('should build stable scroll target keys only when appId and chatId exist', () => {

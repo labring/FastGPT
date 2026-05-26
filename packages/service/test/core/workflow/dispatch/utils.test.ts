@@ -145,7 +145,7 @@ describe('getWorkflowResponseWrite', () => {
     expect(responseWrite).not.toHaveBeenCalled();
   });
 
-  it('should include stepId and responseValueId when detail is true', () => {
+  it('should include responseValueId when detail is true', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({
@@ -154,7 +154,7 @@ describe('getWorkflowResponseWrite', () => {
       streamResponse: true,
       id: 'test-id'
     });
-    fn({ id: 'rid', stepId: 'sid', event: SseResponseEventEnum.answer, data: { text: 'hi' } });
+    fn({ id: 'rid', event: SseResponseEventEnum.answer, data: { text: 'hi' } });
     expect(responseWrite).toHaveBeenCalledWith(
       expect.objectContaining({
         res,
@@ -162,7 +162,6 @@ describe('getWorkflowResponseWrite', () => {
       })
     );
     const callData = JSON.parse(vi.mocked(responseWrite).mock.calls[0][0].data as string);
-    expect(callData.stepId).toBe('sid');
     expect(callData.responseValueId).toBe('rid');
   });
 
@@ -201,15 +200,14 @@ describe('getWorkflowResponseWrite', () => {
 
 describe('getWorkflowChildResponseWrite', () => {
   it('should return undefined when fn is undefined', () => {
-    const result = getWorkflowChildResponseWrite({ id: 'id', stepId: 'step' });
+    const result = getWorkflowChildResponseWrite({ id: 'id' });
     expect(result).toBeUndefined();
   });
 
-  it('should return a wrapper function that passes id and stepId', () => {
+  it('should return a wrapper function that passes id', () => {
     const mockFn = vi.fn();
     const wrapped = getWorkflowChildResponseWrite({
       id: 'child-id',
-      stepId: 'child-step',
       fn: mockFn as any
     });
     expect(wrapped).toBeDefined();
@@ -220,9 +218,29 @@ describe('getWorkflowChildResponseWrite', () => {
     expect(mockFn).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'child-id',
-        stepId: 'child-step',
         event: SseResponseEventEnum.answer,
         data: { text: 'hi' }
+      })
+    );
+  });
+
+  it('should preserve explicit child event id', () => {
+    const mockFn = vi.fn();
+    const wrapped = getWorkflowChildResponseWrite({
+      id: 'node-response-id',
+      fn: mockFn as any
+    });
+
+    wrapped!({
+      id: 'tool-call-id',
+      event: SseResponseEventEnum.toolCall,
+      data: { tool: { id: 'tool-call-id' } }
+    });
+
+    expect(mockFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'tool-call-id',
+        event: SseResponseEventEnum.toolCall
       })
     );
   });

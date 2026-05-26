@@ -152,8 +152,18 @@ function generateComplexWorkflow(nodeCount: number) {
 }
 
 // 性能测试辅助函数
-function measurePerformance(name: string, fn: () => void, iterations: number = 1) {
+function measurePerformance(
+  name: string,
+  fn: () => void,
+  iterations: number = 1,
+  warmups: number = 0
+) {
   const times: number[] = [];
+
+  // 预热可以避开 JIT/模块首次执行带来的抖动，让 CI 上的性能断言更关注稳定路径。
+  for (let i = 0; i < warmups; i++) {
+    fn();
+  }
 
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
@@ -165,8 +175,12 @@ function measurePerformance(name: string, fn: () => void, iterations: number = 1
   const avg = times.reduce((a, b) => a + b, 0) / times.length;
   const min = Math.min(...times);
   const max = Math.max(...times);
+  const sortedTimes = [...times].sort((a, b) => a - b);
+  const mid = Math.floor(sortedTimes.length / 2);
+  const median =
+    sortedTimes.length % 2 === 0 ? (sortedTimes[mid - 1] + sortedTimes[mid]) / 2 : sortedTimes[mid];
 
-  return { avg, min, max, times };
+  return { avg, min, max, median, times };
 }
 
 describe('Workflow Performance Benchmark', () => {
@@ -426,11 +440,12 @@ describe('Workflow Performance Benchmark', () => {
               edgeIndex
             });
           },
+          30,
           5
         );
 
-        results.push({ scale, time: result.avg });
-        console.log(`${scale}\t${nodes.length}\t${edges.length}\t${result.avg.toFixed(3)}`);
+        results.push({ scale, time: result.median });
+        console.log(`${scale}\t${nodes.length}\t${edges.length}\t${result.median.toFixed(3)}`);
       }
 
       // 验证时间复杂度接近线性

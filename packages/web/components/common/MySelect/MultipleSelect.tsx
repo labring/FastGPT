@@ -43,6 +43,30 @@ const selectedTagStyle: FlexProps = {
   color: 'myGray.900'
 };
 
+const selectedTagSizeStyleMap: Record<
+  MySelectSize,
+  Pick<FlexProps, 'fontSize' | 'minH' | 'px' | 'py'>
+> = {
+  sm: {
+    fontSize: 'xs',
+    minH: 5,
+    px: 2,
+    py: 0.5
+  },
+  md: {
+    fontSize: 'sm',
+    minH: 6,
+    px: 2.5,
+    py: 1
+  },
+  lg: {
+    fontSize: 'sm',
+    minH: 7,
+    px: 3,
+    py: 1
+  }
+};
+
 export type SelectProps<T = any> = {
   list: {
     icon?: string;
@@ -132,6 +156,7 @@ const MultipleSelect = <T = any,>({
       return listItem || { value: val, label: String(val) };
     });
   }, [formatValue, list]);
+  const selectedTagSizeStyle = selectedTagSizeStyleMap[size];
   const tagWidth = tagStyle?.w;
   const canInferSelectAll = !ScrollData && (isSelectAll !== undefined || !!setIsSelectAll);
   const isFullSelected = useMemo(() => {
@@ -225,9 +250,9 @@ const MultipleSelect = <T = any,>({
 
       // 否则根据文本长度估算（更精确）
       const text = String(item.label || item.value);
-      const baseWidth = 16; // 基础padding
-      const charWidth = 8; // 每个字符约8px
-      const closeIconWidth = closeable ? 20 : 0; // 关闭按钮宽度
+      const baseWidth = size === 'sm' ? 16 : size === 'md' ? 20 : 24; // 基础padding
+      const charWidth = size === 'sm' ? 7.5 : 8; // 每个字符约8px
+      const closeIconWidth = closeable ? 22 : 0; // 关闭按钮宽度
 
       return baseWidth + text.length * charWidth + closeIconWidth;
     };
@@ -270,7 +295,7 @@ const MultipleSelect = <T = any,>({
 
     setVisibleItems(selectedItems.slice(0, visibleCount));
     setOverflowItems(selectedItems.slice(visibleCount));
-  }, [closeable, formLabel, selectedItems, tagWidth]);
+  }, [closeable, formLabel, selectedItems, size, tagWidth]);
 
   // 动态监听容器宽度变化并重新计算布局
   useEffect(() => {
@@ -401,8 +426,7 @@ const MultipleSelect = <T = any,>({
                           color={'primary.700'}
                           type={'fill'}
                           borderRadius={'sm'}
-                          px={2}
-                          py={0.5}
+                          {...selectedTagSizeStyle}
                           flexShrink={0}
                           {...selectedTagStyle}
                           {...tagStyle}
@@ -428,9 +452,9 @@ const MultipleSelect = <T = any,>({
                       ))}
                       {overflowItems.length > 0 && (
                         <Box
-                          fontSize={formLabelFontSize}
-                          px={2}
-                          py={0.5}
+                          {...selectedTagSizeStyle}
+                          display={'flex'}
+                          alignItems={'center'}
                           flexShrink={0}
                           borderRadius={'lg'}
                           bg={'myGray.100'}

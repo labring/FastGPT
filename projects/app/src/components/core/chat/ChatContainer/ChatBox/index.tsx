@@ -4,134 +4,59 @@ import React, {
   useState,
   useMemo,
   useImperativeHandle,
-  useEffect
+  useEffect,
+  useLayoutEffect
 } from 'react';
 import Script from 'next/script';
-import type {
-  AIChatItemValueItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
-import type { ChatSiteItemType } from './type';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { useForm } from 'react-hook-form';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import {
-  closeCustomFeedback,
-  updateChatAdminFeedback,
-  updateChatUserFeedback,
-  updateFeedbackReadStatus
-} from '@/web/core/chat/feedback/api';
-import { delChatRecordById } from '@/web/core/chat/record/api';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
-import type { AdminMarkType } from './components/SelectMarkCollection';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { postQuestionGuide } from '@/web/core/ai/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
-import type {
-  ChatBoxInputType,
-  ChatBoxInputFormType,
-  SendPromptFnType,
-  StopChatFnResult
-} from './type';
-import type { StartChatFnProps, generatingMessageProps } from '../type';
+import type { ChatBoxInputType, StopChatFnResult } from './type';
+import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
-import ChatBoxDivider from '../../Divider';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  getInteractiveByHistories,
-  formatChatValue2InputType,
-  mergeResumeCompletedChatRecords,
-  refreshSubmittedFormInteractiveValues,
-  rewriteHistoriesByInteractiveResponse,
-  shouldAppendResumeInteractive,
-  shouldReplaceResumeAiValue,
-  shouldResetResumeAiPlaceholder,
-  stripChatValueFileUrls
-} from './utils';
-import { ChatTypeEnum, textareaMinH } from './constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
+import { getInteractiveByHistories } from './utils/interactive';
+import { ChatTypeEnum, FeedbackTypeEnum } from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
-import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
-import {
-  streamResumeFetch,
-  type ResumeStreamErrorType,
-  type StreamResponseType
-} from '@/web/common/api/fetch';
+import { type StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getChatTitleFromChatMessage,
-  mergeChatResponseData
-} from '@fastgpt/global/core/chat/utils';
+import { useCreation, useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { cloneDeep } from 'lodash';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  getChatScrollTargetKey,
-  shouldFollowGeneratingScroll,
-  shouldForceScrollAfterRecordsLoaded
-} from './scrollUtils';
-import { isChatRoundPending } from './chatStatus';
+import { getChatScrollTargetKey, shouldForceScrollAfterRecordsLoaded } from './utils/scrollUtils';
+import { isChatRoundPending } from './utils/chatStatus';
+import { getProcessedChatRecords } from './utils/recordGroups';
+import { useChatInputForm } from './hooks/useChatInputForm';
+import { useChatScroll } from './hooks/useChatScroll';
+import { useVariableInputVisibility } from './hooks/useVariableInputVisibility';
+import { useQuestionGuide } from './hooks/useQuestionGuide';
+import { useSidebarChatGenerateStatus } from './hooks/useSidebarChatGenerateStatus';
+import { useChatResume } from './hooks/useChatResume';
+import { useChatGenerate } from './hooks/useChatGenerate';
+import { useChatRecordActions } from './hooks/useChatRecordActions';
+import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
+import ChatBoxModals from './components/ChatBoxModals';
+import type { ChatRecordsListProps } from './components/ChatRecordsList';
+import AppChatMain from './components/AppChatMain';
 
-const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
-const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
-const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
-const VariableInputForm = dynamic(() => import('./components/VariableInputForm'));
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
-const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
-
-enum FeedbackTypeEnum {
-  user = 'user',
-  admin = 'admin',
-  hidden = 'hidden'
-}
-
-type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
-
-const isAbortByLeave = (reason: unknown) => {
-  return reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
-};
-
-const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => {
-  return [
-    SseResponseEventEnum.flowNodeResponse,
-    SseResponseEventEnum.flowNodeStatus,
-    SseResponseEventEnum.answer,
-    SseResponseEventEnum.fastAnswer,
-    SseResponseEventEnum.toolCall,
-    SseResponseEventEnum.toolParams,
-    SseResponseEventEnum.toolResponse,
-    SseResponseEventEnum.interactive,
-    SseResponseEventEnum.plan,
-    SseResponseEventEnum.planStatus,
-    SseResponseEventEnum.workflowDuration
-  ].includes(event);
-};
 
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
@@ -175,11 +100,7 @@ const ChatBox = ({
   onStopChat,
   onMarkChatRead
 }: Props) => {
-  const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const { setNotSufficientModalType } = useSystemStore();
-  const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -188,19 +109,15 @@ const ChatBox = ({
   const resumedChatTargetRef = useRef<string>();
   const lastRecordsLoadedScrollTargetRef = useRef<string>();
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [feedbackId, setFeedbackId] = useState<string>();
-  const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
+  const { ScrollContainerRef, scrollToBottom, generatingScroll } = useChatScroll();
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
-  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
-  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
@@ -213,9 +130,11 @@ const ChatBox = ({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const activeAppIdRef = useRef<string | undefined>(appId);
-  activeAppIdRef.current = appId;
   const activeChatIdRef = useRef<string | undefined>(chatId);
-  activeChatIdRef.current = chatId;
+  useLayoutEffect(() => {
+    activeAppIdRef.current = appId;
+    activeChatIdRef.current = chatId;
+  }, [appId, chatId]);
   const chatScrollTargetKey = useMemo(
     () => getChatScrollTargetKey({ appId, chatId }),
     [appId, chatId]
@@ -224,10 +143,6 @@ const ChatBox = ({
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
-  const startSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.startSegmentedAudio);
-  const finishSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.finishSegmentedAudio);
-  const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
-  const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const isRoundPending = isChatRoundPending({
     isChatting,
@@ -238,55 +153,7 @@ const ChatBox = ({
     lastChat: chatRecords[chatRecords.length - 1]
   });
 
-  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
-  const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
-
-  const syncSidebarChatGenerateStatus = useMemoizedFn(
-    (
-      status: ChatGenerateStatusEnum,
-      options?: {
-        hasBeenRead?: boolean;
-        targetAppId?: string;
-        targetChatId?: string;
-        title?: string;
-      }
-    ) => {
-      const targetAppId = options?.targetAppId ?? appId;
-      if (targetAppId !== appId) return;
-
-      const targetChatId = options?.targetChatId ?? chatId;
-      if (!targetChatId) return;
-      setHistories((prev) => {
-        const idx = prev.findIndex((h) => h.chatId === targetChatId && h.appId === targetAppId);
-        if (idx === -1) {
-          queueMicrotask(loadHistories);
-          return [
-            {
-              chatId: targetChatId,
-              appId: targetAppId,
-              title: options?.title || chatBoxData.title || t('common:core.chat.New Chat'),
-              customTitle: '',
-              top: false,
-              updateTime: new Date(),
-              chatGenerateStatus: status,
-              hasBeenRead: options?.hasBeenRead ?? status !== ChatGenerateStatusEnum.generating
-            },
-            ...prev
-          ];
-        }
-        return prev.map((h) =>
-          h.chatId === targetChatId && h.appId === targetAppId
-            ? {
-                ...h,
-                chatGenerateStatus: status,
-                updateTime: new Date(),
-                ...(options?.hasBeenRead !== undefined ? { hasBeenRead: options.hasBeenRead } : {})
-              }
-            : h
-        );
-      });
-    }
-  );
+  const syncSidebarChatGenerateStatus = useSidebarChatGenerateStatus();
 
   const markChatRead = useMemoizedFn(async (data: MarkChatReadBodyType) => {
     if (!enableMarkChatRead) return;
@@ -309,7 +176,6 @@ const ChatBox = ({
       completed: result.completed
     };
   });
-
   const finishChatGenerateStatus = useMemoizedFn(
     ({
       status,
@@ -378,822 +244,44 @@ const ChatBox = ({
     [chatRecords]
   );
 
-  const showExternalVariable = useMemo(() => {
-    const map: Record<string, boolean> = {
-      [ChatTypeEnum.log]: true,
-      [ChatTypeEnum.test]: true,
-      [ChatTypeEnum.chat]: true,
-      [ChatTypeEnum.home]: true
-    };
-    return map[chatType] && variableList.some((item) => item.type === VariableInputEnum.custom);
-  }, [variableList, chatType]);
-
-  // compute variable input is finish.
-  const chatForm = useForm<ChatBoxInputFormType>({
-    defaultValues: {
-      input: sessionStorage.getItem(`chatInput_${chatId}`) || '',
-      files: [],
-      chatStarted: false
-    }
+  const { chatForm, setValue, chatStarted, chatStartedWatch, resetInputVal } = useChatInputForm({
+    appId,
+    chatId,
+    chatBoxAppId: chatBoxData?.appId,
+    chatRecordsLength: chatRecords.length,
+    chatType,
+    variableList,
+    TextareaDom
   });
-  const { setValue, watch } = chatForm;
-  const chatStartedWatch = watch('chatStarted');
-  const inputValue = watch('input');
-
-  useDebounceEffect(
-    () => {
-      if (inputValue) {
-        sessionStorage.setItem(`chatInput_${chatId}`, inputValue);
-      } else {
-        sessionStorage.removeItem(`chatInput_${chatId}`);
-      }
-    },
-    [inputValue, chatId],
-    { wait: 300 }
-  );
-
-  const commonVariableList = variableList.filter(
-    (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-  );
-
-  /*
-    对话已经开始的标记：
-    1. 保证 appId 一致。
-    2. 有对话记录/手动点了开始/默认没有需要填写的变量。
-  */
-  const chatStarted =
-    chatBoxData?.appId === appId &&
-    (chatRecords.length > 0 ||
-      chatStartedWatch ||
-      (commonVariableList.length === 0 && !showExternalVariable));
-
-  // 滚动到底部
-  const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
-    setTimeout(() => {
-      if (!ScrollContainerRef.current) {
-        setTimeout(() => {
-          scrollToBottom(behavior);
-        }, 500);
-      } else {
-        ScrollContainerRef.current.scrollTo({
-          top: ScrollContainerRef.current.scrollHeight,
-          behavior
-        });
-      }
-    }, delay);
+  const createQuestionGuide = useQuestionGuide({
+    appId,
+    chatId,
+    questionGuide,
+    outLinkAuthData,
+    chatControllerRef: chatController,
+    questionGuideControllerRef: questionGuideController,
+    setQuestionGuide,
+    scrollToBottom
   });
 
-  // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
-  const { run: generatingScroll } = useThrottleFn(
-    (force?: boolean) => {
-      if (!ScrollContainerRef.current) return;
-      const isBottom = shouldFollowGeneratingScroll({
-        scrollTop: ScrollContainerRef.current.scrollTop,
-        clientHeight: ScrollContainerRef.current.clientHeight,
-        scrollHeight: ScrollContainerRef.current.scrollHeight,
-        force
-      });
-
-      if (isBottom) {
-        scrollToBottom('auto');
-      }
-    },
-    {
-      wait: 100
-    }
-  );
-
-  const generatingMessage = useMemoizedFn(
-    ({
-      responseValueId,
-      event,
-      text = '',
-      reasoningText,
-      status,
-      name,
-      tool,
-      interactive,
-      plan,
-      planStatus,
-      sandboxStatus,
-      skill,
-      variables,
-      nodeResponse,
-      durationSeconds,
-      autoTTSResponse
-    }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      setChatRecords((state) => {
-        const histories = nodeResponse?.formInputResult
-          ? refreshSubmittedFormInteractiveValues({
-              histories: state,
-              nodeResponse
-            })
-          : state;
-
-        return histories.map((item, index) => {
-          if (index !== histories.length - 1) return item;
-          if (item.obj !== ChatRoleEnum.AI) return item;
-
-          if (autoTTSResponse) {
-            splitText2Audio(formatChatValue2InputType(item.value).text || '');
-          }
-
-          const updateIndex = (() => {
-            if (!responseValueId) return item.value.length - 1;
-            const index = item.value.findIndex((item) => item.id === responseValueId);
-            if (index !== -1) return index;
-            return item.value.length - 1;
-          })();
-          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
-
-          if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
-            return {
-              ...item,
-              responseData: item.responseData
-                ? [...item.responseData, nodeResponse]
-                : [nodeResponse]
-            };
-          }
-          if (event === SseResponseEventEnum.flowNodeStatus && status) {
-            return {
-              ...item,
-              status,
-              moduleName: name
-            };
-          }
-          if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
-            const getSandboxPhaseLabel = (): string => {
-              const { phase, isWarmStart, skillName } = sandboxStatus;
-              if (phase === 'deployingSkills') {
-                return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
-              }
-              if (
-                phase === 'downloadingPackage' ||
-                phase === 'uploadingPackage' ||
-                phase === 'extractingPackage'
-              ) {
-                return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
-              }
-              if (phase === 'ready') {
-                return t(
-                  isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
-                );
-              }
-              return t(`chat:sandbox_status_${phase}` as any);
-            };
-            return {
-              ...item,
-              status: 'loading' as const,
-              moduleName: getSandboxPhaseLabel()
-            };
-          }
-          if (event === SseResponseEventEnum.skillCall && skill) {
-            // 去重检查：避免同一个 skill 在同一响应中重复展示
-            const alreadyExists = item.value.some(
-              (v) =>
-                v.id === responseValueId &&
-                v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
-            );
-            if (alreadyExists) return item;
-
-            const skillId = skill.id || responseValueId || getNanoid(10);
-            const val: AIChatItemValueItemType = {
-              id: responseValueId,
-              skills: [
-                {
-                  id: skillId,
-                  skillName: skill.skillName,
-                  skillAvatar: skill.skillAvatar || '',
-                  description: skill.description,
-                  skillMdPath: skill.skillMdPath
-                }
-              ]
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
-            };
-          }
-          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
-            const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                nextValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            });
-
-            if (reasoningText) {
-              if (updateValue?.reasoning) {
-                updateValue.reasoning.content += reasoningText;
-                return replaceUpdateValue(updateValue);
-              } else if (updateValue?.text && !updateValue.text.content) {
-                updateValue.reasoning = {
-                  content: reasoningText
-                };
-                return replaceUpdateValue(updateValue);
-              } else {
-                const val: AIChatItemValueItemType = {
-                  id: responseValueId,
-                  reasoning: {
-                    content: reasoningText
-                  }
-                };
-                return {
-                  ...item,
-                  value: [...item.value, val]
-                };
-              }
-            }
-            if (text) {
-              if (updateValue?.text) {
-                updateValue.text.content += text;
-                return replaceUpdateValue(updateValue);
-              } else if (updateValue?.reasoning) {
-                updateValue.text = {
-                  content: text
-                };
-                return replaceUpdateValue(updateValue);
-              } else {
-                const newValue: AIChatItemValueItemType = {
-                  id: responseValueId,
-                  text: {
-                    content: text
-                  }
-                };
-                return {
-                  ...item,
-                  value: item.value.concat(newValue)
-                };
-              }
-            }
-          }
-
-          // Tool call
-          if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              id: responseValueId || tool.id,
-              tools: [tool]
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
-            };
-          }
-          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
-            if (tool.params) {
-              updateValue.tools = updateValue.tools.map((item) =>
-                item.id === tool.id
-                  ? { ...item, params: `${item.params || ''}${tool.params}` }
-                  : item
-              );
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-            if (tool.response) {
-              updateValue.tools = updateValue.tools.map((item) =>
-                item.id === tool.id
-                  ? { ...item, response: `${item.response || ''}${tool.response}` }
-                  : item
-              );
-
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-
-          // Agent
-          if (event === SseResponseEventEnum.planStatus && planStatus) {
-            const planStatusIndex = item.value.findIndex(
-              (value) => !!value.planStatus || (!!responseValueId && value.id === responseValueId)
-            );
-            const nextPlanStatusValue: AIChatItemValueItemType = {
-              id: responseValueId,
-              planStatus
-            };
-
-            if (planStatusIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planStatusIndex),
-                  {
-                    ...item.value[planStatusIndex],
-                    ...nextPlanStatusValue
-                  },
-                  ...item.value.slice(planStatusIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: [...item.value, nextPlanStatusValue]
-            };
-          }
-          if (event === SseResponseEventEnum.plan && plan) {
-            const planIndex = item.value.findIndex(
-              (value) =>
-                (!!responseValueId && value.id === responseValueId) ||
-                !!value.planStatus ||
-                (value.plan?.planId && value.plan.planId === plan.planId)
-            );
-            const nextPlanValue = {
-              id: responseValueId || plan.planId,
-              plan,
-              planStatus: undefined
-            };
-
-            if (planIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planIndex),
-                  {
-                    ...item.value[planIndex],
-                    ...nextPlanValue
-                  },
-                  ...item.value.slice(planIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: [...item.value, nextPlanValue]
-            };
-          }
-          if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
-          }
-          if (event === SseResponseEventEnum.interactive && interactive) {
-            if (
-              !shouldAppendResumeInteractive({
-                existingValues: item.value,
-                incomingInteractive: interactive
-              })
-            ) {
-              return item;
-            }
-
-            const val: AIChatItemValueItemType = {
-              interactive
-            };
-
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          }
-
-          if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
-            return {
-              ...item,
-              durationSeconds: item.durationSeconds
-                ? +(item.durationSeconds + durationSeconds).toFixed(2)
-                : durationSeconds
-            };
-          }
-
-          return item;
-        });
-      });
-
-      const forceScroll = event === SseResponseEventEnum.interactive;
-      generatingScroll(forceScroll);
-    }
-  );
-
-  // 重置输入内容
-  const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
-    if (!TextareaDom.current) return;
-    setValue('files', files);
-    setValue('input', text);
-
-    sessionStorage.removeItem(`chatInput_${chatId}`);
-
-    setTimeout(() => {
-      /* 回到最小高度 */
-      if (TextareaDom.current) {
-        TextareaDom.current.style.height =
-          text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
-      }
-    }, 100);
+  const { abortRequest, generatingMessage, sendPrompt } = useChatGenerate({
+    onStartChat,
+    isRoundPending,
+    chatControllerRef: chatController,
+    questionGuideControllerRef: questionGuideController,
+    pluginControllerRef: pluginController,
+    resumeControllerRef: resumeController,
+    resumedChatTargetRef,
+    activeChatIdRef,
+    TextareaDom,
+    resetInputVal,
+    setQuestionGuide,
+    createQuestionGuide,
+    scrollToBottom,
+    generatingScroll,
+    syncSidebarChatGenerateStatus,
+    finishChatGenerateStatus
   });
-
-  // create question guide
-  const createQuestionGuide = useCallback(async () => {
-    if (!questionGuide.open || chatController.current?.signal?.aborted) return;
-    try {
-      const abortSignal = new AbortController();
-      questionGuideController.current = abortSignal;
-
-      const result = await postQuestionGuide(
-        {
-          appId,
-          chatId,
-          questionGuide,
-          ...outLinkAuthData
-        },
-        abortSignal
-      );
-      if (Array.isArray(result)) {
-        setQuestionGuide(result);
-        setTimeout(() => {
-          scrollToBottom();
-        }, 100);
-      }
-    } catch (error) {}
-  }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
-
-  /* Abort chat completions, questionGuide */
-  const abortRequest = useMemoizedFn((reason: string = 'stop') => {
-    chatController.current?.abort(new Error(reason));
-    questionGuideController.current?.abort(new Error(reason));
-    pluginController.current?.abort(new Error(reason));
-    resumeController.current?.abort(new Error(reason));
-  });
-
-  const hasMeaningfulAiOutput = useMemoizedFn((chat?: ChatSiteItemType) => {
-    if (!chat || chat.obj !== ChatRoleEnum.AI) return false;
-    if (chat.responseData?.length) return true;
-
-    return chat.value.some((item) => {
-      if (item.text?.content) return true;
-      if (item.reasoning?.content) return true;
-      if (item.tool?.params || item.tool?.response) return true;
-      if (item.tools?.some((tool) => tool.params || tool.response)) return true;
-      if (item.skills?.length) return true;
-      if (item.plan || item.interactive) return true;
-      return false;
-    });
-  });
-
-  const isActiveResumeTarget = useMemoizedFn(
-    ({ appId, chatId }: { appId: string; chatId: string }) =>
-      activeAppIdRef.current === appId && activeChatIdRef.current === chatId
-  );
-
-  const getResumeUnavailablePlaceholderText = useMemoizedFn(() =>
-    t('chat:resume_placeholder_generating')
-  );
-
-  const upsertResumeAiPlaceholder = useMemoizedFn(
-    (
-      responseChatId: string,
-      text = '',
-      status: `${ChatStatusEnum}` = ChatStatusEnum.loading,
-      options?: { resetExistingValue?: boolean }
-    ) => {
-      setChatRecords((state) => {
-        const lastItem = state[state.length - 1];
-        if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-          const shouldReplaceValue = shouldReplaceResumeAiValue({
-            hasExistingAiOutput: hasMeaningfulAiOutput(lastItem),
-            text,
-            resetExistingValue: options?.resetExistingValue
-          });
-
-          if (!shouldReplaceValue && lastItem.status === status) {
-            return state;
-          }
-
-          return state.map((item, index) =>
-            index !== state.length - 1
-              ? item
-              : {
-                  ...item,
-                  ...(shouldReplaceValue
-                    ? {
-                        value: [
-                          {
-                            text: {
-                              content: text
-                            }
-                          }
-                        ],
-                        responseData: options?.resetExistingValue ? [] : item.responseData
-                      }
-                    : {}),
-                  status,
-                  ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
-                }
-          );
-        }
-
-        return [
-          ...state,
-          {
-            id: responseChatId,
-            dataId: responseChatId,
-            obj: ChatRoleEnum.AI,
-            value: [
-              {
-                text: {
-                  content: text
-                }
-              }
-            ],
-            status,
-            ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
-          }
-        ];
-      });
-    }
-  );
-
-  /**
-   * user confirm send prompt
-   */
-  const sendPrompt = useMemoizedFn<SendPromptFnType>(
-    ({
-      text = '',
-      files = [],
-      history = chatRecords,
-      interactive,
-      autoTTSResponse = false,
-      hideInUI = false
-    }) => {
-      variablesForm.handleSubmit(
-        async ({ variables = {} }) => {
-          if (!onStartChat) return;
-          if (isRoundPending) {
-            !hideInUI &&
-              toast({
-                title: t('chat:is_chatting'),
-                status: 'warning'
-              });
-            return;
-          }
-
-          // Abort the previous request
-          questionGuideController.current?.abort(new Error('stop'));
-
-          text = text.trim();
-
-          if (!text && files.length === 0) {
-            toast({
-              title: t('chat:content_empty'),
-              status: 'warning'
-            });
-            return;
-          }
-
-          // Only declared variables are kept
-          const requestVariables: Record<string, any> = {};
-          variableList?.forEach((item) => {
-            let val =
-              variables[item.key] === '' ||
-              variables[item.key] === undefined ||
-              variables[item.key] === null
-                ? item.defaultValue
-                : variables[item.key];
-
-            if (item.type === VariableInputEnum.timePointSelect && val) {
-              val = formatTime2YMDHMS(new Date(val));
-            } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
-              val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
-            }
-            requestVariables[item.key] = valueTypeFormat(val, item.valueType);
-          });
-
-          const humanChatId = getNanoid(24);
-          const responseChatId = getNanoid(24);
-
-          // set auto audio playing
-          if (autoTTSResponse) {
-            await startSegmentedAudio();
-            setAudioPlayingChatId(responseChatId);
-          }
-
-          const currentHumanChat: HumanChatSiteItemType = {
-            id: humanChatId,
-            dataId: humanChatId,
-            obj: ChatRoleEnum.Human,
-            time: new Date(),
-            hideInUI,
-            value: [
-              ...files.map((file) => ({
-                file: {
-                  type: file.type,
-                  name: file.name,
-                  url: file.url,
-                  key: file.key || ''
-                }
-              })),
-              ...(text
-                ? [
-                    {
-                      text: {
-                        content: text
-                      }
-                    }
-                  ]
-                : [])
-            ] as UserChatItemValueItemType[],
-            status: ChatStatusEnum.finish
-          };
-
-          const newChatList: ChatSiteItemType[] = [
-            ...history,
-            currentHumanChat,
-            {
-              id: responseChatId,
-              dataId: responseChatId,
-              obj: ChatRoleEnum.AI,
-              value: [
-                {
-                  text: {
-                    content: ''
-                  }
-                }
-              ],
-              status: ChatStatusEnum.loading
-            }
-          ];
-          const temporaryHistoryTitle = getChatTitleFromChatMessage(currentHumanChat);
-
-          resumedChatTargetRef.current = `${appId}:${chatId}`;
-
-          setChatBoxData((state) =>
-            state.chatId === chatId
-              ? {
-                  ...state,
-                  title: temporaryHistoryTitle,
-                  chatGenerateStatus: ChatGenerateStatusEnum.generating,
-                  hasBeenRead: false
-                }
-              : state
-          );
-          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
-            hasBeenRead: false,
-            title: temporaryHistoryTitle
-          });
-
-          // Update histories(Interactive input does not require new session rounds)
-          setChatRecords(
-            interactive
-              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
-                rewriteHistoriesByInteractiveResponse({
-                  histories: newChatList,
-                  interactive,
-                  interactiveVal: text
-                })
-              : newChatList
-          );
-
-          // 清空输入内容
-          resetInputVal({});
-          setQuestionGuide([]);
-          scrollToBottom('smooth', 100);
-
-          const abortSignal = new AbortController();
-
-          try {
-            // create abort obj
-            chatController.current = abortSignal;
-
-            // 这里，无论是否为交互模式，都要确保最后一条消息都是 Human 的消息。
-            const messages = chats2GPTMessages({
-              messages: newChatList.slice(0, -1).map((item) => {
-                if (item.obj === ChatRoleEnum.Human) {
-                  return {
-                    ...item,
-                    value: stripChatValueFileUrls(item.value)
-                  };
-                }
-                return item;
-              }),
-              reserveId: true,
-              reserveTool: true
-            });
-
-            const { responseText } = await onStartChat({
-              messages,
-              responseChatItemId: responseChatId,
-              controller: abortSignal,
-              generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
-              variables: requestVariables
-            });
-
-            // Set last chat finish status
-            let newChatHistories: ChatSiteItemType[] = [];
-            setChatRecords((state) => {
-              newChatHistories = state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-
-                const responseData = mergeChatResponseData(item.responseData || []);
-                // Check node response error
-                if (!abortSignal?.signal?.aborted) {
-                  // `.error` is dispatcher-injected only on uncaught failures — scan all items
-                  // so uncaught errors in nested/mid-workflow nodes still surface. Last-entry
-                  // `.errorText` covers the misconfigured "catchError=true, no handler wired"
-                  // case where only errorText was set.
-                  const uncaughtErr = responseData.find((r) => r.error)?.error;
-                  const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;
-                  if (err) {
-                    toast({
-                      title: t(getErrText(err)),
-                      status: 'warning'
-                    });
-                  }
-                }
-
-                return {
-                  ...item,
-                  status: ChatStatusEnum.finish,
-                  time: new Date(),
-                  responseData
-                };
-              });
-
-              const { interactive: lastInteractive } = getInteractiveByHistories(state);
-              if (lastInteractive?.type === 'paymentPause' && !lastInteractive.params.continue) {
-                setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
-              }
-
-              return newChatHistories;
-            });
-
-            setTimeout(() => {
-              // If there is no interactive mode, create a question guide
-              if (!getInteractiveByHistories(newChatHistories).interactive) {
-                createQuestionGuide();
-              }
-
-              generatingScroll(true);
-              isPc && TextareaDom.current?.focus();
-            }, 100);
-
-            // tts audio
-            autoTTSResponse && splitText2Audio(responseText, true);
-            const finishedInActiveChat = activeChatIdRef.current === chatId;
-            finishChatGenerateStatus({
-              status: ChatGenerateStatusEnum.done,
-              finishedInActiveChat,
-              shouldUpdateChatBoxData: (state) => state.chatId === chatId
-            });
-          } catch (err: any) {
-            if (isAbortByLeave(err)) {
-              return;
-            }
-
-            toast({
-              title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
-              status: 'error',
-              duration: 5000,
-              isClosable: true
-            });
-
-            // set finish status
-            setChatRecords((state) =>
-              state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-                return {
-                  ...item,
-                  time: new Date(),
-                  status: ChatStatusEnum.finish
-                };
-              })
-            );
-
-            if (!err?.responseText) {
-              resetInputVal({ text, files });
-              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
-              setChatRecords(newChatList.slice(0, newChatList.length - 2));
-            }
-
-            const finishedInActiveChat = activeChatIdRef.current === chatId;
-            finishChatGenerateStatus({
-              status: ChatGenerateStatusEnum.error,
-              finishedInActiveChat,
-              shouldUpdateChatBoxData: (state) => state.chatId === chatId
-            });
-          }
-
-          autoTTSResponse && finishSegmentedAudio();
-        },
-        () => {}
-      )();
-    }
-  );
 
   const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
     const nextStatus = completed ? status : ChatGenerateStatusEnum.generating;
@@ -1209,210 +297,27 @@ const ChatBox = ({
     syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
   });
 
-  // retry input
-  const onDelMessage = useCallback(
-    (contentId: string, delFile = true) => {
-      if (onDeleteChatItem) {
-        return onDeleteChatItem(contentId, delFile);
-      }
-      return delChatRecordById({
-        appId,
-        chatId,
-        contentId,
-        delFile,
-        ...outLinkAuthData
-      });
-    },
-    [appId, chatId, outLinkAuthData, onDeleteChatItem]
-  );
-  const retryInput = useMemoizedFn((dataId?: string) => {
-    if (!dataId || !onDelMessage) return;
-
-    return async () => {
-      setIsLoading(true);
-      const index = chatRecords.findIndex((item) => item.dataId === dataId);
-      const delHistory = chatRecords.slice(index);
-      try {
-        await Promise.all(
-          delHistory.map((item) => {
-            if (item.dataId) {
-              return onDelMessage(item.dataId, false);
-            }
-          })
-        );
-        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
-
-        sendPrompt({
-          ...formatChatValue2InputType(delHistory[0].value),
-          history: chatRecords.slice(0, index)
-        });
-      } catch (error) {
-        toast({
-          status: 'warning',
-          title: getErrText(error, 'Retry failed')
-        });
-      }
-      setIsLoading(false);
-    };
+  const { isRecordActionLoading, retryInput, delOneMessage } = useChatRecordActions({
+    sendPrompt,
+    onDeleteChatItem
   });
-  // delete one message(One human and the ai response)
-  const delOneMessage = useMemoizedFn((dataId: string) => {
-    return () => {
-      setChatRecords((state) => {
-        let aiIndex = -1;
-
-        return state.filter((chat, i) => {
-          if (chat.dataId === dataId) {
-            aiIndex = i + 1;
-            onDelMessage(dataId);
-            return false;
-          } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
-            onDelMessage(chat.dataId);
-            return false;
-          }
-          return true;
-        });
-      });
-    };
-  });
-  // admin mark
-  const onMark = useMemoizedFn((chat: ChatSiteItemType, q = '') => {
-    if (!showMarkIcon || chat.obj !== ChatRoleEnum.AI) return;
-
-    return () => {
-      if (!chat.dataId) return;
-
-      if (chat.adminFeedback) {
-        setAdminMarkData({
-          dataId: chat.dataId,
-          datasetId: chat.adminFeedback.datasetId,
-          collectionId: chat.adminFeedback.collectionId,
-          feedbackDataId: chat.adminFeedback.feedbackDataId,
-          q: chat.adminFeedback.q || q || '',
-          a: chat.adminFeedback.a
-        });
-      } else {
-        setAdminMarkData({
-          dataId: chat.dataId,
-          q,
-          a: formatChatValue2InputType(chat.value).text
-        });
-      }
-    };
-  });
-  const onAddUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (
-      feedbackType !== FeedbackTypeEnum.user ||
-      chat.obj !== ChatRoleEnum.AI ||
-      chat.userBadFeedback
-    )
-      return;
-    return () => {
-      if (!chat.dataId || !chatId || !appId) return;
-
-      const isGoodFeedback = !!chat.userGoodFeedback;
-      setChatRecords((state) =>
-        state.map((chatItem) =>
-          chatItem.dataId === chat.dataId
-            ? {
-                ...chatItem,
-                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-              }
-            : chatItem
-        )
-      );
-      try {
-        updateChatUserFeedback({
-          appId,
-          chatId,
-          dataId: chat.dataId,
-          userGoodFeedback: isGoodFeedback ? undefined : 'yes',
-          ...outLinkAuthData
-        });
-      } catch (error) {}
-    };
-  });
-  const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (
-      feedbackType !== FeedbackTypeEnum.user ||
-      chat.obj !== ChatRoleEnum.AI ||
-      chat.userGoodFeedback
-    ) {
-      return;
-    }
-    if (chat.userBadFeedback) {
-      return () => {
-        if (!chat.dataId || !chatId || !appId) return;
-        setChatRecords((state) =>
-          state.map((chatItem) =>
-            chatItem.dataId === chat.dataId ? { ...chatItem, userBadFeedback: undefined } : chatItem
-          )
-        );
-        try {
-          updateChatUserFeedback({
-            appId,
-            chatId,
-            dataId: chat.dataId,
-            ...outLinkAuthData
-          });
-        } catch (error) {}
-      };
-    } else {
-      return () => setFeedbackId(chat.dataId);
-    }
-  });
-  const onCloseCustomFeedback = useMemoizedFn((chat: ChatSiteItemType, i: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked && appId && chatId && chat.dataId) {
-        closeCustomFeedback({
-          appId,
-          chatId,
-          dataId: chat.dataId,
-          index: i
-        });
-        // update dom
-        setChatRecords((state) =>
-          state.map((chatItem) =>
-            chatItem.obj === ChatRoleEnum.AI && chatItem.dataId === chat.dataId
-              ? {
-                  ...chatItem,
-                  customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
-                }
-              : chatItem
-          )
-        );
-      }
-    };
-  });
-  const onToggleFeedbackReadStatus = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
-    return async () => {
-      if (!appId || !chatId || !chat.dataId) return;
-
-      const newReadStatus = !chat.isFeedbackRead;
-
-      try {
-        await updateFeedbackReadStatus({
-          appId,
-          chatId,
-          dataId: chat.dataId,
-          isRead: newReadStatus
-        });
-
-        setChatRecords((state) =>
-          state.map((item) =>
-            item.dataId === chat.dataId
-              ? {
-                  ...item,
-                  isFeedbackRead: newReadStatus
-                }
-              : item
-          )
-        );
-
-        onTriggerRefresh?.();
-      } catch (error) {}
-    };
+  const {
+    feedbackId,
+    setFeedbackId,
+    adminMarkData,
+    setAdminMarkData,
+    onMark,
+    onAddUserLike,
+    onAddUserDislike,
+    onCloseCustomFeedback,
+    onToggleFeedbackReadStatus,
+    onFeedbackSuccess,
+    onAdminMarkSuccess
+  } = useChatFeedbackActions({
+    feedbackType,
+    showMarkIcon,
+    chatType,
+    onTriggerRefresh
   });
 
   const statusBoxData = useCreation(() => {
@@ -1428,6 +333,8 @@ const ChatBox = ({
 
   // page change and abort request
   useEffect(() => {
+    // Reset local UI state when switching chats.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on chat switch
     setQuestionGuide([]);
     setValue('chatStarted', false);
     resumedChatTargetRef.current = undefined;
@@ -1453,247 +360,18 @@ const ChatBox = ({
     scrollToBottom('auto');
   }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
 
-  useEffect(() => {
-    if (
-      !enableAutoResume ||
-      !isReady ||
-      !isChatRecordsLoaded ||
-      !appId ||
-      !chatId ||
-      isChatting ||
-      chatBoxData.appId !== appId ||
-      chatBoxData.chatId !== chatId ||
-      chatBoxData.chatGenerateStatus !== ChatGenerateStatusEnum.generating ||
-      resumedChatTargetRef.current === `${appId}:${chatId}`
-    ) {
-      return;
-    }
-
-    resumedChatTargetRef.current = `${appId}:${chatId}`;
-
-    const resumeForAppId = appId;
-    const resumeForChatId = chatId;
-    const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
-    const controller = new AbortController();
-    resumeController.current = controller;
-    scrollToBottom('auto');
-    scrollToBottom('auto', 100);
-    let resumeFinalStatus = ChatGenerateStatusEnum.done;
-    let hasPreparedResumeAiRecord = false;
-    let hasReceivedResumeOutput = false;
-
-    (async () => {
-      try {
-        const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
-          appId,
-          chatId,
-          outLinkAuthData,
-          controller,
-          onResumeUnavailable: () => {
-            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
-            resumeFinalStatus = ChatGenerateStatusEnum.generating;
-            upsertResumeAiPlaceholder(
-              responseChatId,
-              getResumeUnavailablePlaceholderText(),
-              ChatStatusEnum.loading
-            );
-          },
-          onmessage: (message) => {
-            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
-            if (shouldCreateResumeAiPlaceholder(message.event)) {
-              upsertResumeAiPlaceholder(responseChatId, '', ChatStatusEnum.loading, {
-                resetExistingValue: shouldResetResumeAiPlaceholder({
-                  hasPreparedResumeAiRecord,
-                  hasReceivedResumeOutput
-                })
-              });
-              hasPreparedResumeAiRecord = true;
-            }
-            generatingMessage(message);
-            hasReceivedResumeOutput = true;
-          }
-        });
-
-        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
-
-        if (completedChat) {
-          resumeFinalStatus = completedChat.chatGenerateStatus;
-          setChatRecords((state) =>
-            mergeResumeCompletedChatRecords({
-              currentRecords: state,
-              completedRecords: completedChat.records.list.map((item) => ({
-                ...item,
-                status: ChatStatusEnum.finish
-              })),
-              responseChatId
-            })
-          );
-          scrollToBottom('auto');
-          scrollToBottom('auto', 100);
-          return;
-        }
-
-        if (resumeUnavailable) {
-          resumeFinalStatus = ChatGenerateStatusEnum.generating;
-          upsertResumeAiPlaceholder(
-            responseChatId,
-            getResumeUnavailablePlaceholderText(),
-            ChatStatusEnum.loading
-          );
-          return;
-        }
-
-        setChatRecords((state) => {
-          const currentLastItem = state[state.length - 1];
-          if (
-            currentLastItem?.dataId !== responseChatId ||
-            currentLastItem.obj !== ChatRoleEnum.AI
-          ) {
-            return state;
-          }
-
-          const next = state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: ChatStatusEnum.finish,
-              time: new Date(),
-              responseData: mergeChatResponseData(item.responseData || [])
-            };
-          });
-
-          const updatedLastItem = next[next.length - 1];
-          if (
-            updatedLastItem?.dataId === responseChatId &&
-            !hasMeaningfulAiOutput(updatedLastItem) &&
-            !responseText
-          ) {
-            return next.slice(0, -1);
-          }
-
-          return next;
-        });
-        scrollToBottom('auto');
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
-
-        const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
-        resumeFinalStatus = isStreamError
-          ? ChatGenerateStatusEnum.error
-          : ChatGenerateStatusEnum.done;
-
-        setChatRecords((state) => {
-          const currentLastItem = state[state.length - 1];
-          if (
-            currentLastItem?.dataId !== responseChatId ||
-            currentLastItem.obj !== ChatRoleEnum.AI
-          ) {
-            return state;
-          }
-
-          const next = state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: ChatStatusEnum.finish,
-              time: new Date()
-            };
-          });
-
-          const updatedLastItem = next[next.length - 1];
-          if (
-            updatedLastItem?.dataId === responseChatId &&
-            !hasMeaningfulAiOutput(updatedLastItem)
-          ) {
-            return next.slice(0, -1);
-          }
-
-          return next;
-        });
-        scrollToBottom('auto');
-
-        if (isStreamError) {
-          toast({
-            title: t(getErrText(error, t('common:core.chat.error.Chat error') as any)),
-            status: 'error',
-            duration: 5000,
-            isClosable: true
-          });
-        }
-      } finally {
-        if (resumeController.current === controller) {
-          resumeController.current = undefined;
-        }
-        const finishedInActiveChat = isActiveResumeTarget({
-          appId: resumeForAppId,
-          chatId: resumeForChatId
-        });
-        const leftWhileResuming =
-          controller.signal.aborted && isAbortByLeave(controller.signal.reason);
-
-        if (leftWhileResuming) {
-          return;
-        }
-
-        setChatBoxData((state) =>
-          state.appId === resumeForAppId && state.chatId === resumeForChatId
-            ? {
-                ...state,
-                chatGenerateStatus: resumeFinalStatus,
-                hasBeenRead: finishedInActiveChat
-              }
-            : state
-        );
-
-        if (finishedInActiveChat) {
-          void postMarkChatRead({
-            appId: resumeForAppId,
-            chatId: resumeForChatId,
-            ...outLinkAuthData
-          })
-            .catch(() => {})
-            .finally(() => {
-              syncSidebarChatGenerateStatus(resumeFinalStatus, {
-                targetAppId: resumeForAppId,
-                hasBeenRead: true,
-                targetChatId: resumeForChatId
-              });
-            });
-        } else {
-          syncSidebarChatGenerateStatus(resumeFinalStatus, {
-            targetAppId: resumeForAppId,
-            hasBeenRead: false,
-            targetChatId: resumeForChatId
-          });
-        }
-      }
-    })();
-  }, [
+  useChatResume({
     enableAutoResume,
     isReady,
-    isChatRecordsLoaded,
-    appId,
-    chatId,
-    isChatting,
-    chatBoxData.appId,
-    chatBoxData.chatId,
-    chatBoxData.chatGenerateStatus,
-    generatingMessage,
-    hasMeaningfulAiOutput,
-    isActiveResumeTarget,
-    getResumeUnavailablePlaceholderText,
-    outLinkAuthData,
     resumeTargetAiDataId,
+    activeAppIdRef,
+    activeChatIdRef,
+    resumedChatTargetRef,
+    resumeControllerRef: resumeController,
+    generatingMessage,
     scrollToBottom,
-    setChatBoxData,
-    setChatRecords,
-    finishChatGenerateStatus,
-    syncSidebarChatGenerateStatus,
-    upsertResumeAiPlaceholder,
-    t,
-    toast
-  ]);
+    finishChatGenerateStatus
+  });
 
   const canRenderChatInput = onStartChat && chatStarted && active && canSendQuery;
   const canSendPrompt = canRenderChatInput && !isRoundPending;
@@ -1774,34 +452,7 @@ const ChatBox = ({
     }
   }));
 
-  // Visibility check
-  useEffect(() => {
-    const checkVariableVisibility = () => {
-      if (!ScrollContainerRef.current) return;
-      const container = ScrollContainerRef.current;
-      const variableInput = container.querySelector('#variable-input');
-      if (!variableInput) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = variableInput.getBoundingClientRect();
-
-      if (elementRect.height === 0) return;
-
-      setIsVariableVisible(
-        containerRect.top < elementRect.bottom && containerRect.bottom > elementRect.top
-      );
-    };
-
-    const container = ScrollContainerRef.current;
-    if (container) {
-      checkVariableVisibility();
-      container.addEventListener('scroll', checkVariableVisibility);
-
-      return () => {
-        container.removeEventListener('scroll', checkVariableVisibility);
-      };
-    }
-  }, [ScrollContainerRef, setIsVariableVisible]);
+  useVariableInputVisibility({ ScrollContainerRef, setIsVariableVisible });
 
   // Home chat, and no chat records
   const isHomeRender = useMemo(() => {
@@ -1827,240 +478,50 @@ const ChatBox = ({
   }, []);
 
   // 预处理聊天记录：Log 模式下扩展 chatRecords，添加折叠信息
-  const processedRecords = useMemoEnhance(() => {
-    // 非 Log 类型：直接返回原始数据
-    if (chatType !== ChatTypeEnum.log) {
-      return chatRecords;
-    }
-
-    // Log 类型：一次遍历完成删除分组信息计算和 chatRecords 扩展
-    const result: ChatSiteItemType[] = [];
-    let currentGroup: {
-      items: ChatSiteItemType[];
-      dataIds: string[];
-    } | null = null;
-
-    chatRecords.forEach((item, index) => {
-      const isDeleted = !!item.deleteTime;
-      const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
-      const nextIsDeleted =
-        index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-
-      if (isDeleted && !prevIsDeleted) {
-        // 开始新的删除组
-        currentGroup = {
-          items: [],
-          dataIds: []
-        };
-      }
-
-      if (currentGroup && isDeleted) {
-        // 收集当前删除组的 item 和 dataId
-        currentGroup.items.push(item);
-        currentGroup.dataIds.push(item.dataId);
-      }
-
-      if (currentGroup && (!nextIsDeleted || index === chatRecords.length - 1)) {
-        // 删除组结束，处理整组
-        const isExpanded = currentGroup.dataIds.every((id) => expandedDeletedGroups.has(id));
-        const count = currentGroup.dataIds.length;
-
-        currentGroup.items.forEach((groupItem, groupIndex) => {
-          const extendedItem: ChatSiteItemType = { ...groupItem };
-
-          // 第一个 item 添加 collapseTop
-          if (groupIndex === 0) {
-            extendedItem.collapseTop = {
-              count,
-              dataIds: currentGroup!.dataIds,
-              isExpanded
-            };
-          }
-
-          // 最后一个 item 添加 collapseBottom
-          if (groupIndex === currentGroup!.items.length - 1) {
-            extendedItem.collapseBottom = {
-              count,
-              dataIds: currentGroup!.dataIds,
-              isExpanded
-            };
-          }
-
-          result.push(extendedItem);
-        });
-
-        currentGroup = null;
-      } else if (!isDeleted) {
-        // 非删除 item，直接添加
-        result.push(item);
-      }
-    });
-
-    return result;
-  }, [chatType, chatRecords, expandedDeletedGroups]);
-  //chat history
-  const RecordsBox = useMemo(() => {
-    return (
-      <Box id={'history'}>
-        {processedRecords.map((item, index) => {
-          // 判断是否应该渲染：非删除 或 dataId 在展开集合中
-          const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
-
-          return (
-            <Box key={item.dataId}>
-              {/* 顶部折叠按钮：有 collapseTop 信息时显示 */}
-              {item.collapseTop && (
-                <DeletedItemsCollapse
-                  count={item.collapseTop.count}
-                  isExpanded={item.collapseTop.isExpanded}
-                  onToggle={() => toggleDeletedGroup(item.collapseTop!.dataIds)}
-                  position="top"
-                />
-              )}
-
-              {/* 渲染消息：根据 shouldRender 判断 */}
-              {shouldRender && (
-                <Box
-                  ref={(e) => {
-                    itemRefs.current.set(item.dataId, e);
-                  }}
-                >
-                  {/* 时间间隔显示逻辑：相邻消息时间差超过10分钟则显示时间 */}
-                  {index !== 0 &&
-                    item.time &&
-                    processedRecords[index - 1].time !== undefined &&
-                    new Date(item.time).getTime() -
-                      new Date(processedRecords[index - 1].time!).getTime() >
-                      10 * 60 * 1000 && <TimeBox time={item.time} />}
-
-                  <Box py={item.hideInUI ? 0 : 6}>
-                    {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
-                      <ChatItem
-                        avatar={userAvatar}
-                        chat={item}
-                        onRetry={retryInput(item.dataId)}
-                        onDelete={delOneMessage(item.dataId)}
-                        isLastChild={index === processedRecords.length - 1}
-                      />
-                    )}
-                    {item.obj === ChatRoleEnum.AI && (
-                      <ChatItem
-                        avatar={appAvatar}
-                        chat={item}
-                        isLastChild={index === processedRecords.length - 1}
-                        {...{
-                          showVoiceIcon,
-                          statusBoxData,
-                          questionGuides,
-                          onMark: onMark(
-                            item,
-                            formatChatValue2InputType(processedRecords[index - 1]?.value)?.text
-                          ),
-                          onAddUserLike: onAddUserLike(item),
-                          onAddUserDislike: onAddUserDislike(item),
-                          onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
-                        }}
-                      >
-                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                          <Box>
-                            <ChatBoxDivider
-                              icon={'core/app/customFeedback'}
-                              text={t('common:core.app.feedback.Custom feedback')}
-                            />
-                            {item.customFeedbacks.map((text, i) => (
-                              <Box key={i}>
-                                <MyTooltip
-                                  label={t('common:core.app.feedback.close custom feedback')}
-                                >
-                                  <Checkbox
-                                    onChange={onCloseCustomFeedback(item, i)}
-                                    icon={<MyIcon name={'common/check'} w={'12px'} />}
-                                  >
-                                    {text}
-                                  </Checkbox>
-                                </MyTooltip>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-                        {showMarkIcon && item.adminFeedback && (
-                          <Box fontSize={'sm'}>
-                            <ChatBoxDivider
-                              icon="core/app/markLight"
-                              text={t('common:core.chat.Admin Mark Content')}
-                            />
-                            <Box whiteSpace={'pre-wrap'}>
-                              <Box color={'black'}>{item.adminFeedback.q}</Box>
-                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
-                            </Box>
-                          </Box>
-                        )}
-                      </ChatItem>
-                    )}
-                  </Box>
-                </Box>
-              )}
-
-              {/* 底部折叠按钮：有 collapseBottom 信息且展开时显示 */}
-              {item.collapseBottom && item.collapseBottom.isExpanded && (
-                <DeletedItemsCollapse
-                  count={item.collapseBottom.count}
-                  isExpanded={item.collapseBottom.isExpanded}
-                  onToggle={() => toggleDeletedGroup(item.collapseBottom!.dataIds)}
-                  position="bottom"
-                />
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-    );
-  }, [
-    processedRecords,
-    expandedDeletedGroups,
-    toggleDeletedGroup,
-    itemRefs,
-    userAvatar,
-    appAvatar,
-    showVoiceIcon,
-    statusBoxData,
-    questionGuides,
-    showMarkIcon,
-    t,
-    retryInput,
-    delOneMessage,
-    onMark,
-    onAddUserLike,
-    onAddUserDislike,
-    onToggleFeedbackReadStatus,
-    onCloseCustomFeedback
-  ]);
-
-  // Child box
-  const AppChatRenderBox = useMemo(() => {
-    return (
-      <ScrollData
-        ScrollContainerRef={ScrollContainerRef}
-        flex={'1 0 0'}
-        h={0}
-        w={'100%'}
-        overflow={'overlay'}
-        px={[4, 0]}
-        pb={6}
-      >
-        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
-
-          {/* variable input */}
-          <Box id="variable-input">
-            <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
-          </Box>
-
-          {RecordsBox}
-        </Box>
-      </ScrollData>
-    );
-  }, [ScrollData, welcomeText, chatStarted, chatForm, chatType, RecordsBox]);
+  const processedRecords = useMemoEnhance(
+    () => getProcessedChatRecords({ chatType, chatRecords, expandedDeletedGroups }),
+    [chatType, chatRecords, expandedDeletedGroups]
+  );
+  const recordsListProps: ChatRecordsListProps = useMemo(
+    () => ({
+      records: processedRecords,
+      expandedDeletedGroups,
+      itemRefs,
+      userAvatar,
+      appAvatar,
+      showVoiceIcon,
+      showMarkIcon,
+      statusBoxData,
+      questionGuides,
+      onToggleDeletedGroup: toggleDeletedGroup,
+      onRetry: retryInput,
+      onDelete: delOneMessage,
+      onMark,
+      onAddUserLike,
+      onAddUserDislike,
+      onCloseCustomFeedback,
+      onToggleFeedbackReadStatus
+    }),
+    [
+      processedRecords,
+      expandedDeletedGroups,
+      itemRefs,
+      userAvatar,
+      appAvatar,
+      showVoiceIcon,
+      showMarkIcon,
+      statusBoxData,
+      questionGuides,
+      toggleDeletedGroup,
+      retryInput,
+      delOneMessage,
+      onMark,
+      onAddUserLike,
+      onAddUserDislike,
+      onCloseCustomFeedback,
+      onToggleFeedbackReadStatus
+    ]
+  );
   const HomeChatRenderBox = useMemo(() => {
     return (
       <>
@@ -2075,7 +536,7 @@ const ChatBox = ({
 
   return (
     <MyBox
-      isLoading={isLoading}
+      isLoading={isRecordActionLoading}
       display={'flex'}
       flexDirection={'column'}
       h={'100%'}
@@ -2115,7 +576,15 @@ const ChatBox = ({
         </MyBox>
       ) : (
         <>
-          {AppChatRenderBox}
+          <AppChatMain
+            ScrollData={ScrollData}
+            ScrollContainerRef={ScrollContainerRef}
+            welcomeText={welcomeText}
+            chatStarted={chatStarted}
+            chatForm={chatForm}
+            chatType={chatType}
+            recordsListProps={recordsListProps}
+          />
           {canRenderChatInput && (
             <Box
               px={[3, 5]}
@@ -2141,52 +610,17 @@ const ChatBox = ({
         </>
       )}
 
-      {/* user feedback modal */}
-      {!!feedbackId && chatId && (
-        <FeedbackModal
-          appId={appId}
-          chatId={chatId}
-          dataId={feedbackId}
-          onClose={() => setFeedbackId(undefined)}
-          onSuccess={(content: string) => {
-            setChatRecords((state) =>
-              state.map((item) =>
-                item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
-              )
-            );
-            setFeedbackId(undefined);
-          }}
-        />
-      )}
-      {/* admin mark data */}
-      {!!adminMarkData && (
-        <SelectMarkCollection
-          adminMarkData={adminMarkData}
-          setAdminMarkData={(e) => setAdminMarkData({ ...e, dataId: adminMarkData.dataId })}
-          onClose={() => setAdminMarkData(undefined)}
-          onSuccess={(adminFeedback) => {
-            if (!appId || !chatId || !adminMarkData.dataId) return;
-            updateChatAdminFeedback({
-              appId,
-              chatId,
-              dataId: adminMarkData.dataId,
-              ...adminFeedback
-            });
-
-            // update dom
-            setChatRecords((state) =>
-              state.map((chatItem) =>
-                chatItem.dataId === adminMarkData.dataId
-                  ? {
-                      ...chatItem,
-                      adminFeedback
-                    }
-                  : chatItem
-              )
-            );
-          }}
-        />
-      )}
+      <ChatBoxModals
+        appId={appId}
+        chatId={chatId}
+        feedbackId={feedbackId}
+        adminMarkData={adminMarkData}
+        onCloseFeedback={() => setFeedbackId(undefined)}
+        onFeedbackSuccess={onFeedbackSuccess}
+        onCloseAdminMark={() => setAdminMarkData(undefined)}
+        onAdminMarkChange={setAdminMarkData}
+        onAdminMarkSuccess={onAdminMarkSuccess}
+      />
     </MyBox>
   );
 };
