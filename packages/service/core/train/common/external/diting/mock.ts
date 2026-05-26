@@ -23,7 +23,7 @@ export async function mockSynthesizeEvalData(
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
     numCases,
-    llmModel: request.llm_config.modelId
+    llmModel: request.llm_config.name
   });
 
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
@@ -33,8 +33,7 @@ export async function mockSynthesizeEvalData(
       success: false,
       requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       status: 'failed',
-      error: 'Mock synthesis failed',
-      usages: []
+      error: 'Mock synthesis failed'
     };
   }
 
@@ -58,7 +57,7 @@ export async function mockSynthesizeEvalData(
     },
     usages: [
       {
-        modelType: request.llm_config.modelId,
+        modelType: request.llm_config.name,
         promptTokens: 100 * numCases,
         completionTokens: 50 * numCases,
         totalTokens: 150 * numCases

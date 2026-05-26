@@ -11,7 +11,7 @@ import {
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
-import { MongoSystemModel } from '../../../../ai/config/schema';
+import { getEmbeddingModelById } from '../../../../ai/model';
 
 /**
  * Stage 5: Model Registration
@@ -53,17 +53,7 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
   const tunedModelName = task.newModelName || tunedEndpoint.model;
 
   // Inherit config from base model
-  const baseModelDoc = await MongoSystemModel.findById(baseModelId).lean();
-  const baseMeta = (baseModelDoc?.metadata ?? {}) as {
-    charsPointsPrice?: number;
-    defaultToken?: number;
-    maxToken?: number;
-    weight?: number;
-    normalization?: boolean;
-    batchSize?: number;
-    defaultConfig?: Record<string, any>;
-    instruction?: string;
-  };
+  const baseModel = getEmbeddingModelById(baseModelId);
 
   let tunedModelId: string;
   try {
@@ -73,17 +63,17 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
       isActive: true,
       tmbId: task.tmbId,
       teamId: task.teamId,
-      charsPointsPrice: baseMeta.charsPointsPrice,
-      defaultToken: baseMeta.defaultToken,
-      maxToken: baseMeta.maxToken,
-      weight: baseMeta.weight,
-      normalization: baseMeta.normalization,
-      batchSize: baseMeta.batchSize,
-      defaultConfig: baseMeta.defaultConfig,
+      charsPointsPrice: baseModel.charsPointsPrice,
+      defaultToken: baseModel.defaultToken,
+      maxToken: baseModel.maxToken,
+      weight: baseModel.weight,
+      normalization: baseModel.normalization,
+      batchSize: baseModel.batchSize,
+      defaultConfig: baseModel.defaultConfig,
       instruction:
         task.trainMethod === EmbeddingTrainMethodEnum.task_tuning
           ? undefined
-          : baseMeta.instruction,
+          : baseModel.instruction,
       taskId: String(task._id)
     });
 

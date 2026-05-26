@@ -44,7 +44,7 @@ export async function synthesizeEvalData(
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
     numCases: request.inputData.numCases,
-    llmModel: request.llm_config.modelId
+    llmModel: request.llm_config.name
   });
 
   try {

@@ -213,18 +213,9 @@ const getOptionalNumber = (value: unknown) => {
   return undefined;
 };
 
-const buildModelMetadataPayload = (data: GetModelDetailResponse) => {
-  const metadata = { ...data } as Partial<GetModelDetailResponse> & Record<string, any>;
-
-  delete metadata.id;
-  delete metadata.isShared;
-  delete metadata.avatar;
-  delete metadata.permission;
-  delete metadata.sourceMember;
-  delete metadata.tmbId;
-  delete metadata.teamId;
-
-  return metadata;
+const buildModelFieldsPayload = (data: GetModelDetailResponse) => {
+  const { id, avatar, permission, sourceMember, tmbId, teamId, ...fields } = data as any;
+  return fields;
 };
 
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
@@ -877,20 +868,12 @@ export const ModelEditModal = ({
         }
       }
 
-      const metadata = buildModelMetadataPayload(data);
+      const modelFields = buildModelFieldsPayload(data);
 
       return (
         modelData.id
-          ? putSystemModel({
-              id: modelData.id,
-              metadata,
-              isShared: data.isShared
-            })
-          : postSystemModel({
-              model: data.model,
-              metadata,
-              isShared: data.isShared
-            })
+          ? putSystemModel({ id: modelData.id, ...modelFields })
+          : postSystemModel({ ...modelFields })
       ).then(onSuccess);
     },
     {

@@ -28,6 +28,18 @@ import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
+const leanToModelItem = (doc: any): SystemModelItemType => {
+  const { _id, __v, ...rest } = doc;
+  // Strip null/undefined values so they don't override plugin defaults
+  const cleaned = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== null && v !== undefined)
+  );
+  return {
+    ...cleaned,
+    id: String(_id)
+  } as SystemModelItemType;
+};
+
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
 
@@ -127,7 +139,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     // Persist system built-in models without MongoDB records so they have _id for modelId-based lookup
     {
       const pluginModelsWithoutDB = systemModels.filter(
-        (model) => !dbModels.find((db) => db.model === model.model && !db.metadata?.isCustom)
+        (model) => !dbModels.find((db) => db.model === model.model && !db.isCustom)
       );
 
       if (pluginModelsWithoutDB.length > 0) {
@@ -136,11 +148,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         await MongoSystemModel.bulkWrite(
           pluginModelsWithoutDB.map((model) => ({
             updateOne: {
-              filter: { model: model.model, 'metadata.isCustom': false },
+              filter: { model: model.model, isCustom: false },
               update: {
                 $setOnInsert: {
-                  model: model.model,
-                  metadata: { ...model, isCustom: false },
+                  ...model,
+                  isCustom: false,
                   isShared: true
                 }
               },
@@ -152,9 +164,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         // Re-fetch to get _id values for both pre-existing and newly inserted records
         const refreshedDocs = await MongoSystemModel.find({
           model: { $in: modelNames },
-          'metadata.isCustom': false
+          isCustom: false
         }).lean();
-        dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.metadata?.isCustom);
+        dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.isCustom);
         dbModels.push(...refreshedDocs);
         addLog.info(`Persisted ${refreshedDocs.length} system models to MongoDB`);
       }
@@ -169,32 +181,26 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         return { ...formatObj1, ...formatObj2 };
       };
 
-      const dbModel = dbModels.find(
-        (item) => item.model === model.model && !item.metadata?.isCustom
-      );
-      const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
+      const dbModel = dbModels.find((item) => item.model === model.model && !item.isCustom);
+      const provider = getModelProvider(dbModel?.provider || model.provider, language);
 
       const modelData: any = {
         ...model,
-        ...dbModel?.metadata,
+        ...(dbModel ? leanToModelItem(dbModel) : {}),
         provider: provider.id,
         avatar: provider.avatar,
-        type: dbModel?.metadata?.type || model.type,
+        type: dbModel?.type || model.type,
         isCustom: false,
-        id: dbModel?._id?.toString(),
-        tmbId: dbModel?.tmbId,
-        teamId: dbModel?.teamId,
-        isShared: dbModel?.isShared,
 
         ...(model.type === ModelTypeEnum.llm && {
           maxResponse: model.maxTokens ?? 16000
         }),
 
-        ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
+        ...(model.type === ModelTypeEnum.llm && dbModel?.type === ModelTypeEnum.llm
           ? {
-              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 8000,
-              defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
-              fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              maxResponse: dbModel.maxResponse ?? model.maxTokens ?? 8000,
+              defaultConfig: mergeObject(model.defaultConfig, dbModel.defaultConfig),
+              fieldMap: mergeObject(model.fieldMap, dbModel.fieldMap),
               /** @deprecated */
               maxTokens: undefined
             }
@@ -207,7 +213,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     {
       const systemModelNames = new Set(systemModels.map((m) => m.model));
       const orphanedIds = dbModels
-        .filter((db) => !db.metadata?.isCustom && !systemModelNames.has(db.model))
+        .filter((db) => !db.isCustom && !systemModelNames.has(db.model))
         .map((db) => db._id);
 
       if (orphanedIds.length > 0) {
@@ -222,13 +228,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       if (_systemModelList.find((item) => item.id === dbModel._id.toString())) return;
 
       pushModel({
-        ...dbModel.metadata,
-        isCustom: true,
-        id: dbModel._id.toString(),
-        tmbId: dbModel.tmbId,
-        teamId: dbModel.teamId,
-        isShared: dbModel.isShared
-      });
+        ...leanToModelItem(dbModel),
+        isCustom: true
+      } as SystemModelItemType);
     });
 
     // Sort model list

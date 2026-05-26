@@ -4,7 +4,6 @@ import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import {
   UpdateModelBodySchema,
   UpdateModelResponseSchema,
@@ -15,64 +14,44 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
-const ignoredMetadataKeys = new Set([
-  'avatar',
-  'id',
-  'isShared',
-  'permission',
-  'sourceMember',
-  'teamId',
-  'tmbId'
-]);
-
-const buildMetadataUpdate = ({
-  metadata,
+const buildModelUpdate = ({
+  fields,
   modelItem
 }: {
-  metadata: Record<string, any>;
-  modelItem: Pick<SystemModelItemType, 'model' | 'type' | 'isCustom'>;
+  fields: Record<string, any>;
+  modelItem: { id: string; model: string; type: string; isCustom?: boolean };
 }) => {
-  const nextModel = typeof metadata.model === 'string' ? metadata.model.trim() : modelItem.model;
-
-  if (!nextModel) {
-    throw new Error(ModelErrEnum.metadataModelRequired);
-  }
-  if (modelItem.isCustom !== true && nextModel !== modelItem.model) {
-    throw new Error(ModelErrEnum.systemModelNotSupportUpdate);
-  }
-
-  const $set: Record<string, any> = {
-    model: modelItem.isCustom === true ? nextModel : modelItem.model,
-    'metadata.model': modelItem.isCustom === true ? nextModel : modelItem.model,
-    'metadata.isCustom': modelItem.isCustom === true
-  };
+  const $set: Record<string, any> = {};
   const $unset: Record<string, 1> = {};
-  const usePriceTiers = modelItem.type === 'llm' && Array.isArray(metadata.priceTiers);
 
-  for (const [key, rawValue] of Object.entries(metadata)) {
-    if (ignoredMetadataKeys.has(key)) continue;
+  const nextModel = typeof fields.model === 'string' ? fields.model.trim() : undefined;
+  if (nextModel !== undefined) {
+    if (modelItem.isCustom !== true && nextModel !== modelItem.model) {
+      throw new Error(ModelErrEnum.systemModelNotSupportUpdate);
+    }
+    $set.model = nextModel;
+  }
 
-    if (key === 'model' || key === 'isCustom') {
-      continue;
-    }
-    if (usePriceTiers && ['charsPointsPrice', 'inputPrice', 'outputPrice'].includes(key)) {
-      continue;
-    }
+  const usePriceTiers = modelItem.type === 'llm' && Array.isArray(fields.priceTiers);
+
+  for (const [key, rawValue] of Object.entries(fields)) {
+    if (['id', 'model', 'isCustom', 'tmbId', 'teamId'].includes(key)) continue;
+    if (usePriceTiers && ['charsPointsPrice', 'inputPrice', 'outputPrice'].includes(key)) continue;
 
     const value = key === 'name' && typeof rawValue === 'string' ? rawValue.trim() : rawValue;
 
     if (value === null || value === undefined) {
-      $unset[`metadata.${key}`] = 1;
+      $unset[key] = 1;
       continue;
     }
 
-    $set[`metadata.${key}`] = value;
+    $set[key] = value;
   }
 
   if (usePriceTiers) {
-    $unset['metadata.charsPointsPrice'] = 1;
-    $unset['metadata.inputPrice'] = 1;
-    $unset['metadata.outputPrice'] = 1;
+    $unset.charsPointsPrice = 1;
+    $unset.inputPrice = 1;
+    $unset.outputPrice = 1;
   }
 
   return { $set, $unset };
@@ -82,7 +61,9 @@ async function handler(
   req: ApiRequestProps<UpdateModelBody, any>,
   res: ApiResponseType<any>
 ): Promise<UpdateModelResponse> {
-  const { id, metadata, isShared } = UpdateModelBodySchema.parse(req.body);
+  const parsed = UpdateModelBodySchema.parse(req.body);
+  const { id, isShared, ...fields } = parsed;
+
   const {
     model: modelItem,
     teamId,
@@ -97,21 +78,18 @@ async function handler(
 
   const updateData: Record<string, any> = {};
 
-  if (metadata && Object.keys(metadata).length > 0) {
-    const { $set, $unset } = buildMetadataUpdate({
-      metadata,
+  if (Object.keys(fields).length > 0) {
+    const { $set, $unset } = buildModelUpdate({
+      fields,
       modelItem
     });
 
-    updateData.$set = $set;
-    updateData.$unset = $unset;
+    if (Object.keys($set).length > 0) updateData.$set = $set;
+    if (Object.keys($unset).length > 0) updateData.$unset = $unset;
   }
 
   if (isShared !== undefined) {
-    updateData.$set = {
-      ...(updateData.$set || {}),
-      isShared
-    };
+    updateData.$set = { ...(updateData.$set || {}), isShared };
   }
 
   if (Object.keys(updateData).length === 0) {

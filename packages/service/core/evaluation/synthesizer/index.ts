@@ -6,6 +6,7 @@ import type {
   SynthesisResult
 } from '@fastgpt/global/core/evaluation/metric/type';
 import { getLLMModelById, getEmbeddingModelById } from '../../ai/model';
+import { getModelEndpointConfig } from '../../ai/config';
 import { createDitingSynthesisClient } from './ditingSynthesisClient';
 
 export abstract class Synthesizer {
@@ -76,10 +77,12 @@ export function createSynthesizerInstance(
   if (llmConfig?.modelId) {
     try {
       const llm = getLLMModelById(llmConfig.modelId);
+      const endpoint = getModelEndpointConfig(llm);
       llmConfig = {
         ...llmConfig,
-        baseUrl: llm.requestUrl || '',
-        apiKey: llm.requestAuth || ''
+        name: endpoint.name,
+        baseUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey
       };
     } catch (err) {
       throw new Error(`Get LLM model failed: ${(err as Error).message}`);
@@ -89,10 +92,11 @@ export function createSynthesizerInstance(
   if (embeddingConfig?.modelId) {
     try {
       const embedding = getEmbeddingModelById(embeddingConfig.modelId);
+      const endpoint = getModelEndpointConfig(embedding);
       embeddingConfig = {
         ...embeddingConfig,
-        baseUrl: embedding.requestUrl || '',
-        apiKey: embedding.requestAuth || ''
+        baseUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey
       };
     } catch (err) {
       throw new Error(`Get embedding model failed: ${(err as Error).message}`);

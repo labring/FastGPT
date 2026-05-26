@@ -15,9 +15,9 @@ async function handler(
 ): Promise<GetDefaultConfigResponse> {
   await authSystemAdmin({ req });
 
-  const { modelId } = GetDefaultConfigQuerySchema.parse(req.query);
+  const { id } = GetDefaultConfigQuerySchema.parse(req.query);
 
-  return GetDefaultConfigResponseSchema.parse(getSystemModelConfig(modelId));
+  return GetDefaultConfigResponseSchema.parse(getSystemModelConfig(id));
 }
 
 export default NextAPI(handler);

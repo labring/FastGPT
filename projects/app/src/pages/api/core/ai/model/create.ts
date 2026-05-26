@@ -27,24 +27,18 @@ async function handler(
   });
 
   const parsed = CreateModelBodySchema.parse(req.body);
-  let { model, metadata, isShared = false } = parsed;
-  if (!model || !metadata) return Promise.reject(ModelErrEnum.customModelMissingFields);
-  model = model.trim();
-
-  const name = metadata?.name?.trim();
+  const model = parsed.model.trim();
+  const name = parsed.name?.trim();
   if (!name) return Promise.reject(ModelErrEnum.customModelMissingName);
-  if (!metadata.type) return Promise.reject(ModelErrEnum.customModelMissingType);
-
-  metadata.model = model;
-  metadata.name = name;
-  metadata.isCustom = true;
 
   const newDoc = await MongoSystemModel.create({
+    ...parsed,
     model,
-    metadata,
+    name,
+    isCustom: true,
     tmbId,
     teamId,
-    isShared
+    isShared: parsed.isShared ?? false
   });
 
   const modelId = newDoc._id.toString();
@@ -63,7 +57,7 @@ async function handler(
       teamId,
       tmbId,
       event: AuditEventEnum.CREATE_MODEL,
-      params: { modelName: name, modelType: getI18nModelType(metadata.type) }
+      params: { modelName: name, modelType: getI18nModelType(parsed.type) }
     });
   })();
 

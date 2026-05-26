@@ -89,22 +89,19 @@ describe('Rerank Model Config Controller', () => {
 
       expect(configId).toBe('config_123');
       expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        provider: 'aicp',
         model: 'test-model',
+        name: 'Test Rerank Model',
+        isActive: true,
+        isCustom: true,
+        isTuned: true,
+        type: 'rerank',
+        charsPointsPrice: 1,
+        maxToken: 8192,
+        instruction: undefined,
         tmbId: 'tmb_test',
         teamId: 'team_test',
-        isShared: false,
-        metadata: expect.objectContaining({
-          provider: 'aicp',
-          model: 'test-model',
-          name: 'Test Rerank Model',
-          isActive: true,
-          isCustom: true,
-          isTuned: true,
-          type: 'rerank',
-          charsPointsPrice: 1,
-          maxToken: 8192,
-          instruction: undefined
-        })
+        isShared: false
       });
 
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
@@ -217,21 +214,19 @@ describe('Rerank Model Config Controller', () => {
       });
 
       expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        provider: 'aicp',
         model: 'simple-model',
+        name: 'Simple Model',
+        isActive: false,
+        isCustom: true,
+        isTuned: true, // Created by training module, should have isTuned flag
+        type: 'rerank',
+        charsPointsPrice: 2,
+        maxToken: undefined,
+        instruction: undefined,
         tmbId: 'tmb_test',
         teamId: 'team_test',
-        isShared: false,
-        metadata: expect.objectContaining({
-          provider: 'aicp',
-          model: 'simple-model',
-          name: 'Simple Model',
-          isActive: false,
-          isCustom: true,
-          isTuned: true, // Created by training module, should have isTuned flag
-          type: 'rerank',
-          charsPointsPrice: 2,
-          instruction: undefined
-        })
+        isShared: false
       });
 
       expect(updatedReloadSystemModel).toHaveBeenCalled();

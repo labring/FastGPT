@@ -68,40 +68,18 @@ vi.mock('@fastgpt/service/core/train/embedding/data/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   createEmbeddingModelConfig: vi.fn(),
   getDefaultLLMModel: vi.fn(),
-  getEmbeddingModelById: vi.fn()
+  getEmbeddingModelById: vi.fn().mockReturnValue({
+    charsPointsPrice: 0,
+    defaultToken: 512,
+    maxToken: 512,
+    weight: 0,
+    instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+  })
 }));
 
 vi.mock('@fastgpt/service/core/train/embedding/model/controller', () => ({
   createEmbeddingModelConfig: vi.fn(),
   deleteEmbeddingModelConfig: vi.fn()
-}));
-
-// Mock ai/config/schema (used by register stage to query base model metadata)
-vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoSystemModel: {
-    findOne: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        metadata: {
-          charsPointsPrice: 0,
-          defaultToken: 512,
-          maxToken: 512,
-          weight: 0,
-          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-        }
-      })
-    }),
-    findById: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        metadata: {
-          charsPointsPrice: 0,
-          defaultToken: 512,
-          maxToken: 512,
-          weight: 0,
-          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-        }
-      })
-    })
-  }
 }));
 
 // Mock channel module
@@ -450,7 +428,12 @@ describe('Embedding Train Task Processor', () => {
         id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        defaultToken: 512,
+        maxToken: 512,
+        weight: 0,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       // Mock eval data synthesis (embedding uses synthesizeEmbeddingEvalData, no dispatchDatasetSearch)
@@ -785,7 +768,12 @@ describe('Embedding Train Task Processor', () => {
         id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        defaultToken: 512,
+        maxToken: 512,
+        weight: 0,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       (synthesizeEmbeddingEvalData as any).mockResolvedValue({
@@ -1584,7 +1572,7 @@ describe('Embedding Train Task Processor', () => {
       expect(synthesizeEmbeddingEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            modelId: ''
+            name: expect.any(String)
           })
         })
       );

@@ -88,21 +88,24 @@ describe('Embedding Model Config Controller', () => {
 
       expect(configId).toBe('config_123');
       expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        provider: 'aicp',
         model: 'test-model',
+        name: 'Test Embedding Model',
+        isActive: true,
+        isCustom: true,
+        isTuned: true,
+        type: 'embedding',
+        charsPointsPrice: 1,
+        defaultToken: 512,
+        maxToken: 512,
+        weight: 0,
+        normalization: undefined,
+        batchSize: undefined,
+        defaultConfig: undefined,
+        instruction: undefined,
         tmbId: 'tmb_test',
         teamId: 'team_test',
-        isShared: false,
-        metadata: expect.objectContaining({
-          provider: 'aicp',
-          model: 'test-model',
-          name: 'Test Embedding Model',
-          isActive: true,
-          isCustom: true,
-          isTuned: true,
-          type: 'embedding', // Verify type is 'embedding' not 'rerank'
-          charsPointsPrice: 1,
-          instruction: undefined
-        })
+        isShared: false
       });
       expect(MongoEmbeddingTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
@@ -141,7 +144,7 @@ describe('Embedding Model Config Controller', () => {
       });
 
       const callArgs = (MongoSystemModel.create as any).mock.calls[0];
-      expect(callArgs[0].metadata.type).toBe('embedding');
+      expect(callArgs[0].type).toBe('embedding');
     });
 
     test('should update existing model config from checkpoint model id', async () => {

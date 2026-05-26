@@ -78,26 +78,26 @@ export async function createEmbeddingModelConfig(params: {
   ).lean();
   const existingModelId = task?.checkpoint?.data?.registering?.tunedModelId;
 
+  const { id: _, ...configFields } = modelConfig;
+
   const result = existingModelId
     ? await MongoSystemModel.findOneAndUpdate(
         { _id: existingModelId },
         {
-          model,
+          ...configFields,
           tmbId,
           teamId,
-          isShared: false,
-          metadata: modelConfig
+          isShared: false
         },
         {
           new: true
         }
       )
     : await MongoSystemModel.create({
-        model,
+        ...configFields,
         tmbId,
         teamId,
-        isShared: false,
-        metadata: modelConfig
+        isShared: false
       });
 
   if (!result) {

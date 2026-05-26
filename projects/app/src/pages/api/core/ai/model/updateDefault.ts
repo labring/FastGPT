@@ -37,10 +37,10 @@ async function handler(
       {},
       {
         $unset: {
-          'metadata.isDefault': 1,
-          'metadata.isDefaultDatasetTextModel': 1,
-          'metadata.isDefaultDatasetImageModel': 1,
-          'metadata.isDefaultEvaluationModel': 1
+          isDefault: 1,
+          isDefaultDatasetTextModel: 1,
+          isDefaultDatasetImageModel: 1,
+          isDefaultEvaluationModel: 1
         }
       },
       { session }
@@ -49,56 +49,56 @@ async function handler(
     if (llmId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(llmId) },
-        { $set: { 'metadata.isDefault': true } },
+        { $set: { isDefault: true } },
         { session }
       );
     }
     if (datasetTextLLMId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(datasetTextLLMId) },
-        { $set: { 'metadata.isDefaultDatasetTextModel': true } },
+        { $set: { isDefaultDatasetTextModel: true } },
         { session }
       );
     }
     if (datasetImageLLMId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(datasetImageLLMId) },
-        { $set: { 'metadata.isDefaultDatasetImageModel': true } },
+        { $set: { isDefaultDatasetImageModel: true } },
         { session }
       );
     }
     if (evaluationId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(evaluationId) },
-        { $set: { 'metadata.isDefaultEvaluationModel': true } },
+        { $set: { isDefaultEvaluationModel: true } },
         { session }
       );
     }
     if (embeddingId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(embeddingId) },
-        { $set: { 'metadata.isDefault': true } },
+        { $set: { isDefault: true } },
         { session }
       );
     }
     if (ttsId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(ttsId) },
-        { $set: { 'metadata.isDefault': true } },
+        { $set: { isDefault: true } },
         { session }
       );
     }
     if (sttId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(sttId) },
-        { $set: { 'metadata.isDefault': true } },
+        { $set: { isDefault: true } },
         { session }
       );
     }
     if (rerankId) {
       await MongoSystemModel.updateOne(
         { _id: new Types.ObjectId(rerankId) },
-        { $set: { 'metadata.isDefault': true } },
+        { $set: { isDefault: true } },
         { session }
       );
     }

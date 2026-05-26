@@ -11,7 +11,7 @@ import {
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
-import { MongoSystemModel } from '../../../../ai/config/schema';
+import { getRerankModelById } from '../../../../ai/model';
 
 /**
  * Stage 5: Model Registration
@@ -53,12 +53,7 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   const tunedModelName = task.newModelName || tunedEndpoint.model;
 
   // Inherit charsPointsPrice and instruction from base model
-  const baseModelDoc = await MongoSystemModel.findById(baseModelId).lean();
-  const baseMeta = (baseModelDoc?.metadata ?? {}) as {
-    charsPointsPrice?: number;
-    maxToken?: number;
-    instruction?: string;
-  };
+  const baseModel = getRerankModelById(baseModelId);
 
   let tunedModelId: string;
   try {
@@ -68,10 +63,10 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
       isActive: true,
       tmbId: task.tmbId,
       teamId: task.teamId,
-      charsPointsPrice: baseMeta.charsPointsPrice,
-      maxToken: baseMeta.maxToken,
+      charsPointsPrice: baseModel.charsPointsPrice,
+      maxToken: baseModel.maxToken,
       instruction:
-        task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction,
+        task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseModel.instruction,
       taskId: String(task._id)
     });
 

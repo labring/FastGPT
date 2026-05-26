@@ -9,7 +9,10 @@ export type DiTingSyntheticEvalDataRequest = {
     numCases?: number;
   };
   llm_config: {
-    modelId: string;
+    name: string;
+    base_url?: string;
+    api_key?: string;
+    parameters?: Record<string, any>;
     timeout?: number;
   };
 };

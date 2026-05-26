@@ -14,6 +14,7 @@ import {
 } from '@fastgpt/global/common/error/code/train';
 import { synthesizeEmbeddingEvalData } from '../../external';
 import { getDefaultLLMModel } from '../../../../ai/model';
+import { getModelEndpointConfig } from '../../../../ai/config';
 import { addLog } from '../../../../../common/system/log';
 import { trainEnv } from '../../../common/env';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
@@ -87,8 +88,10 @@ async function generateEvalDatasetFromDatasets(
     required: trainEnv.TRAIN_MIN_EVAL_QA_COUNT
   });
 
-  // In auto mode, use the default LLM model name directly.
-  const aiModelId = getDefaultLLMModel()?.id || '';
+  // Resolve full endpoint config for DiTing (model + channel credentials).
+  const llm = getDefaultLLMModel();
+  const endpointConfig = getModelEndpointConfig(llm);
+  const aiModelId = llm?.id || '';
 
   // Controlled concurrency for DiTing API calls
   const ditingConcurrency = Math.min(
@@ -113,7 +116,9 @@ async function generateEvalDatasetFromDatasets(
             numCases: numCasesPerSample
           },
           llm_config: {
-            modelId: aiModelId,
+            name: endpointConfig.name,
+            base_url: endpointConfig.baseUrl,
+            api_key: endpointConfig.apiKey,
             timeout: trainEnv.DITING_TIMEOUT / 1000
           }
         });

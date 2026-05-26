@@ -9,15 +9,6 @@ import type {
 import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 
-export type SystemModelSchemaType = {
-  _id: string;
-  model: string;
-  metadata: SystemModelItemType;
-  tmbId?: string;
-  teamId?: string;
-  isShared: boolean;
-};
-
 export type SystemModelItemType =
   | LLMModelItemType
   | EmbeddingModelItemType

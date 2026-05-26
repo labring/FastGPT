@@ -42,6 +42,26 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   };
 };
 
+/**
+ * Resolve full endpoint config for a model (e.g., for passing to external services like DiTing).
+ * Follows the same credential resolution chain as getAIApi:
+ *
+ *   baseUrl: callerOverride → modelData.requestUrl → oneapiUrl → OPENAI_BASE_URL → https://api.openai.com/v1
+ *   apiKey:  callerOverride → modelData.requestAuth → chatApiKey  → CHAT_API_KEY     → ''
+ */
+export const getModelEndpointConfig = (
+  modelData?: { model?: string; requestUrl?: string; requestAuth?: string },
+  overrides?: { baseUrl?: string; apiKey?: string }
+) => {
+  return {
+    name: modelData?.model || '',
+    baseUrl:
+      overrides?.baseUrl || modelData?.requestUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl,
+    apiKey:
+      overrides?.apiKey || modelData?.requestAuth || global?.systemEnv?.chatApiKey || openaiBaseKey
+  };
+};
+
 export const createChatCompletion = async ({
   modelData,
   body,

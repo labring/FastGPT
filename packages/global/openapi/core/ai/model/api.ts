@@ -9,6 +9,14 @@ import {
   RerankModelItemSchema
 } from '../../../../core/ai/model.schema';
 
+export const SystemModelItemSchema = z.discriminatedUnion('type', [
+  LLMModelItemSchema,
+  EmbeddingModelItemSchema,
+  TTSModelItemSchema,
+  STTModelItemSchema,
+  RerankModelItemSchema
+]);
+
 /* ============================================================================
  * 公共: 模型列表项 Schema
  * ============================================================================ */
@@ -18,7 +26,7 @@ export const ModelListItemSchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '模型 ID'
   }),
-  type: z.nativeEnum(ModelTypeEnum).meta({
+  type: z.enum(ModelTypeEnum).meta({
     example: ModelTypeEnum.llm,
     description: '模型类型'
   }),
@@ -122,29 +130,13 @@ export type ListModelsResponse = z.infer<typeof ListModelsResponseSchema>;
  * Tags: ['Model', 'Write']
  * ============================================================================ */
 
-export const CreateModelBodySchema = z.object({
-  model: z.string().meta({
-    example: 'my-custom-model',
-    description: '模型标识,唯一'
-  }),
-  metadata: z.record(z.string(), z.any()).meta({
-    example: {
-      type: 'llm',
-      name: '我的自定义模型',
-      provider: 'openai',
-      maxContext: 128000,
-      maxResponse: 4096,
-      quoteMaxToken: 128000,
-      functionCall: true,
-      toolChoice: true
-    },
-    description: '模型配置元数据'
-  }),
-  isShared: z.boolean().optional().meta({
-    example: false,
-    description: '是否共享给团队'
-  })
-});
+export const CreateModelBodySchema = z.discriminatedUnion('type', [
+  LLMModelItemSchema.omit({ id: true }),
+  EmbeddingModelItemSchema.omit({ id: true }),
+  TTSModelItemSchema.omit({ id: true }),
+  STTModelItemSchema.omit({ id: true }),
+  RerankModelItemSchema.omit({ id: true })
+]);
 
 export type CreateModelBody = z.infer<typeof CreateModelBodySchema>;
 
@@ -165,19 +157,24 @@ export type CreateModelResponse = z.infer<typeof CreateModelResponseSchema>;
  * Tags: ['Model', 'Write']
  * ============================================================================ */
 
-export const UpdateModelBodySchema = z.object({
-  id: z.string().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '模型 ID'
-  }),
-  metadata: z.record(z.string(), z.any()).optional().meta({
-    description: '需要更新的模型配置元数据'
-  }),
-  isShared: z.boolean().optional().meta({
-    example: true,
-    description: '是否共享给团队'
+const _AllPartialModelFields = LLMModelItemSchema.omit({ id: true, type: true })
+  .partial()
+  .extend(EmbeddingModelItemSchema.omit({ id: true, type: true }).partial().shape)
+  .extend(TTSModelItemSchema.omit({ id: true, type: true }).partial().shape)
+  .extend(STTModelItemSchema.omit({ id: true, type: true }).partial().shape)
+  .extend(RerankModelItemSchema.omit({ id: true, type: true }).partial().shape);
+
+export const UpdateModelBodySchema = z
+  .object({
+    id: z.string().meta({
+      example: '68ad85a7463006c963799a05',
+      description: '模型 ID'
+    }),
+    type: z.enum(ModelTypeEnum).optional().meta({
+      description: '模型类型'
+    })
   })
-});
+  .extend(_AllPartialModelFields.shape);
 
 export type UpdateModelBody = z.infer<typeof UpdateModelBodySchema>;
 
@@ -223,13 +220,7 @@ export const GetModelDetailQuerySchema = z.object({
 
 export type GetModelDetailQuery = z.infer<typeof GetModelDetailQuerySchema>;
 
-export const GetModelDetailResponseSchema = z.discriminatedUnion('type', [
-  LLMModelItemSchema,
-  EmbeddingModelItemSchema,
-  TTSModelItemSchema,
-  STTModelItemSchema,
-  RerankModelItemSchema
-]);
+export const GetModelDetailResponseSchema = SystemModelItemSchema;
 
 export type GetModelDetailResponse = z.infer<typeof GetModelDetailResponseSchema>;
 
@@ -262,7 +253,7 @@ export type TestModelQuery = z.infer<typeof TestModelQuerySchema>;
  * ============================================================================ */
 
 export const GetDefaultConfigQuerySchema = z.object({
-  modelId: z.string().meta({
+  id: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '模型 ID'
   })
@@ -270,13 +261,7 @@ export const GetDefaultConfigQuerySchema = z.object({
 
 export type GetDefaultConfigQuery = z.infer<typeof GetDefaultConfigQuerySchema>;
 
-export const GetDefaultConfigResponseSchema = z.discriminatedUnion('type', [
-  LLMModelItemSchema,
-  EmbeddingModelItemSchema,
-  TTSModelItemSchema,
-  STTModelItemSchema,
-  RerankModelItemSchema
-]);
+export const GetDefaultConfigResponseSchema = SystemModelItemSchema;
 
 export type GetDefaultConfigResponse = z.infer<typeof GetDefaultConfigResponseSchema>;
 
@@ -337,31 +322,17 @@ export type UpdateDefaultModelResponse = z.infer<typeof UpdateDefaultModelRespon
  * Tags: ['Model', 'Admin', 'Write']
  * ============================================================================ */
 
-export const SystemModelConfigJsonItemSchema = z.object({
-  id: z.string().optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '模型 ID,不传则自动生成'
-  }),
-  model: z.string().meta({
-    example: 'gpt-4o',
-    description: '模型标识'
-  }),
-  metadata: z.record(z.string(), z.any()).meta({
-    description: '模型配置元数据'
-  }),
-  isShared: z.boolean().optional().meta({
-    example: false,
-    description: '是否共享'
-  }),
-  tmbId: z.string().optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '团队成员 ID'
-  }),
-  teamId: z.string().optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '团队 ID'
+export const SystemModelConfigJsonItemSchema = z
+  .object({
+    id: z.string().optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: '模型 ID,不传则自动生成'
+    }),
+    type: z.enum(ModelTypeEnum).optional().meta({
+      description: '模型类型'
+    })
   })
-});
+  .extend(_AllPartialModelFields.shape);
 
 export type SystemModelConfigJsonItem = z.infer<typeof SystemModelConfigJsonItemSchema>;
 

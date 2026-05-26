@@ -9,7 +9,6 @@ import {
   UpdateWithJsonBodySchema,
   UpdateWithJsonResponseSchema,
   type UpdateWithJsonBody,
-  type SystemModelConfigJsonItem,
   type UpdateWithJsonResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -23,26 +22,22 @@ async function handler(
   const { tmbId, teamId } = await authSystemAdmin({ req });
 
   const { config } = UpdateWithJsonBodySchema.parse(req.body);
-  const data = JSON.parse(config) as SystemModelConfigJsonItem[];
+  const data = JSON.parse(config) as Record<string, any>[];
 
   // Check
   for (const item of data) {
-    if (!item.model || !item.metadata || typeof item.metadata !== 'object') {
+    if (!item.model) {
       return Promise.reject(ModelErrEnum.invalidModelOrMetadata);
     }
-    if (!item.metadata.type) {
+    if (!item.type) {
       return Promise.reject(ModelErrEnum.customModelMissingType);
     }
-    if (!item.metadata.model) {
-      return Promise.reject(ModelErrEnum.metadataModelRequired);
-    }
-    if (!item.metadata.provider) {
+    if (!item.provider) {
       return Promise.reject(ModelErrEnum.metadataProviderRequired);
     }
     item.model = item.model.trim();
-    item.metadata.model = item.model;
-    if (!item.metadata.name) {
-      item.metadata.name = item.model;
+    if (!item.name) {
+      item.name = item.model;
     }
     if (item.id && !Types.ObjectId.isValid(item.id)) {
       return Promise.reject(ModelErrEnum.invalidModelId);
@@ -58,13 +53,13 @@ async function handler(
   await mongoSessionRun(async (session) => {
     await MongoSystemModel.deleteMany({}, { session });
     for await (const item of data) {
-      const _id = item.id ? new Types.ObjectId(item.id) : new Types.ObjectId();
+      const { id: _idStr, ...fields } = item;
+      const _id = _idStr ? new Types.ObjectId(_idStr) : new Types.ObjectId();
       await MongoSystemModel.create(
         [
           {
             _id,
-            model: item.model,
-            metadata: item.metadata,
+            ...fields,
             isShared: item.isShared ?? false,
             ...(item.tmbId ? { tmbId: new Types.ObjectId(item.tmbId) } : {}),
             ...(item.teamId ? { teamId: new Types.ObjectId(item.teamId) } : {})

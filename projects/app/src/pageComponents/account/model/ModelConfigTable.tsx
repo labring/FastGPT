@@ -415,7 +415,7 @@ const ModelTable = () => {
                       onChange={(e) =>
                         updateModel({
                           id: item.id,
-                          metadata: { isActive: e.target.checked }
+                          isActive: e.target.checked
                         })
                       }
                       colorScheme={'myBlue'}

@@ -15,6 +15,7 @@ export type Initv4150Response = {
   };
   dataMigration: {
     total: number;
+    flattened: number;
     isSharedSet: number;
   };
 };
@@ -93,30 +94,55 @@ async function createNewIndexes(): Promise<string[]> {
 }
 
 /**
- * Set isShared = true on existing models that don't have it set.
- * Old models were inherently shared; this is backward compatible.
+ * Flatten old documents: move `metadata` fields to document top level,
+ * and set isShared on models that don't have it.
  */
-async function migrateModelData(): Promise<{ total: number; isSharedSet: number }> {
-  const models = await MongoSystemModel.find({}).lean();
+async function migrateModelData(): Promise<{
+  total: number;
+  flattened: number;
+  isSharedSet: number;
+}> {
+  const db = connectionMongo.connection.db;
+  if (!db) {
+    logger.warn('MongoDB connection not available, skipping data migration');
+    return { total: 0, flattened: 0, isSharedSet: 0 };
+  }
+  const models = (await db.collection('system_models').find({}).toArray()) as any[];
   logger.info(`Found ${models.length} models`);
 
+  let flattened = 0;
   let isSharedSet = 0;
 
   for (const model of models) {
-    const updates: Record<string, any> = {};
+    const $set: Record<string, any> = {};
+    const $unset: Record<string, 1> = {};
 
-    if (model.isShared === undefined) {
-      updates.isShared = true;
+    // Flatten: move metadata fields to top level, skip null/undefined values
+    if (model.metadata && typeof model.metadata === 'object') {
+      for (const [key, value] of Object.entries(model.metadata)) {
+        if (value === null || value === undefined) continue;
+        $set[key] = value;
+      }
+      $unset.metadata = 1;
+      flattened++;
     }
 
-    if (Object.keys(updates).length > 0) {
-      await MongoSystemModel.updateOne({ _id: model._id }, { $set: updates });
+    if (model.isShared === undefined) {
+      $set.isShared = true;
       isSharedSet++;
+    }
+
+    const updateOp: Record<string, any> = {};
+    if (Object.keys($set).length > 0) updateOp.$set = $set;
+    if (Object.keys($unset).length > 0) updateOp.$unset = $unset;
+
+    if (Object.keys(updateOp).length > 0) {
+      await MongoSystemModel.updateOne({ _id: model._id }, updateOp);
     }
   }
 
-  logger.info(`Data migration complete: isShared set on ${isSharedSet} models`);
-  return { total: models.length, isSharedSet };
+  logger.info(`Data migration complete: flattened ${flattened}, isShared set on ${isSharedSet}`);
+  return { total: models.length, flattened, isSharedSet };
 }
 
 async function handler(
@@ -133,8 +159,8 @@ async function handler(
   // Step 2: Create new indexes
   const newIndexesCreated = await createNewIndexes();
 
-  // Step 3: Migrate model data (set isShared)
-  let dataMigration = { total: 0, isSharedSet: 0 };
+  // Step 3: Migrate model data (flatten + set isShared)
+  let dataMigration = { total: 0, flattened: 0, isSharedSet: 0 };
   try {
     dataMigration = await migrateModelData();
   } catch (error) {

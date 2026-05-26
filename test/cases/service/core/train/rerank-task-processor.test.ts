@@ -66,36 +66,16 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   createRerankModelConfig: vi.fn(),
   getDefaultLLMModel: vi.fn(),
-  getRerankModelById: vi.fn()
+  getRerankModelById: vi.fn().mockReturnValue({
+    charsPointsPrice: 0,
+    maxToken: 8192,
+    instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+  })
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
   createRerankModelConfig: vi.fn(),
   deleteRerankModelConfig: vi.fn()
-}));
-
-// Mock ai/config/schema (used by register stage to query base model metadata)
-vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoSystemModel: {
-    findOne: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        metadata: {
-          charsPointsPrice: 0,
-          maxToken: 8192,
-          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-        }
-      })
-    }),
-    findById: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        metadata: {
-          charsPointsPrice: 0,
-          maxToken: 8192,
-          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-        }
-      })
-    })
-  }
 }));
 
 // Mock channel module
@@ -435,7 +415,10 @@ describe('Rerank Train Task Processor', () => {
         id: 'test-rerank-model',
         model: 'test-rerank-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        maxToken: 8192,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       // Mock evaluation
@@ -1000,7 +983,10 @@ describe('Rerank Train Task Processor', () => {
         id: 'test-rerank-model',
         model: 'test-rerank-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        maxToken: 8192,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       const { evaluateRerankModelHelper } = await import(
@@ -2043,7 +2029,7 @@ describe('Rerank Train Task Processor', () => {
       expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            modelId: ''
+            name: expect.any(String)
           })
         })
       );
@@ -2163,7 +2149,7 @@ describe('Rerank Train Task Processor', () => {
       expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            modelId: ''
+            name: expect.any(String)
           })
         })
       );
