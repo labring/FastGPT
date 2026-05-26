@@ -438,12 +438,23 @@ export const DashboardNavbar = ({
     ...(feConfigs?.isPlus
       ? [{ key: 'usage', label: t('common:usage_records'), path: '/account/usage' }]
       : []),
-    { key: 'info', label: t('common:personal_information'), path: '/account/info' },
+    { key: 'model', label: t('common:model_provider'), path: '/account/model' },
+    ...(userInfo?.username === 'root'
+      ? [{ key: 'config', label: t('common:system_tool_manage'), path: '/config/tool' }]
+      : []),
     ...(feConfigs?.isPlus ? [{ key: 'team', label: t('common:team'), path: '/account/team' }] : []),
+    ...(userInfo?.team?.permission.hasApikeyCreatePer
+      ? [{ key: 'apikey', label: t('common:api_key'), path: '/account/apikey' }]
+      : []),
+    { key: 'thirdParty', label: t('common:third_party'), path: '/account/thirdParty' },
+    ...(feConfigs?.isPlus
+      ? [{ key: 'inform', label: t('common:notifications'), path: '/account/inform' }]
+      : []),
+    { key: 'setting', label: t('common:language'), path: '/account/setting' },
+    { key: 'info', label: t('common:personal_information'), path: '/account/info' },
     ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
       ? [{ key: 'bill', label: t('common:bills_and_invoices'), path: '/account/bill' }]
       : []),
-    { key: 'thirdParty', label: t('common:third_party'), path: '/account/thirdParty' },
     ...(feConfigs?.isPlus && feConfigs?.customDomain?.enable
       ? [
           {
@@ -453,21 +464,10 @@ export const DashboardNavbar = ({
           }
         ]
       : []),
-    { key: 'model', label: t('common:model_provider'), path: '/account/model' },
-    ...(userInfo?.username === 'root'
-      ? [{ key: 'config', label: t('common:system_tool_manage'), path: '/config/tool' }]
-      : []),
     ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
       ? [{ key: 'promotion', label: t('common:promotion_records'), path: '/account/promotion' }]
       : []),
-    ...(userInfo?.team?.permission.hasApikeyCreatePer
-      ? [{ key: 'apikey', label: t('common:api_key'), path: '/account/apikey' }]
-      : []),
-    ...(feConfigs?.isPlus
-      ? [{ key: 'inform', label: t('common:notifications'), path: '/account/inform' }]
-      : []),
-    { key: 'setting', label: t('common:language'), path: '/account/setting' },
-    { key: 'loginout', label: t('common:logout'), isLogout: true }
+    { key: 'loginout', label: t('common:logout'), isLogout: true },
   ];
 
   const appBuildItems = [
@@ -537,6 +537,15 @@ export const DashboardNavbar = ({
               onClick={() => window.open(`/chat?appId=${lastChatAppId}&pane=${lastPane}`)}
             />
 
+            {/* 知识库 */}
+            <NavItem
+              icon="navbar/datasetLightNew"
+              label={t('common:navbar.Datasets')}
+              isActive={isActivePrefix(['/dataset'])}
+              isCollapsed={isCollapsed}
+              onClick={() => router.push('/dataset/list')}
+            />
+
             {/* 应用构建（可展开） */}
             <SubNavGroup
               icon="navbar/appBuildNew"
@@ -562,15 +571,6 @@ export const DashboardNavbar = ({
               items={appBuildItems}
               currentPath={pathname}
               onItemClick={(path) => router.push(path)}
-            />
-
-            {/* 知识库 */}
-            <NavItem
-              icon="navbar/datasetLightNew"
-              label={t('common:navbar.Datasets')}
-              isActive={isActivePrefix(['/dataset'])}
-              isCollapsed={isCollapsed}
-              onClick={() => router.push('/dataset/list')}
             />
 
             {/* 模板市场 */}

@@ -39,8 +39,7 @@ const SkillSelect = ({
         </Flex>
         <Button
           variant={'transparentBase'}
-          leftIcon={<MyIcon name="common/selectLight" w={'0.8rem'} />}
-          iconSpacing={1}
+          leftIcon={<MyIcon name="core/chat/sendLight" w={'14px'} transform="rotate(-135deg)" />}
           mr={'-5px'}
           size={'sm'}
           fontSize={'sm'}
