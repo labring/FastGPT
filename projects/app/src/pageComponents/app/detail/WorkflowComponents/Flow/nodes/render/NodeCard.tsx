@@ -2,9 +2,9 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import InlineEdit from './InlineEdit';
 import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -20,7 +20,6 @@ import {
 import { useReactFlow } from 'reactflow';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
-import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
 import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
@@ -45,7 +44,6 @@ import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
 import {
@@ -428,8 +426,6 @@ const NodeCard = (props: Props) => {
 
 export default React.memo(NodeCard);
 
-const NODE_NAME_MAX_LENGTH = 50;
-
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
   nodeId: string;
@@ -452,32 +448,6 @@ const NodeTitleSection = React.memo<{
     return undefined;
   }, [appId]);
 
-  // custom title edit
-  const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:custom_title'),
-    placeholder: t('app:module.Custom Title Tip') || ''
-  });
-
-  const handleRenameClick = useCallback(() => {
-    onOpenCustomTitleModal({
-      defaultVal: name,
-      onSuccess: (newName) => {
-        if (!newName) {
-          return toast({
-            title: t('app:modules.Title is required'),
-            status: 'warning'
-          });
-        }
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'name',
-          value: newName
-        });
-      }
-    });
-  }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
-
   const { runAsync: onGetPermission } = useRequest(getAppPermission, {
     onSuccess(permission) {
       if (permission.hasWritePer) {
@@ -491,35 +461,57 @@ const NodeTitleSection = React.memo<{
     }
   });
 
+  const handleSave = useCallback(
+    (newVal: string) => {
+      const trimmed = newVal.trim();
+      if (!trimmed) {
+        toast({
+          title: t('app:modules.Title is required'),
+          status: 'warning'
+        });
+        return false;
+      }
+      if (trimmed !== name) {
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'name',
+          value: trimmed
+        });
+      }
+      return true;
+    },
+    [name, onChangeNode, nodeId, toast, t]
+  );
+
+  const renderDisplay = useCallback(
+    (val: string) => (
+      <HighlightText
+        rawText={t(val as any)}
+        matchText={searchedText ?? ''}
+        mode={'bg'}
+        color={'#ffe82d'}
+      />
+    ),
+    [searchedText, t]
+  );
+
   return (
     <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
-      <Box
-        ml={2}
-        flex={1}
-        minW={0}
-        fontSize={'18px'}
-        fontWeight={'medium'}
-        color={'myGray.900'}
-        overflow={'hidden'}
-        textOverflow={'ellipsis'}
-        whiteSpace={'nowrap'}
-        title={t(name as any)}
-        sx={{
-          '& > div': {
-            display: 'inline'
-          }
-        }}
-      >
-        <HighlightText
-          rawText={t(name as any)}
-          matchText={searchedText ?? ''}
-          mode={'bg'}
-          color={'#ffe82d'}
+      <Box ml={2} flex={1} minW={0}>
+        <InlineEdit
+          value={name}
+          onSave={handleSave}
+          fontSize={'18px'}
+          fontWeight={'medium'}
+          maxLength={50}
+          h={'28px'}
+          innerH={'26px'}
+          lineHeight={'26px'}
+          px={'6px'}
+          renderDisplay={renderDisplay}
         />
-      </Box>
-      <Box ml={1} flexShrink={0} visibility={'hidden'}>
-        <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
       </Box>
       {childAppId && (
         <Box ml={1} flexShrink={0} visibility={'hidden'}>
@@ -531,8 +523,6 @@ const NodeTitleSection = React.memo<{
           />
         </Box>
       )}
-
-      <EditTitleModal maxLength={NODE_NAME_MAX_LENGTH} />
     </Flex>
   );
 });
@@ -546,60 +536,42 @@ const NodeIntro = React.memo(function NodeIntro({
   nodeId: string;
   intro?: string;
 }) {
-  const { t } = useTranslation();
-  const nodeIsTool = useContextSelector(
-    WorkflowUtilsContext,
-    (ctx) => ctx.splitToolInputs([], nodeId)?.isTool
-  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  // edit intro
-  const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
-    title: t('common:core.module.Edit intro'),
-    tip: t('common:info.node_info'),
-    canEmpty: false
-  });
+  const handleSave = useCallback(
+    (newVal: string) => {
+      const trimmed = newVal.trim();
+      if (trimmed !== intro) {
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'intro',
+          value: trimmed
+        });
+      }
+      return true;
+    },
+    [intro, onChangeNode, nodeId]
+  );
 
-  const Render = useMemo(() => {
-    return (
-      <>
-        <Flex alignItems={'center'}>
-          <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
-            {t(intro as any) || t('app:node_not_intro')}
-          </Box>
-          <Flex
-            className="node-hover-controller"
-            visibility={nodeIsTool ? 'visible' : 'hidden'}
-            p={'7px'}
-            rounded={'sm'}
-            alignItems={'center'}
-            _hover={{
-              bg: 'myGray.100'
-            }}
-            cursor={'pointer'}
-            onClick={() => {
-              onOpenIntroModal({
-                defaultVal: intro,
-                onSuccess(e) {
-                  onChangeNode({
-                    nodeId,
-                    type: 'attr',
-                    key: 'intro',
-                    value: e
-                  });
-                }
-              });
-            }}
-          >
-            <MyIcon name={'edit'} w={'18px'} />
-          </Flex>
-        </Flex>
-        <EditIntroModal maxLength={500} />
-      </>
-    );
-  }, [EditIntroModal, intro, nodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
-
-  return Render;
+  return (
+    <Box w={'100%'} minW={0} overflow={'hidden'}>
+      <InlineEdit
+        value={intro}
+        onSave={handleSave}
+        type={'textarea'}
+        maxLength={500}
+        placeholder={'app:node_not_intro'}
+        fontSize={'sm'}
+        lineHeight={'short'}
+        color={'myGray.500'}
+        minH={'20px'}
+        py={'3px'}
+        px={'6px'}
+        noOfLines={1}
+      />
+    </Box>
+  );
 });
 
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
