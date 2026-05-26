@@ -88,6 +88,9 @@ const MyModal = ({
         boxShadow={'3.5'}
         px={0}
         py={0}
+        display={'flex'}
+        flexDirection={'column'}
+        gap={'24px'}
         containerProps={{
           zIndex: props.zIndex
         }}
@@ -104,7 +107,7 @@ const MyModal = ({
             fontWeight={'500'}
             px={8}
             pt={6}
-            pb={4}
+            pb={0}
             gap={3}
             {...headerStyles}
           >
@@ -121,7 +124,6 @@ const MyModal = ({
             <Box color="black" fontWeight={'500'}>
               {title}
             </Box>
-            <Box flex={1} />
           </Flex>
         )}
 
@@ -132,14 +134,15 @@ const MyModal = ({
           display={'flex'}
           flexDirection={'column'}
           px={8}
-          py={title ? 2 : 8}
+          pt={title ? 0 : 8}
+          pb={footer ? 0 : 8}
           {...bodyStyles}
         >
           {children}
         </MyBox>
 
         {!!footer && (
-          <Flex justifyContent={'flex-end'} gap={3} px={8} pb={6} pt={4} {...footerStyles}>
+          <Flex justifyContent={'flex-end'} gap={3} px={8} pb={6} pt={0} {...footerStyles}>
             {footer}
           </Flex>
         )}
