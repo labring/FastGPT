@@ -109,11 +109,7 @@ export async function createSkillPackage(params: CreateSkillPackageParams): Prom
 /**
  * 向 ZIP 中写入单个文件，并统一处理 Buffer、Uint8Array 和字符串内容。
  */
-export function addFileToZip(
-  zip: JSZip,
-  path: string,
-  content: Buffer | string | Uint8Array
-): void {
+function addFileToZip(zip: JSZip, path: string, content: Buffer | string | Uint8Array): void {
   // ZIP 内路径不应带绝对路径前缀。
   const normalizedPath = path.replace(/^\/+/, '');
 
@@ -129,7 +125,7 @@ export function addFileToZip(
 /**
  * 将 JSZip 实例压缩成 Node Buffer。
  */
-export async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
+async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
   return zip.generateAsync({
     type: 'nodebuffer',
     compression: 'DEFLATE',

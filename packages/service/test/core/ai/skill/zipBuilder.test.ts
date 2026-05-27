@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   createSkillPackage,
-  addFileToZip,
-  generateZipBuffer,
   validateZipStructure,
   extractSkillPackage,
   standardizeSkillPackageBySkillMdName,
@@ -110,72 +108,6 @@ ${largeMarkdown}`;
 
       expect(skillMdContent).toBe(skillMd);
       expect(skillMdContent!.length).toBeGreaterThan(10000);
-    });
-  });
-
-  // ==================== addFileToZip ====================
-  describe('addFileToZip', () => {
-    it('should add string content to zip', async () => {
-      const zip = new JSZip();
-      const content = 'File content here';
-
-      addFileToZip(zip, 'test.txt', content);
-
-      const files = Object.keys(zip.files);
-      expect(files).toContain('test.txt');
-
-      const fileContent = await zip.file('test.txt')?.async('string');
-      expect(fileContent).toBe(content);
-    });
-
-    it('should add buffer content to zip', async () => {
-      const zip = new JSZip();
-      const content = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-
-      addFileToZip(zip, 'image.png', content);
-
-      const fileContent = await zip.file('image.png')?.async('uint8array');
-      expect(Buffer.from(fileContent!)).toEqual(content);
-    });
-
-    it('should handle nested paths', async () => {
-      const zip = new JSZip();
-
-      addFileToZip(zip, 'assets/images/icon.png', Buffer.from('png'));
-      addFileToZip(zip, 'docs/README.md', '# Docs');
-
-      const files = Object.keys(zip.files);
-      expect(files).toContain('assets/images/icon.png');
-      expect(files).toContain('docs/README.md');
-    });
-  });
-
-  // ==================== generateZipBuffer ====================
-  describe('generateZipBuffer', () => {
-    it('should generate valid zip buffer', async () => {
-      const zip = new JSZip();
-      zip.file('test.txt', 'content');
-
-      const buffer = await generateZipBuffer(zip);
-
-      expect(Buffer.isBuffer(buffer)).toBe(true);
-      expect(buffer.length).toBeGreaterThan(0);
-
-      // Verify it's a valid zip
-      const loadedZip = await JSZip.loadAsync(buffer);
-      expect(Object.keys(loadedZip.files)).toContain('test.txt');
-    });
-
-    it('should generate empty zip for empty JSZip', async () => {
-      const zip = new JSZip();
-
-      const buffer = await generateZipBuffer(zip);
-
-      expect(Buffer.isBuffer(buffer)).toBe(true);
-
-      // Empty zip should still be loadable
-      const loadedZip = await JSZip.loadAsync(buffer);
-      expect(Object.keys(loadedZip.files)).toHaveLength(0);
     });
   });
 

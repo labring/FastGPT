@@ -1,14 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   buildSkillMd,
-  generateFrontmatter,
-  validateSkillName,
-  escapeYaml,
-  sanitizeSkillNameForFile,
-  parseFrontmatter,
-  unescapeYaml,
   extractSkillNameFromSkillMd,
-  extractDescriptionFromSkillMd,
   parseSkillMarkdown
 } from '@fastgpt/service/core/ai/skill/utils';
 import {
@@ -87,56 +80,6 @@ describe('skillMd utilities', () => {
     });
   });
 
-  // ==================== generateFrontmatter ====================
-  describe('generateFrontmatter', () => {
-    it('should generate valid YAML frontmatter', () => {
-      const result = generateFrontmatter('my-skill', 'A description');
-
-      expect(result).toBe('---\nname: my-skill\ndescription: A description\n---');
-    });
-
-    it('should handle special characters in name', () => {
-      const result = generateFrontmatter('skill-with-123', 'Test');
-      expect(result).toContain('name: skill-with-123');
-    });
-  });
-
-  // ==================== parseFrontmatter ====================
-  describe('parseFrontmatter', () => {
-    it('should parse valid frontmatter and body', () => {
-      const content =
-        '---\nname: my-skill\ndescription: A test skill\n---\n\n# Overview\nSome content.';
-      const result = parseFrontmatter(content);
-
-      expect(result.name).toBe('my-skill');
-      expect(result.description).toBe('A test skill');
-      expect(result.body).toBe('# Overview\nSome content.');
-    });
-
-    it('should parse frontmatter with no body', () => {
-      const content = '---\nname: simple-skill\ndescription: Just a skill\n---\n';
-      const result = parseFrontmatter(content);
-
-      expect(result.name).toBe('simple-skill');
-      expect(result.description).toBe('Just a skill');
-      expect(result.body).toBe('');
-    });
-
-    it('should unescape quoted values in frontmatter', () => {
-      const content = '---\nname: test-skill\ndescription: "Value with \\"quotes\\""\n---\n';
-      const result = parseFrontmatter(content);
-
-      expect(result.description).toBe('Value with "quotes"');
-    });
-
-    it('should throw on missing frontmatter', () => {
-      const content = '# Just a markdown document\nNo frontmatter here.';
-      expect(() => parseFrontmatter(content)).toThrow(
-        'Invalid SKILL.md format: missing frontmatter'
-      );
-    });
-  });
-
   // ==================== parseSkillMarkdown ====================
   describe('parseSkillMarkdown', () => {
     it('should parse nested fields and handle pop stack correctly on indent change', () => {
@@ -163,130 +106,6 @@ version: "1.0.0"
     });
   });
 
-  // ==================== unescapeYaml ====================
-  describe('unescapeYaml', () => {
-    it('should return plain strings unchanged', () => {
-      expect(unescapeYaml('plain-value')).toBe('plain-value');
-    });
-
-    it('should unescape double-quoted strings', () => {
-      expect(unescapeYaml('"hello world"')).toBe('hello world');
-    });
-
-    it('should unescape escaped double quotes inside double-quoted strings', () => {
-      expect(unescapeYaml('"say \\"hello\\""')).toBe('say "hello"');
-    });
-
-    it('should unescape single-quoted strings', () => {
-      expect(unescapeYaml("'single quoted'")).toBe('single quoted');
-    });
-
-    it('should handle empty double-quoted string', () => {
-      expect(unescapeYaml('""')).toBe('');
-    });
-  });
-
-  // ==================== validateSkillName ====================
-  describe('validateSkillName', () => {
-    it('should return true for valid names', () => {
-      expect(validateSkillName('my-skill')).toBe(true);
-      expect(validateSkillName('skill123')).toBe(true);
-      expect(validateSkillName('a')).toBe(true);
-      expect(validateSkillName('skill-with-many-words')).toBe(true);
-    });
-
-    it('should return false for names with uppercase', () => {
-      expect(validateSkillName('MySkill')).toBe(false);
-      expect(validateSkillName('mySkill')).toBe(false);
-    });
-
-    it('should return false for names starting with hyphen', () => {
-      expect(validateSkillName('-skill')).toBe(false);
-    });
-
-    it('should return false for names ending with hyphen', () => {
-      expect(validateSkillName('skill-')).toBe(false);
-    });
-
-    it('should return false for names with consecutive hyphens', () => {
-      expect(validateSkillName('skill--name')).toBe(false);
-    });
-
-    it('should return false for names with special characters', () => {
-      expect(validateSkillName('skill@name')).toBe(false);
-      expect(validateSkillName('skill_name')).toBe(false);
-      expect(validateSkillName('skill.name')).toBe(false);
-      expect(validateSkillName('skill/name')).toBe(false);
-    });
-
-    it('should return false for empty string', () => {
-      expect(validateSkillName('')).toBe(false);
-    });
-
-    it('should return false for names longer than 64 characters', () => {
-      expect(validateSkillName('a'.repeat(65))).toBe(false);
-      expect(validateSkillName('a'.repeat(64))).toBe(true);
-    });
-  });
-
-  // ==================== escapeYaml ====================
-  describe('escapeYaml', () => {
-    it('should return simple strings as-is', () => {
-      expect(escapeYaml('simple')).toBe('simple');
-      expect(escapeYaml('hello world')).toBe('hello world');
-    });
-
-    it('should escape double quotes', () => {
-      expect(escapeYaml('say "hello"')).toBe('"say \\"hello\\""');
-    });
-
-    it('should wrap strings with special characters in double quotes', () => {
-      expect(escapeYaml('value: with colon')).toBe('"value: with colon"');
-      expect(escapeYaml('value#with hash')).toBe('"value#with hash"');
-      expect(escapeYaml('{brackets}')).toBe('"{brackets}"');
-    });
-
-    it('should handle empty string', () => {
-      expect(escapeYaml('')).toBe('""');
-    });
-
-    it('should handle strings with newlines', () => {
-      expect(escapeYaml('line1\nline2')).toBe('|\n  line1\n  line2');
-    });
-  });
-
-  // ==================== sanitizeSkillNameForFile ====================
-  describe('sanitizeSkillNameForFile', () => {
-    it('should convert to lowercase', () => {
-      expect(sanitizeSkillNameForFile('MySkill')).toBe('myskill');
-    });
-
-    it('should replace spaces with hyphens', () => {
-      expect(sanitizeSkillNameForFile('my skill name')).toBe('my-skill-name');
-    });
-
-    it('should replace underscores with hyphens', () => {
-      expect(sanitizeSkillNameForFile('my_skill_name')).toBe('my-skill-name');
-    });
-
-    it('should remove invalid characters', () => {
-      expect(sanitizeSkillNameForFile('skill@#$%^&*()name')).toBe('skillname');
-    });
-
-    it('should collapse multiple hyphens', () => {
-      expect(sanitizeSkillNameForFile('skill---name')).toBe('skill-name');
-    });
-
-    it('should trim leading and trailing hyphens', () => {
-      expect(sanitizeSkillNameForFile('-skill-name-')).toBe('skill-name');
-    });
-
-    it('should limit to 64 characters', () => {
-      const longName = 'a'.repeat(100);
-      expect(sanitizeSkillNameForFile(longName).length).toBe(64);
-    });
-  });
-
   // ==================== extractSkillNameFromSkillMd ====================
   describe('extractSkillNameFromSkillMd', () => {
     it('should extract name from valid frontmatter', () => {
@@ -302,24 +121,6 @@ version: "1.0.0"
     it('should return "unnamed-skill" when no frontmatter and no heading', () => {
       const content = 'Just plain text with no structure.';
       expect(extractSkillNameFromSkillMd(content)).toBe('unnamed-skill');
-    });
-  });
-
-  // ==================== extractDescriptionFromSkillMd ====================
-  describe('extractDescriptionFromSkillMd', () => {
-    it('should extract description from valid frontmatter', () => {
-      const content = '---\nname: my-skill\ndescription: A useful skill\n---\n';
-      expect(extractDescriptionFromSkillMd(content)).toBe('A useful skill');
-    });
-
-    it('should return empty string when frontmatter is missing', () => {
-      const content = '# No Frontmatter\n\nJust content.';
-      expect(extractDescriptionFromSkillMd(content)).toBe('');
-    });
-
-    it('should return empty string when description field is absent', () => {
-      const content = '---\nname: my-skill\n---\n';
-      expect(extractDescriptionFromSkillMd(content)).toBe('');
     });
   });
 

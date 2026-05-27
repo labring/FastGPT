@@ -136,7 +136,7 @@ export function buildSkillMd(params: BuildSkillMdParams): string {
  *
  * 当前只写入 name 和 description，保持创建阶段的默认包尽量轻量。
  */
-export function generateFrontmatter(name: string, description: string): string {
+function generateFrontmatter(name: string, description: string): string {
   const escapedName = escapeYaml(name);
   const escapedDescription = escapeYaml(description);
 
@@ -149,7 +149,7 @@ export function generateFrontmatter(name: string, description: string): string {
  * 这里只服务模板构造相关的轻量读取；导入/部署时的正式 SKILL.md 元数据解析
  * 仍应使用 `parseSkillMarkdown`，避免业务校验规则分散。
  */
-export function parseFrontmatter(content: string): {
+function parseFrontmatter(content: string): {
   name: string;
   description: string;
   body: string;
@@ -175,7 +175,7 @@ export function parseFrontmatter(content: string): {
 /**
  * 将字符串转成适合写入简单 YAML 标量的形式。
  */
-export function escapeYaml(value: string): string {
+function escapeYaml(value: string): string {
   if (value === '') {
     return '""';
   }
@@ -203,7 +203,7 @@ export function escapeYaml(value: string): string {
 /**
  * 反解析 `escapeYaml` 支持的简单 quoted scalar。
  */
-export function unescapeYaml(value: string): string {
+function unescapeYaml(value: string): string {
   if (value.startsWith('"') && value.endsWith('"')) {
     return value.slice(1, -1).replace(/\\"/g, '"');
   }
@@ -216,30 +216,7 @@ export function unescapeYaml(value: string): string {
 /**
  * 校验 skill name 是否满足 Agent Skills 的 kebab-case 约束。
  */
-export function validateSkillName(name: string): boolean {
-  if (name.length === 0 || name.length > 64) {
-    return false;
-  }
-
-  if (!/^[a-z0-9-]+$/.test(name)) {
-    return false;
-  }
-
-  if (name.startsWith('-') || name.endsWith('-')) {
-    return false;
-  }
-
-  if (name.includes('--')) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * 将用户输入清洗成可用于 skill 包目录名的 kebab-case-ish 字符串。
- */
-export function sanitizeSkillNameForFile(name: string): string {
+function sanitizeSkillNameForFile(name: string): string {
   return name
     .toLowerCase()
     .replace(/\s+/g, '-')
@@ -250,9 +227,6 @@ export function sanitizeSkillNameForFile(name: string): string {
     .slice(0, 64);
 }
 
-/**
- * 从 SKILL.md 内容里提取 name，缺少 frontmatter 时回退到首个一级标题。
- */
 export function extractSkillNameFromSkillMd(content: string): string {
   try {
     const { name } = parseFrontmatter(content);
@@ -260,18 +234,6 @@ export function extractSkillNameFromSkillMd(content: string): string {
   } catch {
     const headerMatch = content.match(/^#\s+(.+)$/m);
     return headerMatch ? sanitizeSkillNameForFile(headerMatch[1]) : 'unnamed-skill';
-  }
-}
-
-/**
- * 从 SKILL.md 内容里提取 description，解析失败时返回空字符串。
- */
-export function extractDescriptionFromSkillMd(content: string): string {
-  try {
-    const { description } = parseFrontmatter(content);
-    return description;
-  } catch {
-    return '';
   }
 }
 

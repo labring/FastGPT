@@ -55,10 +55,3 @@ export async function listVersions(
 
   return versions as AgentSkillsVersionSchemaType[];
 }
-
-/**
- * Count versions for a skill.
- */
-export async function countVersions(skillId: string): Promise<number> {
-  return MongoAgentSkillsVersion.countDocuments({ skillId });
-}
