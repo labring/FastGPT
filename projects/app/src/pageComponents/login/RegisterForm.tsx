@@ -19,8 +19,10 @@ import {
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 interface Props {
-  loginSuccess: (e: LoginSuccessResponseType) => void;
+  loginSuccess: LoginSuccessHandler;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
 }
 
@@ -51,18 +53,17 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {
-      loginSuccess(
-        await postRegister({
-          username,
-          code,
-          password,
-          inviterId: getInviterId(),
-          bd_vid: getBdVId(),
-          msclkid: getMsclkid(),
-          fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain()
-        })
-      );
+      const loginResponse = await postRegister({
+        username,
+        code,
+        password,
+        inviterId: getInviterId(),
+        bd_vid: getBdVId(),
+        msclkid: getMsclkid(),
+        fastgpt_sem: getFastGPTSem(),
+        sourceDomain: getSourceDomain()
+      });
+      await loginSuccess(loginResponse);
       removeFastGPTSem();
 
       toast({

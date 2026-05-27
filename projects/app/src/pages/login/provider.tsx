@@ -104,7 +104,7 @@ const provider = () => {
         }
 
         removeFastGPTSem();
-        loginSuccess(res);
+        await loginSuccess(res);
       } catch (error) {
         toast({
           status: 'warning',

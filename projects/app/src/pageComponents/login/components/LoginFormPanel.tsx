@@ -6,6 +6,8 @@ import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { type Dispatch, useMemo } from 'react';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('@/pageComponents/login/LoginForm/WechatForm'));
@@ -13,7 +15,7 @@ const WechatForm = dynamic(() => import('@/pageComponents/login/LoginForm/Wechat
 type LoginFormPanelProps = {
   pageType: `${LoginPageTypeEnum}`;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (res: LoginSuccessResponseType) => void;
+  loginSuccess: LoginSuccessHandler;
 };
 
 const LoginFormPanel = ({ pageType, setPageType, loginSuccess }: LoginFormPanelProps) => {
