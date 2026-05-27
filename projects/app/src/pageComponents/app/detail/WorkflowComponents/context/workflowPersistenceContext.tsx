@@ -22,6 +22,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
 import {
+  markWorkflowLocalDraftAuthExpiredNotice,
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
@@ -152,7 +153,10 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     } catch (error) {
       if (isAuthRedirectError(error)) {
         skipBeforeUnloadPrompt.current = true;
-        saveLocalDraft();
+        const savedDraft = saveLocalDraft();
+        if (savedDraft) {
+          markWorkflowLocalDraftAuthExpiredNotice();
+        }
         return;
       }
 

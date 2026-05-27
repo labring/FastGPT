@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkWorkflowLocalDraft,
+  consumeWorkflowLocalDraftAuthExpiredNotice,
   getWorkflowLocalDraftDetailRoute,
+  markWorkflowLocalDraftAuthExpiredNotice,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
   saveWorkflowLocalDraft,
@@ -199,5 +201,12 @@ describe('workflow local draft', () => {
     removeWorkflowLocalDraft();
 
     expect(readWorkflowLocalDraft()).toBeNull();
+  });
+
+  it('should consume auth expired notice only once', () => {
+    markWorkflowLocalDraftAuthExpiredNotice();
+
+    expect(consumeWorkflowLocalDraftAuthExpiredNotice()).toBe(true);
+    expect(consumeWorkflowLocalDraftAuthExpiredNotice()).toBe(false);
   });
 });
