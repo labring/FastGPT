@@ -49,11 +49,13 @@ export const env = createEnv({
     SANDBOX_POOL_SIZE: IntSchema.min(1).max(100).default(20),
 
     // ===== 资源限制 =====
+    SANDBOX_API_MAX_BODY_MB: IntSchema.min(1).max(100).default(8),
     SANDBOX_MAX_TIMEOUT: IntSchema.min(1000).max(600000).default(60000),
     SANDBOX_MAX_MEMORY_MB: IntSchema.min(32).max(4096).default(256),
+    SANDBOX_MAX_OUTPUT_MB: IntSchema.min(1).max(100).default(10),
 
     // ===== 网络请求限制 =====
-    CHECK_INTERNAL_IP: BoolSchema.default(false),
+    CHECK_INTERNAL_IP: BoolSchema.default(true),
     SANDBOX_REQUEST_MAX_COUNT: IntSchema.min(1).max(1000).default(30),
     SANDBOX_REQUEST_TIMEOUT: IntSchema.min(1000).max(300000).default(60000),
     SANDBOX_REQUEST_MAX_RESPONSE_MB: IntSchema.min(1).max(100).default(10),

@@ -435,6 +435,7 @@ const REQUEST_LIMITS = {
   timeoutMs: 60000,
   maxResponseSize: 10 * 1024 * 1024,
   maxRequestBodySize: 5 * 1024 * 1024,
+  maxOutputSize: 10 * 1024 * 1024,
   allowedProtocols: ['http:', 'https:']
 };
 
@@ -453,10 +454,6 @@ function createHmac(algorithm: string, secret: string) {
   const hmac = crypto.createHmac(algorithm, secret);
   hmac.update(stringToSign, 'utf8');
   return { timestamp, sign: encodeURIComponent(hmac.digest('base64')) };
-}
-function delay(ms: number): Promise<void> {
-  if (ms > 10000) throw new Error('Delay must be <= 10000ms');
-  return new Promise((r) => _workerSetTimeout(r, ms));
 }
 
 // ===== SystemHelper =====
@@ -608,7 +605,26 @@ _ObjectFreeze(safeRequire);
 
 // ===== 输出辅助 =====
 function writeLine(obj: any): void {
-  _workerStdout.write(_JSONStringify(obj) + '\n');
+  let line: string;
+  try {
+    line = _JSONStringify(obj);
+  } catch (err: any) {
+    line = _JSONStringify({
+      success: false,
+      message: `Failed to serialize output: ${err?.message ?? String(err)}`,
+      workerRecycle: 'output_serialize'
+    });
+  }
+
+  if (Buffer.byteLength(line, 'utf8') > REQUEST_LIMITS.maxOutputSize) {
+    line = _JSONStringify({
+      success: false,
+      message: `Output too large (limit: ${REQUEST_LIMITS.maxOutputSize} bytes)`,
+      workerRecycle: 'output_limit'
+    });
+  }
+
+  _workerStdout.write(line + '\n');
 }
 
 // ===== 主循环 =====
@@ -638,6 +654,8 @@ rl.on('line', async (line: string) => {
           REQUEST_LIMITS.maxResponseSize = msg.requestLimits.maxResponseSize;
         if (msg.requestLimits.maxRequestBodySize != null)
           REQUEST_LIMITS.maxRequestBodySize = msg.requestLimits.maxRequestBodySize;
+        if (msg.requestLimits.maxOutputSize != null)
+          REQUEST_LIMITS.maxOutputSize = msg.requestLimits.maxOutputSize;
       }
       hardenRuntime();
       writeLine({ type: 'ready' });
@@ -731,8 +749,15 @@ rl.on('line', async (line: string) => {
     }
     activeIntervals.clear();
   };
+  const safeDelay = (ms: number): Promise<void> => {
+    if (ms > 10000) throw new Error('Delay must be <= 10000ms');
+    return new _OriginalPromise((resolve) => {
+      safeSetTimeout(resolve, ms);
+    });
+  };
 
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
   const requireCacheKeysBeforeTask = getRequireCacheKeys();
   try {
     assertNoDynamicImport(code);
@@ -808,7 +833,7 @@ rl.on('line', async (line: string) => {
         countToken,
         strToBase64,
         createHmac,
-        delay,
+        safeDelay,
         httpRequest,
         variables || {},
         undefined,
@@ -861,7 +886,10 @@ rl.on('line', async (line: string) => {
 
     const timeoutPromise = new _OriginalPromise((_, reject) => {
       timer = _workerSetTimeout(
-        () => reject(new _OriginalError(`Script execution timed out after ${timeoutMs}ms`)),
+        () => {
+          timedOut = true;
+          reject(new _OriginalError(`Script execution timed out after ${timeoutMs}ms`));
+        },
         timeoutMs || 10000
       );
     });
@@ -874,7 +902,11 @@ rl.on('line', async (line: string) => {
     });
   } catch (err: any) {
     _workerClearTimeout(timer);
-    writeLine({ success: false, message: err?.message ?? String(err) });
+    writeLine({
+      success: false,
+      message: err?.message ?? String(err),
+      ...(timedOut ? { workerRecycle: 'timeout' } : {})
+    });
   } finally {
     cleanupUserTimers();
     cleanupUserRequireCache(requireCacheKeysBeforeTask);

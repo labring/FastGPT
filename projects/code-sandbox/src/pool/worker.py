@@ -64,6 +64,7 @@ _REQUEST_LIMITS = {
     'timeout': 60,
     'max_response_size': 10 * 1024 * 1024,
     'max_request_body_size': 5 * 1024 * 1024,
+    'max_output_size': 10 * 1024 * 1024,
     'allowed_protocols': ['http:', 'https:']
 }
 
@@ -80,6 +81,8 @@ def _init_request_limits(limits):
         _REQUEST_LIMITS['max_response_size'] = limits['maxResponseSize']
     if 'maxRequestBodySize' in limits:
         _REQUEST_LIMITS['max_request_body_size'] = limits['maxRequestBodySize']
+    if 'maxOutputSize' in limits:
+        _REQUEST_LIMITS['max_output_size'] = limits['maxOutputSize']
 
 
 def _is_blocked_ip(ip_str):
@@ -326,8 +329,23 @@ _builtins_proxy = None  # init 后创建
 
 _import_guard = False
 
-def _safe_import(name, *args, **kwargs):
+
+def _is_direct_user_import_call():
+    """判断 import 是否由用户代码直接触发，避免误伤标准库/三方包内部依赖。"""
     global _import_guard
+    _import_guard = True
+    try:
+        stack = _tb.extract_stack()
+    finally:
+        _import_guard = False
+
+    if len(stack) < 3:
+        return False
+    caller_fn = stack[-3].filename or ''
+    return caller_fn in ('<string>', '<test>', '<module>')
+
+
+def _safe_import(name, *args, **kwargs):
     # 重入保护：避免 extract_stack / _original_import 内部触发 import 时无限递归
     if _import_guard:
         return _original_import(name, *args, **kwargs)
@@ -342,17 +360,10 @@ def _safe_import(name, *args, **kwargs):
     if top_level in _allowed_modules:
         return _original_import(name, *args, **kwargs)
     # 不在白名单中的模块（含危险 stdlib）：检查是否由用户代码直接触发
-    _import_guard = True
-    try:
-        stack = _tb.extract_stack()
-    finally:
-        _import_guard = False
     # 只拦截直接调用者是用户代码的情况（<string>/<test>/<module>）
     # stdlib 内部的间接 import（如 locale -> os）放行
-    if len(stack) >= 2:
-        caller_fn = stack[-2].filename or ''
-        if caller_fn in ('<string>', '<test>', '<module>'):
-            raise ImportError(f"Module '{name}' is not in the allowlist.")
+    if _is_direct_user_import_call():
+        raise ImportError(f"Module '{name}' is not in the allowlist.")
     return _original_import(name, *args, **kwargs)
 
 
@@ -425,7 +436,23 @@ def _safe_print(*args, **kwargs):
 
 # ===== 输出 =====
 def write_line(obj):
-    sys.stdout.write(json.dumps(obj, ensure_ascii=False, default=str) + '\n')
+    try:
+        payload = json.dumps(obj, ensure_ascii=False, default=str)
+    except Exception as e:
+        payload = json.dumps({
+            "success": False,
+            "message": f"Failed to serialize output: {e}",
+            "workerRecycle": "output_serialize"
+        }, ensure_ascii=False)
+
+    if len(payload.encode('utf-8')) > _REQUEST_LIMITS['max_output_size']:
+        payload = json.dumps({
+            "success": False,
+            "message": f"Output too large (limit: {_REQUEST_LIMITS['max_output_size']} bytes)",
+            "workerRecycle": "output_limit"
+        }, ensure_ascii=False)
+
+    sys.stdout.write(payload + '\n')
     sys.stdout.flush()
 
 
@@ -486,7 +513,7 @@ def _restore_modules(snapshots):
 
 # ===== 主循环 =====
 def main_loop():
-    global _allowed_modules, _request_count, _logs
+    global _allowed_modules, _request_count, _logs, _log_size, _timeout_stage
 
     initialized = False
 
@@ -628,7 +655,12 @@ def main_loop():
 
         except (Exception, SystemExit) as e:
             signal.alarm(0)
-            write_line({"success": False, "message": str(e)})
+            result = {"success": False, "message": str(e)}
+            if isinstance(e, TimeoutError) or (
+                isinstance(e, SystemExit) and 'timed out' in str(e).lower()
+            ):
+                result["workerRecycle"] = "timeout"
+            write_line(result)
 
         finally:
             signal.alarm(0)
