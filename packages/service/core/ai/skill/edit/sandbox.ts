@@ -1,9 +1,13 @@
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage } from '../package';
-import { parseSkillMarkdown } from '../utils/skillMarkdown';
-import { DEFAULT_GITIGNORE_CONTENT } from '../package/zipBuilder';
+import {
+  parseSkillMarkdown,
+  shellQuote,
+  getSafeSkillDirectoryName,
+  joinSandboxPath
+} from '../utils';
+import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
@@ -32,7 +36,6 @@ import {
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import { joinSandboxPath, shellQuote, getSafeSkillDirectoryName } from '../runtime';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);

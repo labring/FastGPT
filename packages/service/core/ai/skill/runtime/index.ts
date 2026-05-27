@@ -2,69 +2,26 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { downloadSkillPackage } from '../package';
-import { parseSkillMarkdown } from '../utils/skillMarkdown';
+import {
+  parseSkillMarkdown,
+  shellQuote,
+  joinSandboxPath,
+  getSkillsRootPath,
+  getSafeSkillDirectoryName,
+  getSkillTargetPath
+} from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo } from './types';
 
 export type { DeployedSkillInfo } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const MAX_SKILL_DIRECTORY_NAME_LENGTH = 50;
-
-export const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-export const joinSandboxPath = (basePath: string, path: string) =>
-  `${trimSandboxPathRight(basePath)}/${path}`;
 const getSandboxParentPath = (path: string) => {
   const normalizedPath = path.replace(/\/+$/, '');
   const slashIndex = normalizedPath.lastIndexOf('/');
   return slashIndex > 0 ? normalizedPath.slice(0, slashIndex) : '/';
 };
-
-export const getSkillsRootPath = (workDirectory: string) =>
-  joinSandboxPath(workDirectory, 'projects');
-
-export const getSafeSkillDirectoryName = (skillName: string) => {
-  const normalized = skillName
-    .trim()
-    // 1. 将空格和空白字符替换为中划线
-    .replace(/\s+/g, '-')
-    // 2. 只保留中文、英文、数字、中划线和下划线，其它所有非法/危险字符都替换为中划线
-    .replace(/[^\w\u4e00-\u9fa5-]/g, '-')
-    // 3. 将连续的多个中划线或下划线合并为单个
-    .replace(/-+/g, '-')
-    .replace(/_+/g, '_')
-    // 4. 去除首尾的多余中划线/下划线
-    .replace(/^[-_]|[-_]$/g, '')
-    // 5. 限制长度在合理范围
-    .slice(0, MAX_SKILL_DIRECTORY_NAME_LENGTH)
-    .trim();
-
-  // 6. 排除特殊目录名或为空、纯中/下划线的情况，使用安全回退值
-  return normalized && normalized !== '.' && normalized !== '..' && !/^[-_]+$/.test(normalized)
-    ? normalized
-    : 'skill';
-};
-
-export const getSkillTargetPath = ({
-  workDirectory,
-  skillId
-}: {
-  workDirectory: string;
-  skillId: string;
-}) => joinSandboxPath(getSkillsRootPath(workDirectory), getSafeSkillDirectoryName(skillId));
-
-export const getEditSkillTargetPath = ({
-  workDirectory,
-  skillName,
-  skillId
-}: {
-  workDirectory: string;
-  skillName: string;
-  skillId: string;
-}) =>
-  // 编辑态没有 version 语义，固定目录可让代码编辑器和保存发布读取同一份文件。
-  `${getSkillsRootPath(workDirectory)}/${getSafeSkillDirectoryName(skillName)}-${skillId}-edit`;
 
 const parseCommandOutputLines = (stdout: string) => stdout.trim().split('\n').filter(Boolean);
 

@@ -9,7 +9,7 @@ import { Types } from '../../../../../common/mongo';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
 import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
-import { buildSkillMd, extractSkillNameFromSkillMd } from '../../utils/skillMdTemplate';
+import { buildSkillMd, extractSkillNameFromSkillMd } from '../../utils';
 import { generateSkillMd } from './skillMdGenerator';
 import {
   createSkillPackage,

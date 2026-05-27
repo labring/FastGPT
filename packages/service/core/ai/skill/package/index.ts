@@ -6,4 +6,4 @@
  */
 export * from './zipBuilder';
 export * from './storage';
-export * from './metadata';
+export * from './constants';

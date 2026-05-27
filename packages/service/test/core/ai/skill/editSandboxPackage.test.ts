@@ -23,7 +23,8 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
-  downloadSkillPackage: vi.fn()
+  downloadSkillPackage: vi.fn(),
+  DEFAULT_GITIGNORE_CONTENT: '# mock gitignore'
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/sandbox/config', () => ({

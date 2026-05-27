@@ -8,8 +8,9 @@ import {
   parseFrontmatter,
   unescapeYaml,
   extractSkillNameFromSkillMd,
-  extractDescriptionFromSkillMd
-} from '@fastgpt/service/core/ai/skill/utils/skillMdTemplate';
+  extractDescriptionFromSkillMd,
+  parseSkillMarkdown
+} from '@fastgpt/service/core/ai/skill/utils';
 import {
   getSkillMdGeneratorSystemPrompt,
   getSkillMdGeneratorUserPrompt,
@@ -133,6 +134,32 @@ describe('skillMd utilities', () => {
       expect(() => parseFrontmatter(content)).toThrow(
         'Invalid SKILL.md format: missing frontmatter'
       );
+    });
+  });
+
+  // ==================== parseSkillMarkdown ====================
+  describe('parseSkillMarkdown', () => {
+    it('should parse nested fields and handle pop stack correctly on indent change', () => {
+      const content = `---
+name: my-skill
+description: "A description"
+metadata:
+  tags: [test, skill]
+  author: "FastGPT"
+version: "1.0.0"
+---
+# Body content`;
+
+      const result = parseSkillMarkdown(content);
+      expect(result.error).toBeUndefined();
+      expect(result.frontmatter.name).toBe('my-skill');
+      expect(result.frontmatter.description).toBe('A description');
+      expect(result.frontmatter.metadata).toEqual({
+        tags: ['test', 'skill'],
+        author: 'FastGPT'
+      });
+      expect(result.frontmatter.version).toBe('1.0.0');
+      expect(result.content.trim()).toBe('# Body content');
     });
   });
 
