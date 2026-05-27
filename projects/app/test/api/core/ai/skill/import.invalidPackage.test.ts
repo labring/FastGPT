@@ -56,7 +56,7 @@ describe('skill/import invalid package', () => {
     await expect(MongoAgentSkillsVersion.countDocuments({ tmbId: user.tmbId })).resolves.toBe(0);
   });
 
-  it('单 skill 压缩包会按压缩包名导入为 skills/<pkgName>/ 结构', async () => {
+  it('单 skill 压缩包会按原始上传结构保存', async () => {
     const user = await getUser(`skill-import-single-${getNanoid(6)}`);
     const zip = new JSZip();
     zip.file('single-skill/SKILL.md', '---\nname: single\n---\n');
@@ -87,8 +87,8 @@ describe('skill/import invalid package', () => {
     const stored = await JSZip.loadAsync(storedZip);
     const files = Object.keys(stored.files).filter((key) => !stored.files[key].dir);
     expect(files).toEqual(
-      expect.arrayContaining(['skills/single-skill/SKILL.md', 'skills/single-skill/src/main.ts'])
+      expect.arrayContaining(['single-skill/SKILL.md', 'single-skill/src/main.ts'])
     );
-    expect(files).not.toContain('single-skill/SKILL.md');
+    expect(files).not.toContain('skills/single-skill/SKILL.md');
   });
 });

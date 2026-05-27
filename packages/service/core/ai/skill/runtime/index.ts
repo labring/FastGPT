@@ -1,7 +1,7 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage, extractNormalizedSkillPackageFilesForSandbox } from '../package';
+import { downloadSkillPackage } from '../package';
 import { parseSkillMarkdown } from '../utils/skillMarkdown';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo } from './types';
@@ -22,7 +22,7 @@ const getSandboxParentPath = (path: string) => {
 };
 
 export const getSkillsRootPath = (workDirectory: string) =>
-  joinSandboxPath(workDirectory, 'skills');
+  joinSandboxPath(workDirectory, 'projects');
 
 export const getSafeSkillDirectoryName = (skillName: string) => {
   const normalized = skillName
@@ -224,39 +224,35 @@ export const injectAgentSkillFilesToSandbox = async ({
     throw new Error(`Failed to reset skill directory: ${resetSkillsRootResult.stderr}`);
   }
 
-  await Promise.all(
+  const parentDirs = deployableSkills.map(({ targetDir }) => targetDir);
+  const mkdirResult = await sandbox.execute(
+    `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
+  );
+  if (mkdirResult.exitCode !== 0) {
+    throw new Error(`Failed to create skill directories inside sandbox: ${mkdirResult.stderr}`);
+  }
+
+  const results = await Promise.all(
     deployableSkills.map(async ({ skill, version, targetDir }) => {
       try {
         const rawPackageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
-        const packageFiles = await extractNormalizedSkillPackageFilesForSandbox(rawPackageBuffer);
-        const writeEntries = packageFiles.map((file) => ({
-          path: joinSandboxPath(targetDir, file.path),
-          data: file.data
-        }));
-        const parentDirs = Array.from(
-          new Set([targetDir, ...writeEntries.map((entry) => getSandboxParentPath(entry.path))])
-        );
-        const mkdirResult = await sandbox.execute(
-          `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
-        );
+        const zipPath = joinSandboxPath(targetDir, 'package.zip');
+        const quotedTargetDir = shellQuote(targetDir);
+        const unzipCommand = `(${[
+          `cd ${quotedTargetDir}`,
+          `unzip -o -q package.zip`,
+          `rm -f package.zip`
+        ].join(' && ')})`;
 
-        if (mkdirResult.exitCode !== 0) {
-          await sandbox.execute(`rm -rf ${shellQuote(targetDir)}`);
-          throw new Error(
-            `Failed to prepare skill package directory "${skill.name}": ${mkdirResult.stderr}`
-          );
-        }
-
-        const writeResults = await sandbox.writeFiles(writeEntries);
-        const failedWrite = writeResults.find((result) => result.error);
-        if (failedWrite) {
-          await sandbox.execute(`rm -rf ${shellQuote(targetDir)}`);
-          throw new Error(
-            `Failed to write skill package "${skill.name}" file ${failedWrite.path}: ${failedWrite.error?.message}`
-          );
-        }
+        return {
+          writeEntry: {
+            path: zipPath,
+            data: rawPackageBuffer
+          },
+          unzipCommand
+        };
       } catch (error) {
-        logger.error('[Agent Skills] Failed to inject skill package', {
+        logger.error('[Agent Skills] Failed to prepare skill package', {
           skillName: skill.name,
           error
         });
@@ -264,6 +260,33 @@ export const injectAgentSkillFilesToSandbox = async ({
       }
     })
   );
+
+  const writeEntries = results.map((r) => r.writeEntry);
+  const unzipCommands = results.map((r) => r.unzipCommand);
+
+  // 1. Batch write all ZIP packages directly to their respective folders in a single call
+  const writeResults = await sandbox.writeFiles(writeEntries);
+  const failedWrite = writeResults.find((result) => result.error);
+  if (failedWrite) {
+    await Promise.all(
+      deployableSkills.map(({ targetDir }) =>
+        sandbox.execute(`rm -rf ${shellQuote(targetDir)}`).catch(() => {})
+      )
+    );
+    throw new Error(`Failed to write skill ZIP packages: ${failedWrite.error?.message}`);
+  }
+
+  // 2. Execute a single unified decompression command inside the sandbox container
+  const finalUnzipCmd = unzipCommands.join(' && ');
+  const extractResult = await sandbox.execute(finalUnzipCmd);
+  if (extractResult.exitCode !== 0) {
+    await Promise.all(
+      deployableSkills.map(({ targetDir }) =>
+        sandbox.execute(`rm -rf ${shellQuote(targetDir)}`).catch(() => {})
+      )
+    );
+    throw new Error(`Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`);
+  }
 
   return getAgentSkillInfos({
     sandbox,

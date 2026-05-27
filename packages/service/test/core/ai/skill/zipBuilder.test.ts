@@ -5,8 +5,6 @@ import {
   generateZipBuffer,
   validateZipStructure,
   extractSkillPackage,
-  normalizeSkillPackageZipForSandbox,
-  extractNormalizedSkillPackageFilesForSandbox,
   standardizeSkillPackageBySkillMdName,
   JSZip
 } from '@fastgpt/service/core/ai/skill/package';
@@ -292,104 +290,6 @@ ${largeMarkdown}`;
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('SKILL.md');
-    });
-  });
-
-  // ==================== normalizeSkillPackageZipForSandbox ====================
-  describe('normalizeSkillPackageZipForSandbox', () => {
-    it('keeps a single package root directory (innermost) for sandbox extraction', async () => {
-      const zip = new JSZip();
-      zip.file('my-skill/SKILL.md', '---\nname: test\n---');
-      zip.file('my-skill/src/main.ts', 'export default 1;');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const normalizedBuffer = await normalizeSkillPackageZipForSandbox(buffer);
-      const normalizedZip = await JSZip.loadAsync(normalizedBuffer);
-      const files = Object.keys(normalizedZip.files).filter(
-        (path) => !normalizedZip.files[path].dir
-      );
-
-      expect(files).toEqual(expect.arrayContaining(['my-skill/SKILL.md', 'my-skill/src/main.ts']));
-    });
-
-    it('strips nested archive roots down to the real skill root (keeps innermost folder)', async () => {
-      const zip = new JSZip();
-      zip.file('archive-root/my-skill/SKILL.md', '---\nname: test\n---');
-      zip.file('archive-root/my-skill/src/main.ts', 'export default 1;');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const normalizedBuffer = await normalizeSkillPackageZipForSandbox(buffer);
-      const normalizedZip = await JSZip.loadAsync(normalizedBuffer);
-      const files = Object.keys(normalizedZip.files).filter(
-        (path) => !normalizedZip.files[path].dir
-      );
-
-      expect(files).toEqual(expect.arrayContaining(['my-skill/SKILL.md', 'my-skill/src/main.ts']));
-      expect(files).not.toContain('archive-root/my-skill/SKILL.md');
-    });
-
-    it('keeps root-level packages unchanged', async () => {
-      const zip = new JSZip();
-      zip.file('SKILL.md', '---\nname: test\n---');
-      zip.file('src/main.ts', 'export default 1;');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const normalizedBuffer = await normalizeSkillPackageZipForSandbox(buffer);
-      const normalizedZip = await JSZip.loadAsync(normalizedBuffer);
-      const files = Object.keys(normalizedZip.files).filter(
-        (path) => !normalizedZip.files[path].dir
-      );
-
-      expect(files).toEqual(expect.arrayContaining(['SKILL.md', 'src/main.ts']));
-    });
-
-    it('keeps multi-root packages unchanged', async () => {
-      const zip = new JSZip();
-      zip.file('skill-a/SKILL.md', '---\nname: a\n---');
-      zip.file('skill-b/SKILL.md', '---\nname: b\n---');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const normalizedBuffer = await normalizeSkillPackageZipForSandbox(buffer);
-      const normalizedZip = await JSZip.loadAsync(normalizedBuffer);
-      const files = Object.keys(normalizedZip.files).filter(
-        (path) => !normalizedZip.files[path].dir
-      );
-
-      expect(files).toEqual(expect.arrayContaining(['skill-a/SKILL.md', 'skill-b/SKILL.md']));
-    });
-
-    it('strips a common archive root from multi-skill packages', async () => {
-      const zip = new JSZip();
-      zip.file('1/test/SKILL.md', '---\nname: test\n---');
-      zip.file('1/test2/SKILL.md', '---\nname: test2\n---');
-      zip.file('1/shared/readme.md', '# shared');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const normalizedBuffer = await normalizeSkillPackageZipForSandbox(buffer);
-      const normalizedZip = await JSZip.loadAsync(normalizedBuffer);
-      const files = Object.keys(normalizedZip.files).filter(
-        (path) => !normalizedZip.files[path].dir
-      );
-
-      expect(files).toEqual(
-        expect.arrayContaining(['test/SKILL.md', 'test2/SKILL.md', 'shared/readme.md'])
-      );
-      expect(files).not.toContain('1/test/SKILL.md');
-      expect(files).not.toContain('1/test2/SKILL.md');
-    });
-
-    it('preserves Chinese directory names when extracting normalized files for sandbox writes', async () => {
-      const zip = new JSZip();
-      zip.file('skills/测试的/SKILL.md', '---\nname: 测试的\n---');
-      zip.file('skills/测试的/test_file.txt', 'hello');
-      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-      const files = await extractNormalizedSkillPackageFilesForSandbox(buffer);
-
-      expect(files.map((file) => file.path)).toEqual(
-        expect.arrayContaining(['测试的/SKILL.md', '测试的/test_file.txt'])
-      );
-      expect(files.map((file) => file.path).join('\n')).not.toContain('���');
     });
   });
 

@@ -65,8 +65,8 @@ describe('getAgentSkillInfos', () => {
     ]);
     const skill1VersionId = new Types.ObjectId();
     const skill2VersionId = new Types.ObjectId();
-    const skill1TargetDir = `/workspace/skills/${String(skill1._id)}`;
-    const skill2TargetDir = `/workspace/skills/${String(skill2._id)}`;
+    const skill1TargetDir = `/workspace/projects/${String(skill1._id)}`;
+    const skill2TargetDir = `/workspace/projects/${String(skill2._id)}`;
 
     const [skill1Package, skill2Package] = await Promise.all([
       makePackage([
@@ -171,7 +171,15 @@ description: Zeta skill
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+        if (command === "rm -rf '/workspace/projects' && mkdir -p '/workspace/projects'") {
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: ''
+          };
+        }
+
+        if (command.includes('unzip')) {
           return {
             exitCode: 0,
             stdout: '',
@@ -181,8 +189,7 @@ description: Zeta skill
 
         if (command.includes('-iname "SKILL.md"')) {
           const matchedPaths = skillMdPaths.filter((path) => {
-            const dirMatch = command.match(/find\s+'([^']+)'/);
-            return dirMatch ? path === dirMatch[1] || path.startsWith(`${dirMatch[1]}/`) : true;
+            return command.includes(path.split('/')[3]);
           });
           return {
             exitCode: 0,
@@ -210,21 +217,22 @@ description: Zeta skill
       workDirectory: '/workspace'
     });
 
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(2);
+    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
     expect(skill1TargetDir).not.toBe(skill2TargetDir);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls.flatMap(([entries]) =>
-      entries.map((entry: { path: string }) => entry.path)
+    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
+      (entry: { path: string }) => entry.path
     );
     expect(writtenFilePaths).toEqual(
-      expect.arrayContaining([
-        `${skill1TargetDir}/skill1/skill.md`,
-        `${skill1TargetDir}/skill2/1/skill.md`,
-        `${skill1TargetDir}/skill2/2/skill.md`,
-        `${skill2TargetDir}/skill1/skill.md`,
-        `${skill2TargetDir}/skill2/1/skill.md`,
-        `${skill2TargetDir}/skill2/2/skill.md`
-      ])
+      expect.arrayContaining([`${skill1TargetDir}/package.zip`, `${skill2TargetDir}/package.zip`])
     );
+    const unzipCommands = sandbox.execute.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.includes('unzip'));
+    expect(unzipCommands).toHaveLength(1);
+    expect(unzipCommands[0]).toContain(`cd '${skill1TargetDir}'`);
+    expect(unzipCommands[0]).toContain(`cd '${skill2TargetDir}'`);
+    expect(unzipCommands[0]).toContain('unzip -o -q package.zip');
+
     const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
       .filter((command) => command.includes('-iname "SKILL.md"'));
@@ -269,8 +277,8 @@ description: Zeta skill
     ]);
     const existingSkillVersionId = new Types.ObjectId();
     const missingSkillVersionId = new Types.ObjectId();
-    const existingSkillTargetDir = `/workspace/skills/${String(existingSkill._id)}`;
-    const missingSkillTargetDir = `/workspace/skills/${String(missingSkill._id)}`;
+    const existingSkillTargetDir = `/workspace/projects/${String(existingSkill._id)}`;
+    const missingSkillTargetDir = `/workspace/projects/${String(missingSkill._id)}`;
 
     const [existingSkillPackage, missingSkillPackage] = await Promise.all([
       makePackage([{ path: 'skill.md', name: 'existing', description: 'Existing skill' }]),
@@ -337,7 +345,15 @@ description: Missing skill
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+        if (command === "rm -rf '/workspace/projects' && mkdir -p '/workspace/projects'") {
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: ''
+          };
+        }
+
+        if (command.includes('unzip')) {
           return {
             exitCode: 0,
             stdout: '',
@@ -348,8 +364,7 @@ description: Missing skill
         if (command.includes('-iname "SKILL.md"')) {
           const allPaths = Array.from(contentByPath.keys());
           const matchedPaths = allPaths.filter((path) => {
-            const dirMatch = command.match(/find\s+'([^']+)'/);
-            return dirMatch ? path === dirMatch[1] || path.startsWith(`${dirMatch[1]}/`) : true;
+            return command.includes(path.split('/')[3]);
           });
           return {
             exitCode: 0,
@@ -377,18 +392,18 @@ description: Missing skill
       workDirectory: '/workspace'
     });
 
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(2);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls.flatMap(([entries]) =>
-      entries.map((entry: { path: string }) => entry.path)
+    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
+    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
+      (entry: { path: string }) => entry.path
     );
     expect(writtenFilePaths).toEqual(
       expect.arrayContaining([
-        `${existingSkillTargetDir}/skill.md`,
-        `${missingSkillTargetDir}/skill.md`
+        `${existingSkillTargetDir}/package.zip`,
+        `${missingSkillTargetDir}/package.zip`
       ])
     );
     expect(sandbox.execute).toHaveBeenCalledWith(
-      "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'"
+      "rm -rf '/workspace/projects' && mkdir -p '/workspace/projects'"
     );
     const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
@@ -451,15 +466,23 @@ description: Missing skill
       { $set: { currentVersionId: latestVersionId } }
     );
 
-    const oldTargetDir = `/workspace/skills/${String(skill._id)}/MultiActive-${oldVersionId}`;
-    const latestTargetDir = `/workspace/skills/${String(skill._id)}`;
+    const oldTargetDir = `/workspace/projects/${String(skill._id)}/MultiActive-${oldVersionId}`;
+    const latestTargetDir = `/workspace/projects/${String(skill._id)}`;
     const latestSkillMdPath = `${latestTargetDir}/skill.md`;
     const sandbox = {
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+        if (command === "rm -rf '/workspace/projects' && mkdir -p '/workspace/projects'") {
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: ''
+          };
+        }
+
+        if (command.includes('unzip')) {
           return {
             exitCode: 0,
             stdout: '',
@@ -499,7 +522,7 @@ description: Latest current skill
 
     expect(
       sandbox.writeFiles.mock.calls[0][0].map((entry: { path: string }) => entry.path)
-    ).toEqual(expect.arrayContaining([latestSkillMdPath]));
+    ).toEqual(expect.arrayContaining([`${latestTargetDir}/package.zip`]));
     expect(sandbox.execute).not.toHaveBeenCalledWith(expect.stringContaining(oldTargetDir));
     expect(result).toEqual([
       {
@@ -545,7 +568,7 @@ description: Latest current skill
       { $set: { currentVersionId: skillVersionId } }
     );
 
-    const skillTargetDir = `/workspace/skills/${String(skill._id)}`;
+    const skillTargetDir = `/workspace/projects/${String(skill._id)}`;
     const writeError = new Error('write failed');
     const sandbox = {
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
@@ -556,7 +579,7 @@ description: Latest current skill
         }))
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+        if (command === "rm -rf '/workspace/projects' && mkdir -p '/workspace/projects'") {
           return {
             exitCode: 0,
             stdout: '',
@@ -586,7 +609,7 @@ description: Latest current skill
         teamId,
         workDirectory: '/workspace'
       })
-    ).rejects.toThrow('Failed to write skill package "Broken" file');
+    ).rejects.toThrow('Failed to write skill ZIP packages: write failed');
     expect(sandbox.execute).toHaveBeenCalledWith(`rm -rf '${skillTargetDir}'`);
     expect(sandbox.readFiles).not.toHaveBeenCalled();
   });

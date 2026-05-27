@@ -1,7 +1,9 @@
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { downloadSkillPackage, extractNormalizedSkillPackageFilesForSandbox } from '../package';
+import { downloadSkillPackage } from '../package';
+import { parseSkillMarkdown } from '../utils/skillMarkdown';
+import { DEFAULT_GITIGNORE_CONTENT } from '../package/zipBuilder';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
@@ -30,7 +32,7 @@ import {
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import { joinSandboxPath, shellQuote } from '../runtime';
+import { joinSandboxPath, shellQuote, getSafeSkillDirectoryName } from '../runtime';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -292,33 +294,82 @@ export async function createEditDebugSandbox(
       );
     }
 
-    onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
-    const packageFiles = await extractNormalizedSkillPackageFilesForSandbox(packageBuffer);
-    const writeEntries = packageFiles.map((file) => ({
-      path: joinSandboxPath(skillsRootPath, file.path),
-      data: file.data
-    }));
-    const parentDirs = Array.from(
-      new Set([skillsRootPath, ...writeEntries.map((entry) => getSandboxParentPath(entry.path))])
-    );
-    const extractResult = await client.provider.execute(
-      [
-        `rm -rf ${shellQuote(skillsRootPath)}`,
-        `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
-      ].join(' && ')
-    );
+    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
+    const zipPath = joinSandboxPath(skillsRootPath, 'package.zip');
 
-    if (extractResult.exitCode !== 0) {
-      throw new Error(`Failed to extract package: ${extractResult.stderr}`);
+    const prepareResult = await client.provider.execute(
+      `rm -rf ${shellQuote(skillsRootPath)} && mkdir -p ${shellQuote(skillsRootPath)}`
+    );
+    if (prepareResult.exitCode !== 0) {
+      throw new Error(`Failed to reset skill directory: ${prepareResult.stderr}`);
     }
 
-    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
-    const writeResults = await client.provider.writeFiles(writeEntries);
+    const writeResults = await client.provider.writeFiles([
+      {
+        path: zipPath,
+        data: packageBuffer
+      }
+    ]);
     const failedWrite = writeResults.find((result) => result.error);
     if (failedWrite) {
-      throw new Error(
-        `Failed to write skill package file ${failedWrite.path}: ${failedWrite.error?.message}`
-      );
+      throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);
+    }
+
+    const quotedSkillsRootPath = shellQuote(skillsRootPath);
+    const quotedZipPath = shellQuote(zipPath);
+    const unzipCmd = [
+      `cd ${quotedSkillsRootPath}`,
+      `mkdir -p tmp_unzip`,
+      `unzip -o -q package.zip -d tmp_unzip`,
+      `rm -f package.zip`
+    ].join(' && ');
+
+    const extractResult = await client.provider.execute(unzipCmd);
+    if (extractResult.exitCode !== 0) {
+      throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
+    }
+
+    const findSkillMdResult = await client.provider.execute(
+      `find ${quotedSkillsRootPath}/tmp_unzip -iname "skill.md" | head -n 1`
+    );
+    const skillMdPath = findSkillMdResult.stdout.trim();
+
+    let skillFolderName = getSafeSkillDirectoryName(skill.name);
+    if (skillMdPath) {
+      try {
+        const readFilesResult = await client.provider.readFiles([skillMdPath]);
+        const file = readFilesResult?.[0];
+        if (file && !file.error) {
+          const content =
+            typeof file.content === 'string'
+              ? file.content
+              : Buffer.from(file.content).toString('utf-8');
+          const { frontmatter } = parseSkillMarkdown(content);
+          if (frontmatter.name) {
+            skillFolderName = getSafeSkillDirectoryName(String(frontmatter.name));
+          }
+        }
+      } catch (err: any) {
+        addLog.warn('[Sandbox] Failed to read and parse SKILL.md from package', {
+          sandboxId: sessionId,
+          error: err.message
+        });
+      }
+    }
+
+    const quotedSkillFolderName = shellQuote(skillFolderName);
+    const moveCmd = [
+      `cd ${quotedSkillsRootPath}`,
+      `REAL_SKILL_DIR=$(dirname "$(find tmp_unzip -iname "skill.md" | head -n 1)")`,
+      `if [ -n "$REAL_SKILL_DIR" ] && [ "$REAL_SKILL_DIR" != "." ]; then mkdir -p ${quotedSkillFolderName} && mv "$REAL_SKILL_DIR"/* ${quotedSkillFolderName}/ 2>/dev/null || true && mv "$REAL_SKILL_DIR"/.[!.]* ${quotedSkillFolderName}/ 2>/dev/null || true; fi`,
+      `rm -rf tmp_unzip`,
+      `if [ -f ${quotedSkillFolderName}/.gitignore ]; then mv ${quotedSkillFolderName}/.gitignore ${shellQuote(runtimeProfile.workDirectory)}/ 2>/dev/null || true; fi`,
+      `if [ ! -f ${shellQuote(runtimeProfile.workDirectory)}/.gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > ${shellQuote(runtimeProfile.workDirectory)}/.gitignore; fi`
+    ].join(' && ');
+
+    const moveResult = await client.provider.execute(moveCmd);
+    if (moveResult.exitCode !== 0) {
+      throw new Error(`Failed to move and organize skill folder: ${moveResult.stderr}`);
     }
 
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
@@ -426,7 +477,81 @@ export async function packageSkillInSandbox(params: {
     })();
     const quotedTargetDir = shellQuote(targetDir);
 
-    const sizeCheckCmd = `find ${quotedTargetDir} -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
+    const customExcludes: string[] = [];
+    const pruneDirs: string[] = [];
+    try {
+      const findIgnoreCmd = `find ${quotedTargetDir} -name '.gitignore' -type f`;
+      const findIgnoreResult = await newSandbox.execute(findIgnoreCmd);
+      if (findIgnoreResult.exitCode === 0 && findIgnoreResult.stdout.trim()) {
+        const ignorePaths = findIgnoreResult.stdout
+          .split('\n')
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+        if (ignorePaths.length > 0) {
+          const files = await newSandbox.readFiles(ignorePaths);
+          for (const file of files) {
+            if (file && !file.error) {
+              const content =
+                typeof file.content === 'string'
+                  ? file.content
+                  : Buffer.from(file.content).toString('utf-8');
+              const lines = content.split('\n');
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+
+                const pattern = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+                if (!pattern) continue;
+
+                if (trimmed.endsWith('/') || !pattern.includes('.')) {
+                  customExcludes.push(`${pattern}/*`);
+                  customExcludes.push(`*/${pattern}/*`);
+                  pruneDirs.push(pattern);
+                } else {
+                  customExcludes.push(pattern);
+                  customExcludes.push(`*/${pattern}`);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      addLog.warn('[Sandbox] Failed to read custom .gitignore files', {
+        sandboxId,
+        error: err.message
+      });
+    }
+
+    const allExcludes = Array.from(new Set(['package.zip', ...customExcludes]));
+
+    // Generate prune directories clause for high-performance find command based strictly on parsed gitignore directories
+    const uniqPruneDirs = Array.from(
+      new Set(
+        pruneDirs
+          .map((p) => p.replace(/\/\*$/, '').replace(/^\*\//, ''))
+          .filter((p) => p && !p.includes('*') && !p.includes('.'))
+      )
+    );
+
+    const pruneClauses: string[] = [];
+    for (const dirPattern of uniqPruneDirs) {
+      const cleanPattern = dirPattern.replace(/^\/+|\/+$/g, '');
+      if (!cleanPattern) continue;
+
+      if (dirPattern.includes('/')) {
+        const pathPattern = cleanPattern.startsWith('./') ? cleanPattern : `./${cleanPattern}`;
+        pruneClauses.push(`-path ${shellQuote(pathPattern)}`);
+      } else {
+        pruneClauses.push(`-name ${shellQuote(cleanPattern)}`);
+      }
+    }
+
+    const pruneClause = pruneClauses.length > 0 ? pruneClauses.join(' -o ') : '';
+    const sizeCheckCmd = pruneClause
+      ? `cd ${quotedTargetDir} && find . \\( ${pruneClause} \\) -prune -o -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
+      : `cd ${quotedTargetDir} && find . -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
     const sizeResult = await newSandbox.execute(sizeCheckCmd);
 
     if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
@@ -438,7 +563,8 @@ export async function packageSkillInSandbox(params: {
       }
     }
 
-    const zipCommand = `cd ${quotedTargetDir} && zip -r package.zip . -x 'package.zip'`;
+    const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
+    const zipCommand = `cd ${quotedTargetDir} && zip -r package.zip . ${excludeArgs}`;
     const zipResult = await newSandbox.execute(zipCommand);
 
     if (zipResult.exitCode !== 0) {

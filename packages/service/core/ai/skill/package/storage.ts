@@ -2,7 +2,7 @@
  * Skill 包对象存储服务。
  *
  * 只负责 Skill ZIP 包和编辑会话制品在私有对象存储中的读写、复制、存在性检查和清理。
- * 包内容解析放在 package/archiveUtils 与 package/zipBuilder，版本落库放在 version 模块。
+ * 包内容解析放在 package/zipBuilder，版本落库放在 version 模块。
  */
 
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
