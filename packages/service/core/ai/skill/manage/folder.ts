@@ -4,7 +4,6 @@ import type { ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { MongoAgentSkills } from '../model/schema';
-import { checkSkillNameExists } from './query';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -77,11 +76,6 @@ export async function createSkillFolder(
   session?: ClientSession
 ): Promise<AgentSkillSchemaType> {
   const { name, description, parentId, teamId, tmbId } = data;
-
-  const nameExists = await checkSkillNameExists(name, teamId, parentId || null);
-  if (nameExists) {
-    throw new Error('Folder name already exists in this directory');
-  }
 
   const folder = new MongoAgentSkills({
     type: AgentSkillTypeEnum.folder,

@@ -36,28 +36,3 @@ export async function canModifySkill(skillId: string, tmbId: string): Promise<bo
 
   return skill.tmbId?.toString() === tmbId;
 }
-
-/**
- * Check if skill/folder name already exists in the same parent folder.
- */
-export async function checkSkillNameExists(
-  name: string,
-  teamId: string,
-  parentId: string | null,
-  excludeId?: string
-): Promise<boolean> {
-  const query: Record<string, any> = {
-    name,
-    teamId,
-    parentId: parentId || null,
-    deleteTime: null,
-    source: AgentSkillSourceEnum.personal
-  };
-
-  if (excludeId) {
-    query._id = { $ne: excludeId };
-  }
-
-  const count = await MongoAgentSkills.countDocuments(query);
-  return count > 0;
-}

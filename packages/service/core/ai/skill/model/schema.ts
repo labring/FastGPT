@@ -119,14 +119,6 @@ try {
   AgentSkillsSchema.index({ category: 1 });
   // 文件夹树查询。
   AgentSkillsSchema.index({ teamId: 1, parentId: 1, deleteTime: 1 });
-  // 同一父目录下的个人 skill/folder 不允许重名，软删除数据不参与唯一约束。
-  AgentSkillsSchema.index(
-    { teamId: 1, parentId: 1, name: 1, deleteTime: 1 },
-    {
-      unique: true,
-      partialFilterExpression: { deleteTime: null, source: AgentSkillSourceEnum.personal }
-    }
-  );
 } catch (error) {
   console.log('AgentSkill index error:', error);
 }
