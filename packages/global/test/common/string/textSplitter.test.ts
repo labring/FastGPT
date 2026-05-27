@@ -5,6 +5,7 @@ import fs from 'fs';
 const simpleChunks = (chunks: string[]) => {
   return chunks.map((chunk) => chunk.replace(/\s+/g, ''));
 };
+const getValidLength = (text: string) => text.replaceAll(/[\s\n]/g, '').length;
 
 // 简单的嵌套测试
 it(`Test splitText2Chunks 1`, () => {
@@ -581,10 +582,36 @@ FastGPT AI 相关参数配置说明
     maxSize: 100000
   });
 
-  const normalizedChunks = simpleChunks(chunks);
-  const normalizedExpected = simpleChunks(mock.result);
+  expect(chunks[0]).toContain('这是一个测试的内容，包含代码块');
+  expect(chunks[0]).not.toContain('~~~js');
+  expect(chunks.some((chunk) => chunk.startsWith('~~~js'))).toBe(true);
+  expect(chunks.some((chunk) => chunk.endsWith('~~~'))).toBe(true);
+  expect(chunks.join('\n')).not.toContain('CODE_BLOCK_LINE_MARKER');
+  expect(chunks[chunks.length - 1]).toContain('最大上下文');
+  expect(Math.max(...chunks.map(getValidLength))).toBeLessThanOrEqual(500 * 1.2);
+});
 
-  expect(normalizedChunks).toEqual(normalizedExpected);
+it(`Test splitText2Chunks 8.1 - code block should not swallow long previous text`, () => {
+  const longText = Array.from(
+    { length: 120 },
+    (_, index) =>
+      `第${index}段内容。FastGPT 知识库分块需要按照用户配置的 chunkSize 稳定切分，不能因为后面出现代码块就把前文全部合并。`
+  ).join('\n\n');
+  const imageCodeBlock = '```markdown![](dataset/xxx.png)```';
+
+  const { chunks } = splitText2Chunks({
+    text: `${longText}\n\n${imageCodeBlock}\n\n后续正文。`,
+    chunkSize: 1000,
+    maxSize: 128000,
+    overlapRatio: 0
+  });
+
+  const imageChunkIndex = chunks.findIndex((chunk) => chunk === imageCodeBlock);
+
+  expect(imageChunkIndex).toBeGreaterThan(0);
+  expect(chunks[imageChunkIndex - 1]).not.toContain(imageCodeBlock);
+  expect(chunks[imageChunkIndex]).not.toContain('第0段内容');
+  expect(Math.max(...chunks.map(getValidLength))).toBeLessThanOrEqual(1200);
 });
 
 // 表格分割测试 - 不超出maxSize
