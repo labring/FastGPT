@@ -4,10 +4,7 @@ import type {
   ChatCompletionAuthProxy
 } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import {
-  AuthUserTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -16,6 +13,14 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
+/**
+ * 解析 Chat Completions 请求最终应归属的团队成员。
+ *
+ * 普通调用直接使用鉴权凭证中的 tmbId；只有 API Key 调用允许通过 authProxy
+ * 指定“代表团队内某个成员执行”。代理成员必须仍在当前团队内，且当 username 与
+ * tmbId 同时传入时，两者必须解析到同一个团队成员，避免调用方用一个字段绕过另一个
+ * 字段的身份约束。
+ */
 export const resolveChatCompletionEffectiveTmbId = async ({
   authType,
   authProxy,
@@ -34,6 +39,7 @@ export const resolveChatCompletionEffectiveTmbId = async ({
     };
   }
 
+  // authProxy 是 API Key 的团队成员代理能力；用户 token、分享链接等身份不能叠加代理身份。
   if (authType !== AuthUserTypeEnum.apikey) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
@@ -69,10 +75,12 @@ export const resolveChatCompletionEffectiveTmbId = async ({
       : null
   ]);
 
+  // 任一显式传入的身份字段找不到有效团队成员，都不能降级使用另一个字段。
   if ((authProxy.tmbId && !memberByTmbId) || (username && !memberByUsername)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
+  // 同时传 username 和 tmbId 时要求二者指向同一成员，防止调用方构造歧义代理身份。
   if (
     memberByTmbId &&
     memberByUsername &&
@@ -92,6 +100,13 @@ export const resolveChatCompletionEffectiveTmbId = async ({
   };
 };
 
+/**
+ * 鉴权 Chat Completions 头部请求，并返回后续对话运行需要的应用、团队和成员上下文。
+ *
+ * 这里同时支持应用 API Key 与用户 token：API Key 必须绑定或显式传入 appId，并按
+ * teamId 限定应用；用户 token 则复用 authApp 做应用读权限校验。若 API Key 使用
+ * authProxy，则后续会把 tmbId 切换为被代理成员，并对续聊 chatId 做成员归属校验。
+ */
 export const authChatCompletionHeaderRequest = async ({
   req,
   appId,
@@ -120,6 +135,7 @@ export const authChatCompletionHeaderRequest = async ({
 
   const { app } = await (async () => {
     if (authType === AuthUserTypeEnum.apikey) {
+      // 应用 Key 自带 appId；账号 Key 没有应用上下文，调用方必须额外传 appId。
       const currentAppId = apiKeyAppId || appId;
       if (!currentAppId) {
         return Promise.reject(
@@ -138,6 +154,7 @@ export const authChatCompletionHeaderRequest = async ({
         app
       };
     } else {
+      // 用户 token 走标准应用权限检查，保证调用者至少有应用读取权限。
       if (!appId) {
         return Promise.reject('appId is empty');
       }
@@ -162,12 +179,14 @@ export const authChatCompletionHeaderRequest = async ({
   });
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
+  // 新会话没有历史记录可校验；续聊时必须先保证会话属于当前团队。
   const shouldCheckChatMember =
     authType === AuthUserTypeEnum.token || (authType === AuthUserTypeEnum.apikey && isProxy);
 
   if (
     chat &&
     (String(chat.teamId) !== teamId ||
+      // 用户 token 与 API Key 代理都是成员身份调用，不能续聊其他成员的历史会话。
       (shouldCheckChatMember && String(chat.tmbId) !== effectiveTmbId))
   ) {
     return Promise.reject(ChatErrEnum.unAuthChat);
