@@ -23,8 +23,6 @@ const Login = () => {
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
-      setUserInfo(res.user);
-
       const decodeLastRoute = validateRedirectUrl(lastRoute);
 
       const navigateTo = await (async () => {
@@ -47,14 +45,17 @@ const Login = () => {
         return decodeLastRoute;
       })();
 
-      if (navigateTo) {
-        const targetRoute = await restoreWorkflowLocalDraft({
-          user: res.user,
-          fallbackRoute: navigateTo
-        });
-        if (targetRoute) {
-          router.replace(targetRoute);
-        }
+      const targetRoute = navigateTo
+        ? await restoreWorkflowLocalDraft({
+            user: res.user,
+            fallbackRoute: navigateTo
+          })
+        : undefined;
+
+      setUserInfo(res.user);
+
+      if (targetRoute) {
+        router.replace(targetRoute);
       }
     },
     [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]

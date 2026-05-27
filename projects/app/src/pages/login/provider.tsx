@@ -44,7 +44,6 @@ const provider = () => {
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       const decodeLastRoute = validateRedirectUrl(lastRoute);
-      setUserInfo(res.user);
 
       const navigateTo = await (async () => {
         if (res.user.team.status !== 'active') {
@@ -63,14 +62,17 @@ const provider = () => {
         return decodeLastRoute;
       })();
 
-      if (navigateTo) {
-        const targetRoute = await restoreWorkflowLocalDraft({
-          user: res.user,
-          fallbackRoute: navigateTo
-        });
-        if (targetRoute) {
-          router.replace(targetRoute);
-        }
+      const targetRoute = navigateTo
+        ? await restoreWorkflowLocalDraft({
+            user: res.user,
+            fallbackRoute: navigateTo
+          })
+        : undefined;
+
+      setUserInfo(res.user);
+
+      if (targetRoute) {
+        router.replace(targetRoute);
       }
     },
     [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]

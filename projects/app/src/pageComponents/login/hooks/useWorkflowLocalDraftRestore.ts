@@ -9,10 +9,13 @@ import {
 } from '@/web/core/workflow/localDraft';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getLastAuthTmbId } from '@/web/support/user/lastTmbIdStorage';
+
+const DEFAULT_LOGIN_ROUTE = '/dashboard/agent';
 
 /**
- * 登录成功后只要检测到同 username、tmbId 的工作流草稿就尝试恢复。
- * 账号不匹配的草稿会丢弃；恢复请求失败时保留草稿且不跳转，方便用户重试。
+ * 登录成功后只在最近一次已登录 tmbId 与当前 tmbId 一致时恢复工作流草稿。
+ * 恢复请求失败时保留草稿且不跳转，方便用户重试。
  */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
   user,
@@ -25,14 +28,17 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
   saveDraft: typeof postPublishApp;
   onRestoreFailed?: (error: unknown) => void;
 }): Promise<string | undefined> => {
-  const draftResult = checkWorkflowLocalDraft({
-    user
-  });
-
-  if (draftResult.status === 'account-mismatch') {
-    removeWorkflowLocalDraft();
+  const lastAuthTmbId = getLastAuthTmbId();
+  if (!lastAuthTmbId) {
     return fallbackRoute;
   }
+
+  if (lastAuthTmbId !== user.team?.tmbId) {
+    removeWorkflowLocalDraft();
+    return DEFAULT_LOGIN_ROUTE;
+  }
+
+  const draftResult = checkWorkflowLocalDraft();
 
   if (draftResult.status !== 'matched') {
     return fallbackRoute;

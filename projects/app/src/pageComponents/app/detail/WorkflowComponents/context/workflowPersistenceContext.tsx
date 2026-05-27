@@ -20,9 +20,7 @@ import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import {
-  getWorkflowLocalDraftIdentity,
   markWorkflowLocalDraftSavedNotice,
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
@@ -67,30 +65,26 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const leaveSaveSign = useRef(true);
   // 离开自动保存触发鉴权跳登录时，不能再弹浏览器原生离开确认。
   const suppressBeforeUnloadPrompt = useRef(false);
-  const userInfo = useUserStore((state) => state.userInfo);
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
 
   const saveLocalDraft = useCallback(() => {
-    const identity = getWorkflowLocalDraftIdentity(userInfo);
     const data = flowData2StoreData();
     if (!data) return false;
 
     return saveWorkflowLocalDraft({
       appId: appDetail._id,
-      identity,
       data: {
         ...data,
         chatConfig: appDetail.chatConfig
       }
     });
-  }, [appDetail._id, appDetail.chatConfig, flowData2StoreData, userInfo]);
+  }, [appDetail._id, appDetail.chatConfig, flowData2StoreData]);
 
   const removeCurrentLocalDraft = useCallback(() => {
     removeWorkflowLocalDraftByApp({
-      appId: appDetail._id,
-      identity: getWorkflowLocalDraftIdentity(userInfo)
+      appId: appDetail._id
     });
-  }, [appDetail._id, userInfo]);
+  }, [appDetail._id]);
 
   /**
    * 计算 isSaved 状态 - 防抖 500ms

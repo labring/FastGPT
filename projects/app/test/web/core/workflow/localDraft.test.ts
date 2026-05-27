@@ -2,16 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkWorkflowLocalDraft,
   consumeWorkflowLocalDraftSavedNotice,
-  getWorkflowAppIdFromRoute,
   getWorkflowLocalDraftDetailRoute,
   markWorkflowLocalDraftSavedNotice,
-  normalizeWorkflowLocalDraftRoute,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
   saveWorkflowLocalDraft,
   WORKFLOW_LOCAL_DRAFT_STORAGE_KEY
 } from '../../../../src/web/core/workflow/localDraft';
-import type { UserType } from '@fastgpt/global/support/user/type';
 
 const storageMap = new Map<string, string>();
 const sessionStorageMap = new Map<string, string>();
@@ -33,23 +30,6 @@ const sessionStorageMock = {
     sessionStorageMap.delete(key);
   })
 };
-
-const createUser = ({
-  username = 'user-a',
-  teamId = 'team-a',
-  tmbId = 'tmb-a'
-}: {
-  username?: string;
-  teamId?: string;
-  tmbId?: string;
-} = {}) =>
-  ({
-    username,
-    team: {
-      teamId,
-      tmbId
-    }
-  }) as UserType;
 
 const draftData = {
   nodes: [{ nodeId: 'node-1' }] as any,
@@ -78,99 +58,81 @@ describe('workflow local draft', () => {
     vi.useRealTimers();
   });
 
-  it('should parse appId from workflow route', () => {
-    expect(getWorkflowAppIdFromRoute('/app/detail?appId=app-1&currentTab=appEdit')).toBe('app-1');
-    expect(
-      getWorkflowAppIdFromRoute('%2Fapp%2Fdetail%3FappId%3Dapp-1%26currentTab%3DappEdit')
-    ).toBe('app-1');
-    expect(getWorkflowAppIdFromRoute('/app/detail?appId=app-1%26currentTab%3DappEdit')).toBe(
-      'app-1'
-    );
-    expect(getWorkflowAppIdFromRoute('/dashboard/agent')).toBe('');
-    expect(getWorkflowAppIdFromRoute('/app/detail?appId=app-1&currentTab=publish')).toBe('app-1');
-    expect(
-      getWorkflowAppIdFromRoute('https%3A%2F%2Fexample.com%2Fapp%2Fdetail%3FappId%3Dapp-1')
-    ).toBe('');
-  });
-
-  it('should normalize encoded workflow route for restore redirect', () => {
-    expect(
-      normalizeWorkflowLocalDraftRoute('%2Fapp%2Fdetail%3FappId%3Dapp-1%26currentTab%3DappEdit')
-    ).toBe('/app/detail?appId=app-1&currentTab=appEdit');
-    expect(normalizeWorkflowLocalDraftRoute('/app/detail?appId=app-1&currentTab=appEdit')).toBe(
-      '/app/detail?appId=app-1&currentTab=appEdit'
-    );
-    expect(normalizeWorkflowLocalDraftRoute('https://example.com/app/detail?appId=app-1')).toBe('');
-  });
-
   it('should build canonical app detail route from draft appId', () => {
     expect(getWorkflowLocalDraftDetailRoute('app-1')).toBe('/app/detail?appId=app-1');
     expect(getWorkflowLocalDraftDetailRoute('')).toBe('');
     expect(getWorkflowLocalDraftDetailRoute('app-1&currentTab=logs')).toBe('');
   });
 
-  it('should save and match draft for the same username and tmbId', () => {
+  it('should save and match draft without account identity', () => {
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
 
     expect(saved).toBe(true);
 
-    const result = checkWorkflowLocalDraft({
-      user: createUser({
-        teamId: 'team-b'
-      })
-    });
+    const result = checkWorkflowLocalDraft();
 
     expect(result.status).toBe('matched');
     if (result.status === 'matched') {
       expect(result.draft.appId).toBe('app-1');
-      expect(result.draft.username).toBe('user-a');
+      expect(result.draft).not.toHaveProperty('username');
+      expect(result.draft).not.toHaveProperty('teamId');
+      expect(result.draft).not.toHaveProperty('tmbId');
+      expect(result.draft).not.toHaveProperty('route');
       expect(result.route).toBe('/app/detail?appId=app-1');
     }
   });
 
-  it('should match draft without checking the login fallback route or tab', () => {
+  it('should strip legacy identity fields from stored draft', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
+      data: draftData
+    });
+    const savedDraft = JSON.parse(storageMap.get(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)!);
+    storageMap.set(
+      WORKFLOW_LOCAL_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        ...savedDraft,
+        username: 'legacy-user',
+        teamId: 'legacy-team',
+        tmbId: 'legacy-tmb',
+        route: '/app/detail?appId=app-1&currentTab=publish'
+      })
+    );
+
+    const draft = readWorkflowLocalDraft();
+    const persistedDraft = JSON.parse(storageMap.get(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)!);
+
+    expect(draft).not.toHaveProperty('tmbId');
+    expect(draft).not.toHaveProperty('username');
+    expect(draft).not.toHaveProperty('teamId');
+    expect(draft).not.toHaveProperty('route');
+    expect(persistedDraft).not.toHaveProperty('tmbId');
+    expect(persistedDraft).not.toHaveProperty('username');
+    expect(persistedDraft).not.toHaveProperty('teamId');
+    expect(persistedDraft).not.toHaveProperty('route');
+  });
+
+  it('should match draft without checking the login fallback route', () => {
+    saveWorkflowLocalDraft({
+      appId: 'app-1',
       data: draftData
     });
 
-    const matchedResult = checkWorkflowLocalDraft({
-      user: createUser()
-    });
+    const matchedResult = checkWorkflowLocalDraft();
     expect(matchedResult.status).toBe('matched');
   });
 
   it('should replace stale same-app draft with the latest write', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
 
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: {
         ...draftData,
         nodes: [{ nodeId: 'node-latest' }] as any
@@ -184,42 +146,11 @@ describe('workflow local draft', () => {
   it('should clear stale same-app draft when the latest write is unavailable', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
 
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: null,
-      data: draftData
-    });
-
-    expect(saved).toBe(false);
-    expect(readWorkflowLocalDraft()).toBeNull();
-  });
-
-  it('should keep another account draft when an invalid write belongs to a different identity', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
-      data: draftData
-    });
-
-    const saved = saveWorkflowLocalDraft({
-      appId: 'app-1',
-      identity: {
-        username: 'user-b',
-        teamId: 'team-b',
-        tmbId: 'tmb-b'
-      },
       data: {
         ...draftData,
         nodes: []
@@ -227,67 +158,25 @@ describe('workflow local draft', () => {
     });
 
     expect(saved).toBe(false);
-    expect(readWorkflowLocalDraft()?.username).toBe('user-a');
+    expect(readWorkflowLocalDraft()).toBeNull();
   });
 
-  it('should return canonical detail route instead of the saved tab route', () => {
+  it('should keep another app draft when an invalid write belongs to a different app', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
-      data: draftData,
-      route: '/app/detail?appId=app-1&currentTab=publish'
-    });
-
-    const result = checkWorkflowLocalDraft({
-      user: createUser()
-    });
-
-    expect(result.status).toBe('matched');
-    if (result.status === 'matched') {
-      expect(result.route).toBe('/app/detail?appId=app-1');
-    }
-  });
-
-  it('should reject draft from another account without deleting it', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
 
-    const result = checkWorkflowLocalDraft({
-      user: createUser({ username: 'user-b' })
+    const saved = saveWorkflowLocalDraft({
+      appId: 'app-2',
+      data: {
+        ...draftData,
+        nodes: []
+      }
     });
 
-    expect(result.status).toBe('account-mismatch');
-    expect(readWorkflowLocalDraft()?.username).toBe('user-a');
-  });
-
-  it('should reject draft from the same username but another tmbId without deleting it', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
-      data: draftData
-    });
-
-    const result = checkWorkflowLocalDraft({
-      user: createUser({ tmbId: 'tmb-b' })
-    });
-
-    expect(result.status).toBe('account-mismatch');
-    expect(readWorkflowLocalDraft()?.tmbId).toBe('tmb-a');
+    expect(saved).toBe(false);
+    expect(readWorkflowLocalDraft()?.appId).toBe('app-1');
   });
 
   it('should clear malformed or expired drafts', () => {
@@ -297,18 +186,11 @@ describe('workflow local draft', () => {
 
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
     vi.setSystemTime(new Date('2026-05-19T00:00:01.000Z'));
 
-    const result = checkWorkflowLocalDraft({
-      user: createUser()
-    });
+    const result = checkWorkflowLocalDraft();
 
     expect(result.status).toBe('expired');
     expect(readWorkflowLocalDraft()).toBeNull();
@@ -317,11 +199,6 @@ describe('workflow local draft', () => {
   it('should remove current draft explicitly', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
       data: draftData
     });
 

@@ -28,13 +28,13 @@ const FastLogin = ({
   const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
-      setUserInfo(res.user);
-
       const safeCallbackUrl = validateRedirectUrl(callbackUrl);
       const targetRoute = await restoreWorkflowLocalDraft({
         user: res.user,
         fallbackRoute: safeCallbackUrl
       });
+
+      setUserInfo(res.user);
 
       if (targetRoute) {
         setTimeout(() => {
