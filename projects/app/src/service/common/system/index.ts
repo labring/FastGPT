@@ -176,7 +176,10 @@ export async function initSystemConfig() {
       show_batch_eval: licenseData?.functions?.batchEval,
       show_agent_sandbox: !!env.AGENT_SANDBOX_PROVIDER,
       show_skill: env.SHOW_SKILL,
-      show_evaluation: process.env.SHOW_EVALUATION === 'true',
+      show_evaluation:
+        process.env.SHOW_EVALUATION !== undefined
+          ? process.env.SHOW_EVALUATION === 'true'
+          : fastgptConfig.feConfigs?.show_evaluation,
       payFormUrl: process.env.PAY_FORM_URL || '',
 
       agentSandboxFree: process.env.AGENT_SANDBOX_FREE_TIP === 'true'
