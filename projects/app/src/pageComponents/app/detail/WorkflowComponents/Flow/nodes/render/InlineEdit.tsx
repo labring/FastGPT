@@ -160,7 +160,6 @@ export const InlineEdit = React.memo(function InlineEdit({
 
   return (
     <Box
-      className="nodrag"
       cursor={'pointer'}
       onClick={() => setIsEditing(true)}
       title={t(value as any)}
