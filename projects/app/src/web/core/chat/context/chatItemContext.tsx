@@ -94,6 +94,7 @@ type ChatItemContextType = {
   setCiteModalData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
   isVariableVisible: boolean;
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  resetUIState: () => void;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -127,6 +128,9 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   },
   isVariableVisible: true,
   setIsVariableVisible: function (value: React.SetStateAction<boolean>): void {
+    throw new Error('Function not implemented.');
+  },
+  resetUIState: function (): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -205,6 +209,12 @@ const ChatItemContextProvider = ({
 
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 
+  const resetUIState = useCallback(() => {
+    setCiteModalData(undefined);
+    setIsVariableVisible(true);
+    setPluginRunTab(PluginRunBoxTabEnum.input);
+  }, []);
+
   const contextValue = useMemo(() => {
     return {
       chatBoxData,
@@ -228,7 +238,8 @@ const ChatItemContextProvider = ({
       datasetCiteData,
       setCiteModalData,
       isVariableVisible,
-      setIsVariableVisible
+      setIsVariableVisible,
+      resetUIState
     };
   }, [
     chatBoxData,
@@ -248,7 +259,8 @@ const ChatItemContextProvider = ({
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,
-    setIsVariableVisible
+    setIsVariableVisible,
+    resetUIState
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

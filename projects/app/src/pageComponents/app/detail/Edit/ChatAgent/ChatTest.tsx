@@ -83,6 +83,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
+  useEffect(() => {
+    setActiveTab('chat_debug');
+    setCiteModalData(undefined);
+    setRenderEdit(true);
+  }, [appDetail._id, chatId, setActiveTab, setCiteModalData, setRenderEdit]);
+
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
