@@ -32,13 +32,18 @@ const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 const Chat = () => {
   const { isPc } = useSystem();
 
-  const { appId } = useChatStore();
+  const { appId, chatId } = useChatStore();
 
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const resetChatItemUIState = useContextSelector(ChatItemContext, (v) => v.resetUIState);
 
   const collapse = useContextSelector(ChatPageContext, (v) => v.collapse);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+
+  useEffect(() => {
+    resetChatItemUIState();
+  }, [appId, chatId, resetChatItemUIState]);
 
   return (
     <Flex h={'100%'}>

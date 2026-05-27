@@ -206,8 +206,8 @@ const ChatContextProvider = ({
 
   const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
-      const { chatId: currentChatId } = useChatStore.getState();
-      if (chatId !== currentChatId) return;
+      const { appId: currentAppId, chatId: currentChatId } = useChatStore.getState();
+      if (currentAppId !== historyAppId || chatId !== currentChatId) return;
 
       setHistories((state) =>
         upsertHistoryTitle({

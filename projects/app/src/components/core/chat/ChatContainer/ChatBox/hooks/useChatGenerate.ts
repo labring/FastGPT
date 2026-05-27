@@ -587,7 +587,7 @@ export const useChatGenerate = ({
           resumedChatTargetRef.current = `${appId}:${chatId}`;
 
           setChatBoxData((state) =>
-            state.chatId === chatId
+            state.appId === appId && state.chatId === chatId
               ? {
                   ...state,
                   title: temporaryHistoryTitle,
@@ -693,7 +693,7 @@ export const useChatGenerate = ({
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.done,
               finishedInActiveChat,
-              shouldUpdateChatBoxData: (state) => state.chatId === chatId
+              shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           } catch (err: any) {
             if (isAbortByLeave(err)) {
@@ -727,7 +727,7 @@ export const useChatGenerate = ({
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.error,
               finishedInActiveChat,
-              shouldUpdateChatBoxData: (state) => state.chatId === chatId
+              shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           }
 
