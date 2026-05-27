@@ -198,6 +198,23 @@ export const useFileOperations = ({
     [skillId, requestName, t, toast, refreshDir]
   );
 
+  const refreshOpenedFiles = useCallback(async () => {
+    const currentFiles = openedFilesRef.current;
+    if (!currentFiles || currentFiles.length === 0) return;
+    const refreshed = await Promise.all(
+      currentFiles.map(async (file) => {
+        if (file.isBinary || file.isUnknown) return file;
+        try {
+          const { content, isUnknown } = await loadFile(file.path, file.language);
+          return { ...file, content, isUnknown };
+        } catch {
+          return file;
+        }
+      })
+    );
+    setOpenedFiles(refreshed);
+  }, [loadFile, openedFilesRef]);
+
   const handleUploadFiles = useCallback(
     async (parentDir: string, files: File[]) => {
       try {
@@ -325,6 +342,7 @@ export const useFileOperations = ({
     setNameInputValue,
     isNameModalOpen,
     handleNameConfirm,
-    handleNameCancel
+    handleNameCancel,
+    refreshOpenedFiles
   };
 };

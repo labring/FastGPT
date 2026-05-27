@@ -29,9 +29,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSkillManager } from './hooks/useSkillManager';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AIModelSelector from '@/components/Select/AIModelSelector';
@@ -100,8 +98,6 @@ const EditForm = ({
   const { feConfigs, llmModelList, embeddingModelList, reRankModelList, defaultModels } =
     useSystemStore();
   const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
 
   // ===== 数据集 =====
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
@@ -382,30 +378,6 @@ const EditForm = ({
               }
             />
           </Box>
-
-          {/* Sandbox（虚拟机） */}
-          <FormItem label={t('app:use_agent_sandbox')} tooltip={t('app:use_computer_desc')}>
-            {showSandbox ? (
-              enableSandbox ? (
-                <Flex alignItems={'center'} gap={2}>
-                  <SandboxTipTag />
-                  <Switch
-                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-                    onChange={(e) =>
-                      setAppForm((state) => ({
-                        ...state,
-                        aiSettings: { ...state.aiSettings, useAgentSandbox: e.target.checked }
-                      }))
-                    }
-                  />
-                </Flex>
-              ) : (
-                <SandboxNotSupportTip type="freeDisable" />
-              )
-            ) : (
-              <SandboxNotSupportTip type="systemDisable" />
-            )}
-          </FormItem>
         </AccordionSection>
       </SectionCard>
 
@@ -473,7 +445,9 @@ const EditForm = ({
             </Flex>
             <Button
               variant={'transparentBase'}
-              leftIcon={<MyIcon name="core/chat/sendLight" w={'14px'} transform="rotate(-135deg)" />}
+              leftIcon={
+                <MyIcon name="core/chat/sendLight" w={'14px'} transform="rotate(-135deg)" />
+              }
               mr={'-5px'}
               size={'sm'}
               fontSize={'sm'}

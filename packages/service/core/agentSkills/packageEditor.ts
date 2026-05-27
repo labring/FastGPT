@@ -48,6 +48,17 @@ export function validatePackagePath(path: string, opts: { allowRoot?: boolean } 
   return path.replace(/\/+$/, '');
 }
 
+/** Recursively list all files and directories nested under `path` inside zip. */
+export function listZipAllFiles(zip: JSZip, path: string): PackageFileItem[] {
+  const items = listZipDirectory(zip, path);
+  return items.map((item) => {
+    if (item.type === 'directory') {
+      return { ...item, children: listZipAllFiles(zip, item.path) };
+    }
+    return item;
+  });
+}
+
 /** List direct children of `path` inside zip. Implicit directories are detected. */
 export function listZipDirectory(zip: JSZip, path: string): PackageFileItem[] {
   const prefix = path === '' ? '' : path.replace(/\/+$/, '') + '/';

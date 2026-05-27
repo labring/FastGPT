@@ -19,16 +19,27 @@ export const PackageFileItemSchema = z.object({
   name: z.string().describe('File or directory name'),
   path: z.string().describe('Full path (relative to zip root)'),
   type: z.enum(['file', 'directory']).describe('Entry type'),
-  size: z.number().optional().describe('File size in bytes')
+  size: z.number().optional().describe('File size in bytes'),
+  children: z.array(z.any()).optional().describe('Nested children (present when recursive=true)')
 });
-export type PackageFileItem = z.infer<typeof PackageFileItemSchema>;
+export type PackageFileItem = {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+  children?: PackageFileItem[];
+};
 
 // ============ list ============
 
 export const ListPackageFilesBodySchema = SkillPackageBaseSchema.extend({
-  path: z.string().default('.').describe('Directory path, defaults to root')
+  path: z.string().default('.').describe('Directory path, defaults to root'),
+  recursive: z
+    .boolean()
+    .default(false)
+    .describe('Recursively list all nested files and directories')
 });
-export type ListPackageFilesBody = z.infer<typeof ListPackageFilesBodySchema>;
+export type ListPackageFilesBody = z.input<typeof ListPackageFilesBodySchema>;
 
 export const ListPackageFilesResponseSchema = z.object({
   files: z.array(PackageFileItemSchema)

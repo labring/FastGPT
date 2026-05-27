@@ -129,10 +129,10 @@ export const useSandboxStatus = ({
           <IconButton
             variant={'whiteBase'}
             size={'smSquare'}
-            icon={<MyIcon name={'core/app/sandbox/file'} w={'16px'} />}
+            icon={<MyIcon name={'core/chat/fileSelect'} w={'16px'} />}
             onClick={onOpen}
             {...props}
-            aria-label="Sandbox Entry"
+            aria-label="Files Entry"
           />
         </MyTooltip>
       );

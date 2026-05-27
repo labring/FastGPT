@@ -11,17 +11,25 @@ const SandboxBaseSchema = z.object({
  * 列出目录 - 请求/响应
  */
 export const SandboxListBodySchema = SandboxBaseSchema.extend({
-  path: z.string().default('.').describe('目录路径')
+  path: z.string().default('.').describe('目录路径'),
+  recursive: z.boolean().optional().default(false).describe('是否递归列举子目录')
 });
-export type SandboxListBody = z.infer<typeof SandboxListBodySchema>;
+export type SandboxListBody = z.input<typeof SandboxListBodySchema>;
 
 export const SandboxFileItemSchema = z.object({
   name: z.string().describe('文件名'),
   path: z.string().describe('完整路径'),
   type: z.enum(['file', 'directory']).describe('文件类型'),
-  size: z.number().optional().describe('文件大小(字节数)')
+  size: z.number().optional().describe('文件大小(字节数)'),
+  children: z.array(z.any()).optional().describe('子文件列表(recursive=true 时返回)')
 });
-export type SandboxFileItem = z.infer<typeof SandboxFileItemSchema>;
+export type SandboxFileItem = {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+  children?: SandboxFileItem[];
+};
 
 export const SandboxListResponseSchema = z.object({
   files: z.array(SandboxFileItemSchema)

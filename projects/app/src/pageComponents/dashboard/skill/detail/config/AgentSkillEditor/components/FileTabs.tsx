@@ -25,7 +25,7 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
     <Box
       flexShrink={0}
       p={1}
-      bg="myGray.50"
+      bg="myGray.25"
       borderRadius="md"
       border="sm"
       m={3}
@@ -52,10 +52,10 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
           return (
             <Flex
               key={file.path}
-              px={3}
+              px={2}
               py={1}
               h={'22px'}
-              bg={active ? 'white' : 'myGray.25'}
+              bg={'white'}
               borderRadius="4px"
               align="center"
               gap={1}
@@ -66,8 +66,9 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
               flexShrink={0}
               position="relative"
               boxShadow={'1.5'}
+              role="group"
               _hover={{
-                bg: active ? 'white' : 'myGray.50'
+                bg: active ? 'white' : 'myGray.100'
               }}
             >
               <MyIcon name={getIconByFilename(file.name)} w="16px" color="myGray.600" />
@@ -81,10 +82,12 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
               </Text>
               <MyIcon
                 name="common/closeLight"
-                w="16px"
+                w="14px"
                 color="myGray.500"
+                opacity={active ? 1 : 0}
+                _groupHover={{ opacity: 1 }}
                 _hover={{
-                  color: 'primary.500'
+                  color: 'primary.600'
                 }}
                 onClick={(e) => closeFile(file.path, e)}
               />

@@ -17,7 +17,6 @@ import { ChatBoxContext } from '../Provider';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { formatChatValue2InputType } from '../utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 export type CitationRenderItem = {
@@ -67,8 +66,7 @@ const ResponseTags = ({
     totalQuoteList: quotes = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
-    toolCiteLinks = [],
-    useSandboxFileDisplay
+    toolCiteLinks = []
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -102,12 +100,6 @@ const ResponseTags = ({
   const handleViewFullResponse = useCallback(() => {
     onOpenWholeModal();
   }, [onOpenWholeModal]);
-
-  const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
-    appId,
-    chatId,
-    outLinkAuthData
-  });
 
   useSize(quoteListRef);
   const quoteIsOverflow = quoteListRef.current
@@ -300,20 +292,6 @@ const ResponseTags = ({
                 {t('chat:citations', { num: quoteList.length })}
               </MyTag>
             </MyTooltip>
-          )}
-
-          {useSandboxFileDisplay && (
-            <>
-              <MyTag
-                colorSchema="green"
-                type="borderSolid"
-                cursor={'pointer'}
-                onClick={onOpenSandboxModal}
-              >
-                {t('chat:sandbox_files')}
-              </MyTag>
-              <SandboxEditorModal />
-            </>
           )}
 
           {notSharePage && showWholeResponse && (

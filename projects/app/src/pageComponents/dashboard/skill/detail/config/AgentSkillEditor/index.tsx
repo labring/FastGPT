@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Flex,
   Center,
+  HStack,
   VStack,
   ModalBody,
   ModalFooter,
@@ -11,6 +12,7 @@ import {
   Box,
   Text
 } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -38,6 +40,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
   const isUpdatingRef = useRef(false);
   const flushAllPendingRef = useContextSelector(SkillDetailContext, (v) => v.flushAllPendingRef);
   const [staleDetected, setStaleDetected] = useState(false);
+  const [isFileTreeVisible, setIsFileTreeVisible] = useState(true);
 
   const tree = useFileTree({ skillId });
   const {
@@ -52,6 +55,18 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
 
   // Expose flushAllPending so the preview tab can flush pending saves before sandbox sync
   flushAllPendingRef.current = flushAllPending;
+
+  // Seed packageVersionRef with current version on mount, so the polling below
+  // does not falsely detect a change when the initial ref value (0) differs from
+  // the stored version.
+  useEffect(() => {
+    if (!skillId) return;
+    checkSkillPackageVersion({ skillId, knownVersion: 0 })
+      .then((result) => {
+        packageVersionRef.current = result.currentVersion;
+      })
+      .catch(() => {});
+  }, [skillId, packageVersionRef]);
 
   // Poll for changes from other replicas/sessions every 30 s
   useEffect(() => {
@@ -110,103 +125,165 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
   }, [ops.activeFilePath]);
 
   return (
-    <Flex h="full" w="full" direction="column">
+    <>
       {staleDetected && (
-        <Box px={4} py={2} bg="blue.50" borderBottom="1px solid" borderColor="blue.200">
-          <Flex align="center" justify="space-between">
-            <Text fontSize="sm" color="blue.700">
+        <HStack
+          px={4}
+          py={2}
+          mb={2}
+          bg={'yellow.25'}
+          borderRadius={'md'}
+          spacing={2}
+          align={'center'}
+          justify={'space-between'}
+          flexShrink={0}
+        >
+          <HStack spacing={2} align={'center'}>
+            <MyIcon
+              name={'common/info' as any}
+              w={'16px'}
+              flexShrink={0}
+              color={'yellow.700'}
+              mt={'1px'}
+            />
+            <Box fontSize={'12px'} color={'yellow.700'}>
               {t('skill:editor_stale_detected')}
-            </Text>
-            <Button
-              size="xs"
-              variant="outline"
-              colorScheme="blue"
-              onClick={() => {
-                setStaleDetected(false);
-                tree.reloadRoot();
-              }}
-            >
-              {t('common:refresh')}
-            </Button>
-          </Flex>
-        </Box>
+            </Box>
+          </HStack>
+          <Button
+            size="xs"
+            variant="outline"
+            colorScheme="yellow"
+            onClick={async () => {
+              setStaleDetected(false);
+              try {
+                const result = await checkSkillPackageVersion({ skillId, knownVersion: 0 });
+                packageVersionRef.current = result.currentVersion;
+              } catch {}
+              await tree.reloadRoot();
+              ops.refreshOpenedFiles();
+            }}
+          >
+            {t('common:refresh')}
+          </Button>
+        </HStack>
       )}
-      <MyBox
-        isLoading={tree.loadingRoot && tree.fileTree.length === 0}
-        display={'flex'}
+      <Box
         flex={1}
         minH={0}
-        w="full"
-        bg="myGray.25"
-        borderRadius="12px"
-        overflow="hidden"
-        border="1px solid"
-        borderColor="myGray.200"
+        bg={'white'}
+        borderRadius={'8px'}
+        border={'1px solid #EBEDF0'}
+        overflow={'hidden'}
+        display="flex"
+        flexDirection="column"
       >
-        {tree.fileTree.length === 0 && !tree.loadingRoot ? (
-          <Center h="full" w="full">
-            <VStack spacing={3}>
-              <EmptyTip text={t('skill:editor_no_file')} mt={0} />
-            </VStack>
-          </Center>
-        ) : (
-          <>
-            <FileTree
-              filteredTree={tree.filteredTree}
-              searchQuery={tree.searchQuery}
-              setSearchQuery={tree.setSearchQuery}
-              expandedDirs={tree.expandedDirs}
-              loadingDirs={tree.loadingDirs}
-              activeFilePath={ops.activeFilePath}
-              openFile={ops.openFile}
-              toggleDirectory={tree.toggleDirectory}
-              canWrite={canWrite}
-              onCreateFile={ops.handleCreateFile}
-              onCreateFolder={ops.handleCreateFolder}
-              onUploadFiles={ops.handleUploadFiles}
-              onRename={ops.handleRename}
-              onDelete={ops.handleDelete}
-            />
-            <MyBox
-              isLoading={ops.loadingFile}
-              display={'flex'}
-              flex={1}
-              w={0}
-              minH={0}
-              flexDirection="column"
-              bg="myGray.25"
-            >
-              {ops.openedFiles.length > 0 ? (
-                <>
-                  <FileTabs
-                    openedFiles={ops.openedFiles}
+        <MyBox
+          isLoading={tree.loadingRoot && tree.fileTree.length === 0}
+          display={'flex'}
+          flex={1}
+          minH={0}
+          w="full"
+          overflow="hidden"
+        >
+          {tree.fileTree.length === 0 && !tree.loadingRoot ? (
+            <Center h="full" w="full">
+              <VStack spacing={3}>
+                <EmptyTip text={t('skill:editor_no_file')} mt={0} />
+              </VStack>
+            </Center>
+          ) : (
+            <>
+              <Box
+                position="relative"
+                display="flex"
+                flex={isFileTreeVisible ? '0 0 270px' : '0 0 0px'}
+                flexShrink={0}
+                overflow="visible"
+                minH={0}
+              >
+                {isFileTreeVisible && (
+                  <FileTree
+                    filteredTree={tree.filteredTree}
+                    searchQuery={tree.searchQuery}
+                    setSearchQuery={tree.setSearchQuery}
+                    expandedDirs={tree.expandedDirs}
+                    loadingDirs={tree.loadingDirs}
                     activeFilePath={ops.activeFilePath}
-                    setActiveFilePath={ops.setActiveFilePath}
-                    closeFile={ops.closeFile}
-                  />
-                  <EditorContent
-                    activeFile={ops.activeFile}
-                    activeFilePath={ops.activeFilePath}
-                    setOpenedFiles={ops.setOpenedFiles}
-                    editorRef={editorRef}
-                    isUpdatingRef={isUpdatingRef}
+                    openFile={ops.openFile}
+                    toggleDirectory={tree.toggleDirectory}
                     canWrite={canWrite}
-                    scheduleAutoSave={scheduleAutoSave}
+                    onCreateFile={ops.handleCreateFile}
+                    onCreateFolder={ops.handleCreateFolder}
+                    onUploadFiles={ops.handleUploadFiles}
+                    onRename={ops.handleRename}
+                    onDelete={ops.handleDelete}
                   />
-                </>
-              ) : (
-                tree.filteredTree.length > 0 && (
-                  <Center h="full">
-                    <VStack spacing={3}>
-                      <EmptyTip text={t('skill:editor_select_file_edit')} mt={0} />
-                    </VStack>
-                  </Center>
-                )
-              )}
-            </MyBox>
-          </>
-        )}
-      </MyBox>
+                )}
+                <Center
+                  position="absolute"
+                  top="50%"
+                  right="-16px"
+                  transform="translateY(-50%)"
+                  w="16px"
+                  h="48px"
+                  bg="#F0F2F5"
+                  borderTopRightRadius="6px"
+                  borderBottomRightRadius="6px"
+                  cursor="pointer"
+                  zIndex={2}
+                  onClick={() => setIsFileTreeVisible((v) => !v)}
+                >
+                  <MyIcon
+                    name={'core/chat/chevronRight' as any}
+                    w="16px"
+                    h="16px"
+                    color="#485264"
+                    transform={isFileTreeVisible ? 'rotate(180deg)' : undefined}
+                    transition="transform 0.2s"
+                  />
+                </Center>
+              </Box>
+              <MyBox
+                isLoading={ops.loadingFile}
+                display={'flex'}
+                flex={1}
+                w={0}
+                minH={0}
+                flexDirection="column"
+              >
+                {ops.openedFiles.length > 0 ? (
+                  <>
+                    <FileTabs
+                      openedFiles={ops.openedFiles}
+                      activeFilePath={ops.activeFilePath}
+                      setActiveFilePath={ops.setActiveFilePath}
+                      closeFile={ops.closeFile}
+                    />
+                    <EditorContent
+                      activeFile={ops.activeFile}
+                      activeFilePath={ops.activeFilePath}
+                      setOpenedFiles={ops.setOpenedFiles}
+                      editorRef={editorRef}
+                      isUpdatingRef={isUpdatingRef}
+                      canWrite={canWrite}
+                      scheduleAutoSave={scheduleAutoSave}
+                    />
+                  </>
+                ) : (
+                  tree.filteredTree.length > 0 && (
+                    <Center h="full">
+                      <VStack spacing={3}>
+                        <EmptyTip text={t('skill:editor_select_file_edit')} mt={0} />
+                      </VStack>
+                    </Center>
+                  )
+                )}
+              </MyBox>
+            </>
+          )}
+        </MyBox>
+      </Box>
       <ops.DeleteConfirmModal />
       <MyModal
         isOpen={ops.isNameModalOpen}
@@ -236,7 +313,7 @@ const AgentSkillEditor = ({ skillId, canWrite }: Props) => {
           </Button>
         </ModalFooter>
       </MyModal>
-    </Flex>
+    </>
   );
 };
 
