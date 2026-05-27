@@ -20,14 +20,11 @@ import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
-import { useTranslation } from 'next-i18next';
-import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   getWorkflowLocalDraftIdentity,
   removeWorkflowLocalDraftByApp,
-  saveWorkflowLocalDraft,
-  WORKFLOW_AUTH_INVALID_EVENT
+  saveWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
 
 // 创建 Context
@@ -47,7 +44,6 @@ export const WorkflowPersistenceContext = createContext<WorkflowPersistenceConte
  * WorkflowPersistenceProvider - 持久化提供者
  */
 export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { t } = useTranslation();
   // 获取依赖的 context
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
@@ -65,14 +61,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const saveLocalDraft = useCallback(() => {
     const identity = getWorkflowLocalDraftIdentity(userInfo);
     const data = flowData2StoreData();
-
-    if (!data) {
-      removeWorkflowLocalDraftByApp({
-        appId: appDetail._id,
-        identity
-      });
-      return false;
-    }
+    if (!data) return false;
 
     return saveWorkflowLocalDraft({
       appId: appDetail._id,
@@ -117,11 +106,9 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
 
       if (val) {
         removeCurrentLocalDraft();
-      } else {
-        saveLocalDraft();
       }
     },
-    [future, past, nodes, edges, appDetail.chatConfig, removeCurrentLocalDraft, saveLocalDraft],
+    [future, past, nodes, edges, appDetail.chatConfig, removeCurrentLocalDraft],
     {
       wait: 500
     }
@@ -155,21 +142,23 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     saveLocalDraft
   ]);
 
+  // 鉴权失效触发登录跳转时不能再弹浏览器离开确认；这里只落本地草稿，不阻止跳转。
   useEffect(() => {
-    window.addEventListener(WORKFLOW_AUTH_INVALID_EVENT, saveLocalDraft);
-    return () => {
-      window.removeEventListener(WORKFLOW_AUTH_INVALID_EVENT, saveLocalDraft);
+    const handleBeforeUnload = () => {
+      if (!isSaved && leaveSaveSign.current) {
+        saveLocalDraft();
+      }
     };
-  }, [saveLocalDraft]);
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isSaved, saveLocalDraft]);
 
   // 页面关闭前自动保存
   useUnmount(() => {
     autoSaveFn();
-  });
-
-  useBeforeunload({
-    tip: t('common:core.tip.leave page'),
-    callback: autoSaveFn
   });
 
   const contextValue = useMemo(() => {

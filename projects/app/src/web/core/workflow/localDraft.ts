@@ -4,11 +4,11 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 export const WORKFLOW_LOCAL_DRAFT_STORAGE_KEY = 'fastgpt_workflow_local_draft_v1';
-export const WORKFLOW_AUTH_INVALID_EVENT = 'fastgpt:workflow-auth-invalid';
 
 const WORKFLOW_LOCAL_DRAFT_VERSION = 1;
 const WORKFLOW_LOCAL_DRAFT_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000;
 const WORKFLOW_ROUTE_BASE_URL = 'http://fastgpt.local';
+const WORKFLOW_DETAIL_PATH = '/app/detail';
 
 export type WorkflowLocalDraftIdentity = {
   username: string;
@@ -35,13 +35,7 @@ export type WorkflowLocalDraftCheckResult =
       route: string;
     }
   | {
-      status:
-        | 'empty'
-        | 'expired'
-        | 'account-mismatch'
-        | 'app-mismatch'
-        | 'invalid'
-        | 'storage-unavailable';
+      status: 'empty' | 'expired' | 'account-mismatch' | 'invalid' | 'storage-unavailable';
       draft?: WorkflowLocalDraft;
     };
 
@@ -94,8 +88,12 @@ export const normalizeWorkflowLocalDraftRoute = (route: string) => {
 export const getWorkflowAppIdFromRoute = (route: string) => {
   for (const routeCandidate of getWorkflowRouteCandidates(route)) {
     try {
-      const appId =
-        new URL(routeCandidate, WORKFLOW_ROUTE_BASE_URL).searchParams.get('appId') || '';
+      const url = new URL(routeCandidate, WORKFLOW_ROUTE_BASE_URL);
+      if (url.pathname !== WORKFLOW_DETAIL_PATH) {
+        continue;
+      }
+
+      const appId = url.searchParams.get('appId') || '';
       if (appId && !appId.match(/[&=]/)) return appId;
     } catch {
       continue;
@@ -103,6 +101,12 @@ export const getWorkflowAppIdFromRoute = (route: string) => {
   }
 
   return '';
+};
+
+/** 生成恢复成功后的固定工作流详情页，避免继续复用保存草稿时的 tab/query。 */
+export const getWorkflowLocalDraftDetailRoute = (appId: string) => {
+  if (!appId || appId.match(/[&=]/)) return '';
+  return `/app/detail?appId=${encodeURIComponent(appId)}`;
 };
 
 const isWorkflowLocalDraft = (value: any): value is WorkflowLocalDraft => {
@@ -140,12 +144,7 @@ export const removeWorkflowLocalDraftByApp = ({
   const draft = readWorkflowLocalDraft();
   if (!draft || draft.appId !== appId) return;
 
-  if (
-    !identity ||
-    (draft.username === identity.username &&
-      draft.teamId === identity.teamId &&
-      draft.tmbId === identity.tmbId)
-  ) {
+  if (!identity || draft.username === identity.username) {
     removeWorkflowLocalDraft();
   }
 };
@@ -210,12 +209,14 @@ export const saveWorkflowLocalDraft = ({
   }
 };
 
+/**
+ * 登录恢复草稿的最小匹配规则：本地存在未过期草稿且 username 相同即可恢复。
+ * 恢复成功后强制跳到草稿所属 app 的详情页，不再要求登录回跳路由也指向该 app。
+ */
 export const checkWorkflowLocalDraft = ({
-  user,
-  route
+  user
 }: {
   user: Pick<UserType, 'username' | 'team'> | null | undefined;
-  route?: string;
 }): WorkflowLocalDraftCheckResult => {
   if (!isBrowser()) return { status: 'storage-unavailable' };
 
@@ -227,32 +228,19 @@ export const checkWorkflowLocalDraft = ({
     return { status: 'expired' };
   }
 
-  const identity = getWorkflowLocalDraftIdentity(user);
-  if (
-    !identity ||
-    draft.username !== identity.username ||
-    draft.teamId !== identity.teamId ||
-    draft.tmbId !== identity.tmbId
-  ) {
+  if (!user?.username || draft.username !== user.username) {
     return { status: 'account-mismatch', draft };
   }
 
-  const draftRoute = normalizeWorkflowLocalDraftRoute(draft.route);
-  const draftRouteAppId = getWorkflowAppIdFromRoute(draftRoute);
-  if (!draftRouteAppId || draftRouteAppId !== draft.appId) {
+  const detailRoute = getWorkflowLocalDraftDetailRoute(draft.appId);
+  if (!detailRoute) {
     removeWorkflowLocalDraft();
     return { status: 'invalid' };
-  }
-
-  const targetRoute = route ? normalizeWorkflowLocalDraftRoute(route) : draftRoute;
-  const targetRouteAppId = getWorkflowAppIdFromRoute(targetRoute);
-  if (targetRouteAppId && targetRouteAppId !== draft.appId) {
-    return { status: 'app-mismatch', draft };
   }
 
   return {
     status: 'matched',
     draft,
-    route: draftRoute
+    route: detailRoute
   };
 };

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkWorkflowLocalDraft,
   getWorkflowAppIdFromRoute,
+  getWorkflowLocalDraftDetailRoute,
   normalizeWorkflowLocalDraftRoute,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
@@ -72,6 +73,7 @@ describe('workflow local draft', () => {
       'app-1'
     );
     expect(getWorkflowAppIdFromRoute('/dashboard/agent')).toBe('');
+    expect(getWorkflowAppIdFromRoute('/app/detail?appId=app-1&currentTab=publish')).toBe('app-1');
     expect(
       getWorkflowAppIdFromRoute('https%3A%2F%2Fexample.com%2Fapp%2Fdetail%3FappId%3Dapp-1')
     ).toBe('');
@@ -87,7 +89,13 @@ describe('workflow local draft', () => {
     expect(normalizeWorkflowLocalDraftRoute('https://example.com/app/detail?appId=app-1')).toBe('');
   });
 
-  it('should save and match draft for the same username, teamId and tmbId', () => {
+  it('should build canonical app detail route from draft appId', () => {
+    expect(getWorkflowLocalDraftDetailRoute('app-1')).toBe('/app/detail?appId=app-1');
+    expect(getWorkflowLocalDraftDetailRoute('')).toBe('');
+    expect(getWorkflowLocalDraftDetailRoute('app-1&currentTab=logs')).toBe('');
+  });
+
+  it('should save and match draft for the same username', () => {
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
       identity: {
@@ -101,16 +109,35 @@ describe('workflow local draft', () => {
     expect(saved).toBe(true);
 
     const result = checkWorkflowLocalDraft({
-      user: createUser(),
-      route: '/app/detail?appId=app-1&currentTab=appEdit'
+      user: createUser({
+        teamId: 'team-b',
+        tmbId: 'tmb-b'
+      })
     });
 
     expect(result.status).toBe('matched');
     if (result.status === 'matched') {
       expect(result.draft.appId).toBe('app-1');
       expect(result.draft.username).toBe('user-a');
-      expect(result.route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+      expect(result.route).toBe('/app/detail?appId=app-1');
     }
+  });
+
+  it('should match draft without checking the login fallback route or tab', () => {
+    saveWorkflowLocalDraft({
+      appId: 'app-1',
+      identity: {
+        username: 'user-a',
+        teamId: 'team-a',
+        tmbId: 'tmb-a'
+      },
+      data: draftData
+    });
+
+    const matchedResult = checkWorkflowLocalDraft({
+      user: createUser()
+    });
+    expect(matchedResult.status).toBe('matched');
   });
 
   it('should replace stale same-app draft with the latest write', () => {
@@ -190,7 +217,7 @@ describe('workflow local draft', () => {
     expect(readWorkflowLocalDraft()?.username).toBe('user-a');
   });
 
-  it('should match draft when login lastRoute is the encoded workflow edit page', () => {
+  it('should return canonical detail route instead of the saved tab route', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
       identity: {
@@ -198,17 +225,17 @@ describe('workflow local draft', () => {
         teamId: 'team-a',
         tmbId: 'tmb-a'
       },
-      data: draftData
+      data: draftData,
+      route: '/app/detail?appId=app-1&currentTab=publish'
     });
 
     const result = checkWorkflowLocalDraft({
-      user: createUser(),
-      route: '%2Fapp%2Fdetail%3FappId%3Dapp-1%26currentTab%3DappEdit'
+      user: createUser()
     });
 
     expect(result.status).toBe('matched');
     if (result.status === 'matched') {
-      expect(result.route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+      expect(result.route).toBe('/app/detail?appId=app-1');
     }
   });
 
@@ -224,31 +251,11 @@ describe('workflow local draft', () => {
     });
 
     const result = checkWorkflowLocalDraft({
-      user: createUser({ username: 'user-b' }),
-      route: '/app/detail?appId=app-1'
+      user: createUser({ username: 'user-b' })
     });
 
     expect(result.status).toBe('account-mismatch');
     expect(readWorkflowLocalDraft()?.username).toBe('user-a');
-  });
-
-  it('should reject draft when target route belongs to another app', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      identity: {
-        username: 'user-a',
-        teamId: 'team-a',
-        tmbId: 'tmb-a'
-      },
-      data: draftData
-    });
-
-    const result = checkWorkflowLocalDraft({
-      user: createUser(),
-      route: '/app/detail?appId=app-2'
-    });
-
-    expect(result.status).toBe('app-mismatch');
   });
 
   it('should clear malformed or expired drafts', () => {
@@ -268,8 +275,7 @@ describe('workflow local draft', () => {
     vi.setSystemTime(new Date('2026-05-19T00:00:01.000Z'));
 
     const result = checkWorkflowLocalDraft({
-      user: createUser(),
-      route: '/app/detail?appId=app-1'
+      user: createUser()
     });
 
     expect(result.status).toBe('expired');

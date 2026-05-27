@@ -76,16 +76,14 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     vi.useRealTimers();
   });
 
-  it('should auto-save matched draft, clear cache and return workflow route', async () => {
+  it('should auto-save matched draft, clear cache and return canonical app detail route', async () => {
     saveDraftToStorage();
     const saveDraft = vi.fn().mockResolvedValue(undefined);
-    const onRestoreSuccess = vi.fn();
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
       user,
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
-      saveDraft: saveDraft as any,
-      onRestoreSuccess
+      saveDraft: saveDraft as any
     });
 
     expect(saveDraft).toHaveBeenCalledWith(
@@ -95,12 +93,32 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
         isPublish: false
       })
     );
-    expect(onRestoreSuccess).toHaveBeenCalledTimes(1);
     expect(readWorkflowLocalDraft()).toBeNull();
-    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+    expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should restore when login lastRoute is the encoded workflow edit page', async () => {
+  it('should restore draft even when login fallback route is not the workflow detail page', async () => {
+    saveDraftToStorage();
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user,
+      fallbackRoute: '/dashboard/agent',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({
+        autoSave: true,
+        isPublish: false
+      })
+    );
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1');
+  });
+
+  it('should restore without using the encoded login lastRoute as redirect target', async () => {
     saveDraftToStorage();
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
@@ -118,12 +136,13 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
       })
     );
     expect(readWorkflowLocalDraft()).toBeNull();
-    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+    expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should keep draft when auto-save fails', async () => {
+  it('should keep draft and skip redirect when auto-save fails', async () => {
     saveDraftToStorage();
-    const saveDraft = vi.fn().mockRejectedValue(new Error('network error'));
+    const restoreError = new Error('network error');
+    const saveDraft = vi.fn().mockRejectedValue(restoreError);
     const onRestoreFailed = vi.fn();
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
@@ -133,29 +152,26 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
       onRestoreFailed
     });
 
-    expect(onRestoreFailed).toHaveBeenCalledTimes(1);
+    expect(onRestoreFailed).toHaveBeenCalledWith(restoreError);
     expect(readWorkflowLocalDraft()?.appId).toBe('app-1');
-    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+    expect(route).toBeUndefined();
   });
 
-  it('should skip another account draft without auto-save', async () => {
+  it('should clear another account draft without auto-save', async () => {
     saveDraftToStorage();
     const saveDraft = vi.fn();
-    const onAccountMismatch = vi.fn();
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
       user: {
         ...user,
         username: 'user-b'
       },
-      fallbackRoute: '/dashboard/agent',
-      saveDraft: saveDraft as any,
-      onAccountMismatch
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
     });
 
     expect(saveDraft).not.toHaveBeenCalled();
-    expect(onAccountMismatch).toHaveBeenCalledTimes(1);
-    expect(readWorkflowLocalDraft()?.username).toBe('user-a');
-    expect(route).toBe('/dashboard/agent');
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
   });
 });

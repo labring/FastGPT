@@ -13,7 +13,6 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
 import { safeEncodeURIComponent } from '@/web/common/utils/uri';
-import { WORKFLOW_AUTH_INVALID_EVENT } from '@/web/core/workflow/localDraft';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -37,64 +36,6 @@ const maxQuantityMap: Record<
       sign: AbortController;
     }[]
 > = {};
-const AUTH_REDIRECTING_KEY = 'fastgpt_auth_redirecting';
-let authRedirecting = false;
-
-export const clearAuthRedirecting = () => {
-  authRedirecting = false;
-
-  try {
-    window.sessionStorage.removeItem(AUTH_REDIRECTING_KEY);
-  } catch (error) {
-    console.warn('[Auth redirect] Failed to clear redirecting state:', error);
-  }
-};
-
-const getAuthRedirecting = () => {
-  try {
-    return authRedirecting || window.sessionStorage.getItem(AUTH_REDIRECTING_KEY) === 'true';
-  } catch {
-    return authRedirecting;
-  }
-};
-
-const markAuthRedirecting = () => {
-  authRedirecting = true;
-
-  try {
-    window.sessionStorage.setItem(AUTH_REDIRECTING_KEY, 'true');
-  } catch (error) {
-    console.warn('[Auth redirect] Failed to mark redirecting state:', error);
-  }
-};
-
-const dispatchAuthInvalidEvent = () => {
-  try {
-    window.dispatchEvent(new Event(WORKFLOW_AUTH_INVALID_EVENT));
-  } catch (error) {
-    console.warn('[Auth redirect] Failed to dispatch auth invalid event:', error);
-  }
-};
-
-const redirectToLogin = () => {
-  if (getAuthRedirecting()) return;
-
-  markAuthRedirecting();
-  dispatchAuthInvalidEvent();
-  clearToken();
-
-  const loginUrl = getWebReqUrl(
-    `/login?lastRoute=${safeEncodeURIComponent(window.location.pathname + window.location.search)}`
-  );
-
-  try {
-    window.history.replaceState(window.history.state, '', loginUrl);
-  } catch (error) {
-    console.warn('[Auth redirect] Failed to replace history state:', error);
-  }
-
-  window.location.replace(loginUrl);
-};
 
 /*
   Every request generates a unique sign
@@ -192,7 +133,12 @@ function responseError(err: any) {
   // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
     if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
-      redirectToLogin();
+      clearToken();
+      window.location.replace(
+        getWebReqUrl(
+          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+        )
+      );
     }
 
     return Promise.reject({ message: i18nT('common:unauth_token') });

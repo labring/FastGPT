@@ -1,32 +1,31 @@
 import { useCallback } from 'react';
-import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import { postPublishApp } from '@/web/core/app/api/version';
 import { checkWorkflowLocalDraft, removeWorkflowLocalDraft } from '@/web/core/workflow/localDraft';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
+/**
+ * 登录成功后只要检测到同 username 的工作流草稿就尝试恢复。
+ * 账号不匹配的草稿会丢弃；恢复请求失败时保留草稿且不跳转，方便用户重试。
+ */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
   user,
   fallbackRoute,
   saveDraft,
-  onAccountMismatch,
-  onRestoreSuccess,
   onRestoreFailed
 }: {
   user: UserType;
   fallbackRoute: string;
   saveDraft: typeof postPublishApp;
-  onAccountMismatch?: () => void;
-  onRestoreSuccess?: () => void;
-  onRestoreFailed?: () => void;
-}) => {
+  onRestoreFailed?: (error: unknown) => void;
+}): Promise<string | undefined> => {
   const draftResult = checkWorkflowLocalDraft({
-    user,
-    route: fallbackRoute
+    user
   });
 
   if (draftResult.status === 'account-mismatch') {
-    onAccountMismatch?.();
+    removeWorkflowLocalDraft();
     return fallbackRoute;
   }
 
@@ -41,41 +40,35 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
       autoSave: true
     });
     removeWorkflowLocalDraft();
-    onRestoreSuccess?.();
+    return draftResult.route;
   } catch (error) {
-    onRestoreFailed?.();
+    onRestoreFailed?.(error);
+    return undefined;
   }
-
-  return draftResult.route;
 };
 
 export const useWorkflowLocalDraftRestore = () => {
-  const { t } = useTranslation();
   const { toast } = useToast();
 
   return useCallback(
-    async ({ user, fallbackRoute }: { user: UserType; fallbackRoute: string }): Promise<string> => {
+    async ({
+      user,
+      fallbackRoute
+    }: {
+      user: UserType;
+      fallbackRoute: string;
+    }): Promise<string | undefined> => {
       return restoreWorkflowLocalDraftAfterLogin({
         user,
         fallbackRoute,
         saveDraft: postPublishApp,
-        onAccountMismatch: () =>
+        onRestoreFailed: (error) =>
           toast({
             status: 'warning',
-            title: t('workflow:workflow.local_draft_account_mismatch')
-          }),
-        onRestoreSuccess: () =>
-          toast({
-            status: 'success',
-            title: t('workflow:workflow.local_draft_restore_success')
-          }),
-        onRestoreFailed: () =>
-          toast({
-            status: 'warning',
-            title: t('workflow:workflow.local_draft_restore_failed')
+            title: getErrText(error)
           })
       });
     },
-    [t, toast]
+    [toast]
   );
 };

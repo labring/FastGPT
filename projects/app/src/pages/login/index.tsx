@@ -12,7 +12,6 @@ import { subRoute } from '@fastgpt/web/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
-import { clearAuthRedirecting } from '@/web/common/api/request';
 
 const Login = () => {
   const router = useRouter();
@@ -25,7 +24,6 @@ const Login = () => {
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
-      clearAuthRedirecting();
 
       const decodeLastRoute = validateRedirectUrl(lastRoute);
 
@@ -54,7 +52,9 @@ const Login = () => {
           user: res.user,
           fallbackRoute: navigateTo
         });
-        router.replace(targetRoute);
+        if (targetRoute) {
+          router.replace(targetRoute);
+        }
       }
     },
     [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]

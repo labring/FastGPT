@@ -273,8 +273,5 @@
   "workflow.My edit": "My Edit",
   "workflow.Switch_success": "Switch Successful",
   "workflow.Team cloud": "Team Cloud",
-  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits.",
-  "workflow.local_draft_account_mismatch": "A workflow draft from another account was detected and skipped.",
-  "workflow.local_draft_restore_failed": "An unsaved workflow draft was detected, but auto-save failed. The draft has been kept. Please log in again and retry.",
-  "workflow.local_draft_restore_success": "An unsaved workflow draft was detected and auto-saved."
+  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
 }

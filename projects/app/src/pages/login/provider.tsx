@@ -24,7 +24,6 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
-import { clearAuthRedirecting } from '@/web/common/api/request';
 
 let isOauthLogging = false;
 
@@ -46,7 +45,6 @@ const provider = () => {
     async (res: LoginSuccessResponseType) => {
       const decodeLastRoute = validateRedirectUrl(lastRoute);
       setUserInfo(res.user);
-      clearAuthRedirecting();
 
       const navigateTo = await (async () => {
         if (res.user.team.status !== 'active') {
@@ -70,7 +68,9 @@ const provider = () => {
           user: res.user,
           fallbackRoute: navigateTo
         });
-        router.replace(targetRoute);
+        if (targetRoute) {
+          router.replace(targetRoute);
+        }
       }
     },
     [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]
