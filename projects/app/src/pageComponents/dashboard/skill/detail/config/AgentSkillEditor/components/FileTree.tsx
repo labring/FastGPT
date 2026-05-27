@@ -9,9 +9,13 @@ import {
   Text,
   Spinner,
   IconButton,
-  Tooltip
+  Popover,
+  PopoverTrigger,
+  PopoverContent
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
 import { getIconByFilename } from '../utils';
 
@@ -183,43 +187,28 @@ const FileTree = ({
             w="16px"
             color={node.type === 'directory' ? '#EF7623' : 'myGray.600'}
           />
-          <Text
+          <EllipsisTooltip
+            label={node.name}
             flex={1}
             minW={0}
-            noOfLines={1}
-            overflow="hidden"
-            textOverflow="ellipsis"
             fontWeight={isActive ? '600' : '400'}
             letterSpacing="0.5px"
-          >
-            {node.name}
-          </Text>
+            fontSize="12px"
+          />
           {canWrite && (
-            <Flex
+            <IconButton
               className="row-actions"
-              gap={0.5}
+              size="xs"
+              variant="ghost"
+              aria-label="More"
               visibility="hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Tooltip label={t('skill:editor_rename')} placement="top" hasArrow openDelay={300}>
-                <IconButton
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Rename"
-                  icon={<MyIcon name="edit" w="12px" />}
-                  onClick={() => onRename?.(node)}
-                />
-              </Tooltip>
-              <Tooltip label={t('skill:editor_delete')} placement="top" hasArrow openDelay={300}>
-                <IconButton
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Delete"
-                  icon={<MyIcon name="delete" w="12px" color="red.500" />}
-                  onClick={() => onDelete?.(node)}
-                />
-              </Tooltip>
-            </Flex>
+              icon={<MyIcon name={'more' as any} w={'12px'} color={'myGray.500'} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setContextMenu({ x: rect.right, y: rect.bottom, node });
+              }}
+            />
           )}
         </Flex>
         {shouldShowArrow && isExpanded && node.children && node.children.map(renderTreeNode)}
@@ -229,18 +218,20 @@ const FileTree = ({
 
   return (
     <Box
-      flex="0 0 224px"
+      flex="0 0 270px"
       w={0}
+      minW={0}
+      minH={0}
+      overflow="hidden"
       borderRight="1px solid"
       borderColor="myGray.200"
-      bg="myGray.25"
       display="flex"
       flexDirection="column"
     >
-      <Box p={3} pb={2}>
-        <InputGroup size="sm">
-          <InputLeftElement h="32px">
-            <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
+      <Flex p={3} pb={2} align="center" gap="4px">
+        <InputGroup size="sm" flex={1}>
+          <InputLeftElement h="24px">
+            <MyIcon name="common/searchLight" w="12px" color="myGray.500" />
           </InputLeftElement>
           <Input
             placeholder={t('skill:editor_search_files')}
@@ -248,52 +239,50 @@ const FileTree = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             bg="white"
             fontSize="12px"
-            h="32px"
+            h="24px"
             borderRadius="6px"
             borderColor="myGray.200"
             _placeholder={{ color: 'myGray.500' }}
           />
         </InputGroup>
-      </Box>
-
-      {canWrite && (
-        <Flex px={3} pb={2} gap={1.5}>
-          <Tooltip label={t('skill:editor_new_file')} placement="bottom" hasArrow openDelay={300}>
-            <IconButton
-              size="xs"
-              variant="whiteBase"
-              aria-label="New file"
-              icon={<MyIcon name="common/addLight" w="12px" />}
-              onClick={() => onCreateFile?.('')}
-            />
-          </Tooltip>
-          <Tooltip label={t('skill:editor_new_folder')} placement="bottom" hasArrow openDelay={300}>
-            <IconButton
-              size="xs"
-              variant="whiteBase"
-              aria-label="New folder"
-              icon={<MyIcon name="common/folderFill" w="12px" />}
-              onClick={() => onCreateFolder?.('')}
-            />
-          </Tooltip>
-          <Tooltip label={t('skill:editor_upload')} placement="bottom" hasArrow openDelay={300}>
-            <IconButton
-              size="xs"
-              variant="whiteBase"
-              aria-label="Upload"
-              icon={<MyIcon name="file/uploadFile" w="14px" />}
-              onClick={handleUploadClick}
-            />
-          </Tooltip>
-          <input
-            ref={uploadInputRef}
-            type="file"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleUploadChange}
-          />
-        </Flex>
-      )}
+        {canWrite && (
+          <Popover placement="bottom-end" isLazy>
+            <PopoverTrigger>
+              <IconButton
+                size={'xsSquare'}
+                variant={'whitePrimary'}
+                icon={<MyIcon name={'common/add2' as any} w={'12px'} color={'myGray.500'} />}
+                aria-label={''}
+              />
+            </PopoverTrigger>
+            <PopoverContent
+              w="140px"
+              bg="white"
+              borderRadius="md"
+              boxShadow="0px 2px 8px 0px rgba(0, 0, 0, 0.15)"
+              p={1}
+              border="none"
+              _focus={{ outline: 'none' }}
+            >
+              <ContextMenuItem
+                icon="common/addLight"
+                label={t('skill:editor_new_file')}
+                onClick={() => onCreateFile?.('')}
+              />
+              <ContextMenuItem
+                icon="common/folderFill"
+                label={t('skill:editor_new_folder')}
+                onClick={() => onCreateFolder?.('')}
+              />
+              <ContextMenuItem
+                icon="file/uploadFile"
+                label={t('skill:editor_upload')}
+                onClick={handleUploadClick}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+      </Flex>
 
       <Box flex={1} overflowY="auto" overflowX="hidden" px={2}>
         <VStack align="stretch" spacing="0" pb={2}>
@@ -309,6 +298,13 @@ const FileTree = ({
         style={{ display: 'none' }}
         onChange={handleContextMenuUploadChange}
       />
+      <input
+        ref={uploadInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleUploadChange}
+      />
 
       {/* Context menu */}
       {contextMenu && (
@@ -319,7 +315,7 @@ const FileTree = ({
           bg="white"
           borderRadius="md"
           boxShadow="0px 2px 8px 0px rgba(0, 0, 0, 0.15)"
-          py={1}
+          p={1}
           minW="140px"
           zIndex={1500}
           onClick={(e) => e.stopPropagation()}
@@ -341,6 +337,18 @@ const FileTree = ({
                 label={t('skill:editor_upload')}
                 onClick={() => handleContextMenuAction('upload', contextMenu.node)}
               />
+              <MyDivider h="1.5px" my={1} />
+              <ContextMenuItem
+                icon="edit"
+                label={t('skill:editor_rename')}
+                onClick={() => handleContextMenuAction('rename', contextMenu.node)}
+              />
+              <ContextMenuItem
+                icon="delete"
+                label={t('skill:editor_delete')}
+                type="danger"
+                onClick={() => handleContextMenuAction('delete', contextMenu.node)}
+              />
             </>
           ) : (
             <>
@@ -352,7 +360,7 @@ const FileTree = ({
               <ContextMenuItem
                 icon="delete"
                 label={t('skill:editor_delete')}
-                color="red.500"
+                type="danger"
                 onClick={() => handleContextMenuAction('delete', contextMenu.node)}
               />
             </>
@@ -367,23 +375,27 @@ type ContextMenuItemProps = {
   icon: string;
   label: string;
   onClick: () => void;
-  color?: string;
+  type?: 'default' | 'danger';
 };
 
-const ContextMenuItem = ({ icon, label, onClick, color }: ContextMenuItemProps) => (
-  <Flex
-    px={3}
-    py={1.5}
-    align="center"
-    cursor="pointer"
-    fontSize="sm"
-    color={color || 'myGray.600'}
-    _hover={{ bg: 'myGray.50', color: 'primary.600' }}
-    onClick={onClick}
-  >
-    <MyIcon name={icon as any} w="14px" mr={2} />
-    <Text>{label}</Text>
-  </Flex>
-);
+const ContextMenuItem = ({ icon, label, onClick, type = 'default' }: ContextMenuItemProps) => {
+  const isDanger = type === 'danger';
+  return (
+    <Flex
+      px={3}
+      py={1.5}
+      align="center"
+      cursor="pointer"
+      fontSize="sm"
+      borderRadius="sm"
+      color={isDanger ? 'red.600' : 'myGray.600'}
+      _hover={isDanger ? { bg: 'red.1' } : { bg: 'myGray.05', color: 'primary.600' }}
+      onClick={onClick}
+    >
+      <MyIcon name={icon as any} w="14px" mr={2} />
+      <Text>{label}</Text>
+    </Flex>
+  );
+};
 
 export default FileTree;

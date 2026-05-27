@@ -13,7 +13,7 @@ async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<SandboxListResponse>
 ): Promise<SandboxListResponse> {
-  const { appId, chatId, path, outLinkAuthData } = SandboxListBodySchema.parse(req.body);
+  const { appId, chatId, path, recursive, outLinkAuthData } = SandboxListBodySchema.parse(req.body);
 
   const { uid } = await authSandboxAccess({
     req,
@@ -27,7 +27,7 @@ async function handler(
   const sandbox = await getSandboxClientByChat({ appId, userId: uid, chatId });
   await sandbox.ensureAvailable();
 
-  const files = await listSandboxDirectory(sandbox, path);
+  const files = await listSandboxDirectory(sandbox, path, recursive);
   return { files };
 }
 

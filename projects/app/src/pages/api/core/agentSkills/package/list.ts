@@ -7,6 +7,7 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { downloadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import {
   listZipDirectory,
+  listZipAllFiles,
   validatePackagePath
 } from '@fastgpt/service/core/agentSkills/packageEditor';
 import JSZip from 'jszip';
@@ -16,7 +17,7 @@ import {
 } from '@fastgpt/global/openapi/core/agentSkills/package/api';
 
 async function handler(req: ApiRequestProps): Promise<ListPackageFilesResponse> {
-  const { skillId, path } = ListPackageFilesBodySchema.parse(req.body);
+  const { skillId, path, recursive } = ListPackageFilesBodySchema.parse(req.body);
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
@@ -39,7 +40,8 @@ async function handler(req: ApiRequestProps): Promise<ListPackageFilesResponse> 
   const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
   const zip = await JSZip.loadAsync(zipBuffer);
 
-  return { files: listZipDirectory(zip, normalized) };
+  const files = recursive ? listZipAllFiles(zip, normalized) : listZipDirectory(zip, normalized);
+  return { files };
 }
 
 export default NextAPI(handler);

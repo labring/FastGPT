@@ -8,10 +8,28 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { listSkillPackageFiles } from '../api';
 import { updateTreeNode, filterTree } from '../utils';
 import type { TreeNode } from '../components/FileTree';
+import type { PackageFileItem } from '@fastgpt/global/openapi/core/agentSkills/package/api';
 
 type UseFileTreeParams = {
   skillId: string;
 };
+
+function itemsToTreeNodes(items: PackageFileItem[], level: number): TreeNode[] {
+  return items.map((item) => ({
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    size: item.size,
+    level,
+    // 只有后端实际返回了 children 字段才标记为已加载，否则保留懒加载能力
+    loaded: item.type === 'directory' && item.children !== undefined,
+    children: item.children
+      ? itemsToTreeNodes(item.children, level + 1)
+      : item.type === 'directory'
+        ? []
+        : undefined
+  }));
+}
 
 export const useFileTree = ({ skillId }: UseFileTreeParams) => {
   const { t } = useTranslation();
@@ -25,12 +43,7 @@ export const useFileTree = ({ skillId }: UseFileTreeParams) => {
   const { runAsync: loadDirectory } = useRequest(
     async (path: string, level: number) => {
       const data = await listSkillPackageFiles({ skillId, path });
-      const nodes: TreeNode[] = (data.files || []).map((file) => ({
-        ...file,
-        level,
-        children: file.type === 'directory' ? [] : undefined,
-        loaded: false
-      }));
+      const nodes = itemsToTreeNodes(data.files || [], level);
 
       setFileTree((prevTree) => {
         if (level === 0) return nodes;
@@ -47,11 +60,12 @@ export const useFileTree = ({ skillId }: UseFileTreeParams) => {
     setLoadingRoot(true);
     try {
       setExpandedDirs(new Set());
-      await loadDirectory('.', 0);
+      const data = await listSkillPackageFiles({ skillId, path: '.', recursive: true });
+      setFileTree(itemsToTreeNodes(data.files || [], 0));
     } finally {
       setLoadingRoot(false);
     }
-  }, [loadDirectory]);
+  }, [skillId]);
 
   useMount(() => {
     reloadRoot();

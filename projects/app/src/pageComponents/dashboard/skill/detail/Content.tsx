@@ -15,19 +15,26 @@ const Content = () => {
   const canWrite = Boolean(skillDetail?.permission?.hasWritePer);
 
   return (
-    <Box
-      flex={1}
-      bg={'white'}
-      borderRadius={'8px'}
-      border={'1px solid #EBEDF0'}
-      overflow={'hidden'}
-    >
-      {/* Config Tab: AgentSkillEditor 直接读写 MinIO，与 sandbox 状态解耦 */}
-      <Box h={'100%'} display={currentTab === TabEnum.config ? 'block' : 'none'}>
+    <Box flex={1} display="flex" flexDirection="column" minH={0}>
+      {/* Config Tab */}
+      <Box
+        flex={1}
+        minH={0}
+        display={currentTab === TabEnum.config ? 'flex' : 'none'}
+        flexDirection="column"
+      >
         {skillId && <AgentSkillEditor skillId={skillId} canWrite={canWrite} />}
       </Box>
-      {/* Preview Tab: agent sandbox, lazily initialized on first message */}
-      <Box h={'100%'} display={currentTab === TabEnum.preview ? 'block' : 'none'}>
+      {/* Preview Tab */}
+      <Box
+        flex={1}
+        minH={0}
+        display={currentTab === TabEnum.preview ? 'block' : 'none'}
+        bg={'white'}
+        borderRadius={'8px'}
+        border={'1px solid #EBEDF0'}
+        overflow={'hidden'}
+      >
         <SkillPreview />
       </Box>
     </Box>
