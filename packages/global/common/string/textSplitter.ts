@@ -63,7 +63,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
+  const { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -127,8 +127,8 @@ ${mdSplitString}
   5. 标点分割：重叠
 */
 const commonSplit = (props: SplitProps): SplitResponse => {
-  let {
-    text = '',
+  const {
+    text: rawText = '',
     chunkSize,
     paragraphChunkDeep = 5,
     paragraphChunkMinSize = 100,
@@ -136,10 +136,15 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     overlapRatio = 0.15,
     customReg = []
   } = props;
+  let text = rawText;
 
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkSize * overlapRatio);
+  // 代码块需要尽量保留完整性，但不能直接使用模型 maxSize，否则大段正文包在 ```json/markdown``` 中会绕过 chunkSize 形成超大分块。
+  const maxCodeBlockChunks = 4;
+  const codeBlockMaxLen = Math.min(maxSize, chunkSize * maxCodeBlockChunks);
+  const strIsCodeBlock = (str: string) => /^(```[\s\S]*```|~~~[\s\S]*~~~)$/.test(str.trim());
 
   // 特殊模块处理
   // 1. 代码块处理 - 去除空字符
@@ -173,14 +178,15 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     return rules;
   })(paragraphChunkDeep);
 
-  const stepReges: { reg: RegExp | string; maxLen: number }[] = [
+  const stepReges: { reg: RegExp | string; maxLen: number; splitAround?: boolean }[] = [
     ...customReg.map((text) => ({
       reg: text.replace(/\\n/g, '\n'),
       maxLen: maxSize
     })),
     ...markdownHeaderRules,
 
-    { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
+    // 代码块需要独立成段，避免吞掉前面大段正文；短代码块仍尽量保持完整。
+    { reg: /(^|\n)(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, maxLen: codeBlockMaxLen, splitAround: true },
     // HTML Table tag 尽可能保障完整
     {
       reg: /(\n\|(?:[^\n|]*\|)+\n\|(?:[:\-\s]*\|)+\n(?:\|(?:[^\n|]*\|)*\n)*)/g,
@@ -216,7 +222,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isCustomStep = checkIsCustomStep(step);
     const isMarkdownSplit = checkIsMarkdownSplit(step);
 
-    const { reg, maxLen } = stepReges[step];
+    const { reg, maxLen, splitAround } = stepReges[step];
 
     const replaceText = (() => {
       if (typeof reg === 'string') {
@@ -239,6 +245,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         (() => {
           if (isCustomStep) return splitMarker;
           if (isMarkdownSplit) return `${splitMarker}$1`;
+          if (splitAround) return `${splitMarker}$&${splitMarker}`;
           return `$1${splitMarker}`;
         })()
       );
@@ -340,6 +347,25 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       const currentText = item.text;
       const newText = lastText + currentText;
       const newTextLen = getTextValidLength(newText);
+
+      // 代码块独立处理，避免“前面正文 + 代码块”被 maxSize 合成超大分块。
+      if (strIsCodeBlock(currentText)) {
+        if (lastTextLen > 0) {
+          chunks.push(lastText);
+          lastText = '';
+        }
+
+        if (getTextValidLength(currentText) > maxLen) {
+          const restoredCodeBlock = currentText.replaceAll(codeBlockMarker, '\n');
+
+          for (let i = 0; i < restoredCodeBlock.length; i += chunkSize) {
+            chunks.push(restoredCodeBlock.slice(i, i + chunkSize));
+          }
+        } else {
+          chunks.push(currentText);
+        }
+        continue;
+      }
 
       // split the current table if it will exceed after adding
       if (strIsMdTable(currentText) && newTextLen > maxLen) {
@@ -447,7 +473,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     /* If the last chunk is independent, it needs to be push chunks. */
     if (lastText && chunks[chunks.length - 1] && !chunks[chunks.length - 1].endsWith(lastText)) {
-      if (getTextValidLength(lastText) < chunkSize * 0.4) {
+      if (
+        getTextValidLength(lastText) < chunkSize * 0.4 &&
+        !strIsCodeBlock(chunks[chunks.length - 1])
+      ) {
         chunks[chunks.length - 1] = chunks[chunks.length - 1] + lastText;
       } else {
         chunks.push(lastText);
@@ -487,7 +516,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
  * markdown
  */
 export const splitText2Chunks = (props: SplitProps): SplitResponse => {
-  let { text = '' } = props;
+  const { text = '' } = props;
   const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
 
   const splitResult = splitWithCustomSign.map((item) => {
