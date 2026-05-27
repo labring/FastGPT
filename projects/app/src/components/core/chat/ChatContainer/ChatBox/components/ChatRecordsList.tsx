@@ -10,7 +10,6 @@ import DeletedItemsCollapse from '../../DeletedItemsCollapse';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
 import ChatItem from './ChatItem';
-import TimeBox from './TimeBox';
 
 export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
@@ -29,7 +28,6 @@ export type ChatRecordsListProps = {
   questionGuides: string[];
   onToggleDeletedGroup: (dataIds: string[]) => void;
   onRetry: (dataId?: string) => (() => Promise<void>) | undefined;
-  onDelete: (dataId: string) => () => void;
   onMark: (chat: ChatSiteItemType, q?: string) => (() => void) | undefined;
   onAddUserLike: (chat: ChatSiteItemType) => (() => void) | undefined;
   onAddUserDislike: (chat: ChatSiteItemType) => (() => void) | undefined;
@@ -40,28 +38,12 @@ export type ChatRecordsListProps = {
   onToggleFeedbackReadStatus: (chat: ChatSiteItemType) => (() => Promise<void>) | undefined;
 };
 
-const shouldShowTimeDivider = ({
-  records,
-  item,
-  index
-}: {
-  records: ChatSiteItemType[];
-  item: ChatSiteItemType;
-  index: number;
-}) => {
-  if (index === 0 || !item.time || records[index - 1].time === undefined) return false;
-
-  return (
-    new Date(item.time).getTime() - new Date(records[index - 1].time!).getTime() > 10 * 60 * 1000
-  );
-};
-
 /**
  * 渲染 ChatBox 的聊天记录列表。
  *
  * 本组件只接收已经预处理好的 `records`，不负责 log 模式 deleted group 的计算，也不直接
  * 调用删除、重试、反馈、标注 API。所有动作都由上层 hook 生成后作为 props 注入，组件内部
- * 只负责把 human/AI 记录、折叠按钮、时间分隔、自定义反馈和 admin mark 展示拼成原来的 JSX。
+ * 只负责把 human/AI 记录、折叠按钮、自定义反馈和 admin mark 展示拼成原来的 JSX。
  *
  * 设计边界：
  * - `expandedDeletedGroups` 只用于判断 deleted record 是否渲染，展开/收起状态更新仍在父组件。
@@ -80,7 +62,6 @@ const ChatRecordsList = ({
   questionGuides,
   onToggleDeletedGroup,
   onRetry,
-  onDelete,
   onMark,
   onAddUserLike,
   onAddUserDislike,
@@ -111,15 +92,12 @@ const ChatRecordsList = ({
                   itemRefs.current.set(item.dataId, e);
                 }}
               >
-                {shouldShowTimeDivider({ records, item, index }) && <TimeBox time={item.time!} />}
-
                 <Box py={item.hideInUI ? 0 : 6}>
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       avatar={userAvatar}
                       chat={item}
                       onRetry={onRetry(item.dataId)}
-                      onDelete={onDelete(item.dataId)}
                       isLastChild={index === records.length - 1}
                     />
                   )}

@@ -297,7 +297,7 @@ const ChatBox = ({
     syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
   });
 
-  const { isRecordActionLoading, retryInput, delOneMessage } = useChatRecordActions({
+  const { isRecordActionLoading, retryInput } = useChatRecordActions({
     sendPrompt,
     onDeleteChatItem
   });
@@ -495,7 +495,6 @@ const ChatBox = ({
       questionGuides,
       onToggleDeletedGroup: toggleDeletedGroup,
       onRetry: retryInput,
-      onDelete: delOneMessage,
       onMark,
       onAddUserLike,
       onAddUserDislike,
@@ -514,7 +513,6 @@ const ChatBox = ({
       questionGuides,
       toggleDeletedGroup,
       retryInput,
-      delOneMessage,
       onMark,
       onAddUserLike,
       onAddUserDislike,
