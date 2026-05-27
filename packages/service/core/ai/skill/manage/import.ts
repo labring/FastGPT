@@ -7,7 +7,6 @@ import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
 import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
 import { updateCurrentVersion } from './update';
-import { checkSkillNameExists } from './query';
 
 /**
  * Import skill from a validated package.
@@ -26,11 +25,6 @@ export async function importSkill(
   parentId?: string | null
 ): Promise<string> {
   const { skill } = packageData;
-
-  const nameExists = await checkSkillNameExists(skill.name, teamId, parentId || null);
-  if (nameExists) {
-    throw SkillErrEnum.skillNameExists;
-  }
 
   const newSkill = new MongoAgentSkills({
     parentId: parentId || null,

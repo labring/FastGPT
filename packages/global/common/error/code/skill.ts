@@ -5,7 +5,6 @@ export enum SkillErrEnum {
   unExist = 'skillUnExist',
   unAuthSkill = 'unAuthSkill',
   canNotEditAdminPermission = 'canNotEditAdminPermission',
-  skillNameExists = 'skillNameExists',
   invalidSkillName = 'invalidSkillName',
   invalidDescription = 'invalidDescription',
   invalidCategory = 'invalidCategory',
@@ -35,11 +34,6 @@ const skillErrList = [
   {
     statusText: SkillErrEnum.canNotEditAdminPermission,
     message: i18nT('common:code_error.skill_error.can_not_edit_admin_permission')
-  },
-  {
-    statusText: SkillErrEnum.skillNameExists,
-    message: i18nT('common:code_error.skill_error.name_exists'),
-    httpStatus: 409
   },
   {
     statusText: SkillErrEnum.invalidSkillName,

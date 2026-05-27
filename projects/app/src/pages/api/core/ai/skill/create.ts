@@ -1,11 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  createSkill,
-  checkSkillNameExists,
-  updateSkillCreationFailed
-} from '@fastgpt/service/core/ai/skill/manage';
+import { createSkill, updateSkillCreationFailed } from '@fastgpt/service/core/ai/skill/manage';
 import { addAgentSkillCreateJob } from '@fastgpt/service/core/ai/skill/manage/creation';
 import {
   CreateSkillBodySchema,
@@ -88,11 +84,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
   if (category.length > 0 && category.some((c) => !validCategories.includes(c))) {
     return Promise.reject(SkillErrEnum.invalidCategory);
-  }
-  // Display name comes from the create modal and remains user-facing.
-  const nameExists = await checkSkillNameExists(requestedName, teamId, parentId || null);
-  if (nameExists) {
-    return Promise.reject(SkillErrEnum.skillNameExists);
   }
 
   // Create a visible pending skill first. The slow package generation is handled by BullMQ.
