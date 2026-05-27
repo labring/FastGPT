@@ -64,7 +64,7 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_GET_FILE_URL_TOOL_NAME,
-    description: '从虚拟机读取指定文件，上传至云存储，返回 2 小时有效期的访问链接',
+    description: '从虚拟机读取指定文件，上传至云存储，返回 1 天有效期的访问链接',
     parameters: {
       type: 'object',
       properties: {
