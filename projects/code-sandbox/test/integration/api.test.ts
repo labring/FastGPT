@@ -287,9 +287,24 @@ describe('API 错误处理安全', () => {
     } else {
       // catch 分支
       expect(data.success).toBe(false);
-      console.log(data, 123213213);
       expect(data.message).toContain('is not valid JSON');
     }
+  });
+
+  it('超大 JSON body 在进入执行前返回 413', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        code: 'async function main() { return { ok: true } }',
+        variables: { text: 'x'.repeat(1024 * 1024 + 1) }
+      })
+    });
+    const data = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/body too large/i);
   });
 });
 

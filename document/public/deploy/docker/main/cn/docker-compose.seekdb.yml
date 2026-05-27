@@ -226,17 +226,27 @@ services:
     networks:
       - codesandbox
     restart: always
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       <<: [*x-log-config, *x-no-proxy-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
       SANDBOX_TOKEN: *x-code-sandbox-token
       # ===== Resource Limits =====
+      # Maximum API JSON body size (MB), including variables
+      SANDBOX_API_MAX_BODY_MB: 8
       # Execution timeout per request (ms)
       SANDBOX_MAX_TIMEOUT: 60000
       # Maximum allowed memory per user code execution (MB)
       # Note: System automatically adds 50MB for runtime overhead
       # Actual process limit = SANDBOX_MAX_MEMORY_MB + 50MB
       SANDBOX_MAX_MEMORY_MB: 256
+      SANDBOX_MAX_OUTPUT_MB: 10
 
       # ===== Process Pool =====
       # Number of pre-warmed worker processes (JS + Python)
@@ -244,7 +254,7 @@ services:
 
       # ===== Network Request Limits =====
       # Whether to check if the request is to a private network
-      CHECK_INTERNAL_IP: false
+      CHECK_INTERNAL_IP: true
       # Maximum number of HTTP requests per execution
       SANDBOX_REQUEST_MAX_COUNT: 30
       # Timeout for each outbound HTTP request (ms)

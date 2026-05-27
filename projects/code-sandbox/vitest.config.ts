@@ -17,6 +17,7 @@ export default defineConfig({
     isolate: false,
     env: {
       CHECK_INTERNAL_IP: 'true',
+      SANDBOX_API_MAX_BODY_MB: '1',
       SANDBOX_MAX_TIMEOUT: '5000',
       SANDBOX_TOKEN: 'test'
     }

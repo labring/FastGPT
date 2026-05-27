@@ -5,10 +5,40 @@ description: 'FastGPT V4.15.0-beta3 Release Notes'
 
 ## 🚀 New Features
 
+1. Multimodal models now support audio and video input.
+2. Shared links and portal pages now support language switching, and no longer force browser-language auto switching.
+
+## 🔧 Environment Variable Changes
+
+Code Sandbox adds security-related environment variables such as `SANDBOX_API_MAX_BODY_MB` and `SANDBOX_MAX_OUTPUT_MB`. The full defaults are listed below:
+
+| Variable                          | Default | Description                                                                                |
+| --------------------------------- | ------- | ------------------------------------------------------------------------------------------ |
+| `SANDBOX_API_MAX_BODY_MB`         | `8`     | Maximum `/sandbox` API JSON body size, including `variables`, in MB.                       |
+| `SANDBOX_MAX_OUTPUT_MB`           | `10`    | Maximum output JSON size for one code execution, including return values and logs, in MB.  |
+| `CHECK_INTERNAL_IP`               | `true`  | Enables internal IP checks for sandbox network requests by default to reduce SSRF risk.    |
+| `SANDBOX_MAX_TIMEOUT`             | `60000` | Timeout for one code execution, in milliseconds.                                           |
+| `SANDBOX_MAX_MEMORY_MB`           | `256`   | Memory limit for one sandbox, in MB. The runtime reserves an extra `50` MB for overhead.   |
+| `SANDBOX_POOL_SIZE`               | `20`    | Number of pre-warmed JS/Python workers.                                                    |
+| `SANDBOX_REQUEST_MAX_COUNT`       | `30`    | Maximum number of network requests allowed during one code execution.                      |
+| `SANDBOX_REQUEST_TIMEOUT`         | `60000` | Timeout for one network request from inside the sandbox, in milliseconds.                  |
+| `SANDBOX_REQUEST_MAX_RESPONSE_MB` | `10`    | Maximum response body size for one sandbox network request, in MB.                         |
+| `SANDBOX_REQUEST_MAX_BODY_MB`     | `5`     | Maximum request body size for one sandbox network request, in MB.                          |
+
 ## ⚙️ Improvements
 
+1. Improved styles for Skill module dialogs.
+2. Improved Skill list API performance.
+3. Improved workflow node name and description inputs.
+
 ## 🐛 Bug Fixes
+
+1. Adapted TTS audio playback to the latest OpenAI SDK to avoid errors.
 
 ## 🛠️ Code Improvements
 
 1. Updated the token calculation dependency to improve performance.
+2. Rewrote dialog-related code with more modular structure.
+3. Improved unit test performance, reducing full runs from about 10 minutes to 5 minutes.
+4. Upgraded to TypeScript 6.
+5. Improved GitHub Actions security.

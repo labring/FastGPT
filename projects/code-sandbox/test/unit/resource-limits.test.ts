@@ -11,7 +11,14 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
 import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { BaseProcessPool } from '../../src/pool/base-process-pool';
 import { env, RUNTIME_MEMORY_OVERHEAD_MB } from '../../src/env';
+import {
+  CustomModuleProcessPool,
+  getWorkerPid,
+  waitForCondition,
+  waitForPidExit
+} from '../helpers/custom-process-pool';
 
 beforeAll(async () => {
   console.log(`\n=== Memory Limit Test Status ===`);
@@ -39,9 +46,6 @@ describe('内存限制', () => {
     pool = new ProcessPool(1);
     await pool.init();
     expect(pool.stats.total).toBe(1);
-
-    // 实际限制 = 用户配置 + 运行时开销(50MB)
-    const actualLimitMB = env.SANDBOX_MAX_MEMORY_MB + RUNTIME_MEMORY_OVERHEAD_MB;
 
     const result = await pool.execute({
       code: `async function main() {
@@ -142,6 +146,85 @@ describe('Python 内存限制', () => {
     expect(result.success).toBe(true);
     expect(result.data?.codeReturn.totalMB).toBe(allocMB);
   }, 30000);
+});
+
+describe('显式放开后台执行模块时的 worker 回收', () => {
+  let pool: BaseProcessPool;
+
+  afterEach(async () => {
+    try {
+      await pool?.shutdown();
+    } catch {}
+  });
+
+  it('JS 显式允许 child_process 后，任务返回即回收 worker 并清理子进程', async () => {
+    pool = new CustomModuleProcessPool('JS', ['child_process'], { recycleAfterTask: true });
+    await pool.init();
+
+    const firstPid = getWorkerPid(pool);
+    expect(firstPid).toBeTypeOf('number');
+
+    const result = await pool.execute({
+      code: `async function main() {
+        const { spawn } = require('child_process');
+        const child = spawn('node', ['-e', 'setInterval(() => {}, 1000)'], {
+          stdio: 'ignore'
+        });
+        child.unref();
+        return { childPid: child.pid };
+      }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    const childPid = result.data?.codeReturn.childPid;
+    expect(childPid).toBeTypeOf('number');
+
+    const workerRecycled = await waitForCondition(() => {
+      const currentPid = getWorkerPid(pool);
+      return typeof currentPid === 'number' && currentPid !== firstPid;
+    });
+    expect(workerRecycled).toBe(true);
+    expect(await waitForPidExit(childPid)).toBe(true);
+
+    const recovery = await pool.execute({
+      code: `async function main() { return { ok: true }; }`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
+  }, 20000);
+
+  it('Python 显式允许 subprocess 后，任务返回即回收 worker 并清理子进程', async () => {
+    pool = new CustomModuleProcessPool('Python', ['subprocess'], { recycleAfterTask: true });
+    await pool.init();
+
+    const firstPid = getWorkerPid(pool);
+    expect(firstPid).toBeTypeOf('number');
+
+    const result = await pool.execute({
+      code: `import subprocess\ndef main():\n    child = subprocess.Popen(['python3', '-c', 'import time; time.sleep(60)'])\n    return {'childPid': child.pid}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    const childPid = result.data?.codeReturn.childPid;
+    expect(childPid).toBeTypeOf('number');
+
+    const workerRecycled = await waitForCondition(() => {
+      const currentPid = getWorkerPid(pool);
+      return typeof currentPid === 'number' && currentPid !== firstPid;
+    });
+    expect(workerRecycled).toBe(true);
+    expect(await waitForPidExit(childPid)).toBe(true);
+
+    const recovery = await pool.execute({
+      code: `def main():\n    return {'ok': True}`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
+  }, 20000);
 });
 
 // ============================================================
@@ -285,6 +368,26 @@ describe('JS 运行时长限制', () => {
     expect(elapsed).toBeLessThan(env.SANDBOX_MAX_TIMEOUT + 10000);
   });
 
+  it('异步超时后回收 worker，避免超时任务残留到下一次执行', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+
+    const pidBefore = (pool as any).workers[0].proc.pid;
+    const result = await pool.execute({
+      code: `async function main() {
+        await delay(${env.SANDBOX_MAX_TIMEOUT + 5000});
+        return { done: true };
+      }`,
+      variables: {}
+    });
+    await new Promise((r) => setTimeout(r, 1500));
+    const pidAfter = (pool as any).workers[0].proc.pid;
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/timed out|timeout/i);
+    expect(pidAfter).not.toBe(pidBefore);
+  });
+
   it('在超时范围内完成的代码正常返回', async () => {
     pool = new ProcessPool(1);
     await pool.init();
@@ -341,6 +444,23 @@ describe('Python 运行时长限制', () => {
     expect(elapsed).toBeLessThan(env.SANDBOX_MAX_TIMEOUT + 10000);
   });
 
+  it('超时后回收 Python worker，避免信号和模块状态残留', async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+
+    const pidBefore = (pool as any).workers[0].proc.pid;
+    const result = await pool.execute({
+      code: `import time\ndef main():\n    time.sleep(${Math.ceil(env.SANDBOX_MAX_TIMEOUT / 1000) + 5})\n    return {'done': True}`,
+      variables: {}
+    });
+    await new Promise((r) => setTimeout(r, 1500));
+    const pidAfter = (pool as any).workers[0].proc.pid;
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/timed out|timeout/i);
+    expect(pidAfter).not.toBe(pidBefore);
+  });
+
   it('在超时范围内完成的代码正常返回', async () => {
     pool = new PythonProcessPool(1);
     await pool.init();
@@ -366,7 +486,86 @@ describe('Python 运行时长限制', () => {
 });
 
 // ============================================================
-// 4. 网络请求次数限制
+// 4. 输出大小限制
+// ============================================================
+describe('JS 输出大小限制', () => {
+  let pool: ProcessPool;
+
+  afterEach(async () => {
+    try {
+      await pool?.shutdown();
+    } catch {}
+  });
+
+  it('返回值超过 maxOutputSize 被拒绝且 worker 可恢复', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+
+    const pidBefore = getWorkerPid(pool);
+    const result = await pool.execute({
+      code: `async function main() {
+        return 'x'.repeat(${env.SANDBOX_MAX_OUTPUT_MB} * 1024 * 1024 + 1);
+      }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/output too large/i);
+
+    const workerRecycled = await waitForCondition(() => {
+      const currentPid = getWorkerPid(pool);
+      return typeof currentPid === 'number' && currentPid !== pidBefore;
+    });
+    expect(workerRecycled).toBe(true);
+
+    const recovery = await pool.execute({
+      code: `async function main() { return { ok: true }; }`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
+  }, 20000);
+});
+
+describe('Python 输出大小限制', () => {
+  let pool: PythonProcessPool;
+
+  afterEach(async () => {
+    try {
+      await pool?.shutdown();
+    } catch {}
+  });
+
+  it('返回值超过 maxOutputSize 被拒绝且 worker 可恢复', async () => {
+    pool = new PythonProcessPool(1);
+    await pool.init();
+
+    const pidBefore = getWorkerPid(pool);
+    const result = await pool.execute({
+      code: `def main():\n    return 'x' * (${env.SANDBOX_MAX_OUTPUT_MB} * 1024 * 1024 + 1)`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/output too large/i);
+
+    const workerRecycled = await waitForCondition(() => {
+      const currentPid = getWorkerPid(pool);
+      return typeof currentPid === 'number' && currentPid !== pidBefore;
+    });
+    expect(workerRecycled).toBe(true);
+
+    const recovery = await pool.execute({
+      code: `def main():\n    return {'ok': True}`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
+  }, 20000);
+});
+
+// ============================================================
+// 5. 网络请求次数限制
 // ============================================================
 describe('JS 网络请求次数限制', () => {
   let pool: ProcessPool;
@@ -482,7 +681,7 @@ describe('Python 网络请求次数限制', () => {
 });
 
 // ============================================================
-// 5. 网络请求大小限制
+// 6. 网络请求大小限制
 // ============================================================
 describe('JS 请求体大小限制', () => {
   let pool: ProcessPool;
@@ -575,7 +774,7 @@ describe('Python 请求体大小限制', () => {
 });
 
 // ============================================================
-// 6. 网络协议限制
+// 7. 网络协议限制
 // ============================================================
 describe('JS 网络协议限制', () => {
   let pool: ProcessPool;

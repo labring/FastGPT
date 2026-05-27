@@ -40,6 +40,10 @@ export class CodeSandbox {
         return response.data;
       },
       (error) => {
+        const message = error?.response?.data?.message;
+        if (typeof message === 'string' && message) {
+          return Promise.reject(new Error(message));
+        }
         return Promise.reject(error);
       }
     );

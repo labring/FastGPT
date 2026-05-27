@@ -13,6 +13,7 @@
 import { afterEach, describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
 import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { CustomModuleProcessPool } from '../helpers/custom-process-pool';
 
 let jsPool: ProcessPool;
 let pyPool: PythonProcessPool;
@@ -63,6 +64,35 @@ describe('模块拦截', () => {
         variables: {}
       });
       expect(result.success).toBe(false);
+    });
+
+    it('显式加入白名单后允许 Node 内置模块', async () => {
+      const pool = new CustomModuleProcessPool('JS', [
+        'fs',
+        'node:fs',
+        'fs/promises',
+        'child_process',
+        'http',
+        'lodash'
+      ]);
+      await pool.init();
+      try {
+        const payloads = [
+          `async function main() { const fs = require('fs'); return { ok: typeof fs.readFileSync === 'function' }; }`,
+          `async function main() { const fs = require('node:fs'); return { ok: typeof fs.readFileSync === 'function' }; }`,
+          `async function main() { const fs = require('fs/promises'); return { ok: typeof fs.readFile === 'function' }; }`,
+          `async function main() { const cp = require('child_process'); return { ok: typeof cp.execFile === 'function' }; }`,
+          `async function main() { const http = require('http'); return { ok: typeof http.request === 'function' }; }`
+        ];
+
+        for (const code of payloads) {
+          const result = await pool.execute({ code, variables: {} });
+          expect(result.success).toBe(true);
+          expect(result.data?.codeReturn.ok).toBe(true);
+        }
+      } finally {
+        await pool.shutdown();
+      }
     });
 
     it('阻止 require https', async () => {
@@ -246,6 +276,33 @@ describe('模块拦截', () => {
         variables: {}
       });
       expect(result.success).toBe(false);
+    });
+
+    it('显式加入白名单后允许危险 Python 标准库', async () => {
+      const pool = new CustomModuleProcessPool('Python', [
+        'os',
+        'subprocess',
+        'socket',
+        'pathlib',
+        'json'
+      ]);
+      await pool.init();
+      try {
+        const payloads = [
+          `import os\ndef main():\n    return {'ok': hasattr(os, 'getcwd')}`,
+          `import subprocess\ndef main():\n    return {'ok': hasattr(subprocess, 'Popen')}`,
+          `import socket\ndef main():\n    return {'ok': hasattr(socket, 'socket')}`,
+          `from pathlib import Path\ndef main():\n    return {'ok': Path('/tmp').name == 'tmp'}`
+        ];
+
+        for (const code of payloads) {
+          const result = await pool.execute({ code, variables: {} });
+          expect(result.success).toBe(true);
+          expect(result.data?.codeReturn.ok).toBe(true);
+        }
+      } finally {
+        await pool.shutdown();
+      }
     });
 
     it('阻止 import requests（预检）', async () => {
