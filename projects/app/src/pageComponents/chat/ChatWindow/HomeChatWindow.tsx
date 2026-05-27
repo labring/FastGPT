@@ -448,7 +448,7 @@ const HomeChatWindow = () => {
               py={3}
               bg="white"
               fontWeight={500}
-              color="myGray.600"
+              color="myGray.900"
               alignItems="center"
               justifyContent="center"
               borderBottom="sm"
