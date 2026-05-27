@@ -147,9 +147,6 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
-        const getClbCount = (datasetId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(datasetId)).length;
-        };
 
         // inherit
         if (
@@ -159,12 +156,18 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         ) {
           return {
             Per: getPer(String(dataset.parentId)).addRole(getPer(String(dataset._id)).role),
-            privateDataset: getClbCount(String(dataset.parentId)) <= 1
+            privateDataset:
+              roleList.filter(
+                (item) =>
+                  String(item.resourceId) === String(dataset._id) ||
+                  String(item.resourceId) === String(dataset.parentId)
+              ).length <= 1
           };
         }
         return {
           Per: getPer(String(dataset._id)),
-          privateDataset: getClbCount(String(dataset._id)) <= 1
+          privateDataset:
+            roleList.filter((item) => String(item.resourceId) === String(dataset._id)).length <= 1
         };
       })();
 

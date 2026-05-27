@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
-import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import { appWorkflow2Form, form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm
@@ -94,6 +94,41 @@ describe('form2AppWorkflow', () => {
 
     expect(result.nodes).toHaveLength(4);
     expect(result.edges).toHaveLength(2);
+  });
+
+  it('should roundtrip dataset auth setting through dataset search node', () => {
+    const form = getDefaultAppForm();
+    form.aiSettings = {
+      [NodeInputKeyEnum.aiModel]: 'gpt-3.5',
+      [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
+      maxHistories: 5,
+      [NodeInputKeyEnum.aiChatIsResponseText]: true
+    };
+    form.dataset.datasets = [
+      {
+        datasetId: 'dataset1',
+        avatar: '',
+        name: 'Test Dataset',
+        vectorModel: { model: 'text-embedding-ada-002' } as any
+      }
+    ];
+    form.dataset.authTmbId = true;
+
+    const workflow = form2AppWorkflow(form, mockT);
+    const datasetNode = workflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    );
+
+    expect(
+      datasetNode?.inputs.find((input) => input.key === NodeInputKeyEnum.authTmbId)?.value
+    ).toBe(true);
+
+    const restored = appWorkflow2Form({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+
+    expect(restored.dataset.authTmbId).toBe(true);
   });
 });
 
@@ -289,5 +324,31 @@ describe('appWorkflow2AgentForm', () => {
 
     expect(restored.aiSettings.aiChatReasoning).toBe(false);
     expect(restored.aiSettings.aiChatReasoningEffort).toBe('high');
+  });
+
+  it('should persist dataset auth setting in agent dataset params', () => {
+    const form = getDefaultAppForm();
+    form.aiSettings = {
+      [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+      [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
+      maxHistories: 6,
+      [NodeInputKeyEnum.aiChatIsResponseText]: true
+    };
+    form.dataset.authTmbId = true;
+
+    const workflow = agentForm2AppWorkflow(form, mockT);
+    const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+    expect(
+      agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams)?.value
+        ?.authTmbId
+    ).toBe(true);
+
+    const restored = appWorkflow2AgentForm({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+
+    expect(restored.dataset.authTmbId).toBe(true);
   });
 });

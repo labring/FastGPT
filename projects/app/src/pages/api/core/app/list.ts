@@ -182,21 +182,23 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           });
         };
 
-        const getClbCount = (appId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
-        };
-
         // Inherit app, check parent folder clb and it's own clb
         if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
           return {
             Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
-            privateApp: getClbCount(String(app.parentId)) <= 1
+            privateApp:
+              roleList.filter(
+                (item) =>
+                  String(item.resourceId) === String(app._id) ||
+                  String(item.resourceId) === String(app.parentId)
+              ).length <= 1
           };
         }
 
         return {
           Per: getPer(String(app._id)),
-          privateApp: getClbCount(String(app._id)) <= 1
+          privateApp:
+            roleList.filter((item) => String(item.resourceId) === String(app._id)).length <= 1
         };
       })();
 

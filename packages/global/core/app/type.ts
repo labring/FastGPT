@@ -1,7 +1,6 @@
 import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
-import type { NodeInputKeyEnum } from '../workflow/constants';
-import { VariableInputEnum } from '../workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '../workflow/constants';
 import { InputComponentPropsTypeSchema } from '../workflow/type/io';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import type { ReasoningEffort } from '../ai/llm/type';
@@ -173,6 +172,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchUsingExtensionQuery: z.boolean().optional(),
   datasetSearchExtensionModel: z.string().optional(),
   datasetSearchExtensionBg: z.string().optional(),
+  [NodeInputKeyEnum.authTmbId]: z.boolean().optional(),
 
   collectionFilterMatch: z.string().optional()
 });

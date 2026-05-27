@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
+import {
+  getAgentDatasetParams,
+  getSubapps,
+  getExecuteTool
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const { dispatchAgentDatasetSearchMock, dispatchFileReadMock } = vi.hoisted(() => ({
   dispatchAgentDatasetSearchMock: vi.fn(),
@@ -22,6 +27,24 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
 }));
 
 describe('Agent read_files tool protocol', () => {
+  it('normalizes workflow agent dataset inputs into dataset params', () => {
+    const result = getAgentDatasetParams({
+      [NodeInputKeyEnum.datasetSelectList]: [{ datasetId: 'dataset_1' }],
+      [NodeInputKeyEnum.datasetSimilarity]: 0.7,
+      [NodeInputKeyEnum.datasetMaxTokens]: 2000,
+      [NodeInputKeyEnum.authTmbId]: true
+    } as any);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.7,
+        limit: 2000,
+        authTmbId: true
+      })
+    );
+  });
+
   it('exposes read_files with ids parameter', async () => {
     const { completionTools } = await getSubapps({
       tmbId: 'tmb_1',
@@ -194,6 +217,7 @@ describe('Agent read_files tool protocol', () => {
 
     expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        tmbId: 'tmb_1',
         userKey
       })
     );

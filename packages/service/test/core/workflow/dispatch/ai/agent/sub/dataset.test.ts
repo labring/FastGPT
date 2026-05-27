@@ -6,12 +6,14 @@ const {
   countPromptTokensMock,
   createLLMResponseMock,
   defaultSearchDatasetDataMock,
+  filterDatasetsByTmbIdMock,
   findDatasetByIdMock,
   formatModelChars2PointsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
   createLLMResponseMock: vi.fn(),
   defaultSearchDatasetDataMock: vi.fn(),
+  filterDatasetsByTmbIdMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
@@ -24,6 +26,10 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: {
     findById: findDatasetByIdMock
   }
+}));
+
+vi.mock('@fastgpt/service/core/dataset/utils', () => ({
+  filterDatasetsByTmbId: filterDatasetsByTmbIdMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -91,6 +97,7 @@ describe('dispatchAgentDatasetSearch', () => {
         totalPoints: (inputTokens + outputTokens) / 100
       })
     );
+    filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
   });
 
   it('adds query extension and chunk selection as dataset search child node responses', async () => {
@@ -330,5 +337,38 @@ describe('dispatchAgentDatasetSearch', () => {
       })
     );
     expect(result.nodeResponse?.datasetQueries).toEqual(['legacy query']);
+  });
+
+  it('filters dataset ids by tmbId when auth is enabled', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false
+    });
+    filterDatasetsByTmbIdMock.mockResolvedValueOnce(['dataset_allowed']);
+
+    await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_allowed' }, { datasetId: 'dataset_denied' }],
+        searchMode: DatasetSearchModeEnum.embedding,
+        authTmbId: true
+      } as any
+    });
+
+    expect(filterDatasetsByTmbIdMock).toHaveBeenCalledWith({
+      datasetIds: ['dataset_allowed', 'dataset_denied'],
+      tmbId: 'tmb_1'
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetIds: ['dataset_allowed']
+      })
+    );
   });
 });

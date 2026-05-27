@@ -46,6 +46,7 @@ import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag'
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -312,8 +313,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         (i) =>
           i.key !== NodeInputKeyEnum.datasetSelectList &&
           i.key !== NodeInputKeyEnum.datasetParams &&
-          i.key !== NodeInputKeyEnum.datasetSimilarity
+          i.key !== NodeInputKeyEnum.datasetSimilarity &&
+          i.key !== NodeInputKeyEnum.authTmbId
       ),
+    [datasetInputs]
+  );
+  const authTmbIdInput = useMemo(
+    () => datasetInputs.find((i) => i.key === NodeInputKeyEnum.authTmbId),
     [datasetInputs]
   );
 
@@ -334,6 +340,21 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       });
     },
     [datasetSelectInput, nodeId, onChangeNode]
+  );
+  const onChangeAuthTmbId = useCallback(
+    (checked: boolean) => {
+      if (!authTmbIdInput) return;
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: NodeInputKeyEnum.authTmbId,
+        value: {
+          ...authTmbIdInput,
+          value: checked
+        }
+      });
+    },
+    [authTmbIdInput, nodeId, onChangeNode]
   );
 
   // ---- Prompt ----
@@ -822,6 +843,20 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box mb={5}>
             <Flex className="nodrag" cursor={'default'} alignItems={'center'}>
               <FormLabel color={'myGray.600'}>{t('common:core.dataset.Dataset')}</FormLabel>
+              {authTmbIdInput && (
+                <Flex ml={2} alignItems={'center'}>
+                  <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
+                    {t('workflow:auth_tmb_id')}
+                  </Box>
+                  <QuestionTip ml={1} label={t('workflow:auth_tmb_id_tip')} />
+                  <Switch
+                    ml={1}
+                    size={'sm'}
+                    isChecked={!!authTmbIdInput.value}
+                    onChange={(e) => onChangeAuthTmbId(e.target.checked)}
+                  />
+                </Flex>
+              )}
               {datasetSelectInput.renderTypeList &&
                 datasetSelectInput.renderTypeList.length > 1 && (
                   <Box ml={2}>

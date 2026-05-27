@@ -6,6 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
+import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
 
 const {
   runUnifiedAgentLoopMock,
@@ -295,6 +296,52 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.messages[1].content).toContain('## 知识库');
     expect(loopInput.messages[1].content).toContain('## 背景信息');
     expect(loopInput.messages[1].content).toContain('当前问题');
+  });
+
+  it('uses workflow agent dataset auth input when building user context', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.agent_datasetParams = undefined;
+    props.params.datasets = [
+      {
+        datasetId: 'dataset_1',
+        avatar: 'avatar',
+        name: '产品知识库',
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        }
+      },
+      {
+        datasetId: 'dataset_2',
+        avatar: 'avatar',
+        name: '内部知识库',
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        }
+      }
+    ];
+    props.params.authTmbId = true;
+    vi.mocked(filterDatasetsByTmbId).mockResolvedValueOnce(['dataset_1']);
+
+    let result: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
+      datasetIds: ['dataset_1', 'dataset_2'],
+      tmbId: 'tmb_1'
+    });
+    const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.messages.at(-1)?.content).toContain('<id>dataset_1</id>');
+    expect(loopInput.messages.at(-1)?.content).not.toContain('dataset_2');
   });
 
   it('injects sandbox input files before starting the unified agent loop', async () => {
