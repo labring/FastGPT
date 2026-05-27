@@ -24,38 +24,19 @@ jobs:
       matrix: ${{ steps.preview_matrix.outputs.matrix }}
 
     steps:
-      - name: Checkout PR head for changed files
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          fetch-depth: 1
-
-      - name: Fetch base commit and list changed files
-        id: changed_files
-        shell: bash
-        run: |
-          git remote add base-repo "https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git"
-          git fetch --no-tags --depth=1 base-repo "${{ github.event.pull_request.base.sha }}"
-          git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
-          {
-            echo 'files<<EOF'
-            cat /tmp/changed-files.txt
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Build preview image matrix
         id: preview_matrix
         uses: actions/github-script@v7
-        env:
-          CHANGED_FILES: ${{ steps.changed_files.outputs.files }}
         with:
           script: |
-            const fileNames = (process.env.CHANGED_FILES || '')
-              .split('\n')
-              .map((fileName) => fileName.trim())
-              .filter(Boolean);
-            core.info(`Changed files detected by git: ${fileNames.length}`);
+            const pullNumber = context.payload.pull_request.number;
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100
+            });
+            const fileNames = changedFiles.map((file) => file.filename);
             const hasPath = (paths) => fileNames.some((fileName) =>
               paths.some((path) => fileName === path || fileName.startsWith(`${path}/`))
             );
