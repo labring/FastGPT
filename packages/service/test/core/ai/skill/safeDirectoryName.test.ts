@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSafeSkillDirectoryName } from '@fastgpt/service/core/ai/skill/runtime';
+import { getSafeSkillDirectoryName } from '@fastgpt/service/core/ai/skill/utils';
 
 describe('getSafeSkillDirectoryName', () => {
   it('should format normal English and Chinese names with spaces correctly', () => {

@@ -11,7 +11,7 @@ import {
   importSkill
 } from '@fastgpt/service/core/ai/skill/manage';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { parseSkillMarkdown } from '@fastgpt/service/core/ai/skill/utils/skillMarkdown';
+import { parseSkillMarkdown } from '@fastgpt/service/core/ai/skill/utils';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum

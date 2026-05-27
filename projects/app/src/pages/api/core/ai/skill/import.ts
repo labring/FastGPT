@@ -4,16 +4,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
-import {
-  findSkillMdKey,
-  getRootPrefix,
-  repackFileMapAsZip,
-  getSupportedArchiveFormat,
-  extractToFileMap,
-  normalizeSkillWorkspaceRoot,
-  hasSkillsDirectoryContent,
-  stripRootPrefix
-} from '@fastgpt/service/core/ai/skill/package';
+import { getZipFileList } from '@fastgpt/service/core/ai/skill/package';
 import {
   ImportSkillBodySchema,
   type ImportSkillBody,
@@ -64,8 +55,7 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       bodySchema: ImportSkillBodySchema
     }).body;
 
-    const format = getSupportedArchiveFormat(file.originalname ?? '');
-    if (!format) {
+    if (!file.originalname?.toLowerCase().endsWith('.zip')) {
       return Promise.reject(SkillErrEnum.invalidArchiveFormat);
     }
 
@@ -106,17 +96,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
 
-    // Extract archive to file map
-    let fileMap: Record<string, Buffer>;
-    try {
-      fileMap = await extractToFileMap(file.path, maxUncompressedBytes);
-    } catch (err: any) {
-      logger.warn('Failed to extract archive', { error: err.message });
-      return Promise.reject(SkillErrEnum.archiveExtractionFailed);
-    }
-    if (Object.keys(fileMap).length === 0) {
-      return Promise.reject(SkillErrEnum.archiveEmpty);
-    }
     // Derive package-level name from caller-supplied value or archive filename
     const pkgName =
       body.name ||
@@ -124,25 +103,15 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       'package';
     const pkgDescription = body.description ?? '';
 
-    fileMap = normalizeSkillWorkspaceRoot(fileMap);
-    const finalFileMap: Record<string, Buffer> = {};
-    if (hasSkillsDirectoryContent(fileMap)) {
-      Object.assign(finalFileMap, fileMap);
-    } else {
-      const skillMdKey = findSkillMdKey(fileMap);
-      if (!skillMdKey) {
-        return Promise.reject(SkillErrEnum.invalidSkillPackage);
-      }
+    // Directly read the ZIP archive buffer from disk without any in-memory decompression
+    const zipBuffer = await fs.readFile(file.path);
 
-      const singleSkillFileMap = stripRootPrefix(fileMap, getRootPrefix(skillMdKey));
-      const prefix = `skills/${pkgName}/`;
-      for (const [key, value] of Object.entries(singleSkillFileMap)) {
-        finalFileMap[`${prefix}${key}`] = value;
-      }
+    // Light-weight integrity validation to ensure the uploaded ZIP is a valid skill package containing SKILL.md
+    const filesList = await getZipFileList(zipBuffer);
+    const hasSkillMd = filesList.some((path) => path.toLowerCase().endsWith('skill.md'));
+    if (!hasSkillMd) {
+      return Promise.reject(SkillErrEnum.invalidSkillPackage);
     }
-
-    // Repack the workspace fileMap as a single ZIP (converts TAR/TAR.GZ to ZIP)
-    const zipBuffer = await repackFileMapAsZip(finalFileMap);
 
     // Build skill package using package-level metadata only
     const skillPackage: SkillPackageType = {
@@ -154,7 +123,7 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
       }
     };
 
-    // Create ONE DB record
+    // Create ONE DB record and upload the raw ZIP buffer straight to S3
     const skillId = await importSkill(
       skillPackage,
       teamId,

@@ -24,7 +24,7 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   downloadSkillPackage: vi.fn(),
-  extractNormalizedSkillPackageFilesForSandbox: vi.fn()
+  DEFAULT_GITIGNORE_CONTENT: '# mock gitignore'
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/sandbox/config', () => ({
@@ -92,7 +92,8 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', () => {
     getSkillsRootPath: (workDirectory: string) => `${trimSandboxPathRight(workDirectory)}/skills`,
     joinSandboxPath: (basePath: string, path: string) =>
       `${trimSandboxPathRight(basePath)}/${path}`,
-    shellQuote: (value: string) => `'${value.replace(/'/g, `'\\''`)}'`
+    shellQuote: (value: string) => `'${value.replace(/'/g, `'\\''`)}'`,
+    getSafeSkillDirectoryName: (name: string) => name
   };
 });
 
@@ -117,10 +118,7 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import {
-  downloadSkillPackage,
-  extractNormalizedSkillPackageFilesForSandbox
-} from '@fastgpt/service/core/ai/skill/package';
+import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import {
   createEditDebugSandbox,
   packageSkillInSandbox
@@ -146,7 +144,10 @@ const createSandbox = ({ readFilesResult }: { readFilesResult: MockReadFileResul
       if (command.startsWith('[ -d ')) {
         return { exitCode: 0, stdout: '', stderr: '' };
       }
-      if (command.startsWith('find ')) {
+      if (command.includes(" -name '.gitignore'")) {
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }
+      if (command.includes('find . ') && command.includes('-prune')) {
         return { exitCode: 0, stdout: '12', stderr: '' };
       }
       if (command.startsWith('cd ')) {
@@ -157,7 +158,12 @@ const createSandbox = ({ readFilesResult }: { readFilesResult: MockReadFileResul
       }
       return { exitCode: 0, stdout: '', stderr: '' };
     }),
-    readFiles: vi.fn(async () => readFilesResult)
+    readFiles: vi.fn(async (paths: string[]) => {
+      if (paths.includes('/workspace/package.zip')) {
+        return readFilesResult;
+      }
+      return [];
+    })
   };
 
   return sandbox;
@@ -209,6 +215,60 @@ describe('packageSkillInSandbox', () => {
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
+
+  it('reads and parses custom .gitignore files from the sandbox correctly', async () => {
+    const gitignoreContent = `
+# ignore node and env
+my_custom_ignored_dir/
+temp_data.csv
+`;
+    const zipContent = new Uint8Array([9, 8, 7]);
+    const sandbox = {
+      execute: vi.fn(async (command: string) => {
+        if (command.startsWith('[ -d ')) {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (command.includes(" -name '.gitignore'")) {
+          return { exitCode: 0, stdout: '/workspace/.gitignore\n', stderr: '' };
+        }
+        if (command.includes('find . ') && command.includes('-prune')) {
+          return { exitCode: 0, stdout: '100', stderr: '' };
+        }
+        if (command.startsWith('cd ')) {
+          return { exitCode: 0, stdout: 'zip ok', stderr: '' };
+        }
+        if (command.startsWith('rm -f ')) {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }),
+      readFiles: vi.fn(async (paths: string[]) => {
+        if (paths.includes('/workspace/.gitignore')) {
+          return [{ path: '/workspace/.gitignore', content: gitignoreContent, error: null }];
+        }
+        if (paths.includes('/workspace/package.zip')) {
+          return [{ path: '/workspace/package.zip', content: zipContent, error: null }];
+        }
+        return [];
+      })
+    };
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
+      Buffer.from(zipContent)
+    );
+
+    // Verify .gitignore was read
+    expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/.gitignore']);
+    // Verify zip was called with custom excludes
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringContaining("-x 'my_custom_ignored_dir/*'")
+    );
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringContaining("-x '*/my_custom_ignored_dir/*'")
+    );
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x 'temp_data.csv'"));
+  });
 });
 
 describe('createEditDebugSandbox', () => {
@@ -216,7 +276,7 @@ describe('createEditDebugSandbox', () => {
     vi.clearAllMocks();
   });
 
-  it('writes extracted files directly so Chinese skill directory names are preserved', async () => {
+  it('uploads zip packages and decompresses inside the sandbox so Chinese skill directory names are preserved', async () => {
     const packageBuffer = Buffer.from('zip');
     const skillId = 'skill-1';
     const provider = {
@@ -225,10 +285,10 @@ describe('createEditDebugSandbox', () => {
         if (command === "mkdir -p '/workspace'") {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
-        if (
-          command ===
-          "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills' '/workspace/skills/测试的'"
-        ) {
+        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (command.includes('unzip')) {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
         return { exitCode: 1, stdout: '', stderr: `Unexpected command: ${command}` };
@@ -255,12 +315,6 @@ describe('createEditDebugSandbox', () => {
     vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
-    vi.mocked(extractNormalizedSkillPackageFilesForSandbox).mockResolvedValueOnce([
-      {
-        path: '测试的/SKILL.md',
-        data: Buffer.from('---\nname: 测试的\n---')
-      }
-    ]);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
       delete: vi.fn()
@@ -287,11 +341,11 @@ describe('createEditDebugSandbox', () => {
 
     expect(provider.writeFiles).toHaveBeenCalledWith([
       {
-        path: '/workspace/skills/测试的/SKILL.md',
-        data: Buffer.from('---\nname: 测试的\n---')
+        path: '/workspace/skills/package.zip',
+        data: packageBuffer
       }
     ]);
-    expect(provider.execute).not.toHaveBeenCalledWith(expect.stringContaining('unzip'));
+    expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 });

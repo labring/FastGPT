@@ -2,7 +2,7 @@
  * Skill 包对象存储服务。
  *
  * 只负责 Skill ZIP 包和编辑会话制品在私有对象存储中的读写、复制、存在性检查和清理。
- * 包内容解析放在 package/archiveUtils 与 package/zipBuilder，版本落库放在 version 模块。
+ * 包内容解析放在 package/zipBuilder，版本落库放在 version 模块。
  */
 
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
@@ -157,68 +157,4 @@ export async function copySkillPackage(
     ...targetParams,
     zipBuffer
   });
-}
-
-/**
- * 获取会话制品列表
- */
-export async function listSessionArtifacts(sessionId: string): Promise<string[]> {
-  const prefix = `agent-sessions/${sessionId}/`;
-  const bucket = getS3SkillSource();
-
-  const { keys } = await bucket.client.listObjects({ prefix });
-  return keys.map((key) => key.replace(prefix, ''));
-}
-
-/**
- * 下载制品
- */
-export async function downloadSessionArtifact(
-  sessionId: string,
-  filePath: string
-): Promise<Buffer> {
-  const key = `agent-sessions/${sessionId}/${filePath}`;
-  const bucket = getS3SkillSource();
-
-  const response = await bucket.client.downloadObject({ key });
-
-  if (!response.body) {
-    throw new Error(`Failed to download artifact: ${key}`);
-  }
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of response.body) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks);
-}
-
-/**
- * 清理单个会话的所有制品
- */
-export async function cleanSessionArtifacts(sessionId: string): Promise<{ deletedCount: number }> {
-  const prefix = `agent-sessions/${sessionId}/`;
-  const bucket = getS3SkillSource();
-
-  const { keys: failedKeys } = await bucket.client.deleteObjectsByPrefix({ prefix });
-
-  // deleteObjectsByPrefix 不返回实际删除数量，以 0 失败 key 数为成功标志
-  return { deletedCount: failedKeys.length === 0 ? 1 : 0 };
-}
-
-/**
- * 批量清理多个会话的制品
- */
-export async function cleanExpiredSessionArtifacts(
-  sessionIds: string[]
-): Promise<{ deletedCount: number }> {
-  let totalDeleted = 0;
-
-  for (const sessionId of sessionIds) {
-    const { deletedCount } = await cleanSessionArtifacts(sessionId);
-    totalDeleted += deletedCount;
-  }
-
-  return { deletedCount: totalDeleted };
 }
