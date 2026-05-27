@@ -28,6 +28,13 @@ interface ResponseDataType {
   data: any;
 }
 
+export const AUTH_ERROR_EVENT_NAME = 'fastgpt:auth-error';
+export type AuthErrorEventDetail = {
+  data: any;
+  skipClearToken?: boolean;
+  skipRedirect?: boolean;
+};
+
 const maxQuantityMap: Record<
   string,
   | undefined
@@ -132,8 +139,18 @@ function responseError(err: any) {
 
   // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
-      clearToken();
+    const authErrorEvent = new CustomEvent<AuthErrorEventDetail>(AUTH_ERROR_EVENT_NAME, {
+      detail: {
+        data
+      }
+    });
+
+    window.dispatchEvent?.(authErrorEvent);
+
+    if (!authErrorEvent.detail.skipRedirect && !isOutlinkPage && pathname !== `${subRoute}/chat`) {
+      if (!authErrorEvent.detail.skipClearToken) {
+        clearToken();
+      }
       window.location.replace(
         getWebReqUrl(
           `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`

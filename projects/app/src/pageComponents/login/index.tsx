@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Flex, ModalBody } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -10,8 +10,6 @@ import ChineseRedirectModal from './components/ChineseRedirectModal';
 import CookieConsentModal from './components/CookieConsentModal';
 import LoginFormPanel from './components/LoginFormPanel';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { consumeWorkflowLocalDraftAuthExpiredNotice } from '@/web/core/workflow/localDraft';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -31,7 +29,6 @@ export const LoginContainer = ({
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
-  const [showWorkflowDraftAuthExpiredModal, setShowWorkflowDraftAuthExpiredModal] = useState(false);
 
   // login success handler
   const loginSuccess = useCallback(
@@ -46,18 +43,6 @@ export const LoginContainer = ({
     // reset chat state
     resetChatCache();
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
-
-  useEffect(() => {
-    if (!consumeWorkflowLocalDraftAuthExpiredNotice()) return;
-
-    const timer = window.setTimeout(() => {
-      setShowWorkflowDraftAuthExpiredModal(true);
-    });
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   return (
     <>
@@ -99,19 +84,6 @@ export const LoginContainer = ({
 
       <CookieConsentModal />
       <ChineseRedirectModal />
-      {showWorkflowDraftAuthExpiredModal && (
-        <MyModal
-          isOpen
-          isCentered
-          maxW={['90vw', '480px']}
-          onClose={() => setShowWorkflowDraftAuthExpiredModal(false)}
-          closeOnOverlayClick={false}
-        >
-          <ModalBody px={8} py={8} lineHeight={'1.8'} color={'myGray.900'}>
-            {t('common:workflow_local_draft_auth_expired_notice')}
-          </ModalBody>
-        </MyModal>
-      )}
 
       {/* Community modal */}
       {showCommunityModal && <CommunityModal onClose={() => setShowCommunityModal(false)} />}

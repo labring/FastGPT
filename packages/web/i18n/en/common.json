@@ -1168,7 +1168,6 @@
   "ui.textarea.Magnifying": "Magnifying",
   "un_used": "Unused",
   "unauth_token": "The certificate has expired, please log in again",
-  "workflow_local_draft_auth_expired_notice": "Your login has expired. The current edits have been automatically saved locally. Do not close this page. After signing in again in this tab, your workflow edits can be restored.",
   "undo_tip": "Undo  ctrl  z",
   "undo_tip_mac": "Undo  ⌘  z ",
   "unit.character": "Character",

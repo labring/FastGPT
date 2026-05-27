@@ -1169,7 +1169,6 @@
   "ui.textarea.Magnifying": "放大",
   "un_used": "未使用",
   "unauth_token": "凭证已过期，请重新登录",
-  "workflow_local_draft_auth_expired_notice": "登录已过期，当前编辑内容已自动保存至本地。请不要关闭页面，在此标签页重新登录后，即可恢复编排内容。",
   "undo_tip": "撤销  ctrl  z",
   "undo_tip_mac": "撤销  ⌘  z ",
   "unit.character": "字符",

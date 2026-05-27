@@ -1158,7 +1158,6 @@
   "ui.textarea.Magnifying": "放大",
   "un_used": "未使用",
   "unauth_token": "憑證已過期，請重新登入",
-  "workflow_local_draft_auth_expired_notice": "登入已過期，當前編輯內容已自動儲存至本機。請不要關閉頁面，在此分頁重新登入後，即可恢復編排內容。",
   "undo_tip": "復原  ctrl  z",
   "undo_tip_mac": "復原  ⌘  z ",
   "unit.character": "字元",

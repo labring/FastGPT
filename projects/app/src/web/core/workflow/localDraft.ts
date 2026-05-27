@@ -3,8 +3,6 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const WORKFLOW_LOCAL_DRAFT_STORAGE_KEY = 'fastgpt_workflow_local_draft_v1';
-const WORKFLOW_LOCAL_DRAFT_AUTH_EXPIRED_NOTICE_KEY =
-  'fastgpt_workflow_local_draft_auth_expired_notice_v1';
 
 const WORKFLOW_LOCAL_DRAFT_VERSION = 1;
 const WORKFLOW_LOCAL_DRAFT_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000;
@@ -33,8 +31,6 @@ export type WorkflowLocalDraftCheckResult =
     };
 
 const isBrowser = () => typeof window !== 'undefined' && !!window.localStorage;
-const isSessionStorageAvailable = () => typeof window !== 'undefined' && !!window.sessionStorage;
-
 /** 生成恢复成功后的固定工作流详情页，避免继续复用保存草稿时的 tab/query。 */
 export const getWorkflowLocalDraftDetailRoute = (appId: string) => {
   if (!appId || appId.match(/[&=]/)) return '';
@@ -60,29 +56,6 @@ export const removeWorkflowLocalDraft = () => {
     window.localStorage.removeItem(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY);
   } catch (error) {
     console.warn('[Workflow local draft] Failed to remove local draft:', error);
-  }
-};
-
-export const markWorkflowLocalDraftAuthExpiredNotice = () => {
-  if (!isSessionStorageAvailable()) return;
-
-  try {
-    window.sessionStorage.setItem(WORKFLOW_LOCAL_DRAFT_AUTH_EXPIRED_NOTICE_KEY, '1');
-  } catch (error) {
-    console.warn('[Workflow local draft] Failed to mark auth expired notice:', error);
-  }
-};
-
-export const consumeWorkflowLocalDraftAuthExpiredNotice = () => {
-  if (!isSessionStorageAvailable()) return false;
-
-  try {
-    const notice = window.sessionStorage.getItem(WORKFLOW_LOCAL_DRAFT_AUTH_EXPIRED_NOTICE_KEY);
-    window.sessionStorage.removeItem(WORKFLOW_LOCAL_DRAFT_AUTH_EXPIRED_NOTICE_KEY);
-    return notice === '1';
-  } catch (error) {
-    console.warn('[Workflow local draft] Failed to consume auth expired notice:', error);
-    return false;
   }
 };
 

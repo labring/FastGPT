@@ -273,5 +273,8 @@
   "workflow.My edit": "My Edit",
   "workflow.Switch_success": "Switch Successful",
   "workflow.Team cloud": "Team Cloud",
+  "workflow_local_draft_auth_expired_notice": "Your login has expired. The current edits have been automatically saved locally. Do not close this page. After signing in again in this tab, your workflow edits can be restored.",
+  "workflow_local_draft_auth_expired_title": "Automatically saved",
+  "workflow_local_draft_relogin": "Sign in again",
   "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
 }
