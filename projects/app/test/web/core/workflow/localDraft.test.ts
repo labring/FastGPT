@@ -109,7 +109,7 @@ describe('workflow local draft', () => {
     expect(getWorkflowLocalDraftDetailRoute('app-1&currentTab=logs')).toBe('');
   });
 
-  it('should save and match draft for the same username', () => {
+  it('should save and match draft for the same username and tmbId', () => {
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
       identity: {
@@ -124,8 +124,7 @@ describe('workflow local draft', () => {
 
     const result = checkWorkflowLocalDraft({
       user: createUser({
-        teamId: 'team-b',
-        tmbId: 'tmb-b'
+        teamId: 'team-b'
       })
     });
 
@@ -270,6 +269,25 @@ describe('workflow local draft', () => {
 
     expect(result.status).toBe('account-mismatch');
     expect(readWorkflowLocalDraft()?.username).toBe('user-a');
+  });
+
+  it('should reject draft from the same username but another tmbId without deleting it', () => {
+    saveWorkflowLocalDraft({
+      appId: 'app-1',
+      identity: {
+        username: 'user-a',
+        teamId: 'team-a',
+        tmbId: 'tmb-a'
+      },
+      data: draftData
+    });
+
+    const result = checkWorkflowLocalDraft({
+      user: createUser({ tmbId: 'tmb-b' })
+    });
+
+    expect(result.status).toBe('account-mismatch');
+    expect(readWorkflowLocalDraft()?.tmbId).toBe('tmb-a');
   });
 
   it('should clear malformed or expired drafts', () => {

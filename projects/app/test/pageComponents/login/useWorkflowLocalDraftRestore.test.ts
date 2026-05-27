@@ -174,4 +174,25 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     expect(readWorkflowLocalDraft()).toBeNull();
     expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
   });
+
+  it('should clear another tmbId draft without auto-save', async () => {
+    saveDraftToStorage();
+    const saveDraft = vi.fn();
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user: {
+        ...user,
+        team: {
+          ...user.team,
+          tmbId: 'tmb-b'
+        }
+      },
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+  });
 });

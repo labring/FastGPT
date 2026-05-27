@@ -169,7 +169,7 @@ export const removeWorkflowLocalDraftByApp = ({
   const draft = readWorkflowLocalDraft();
   if (!draft || draft.appId !== appId) return;
 
-  if (!identity || draft.username === identity.username) {
+  if (!identity || (draft.username === identity.username && draft.tmbId === identity.tmbId)) {
     removeWorkflowLocalDraft();
   }
 };
@@ -235,7 +235,7 @@ export const saveWorkflowLocalDraft = ({
 };
 
 /**
- * 登录恢复草稿的最小匹配规则：本地存在未过期草稿且 username 相同即可恢复。
+ * 登录恢复草稿的最小匹配规则：本地存在未过期草稿且 username、tmbId 相同即可恢复。
  * 恢复成功后强制跳到草稿所属 app 的详情页，不再要求登录回跳路由也指向该 app。
  */
 export const checkWorkflowLocalDraft = ({
@@ -253,7 +253,12 @@ export const checkWorkflowLocalDraft = ({
     return { status: 'expired' };
   }
 
-  if (!user?.username || draft.username !== user.username) {
+  if (
+    !user?.username ||
+    !user.team?.tmbId ||
+    draft.username !== user.username ||
+    draft.tmbId !== user.team.tmbId
+  ) {
     return { status: 'account-mismatch', draft };
   }
 

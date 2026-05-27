@@ -7,11 +7,11 @@ import {
   consumeWorkflowLocalDraftSavedNotice,
   removeWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 /**
- * 登录成功后只要检测到同 username 的工作流草稿就尝试恢复。
+ * 登录成功后只要检测到同 username、tmbId 的工作流草稿就尝试恢复。
  * 账号不匹配的草稿会丢弃；恢复请求失败时保留草稿且不跳转，方便用户重试。
  */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
@@ -55,6 +55,9 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
 export const useWorkflowLocalDraftRestore = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { runAsync: saveWorkflowLocalDraft } = useRequest(postPublishApp, {
+    manual: true
+  });
 
   useEffect(() => {
     if (!consumeWorkflowLocalDraftSavedNotice()) return;
@@ -76,14 +79,9 @@ export const useWorkflowLocalDraftRestore = () => {
       return restoreWorkflowLocalDraftAfterLogin({
         user,
         fallbackRoute,
-        saveDraft: postPublishApp,
-        onRestoreFailed: (error) =>
-          toast({
-            status: 'warning',
-            title: getErrText(error)
-          })
+        saveDraft: saveWorkflowLocalDraft
       });
     },
-    [toast]
+    [saveWorkflowLocalDraft]
   );
 };
