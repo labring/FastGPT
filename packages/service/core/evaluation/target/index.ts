@@ -22,7 +22,8 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  getChatSourceName
 } from '@fastgpt/global/core/chat/constants';
 import type {
   UserChatItemValueItemType,
@@ -188,6 +189,7 @@ export class WorkflowTarget extends EvaluationTarget {
       variables: input.targetCallParams?.variables || {},
       newTitle: getChatTitleFromChatMessage(userQuestion),
       source: ChatSourceEnum.evaluation,
+      sourceName: getChatSourceName(ChatSourceEnum.evaluation, String(appData.name)),
       userContent: userQuestion,
       aiContent: aiResponse,
       durationSeconds

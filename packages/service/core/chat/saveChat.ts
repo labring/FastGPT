@@ -57,6 +57,13 @@ export type Props = {
   metadata?: Record<string, any>;
   durationSeconds: number; //s
   errorMsg?: string;
+
+  // Parent app association fields (when this chat is triggered by a workflow appModule node)
+  parentChatId?: string;
+  parentResponseChatItemId?: string;
+  parentNodeId?: string;
+  parentNodeName?: string;
+  parentAppId?: string;
 };
 
 const isSkipSaveChatId = (chatId?: string) => !chatId || chatId === 'NO_RECORD_HISTORIES';
@@ -433,7 +440,12 @@ export const finalizeChatRound = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
-    metadata = {}
+    metadata = {},
+    parentChatId,
+    parentResponseChatItemId,
+    parentNodeId,
+    parentNodeName,
+    parentAppId
   } = props;
 
   if (isSkipSaveChatId(chatId)) return;
@@ -554,7 +566,12 @@ export const finalizeChatRound = async (props: Props) => {
           metadata: metadataUpdate,
           updateTime: now,
           hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.done
+          chatGenerateStatus: ChatGenerateStatusEnum.done,
+          ...(parentChatId !== undefined && { parentChatId }),
+          ...(parentResponseChatItemId !== undefined && { parentResponseChatItemId }),
+          ...(parentNodeId !== undefined && { parentNodeId }),
+          ...(parentNodeName !== undefined && { parentNodeName }),
+          ...(parentAppId !== undefined && { parentAppId })
         },
         ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
       },
@@ -579,9 +596,10 @@ export const finalizeChatRound = async (props: Props) => {
   });
 
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
-      nodeResponses
-    });
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } =
+      await getChatDataLog({
+        nodeResponses
+      });
     const userId = String(outLinkUid || tmbId);
 
     const hasHistoryChat = await MongoAppChatLog.exists({
@@ -620,7 +638,8 @@ export const finalizeChatRound = async (props: Props) => {
           createTime: now,
           goodFeedbackCount: 0,
           badFeedbackCount: 0,
-          isFirstChat: !hasHistoryChat
+          isFirstChat: !hasHistoryChat,
+          ...(parentAppId !== undefined && { parentAppId })
         }
       },
       {
@@ -697,7 +716,12 @@ export const pushChatRecords = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
-    metadata = {}
+    metadata = {},
+    parentChatId,
+    parentResponseChatItemId,
+    parentNodeId,
+    parentNodeName,
+    parentAppId
   } = props;
 
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
@@ -780,7 +804,12 @@ export const pushChatRecords = async (props: Props) => {
             shareId,
             outLinkUid,
             metadata: metadataUpdate,
-            updateTime: new Date()
+            updateTime: new Date(),
+            ...(parentChatId !== undefined && { parentChatId }),
+            ...(parentResponseChatItemId !== undefined && { parentResponseChatItemId }),
+            ...(parentNodeId !== undefined && { parentNodeId }),
+            ...(parentNodeName !== undefined && { parentNodeName }),
+            ...(parentAppId !== undefined && { parentAppId })
           },
           $setOnInsert: {
             createTime: new Date()
@@ -811,9 +840,10 @@ export const pushChatRecords = async (props: Props) => {
 
     // Create chat data log
     try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
-        nodeResponses
-      });
+      const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } =
+        await getChatDataLog({
+          nodeResponses
+        });
       const userId = String(outLinkUid || tmbId);
 
       const hasHistoryChat = await MongoAppChatLog.exists({
@@ -852,7 +882,8 @@ export const pushChatRecords = async (props: Props) => {
             createTime: now,
             goodFeedbackCount: 0,
             badFeedbackCount: 0,
-            isFirstChat: !hasHistoryChat
+            isFirstChat: !hasHistoryChat,
+            ...(parentAppId !== undefined && { parentAppId })
           }
         },
         {
@@ -1099,9 +1130,10 @@ export const updateInteractiveChat = async ({
 
   // Push chat data logs
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } = await getChatDataLog({
-      nodeResponses
-    });
+    const { fifteenMinutesAgo, errorCount, totalPoints, inputTokens, outputTokens, now } =
+      await getChatDataLog({
+        nodeResponses
+      });
 
     await MongoAppChatLog.updateOne(
       {

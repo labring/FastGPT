@@ -2,6 +2,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { updateApiKeyUsedTime } from './tools';
 import { MongoOpenApi } from './schema';
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
+import { ChatSourceEnum, getChatSourceName } from '@fastgpt/global/core/chat/constants';
 
 export type AuthOpenApiLimitProps = { openApi: OpenApiSchema };
 
@@ -27,7 +28,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
       appId: openApi.appId || '',
-      sourceName: openApi.name
+      sourceName: getChatSourceName(ChatSourceEnum.api, openApi.name)
     };
   } catch (error) {
     return Promise.reject(error);

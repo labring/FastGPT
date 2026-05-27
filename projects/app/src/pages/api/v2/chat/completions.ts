@@ -3,7 +3,11 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/common';
 import { getSseErrorResponse, sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  getChatSourceName
+} from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
@@ -283,7 +287,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId: String(tmbId),
       source,
-      sourceName: sourceName || '',
+      sourceName: getChatSourceName(source, sourceName || app.name),
       shareId,
       outLinkUid: outLinkUserId
     });
@@ -305,7 +309,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         teamId,
         tmbId: String(tmbId),
         source,
-        sourceName: sourceName || '',
+        sourceName: getChatSourceName(source, sourceName || app.name),
         shareId,
         outLinkUid: outLinkUserId,
         userContent: userQuestion,
@@ -404,7 +408,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       shareId,
       outLinkUid: outLinkUserId,
       source,
-      sourceName: sourceName || '',
+      sourceName: getChatSourceName(source, sourceName || app.name),
       userContent: userQuestion,
       aiContent: aiResponse,
       metadata: {

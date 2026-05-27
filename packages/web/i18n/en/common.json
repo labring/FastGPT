@@ -1631,6 +1631,7 @@
   "table_not_exist": "Not exist",
   "core.app.workflow.search_knowledge.database": "Database",
   "core.chat.logs.evaluation": "Evaluation test",
+  "core.chat.logs.workflow": "Workflow call",
   "support.wallet.subscription.eval_items_count": "Cases for an evaluation task: {{count}}",
   "core.dataset.table": "Table",
   "core.dataset.search.mode.database": "Database search",

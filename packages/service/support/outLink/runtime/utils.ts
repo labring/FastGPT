@@ -1,4 +1,4 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, getChatSourceName } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -267,7 +267,10 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       newTitle: String(userQuestion || '').slice(0, 8),
       shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
-      sourceName: outLinkConfig.name,
+      sourceName: getChatSourceName(
+        getChatSourceByPublishChannel(outLinkConfig.type),
+        outLinkConfig.name
+      ),
       userContent: {
         dataId: messageId,
         obj: ChatRoleEnum.Human,

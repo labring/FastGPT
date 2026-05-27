@@ -73,6 +73,12 @@ const ChatLogSchema = new Schema({
   isFirstChat: {
     type: Boolean,
     default: false
+  },
+
+  // Parent app ID (when this chat is triggered by a workflow appModule node)
+  parentAppId: {
+    type: Schema.Types.ObjectId,
+    ref: AppCollectionName
   }
 });
 
