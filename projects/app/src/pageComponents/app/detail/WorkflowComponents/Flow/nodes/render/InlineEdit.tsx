@@ -172,8 +172,8 @@ export const InlineEdit = React.memo(function InlineEdit({
       borderRadius={'sm'}
       border={'1px solid transparent'}
       _hover={{
-        bg: 'myGray.50',
-        borderColor: 'myGray.200'
+        bg: 'myGray.25',
+        borderColor: 'myGray.100'
       }}
       sx={
         type === 'input'
