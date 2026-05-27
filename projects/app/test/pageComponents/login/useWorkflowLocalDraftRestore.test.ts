@@ -209,7 +209,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should discard draft and continue fallback check when login tmbId differs from draft tmbId', async () => {
+  it('should discard draft and skip fallback route when login tmbId differs from draft tmbId', async () => {
     saveDraftToStorage();
     markLastAuthTmbId('tmb-b');
     const saveDraft = vi.fn();
@@ -229,7 +229,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
 
     expect(saveDraft).not.toHaveBeenCalled();
     expect(readWorkflowLocalDraft()).toBeNull();
-    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+    expect(route).toBe('/dashboard/agent');
   });
 
   it('should discard draft and skip fallback route when draft and last auth tmbId both mismatch', async () => {

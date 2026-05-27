@@ -65,8 +65,9 @@ const saveWorkflowDraftWithRetry = async ({
 /**
  * 登录成功后的回跳规则：
  * 1. 有工作流草稿时，只恢复 tmbId 与当前登录团队一致的草稿；
- * 2. 未命中工作流草稿恢复时，用全局最近登录 tmbId 拦截跨团队 lastRoute 跳转；
- * 3. 身份一致或没有历史身份记录时，继续使用登录流程给出的 fallbackRoute。
+ * 2. 草稿属于其他团队账号时，丢弃草稿并回到默认工作台，不能继续复用旧团队 lastRoute；
+ * 3. 未命中工作流草稿恢复时，用全局最近登录 tmbId 拦截跨团队 lastRoute 跳转；
+ * 4. 身份一致或没有历史身份记录时，继续使用登录流程给出的 fallbackRoute。
  *
  * 工作流草稿的优先级高于全局 lastAuthTmbId。这样可以覆盖多标签页场景：
  * A 标签页正在编辑工作流，B 标签页切换团队并登出后，A 标签页本地草稿仍应以
@@ -95,8 +96,8 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
   // 草稿以保存时的 tmbId 为准，避免其他标签页切团队后污染登录恢复。
   if (draftTmbId !== user.team?.tmbId) {
     removeWorkflowLocalDraft();
-    // 草稿属于其他团队账号，不能恢复；继续走全局 lastAuthTmbId 兜底判断。
-    return getSafeFallbackRouteAfterLogin({ user, fallbackRoute });
+    // 草稿命中但团队不一致，说明当前 lastRoute 很可能仍指向旧团队工作流，必须回默认页。
+    return DEFAULT_LOGIN_ROUTE;
   }
 
   await saveWorkflowDraftWithRetry({
