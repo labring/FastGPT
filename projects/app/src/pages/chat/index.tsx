@@ -39,6 +39,14 @@ const Chat = () => {
 
   const collapse = useContextSelector(ChatPageContext, (v) => v.collapse);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const rightWindowStyle = useMemo(
+    () => ({
+      borderWidth: 0,
+      boxShadow: 'none',
+      bg: 'white'
+    }),
+    []
+  );
 
   useEffect(() => {
     resetChatItemUIState();
@@ -60,7 +68,7 @@ const Chat = () => {
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex="1 0 0" w={0} position="relative">
+        <PageContainer flex="1 0 0" w={0} position="relative" insertProps={rightWindowStyle}>
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
@@ -76,7 +84,7 @@ const Chat = () => {
       )}
 
       {datasetCiteData && (
-        <PageContainer flex="1 0 0" w={0} maxW="560px">
+        <PageContainer flex="1 0 0" w={0} maxW="560px" insertProps={rightWindowStyle}>
           <ChatQuoteList
             metadata={datasetCiteData.metadata}
             rawSearch={datasetCiteData.rawSearch}
