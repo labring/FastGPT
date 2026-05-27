@@ -45,6 +45,7 @@ const sessionStorageMock = {
 };
 
 const user = {
+  _id: 'user-a',
   username: 'user-a',
   team: {
     teamId: 'team-a',
@@ -52,9 +53,14 @@ const user = {
   }
 } as UserType;
 
-const saveDraftToStorage = () =>
+const saveDraftToStorage = ({
+  tmbId = 'tmb-a'
+}: {
+  tmbId?: string;
+} = {}) =>
   saveWorkflowLocalDraft({
     appId: 'app-1',
+    tmbId,
     data: {
       nodes: [{ nodeId: 'node-1' }] as any,
       edges: [] as any,
@@ -85,7 +91,6 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
 
   it('should auto-save matched draft, clear cache and return canonical app detail route', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
@@ -107,7 +112,6 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
 
   it('should restore draft even when login fallback route is not the workflow detail page', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
@@ -129,7 +133,6 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
 
   it('should restore without using the encoded login lastRoute as redirect target', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
@@ -149,28 +152,45 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should keep draft and skip redirect when auto-save fails', async () => {
+  it('should retry 3 times and continue redirect when auto-save keeps failing', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-a');
     const restoreError = new Error('network error');
     const saveDraft = vi.fn().mockRejectedValue(restoreError);
-    const onRestoreFailed = vi.fn();
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
       user,
       fallbackRoute: '/app/detail?appId=app-1',
-      saveDraft: saveDraft as any,
-      onRestoreFailed
+      saveDraft: saveDraft as any
     });
 
-    expect(onRestoreFailed).toHaveBeenCalledWith(restoreError);
-    expect(readWorkflowLocalDraft()?.appId).toBe('app-1');
-    expect(route).toBeUndefined();
+    expect(saveDraft).toHaveBeenCalledTimes(3);
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should skip draft when last auth tmbId is missing', async () => {
+  it('should stop retrying when auto-save succeeds after transient failures', async () => {
     saveDraftToStorage();
-    const saveDraft = vi.fn();
+    const saveDraft = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network error 1'))
+      .mockRejectedValueOnce(new Error('network error 2'))
+      .mockResolvedValueOnce(undefined);
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user,
+      fallbackRoute: '/app/detail?appId=app-1',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(3);
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1');
+  });
+
+  it('should restore draft when draft tmbId matches even if last auth tmbId differs', async () => {
+    saveDraftToStorage();
+    markLastAuthTmbId('tmb-b');
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
       user,
@@ -178,12 +198,41 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
       saveDraft: saveDraft as any
     });
 
+    expect(saveDraft).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({
+        autoSave: true,
+        isPublish: false
+      })
+    );
+    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(route).toBe('/app/detail?appId=app-1');
+  });
+
+  it('should discard draft and continue fallback check when login tmbId differs from draft tmbId', async () => {
+    saveDraftToStorage();
+    markLastAuthTmbId('tmb-b');
+    const saveDraft = vi.fn();
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user: {
+        ...user,
+        team: {
+          ...user.team,
+          teamId: 'team-b',
+          tmbId: 'tmb-b'
+        }
+      },
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
+    });
+
     expect(saveDraft).not.toHaveBeenCalled();
-    expect(readWorkflowLocalDraft()?.appId).toBe('app-1');
+    expect(readWorkflowLocalDraft()).toBeNull();
     expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
   });
 
-  it('should skip draft and force dashboard when last auth tmbId is different', async () => {
+  it('should discard draft and skip fallback route when draft and last auth tmbId both mismatch', async () => {
     saveDraftToStorage();
     markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn();
@@ -193,6 +242,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
         ...user,
         team: {
           ...user.team,
+          teamId: 'team-b',
           tmbId: 'tmb-b'
         }
       },
@@ -205,10 +255,9 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     expect(route).toBe('/dashboard/agent');
   });
 
-  it('should restore draft when last auth tmbId is the same', async () => {
-    saveDraftToStorage();
+  it('should use fallback route without draft when login tmbId matches last auth tmbId', async () => {
     markLastAuthTmbId('tmb-a');
-    const saveDraft = vi.fn().mockResolvedValue(undefined);
+    const saveDraft = vi.fn();
 
     const route = await restoreWorkflowLocalDraftAfterLogin({
       user,
@@ -216,8 +265,41 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
       saveDraft: saveDraft as any
     });
 
-    expect(saveDraft).toHaveBeenCalled();
-    expect(readWorkflowLocalDraft()).toBeNull();
-    expect(route).toBe('/app/detail?appId=app-1');
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+  });
+
+  it('should use fallback route without draft when last auth tmbId is missing', async () => {
+    const saveDraft = vi.fn();
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user,
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+  });
+
+  it('should skip fallback route without draft when login tmbId differs from last auth tmbId', async () => {
+    markLastAuthTmbId('tmb-a');
+    const saveDraft = vi.fn();
+
+    const route = await restoreWorkflowLocalDraftAfterLogin({
+      user: {
+        ...user,
+        team: {
+          ...user.team,
+          teamId: 'team-b',
+          tmbId: 'tmb-b'
+        }
+      },
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(route).toBe('/dashboard/agent');
   });
 });

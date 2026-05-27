@@ -21,13 +21,13 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
 import {
-  markWorkflowLocalDraftSavedNotice,
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { postPublishApp } from '@/web/core/app/api/version';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const isAuthRedirectError = (error: any) => {
   return (
@@ -57,7 +57,9 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const { userInfo } = useUserStore();
   const { past, future } = useContextSelector(WorkflowSnapshotContext, (v) => v);
+  const loginTmbId = userInfo?.team?.tmbId;
 
   // 保存状态
   const [isSaved, setIsSaved] = useState(true);
@@ -69,16 +71,18 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
 
   const saveLocalDraft = useCallback(() => {
     const data = flowData2StoreData();
-    if (!data) return false;
+    if (!data || !loginTmbId) return false;
 
     return saveWorkflowLocalDraft({
       appId: appDetail._id,
+      // 团队切换会立即改写全站共享 cookie/session；草稿恢复必须和保存草稿时的 tmbId 对齐。
+      tmbId: loginTmbId,
       data: {
         ...data,
         chatConfig: appDetail.chatConfig
       }
     });
-  }, [appDetail._id, appDetail.chatConfig, flowData2StoreData]);
+  }, [appDetail._id, appDetail.chatConfig, flowData2StoreData, loginTmbId]);
 
   const removeCurrentLocalDraft = useCallback(() => {
     removeWorkflowLocalDraftByApp({
@@ -147,10 +151,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       removeCurrentLocalDraft();
     } catch (error) {
       if (isAuthRedirectError(error)) {
-        const savedDraft = saveLocalDraft();
-        if (savedDraft) {
-          markWorkflowLocalDraftSavedNotice();
-        }
+        saveLocalDraft();
         return;
       }
 

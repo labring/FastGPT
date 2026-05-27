@@ -5,7 +5,6 @@
   "cookies_tip": "本网站使用 cookies 提供更好的服务体验。继续使用即表示您同意我们的 Cookie 政策。",
   "forget_password": "忘记密码?",
   "login_success": "登录成功",
-  "workflow_local_draft_saved": "当前编辑内容已自动保存至本地，登录相同账号后可自动恢复。",
   "no_remind": "不再提醒",
   "password_condition": "密码最多 60 位",
   "password_tip": "密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",

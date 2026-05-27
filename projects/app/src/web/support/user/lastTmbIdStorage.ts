@@ -4,7 +4,7 @@ const isLocalStorageAvailable = () => typeof window !== 'undefined' && !!window.
 
 /**
  * 全局记录最近一次已登录的团队成员 ID。
- * 只在拿到有效 tmbId 时写入，退出登录或登录页清 token 不清理该值，供下一次登录后判断是否仍是同一身份。
+ * 只在拿到有效 tmbId 时写入，退出登录或登录页清 token 不清理该值，用于登录后判断是否可继续跳转 lastRoute。
  */
 export const markLastAuthTmbId = (tmbId?: string) => {
   if (!isLocalStorageAvailable() || !tmbId) return;

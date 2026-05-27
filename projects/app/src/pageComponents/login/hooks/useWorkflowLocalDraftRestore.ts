@@ -1,78 +1,98 @@
-import { useCallback, useEffect } from 'react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useCallback } from 'react';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import { postPublishApp } from '@/web/core/app/api/version';
 import {
   checkWorkflowLocalDraft,
-  consumeWorkflowLocalDraftSavedNotice,
+  type WorkflowLocalDraft,
   removeWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
-import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getLastAuthTmbId } from '@/web/support/user/lastTmbIdStorage';
 
 const DEFAULT_LOGIN_ROUTE = '/dashboard/agent';
+const WORKFLOW_DRAFT_RESTORE_SAVE_MAX_RETRY = 3;
+
+const getSafeFallbackRouteAfterLogin = ({
+  user,
+  fallbackRoute
+}: {
+  user: UserType;
+  fallbackRoute: string;
+}) => {
+  const lastAuthTmbId = getLastAuthTmbId();
+  if (lastAuthTmbId && lastAuthTmbId !== user.team?.tmbId) {
+    return DEFAULT_LOGIN_ROUTE;
+  }
+
+  return fallbackRoute;
+};
+
+const saveWorkflowDraftWithRetry = async ({
+  draft,
+  saveDraft
+}: {
+  draft: WorkflowLocalDraft;
+  saveDraft: typeof postPublishApp;
+}) => {
+  for (let retryCount = 0; retryCount < WORKFLOW_DRAFT_RESTORE_SAVE_MAX_RETRY; retryCount++) {
+    try {
+      await saveDraft(draft.appId, {
+        ...draft.data,
+        isPublish: false,
+        autoSave: true
+      });
+      return;
+    } catch {
+      // 失败时静默进入下一次重试；重试耗尽后由调用方继续跳转。
+    }
+  }
+};
 
 /**
- * 登录成功后只在最近一次已登录 tmbId 与当前 tmbId 一致时恢复工作流草稿。
- * 恢复请求失败时保留草稿且不跳转，方便用户重试。
+ * 登录成功后的回跳规则：
+ * 1. 有工作流草稿时，只恢复 tmbId 与当前登录团队一致的草稿；
+ * 2. 未命中工作流草稿恢复时，用全局最近登录 tmbId 拦截跨团队 lastRoute 跳转；
+ * 3. 身份一致或没有历史身份记录时，继续使用登录流程给出的 fallbackRoute。
+ * 恢复请求最多重试 3 次；仍失败时丢弃本地草稿并继续跳转。
  */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
   user,
   fallbackRoute,
-  saveDraft,
-  onRestoreFailed
+  saveDraft
 }: {
   user: UserType;
   fallbackRoute: string;
   saveDraft: typeof postPublishApp;
-  onRestoreFailed?: (error: unknown) => void;
 }): Promise<string | undefined> => {
-  const lastAuthTmbId = getLastAuthTmbId();
-  if (!lastAuthTmbId) {
-    return fallbackRoute;
-  }
-
-  if (lastAuthTmbId !== user.team?.tmbId) {
-    removeWorkflowLocalDraft();
-    return DEFAULT_LOGIN_ROUTE;
-  }
-
   const draftResult = checkWorkflowLocalDraft();
 
   if (draftResult.status !== 'matched') {
-    return fallbackRoute;
+    return getSafeFallbackRouteAfterLogin({ user, fallbackRoute });
   }
 
-  try {
-    await saveDraft(draftResult.draft.appId, {
-      ...draftResult.draft.data,
-      isPublish: false,
-      autoSave: true
-    });
+  const draftTmbId = draftResult.draft.tmbId;
+
+  // 草稿以保存时的 tmbId 为准，避免其他标签页切团队后污染登录恢复。
+  if (draftTmbId !== user.team?.tmbId) {
     removeWorkflowLocalDraft();
-    return draftResult.route;
-  } catch (error) {
-    onRestoreFailed?.(error);
-    return undefined;
+    return getSafeFallbackRouteAfterLogin({ user, fallbackRoute });
   }
+
+  await saveWorkflowDraftWithRetry({
+    draft: draftResult.draft,
+    saveDraft
+  });
+
+  removeWorkflowLocalDraft();
+
+  return draftResult.route;
 };
 
 export const useWorkflowLocalDraftRestore = () => {
-  const { toast } = useToast();
-  const { t } = useTranslation();
   const { runAsync: saveWorkflowLocalDraft } = useRequest(postPublishApp, {
-    manual: true
+    manual: true,
+    errorToast: ''
   });
-
-  useEffect(() => {
-    if (!consumeWorkflowLocalDraftSavedNotice()) return;
-
-    toast({
-      status: 'success',
-      title: t('login:workflow_local_draft_saved')
-    });
-  }, [t, toast]);
 
   return useCallback(
     async ({

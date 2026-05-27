@@ -5,7 +5,6 @@
   "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
   "forget_password": "Find Password",
   "login_success": "Login successful",
-  "workflow_local_draft_saved": "Your current edits have been saved locally and can be restored after logging in with the same account.",
   "no_remind": "Don't remind again",
   "password_condition": "Password must be 4–60 characters",
   "password_tip": "Password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",

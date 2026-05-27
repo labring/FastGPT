@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkWorkflowLocalDraft,
-  consumeWorkflowLocalDraftSavedNotice,
   getWorkflowLocalDraftDetailRoute,
-  markWorkflowLocalDraftSavedNotice,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
   saveWorkflowLocalDraft,
@@ -64,9 +62,10 @@ describe('workflow local draft', () => {
     expect(getWorkflowLocalDraftDetailRoute('app-1&currentTab=logs')).toBe('');
   });
 
-  it('should save and match draft without account identity', () => {
+  it('should save and match draft with tmbId', () => {
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
@@ -77,47 +76,34 @@ describe('workflow local draft', () => {
     expect(result.status).toBe('matched');
     if (result.status === 'matched') {
       expect(result.draft.appId).toBe('app-1');
+      expect(result.draft.tmbId).toBe('tmb-a');
       expect(result.draft).not.toHaveProperty('username');
       expect(result.draft).not.toHaveProperty('teamId');
-      expect(result.draft).not.toHaveProperty('tmbId');
       expect(result.draft).not.toHaveProperty('route');
       expect(result.route).toBe('/app/detail?appId=app-1');
     }
   });
 
-  it('should strip legacy identity fields from stored draft', () => {
+  it('should clear stored draft without tmbId', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
     const savedDraft = JSON.parse(storageMap.get(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)!);
-    storageMap.set(
-      WORKFLOW_LOCAL_DRAFT_STORAGE_KEY,
-      JSON.stringify({
-        ...savedDraft,
-        username: 'legacy-user',
-        teamId: 'legacy-team',
-        tmbId: 'legacy-tmb',
-        route: '/app/detail?appId=app-1&currentTab=publish'
-      })
-    );
+    delete savedDraft.tmbId;
+    storageMap.set(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY, JSON.stringify(savedDraft));
 
     const draft = readWorkflowLocalDraft();
-    const persistedDraft = JSON.parse(storageMap.get(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)!);
 
-    expect(draft).not.toHaveProperty('tmbId');
-    expect(draft).not.toHaveProperty('username');
-    expect(draft).not.toHaveProperty('teamId');
-    expect(draft).not.toHaveProperty('route');
-    expect(persistedDraft).not.toHaveProperty('tmbId');
-    expect(persistedDraft).not.toHaveProperty('username');
-    expect(persistedDraft).not.toHaveProperty('teamId');
-    expect(persistedDraft).not.toHaveProperty('route');
+    expect(draft).toBeNull();
+    expect(storageMap.has(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)).toBe(false);
   });
 
   it('should match draft without checking the login fallback route', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
@@ -128,11 +114,13 @@ describe('workflow local draft', () => {
   it('should replace stale same-app draft with the latest write', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: {
         ...draftData,
         nodes: [{ nodeId: 'node-latest' }] as any
@@ -146,11 +134,13 @@ describe('workflow local draft', () => {
   it('should clear stale same-app draft when the latest write is unavailable', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
     const saved = saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: {
         ...draftData,
         nodes: []
@@ -164,11 +154,13 @@ describe('workflow local draft', () => {
   it('should keep another app draft when an invalid write belongs to a different app', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
     const saved = saveWorkflowLocalDraft({
       appId: 'app-2',
+      tmbId: 'tmb-a',
       data: {
         ...draftData,
         nodes: []
@@ -186,6 +178,7 @@ describe('workflow local draft', () => {
 
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
     vi.setSystemTime(new Date('2026-05-19T00:00:01.000Z'));
@@ -199,20 +192,12 @@ describe('workflow local draft', () => {
   it('should remove current draft explicitly', () => {
     saveWorkflowLocalDraft({
       appId: 'app-1',
+      tmbId: 'tmb-a',
       data: draftData
     });
 
     removeWorkflowLocalDraft();
 
     expect(readWorkflowLocalDraft()).toBeNull();
-  });
-
-  it('should consume saved draft notice only once', () => {
-    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(false);
-
-    markWorkflowLocalDraftSavedNotice();
-
-    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(true);
-    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(false);
   });
 });
