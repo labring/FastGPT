@@ -34,8 +34,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
   const isHomePane = pane === ChatSidebarPaneEnum.HOME;
-  const isTeamAppsPane = pane === ChatSidebarPaneEnum.TEAM_APPS;
-  const isFavouriteAppPane = pane === ChatSidebarPaneEnum.FAVORITE_APPS;
+  const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
 
   return isPc ? (
     <Flex pt={5} px={[2, 5]} alignItems={'center'} fontSize={'sm'} pb={title ? 0 : 2}>
@@ -94,7 +93,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
 
         <GridItem
           onClick={() => {
-            handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS);
+            handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
             onCloseSlider();
             setChatId();
           }}
@@ -106,35 +105,8 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
             cursor={'pointer'}
             borderRadius={'8px'}
             alignItems={'center'}
-            bg={isFavouriteAppPane ? 'primary.100' : 'transparent'}
-            color={isFavouriteAppPane ? 'primary.600' : 'myGray.500'}
-            _hover={{
-              bg: 'primary.100',
-              color: 'primary.600'
-            }}
-          >
-            <MyIcon name="core/chat/sidebar/star" w="20px" h="20px" />
-            <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-              {t('chat:sidebar.favourite_apps')}
-            </Box>
-          </Flex>
-        </GridItem>
-
-        <GridItem
-          onClick={() => {
-            handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
-            onCloseSlider();
-          }}
-        >
-          <Flex
-            p={2}
-            mx={2}
-            gap={2}
-            cursor={'pointer'}
-            borderRadius={'8px'}
-            alignItems={'center'}
-            bg={isTeamAppsPane ? 'primary.100' : 'transparent'}
-            color={isTeamAppsPane ? 'primary.600' : 'myGray.500'}
+            bg={isAllAppsPane ? 'primary.100' : 'transparent'}
+            color={isAllAppsPane ? 'primary.600' : 'myGray.500'}
             _hover={{
               bg: 'primary.100',
               color: 'primary.600'
@@ -142,7 +114,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
           >
             <MyIcon name="common/app" w="20px" h="20px" />
             <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-              {t('chat:sidebar.team_apps')}
+              {t('chat:sidebar.all_apps')}
             </Box>
           </Flex>
         </GridItem>

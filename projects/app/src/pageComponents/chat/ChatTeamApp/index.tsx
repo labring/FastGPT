@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex, Tab, TabIndicator, TabList, Tabs } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -18,7 +18,12 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
-const MyApps = () => {
+type MyAppsProps = {
+  hideMobileHeader?: boolean;
+  mobileSearchKey?: string;
+};
+
+const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
@@ -32,6 +37,11 @@ const MyApps = () => {
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+
+  useEffect(() => {
+    if (mobileSearchKey === undefined) return;
+    setSearchKey(mobileSearchKey);
+  }, [mobileSearchKey, setSearchKey]);
 
   const map = useMemo(
     () => ({
@@ -57,7 +67,7 @@ const MyApps = () => {
     <Flex flexDirection={'column'} h={'100%'}>
       <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
-      {!isPc && (
+      {!isPc && !hideMobileHeader && (
         <Flex
           py={4}
           color="myGray.900"
@@ -76,6 +86,9 @@ const MyApps = () => {
 
           <Box w="70%">
             <SearchInput
+              h="36px"
+              lineHeight="36px"
+              py={0}
               onChange={(e) => setSearchKey(e.target.value)}
               placeholder={t('app:search_app')}
               maxLength={30}
@@ -111,36 +124,57 @@ const MyApps = () => {
 
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
-          px={[3, 6]}
+          px={[4, 6]}
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex pt={paths.length > 0 ? 3 : [0, 6]} alignItems={'center'} gap={3}>
-            {isPc && (
-              <Tabs variant="unstyled" onChange={(index) => setAppType(tabs[index])}>
-                <TabList gap={5}>
-                  {tabs.map((item, index) => (
-                    <Tab
-                      key={item}
-                      color={appType === item ? 'primary.700' : 'myGray.500'}
-                      fontWeight={500}
-                      px={0}
-                    >
-                      {map[item as keyof typeof map]}
-                    </Tab>
-                  ))}
-                </TabList>
-                <TabIndicator mt="-1.5px" height="2px" bg="primary.600" borderRadius="1px" />
-              </Tabs>
-            )}
+          <Flex pt={paths.length > 0 ? 3 : [4, '20px']} alignItems={'center'} gap={3}>
+            <Tabs
+              variant="unstyled"
+              w={['100%', 'auto']}
+              onChange={(index) => setAppType(tabs[index])}
+            >
+              <TabList
+                gap={5}
+                p="4px"
+                h="40px"
+                overflowX="auto"
+                overflowY="hidden"
+                flexWrap="nowrap"
+                position="relative"
+                css={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' }
+                }}
+              >
+                {tabs.map((item) => (
+                  <Tab
+                    key={item}
+                    h="32px"
+                    flexShrink="0"
+                    color={appType === item ? 'primary.700' : 'myGray.500'}
+                    fontWeight={500}
+                    px={0}
+                  >
+                    {map[item as keyof typeof map]}
+                  </Tab>
+                ))}
+                <TabIndicator bottom="0" height="2px" bg="primary.600" borderRadius="1px" />
+              </TabList>
+            </Tabs>
+
             <Box flex={1} />
 
             {isPc && (
               <SearchInput
                 maxW={['auto', '250px']}
+                h="36px"
+                lineHeight="36px"
+                py={0}
                 onChange={(e) => setSearchKey(e.target.value)}
                 placeholder={t('app:search_app')}
                 maxLength={30}
@@ -157,10 +191,10 @@ const MyApps = () => {
   );
 };
 
-function ContextRender() {
+function ContextRender(props: MyAppsProps) {
   return (
     <AppListContextProvider>
-      <MyApps />
+      <MyApps {...props} />
     </AppListContextProvider>
   );
 }

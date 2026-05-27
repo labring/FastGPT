@@ -16,7 +16,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -69,7 +69,7 @@ const HomeChatWindow = () => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
-  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
 
@@ -130,7 +130,7 @@ const HomeChatWindow = () => {
   // 初始化聊天数据
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
+      if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
@@ -170,13 +170,13 @@ const HomeChatWindow = () => {
       refreshDeps: [appId, chatId, feConfigs?.isPlus],
       errorToast: '',
       onFinally() {
-        forbidLoadChat.current = false;
+        forbidLoadChatRef.current = false;
       },
       onError() {
         if (feConfigs.isPlus) {
           handlePaneChange(ChatSidebarPaneEnum.HOME);
         } else {
-          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+          handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
         }
       }
     }
@@ -192,7 +192,7 @@ const HomeChatWindow = () => {
 
   useMount(() => {
     if (!feConfigs?.isPlus) {
-      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+      handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
     }
   });
 
@@ -237,7 +237,7 @@ const HomeChatWindow = () => {
 
         refreshRecentlyUsed();
 
-        return { responseText, isNewChat: forbidLoadChat.current };
+        return { responseText, isNewChat: forbidLoadChatRef.current };
       }
 
       // not quick app, using model and tools selected on home page
@@ -289,7 +289,7 @@ const HomeChatWindow = () => {
 
       refreshRecentlyUsed();
 
-      return { responseText, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChatRef.current };
     }
   );
 
@@ -398,7 +398,7 @@ const HomeChatWindow = () => {
       availableModels,
       selectedModel,
       availableTools,
-      selectedTools?.length,
+      selectedTools,
       t,
       setSelectedModel,
       selectedToolIds,

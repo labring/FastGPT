@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'react-i18next';
 import { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
-import { Flex, type FlexProps } from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 
 type Props = {
   tab: ChatSettingTabOptionEnum;
@@ -44,7 +44,16 @@ const SettingTabs = ({ tab, children, onTabChange }: Props) => {
       flexWrap="wrap"
       px={[2, 0]}
     >
-      <FillRowTabs px={3} py={2} list={tabOptions} value={tab} onChange={onTabChange} />
+      <FillRowTabs
+        px={3}
+        py={2}
+        list={tabOptions}
+        value={tab}
+        onChange={onTabChange}
+        outerPadding="4px"
+        outerHeight="40px"
+        itemHeight="32px"
+      />
 
       {children}
     </Flex>

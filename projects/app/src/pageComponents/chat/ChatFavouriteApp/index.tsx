@@ -4,10 +4,7 @@ import {
   Button,
   Flex,
   Grid,
-  GridItem,
-  Input,
-  InputGroup,
-  InputLeftElement,
+  HStack,
   Tab,
   TabIndicator,
   TabList,
@@ -19,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
@@ -32,8 +29,15 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const ChatFavouriteApp = () => {
+type Props = {
+  hideMobileHeader?: boolean;
+  mobileSearchKey?: string;
+};
+
+const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -66,7 +70,7 @@ const ChatFavouriteApp = () => {
     [tags, t]
   );
 
-  const { register, watch, setValue } = useForm<{ name: string; tag: string }>({
+  const { watch, setValue } = useForm<{ name: string; tag: string }>({
     defaultValues: {
       name: '',
       tag: ''
@@ -74,6 +78,11 @@ const ChatFavouriteApp = () => {
   });
   const searchAppName = watch('name');
   const selectedTag = watch('tag');
+
+  useEffect(() => {
+    if (mobileSearchKey === undefined) return;
+    setValue('name', mobileSearchKey);
+  }, [mobileSearchKey, setValue]);
 
   // load all favourites for checked state and saving
   const { loading: isSearching, data: favouriteApps = [] } = useRequest(
@@ -104,11 +113,16 @@ const ChatFavouriteApp = () => {
         px="1.5"
         py="0.5"
         cursor="text"
+        flex="0 1 auto"
         minW="40px"
+        maxW="32%"
+        overflow="hidden"
         justifyContent="center"
         onClick={(e) => e.stopPropagation()}
       >
-        {tag.name}
+        <Box minW={0} className="textEllipsis">
+          {tag.name}
+        </Box>
       </Flex>
     );
   };
@@ -117,7 +131,7 @@ const ChatFavouriteApp = () => {
     <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
       <NextHead title={homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
-      {!isPc && (
+      {!isPc && !hideMobileHeader && (
         <Flex
           py={4}
           color="myGray.900"
@@ -134,15 +148,14 @@ const ChatFavouriteApp = () => {
           />
 
           <Box w="70%">
-            <InputGroup w="100%">
-              <InputLeftElement h="36px">
-                <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
-              </InputLeftElement>
-              <Input
-                placeholder={t('chat:setting.favourite.search_placeholder')}
-                {...register('name')}
-              />
-            </InputGroup>
+            <SearchInput
+              h="36px"
+              lineHeight="36px"
+              py={0}
+              onChange={(e) => setValue('name', e.target.value)}
+              placeholder={t('chat:setting.favourite.search_placeholder')}
+              maxLength={30}
+            />
           </Box>
 
           <ChatSliderMobileDrawer
@@ -157,14 +170,19 @@ const ChatFavouriteApp = () => {
       {/* header */}
       <Flex
         w="full"
-        p={['0 16px 0 16px', '24px 24px 0 24px']}
+        px={[4, 6]}
+        pt={[4, '20px']}
+        pb={0}
         gap={4}
+        alignItems="center"
         justifyContent="space-between"
       >
         {/* tag tabs */}
-        <Tabs variant="unstyled">
+        <Tabs variant="unstyled" w={['100%', 'auto']}>
           <TabList
             gap={5}
+            p="4px"
+            h="40px"
             overflowX="auto"
             overflowY="hidden"
             flexWrap="nowrap"
@@ -178,6 +196,7 @@ const ChatFavouriteApp = () => {
             {tagOptions.map((option) => (
               <Tab
                 px={0}
+                h="32px"
                 flexShrink="0"
                 key={option.value}
                 value={option.value}
@@ -188,59 +207,85 @@ const ChatFavouriteApp = () => {
                 {option.label}
               </Tab>
             ))}
-            <TabIndicator mt="36px" height="2px" bg="primary.600" borderRadius="1px" />
+            <TabIndicator bottom="0" height="2px" bg="primary.600" borderRadius="1px" />
           </TabList>
         </Tabs>
 
         {/* search input */}
         {isPc && (
-          <InputGroup maxW="300px">
-            <InputLeftElement h="36px">
-              <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
-            </InputLeftElement>
-            <Input
-              placeholder={t('chat:setting.favourite.search_placeholder')}
-              {...register('name')}
-            />
-          </InputGroup>
+          <SearchInput
+            maxW={['auto', '250px']}
+            h="36px"
+            lineHeight="36px"
+            py={0}
+            onChange={(e) => setValue('name', e.target.value)}
+            placeholder={t('chat:setting.favourite.search_placeholder')}
+            maxLength={30}
+          />
         )}
       </Flex>
 
       {/* list */}
       {favouriteApps.length > 0 ? (
-        <Grid templateColumns={['1fr', 'repeat(3, 1fr)']} gap={4} p={['4', '6']} overflowY="auto">
+        <Grid
+          templateColumns={['minmax(0,1fr)', 'repeat(2,minmax(0,1fr))', 'repeat(3,minmax(0,1fr))']}
+          gap={5}
+          px={[4, 6]}
+          pt="16px"
+          pb={['4', '6']}
+          overflowY="auto"
+          alignItems={'stretch'}
+        >
           {favouriteApps.map((app) => (
-            <GridItem key={app.appId} cursor="pointer">
-              <Flex
+            <MyTooltip key={app.appId} h="100%" label={t('app:go_to_chat')}>
+              <MyBox
+                lineHeight={1.5}
+                h="100%"
+                pt={5}
+                pb={3}
+                px={5}
+                cursor={'pointer'}
+                border={'base'}
+                boxShadow={'2'}
+                bg={'white'}
+                borderRadius={'lg'}
+                position={'relative'}
+                display={'flex'}
                 flexDirection={'column'}
-                justifyContent="flex-start"
-                gap={2}
-                p={4}
-                borderRadius={8}
-                border="sm"
-                borderColor="myGray.200"
-                boxShadow="sm"
-                bg="white"
-                h="160px"
-                transition="all 0.1s ease-in-out"
+                minW={0}
                 _hover={{
-                  borderColor: 'primary.300'
+                  borderColor: 'primary.300',
+                  boxShadow: '1.5'
                 }}
                 onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
               >
-                <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
-                  <Avatar src={app.avatar} borderRadius={8} />
-                  <Flex>{app.name}</Flex>
-                </Flex>
+                <HStack minW={0}>
+                  <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
+                  <Box flex={'1 0 0'} color={'myGray.900'} className="textEllipsis">
+                    {app.name}
+                  </Box>
+                </HStack>
 
-                <Box fontSize="xs" color="myGray.500" minH="0" noOfLines={2} overflow="hidden">
-                  {app.intro || t('common:no_intro')}
+                <Box
+                  flex={['1 0 60px', '1 0 72px']}
+                  mt={3}
+                  pr={8}
+                  textAlign={'justify'}
+                  wordBreak={'break-all'}
+                  fontSize={'xs'}
+                  color={'myGray.500'}
+                >
+                  <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
+                    {app.intro || t('common:no_intro')}
+                  </Box>
                 </Box>
 
-                <Flex gap="2" flexWrap="wrap" mt="auto">
-                  {app.favouriteTags.slice(0, 3).map((id) => (
-                    <TagBox key={id} id={id} />
-                  ))}
+                <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full" minW={0}>
+                  <Flex flex="1 1 auto" gap="2" minW={0}>
+                    {app.favouriteTags.slice(0, 3).map((id) => (
+                      <TagBox key={id} id={id} />
+                    ))}
+                  </Flex>
 
                   {app.favouriteTags.length > 3 && (
                     <MyPopover
@@ -254,6 +299,7 @@ const ChatFavouriteApp = () => {
                           bg="myGray.100"
                           px="1.5"
                           py="0.5"
+                          flexShrink={0}
                           onClick={(e) => e.stopPropagation()}
                         >
                           +{app.favouriteTags.length - 3}
@@ -275,9 +321,9 @@ const ChatFavouriteApp = () => {
                       )}
                     </MyPopover>
                   )}
-                </Flex>
-              </Flex>
-            </GridItem>
+                </HStack>
+              </MyBox>
+            </MyTooltip>
           ))}
         </Grid>
       ) : (

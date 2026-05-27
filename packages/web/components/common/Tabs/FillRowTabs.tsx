@@ -14,6 +14,9 @@ type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   iconSize?: string;
   labelSize?: string;
   iconGap?: number;
+  itemHeight?: string;
+  outerPadding?: string;
+  outerHeight?: string;
 };
 
 const FillRowTabs = (
@@ -26,6 +29,9 @@ const FillRowTabs = (
     iconSize = '18px',
     labelSize = 'sm',
     iconGap = 2,
+    itemHeight,
+    outerPadding,
+    outerHeight,
     ...props
   }: Props,
   ref: React.Ref<HTMLDivElement>
@@ -36,9 +42,17 @@ const FillRowTabs = (
       display={'inline-flex'}
       px={'3px'}
       py={'3px'}
+      {...(outerPadding ? { p: outerPadding } : {})}
       borderRadius={'sm'}
       borderWidth={'1px'}
       borderColor={'myGray.200'}
+      {...(outerHeight
+        ? {
+            h: outerHeight,
+            borderWidth: 0,
+            boxShadow: 'inset 0 0 0 1px var(--chakra-colors-myGray-200)'
+          }
+        : {})}
       bg={'myGray.50'}
       gap={'4px'}
       fontSize={'sm'}
@@ -55,6 +69,7 @@ const FillRowTabs = (
           borderRadius={'xs'}
           px={px}
           py={py}
+          {...(itemHeight ? { h: itemHeight } : {})}
           userSelect={'none'}
           whiteSpace={'noWrap'}
           gap={iconGap}

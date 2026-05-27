@@ -4,7 +4,7 @@ import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/
 import dynamic from 'next/dynamic';
 import SettingTabs from '@/pageComponents/chat/ChatSetting/SettingTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -64,7 +64,7 @@ const ChatSetting = () => {
 
   useMount(() => {
     if (!feConfigs?.isPlus || !userInfo?.team.permission.hasManagePer) {
-      handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+      handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
     }
   });
 

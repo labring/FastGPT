@@ -37,7 +37,7 @@ const AppChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
@@ -61,7 +61,7 @@ const AppChatWindow = () => {
 
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      if (!appId || forbidLoadChatRef.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
@@ -86,11 +86,11 @@ const AppChatWindow = () => {
           if (e?.statusText === AppErrEnum.unAuthApp) {
             refreshRecentlyUsed();
           }
-          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+          handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
         }
       },
       onFinally() {
-        forbidLoadChat.current = false;
+        forbidLoadChatRef.current = false;
       }
     }
   );
@@ -132,14 +132,14 @@ const AppChatWindow = () => {
 
       refreshRecentlyUsed();
 
-      return { responseText, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChatRef.current };
     },
     [
       appId,
       chatId,
       onUpdateHistoryTitle,
       setChatBoxData,
-      forbidLoadChat,
+      forbidLoadChatRef,
       isShowCite,
       showSkillReferences,
       refreshRecentlyUsed

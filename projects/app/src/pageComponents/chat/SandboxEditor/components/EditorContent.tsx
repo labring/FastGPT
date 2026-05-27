@@ -293,6 +293,9 @@ const EditorContent = ({
               }
               py="1"
               px="2.5"
+              outerPadding="4px"
+              outerHeight="40px"
+              itemHeight="32px"
               fontSize="xs"
               iconSize="16px"
             />

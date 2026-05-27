@@ -114,7 +114,7 @@ export const ChatPageContextProvider = ({
         if (!data) return;
 
         if (!data.enableHome && pane === ChatSidebarPaneEnum.HOME) {
-          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+          handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
           return;
         }
 
@@ -169,7 +169,7 @@ export const ChatPageContextProvider = ({
     if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
       handlePaneChange(ChatSidebarPaneEnum.HOME);
     }
-  }, [pane]);
+  }, [handlePaneChange, pane]);
 
   const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({

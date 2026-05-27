@@ -19,8 +19,7 @@ import ChatSetting from '@/pageComponents/chat/ChatSetting';
 import AppChatWindow from '@/pageComponents/chat/ChatWindow/AppChatWindow';
 import HomeChatWindow from '@/pageComponents/chat/ChatWindow/HomeChatWindow';
 import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/context/chatPageContext';
-import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
-import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
+import ChatAllApp from '@/pageComponents/chat/ChatAllApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -65,11 +64,8 @@ const Chat = () => {
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
-          {/* favourite apps */}
-          {pane === ChatSidebarPaneEnum.FAVORITE_APPS && <ChatFavouriteApp />}
-
-          {/* team apps */}
-          {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
+          {/* all apps */}
+          {pane === ChatSidebarPaneEnum.ALL_APPS && <ChatAllApp />}
 
           {/* recently used apps chat window */}
           {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow />}

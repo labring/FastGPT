@@ -161,6 +161,9 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
       >
         <LightRowTabs<TabEnum>
           gap={3}
+          outerPadding="4px"
+          outerHeight="40px"
+          itemHeight="32px"
           inlineStyles={{
             px: 2
           }}

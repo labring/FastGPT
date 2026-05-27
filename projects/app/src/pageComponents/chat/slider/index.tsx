@@ -263,13 +263,9 @@ const NavigationSection = () => {
     ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
-  const isTeamAppsActive = useContextSelector(
+  const isAllAppsActive = useContextSelector(
     ChatPageContext,
-    (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
-  );
-  const isFavouriteAppsActive = useContextSelector(
-    ChatPageContext,
-    (v) => v.pane === ChatSidebarPaneEnum.FAVORITE_APPS
+    (v) => v.pane === ChatSidebarPaneEnum.ALL_APPS
   );
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
@@ -295,20 +291,13 @@ const NavigationSection = () => {
                   )}
 
                   <ActionButton
-                    icon="core/chat/sidebar/star"
+                    icon="common/app"
                     isCollapsed={true}
-                    isActive={isFavouriteAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                    isActive={isAllAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
                   />
                 </>
               )}
-
-              <ActionButton
-                icon="common/app"
-                isCollapsed={true}
-                isActive={isTeamAppsActive}
-                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
-              />
             </Flex>
           </AnimatedSection>
         ) : (
@@ -327,22 +316,14 @@ const NavigationSection = () => {
                   )}
 
                   <ActionButton
-                    icon="core/chat/sidebar/star"
-                    text={t('chat:sidebar.favourite_apps')}
+                    icon="common/app"
+                    text={t('chat:sidebar.all_apps')}
                     isCollapsed={false}
-                    isActive={isFavouriteAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                    isActive={isAllAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
                   />
                 </>
               )}
-
-              <ActionButton
-                icon="common/app"
-                text={t('chat:sidebar.team_apps')}
-                isCollapsed={false}
-                isActive={isTeamAppsActive}
-                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
-              />
             </Flex>
           </AnimatedSection>
         )}
