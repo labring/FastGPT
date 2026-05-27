@@ -173,7 +173,7 @@ export class SystemToolRepo {
         version: dbTool.customConfig.version ?? '',
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
-        author: global.feConfigs.systemTitle ?? '',
+        author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
         avatar: app.avatar,
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),

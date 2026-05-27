@@ -4,7 +4,12 @@ import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
   getTool: vi.fn(),
-  findSystemTools: vi.fn()
+  findSystemTools: vi.fn(),
+  findSystemTool: vi.fn(),
+  findAppById: vi.fn(),
+  getAppLatestVersion: vi.fn(),
+  getAppVersionById: vi.fn(),
+  checkIsLatestVersion: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
@@ -17,8 +22,22 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 vi.mock('@fastgpt/service/core/plugin/tool/systemToolSchema', () => ({
   MongoSystemTool: {
     find: mocks.findSystemTools,
-    findOne: vi.fn()
+    findOne: mocks.findSystemTool
   }
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  AppCollectionName: 'apps',
+  chatConfigType: {},
+  MongoApp: {
+    findById: mocks.findAppById
+  }
+}));
+
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppLatestVersion: mocks.getAppLatestVersion,
+  getAppVersionById: mocks.getAppVersionById,
+  checkIsLatestVersion: mocks.checkIsLatestVersion
 }));
 
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
@@ -163,5 +182,43 @@ describe('SystemToolRepo.getSystemToolList', () => {
       SystemToolSystemSecretStatusEnum.configured
     );
     expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+});
+
+describe('SystemToolRepo.getSystemToolDetail', () => {
+  it('returns saved author for workflow tools', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-workflow-tool',
+      status: 'Normal',
+      currentCost: 0,
+      hasTokenFee: true,
+      systemKeyCost: 0,
+      pluginOrder: 0,
+      originCost: 0,
+      customConfig: {
+        name: 'Workflow Tool',
+        intro: 'Workflow intro',
+        version: 'workflow-version',
+        tags: [],
+        associatedPluginId: 'app-id',
+        author: 'Custom Author',
+        userGuide: 'Guide'
+      }
+    });
+    mocks.findAppById.mockReturnValue({
+      lean: () => Promise.resolve({ _id: 'app-id', avatar: 'app.svg' })
+    });
+    mocks.getAppLatestVersion.mockResolvedValue({
+      versionId: 'latest-version',
+      nodes: []
+    });
+    mocks.checkIsLatestVersion.mockResolvedValue(true);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-workflow-tool'
+    });
+
+    expect(tool.author).toBe('Custom Author');
+    expect(tool.hasTokenFee).toBe(true);
   });
 });

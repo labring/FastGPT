@@ -78,6 +78,7 @@ const WorkflowToolConfigModal = ({
   const associatedPluginId = watch('associatedPluginId');
   const currentCost = watch('currentCost');
   const status = watch('status');
+  const hasTokenFee = watch('hasTokenFee');
 
   React.useEffect(() => {
     setValue('tags', selectedTags);
@@ -458,7 +459,10 @@ const WorkflowToolConfigModal = ({
                 <QuestionTip ml={1} flexShrink={0} label={t('app:toolkit_token_fee_tip')} />
               </Flex>
               <Box flex={'1 0 0'}>
-                <Switch {...register('hasTokenFee')} />
+                <Switch
+                  isChecked={!!hasTokenFee}
+                  onChange={(e) => setValue('hasTokenFee', e.target.checked)}
+                />
               </Box>
             </HStack>
           </Box>
