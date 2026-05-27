@@ -76,7 +76,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { setLastRoute, loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
-  const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
+  const { onChangeLng, setUserDefaultLng, setShareDefaultLng } = useI18nLng();
 
   // Auto redeem coupon
   useCheckCoupon();
@@ -104,12 +104,24 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   useMount(() => {
     if (router.pathname === '/chat/share') {
+      // 分享页使用独立语言偏好，避免访客切换语言时污染登录用户的 NEXT_LOCALE。
       setShareDefaultLng();
       return;
     }
 
+    // 普通页面首访只初始化浏览器/本地默认语言；登录后的账号语言由下面的 effect 覆盖。
     setUserDefaultLng();
   });
+
+  useEffect(() => {
+    if (router.pathname === '/chat/share') return;
+
+    const userLang = userInfo?.language;
+    if (!userLang) return;
+
+    // 账号显式语言优先级最高，登录后必须覆盖登录页或浏览器推断出的运行时语言。
+    onChangeLng(userLang);
+  }, [onChangeLng, router.pathname, userInfo?.language]);
 
   // Check model invalid
   useDebounceEffect(

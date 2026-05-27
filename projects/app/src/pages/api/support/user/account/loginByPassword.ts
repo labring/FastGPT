@@ -25,7 +25,7 @@ async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = LoginByPasswordBodySchema.parse(req.body);
+  const { username, password, code } = LoginByPasswordBodySchema.parse(req.body);
 
   // Auth prelogin code
   await authCode({
@@ -57,8 +57,8 @@ async function handler(
     userId: user._id
   });
 
+  // 登录只更新本次会话使用的团队成员，不应把登录页语言写回用户偏好。
   user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
   await user.save();
 
   const token = await createUserSession({

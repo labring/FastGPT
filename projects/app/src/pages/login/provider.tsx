@@ -20,14 +20,13 @@ import {
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 let isOauthLogging = false;
 
 const provider = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
@@ -77,8 +76,7 @@ const provider = () => {
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain(),
-          language: i18n.language as LangEnum
+          sourceDomain: getSourceDomain()
         });
 
         if (!res) {
@@ -104,16 +102,7 @@ const provider = () => {
       }
       setLoginStore(undefined);
     },
-    [
-      errorRedirectPage,
-      i18n.language,
-      loginStore?.provider,
-      loginSuccess,
-      router,
-      setLoginStore,
-      t,
-      toast
-    ]
+    [errorRedirectPage, loginStore?.provider, loginSuccess, router, setLoginStore, t, toast]
   );
 
   useEffect(() => {

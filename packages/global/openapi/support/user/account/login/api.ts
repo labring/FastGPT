@@ -72,9 +72,9 @@ export const LoginByPasswordBodySchema = z
       example: '123456',
       description: '预登录验证码'
     }),
-    language: LanguageSchema.optional().default('zh-CN').meta({
+    language: LanguageSchema.optional().meta({
       example: 'zh-CN',
-      description: '用户语言偏好'
+      description: '兼容旧客户端的登录页语言字段，登录不会覆盖用户语言偏好'
     })
   })
   .meta({
