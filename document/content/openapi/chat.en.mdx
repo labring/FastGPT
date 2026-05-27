@@ -1,6 +1,6 @@
 ---
 title: Chat API
-description: FastGPT OpenAPI Chat Interface
+description: FastGPT OpenAPI Chat API
 ---
 
 # How to Get AppId
@@ -12,16 +12,16 @@ You can find the AppId in your application details URL.
 # Start a Conversation
 
 - This API requires an application-specific API key, or it will return an error.
-- Some packages require adding `v1` to the `BaseUrl`. If you get a 404 error, try adding `v1` and retry.
+- Some packages require adding the `v1` path to the `BaseUrl` value. If you get a 404 error, add `v1` and retry.
 
-{/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
+{/* * The chat API currently provides both `v1` and `v2`. Use whichever fits your needs. `v2` was added in v4.9.4, and `v1` is no longer maintained. */}
 
-## Request Chat Agent and Workflow
+## Call a Chat Agent or Workflow
 
-The `v1` chat API is compatible with the `GPT` interface! If you're using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:
+The `v1` chat API is compatible with the `GPT` API. If your project already uses the standard official `GPT` API, you can call a FastGPT app by changing the `BaseUrl` value and `Authorization` header. Keep these rules in mind:
 
-* Parameters like `model` and `temperature` are ignored. These values are determined by your workflow configuration.
-* Won't return actual `Token` consumed. If needed, set `detail=true` and manually calculate `tokens` from `responseData`.
+* Parameters such as `model` and `temperature` are ignored. These values are controlled by the workflow configuration and will not change based on API parameters.
+* The API does not return actual token usage. If you need it, set `detail=true` and calculate the `tokens` values in the `responseData` payload.
 
 ### Request
 
@@ -96,14 +96,14 @@ The `v1` chat API is compatible with the `GPT` interface! If you're using the st
 
 <div>
 - headers.Authorization: Bearer [apikey]
-- chatId: string | undefined 。
-  - 为时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与[GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- authProxy: object | undefined. API Key auth only. Specifies which team member this request runs as. Supports `username` or `tmbId`; when both are provided, they must resolve to the same member. When continuing with `chatId`, that member must own the chat.
-- detail:是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
-- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`[key]`
+- chatId: string | undefined.
+  - Empty or omitted: FastGPT context is not used. The context is built entirely from the provided `messages` array.
+  - Non-empty string: FastGPT uses `chatId` to continue the conversation, automatically loads history from the database, and uses only the last item in the `messages` array as the user's question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters. It is usually the conversation ID from your own system.
+- messages: Same structure as OpenAI's [chat message object](https://platform.openai.com/docs/api-reference/chat/object) format.
+- responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID for this conversation and stores it in the database. Make sure `responseChatItemId` is unique within the current `chatId` scope.
+- authProxy: object | undefined. API Key auth only. Specifies which team member this request runs as. Supports the `username` field or the `tmbId` field; when both values are provided, they must resolve to the same member. When continuing a conversation with the `chatId` value, that member must own the chat. (v4.15.0 feature)
+- detail: Whether to return intermediate values, such as node status and full node responses. In `stream` mode, payloads are separated by event names. In non-stream mode, results are stored in the `responseData` payload.
+- variables: Module variables. This object replaces `[key]` placeholders in module input fields.
 </div>
 
   </Tab>
@@ -111,7 +111,7 @@ The `v1` chat API is compatible with the `GPT` interface! If you're using the st
 
 ### Response
 
-<Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','Event Values']}>
+<Tabs items={['detail=false, stream=false Response','detail=false, stream=true Response','detail=true, stream=false Response','detail=true, stream=true Response','Event Values']}>
   <Tab value="detail=false, stream=false Response">
 
 ```json
@@ -155,7 +155,7 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"in
 ```json
 {
   "responseData": [
-    // 不同模块的响应值, 不同版本具体值可能有差异，可先 log 自行查看最新值。
+    // Response values from different nodes. Values may vary by version. Log the response first to inspect the latest shape.
     {
       "moduleName": "Dataset Search",
       "price": 1.2000000000000002,
@@ -277,26 +277,26 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
   </Tab>
   <Tab value="Event Values">
 
-event取值：
+Event values:
 
-    - answer: 返回给客户端的文本（最终会算作回答）
-    - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-    - toolCall: 执行工具
-    - toolParams: 工具参数
-    - toolResponse: 工具返回
-    - flowNodeStatus: 运行到的节点状态
-    - flowResponses: 节点完整响应
-    - updateVariables: 更新变量
-    - error: 报错
+    - answer: Text returned to the client. It is counted as the final answer.
+    - fastAnswer: Text returned from a specified reply. It is counted as the final answer.
+    - toolCall: Tool execution.
+    - toolParams: Tool parameters.
+    - toolResponse: Tool response.
+    - flowNodeStatus: Status of the node currently running.
+    - flowResponses: Full node responses.
+    - updateVariables: Updated variables.
+    - error: Error.
 
   </Tab>
 </Tabs>
 
-### Response
+### Interactive Node Response
 
-If your workflow contains interactive nodes, still call this API with `detail=true`. Get interactive node config from `event=interactive` data. For `stream=false`, find `type=interactive` elements in choices.
+If your workflow contains interactive nodes, call this API with detail set to true. You can get the interactive node configuration from `event=interactive` data. When streaming is disabled, read the `type=interactive` element from the `choices` array to get the interactive selection information.
 
-When calling a workflow with interactive nodes, if an interactive node is encountered, it returns immediately with this info:
+When a workflow reaches an interactive node, the API returns immediately with information like this:
 
 <Tabs items={['User Selection','Form Input']}>
   <Tab value="User Selection">
@@ -375,7 +375,7 @@ When calling a workflow with interactive nodes, if an interactive node is encoun
 
 ### Continue Interactive Node
 
-After receiving interactive node info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:
+After receiving interactive node information, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:
 
 <Tabs items={['User Selection','Form Input']}>
   <Tab value="User Selection">
@@ -402,7 +402,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
   </Tab>
   <Tab value="Form Input">
 
-Form input is slightly more complex. Serialize the input as a JSON string for `messages`. Object keys match form keys, values are user inputs. Ensure `chatId` is consistent.
+Form input is slightly more complex. Serialize the input as a JSON string for the `messages` value. Object keys match form keys, and values are user inputs. Make sure the `chatId` value stays consistent.
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
@@ -428,11 +428,11 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 Plugin API is identical to chat API, with slight parameter differences:
 
-- 调用插件Type的应用时，接口默认为`detail`模式。
-- No need to pass `chatId` since plugins run only once.
-- No need to pass `messages`.
+- For plugin-type apps, the API uses `detail` mode by default.
+- No need to pass `chatId` because plugins run only once.
+- No need to pass the `messages` array.
 - Pass `variables` to represent plugin inputs.
-- Get plugin outputs from `pluginData`.
+- Get plugin outputs from the `pluginData` value.
 
 ### Request
 
@@ -444,18 +444,18 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
     "stream": false,
     "chatId": "test",
     "variables": {
-        "query":"你好" # 我的插件输入有一个参数，变量名叫 query
+        "query":"你好" # My plugin input has one parameter named query.
     }
 }'
 ```
 
 ### Response
 
-<Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','Output Retrieval']}>
+<Tabs items={['detail=true, stream=false Response','detail=true, stream=true Response','Output Retrieval']}>
   <Tab value="detail=true, stream=false Response">
 
-- Find plugin output by locating `moduleType=pluginOutput` in `responseData`. Its `pluginOutput` contains the output.
-- Stream output is still available via `choices`.
+- Find plugin output by locating `moduleType=pluginOutput` entries in the `responseData` array. The `pluginOutput` field contains the output.
+- Stream output is still available through the `choices` array.
 
 ```json
 {
@@ -584,34 +584,34 @@ data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode"
   </Tab>
   <Tab value="Output Retrieval">
 
-event取值：
+Event values:
 
-    - answer: 返回给客户端的文本（最终会算作回答）
-    - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-    - toolCall: 执行工具
-    - toolParams: 工具参数
-    - toolResponse: 工具返回
-    - flowNodeStatus: 运行到的节点状态
-    - flowResponses: 节点完整响应
-    - updateVariables: 更新变量
-    - error: 报错
+    - answer: Text returned to the client. It is counted as the final answer.
+    - fastAnswer: Text returned from a specified reply. It is counted as the final answer.
+    - toolCall: Tool execution.
+    - toolParams: Tool parameters.
+    - toolResponse: Tool response.
+    - flowNodeStatus: Status of the node currently running.
+    - flowResponses: Full node responses.
+    - updateVariables: Updated variables.
+    - error: Error.
 
   </Tab>
 </Tabs>
 
 # Chat CRUD
 
-* The following APIs can be called with any `API Key`.
-* 4.8.12 and above
+* The following APIs can be called with any API Key.
+* Available in v4.8.12 and later.
 
-****Important Fields****
+**Important Fields**
 
 - chatId - The ID of a conversation window under an application
 - dataId - The ID of a chat record under a conversation window
 
-## History
+## Chat History
 
-## History
+### Get App Chat History
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -635,7 +635,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 - appId - Application ID
 - offset - Offset (starting position)
 - pageSize - Number of records
-- source - Chat source. source=api means get API-created chats only (excludes web UI chats)
+- source - Chat source. `source=api` means fetching only chats created through the API, excluding web UI chats.
 </div>
 
   </Tab>
@@ -758,7 +758,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/upda
   </Tab>
 </Tabs>
 
-## History
+### Delete Chat History
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -793,9 +793,9 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/de
   </Tab>
 </Tabs>
 
-## History
+### Clear All Chat History
 
-Only clears chat history created via API Key. Does not clear history from web UI, share links, or other sources.
+Only clears chat history created via API Key. It does not clear conversations from web usage, share links, or other sources.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -905,7 +905,7 @@ Operations on chat records under a specific chatId.
   </Tab>
 </Tabs>
 
-## Chat Records
+### Get Chat Records
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -984,7 +984,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
   </Tab>
 </Tabs>
 
-## Chat Records
+### Get Chat Record Run Details
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -1059,7 +1059,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
   </Tab>
 </Tabs>
 
-## Chat Records
+### Delete Chat Record
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -1185,9 +1185,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 ## Question Suggestions
 
-**4.8.16 New API (version**
+**New API in v4.8.16 and later**
 
-The new question suggestion feature requires both appId and chatId parameters. It automatically fetches the last 6 conversation turns from chatId as context.
+The new question suggestion feature requires both `appId` and `chatId` values. It automatically fetches the latest 6 conversation turns for the `chatId` as context.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example">
@@ -1211,11 +1211,11 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 
   <Tab value="Parameters" >
 
-| 参数名        | 类型   | 必填 | 说明                                                       |
-| ------------- | ------ | ---- | ---------------------------------------------------------- |
-| appId         | string | ✅   | 应用 Id                                                    |
-| chatId        | string | ✅   | 对话 Id                                                    |
-| questionGuide | object |      | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
+| Parameter     | Type   | Required | Description                                                       |
+| ------------- | ------ | -------- | ----------------------------------------------------------------- |
+| appId         | string | ✅       | Application ID                                                    |
+| chatId        | string | ✅       | Chat ID                                                           |
+| questionGuide | object |          | Custom configuration. If omitted, FastGPT uses the latest published configuration for the `appId` value. |
 
 ```ts
 type CreateQuestionGuideParams = OutLinkChatAuthProps & {
