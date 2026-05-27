@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkWorkflowLocalDraft,
+  consumeWorkflowLocalDraftSavedNotice,
   getWorkflowAppIdFromRoute,
   getWorkflowLocalDraftDetailRoute,
+  markWorkflowLocalDraftSavedNotice,
   normalizeWorkflowLocalDraftRoute,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
@@ -12,6 +14,7 @@ import {
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 const storageMap = new Map<string, string>();
+const sessionStorageMap = new Map<string, string>();
 const localStorageMock = {
   getItem: vi.fn((key: string) => storageMap.get(key) ?? null),
   setItem: vi.fn((key: string, value: string) => {
@@ -19,6 +22,15 @@ const localStorageMock = {
   }),
   removeItem: vi.fn((key: string) => {
     storageMap.delete(key);
+  })
+};
+const sessionStorageMock = {
+  getItem: vi.fn((key: string) => sessionStorageMap.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    sessionStorageMap.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    sessionStorageMap.delete(key);
   })
 };
 
@@ -50,8 +62,10 @@ describe('workflow local draft', () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     storageMap.clear();
+    sessionStorageMap.clear();
     vi.stubGlobal('window', {
       localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
       location: {
         pathname: '/app/detail',
         search: '?appId=app-1&currentTab=appEdit'
@@ -296,5 +310,14 @@ describe('workflow local draft', () => {
     removeWorkflowLocalDraft();
 
     expect(readWorkflowLocalDraft()).toBeNull();
+  });
+
+  it('should consume saved draft notice only once', () => {
+    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(false);
+
+    markWorkflowLocalDraftSavedNotice();
+
+    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(true);
+    expect(consumeWorkflowLocalDraftSavedNotice()).toBe(false);
   });
 });

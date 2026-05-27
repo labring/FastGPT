@@ -1,9 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import { postPublishApp } from '@/web/core/app/api/version';
-import { checkWorkflowLocalDraft, removeWorkflowLocalDraft } from '@/web/core/workflow/localDraft';
+import {
+  checkWorkflowLocalDraft,
+  consumeWorkflowLocalDraftSavedNotice,
+  removeWorkflowLocalDraft
+} from '@/web/core/workflow/localDraft';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useTranslation } from 'next-i18next';
 
 /**
  * 登录成功后只要检测到同 username 的工作流草稿就尝试恢复。
@@ -49,6 +54,16 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
 
 export const useWorkflowLocalDraftRestore = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!consumeWorkflowLocalDraftSavedNotice()) return;
+
+    toast({
+      status: 'success',
+      title: t('login:workflow_local_draft_saved')
+    });
+  }, [t, toast]);
 
   return useCallback(
     async ({

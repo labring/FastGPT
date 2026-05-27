@@ -23,9 +23,20 @@ import { WorkflowUtilsContext } from './workflowUtilsContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   getWorkflowLocalDraftIdentity,
+  markWorkflowLocalDraftSavedNotice,
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
 } from '@/web/core/workflow/localDraft';
+import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { postPublishApp } from '@/web/core/app/api/version';
+
+const isAuthRedirectError = (error: any) => {
+  return (
+    (typeof error?.code === 'number' && error.code in TOKEN_ERROR_CODE) ||
+    error?.message === i18nT('common:unauth_token')
+  );
+};
 
 // 创建 Context
 type WorkflowPersistenceContextValue = {
@@ -54,9 +65,10 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const [isSaved, setIsSaved] = useState(true);
   // 离开保存标志
   const leaveSaveSign = useRef(true);
+  // 离开自动保存触发鉴权跳登录时，不能再弹浏览器原生离开确认。
+  const suppressBeforeUnloadPrompt = useRef(false);
   const userInfo = useUserStore((state) => state.userInfo);
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
-  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
 
   const saveLocalDraft = useCallback(() => {
     const identity = getWorkflowLocalDraftIdentity(userInfo);
@@ -123,30 +135,53 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const autoSaveFn = useCallback(async () => {
     if (isSaved || !leaveSaveSign.current) return;
     console.log('Leave auto save');
-    saveLocalDraft();
     const data = flowData2StoreData();
     if (!data || data.nodes.length === 0) return;
-    await onSaveApp({
-      ...data,
-      isPublish: false,
-      chatConfig: appDetail.chatConfig,
-      autoSave: true
-    });
-    removeCurrentLocalDraft();
+    suppressBeforeUnloadPrompt.current = true;
+    try {
+      if (!appDetail.permission.hasWritePer) {
+        suppressBeforeUnloadPrompt.current = false;
+        return;
+      }
+      await postPublishApp(appDetail._id, {
+        ...data,
+        isPublish: false,
+        chatConfig: appDetail.chatConfig,
+        autoSave: true
+      });
+      suppressBeforeUnloadPrompt.current = false;
+      removeCurrentLocalDraft();
+    } catch (error) {
+      if (isAuthRedirectError(error)) {
+        const savedDraft = saveLocalDraft();
+        if (savedDraft) {
+          markWorkflowLocalDraftSavedNotice();
+        }
+        return;
+      }
+
+      suppressBeforeUnloadPrompt.current = false;
+    }
   }, [
+    appDetail._id,
     appDetail.chatConfig,
+    appDetail.permission.hasWritePer,
     flowData2StoreData,
     isSaved,
-    onSaveApp,
     removeCurrentLocalDraft,
     saveLocalDraft
   ]);
 
-  // 鉴权失效触发登录跳转时不能再弹浏览器离开确认；这里只落本地草稿，不阻止跳转。
+  // 普通刷新/关闭页面触发一次远端自动保存；不再使用浏览器原生离开确认弹窗。
+  // 如果远端自动保存已因鉴权失败写入本地草稿，后续登录跳转继续补一次本地草稿保存。
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (!isSaved && leaveSaveSign.current) {
+      if (isSaved || !leaveSaveSign.current) return;
+
+      if (suppressBeforeUnloadPrompt.current) {
         saveLocalDraft();
+      } else {
+        autoSaveFn();
       }
     };
 
@@ -154,7 +189,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isSaved, saveLocalDraft]);
+  }, [autoSaveFn, isSaved, saveLocalDraft]);
 
   // 页面关闭前自动保存
   useUnmount(() => {

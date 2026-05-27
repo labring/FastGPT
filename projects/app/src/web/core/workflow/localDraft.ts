@@ -4,6 +4,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 export const WORKFLOW_LOCAL_DRAFT_STORAGE_KEY = 'fastgpt_workflow_local_draft_v1';
+const WORKFLOW_LOCAL_DRAFT_NOTICE_KEY = 'fastgpt_workflow_local_draft_notice_v1';
 
 const WORKFLOW_LOCAL_DRAFT_VERSION = 1;
 const WORKFLOW_LOCAL_DRAFT_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000;
@@ -40,6 +41,7 @@ export type WorkflowLocalDraftCheckResult =
     };
 
 const isBrowser = () => typeof window !== 'undefined' && !!window.localStorage;
+const isSessionStorageAvailable = () => typeof window !== 'undefined' && !!window.sessionStorage;
 
 export const getWorkflowLocalDraftIdentity = (
   user: Pick<UserType, 'username' | 'team'> | null | undefined
@@ -131,6 +133,29 @@ export const removeWorkflowLocalDraft = () => {
     window.localStorage.removeItem(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY);
   } catch (error) {
     console.warn('[Workflow local draft] Failed to remove local draft:', error);
+  }
+};
+
+export const markWorkflowLocalDraftSavedNotice = () => {
+  if (!isSessionStorageAvailable()) return;
+
+  try {
+    window.sessionStorage.setItem(WORKFLOW_LOCAL_DRAFT_NOTICE_KEY, '1');
+  } catch (error) {
+    console.warn('[Workflow local draft] Failed to mark local draft notice:', error);
+  }
+};
+
+export const consumeWorkflowLocalDraftSavedNotice = () => {
+  if (!isSessionStorageAvailable()) return false;
+
+  try {
+    const notice = window.sessionStorage.getItem(WORKFLOW_LOCAL_DRAFT_NOTICE_KEY);
+    window.sessionStorage.removeItem(WORKFLOW_LOCAL_DRAFT_NOTICE_KEY);
+    return notice === '1';
+  } catch (error) {
+    console.warn('[Workflow local draft] Failed to consume local draft notice:', error);
+    return false;
   }
 };
 

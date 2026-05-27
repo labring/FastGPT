@@ -91,7 +91,7 @@ export async function getServerSideProps(content: any) {
       code: content?.query?.code || '',
       token: content?.query?.token || '',
       callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
-      ...(await serviceSideProps(content))
+      ...(await serviceSideProps(content, ['login']))
     }
   };
 }

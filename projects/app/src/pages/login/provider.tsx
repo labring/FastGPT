@@ -169,7 +169,7 @@ export default provider;
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context))
+      ...(await serviceSideProps(context, ['login']))
     }
   };
 }
