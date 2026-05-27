@@ -451,7 +451,6 @@ const HomeChatWindow = () => {
               color="myGray.900"
               alignItems="center"
               justifyContent="center"
-              borderBottom="sm"
             >
               {chatBoxData?.title}
             </Flex>
