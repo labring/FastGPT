@@ -5,7 +5,8 @@ import {
   parseSkillMarkdown,
   shellQuote,
   getSafeSkillDirectoryName,
-  joinSandboxPath
+  joinSandboxPath,
+  parseGitignoreRules
 } from '../utils';
 import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
@@ -364,7 +365,7 @@ export async function createEditDebugSandbox(
     const moveCmd = [
       `cd ${quotedSkillsRootPath}`,
       `REAL_SKILL_DIR=$(dirname "$(find tmp_unzip -iname "skill.md" | head -n 1)")`,
-      `if [ -n "$REAL_SKILL_DIR" ] && [ "$REAL_SKILL_DIR" != "." ]; then mkdir -p ${quotedSkillFolderName} && mv "$REAL_SKILL_DIR"/* ${quotedSkillFolderName}/ 2>/dev/null || true && mv "$REAL_SKILL_DIR"/.[!.]* ${quotedSkillFolderName}/ 2>/dev/null || true; fi`,
+      `if [ -n "$REAL_SKILL_DIR" ] && [ "$REAL_SKILL_DIR" != "." ]; then mv "$REAL_SKILL_DIR" ${quotedSkillFolderName}; fi`,
       `rm -rf tmp_unzip`,
       `if [ -f ${quotedSkillFolderName}/.gitignore ]; then mv ${quotedSkillFolderName}/.gitignore ${shellQuote(runtimeProfile.workDirectory)}/ 2>/dev/null || true; fi`,
       `if [ ! -f ${shellQuote(runtimeProfile.workDirectory)}/.gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > ${shellQuote(runtimeProfile.workDirectory)}/.gitignore; fi`
@@ -480,8 +481,7 @@ export async function packageSkillInSandbox(params: {
     })();
     const quotedTargetDir = shellQuote(targetDir);
 
-    const customExcludes: string[] = [];
-    const pruneDirs: string[] = [];
+    let gitignoreContents: string[] = [];
     try {
       const findIgnoreCmd = `find ${quotedTargetDir} -name '.gitignore' -type f`;
       const findIgnoreResult = await newSandbox.execute(findIgnoreCmd);
@@ -493,31 +493,13 @@ export async function packageSkillInSandbox(params: {
 
         if (ignorePaths.length > 0) {
           const files = await newSandbox.readFiles(ignorePaths);
-          for (const file of files) {
-            if (file && !file.error) {
-              const content =
-                typeof file.content === 'string'
-                  ? file.content
-                  : Buffer.from(file.content).toString('utf-8');
-              const lines = content.split('\n');
-              for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed || trimmed.startsWith('#')) continue;
-
-                const pattern = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
-                if (!pattern) continue;
-
-                if (trimmed.endsWith('/') || !pattern.includes('.')) {
-                  customExcludes.push(`${pattern}/*`);
-                  customExcludes.push(`*/${pattern}/*`);
-                  pruneDirs.push(pattern);
-                } else {
-                  customExcludes.push(pattern);
-                  customExcludes.push(`*/${pattern}`);
-                }
-              }
-            }
-          }
+          gitignoreContents = files
+            .filter((file) => file && !file.error)
+            .map((file) =>
+              typeof file.content === 'string'
+                ? file.content
+                : Buffer.from(file.content).toString('utf-8')
+            );
         }
       }
     } catch (err: any) {
@@ -527,31 +509,8 @@ export async function packageSkillInSandbox(params: {
       });
     }
 
+    const { customExcludes, pruneClause } = parseGitignoreRules(gitignoreContents);
     const allExcludes = Array.from(new Set(['package.zip', ...customExcludes]));
-
-    // Generate prune directories clause for high-performance find command based strictly on parsed gitignore directories
-    const uniqPruneDirs = Array.from(
-      new Set(
-        pruneDirs
-          .map((p) => p.replace(/\/\*$/, '').replace(/^\*\//, ''))
-          .filter((p) => p && !p.includes('*') && !p.includes('.'))
-      )
-    );
-
-    const pruneClauses: string[] = [];
-    for (const dirPattern of uniqPruneDirs) {
-      const cleanPattern = dirPattern.replace(/^\/+|\/+$/g, '');
-      if (!cleanPattern) continue;
-
-      if (dirPattern.includes('/')) {
-        const pathPattern = cleanPattern.startsWith('./') ? cleanPattern : `./${cleanPattern}`;
-        pruneClauses.push(`-path ${shellQuote(pathPattern)}`);
-      } else {
-        pruneClauses.push(`-name ${shellQuote(cleanPattern)}`);
-      }
-    }
-
-    const pruneClause = pruneClauses.length > 0 ? pruneClauses.join(' -o ') : '';
     const sizeCheckCmd = pruneClause
       ? `cd ${quotedTargetDir} && find . \\( ${pruneClause} \\) -prune -o -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
       : `cd ${quotedTargetDir} && find . -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;

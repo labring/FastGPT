@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   buildSkillMd,
   extractSkillNameFromSkillMd,
-  parseSkillMarkdown
+  parseSkillMarkdown,
+  parseGitignoreRules
 } from '@fastgpt/service/core/ai/skill/utils';
 import {
   getSkillMdGeneratorSystemPrompt,
@@ -483,6 +484,73 @@ version: "1.0.0"
       // Neither call should use response_format (not all models support it)
       expect(mockCreateLLMResponse.mock.calls[0][0].body.response_format).toBeUndefined();
       expect(mockCreateLLMResponse.mock.calls[1][0].body.response_format).toBeUndefined();
+    });
+  });
+
+  // ==================== parseGitignoreRules ====================
+  describe('parseGitignoreRules', () => {
+    it('should handle empty gitignore lists', () => {
+      const result = parseGitignoreRules([]);
+      expect(result.customExcludes).toEqual([]);
+      expect(result.pruneClause).toBe('');
+    });
+
+    it('should ignore comments and empty lines', () => {
+      const gitignore = `
+        # This is a comment
+        
+        # Another comment
+      `;
+      const result = parseGitignoreRules([gitignore]);
+      expect(result.customExcludes).toEqual([]);
+      expect(result.pruneClause).toBe('');
+    });
+
+    it('should parse directory pattern and generate find -name prune clauses', () => {
+      const gitignore = `
+        node_modules/
+        dist
+      `;
+      const result = parseGitignoreRules([gitignore]);
+
+      expect(result.customExcludes).toContain('node_modules/*');
+      expect(result.customExcludes).toContain('*/node_modules/*');
+      expect(result.customExcludes).toContain('dist/*');
+      expect(result.customExcludes).toContain('*/dist/*');
+
+      // Linux find prune command segment verification
+      expect(result.pruneClause).toBe("-name 'node_modules' -o -name 'dist'");
+    });
+
+    it('should parse compound sub-path pattern and generate find -path prune clauses', () => {
+      const gitignore = `
+        packages/service/dist/
+        packages/service/tmp/
+      `;
+      const result = parseGitignoreRules([gitignore]);
+
+      expect(result.customExcludes).toContain('packages/service/dist/*');
+      expect(result.customExcludes).toContain('packages/service/tmp/*');
+
+      expect(result.pruneClause).toBe(
+        "-path './packages/service/dist' -o -path './packages/service/tmp'"
+      );
+    });
+
+    it('should parse standard files without path prunes', () => {
+      const gitignore = `
+        .env
+        secrets.json
+      `;
+      const result = parseGitignoreRules([gitignore]);
+
+      expect(result.customExcludes).toContain('.env');
+      expect(result.customExcludes).toContain('*/.env');
+      expect(result.customExcludes).toContain('secrets.json');
+      expect(result.customExcludes).toContain('*/secrets.json');
+
+      // Standard file matchings shouldn't be put into find's -prune directories list
+      expect(result.pruneClause).toBe('');
     });
   });
 });

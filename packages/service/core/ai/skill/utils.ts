@@ -297,3 +297,68 @@ export const getSkillTargetPath = ({
   workDirectory: string;
   skillId: string;
 }): string => joinSandboxPath(getSkillsRootPath(workDirectory), getSafeSkillDirectoryName(skillId));
+
+export type GitignoreParsedResult = {
+  customExcludes: string[];
+  pruneClause: string;
+};
+
+/**
+ * 解析多个 .gitignore 文件的内容，生成用于 JSZip/其它排除的 excludes 列表，
+ * 以及专为 Linux find 命令优化的 -prune 子句（防 Shell 注入）。
+ */
+export function parseGitignoreRules(gitignoreContents: string[]): GitignoreParsedResult {
+  const customExcludes: string[] = [];
+  const pruneDirs: string[] = [];
+
+  for (const content of gitignoreContents) {
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const pattern = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+      if (!pattern) continue;
+
+      if (trimmed.endsWith('/') || !pattern.includes('.')) {
+        customExcludes.push(`${pattern}/*`);
+        customExcludes.push(`*/${pattern}/*`);
+        customExcludes.push(pattern);
+        customExcludes.push(`*/${pattern}`);
+        pruneDirs.push(pattern);
+      } else {
+        customExcludes.push(pattern);
+        customExcludes.push(`*/${pattern}`);
+      }
+    }
+  }
+
+  // 加上排重和过滤
+  const uniqPruneDirs = Array.from(
+    new Set(
+      pruneDirs
+        .map((p) => p.replace(/\/\*$/, '').replace(/^\*\//, ''))
+        .filter((p) => p && !p.includes('*') && !p.includes('.'))
+    )
+  );
+
+  const pruneClauses: string[] = [];
+  for (const dirPattern of uniqPruneDirs) {
+    const cleanPattern = dirPattern.replace(/^\/+|\/+$/g, '');
+    if (!cleanPattern) continue;
+
+    if (dirPattern.includes('/')) {
+      const pathPattern = cleanPattern.startsWith('./') ? cleanPattern : `./${cleanPattern}`;
+      pruneClauses.push(`-path ${shellQuote(pathPattern)}`);
+    } else {
+      pruneClauses.push(`-name ${shellQuote(cleanPattern)}`);
+    }
+  }
+
+  const pruneClause = pruneClauses.length > 0 ? pruneClauses.join(' -o ') : '';
+
+  return {
+    customExcludes,
+    pruneClause
+  };
+}
