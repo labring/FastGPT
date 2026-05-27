@@ -88,7 +88,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
             </Center>
           )}
         </Box>
-        <PolicyTip isCenter />
+        <PolicyTip />
       </Box>
     </FormLayout>
   );

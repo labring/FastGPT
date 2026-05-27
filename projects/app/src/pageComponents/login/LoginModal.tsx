@@ -3,7 +3,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { LoginContainer } from '@/pageComponents/login';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { type LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 type LoginModalProps = {
@@ -17,10 +16,12 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
     <Flex
       alignItems={'center'}
       justifyContent={'center'}
-      bg={['white', `url(${getWebReqUrl('/icon/login-bg.svg')}) no-repeat`]}
-      backgroundSize={['cover', 'cover']}
+      bg={'white'}
       userSelect={'none'}
-      h={'100%'}
+      minH={'100vh'}
+      px={0}
+      pt={0}
+      pb={0}
     >
       {/* Language selector - login page */}
       {isPc && (
@@ -30,21 +31,48 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
       )}
 
       <Flex
-        flexDirection={'column'}
-        w={['100%', '560px']}
-        h={['100%', '690px']}
-        bg={[`url(${getWebReqUrl('/icon/login-bg-phone.svg')}) no-repeat`, 'white']}
-        backgroundSize={'cover'}
-        px={['8', '90px']}
-        py={['38px', '90px']}
-        borderRadius={[0, '16px']}
-        boxShadow={[
-          '',
-          '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        ]}
         position="relative"
+        alignItems={'center'}
+        justifyContent={'center'}
+        w={'100%'}
+        maxW={['100%', '1328px']}
+        h={'100vh'}
+        minH={['100vh', '720px']}
+        bg={['transparent', 'white']}
+        borderRadius={[0, '24px']}
+        overflow={'hidden'}
       >
-        <LoginContainer onSuccess={onSuccess} />
+        <Box
+          position={'absolute'}
+          top={['-190px', '-100px']}
+          left={'50%'}
+          w={['900px', '1230px']}
+          h={['590px', '510px']}
+          transform={'translateX(-50%)'}
+          pointerEvents={'none'}
+          bgImage={'url(/icon/login-gradient-bg.svg)'}
+          bgRepeat={'no-repeat'}
+          bgPosition={'center top'}
+          bgSize={'100% 100%'}
+        />
+
+        <Flex
+          flexDirection={'column'}
+          w={['100%', '560px']}
+          h={['100%', 'auto']}
+          bg={['transparent', 'white']}
+          px={['8', '90px']}
+          py={['38px', '90px']}
+          borderRadius={[0, '16px']}
+          boxShadow={[
+            '',
+            '0px 16px 40px rgba(30, 64, 175, 0.10), 0px 1px 3px rgba(15, 23, 42, 0.06)'
+          ]}
+          position="relative"
+          zIndex={1}
+        >
+          <LoginContainer onSuccess={onSuccess} />
+        </Flex>
       </Flex>
     </Flex>
   );

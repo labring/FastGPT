@@ -4,24 +4,25 @@ import { Box, Flex, Link } from '@chakra-ui/react';
 import React from 'react';
 import { Trans } from 'next-i18next';
 
-const PolicyTip = ({ isCenter }: { isCenter: boolean }) => {
+const PolicyTip = () => {
   const { feConfigs } = useSystemStore();
 
   return (
     <>
       {feConfigs?.docUrl && (
         <Box
-          display={isCenter ? 'block' : 'flex'}
-          textAlign={isCenter ? 'center' : 'left'}
-          mt={7}
+          display={'block'}
+          textAlign={'left'}
+          mt={6}
           fontSize={'mini'}
+          lineHeight={'16px'}
           color={'myGray.400'}
           whiteSpace={'pre-wrap'}
         >
           <Trans
             i18nKey="login:policy_tip"
             components={{
-              div: <Flex justifyContent={'center'} />,
+              div: <Flex justifyContent={'flex-start'} />,
               termsLink: (
                 <Link
                   href={getDocPath('/guide/version/cloud/terms')}

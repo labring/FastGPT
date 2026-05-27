@@ -10,6 +10,9 @@ import ChineseRedirectModal from './components/ChineseRedirectModal';
 import CookieConsentModal from './components/CookieConsentModal';
 import LoginFormPanel from './components/LoginFormPanel';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import PolicyTip from './LoginForm/PolicyTip';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -26,6 +29,8 @@ export const LoginContainer = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { resetChatCache } = useChatStore();
+  const { isPc } = useSystem();
+  const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
@@ -57,27 +62,56 @@ export const LoginContainer = ({
         my={['', pageType === LoginPageTypeEnum.wechat ? '-15px' : '']}
         position="relative"
         w="full"
-        flex={'1 0 0'}
+        flex={['1 0 0', '0 0 auto']}
         flexDirection={'column'}
+        justifyContent={['center', 'flex-start']}
       >
+        {!isPc && (
+          <Box mb={8} alignSelf={'flex-start'}>
+            <I18nLngSelector />
+          </Box>
+        )}
+
         {/* main content area */}
-        <LoginFormPanel pageType={pageType} setPageType={setPageType} loginSuccess={loginSuccess} />
+        <LoginFormPanel
+          pageType={pageType}
+          setPageType={setPageType}
+          loginSuccess={loginSuccess}
+          reserveLoginGuideSpace={
+            pageType === LoginPageTypeEnum.passwordLogin &&
+            !!(loginGuideDocUrl || feConfigs?.concatMd)
+          }
+        />
 
         {/* custom content */}
         {children}
 
         {/* help link for login */}
-        {feConfigs?.concatMd && (
-          <Box
-            mt={[9, '6']}
-            color={'primary.700'}
-            fontSize={'mini'}
-            fontWeight={'medium'}
-            cursor={'pointer'}
-            textAlign={'center'}
-            onClick={() => setShowCommunityModal(true)}
-          >
-            {t('common:support.user.login.can_not_login')}
+        {pageType === LoginPageTypeEnum.passwordLogin &&
+          (loginGuideDocUrl || feConfigs?.concatMd) && (
+            <Box
+              mt={[8, 8]}
+              color={'primary.700'}
+              fontSize={'mini'}
+              fontWeight={'medium'}
+              lineHeight={'16px'}
+              cursor={'pointer'}
+              textAlign={'center'}
+              onClick={() => {
+                if (loginGuideDocUrl) {
+                  window.open(loginGuideDocUrl, '_blank', 'noopener,noreferrer');
+                } else {
+                  setShowCommunityModal(true);
+                }
+              }}
+            >
+              {t('common:support.user.login.can_not_login')}
+            </Box>
+          )}
+
+        {pageType === LoginPageTypeEnum.passwordLogin && (
+          <Box mt={[0, 0]}>
+            <PolicyTip />
           </Box>
         )}
       </Flex>
@@ -85,7 +119,6 @@ export const LoginContainer = ({
       <CookieConsentModal />
       <ChineseRedirectModal />
 
-      {/* Community modal */}
       {showCommunityModal && <CommunityModal onClose={() => setShowCommunityModal(false)} />}
     </>
   );

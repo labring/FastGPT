@@ -6,8 +6,6 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
 import { type Dispatch, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import I18nLngSelector from '@/components/Select/I18nLngSelector';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -36,7 +34,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const rootLogin = router.query.rootLogin === '1';
 
   const { setLoginStore, feConfigs } = useSystemStore();
-  const { isPc } = useSystem();
 
   const { lastRoute = '/dashboard/agent', lastTmbId = '' } = router.query as {
     lastRoute: string;
@@ -200,13 +197,23 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'} justifyContent={['space-between', 'center']}>
-        <Flex alignItems={'center'} pr="4">
+    <Flex
+      flexDirection={'column'}
+      h={'100%'}
+      alignItems={['center', 'stretch']}
+      justifyContent={['center', 'flex-start']}
+    >
+      <Flex
+        alignItems={'center'}
+        justifyContent={['flex-start', 'center']}
+        w={['fit-content', '100%']}
+        alignSelf={['flex-start', 'auto']}
+      >
+        <Flex alignItems={'center'} pr={['0', '4']} w={'fit-content'} justifyContent={'flex-start'}>
           <Flex
             w={['42px', '56px']}
             h={['42px', '56px']}
-            bg={'myGray.25'}
+            bg={'white'}
             borderRadius={['semilg', 'lg']}
             borderWidth={['1px', '1.5px']}
             borderColor={'myGray.200'}
@@ -219,14 +226,15 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             {feConfigs?.systemTitle}
           </Box>
         </Flex>
-        {!isPc && <I18nLngSelector />}
       </Flex>
-      {children}
+      <Box w={'100%'} mt={[8, 0]}>
+        {children}
+      </Box>
       {show_oauth && (
-        <Box mt={['80px', 9]}>
+        <Box mt={['8', 9]} w={'100%'}>
           <Box flex={1} />
 
-          <Flex position={'relative'} mb={5} alignItems={'center'}>
+          <Flex position={'relative'} mb={4} alignItems={'center'}>
             <Box h={'1px'} flex={'1'} bg={'myGray.250'} />
             <Box px={3} color={'myGray.500'} fontSize={'mini'}>
               or
