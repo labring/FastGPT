@@ -455,7 +455,7 @@ function buildGetFileUrlPromptSection(): string {
     '  - The tool returns `[{ fileUrl, filename }, ...]`. The frontend automatically renders these as preview / download cards; you do NOT need to paste raw URLs in your reply.',
     '  - Briefly mention the file by name (and what it contains) in natural language so the user knows what to look for.',
     'IMPORTANT:',
-    '  - URLs are signed and expire after 2 hours; regenerate them if the user comes back later.',
+    '  - URLs are signed and expire after 1 day; regenerate them if the user comes back later.',
     '  - Never expose internal sandbox absolute paths to the user — only filenames.',
     '</file_delivery>'
   ].join('\n');
