@@ -13,6 +13,7 @@ import React, {
   useRef,
   useState
 } from 'react';
+import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useDebounceEffect, useUnmount } from 'ahooks';
 import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
@@ -53,6 +54,7 @@ export const WorkflowPersistenceContext = createContext<WorkflowPersistenceConte
  * WorkflowPersistenceProvider - 持久化提供者
  */
 export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const { t } = useTranslation();
   // 获取依赖的 context
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
@@ -65,9 +67,10 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const [isSaved, setIsSaved] = useState(true);
   // 离开保存标志
   const leaveSaveSign = useRef(true);
-  // 离开自动保存触发鉴权跳登录时，不能再弹浏览器原生离开确认。
-  const suppressBeforeUnloadPrompt = useRef(false);
+  // 鉴权失败触发自动跳登录页时跳过浏览器原生确认，避免拦截登录恢复流程。
+  const skipBeforeUnloadPrompt = useRef(false);
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
+  const leavePageTip = t('common:core.tip.leave page');
 
   const saveLocalDraft = useCallback(() => {
     const data = flowData2StoreData();
@@ -135,10 +138,8 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     console.log('Leave auto save');
     const data = flowData2StoreData();
     if (!data || data.nodes.length === 0) return;
-    suppressBeforeUnloadPrompt.current = true;
     try {
       if (!appDetail.permission.hasWritePer) {
-        suppressBeforeUnloadPrompt.current = false;
         return;
       }
       await postPublishApp(appDetail._id, {
@@ -147,15 +148,15 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
         chatConfig: appDetail.chatConfig,
         autoSave: true
       });
-      suppressBeforeUnloadPrompt.current = false;
       removeCurrentLocalDraft();
     } catch (error) {
       if (isAuthRedirectError(error)) {
+        skipBeforeUnloadPrompt.current = true;
         saveLocalDraft();
         return;
       }
 
-      suppressBeforeUnloadPrompt.current = false;
+      skipBeforeUnloadPrompt.current = false;
     }
   }, [
     appDetail._id,
@@ -167,24 +168,29 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     saveLocalDraft
   ]);
 
-  // 普通刷新/关闭页面触发一次远端自动保存；不再使用浏览器原生离开确认弹窗。
-  // 如果远端自动保存已因鉴权失败写入本地草稿，后续登录跳转继续补一次本地草稿保存。
+  // 普通刷新/关闭页面时先写本地草稿，再弹浏览器原生确认并尝试远端自动保存。
+  // 如果是鉴权失败引发的自动跳登录页，则只保留本地草稿，不再弹窗拦截跳转。
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isSaved || !leaveSaveSign.current) return;
 
-      if (suppressBeforeUnloadPrompt.current) {
+      if (appDetail.permission.hasWritePer) {
         saveLocalDraft();
-      } else {
-        autoSaveFn();
       }
+
+      if (skipBeforeUnloadPrompt.current) return;
+
+      autoSaveFn();
+      event.preventDefault();
+      event.returnValue = leavePageTip;
+      return leavePageTip;
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [autoSaveFn, isSaved, saveLocalDraft]);
+  }, [appDetail.permission.hasWritePer, autoSaveFn, isSaved, leavePageTip, saveLocalDraft]);
 
   // 页面关闭前自动保存
   useUnmount(() => {
