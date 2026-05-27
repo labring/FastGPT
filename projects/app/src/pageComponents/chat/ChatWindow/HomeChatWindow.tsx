@@ -41,7 +41,9 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
-import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatHistorySidebar, {
+  CHAT_HISTORY_SLIDER_PC_WIDTH
+} from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
@@ -416,7 +418,10 @@ const HomeChatWindow = () => {
 
       {/* show history slider */}
       {isPc ? (
-        <SideBar externalTrigger={Boolean(datasetCiteData)}>
+        <SideBar
+          w={`0 0 ${CHAT_HISTORY_SLIDER_PC_WIDTH}`}
+          externalTrigger={Boolean(datasetCiteData)}
+        >
           <ChatHistorySidebar
             title={appId === homeAppId ? t('chat:history_slider.home.title') : undefined}
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}

@@ -24,11 +24,13 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
   return (
     <Flex
       w={'100%'}
-      px={[2, 5]}
+      px={[2, 0]}
       h={'36px'}
-      my={5}
+      mt={isPc ? 2 : 5}
+      mb={isPc ? 3 : 5}
       justify={['space-between', '']}
       alignItems={'center'}
+      gap={isPc ? 2 : 0}
     >
       {!isPc && (
         <Flex height={'100%'} align={'center'} justify={'center'}>
@@ -42,11 +44,25 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       <Button
         variant={'whitePrimary'}
         flex={['0 0 auto', 1]}
-        h={'100%'}
-        px={6}
+        h={'36px'}
+        minH={'36px'}
+        px={'14px'}
+        py={'8px'}
         color={'primary.600'}
-        borderRadius={'xl'}
-        leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
+        borderRadius={'9999px'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        bg={'white'}
+        boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+        leftIcon={
+          <MyIcon
+            name={'core/chat/chatLight'}
+            w={'16px'}
+            h={'16px'}
+            color={'primary.600'}
+            fill={'primary.600'}
+          />
+        }
         overflow={'hidden'}
         onClick={() => {
           onChangeChatId();
@@ -59,13 +75,24 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       {isPc && histories.length > 0 && (
         <PopoverConfirm
           Trigger={
-            <Box ml={3} h={'100%'}>
+            <Box h={'100%'}>
               <IconButton
-                variant={'whiteDanger'}
+                variant={'whiteBase'}
                 size={'mdSquare'}
                 aria-label={''}
-                borderRadius={'50%'}
-                icon={<MyIcon name={'common/clearLight'} w={'16px'} />}
+                boxSize={'36px'}
+                minW={'36px'}
+                p={'10px'}
+                borderRadius={'999px'}
+                borderColor={'myGray.250'}
+                bg={'white'}
+                boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+                color={'myGray.500'}
+                _hover={{
+                  color: 'red.600',
+                  borderColor: 'red.300'
+                }}
+                icon={<MyIcon name={'common/clearLight'} w={'16px'} color={'currentColor'} />}
               />
             </Box>
           }
