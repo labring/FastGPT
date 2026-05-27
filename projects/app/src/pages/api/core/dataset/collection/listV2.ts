@@ -174,7 +174,7 @@ async function computeFolderMatchingStatuses(
           _id: '$collectionId',
           count: { $sum: 1 },
           hasError: {
-            $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+            $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
           },
           hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
           allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
@@ -653,7 +653,7 @@ async function handleFieldSort({
               _id: '$collectionId',
               count: { $sum: 1 },
               hasError: {
-                $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+                $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
               },
               hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
               allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
@@ -827,7 +827,7 @@ async function handleFieldSort({
             _id: '$collectionId',
             count: { $sum: 1 },
             hasError: {
-              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+              $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
             },
             hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
             allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
@@ -1052,7 +1052,7 @@ async function handleDataAmountSortOrStatusFilter({
               _id: null,
               count: { $sum: 1 },
               hasError: {
-                $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+                $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
               },
               hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
               allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
@@ -1310,7 +1310,7 @@ async function handleStatusFilterWithMemoryPagination({
             _id: '$collectionId',
             count: { $sum: 1 },
             hasError: {
-              $max: { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }
+              $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
             },
             hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
             allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
