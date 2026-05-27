@@ -1,13 +1,11 @@
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { AbsoluteCenter, Box, Flex, Grid, IconButton, GridItem, Button } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Button } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
-import { type Dispatch, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type Dispatch, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import I18nLngSelector from '@/components/Select/I18nLngSelector';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -36,14 +34,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const rootLogin = router.query.rootLogin === '1';
 
   const { setLoginStore, feConfigs } = useSystemStore();
-  const { isPc } = useSystem();
 
   const { lastRoute = '/dashboard/agent' } = router.query as { lastRoute: string };
   const computedLastRoute = useMemo(() => {
     return router.pathname === '/chat' ? router.asPath : lastRoute;
   }, [lastRoute, router.pathname, router.asPath]);
 
-  const state = useRef(getNanoid(8));
+  const oauthState = useMemo(() => getNanoid(8), []);
   const redirectUri = `${location.origin}/login/provider`;
 
   const isWecomWorkTerminal = checkIsWecomTerminal();
@@ -85,7 +82,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               label: t('common:support.user.login.Google'),
               provider: OAuthEnum.google,
               icon: 'common/googleFill',
-              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${oauthState}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
             }
           ]
         : []),
@@ -95,7 +92,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               label: t('common:support.user.login.Github'),
               provider: OAuthEnum.github,
               icon: 'common/gitFill',
-              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
+              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${oauthState}&scope=user:email%20read:user`
             }
           ]
         : []),
@@ -107,18 +104,15 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                 t('common:support.user.login.Microsoft'),
               provider: OAuthEnum.microsoft,
               icon: 'common/microsoft',
-              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
+              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${oauthState}`
             }
           ]
         : [])
     ],
-    [feConfigs, pageType, redirectUri, t]
+    [feConfigs, oauthState, pageType, redirectUri, t]
   );
 
-  const show_oauth = useMemo(
-    () => !!(feConfigs?.sso?.url || oAuthList.length > 0),
-    [feConfigs?.sso?.url, oAuthList.length]
-  );
+  const show_oauth = !!(feConfigs?.sso?.url || oAuthList.length > 0);
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
@@ -130,7 +124,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         setLoginStore({
           provider: item.provider as OAuthEnum,
           lastRoute: computedLastRoute,
-          state: state.current
+          state: oauthState
         });
         router.replace(redirectUrl, '_self');
         return;
@@ -142,13 +136,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           {
             redirectUri,
             isWecomWorkTerminal,
-            state: state.current
+            state: oauthState
           }
         );
         setLoginStore({
           provider: item.provider as OAuthEnum,
           lastRoute: computedLastRoute,
-          state: state.current
+          state: oauthState
         });
         router.replace(redirectUrl, '_self');
         return;
@@ -158,13 +152,23 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         setLoginStore({
           provider: item.provider as OAuthEnum,
           lastRoute: computedLastRoute,
-          state: state.current
+          state: oauthState
         });
         router.replace(item.redirectUrl, '_self');
       }
-      item.pageType && setPageType(item.pageType);
+      if (item.pageType) {
+        setPageType(item.pageType);
+      }
     },
-    [computedLastRoute, isWecomWorkTerminal, redirectUri, router, setLoginStore, setPageType]
+    [
+      computedLastRoute,
+      isWecomWorkTerminal,
+      oauthState,
+      redirectUri,
+      router,
+      setLoginStore,
+      setPageType
+    ]
   );
 
   // Auto login
@@ -188,13 +192,23 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'} justifyContent={['space-between', 'center']}>
-        <Flex alignItems={'center'} pr="4">
+    <Flex
+      flexDirection={'column'}
+      h={'100%'}
+      alignItems={['center', 'stretch']}
+      justifyContent={['center', 'flex-start']}
+    >
+      <Flex
+        alignItems={'center'}
+        justifyContent={['flex-start', 'center']}
+        w={['fit-content', '100%']}
+        alignSelf={['flex-start', 'auto']}
+      >
+        <Flex alignItems={'center'} pr={['0', '4']} w={'fit-content'} justifyContent={'flex-start'}>
           <Flex
             w={['42px', '56px']}
             h={['42px', '56px']}
-            bg={'myGray.25'}
+            bg={'white'}
             borderRadius={['semilg', 'lg']}
             borderWidth={['1px', '1.5px']}
             borderColor={'myGray.200'}
@@ -207,14 +221,15 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             {feConfigs?.systemTitle}
           </Box>
         </Flex>
-        {!isPc && <I18nLngSelector />}
       </Flex>
-      {children}
+      <Box w={'100%'} mt={[8, 0]}>
+        {children}
+      </Box>
       {show_oauth && (
-        <Box mt={['80px', 9]}>
+        <Box mt={['8', 9]} w={'100%'}>
           <Box flex={1} />
 
-          <Flex position={'relative'} mb={5} alignItems={'center'}>
+          <Flex position={'relative'} mb={4} alignItems={'center'}>
             <Box h={'1px'} flex={'1'} bg={'myGray.250'} />
             <Box px={3} color={'myGray.500'} fontSize={'mini'}>
               or

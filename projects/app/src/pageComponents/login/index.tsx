@@ -3,15 +3,15 @@ import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import dynamic from 'next/dynamic';
 import Script from 'next/script';
 import { useTranslation } from 'next-i18next';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
 import CookieConsentModal from './components/CookieConsentModal';
 import LoginFormPanel from './components/LoginFormPanel';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
-
-const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+import PolicyTip from './LoginForm/PolicyTip';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 // login container component
 export const LoginContainer = ({
@@ -24,9 +24,10 @@ export const LoginContainer = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { resetChatCache } = useChatStore();
+  const { isPc } = useSystem();
+  const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
-  const [showCommunityModal, setShowCommunityModal] = useState(false);
 
   // login success handler
   const loginSuccess = useCallback(
@@ -55,36 +56,54 @@ export const LoginContainer = ({
         my={['', pageType === LoginPageTypeEnum.wechat ? '-15px' : '']}
         position="relative"
         w="full"
-        flex={'1 0 0'}
+        flex={['1 0 0', '0 0 auto']}
         flexDirection={'column'}
+        justifyContent={['center', 'flex-start']}
       >
+        {!isPc && (
+          <Box mb={8} alignSelf={'flex-start'}>
+            <I18nLngSelector />
+          </Box>
+        )}
+
         {/* main content area */}
-        <LoginFormPanel pageType={pageType} setPageType={setPageType} loginSuccess={loginSuccess} />
+        <LoginFormPanel
+          pageType={pageType}
+          setPageType={setPageType}
+          loginSuccess={loginSuccess}
+          reserveLoginGuideSpace={
+            pageType === LoginPageTypeEnum.passwordLogin && !!loginGuideDocUrl
+          }
+        />
 
         {/* custom content */}
         {children}
 
         {/* help link for login */}
-        {feConfigs?.concatMd && (
+        {pageType === LoginPageTypeEnum.passwordLogin && loginGuideDocUrl && (
           <Box
-            mt={[9, '6']}
+            mt={[8, 8]}
             color={'primary.700'}
             fontSize={'mini'}
             fontWeight={'medium'}
+            lineHeight={'16px'}
             cursor={'pointer'}
             textAlign={'center'}
-            onClick={() => setShowCommunityModal(true)}
+            onClick={() => window.open(loginGuideDocUrl, '_blank', 'noopener,noreferrer')}
           >
             {t('common:support.user.login.can_not_login')}
+          </Box>
+        )}
+
+        {pageType === LoginPageTypeEnum.passwordLogin && (
+          <Box mt={[0, 0]}>
+            <PolicyTip />
           </Box>
         )}
       </Flex>
 
       <CookieConsentModal />
       <ChineseRedirectModal />
-
-      {/* Community modal */}
-      {showCommunityModal && <CommunityModal onClose={() => setShowCommunityModal(false)} />}
     </>
   );
 };

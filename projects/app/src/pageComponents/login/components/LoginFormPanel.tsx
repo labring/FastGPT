@@ -14,9 +14,15 @@ type LoginFormPanelProps = {
   pageType: `${LoginPageTypeEnum}`;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (res: LoginSuccessResponseType) => void;
+  reserveLoginGuideSpace?: boolean;
 };
 
-const LoginFormPanel = ({ pageType, setPageType, loginSuccess }: LoginFormPanelProps) => {
+const LoginFormPanel = ({
+  pageType,
+  setPageType,
+  loginSuccess,
+  reserveLoginGuideSpace
+}: LoginFormPanelProps) => {
   const DynamicComponent = useMemo(() => {
     if (!pageType) return null;
 
@@ -34,7 +40,7 @@ const LoginFormPanel = ({ pageType, setPageType, loginSuccess }: LoginFormPanelP
   }, [pageType, setPageType, loginSuccess]);
 
   return (
-    <Box w={['100%', '380px']} flex={['', '1 0 0']}>
+    <Box w={['100%', '380px']} flex={['0 0 auto', reserveLoginGuideSpace ? '1 0 0' : '0 0 auto']}>
       {pageType && DynamicComponent ? DynamicComponent : <Loading fixed={false} />}
     </Box>
   );

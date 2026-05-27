@@ -1,14 +1,12 @@
-import React, { useEffect, type Dispatch } from 'react';
+import React, { type Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin, getPreLogin } from '@/web/support/user/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './FormLayout';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import PolicyTip from './PolicyTip';
 import { useSearchParams } from 'next/navigation';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { useRouter } from 'next/router';
@@ -108,7 +106,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
-        mt={8}
+        mt={[0, 8]}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();
@@ -117,7 +115,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       >
         <FormControl isInvalid={!!errors.username}>
           <Input
-            bg={'myGray.50'}
+            bg={'white'}
             size={'lg'}
             placeholder={placeholder}
             {...register('username', {
@@ -125,9 +123,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             })}
           ></Input>
         </FormControl>
-        <FormControl mt={7} isInvalid={!!errors.password}>
+        <FormControl mt={6} isInvalid={!!errors.password}>
           <Input
-            bg={'myGray.50'}
+            bg={'white'}
             size={'lg'}
             type={'password'}
             placeholder={
@@ -144,14 +142,11 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             })}
           ></Input>
         </FormControl>
-        <PolicyTip isCenter={false} />
-
         <Button
           type="submit"
-          my={[5, 7]}
+          mt={6}
           w={'100%'}
-          size={['md', 'md']}
-          h={[10, 10]}
+          size={'lg'}
           fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
@@ -161,10 +156,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </Button>
 
         <Flex
+          mt={6}
           align={'center'}
-          justifyContent={['flex-end', 'center']}
+          justifyContent={'center'}
+          gap={0}
           color={'primary.700'}
           fontWeight={'medium'}
+          h={'16px'}
+          lineHeight={'16px'}
         >
           {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
             <Box
@@ -177,17 +176,18 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             </Box>
           )}
           {feConfigs?.register_method && feConfigs.register_method.length > 0 && (
-            <Flex alignItems={'center'}>
-              <Box mx={3} h={'12px'} w={'1px'} bg={'myGray.250'}></Box>
+            <>
+              <Box display={['block', 'block']} mx={3} h={'12px'} w={'1px'} bg={'myGray.250'}></Box>
               <Box
                 cursor={'pointer'}
                 _hover={{ textDecoration: 'underline' }}
                 onClick={() => setPageType('register')}
                 fontSize="mini"
+                lineHeight="16px"
               >
                 {t('login:register')}
               </Box>
-            </Flex>
+            </>
           )}
         </Flex>
       </Box>
