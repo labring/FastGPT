@@ -8,6 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoChatCorrection } from '@fastgpt/service/core/chat/correction/schema';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 /*
@@ -117,7 +118,26 @@ export async function checkInvalidVector(start: Date, end: Date) {
         'indexes.dataId': item.id
       });
 
-      // 3. if not found, delete vector
+      // 3. if not found in dataset data, check chat corrections
+      if (hasData === 0) {
+        const hasCorrection = await MongoChatCorrection.countDocuments({
+          teamId: item.teamId,
+          'correctionData.indexs.dataId': item.id
+        });
+
+        if (hasCorrection > 0) {
+          if (index % 100 === 0) {
+            logger.debug('Skipping correction vector', {
+              vectorId: item.id,
+              teamId: item.teamId
+            });
+          }
+          index++;
+          continue;
+        }
+      }
+
+      // 4. if not found, delete vector
       if (hasData === 0) {
         await deleteDatasetDataVector({
           teamId: item.teamId,
