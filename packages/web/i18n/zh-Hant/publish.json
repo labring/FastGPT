@@ -57,7 +57,7 @@
   "wechat.login": "掃碼登入",
   "wechat.login_success": "登入成功",
   "wechat.login_title": "微信掃碼登入",
-  "wechat.logout": "登出",
+  "wechat.logout": "退出登錄",
   "wechat.name_placeholder": "請輸入頻道名稱",
   "wechat.qr_generate_failed": "QR 碼產生失敗，請重試",
   "wechat.relogin": "重新登入",
