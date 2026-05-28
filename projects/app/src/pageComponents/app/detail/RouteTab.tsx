@@ -91,7 +91,10 @@ const RouteTab = () => {
   );
 
   const tabList = useMemo(
-    () => (appDetail.type === AppTypeEnum.assistant ? assistantTabList : otherTypeTabList),
+    () =>
+      [AppTypeEnum.assistant, AppTypeEnum.chatAgent, AppTypeEnum.workflow].includes(appDetail.type)
+        ? assistantTabList
+        : otherTypeTabList,
     [appDetail.type, assistantTabList, otherTypeTabList]
   );
 

@@ -217,6 +217,7 @@ const ChatItem = (props: Props) => {
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const isAssistantType = useContextSelector(ChatBoxContext, (v) => v.isAssistantType);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -535,7 +536,7 @@ const ChatItem = (props: Props) => {
                 </MyTag>
               </MyTooltip>
             )}
-            {chat.quoteList && chat.quoteList.length === 0 && (
+            {isAssistantType && chat.quoteList && chat.quoteList.length === 0 && (
               <MyTag colorSchema="pink" showDot={false}>
                 <Flex alignItems={'center'}>
                   <MyIcon w={'14px'} name="common/info" mr={1} />

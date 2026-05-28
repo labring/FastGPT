@@ -66,7 +66,8 @@ export const DefaultAssistantLogKey = [
   { key: AppLogKeysEnum.FEEDBACK, enable: true },
   { key: AppLogKeysEnum.OPTIMIZED_COUNT, enable: true },
   { key: AppLogKeysEnum.RESPONSE_TIME, enable: false },
-  { key: AppLogKeysEnum.ERROR_COUNT, enable: false }
+  { key: AppLogKeysEnum.ERROR_COUNT, enable: false },
+  { key: AppLogKeysEnum.VERSION_NAME, enable: false }
 ];
 
 export const AssistantAppLogKeysEnumMap = {
@@ -83,7 +84,8 @@ export const AssistantAppLogKeysEnumMap = {
   [AppLogKeysEnum.OPTIMIZED_COUNT]: i18nT('app:logs_keys_optimizedCount'),
   [AppLogKeysEnum.POINTS]: i18nT('app:logs_keys_points'),
   [AppLogKeysEnum.RESPONSE_TIME]: i18nT('app:logs_keys_responseTime'),
-  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount')
+  [AppLogKeysEnum.ERROR_COUNT]: i18nT('app:logs_keys_errorCount'),
+  [AppLogKeysEnum.VERSION_NAME]: i18nT('app:logs_keys_versionName')
 };
 
 export enum AppLogTimespanEnum {

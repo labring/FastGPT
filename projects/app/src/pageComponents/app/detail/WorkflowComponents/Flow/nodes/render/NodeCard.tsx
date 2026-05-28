@@ -84,6 +84,7 @@ const NodeCard = (props: Props) => {
   const { t } = useTranslation();
 
   const { feConfigs } = useSystemStore();
+  const { toast } = useToast();
 
   const {
     children,
@@ -244,6 +245,24 @@ const NodeCard = (props: Props) => {
     return false;
   }, [isAppNode, node]);
 
+  const childAppId = useMemo(() => {
+    if (!pluginId) return;
+    const rawId = getToolRawId(pluginId);
+    const result = ObjectIdSchema.safeParse(rawId);
+    if (result.success) return rawId;
+    return undefined;
+  }, [pluginId]);
+
+  const { runAsync: onGetPermission } = useRequest(getAppPermission, {
+    onSuccess(permission) {
+      if (permission.hasWritePer) {
+        window.open(`/app/detail?appId=${childAppId}&currentTab=appEdit`, '_blank');
+      } else {
+        toast({ title: t('workflow:no_edit_permission'), status: 'warning' });
+      }
+    }
+  });
+
   const { data: nodeTemplate } = useRequest(
     async () => {
       if (node?.pluginData?.error) {
@@ -357,11 +376,23 @@ const NodeCard = (props: Props) => {
                       avatar={avatar}
                       name={name}
                       searchedText={searchedText}
-                      appId={pluginId}
                     />
 
                     <Box flex={1} mr={1} />
 
+                    {childAppId && (
+                      <Button
+                        className="node-hover-controller"
+                        visibility={'hidden'}
+                        mr={2}
+                        variant={'whiteBase'}
+                        size={'sm'}
+                        leftIcon={<MyIcon name={'common/routePushLight' as any} w={'14px'} />}
+                        onClick={() => onGetPermission(childAppId)}
+                      >
+                        {t('workflow:to_app_detail')}
+                      </Button>
+                    )}
                     {showVersion && <NodeVersion node={node!} />}
 
                     <NodeActionButtons
@@ -440,21 +471,10 @@ const NodeTitleSection = React.memo<{
   avatar: string;
   name: string;
   searchedText?: string;
-  appId?: string;
-}>(({ nodeId, avatar, name, searchedText, appId }) => {
+}>(({ nodeId, avatar, name, searchedText }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const childAppId = useMemo(() => {
-    if (!appId) return;
-    const rawId = getToolRawId(appId);
-    const result = ObjectIdSchema.safeParse(rawId);
-    if (result.success) {
-      return rawId;
-    }
-    return undefined;
-  }, [appId]);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -482,19 +502,6 @@ const NodeTitleSection = React.memo<{
     });
   }, [onOpenCustomTitleModal, name, onChangeNode, nodeId, toast, t]);
 
-  const { runAsync: onGetPermission } = useRequest(getAppPermission, {
-    onSuccess(permission) {
-      if (permission.hasWritePer) {
-        window.open(`/app/detail?appId=${childAppId}`, '_blank');
-      } else {
-        toast({
-          title: t('workflow:no_edit_permission'),
-          status: 'warning'
-        });
-      }
-    }
-  });
-
   return (
     <Flex alignItems={'center'}>
       <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'24px'} h={'24px'} />
@@ -509,16 +516,6 @@ const NodeTitleSection = React.memo<{
       <Box ml={1} visibility={'hidden'}>
         <MyIconButton className="node-hover-controller" icon="edit" onClick={handleRenameClick} />
       </Box>
-      {childAppId && (
-        <Box ml={1} visibility={'hidden'}>
-          <MyIconButton
-            className="node-hover-controller"
-            icon="common/link"
-            tip={t('workflow:to_app_detail')}
-            onClick={() => onGetPermission(childAppId)}
-          />
-        </Box>
-      )}
 
       <EditTitleModal maxLength={100} />
     </Flex>

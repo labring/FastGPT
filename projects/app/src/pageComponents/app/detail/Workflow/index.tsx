@@ -18,6 +18,7 @@ import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
 
 const Logs = dynamic(() => import('../Logs/index'));
+const Dashboard = dynamic(() => import('../Dashboard/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const WorkflowEdit = () => {
@@ -64,6 +65,7 @@ const WorkflowEdit = () => {
       ) : (
         <Flex flexDirection={'column'} h={'100%'} mt={'48px'} p={4}>
           <Box flex={1} minH={0} overflow={'hidden'} {...cardStyles}>
+            {currentTab === TabEnum.dashboard && <Dashboard />}
             {currentTab === TabEnum.publish && <PublishChannel />}
             {currentTab === TabEnum.logs && <Logs />}
           </Box>
