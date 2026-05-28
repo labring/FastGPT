@@ -53,4 +53,5 @@ export type AppLogsListItemType = {
   outLinkUid?: string;
   tmbId: string;
   sourceMember: SourceMember;
+  versionName?: string | null;
 };

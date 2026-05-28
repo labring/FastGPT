@@ -209,7 +209,7 @@
   "text_to_extract": "要擷取的文字",
   "these_variables_will_be_input_parameters_for_code_execution": "這些變數會作為程式碼執行的輸入參數",
   "to_add_node": "添加節點",
-  "to_app_detail": "前去編輯應用",
+  "to_app_detail": "編輯應用",
   "to_connect_node": "連接節點",
   "tool.tool_result": "工具運行結果",
   "tool_active_config": "工具激活",

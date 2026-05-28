@@ -210,7 +210,7 @@
   "text_to_extract": "需要提取的文本",
   "these_variables_will_be_input_parameters_for_code_execution": "这些变量会作为代码的运行的输入参数",
   "to_add_node": "添加节点",
-  "to_app_detail": "前去编辑应用",
+  "to_app_detail": "编辑应用",
   "to_connect_node": "连接节点",
   "tool.tool_result": "工具运行结果",
   "tool_active_config": "工具激活",

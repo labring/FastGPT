@@ -14,6 +14,7 @@ type Props = {
   goodTotal?: number;
   badTotal?: number;
   notFoundTotal?: number;
+  showNotFoundKnowledgeTab?: boolean;
 };
 
 const Header = ({
@@ -24,7 +25,8 @@ const Header = ({
   totalCount = 0,
   goodTotal = 0,
   badTotal = 0,
-  notFoundTotal = 0
+  notFoundTotal = 0,
+  showNotFoundKnowledgeTab = true
 }: Props) => {
   const { t } = useTranslation();
 
@@ -57,10 +59,14 @@ const Header = ({
       label: `${t('app:logs_filter_good')}(${getTabCount(ChatLogsFilterEnum.good)})`,
       value: ChatLogsFilterEnum.good
     },
-    {
-      label: `${t('app:logs_filter_not_found_knowledge')}(${getTabCount(ChatLogsFilterEnum.notFoundKnowledge)})`,
-      value: ChatLogsFilterEnum.notFoundKnowledge
-    }
+    ...(showNotFoundKnowledgeTab
+      ? [
+          {
+            label: `${t('app:logs_filter_not_found_knowledge')}(${getTabCount(ChatLogsFilterEnum.notFoundKnowledge)})`,
+            value: ChatLogsFilterEnum.notFoundKnowledge
+          }
+        ]
+      : [])
   ];
 
   return (

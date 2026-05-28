@@ -144,7 +144,7 @@ const Header = () => {
           top={0}
           left={0}
           right={0}
-          zIndex={100}
+          zIndex={currentTab === TabEnum.appEdit ? 100 : 1}
           {...(currentTab === TabEnum.appEdit
             ? {
                 bgGradient: 'linear(180deg, #F2F8FF 0%, #F7F9FC 12%)'

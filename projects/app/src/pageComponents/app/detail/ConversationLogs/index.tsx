@@ -170,9 +170,7 @@ const ConversationLogs = () => {
     appId,
     handleLogFiltersChange,
     handleExport,
-    isExporting,
-    handleExportLogs,
-    exportTotal
+    isExporting
   ]);
 
   return (

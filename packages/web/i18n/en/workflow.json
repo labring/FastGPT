@@ -209,7 +209,7 @@
   "text_to_extract": "Text for extraction",
   "these_variables_will_be_input_parameters_for_code_execution": "These variables will be used as input parameters for code execution.",
   "to_add_node": "add node",
-  "to_app_detail": "Go to edit app",
+  "to_app_detail": "Edit app",
   "to_connect_node": "connect to node",
   "tool.tool_result": "Tool running result",
   "tool_active_config": "Activate tool",

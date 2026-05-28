@@ -100,6 +100,9 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
       ),
       [AppLogKeysEnum.ERROR_COUNT]: (
         <Th key={AppLogKeysEnum.ERROR_COUNT}>{t('app:logs_error_count')}</Th>
+      ),
+      [AppLogKeysEnum.VERSION_NAME]: (
+        <Th key={AppLogKeysEnum.VERSION_NAME}>{t('app:logs_keys_versionName')}</Th>
       )
     };
   }, [t, filters?.logKeys]);
@@ -181,7 +184,12 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
         {item.averageResponseTime ? `${item.averageResponseTime.toFixed(2)}s` : '-'}
       </Td>
     ),
-    [AppLogKeysEnum.ERROR_COUNT]: <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
+    [AppLogKeysEnum.ERROR_COUNT]: (
+      <Td key={AppLogKeysEnum.ERROR_COUNT}>{item.errorCount || '-'}</Td>
+    ),
+    [AppLogKeysEnum.VERSION_NAME]: (
+      <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>
+    )
   });
 
   return (
@@ -201,7 +209,7 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
               return (
                 <Tr
                   key={item._id}
-                  _hover={{ bg: 'myWhite.600' }}
+                  _hover={{ bg: 'myGray.50' }}
                   cursor={'pointer'}
                   title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.chatId)}
