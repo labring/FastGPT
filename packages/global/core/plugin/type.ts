@@ -1,5 +1,6 @@
 import z from 'zod';
-import { i18nT, I18nUnionStringSchema } from '../../common/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
+import { I18nUnionStringSchema } from '../../common/i18n/type';
 
 export const I18nStringSchema = z.object({
   en: z.string(),

@@ -1,5 +1,4 @@
 import { i18nT } from '../../../../common/i18n/utils';
-import { i18nT } from '../../../../../web/i18n/utils';
 /**
  * 系统插件密钥来源
  */

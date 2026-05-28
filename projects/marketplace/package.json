@@ -25,7 +25,6 @@
     "@fastgpt/global": "workspace:*",
     "@fastgpt-sdk/otel": "workspace:*",
     "@t3-oss/env-core": "catalog:",
-    "@fastgpt-sdk/logger": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",

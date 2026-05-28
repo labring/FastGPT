@@ -33,6 +33,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
@@ -178,7 +179,7 @@ const RenderList = React.memo(function RenderList({
 }: Props & {
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
-  allTags: Array<{ tagId: string; tagName: any }>;
+  allTags: SystemPluginToolTagType[];
 }) {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();

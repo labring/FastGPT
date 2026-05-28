@@ -8,7 +8,6 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
-import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getUserAvaliableWorkflowTools } from '../../../../app/tool/workflowTool';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 
