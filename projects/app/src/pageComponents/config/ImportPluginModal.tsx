@@ -407,7 +407,6 @@ const ImportPluginModal = ({
 
       <Box flex={1} px={8} overflow={'auto'}>
         <FileSelectorBox
-          maxCount={100}
           fileType=".pkg,.zip"
           selectFiles={selectFiles}
           setSelectFiles={onSelectFiles}
@@ -514,8 +513,7 @@ const ImportPluginModal = ({
                       color={'yellow.500'}
                       gap={1}
                     >
-                      {t('app:custom_plugin_duplicate')}
-                      <QuestionTip label={t('app:custom_plugin_duplicate_tip')} />
+                      {t('app:custom_plugin_update')}
                     </Flex>
                   )}
                   {item.status === 'success' && (

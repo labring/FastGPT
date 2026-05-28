@@ -54,6 +54,11 @@ export class InvokeProcessor {
     }
   }
 
+  getSessionWithPermission(permission: PluginPermissionEnumType): InvokeSessionType {
+    this.assertPermission(permission);
+    return InvokeSessionSchema.parse(this.session);
+  }
+
   async handleFileUpload(params: InvokeFileUploadType) {
     this.assertPermission(PluginPermissionEnum['file-upload:allow']);
 

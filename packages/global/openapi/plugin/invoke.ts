@@ -29,6 +29,28 @@ export type InvokeUserInfoQueryType = z.infer<typeof InvokeUserInfoQuerySchema>;
 export type InvokeUserInfoResponseType = z.infer<typeof InvokeUserInfoResponseSchema>;
 
 /* ============================================================================
+ * API: 获取反向调用企微企业访问凭证
+ * Route: POST /api/invoke/wecom/corpToken
+ * Method: POST
+ * Description: 通过 invoke token 获取当前运行团队的企微企业短期访问凭证
+ * Tags: ['Plugin', 'Invoke', 'Wecom', 'Read']
+ * ============================================================================ */
+export const InvokeWecomCorpTokenBodySchema = z.object({});
+
+export const InvokeWecomCorpTokenQuerySchema = z.object({});
+
+export const InvokeWecomCorpTokenResponseSchema = z.object({
+  accessToken: z.string().describe('企微企业访问凭证'),
+  expiresIn: z.number().describe('凭证有效期，单位秒')
+});
+
+export type InvokeWecomCorpTokenBodyType = z.infer<typeof InvokeWecomCorpTokenBodySchema>;
+export type InvokeWecomCorpTokenQueryType = z.infer<typeof InvokeWecomCorpTokenQuerySchema>;
+export type InvokeWecomCorpTokenResponseType = z.infer<
+  typeof InvokeWecomCorpTokenResponseSchema
+>;
+
+/* ============================================================================
  * API: 反向调用文件上传
  * Route: POST /api/invoke/fileUpload
  * Method: POST
