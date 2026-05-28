@@ -38,6 +38,11 @@ x-log-config: &x-log-config
   LOG_ENABLE_OTEL: false
   LOG_OTEL_LEVEL: info
   LOG_OTEL_URL: http://localhost:4318/v1/logs
+# 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
+# 明确绕过 compose 内部服务，避免内部请求被代理劫持。
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -193,7 +198,7 @@ services:
     restart: always
     environment:
       # 完整变量请参考: https://github.com/labring/FastGPT/blob/main/projects/app/.env.template
-      <<: [*x-share-db-config, *x-vec-config, *x-log-config]
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
@@ -253,7 +258,7 @@ services:
       - codesandbox
     restart: always
     environment:
-      <<: [*x-log-config]
+      <<: [*x-log-config, *x-no-proxy-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
       SANDBOX_TOKEN: *x-code-sandbox-token
       # ===== Resource Limits =====
@@ -314,7 +319,7 @@ services:
       - data
       - app
     environment:
-      <<: [*x-share-db-config, *x-log-config]
+      <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
       AUTH_TOKEN: *x-plugin-auth-token
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
@@ -350,6 +355,7 @@ services:
       - source: opensandbox-config
         target: /etc/opensandbox/config.toml
     environment:
+      <<: [*x-no-proxy-config]
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
       test:
@@ -385,6 +391,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载，需检查是否与主机的 socket 文件一致
     environment:
+      <<: [*x-no-proxy-config]
       PORT: 3000
       VM_RUNTIME: docker
       VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
@@ -482,7 +489,6 @@ configs:
       host = "0.0.0.0"
       port = 8090
       log_level = "INFO"
-
       [runtime]
       type = "docker"
       execd_image = "registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-execd:v1.0.7"
@@ -491,7 +497,7 @@ configs:
       image = "registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-egress:v1.0.3"
 
       [docker]
-      network_mode = "fastgpt_opensandbox"
+      network_mode = "bridge"
       # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable (e.g. host.docker.internal or the host LAN IP).
       # It's required when server deployed with docker container under host.
       host_ip = "host.docker.internal"
