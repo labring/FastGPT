@@ -749,5 +749,7 @@
   "custom_domain_count": "自定义域名数量",
   "max_upload_file_size_field": "最大上传文件大小（MB）",
   "max_upload_file_count_field": "最大上传文件数量",
-  "sandbox": "虚拟机"
+  "sandbox": "虚拟机",
+  "show_dataset_search_params": "知识检索参数",
+  "show_dataset_search_params_tip": "开启后，在应用中进行知识检索时，可更改标准检索中的默认参数。"
 }

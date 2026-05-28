@@ -80,7 +80,11 @@ export const appWorkflow2AgentForm = ({
           ...defaultAppForm.dataset,
           ...parsedDatasetParams,
           searchMode: parsedDatasetParams.searchMode || DatasetSearchModeEnum.mixedRecall,
-          usingReRank: !!parsedDatasetParams.usingReRank
+          usingReRank: !!parsedDatasetParams.usingReRank,
+          embeddingModel:
+            parsedDatasetParams.embeddingModel ||
+            parsedDatasetParams.datasets?.find((d) => d.vectorModel?.model)?.vectorModel?.model ||
+            ''
         };
       }
 
@@ -250,7 +254,9 @@ export function agentForm2AppWorkflow(
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
+                generateSqlModel: data.dataset.generateSqlModel,
                 collectionFilterMatch: data.dataset.collectionFilterMatch,
+                authTmbId: data.dataset.authTmbId,
                 retrievalMode: data.dataset.retrievalMode,
                 agenticSearchLLMModel: data.dataset.agenticSearchLLMModel,
                 agenticSearchReasoning: data.dataset.agenticSearchReasoning,

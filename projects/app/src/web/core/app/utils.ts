@@ -25,6 +25,8 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { DatasetRetrievalModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import {
@@ -728,7 +730,10 @@ export function form2AppWorkflow(
       };
     }
 
-    formData.dataset.datasetSearchExtensionModel = formData.aiSettings.model;
+    // 当开关关闭时，扩展模型跟随 AI 对话模型；开关开启时保留用户弹窗中的选择
+    if (!useSystemStore.getState().feConfigs.show_dataset_search_params) {
+      formData.dataset.datasetSearchExtensionModel = formData.aiSettings.model;
+    }
 
     // 创建回复模式判断节点
     function createReplyModeCheckerNode(
@@ -1384,6 +1389,7 @@ export const calculateDatasetLimit = (nodes: StoreNodeItemType[]): number => {
  * @returns 更新后的节点列表
  */
 export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): StoreNodeItemType[] => {
+  const { show_dataset_search_params } = useSystemStore.getState().feConfigs;
   // 计算动态 limit
   const calculatedLimit = calculateDatasetLimit(nodes);
 
@@ -1391,6 +1397,18 @@ export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): Store
   const updatedNodes = nodes.map((node) => {
     // 只处理 datasetSearchNode
     if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      const retrievalMode = node.inputs.find(
+        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.datasetRetrievalMode
+      )?.value;
+      const effectiveRetrievalMode = retrievalMode || DatasetRetrievalModeEnum.standard;
+
+      // 开关开启 + 标准检索时，用户手动配置的值，不做覆盖
+      if (show_dataset_search_params) {
+        if (effectiveRetrievalMode === DatasetRetrievalModeEnum.standard) {
+          return node;
+        }
+      }
+
       return {
         ...node,
         inputs: node.inputs.map((input: FlowNodeInputItemType) => {

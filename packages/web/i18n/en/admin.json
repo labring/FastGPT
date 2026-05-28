@@ -749,5 +749,7 @@
   "custom_domain_count": "Custom domain count",
   "max_upload_file_size_field": "Max upload file size (MB)",
   "max_upload_file_count_field": "Max upload file count",
-  "sandbox": "Sandbox"
+  "sandbox": "Sandbox",
+  "show_dataset_search_params": "Knowledge retrieval parameters",
+  "show_dataset_search_params_tip": "When enabled, you can change the default parameters in standard retrieval during knowledge retrieval in the app."
 }

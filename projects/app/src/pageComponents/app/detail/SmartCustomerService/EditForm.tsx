@@ -48,6 +48,7 @@ import {
   type AppDatasetSearchParamsType
 } from '@fastgpt/global/core/app/type';
 import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
+import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import SfRadio from '@/components/SF/SfRadio';
 import SfLeftRadio from '@/components/SF/SfLeftRadio';
 import TagFilterSection from './TagFilterSection';
@@ -103,10 +104,14 @@ const EditForm = ({
     [appForm.dataset.datasets]
   );
   const [, startTst] = useTransition();
-  const { llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
+  const { feConfigs, llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
+  const showDatasetSearchParams = feConfigs.show_dataset_search_params;
 
-  // 从选中知识库中获取向量模型 ID（所有知识库限制使用同一向量模型）
-  const datasetVectorModel = useMemo(() => selectDatasets[0]?.vectorModel?.model, [selectDatasets]);
+  // 从选中知识库中获取向量模型 ID（优先取有向量模型的非数据库知识库，避免数据库类型排在首位时取到空值）
+  const datasetVectorModel = useMemo(
+    () => selectDatasets.find((d) => d.vectorModel?.model)?.vectorModel?.model,
+    [selectDatasets]
+  );
 
   // 向量模型可选项：知识库为空时展示空列表；否则展示与知识库向量模型匹配的模型
   const embeddingModelSelectList = useMemo(
@@ -162,6 +167,11 @@ const EditForm = ({
     isOpen: isOpenDatasetSelect,
     onOpen: onOpenKbSelect,
     onClose: onCloseKbSelect
+  } = useDisclosure();
+  const {
+    isOpen: isOpenDatasetParamsModal,
+    onOpen: onOpenDatasetParamsModal,
+    onClose: onCloseDatasetParamsModal
   } = useDisclosure();
 
   const formatVariables = useMemo(
@@ -439,48 +449,66 @@ const EditForm = ({
               }}
             />
           </FormItem>
-          <FormItem
-            label={t('app:smart_customer_service_embedding_model')}
-            tooltip={t('app:smart_customer_service_embedding_model_tip')}
-          >
-            <Box flex={1}>
-              <AIModelSelector
-                h={'32px'}
-                value={appForm.dataset.embeddingModel}
-                list={embeddingModelSelectList}
-                onChange={(model) => {
-                  setAppForm((state) => ({
-                    ...state,
-                    dataset: {
-                      ...state.dataset,
-                      embeddingModel: model
-                    }
-                  }));
-                }}
-              />
-            </Box>
-          </FormItem>
-          <FormItem label={t('app:smart_customer_service_rerank_model')}>
-            <Box flex={1}>
-              <AIModelSelector
-                h={'32px'}
-                value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
-                list={reRankModelList.map((item) => ({
-                  value: item.model,
-                  label: item.name
-                }))}
-                onChange={(model) => {
-                  setAppForm((state) => ({
-                    ...state,
-                    dataset: {
-                      ...state.dataset,
-                      rerankModel: model
-                    }
-                  }));
-                }}
-              />
-            </Box>
-          </FormItem>
+          {/* 向量模型 & 重排模型 / 参数配置 */}
+          {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic ||
+          !showDatasetSearchParams ? (
+            <>
+              <FormItem
+                label={t('app:smart_customer_service_embedding_model')}
+                tooltip={t('app:smart_customer_service_embedding_model_tip')}
+              >
+                <Box flex={1}>
+                  <AIModelSelector
+                    h={'32px'}
+                    value={appForm.dataset.embeddingModel}
+                    list={embeddingModelSelectList}
+                    onChange={(model) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        dataset: {
+                          ...state.dataset,
+                          embeddingModel: model
+                        }
+                      }));
+                    }}
+                  />
+                </Box>
+              </FormItem>
+              <FormItem label={t('app:smart_customer_service_rerank_model')}>
+                <Box flex={1}>
+                  <AIModelSelector
+                    h={'32px'}
+                    value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
+                    list={reRankModelList.map((item) => ({
+                      value: item.model,
+                      label: item.name
+                    }))}
+                    onChange={(model) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        dataset: {
+                          ...state.dataset,
+                          rerankModel: model
+                        }
+                      }));
+                    }}
+                  />
+                </Box>
+              </FormItem>
+            </>
+          ) : (
+            /* 标准检索 + 开关开启: 参数配置入口 */
+            <FormItem label={t('app:Params_config')}>
+              <Box flex={1} display="flex" alignItems="center">
+                <MyIcon
+                  name="common/settingLight"
+                  w="16px"
+                  cursor="pointer"
+                  onClick={onOpenDatasetParamsModal}
+                />
+              </Box>
+            </FormItem>
+          )}
           {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (
             <FormItem
               label={t('app:retrieval_output_thinking')}
@@ -668,6 +696,28 @@ const EditForm = ({
                 ...state.dataset,
                 datasets: e
               }
+            }));
+          }}
+        />
+      )}
+      {/* 标准检索参数配置弹窗 */}
+      {isOpenDatasetParamsModal && (
+        <DatasetParamsModal
+          {...appForm.dataset}
+          searchMode={
+            appForm.dataset.searchMode === DatasetSearchModeEnum.database
+              ? DatasetSearchModeEnum.embedding
+              : appForm.dataset.searchMode
+          }
+          maxTokens={tokenLimit}
+          datasetVectorModel={datasetVectorModel}
+          hasDatabaseKnowledge={knowledgeTypeConfig.hasDatabaseKnowledge}
+          hasOtherKnowledge={knowledgeTypeConfig.hasOtherKnowledge}
+          onClose={onCloseDatasetParamsModal}
+          onSuccess={(e) => {
+            setAppForm((state) => ({
+              ...state,
+              dataset: { ...state.dataset, ...e }
             }));
           }}
         />

@@ -190,8 +190,9 @@ const DatasetParamsModal = ({
     [hasDatabaseKnowledge, hasOtherKnowledge]
   );
 
-  const renderHeader = useMemo(() => {
-    return (
+  // 包含数据库检索模型选择器，generateSqlModelWatch 需在依赖中以确保切换模型后 UI 响应更新
+  const renderHeader = useMemo(
+    () => (
       <>
         {showModelTitle && (
           <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4}>
@@ -242,8 +243,9 @@ const DatasetParamsModal = ({
           </>
         )}
       </>
-    );
-  }, [queryExtensionModelList, showModelTitle, t]);
+    ),
+    [queryExtensionModelList, showModelTitle, t, hasDatabaseKnowledge, generateSqlModelWatch, setValue]
+  );
 
   const embeddingModelFormItem = useMemo(
     () => (
