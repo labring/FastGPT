@@ -3,7 +3,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import dynamic from 'next/dynamic';
 import Script from 'next/script';
 import { useTranslation } from 'next-i18next';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
@@ -14,8 +13,6 @@ import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
-
-const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 // login container component
 export const LoginContainer = ({
@@ -32,7 +29,6 @@ export const LoginContainer = ({
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
 
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
-  const [showCommunityModal, setShowCommunityModal] = useState(false);
 
   // login success handler
   const loginSuccess = useCallback(
@@ -77,8 +73,7 @@ export const LoginContainer = ({
           setPageType={setPageType}
           loginSuccess={loginSuccess}
           reserveLoginGuideSpace={
-            pageType === LoginPageTypeEnum.passwordLogin &&
-            !!(loginGuideDocUrl || feConfigs?.concatMd)
+            pageType === LoginPageTypeEnum.passwordLogin && !!loginGuideDocUrl
           }
         />
 
@@ -86,33 +81,26 @@ export const LoginContainer = ({
         {children}
 
         {/* help link for login */}
-        {pageType === LoginPageTypeEnum.passwordLogin &&
-          (loginGuideDocUrl || feConfigs?.concatMd) && (
-            <Box
-              mt={[8, 8]}
-              color={'primary.700'}
-              fontSize={'mini'}
-              fontWeight={'medium'}
-              lineHeight={'16px'}
-              cursor={'pointer'}
-              textAlign={'center'}
-              onClick={() => {
-                if (loginGuideDocUrl) {
-                  window.open(loginGuideDocUrl, '_blank', 'noopener,noreferrer');
-                } else {
-                  setShowCommunityModal(true);
-                }
-              }}
-            >
-              {t('common:support.user.login.can_not_login')}
-            </Box>
-          )}
+        {pageType === LoginPageTypeEnum.passwordLogin && loginGuideDocUrl && (
+          <Box
+            mt={[8, 8]}
+            color={'primary.700'}
+            fontSize={'mini'}
+            fontWeight={'medium'}
+            lineHeight={'16px'}
+            cursor={'pointer'}
+            textAlign={'center'}
+            onClick={() => {
+              window.open(loginGuideDocUrl, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            {t('common:support.user.login.can_not_login')}
+          </Box>
+        )}
       </Flex>
 
       <CookieConsentModal />
       <ChineseRedirectModal />
-
-      {showCommunityModal && <CommunityModal onClose={() => setShowCommunityModal(false)} />}
     </>
   );
 };

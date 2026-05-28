@@ -27,6 +27,8 @@ import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/co
 import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
+const defaultOpenSourceLoginGuideDocUrl =
+  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -174,6 +176,10 @@ export async function initSystemConfig() {
     },
     subPlans: fastgptConfig.subPlans
   };
+
+  if (!licenseData) {
+    config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
+  }
 
   // set config
   initFastGPTConfig(config);
