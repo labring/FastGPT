@@ -2,17 +2,19 @@ import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Link } from '@chakra-ui/react';
 import React from 'react';
-import { Trans } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 
 const PolicyTip = () => {
   const { feConfigs } = useSystemStore();
+  const { i18n } = useTranslation();
+  const isEnglish = i18n.language === 'en';
 
   return (
     <>
       {feConfigs?.docUrl && (
         <Box
           display={'block'}
-          textAlign={'left'}
+          textAlign={isEnglish ? 'center' : 'left'}
           mt={6}
           fontSize={'mini'}
           lineHeight={'16px'}
@@ -22,7 +24,7 @@ const PolicyTip = () => {
           <Trans
             i18nKey="login:policy_tip"
             components={{
-              div: <Flex justifyContent={'flex-start'} />,
+              div: <Flex justifyContent={isEnglish ? 'center' : 'flex-start'} />,
               termsLink: (
                 <Link
                   href={getDocPath('/guide/version/cloud/terms')}

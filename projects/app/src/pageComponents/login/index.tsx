@@ -10,7 +10,6 @@ import ChineseRedirectModal from './components/ChineseRedirectModal';
 import CookieConsentModal from './components/CookieConsentModal';
 import LoginFormPanel from './components/LoginFormPanel';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
-import PolicyTip from './LoginForm/PolicyTip';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
@@ -108,12 +107,6 @@ export const LoginContainer = ({
               {t('common:support.user.login.can_not_login')}
             </Box>
           )}
-
-        {pageType === LoginPageTypeEnum.passwordLogin && (
-          <Box mt={[0, 0]}>
-            <PolicyTip />
-          </Box>
-        )}
       </Flex>
 
       <CookieConsentModal />
