@@ -12,8 +12,8 @@ const PolicyTip = () => {
       {feConfigs?.docUrl && (
         <Box
           display={'block'}
-          textAlign={'center'}
-          mt={8}
+          textAlign={'left'}
+          mt={6}
           fontSize={'mini'}
           lineHeight={'16px'}
           color={'myGray.400'}
@@ -22,7 +22,7 @@ const PolicyTip = () => {
           <Trans
             i18nKey="login:policy_tip"
             components={{
-              div: <Flex justifyContent={'center'} />,
+              div: <Flex justifyContent={'flex-start'} />,
               termsLink: (
                 <Link
                   href={getDocPath('/guide/version/cloud/terms')}

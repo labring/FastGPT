@@ -13,6 +13,7 @@ import { useRouter } from 'next/router';
 import { useMount } from 'ahooks';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import PolicyTip from './PolicyTip';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -142,6 +143,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             })}
           ></Input>
         </FormControl>
+        <PolicyTip />
         <Button
           type="submit"
           mt={6}
