@@ -8,6 +8,7 @@ import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
 import { getErrText } from './utils';
 import { configureLogger, getLogger, LogCategories } from './utils/logger';
+import { QueueIdLimiter } from './utils/queue-id-limiter';
 
 await configureLogger();
 
@@ -71,12 +72,19 @@ async function readLimitedJsonBody(c: Context): Promise<unknown> {
 }
 
 /** 请求体校验 schema */
+const queueIdSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const queueId = value.trim();
+  return queueId || undefined;
+}, z.string().max(128).optional());
+
 const executeSchema = z.object({
   code: z
     .string()
     .min(1)
     .max(5 * 1024 * 1024), // 最大 5MB 代码
-  variables: z.record(z.string(), z.any()).default({})
+  variables: z.record(z.string(), z.any()).default({}),
+  queueId: queueIdSchema
 });
 
 const app = new Hono();
@@ -84,6 +92,13 @@ const app = new Hono();
 /** 进程池 */
 const jsPool = new ProcessPool(env.SANDBOX_POOL_SIZE);
 const pythonPool = new PythonProcessPool(env.SANDBOX_POOL_SIZE);
+const queueIdLimiter = new QueueIdLimiter(env.SANDBOX_QUEUE_ID_CONCURRENCY);
+
+if (queueIdLimiter.enabled) {
+  serverLogger.info(
+    `QueueId limiter enabled: max ${env.SANDBOX_QUEUE_ID_CONCURRENCY} concurrent requests per queueId`
+  );
+}
 
 const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
   .then(() => {
@@ -173,7 +188,9 @@ app.post('/sandbox/js', async (c) => {
         400
       );
     }
-    const result = await jsPool.execute(parsed.data as ExecuteOptions);
+    const result = await queueIdLimiter.run(parsed.data.queueId, () =>
+      jsPool.execute(parsed.data as ExecuteOptions)
+    );
     return c.json(result);
   } catch (err: any) {
     const status = err instanceof ApiBodyError ? err.status : 200;
@@ -201,7 +218,9 @@ app.post('/sandbox/python', async (c) => {
         400
       );
     }
-    const result = await pythonPool.execute(parsed.data as ExecuteOptions);
+    const result = await queueIdLimiter.run(parsed.data.queueId, () =>
+      pythonPool.execute(parsed.data as ExecuteOptions)
+    );
     return c.json(result);
   } catch (err: any) {
     const status = err instanceof ApiBodyError ? err.status : 200;

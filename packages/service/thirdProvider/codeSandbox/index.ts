@@ -57,11 +57,13 @@ export class CodeSandbox {
   async runCode({
     codeType,
     code,
-    variables
+    variables,
+    queueId
   }: {
     codeType: string;
     code: string;
     variables: Record<string, any>;
+    queueId?: string;
   }) {
     const url = (() => {
       if (codeType == SandboxCodeTypeEnum.py) {
@@ -74,7 +76,7 @@ export class CodeSandbox {
     const { data } = await this.client.post<{
       codeReturn: Record<string, any>;
       log: string;
-    }>(url, { code, variables });
+    }>(url, { code, variables, queueId });
 
     return data;
   }
