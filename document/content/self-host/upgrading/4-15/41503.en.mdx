@@ -1,14 +1,17 @@
 ---
-title: 'V4.15.0-beta3 (In Progress)'
+title: 'V4.15.0-beta3'
 description: 'FastGPT V4.15.0-beta3 Release Notes'
 ---
 
-## 🚀 New Features
+## 📦 Upgrade Guide
 
-1. Multimodal models now support audio and video input.
-2. Shared links and portal pages now support language switching, and no longer force browser-language auto switching.
+### Image Changes
 
-## 🔧 Environment Variable Changes
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta3.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta3.
+- Update the fastgpt-code-sandbox image tag to v4.15.0-beta3.
+
+### Environment Variable Changes
 
 Code Sandbox adds security-related environment variables such as `SANDBOX_API_MAX_BODY_MB` and `SANDBOX_MAX_OUTPUT_MB`, and now supports grouped request queuing for run APIs through `queueId`. The full defaults are listed below:
 
@@ -28,15 +31,23 @@ Code Sandbox adds security-related environment variables such as `SANDBOX_API_MA
 
 `/sandbox/js` and `/sandbox/python` request bodies now support an optional `queueId` field. When `SANDBOX_QUEUE_ID_CONCURRENCY` is configured and a valid `queueId` is provided, requests with the same `queueId` are queued in FIFO order. Requests with different `queueId` values, or requests without `queueId`, are not limited by this setting and continue to be limited only by the worker pool concurrency.
 
+## 🚀 New Features
+
+1. Multimodal models now support audio and video input.
+2. Shared links and portal pages now support language switching, and no longer force browser-language auto switching.
+
 ## ⚙️ Improvements
 
 1. Improved styles for Skill module dialogs.
 2. Improved Skill list API performance.
 3. Improved workflow node name and description inputs.
+4. Workflow editor drafts are now saved automatically for recovery when the session expires and the user is redirected.
+5. Improved the login page UI.
 
 ## 🐛 Bug Fixes
 
 1. Adapted TTS audio playback to the latest OpenAI SDK to avoid errors.
+2. Fixed cases where Knowledge Base data chunking could produce oversized chunks when code blocks were present.
 
 ## 🛠️ Code Improvements
 

@@ -19,8 +19,8 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           CURRENT_REF: ${{ github.ref }}
         run: |
-          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release workflow must run on a tag like v1.2.3. Current ref: ${CURRENT_REF}"
+          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v ]]; then
+            echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
             exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"

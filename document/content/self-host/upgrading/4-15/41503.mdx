@@ -1,11 +1,17 @@
 ---
-title: 'V4.15.0-beta3(进行中)'
+title: 'V4.15.0-beta3'
 description: 'FastGPT V4.15.0-beta3 更新说明'
 ---
 
-## 升级指南
+## 📦 升级指南
 
-### 🔧 环境变量变更
+### 镜像变更
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta3
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta3
+- 更新 fastgpt-code-sandbox 镜像 tag: v4.15.0-beta3
+
+### 环境变量变更
 
 Code Sandbox 新增 `SANDBOX_API_MAX_BODY_MB`、`SANDBOX_MAX_OUTPUT_MB` 等安全相关环境变量，并支持通过 `queueId` 对运行接口做分组排队；完整默认值如下：
 
