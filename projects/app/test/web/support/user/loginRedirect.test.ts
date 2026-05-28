@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { restoreWorkflowLocalDraftAfterLogin } from '../../../src/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
+import { resolveLoginRedirectAfterLogin } from '../../../../src/web/support/user/loginRedirect';
 import {
   readWorkflowLocalDraft,
   saveWorkflowLocalDraft
-} from '../../../src/web/core/workflow/localDraft';
-import { markLastAuthTmbId } from '../../../src/web/support/user/lastTmbIdStorage';
+} from '../../../../src/web/core/workflow/localDraft/storage';
+import { restoreWorkflowLocalDraftAfterLogin } from '../../../../src/web/core/workflow/localDraft/useWorkflowLocalDraftRestore';
+import { markLastAuthTmbId } from '../../../../src/web/support/user/lastTmbIdStorage';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 vi.mock('@/web/core/app/api/version', () => ({
@@ -68,7 +69,26 @@ const saveDraftToStorage = ({
     }
   });
 
-describe('useWorkflowLocalDraftRestore helpers', () => {
+const resolveLoginRoute = ({
+  loginUser = user,
+  fallbackRoute = '/app/detail?appId=app-1&currentTab=appEdit',
+  saveDraft = vi.fn()
+}: {
+  loginUser?: UserType;
+  fallbackRoute?: string;
+  saveDraft?: ReturnType<typeof vi.fn>;
+} = {}) =>
+  resolveLoginRedirectAfterLogin({
+    user: loginUser,
+    fallbackRoute,
+    restoreWorkflowLocalDraft: ({ user }) =>
+      restoreWorkflowLocalDraftAfterLogin({
+        user,
+        saveDraft: saveDraft as any
+      })
+  });
+
+describe('login redirect helpers', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -93,8 +113,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     saveDraftToStorage();
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -114,8 +133,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     saveDraftToStorage();
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/dashboard/agent',
       saveDraft: saveDraft as any
     });
@@ -135,8 +153,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     saveDraftToStorage();
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '%2Fapp%2Fdetail%3FappId%3Dapp-1%26currentTab%3DappEdit',
       saveDraft: saveDraft as any
     });
@@ -157,8 +174,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     const restoreError = new Error('network error');
     const saveDraft = vi.fn().mockRejectedValue(restoreError);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1',
       saveDraft: saveDraft as any
     });
@@ -176,8 +192,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
       .mockRejectedValueOnce(new Error('network error 2'))
       .mockResolvedValueOnce(undefined);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1',
       saveDraft: saveDraft as any
     });
@@ -192,8 +207,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     markLastAuthTmbId('tmb-b');
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -214,8 +228,8 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     markLastAuthTmbId('tmb-b');
     const saveDraft = vi.fn();
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user: {
+    const route = await resolveLoginRoute({
+      loginUser: {
         ...user,
         team: {
           ...user.team,
@@ -237,8 +251,8 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn();
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user: {
+    const route = await resolveLoginRoute({
+      loginUser: {
         ...user,
         team: {
           ...user.team,
@@ -259,8 +273,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn();
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -272,8 +285,7 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
   it('should use fallback route without draft when last auth tmbId is missing', async () => {
     const saveDraft = vi.fn();
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user,
+    const route = await resolveLoginRoute({
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -286,8 +298,8 @@ describe('useWorkflowLocalDraftRestore helpers', () => {
     markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn();
 
-    const route = await restoreWorkflowLocalDraftAfterLogin({
-      user: {
+    const route = await resolveLoginRoute({
+      loginUser: {
         ...user,
         team: {
           ...user.team,

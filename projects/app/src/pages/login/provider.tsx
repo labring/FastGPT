@@ -23,7 +23,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
-import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
+import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 
 let isOauthLogging = false;
 
@@ -34,7 +34,7 @@ const provider = () => {
   const router = useRouter();
   const { state, error, ...props } = router.query as Record<string, string>;
   const { toast } = useToast();
-  const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
+  const resolveLoginRedirect = useLoginRedirectAfterLogin();
 
   const lastRoute = loginStore?.lastRoute
     ? validateRedirectUrl(loginStore.lastRoute)
@@ -63,7 +63,7 @@ const provider = () => {
       })();
 
       const targetRoute = navigateTo
-        ? await restoreWorkflowLocalDraft({
+        ? await resolveLoginRedirect({
             user: res.user,
             fallbackRoute: navigateTo
           })
@@ -75,7 +75,7 @@ const provider = () => {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, restoreWorkflowLocalDraft, router, setUserInfo, t, toast]
+    [lastRoute, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
   const authProps = useCallback(

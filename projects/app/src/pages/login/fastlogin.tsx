@@ -10,7 +10,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
-import { useWorkflowLocalDraftRestore } from '@/pageComponents/login/hooks/useWorkflowLocalDraftRestore';
+import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 
 const FastLogin = ({
   code,
@@ -25,11 +25,11 @@ const FastLogin = ({
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
+  const resolveLoginRedirect = useLoginRedirectAfterLogin();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       const safeCallbackUrl = validateRedirectUrl(callbackUrl);
-      const targetRoute = await restoreWorkflowLocalDraft({
+      const targetRoute = await resolveLoginRedirect({
         user: res.user,
         fallbackRoute: safeCallbackUrl
       });
@@ -42,7 +42,7 @@ const FastLogin = ({
         }, 100);
       }
     },
-    [callbackUrl, restoreWorkflowLocalDraft, router, setUserInfo]
+    [callbackUrl, resolveLoginRedirect, router, setUserInfo]
   );
 
   const authCode = useCallback(

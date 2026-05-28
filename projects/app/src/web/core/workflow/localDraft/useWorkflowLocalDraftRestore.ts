@@ -5,35 +5,19 @@ import {
   checkWorkflowLocalDraft,
   type WorkflowLocalDraft,
   removeWorkflowLocalDraft
-} from '@/web/core/workflow/localDraft';
+} from './storage';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getLastAuthTmbId } from '@/web/support/user/lastTmbIdStorage';
 
-const DEFAULT_LOGIN_ROUTE = '/dashboard/agent';
 const WORKFLOW_DRAFT_RESTORE_SAVE_MAX_RETRY = 3;
 
-/**
- * 在没有命中工作流本地草稿时，兜底判断登录前后的团队身份是否一致。
- *
- * 注意：该函数必须在登录页调用 `setUserInfo` 之前执行，因为 `setUserInfo`
- * 会把本轮登录的 tmbId 写入全局 lastAuthTmbId。这里读取到的 lastAuthTmbId
- * 应该代表「上一轮已登录团队」，用于避免用户登出后切到另一个团队账号时，
- * 仍然跳回旧团队上下文中的 lastRoute。
- */
-const getSafeFallbackRouteAfterLogin = ({
-  user,
-  fallbackRoute
-}: {
-  user: UserType;
-  fallbackRoute: string;
-}) => {
-  const lastAuthTmbId = getLastAuthTmbId();
-  if (lastAuthTmbId && lastAuthTmbId !== user.team?.tmbId) {
-    return DEFAULT_LOGIN_ROUTE;
-  }
-
-  return fallbackRoute;
-};
+export type WorkflowLocalDraftRestoreResult =
+  | {
+      status: 'restored';
+      route: string;
+    }
+  | {
+      status: 'mismatched-team' | 'not-found';
+    };
 
 /**
  * 把本地工作流草稿补保存到远端自动保存版本。
@@ -63,32 +47,26 @@ const saveWorkflowDraftWithRetry = async ({
 };
 
 /**
- * 登录成功后的回跳规则：
- * 1. 有工作流草稿时，只恢复 tmbId 与当前登录团队一致的草稿；
- * 2. 草稿属于其他团队账号时，丢弃草稿并回到默认工作台，不能继续复用旧团队 lastRoute；
- * 3. 未命中工作流草稿恢复时，用全局最近登录 tmbId 拦截跨团队 lastRoute 跳转；
- * 4. 身份一致或没有历史身份记录时，继续使用登录流程给出的 fallbackRoute。
+ * 登录成功后尝试恢复工作流本地草稿。
  *
- * 工作流草稿的优先级高于全局 lastAuthTmbId。这样可以覆盖多标签页场景：
+ * 工作流草稿只以保存时的 tmbId 判断是否可恢复。这样可以覆盖多标签页场景：
  * A 标签页正在编辑工作流，B 标签页切换团队并登出后，A 标签页本地草稿仍应以
  * 保存草稿时写入的 tmbId 为准，而不是被 B 标签页更新后的全局登录状态污染。
  *
- * 恢复请求最多重试 3 次；仍失败时丢弃本地草稿并继续跳转。
+ * 恢复请求最多重试 3 次；仍失败时丢弃本地草稿并返回恢复成功路由。
+ * 普通 lastRoute fallback 和跨团队默认跳转由登录跳转协调层处理。
  */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
   user,
-  fallbackRoute,
   saveDraft
 }: {
   user: UserType;
-  fallbackRoute: string;
   saveDraft: typeof postPublishApp;
-}): Promise<string | undefined> => {
+}): Promise<WorkflowLocalDraftRestoreResult> => {
   const draftResult = checkWorkflowLocalDraft();
 
-  // 没有可恢复草稿时，才进入普通登录 lastRoute 的跨团队保护。
   if (draftResult.status !== 'matched') {
-    return getSafeFallbackRouteAfterLogin({ user, fallbackRoute });
+    return { status: 'not-found' };
   }
 
   const draftTmbId = draftResult.draft.tmbId;
@@ -96,8 +74,7 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
   // 草稿以保存时的 tmbId 为准，避免其他标签页切团队后污染登录恢复。
   if (draftTmbId !== user.team?.tmbId) {
     removeWorkflowLocalDraft();
-    // 草稿命中但团队不一致，说明当前 lastRoute 很可能仍指向旧团队工作流，必须回默认页。
-    return DEFAULT_LOGIN_ROUTE;
+    return { status: 'mismatched-team' };
   }
 
   await saveWorkflowDraftWithRetry({
@@ -108,11 +85,14 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
   removeWorkflowLocalDraft();
 
   // 草稿恢复成功或重试耗尽后，都固定回到草稿所属 app 的详情页。
-  return draftResult.route;
+  return {
+    status: 'restored',
+    route: draftResult.route
+  };
 };
 
 /**
- * 登录页使用的工作流本地草稿恢复 hook。
+ * 登录后跳转协调层使用的工作流本地草稿恢复 hook。
  *
  * `postPublishApp` 通过 useRequest 包装，主要是复用全局请求链路；这里显式关闭错误 toast，
  * 因为草稿恢复失败已经被 `saveWorkflowDraftWithRetry` 静默处理，不能打断登录跳转体验。
@@ -124,16 +104,9 @@ export const useWorkflowLocalDraftRestore = () => {
   });
 
   return useCallback(
-    async ({
-      user,
-      fallbackRoute
-    }: {
-      user: UserType;
-      fallbackRoute: string;
-    }): Promise<string | undefined> => {
+    async ({ user }: { user: UserType }): Promise<WorkflowLocalDraftRestoreResult> => {
       return restoreWorkflowLocalDraftAfterLogin({
         user,
-        fallbackRoute,
         saveDraft: saveWorkflowLocalDraft
       });
     },

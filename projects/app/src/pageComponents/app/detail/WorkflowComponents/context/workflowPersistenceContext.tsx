@@ -13,12 +13,9 @@ import React, {
   useRef,
   useState
 } from 'react';
-import { Box, Button } from '@chakra-ui/react';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useDebounceEffect, useUnmount } from 'ahooks';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -27,11 +24,12 @@ import { WorkflowUtilsContext } from './workflowUtilsContext';
 import {
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
-} from '@/web/core/workflow/localDraft';
+} from '@/web/core/workflow/localDraft/storage';
+import { useWorkflowAuthExpiredDraft } from '@/web/core/workflow/localDraft/useWorkflowAuthExpiredDraft';
 import { postPublishApp } from '@/web/core/app/api/version';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { AUTH_ERROR_EVENT_NAME, type AuthErrorEventDetail } from '@/web/common/api/request';
-import { safeEncodeURIComponent } from '@/web/common/utils/uri';
+
+const enableWorkflowLeaveConfirm = process.env.NEXT_PUBLIC_WORKFLOW_LEAVE_CONFIRM !== 'false';
 
 // 创建 Context
 type WorkflowPersistenceContextValue = {
@@ -51,7 +49,6 @@ export const WorkflowPersistenceContext = createContext<WorkflowPersistenceConte
  */
 export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation();
-  const router = useRouter();
   // 获取依赖的 context
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
@@ -62,13 +59,8 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
 
   // 保存状态
   const [isSaved, setIsSaved] = useState(true);
-  const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
   // 离开保存标志
   const leaveSaveSign = useRef(true);
-  const authExpiredRedirecting = useRef(false);
-  const authExpiredDraftSaved = useRef(false);
-  const beforeUnloadAutoSaving = useRef(false);
-  const authExpiredModalTimer = useRef<number>();
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
   const leavePageTip = t('common:core.tip.leave page');
 
@@ -93,50 +85,15 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     });
   }, [appDetail._id]);
 
-  const getLoginRoute = useCallback(() => {
-    return `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`;
-  }, []);
-
-  const showAuthExpiredNotice = useCallback(() => {
-    window.clearTimeout(authExpiredModalTimer.current);
-    authExpiredModalTimer.current = window.setTimeout(() => {
-      setShowAuthExpiredModal(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    const handleAuthError = (event: Event) => {
-      const detail = (event as CustomEvent<AuthErrorEventDetail>).detail;
-      const savedDraft = saveLocalDraft();
-      if (!savedDraft && !authExpiredDraftSaved.current) return;
-
-      authExpiredDraftSaved.current = savedDraft || authExpiredDraftSaved.current;
-
-      if (authExpiredRedirecting.current || beforeUnloadAutoSaving.current) {
-        // 已进入鉴权失败处理，或当前 403 来自 beforeunload 自动保存：不再触发登录跳转，避免系统弹窗循环。
-        authExpiredRedirecting.current = true;
-        detail.skipClearToken = true;
-        detail.skipRedirect = true;
-        showAuthExpiredNotice();
-        return;
-      }
-
-      authExpiredRedirecting.current = true;
-      // 首次 403 仍允许请求拦截器触发登录跳转，从而只出现一次浏览器离开确认；但跳过 logout 请求避免二次跳转。
-      detail.skipClearToken = true;
-    };
-
-    window.addEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
-    return () => {
-      window.removeEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
-    };
-  }, [saveLocalDraft, showAuthExpiredNotice]);
-
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(authExpiredModalTimer.current);
-    };
-  }, []);
+  const {
+    authExpiredModal,
+    handleBeforeUnloadAuthExpired,
+    setBeforeUnloadAutoSaving,
+    shouldSkipUnmountAutoSave
+  } = useWorkflowAuthExpiredDraft({
+    leaveSaveSignRef: leaveSaveSign,
+    saveLocalDraft
+  });
 
   /**
    * 计算 isSaved 状态 - 防抖 500ms
@@ -186,7 +143,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       if (!data || data.nodes.length === 0) return;
 
       if (fromBeforeUnload) {
-        beforeUnloadAutoSaving.current = true;
+        setBeforeUnloadAutoSaving(true);
       }
 
       try {
@@ -204,7 +161,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
         console.warn('[Workflow auto save] Failed to save workflow before leaving:', error);
       } finally {
         if (fromBeforeUnload) {
-          beforeUnloadAutoSaving.current = false;
+          setBeforeUnloadAutoSaving(false);
         }
       }
     },
@@ -214,7 +171,8 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       appDetail.permission.hasWritePer,
       flowData2StoreData,
       isSaved,
-      removeCurrentLocalDraft
+      removeCurrentLocalDraft,
+      setBeforeUnloadAutoSaving
     ]
   );
 
@@ -224,15 +182,17 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isSaved || !leaveSaveSign.current) return;
 
-      if (authExpiredRedirecting.current && authExpiredDraftSaved.current) {
-        showAuthExpiredNotice();
-      } else if (appDetail.permission.hasWritePer) {
+      const { isAuthExpiredRedirecting } = handleBeforeUnloadAuthExpired();
+
+      if (!isAuthExpiredRedirecting && appDetail.permission.hasWritePer) {
         saveLocalDraft();
       }
 
-      if (!authExpiredRedirecting.current) {
+      if (!isAuthExpiredRedirecting) {
         autoSaveFn({ fromBeforeUnload: true });
       }
+
+      if (!enableWorkflowLeaveConfirm) return;
 
       event.preventDefault();
       event.returnValue = leavePageTip;
@@ -246,27 +206,15 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   }, [
     appDetail.permission.hasWritePer,
     autoSaveFn,
+    handleBeforeUnloadAuthExpired,
     isSaved,
     leavePageTip,
-    saveLocalDraft,
-    showAuthExpiredNotice
+    saveLocalDraft
   ]);
-
-  const handleRelogin = useCallback(() => {
-    leaveSaveSign.current = false;
-    authExpiredRedirecting.current = false;
-    beforeUnloadAutoSaving.current = false;
-    window.clearTimeout(authExpiredModalTimer.current);
-    router.replace(getLoginRoute());
-  }, [getLoginRoute, router]);
-
-  const handleCancelRelogin = useCallback(() => {
-    setShowAuthExpiredModal(false);
-  }, []);
 
   // 页面关闭前自动保存
   useUnmount(() => {
-    if (authExpiredRedirecting.current) return;
+    if (shouldSkipUnmountAutoSave()) return;
 
     autoSaveFn();
   });
@@ -282,27 +230,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   return (
     <WorkflowPersistenceContext.Provider value={contextValue}>
       {children}
-      {showAuthExpiredModal && (
-        <MyModal
-          isOpen
-          isCentered
-          size={'sm'}
-          title={t('workflow:workflow_local_draft_auth_expired_title')}
-          showCloseButton={false}
-          closeOnOverlayClick={false}
-          borderRadius={'10px'}
-          footer={
-            <>
-              <Button variant={'whiteBase'} onClick={handleCancelRelogin}>
-                {t('common:Cancel')}
-              </Button>
-              <Button onClick={handleRelogin}>{t('workflow:workflow_local_draft_relogin')}</Button>
-            </>
-          }
-        >
-          <Box>{t('workflow:workflow_local_draft_auth_expired_notice')}</Box>
-        </MyModal>
-      )}
+      {authExpiredModal}
     </WorkflowPersistenceContext.Provider>
   );
 };

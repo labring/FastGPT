@@ -6,7 +6,7 @@ import {
   removeWorkflowLocalDraft,
   saveWorkflowLocalDraft,
   WORKFLOW_LOCAL_DRAFT_STORAGE_KEY
-} from '../../../../src/web/core/workflow/localDraft';
+} from '../../../../src/web/core/workflow/localDraft/storage';
 
 const storageMap = new Map<string, string>();
 const localStorageMock = {
