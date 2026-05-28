@@ -18,8 +18,8 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Image version must be like v1.2.3. Current value: ${VERSION}"
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            echo "::error::Image version must start with v. Current value: ${VERSION}"
             exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
