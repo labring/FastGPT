@@ -11,9 +11,11 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: LoginSuccessResponseType) => void;
+  loginSuccess: LoginSuccessHandler;
 }
 
 interface RegisterType {
@@ -55,13 +57,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { runAsync: onclickFindPassword, loading: requesting } = useRequest(
     async ({ username, code, password }: RegisterType) => {
-      loginSuccess(
-        await postFindPassword({
-          username,
-          code,
-          password
-        })
-      );
+      const loginResponse = await postFindPassword({
+        username,
+        code,
+        password
+      });
+      await loginSuccess(loginResponse);
       toast({
         status: 'success',
         title: t('user:password.retrieved')

@@ -11,18 +11,21 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 
 const Login = () => {
   const router = useRouter();
-  const { lastRoute = '' } = router.query as { lastRoute: string };
+  const { lastRoute = '', lastTmbId = '' } = router.query as {
+    lastRoute: string;
+    lastTmbId?: string;
+  };
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setUserInfo } = useUserStore();
+  const resolveLoginRedirect = useLoginRedirectAfterLogin();
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
-      setUserInfo(res.user);
-
       const decodeLastRoute = validateRedirectUrl(lastRoute);
 
       const navigateTo = await (async () => {
@@ -45,9 +48,21 @@ const Login = () => {
         return decodeLastRoute;
       })();
 
-      navigateTo && router.replace(navigateTo);
+      const targetRoute = navigateTo
+        ? await resolveLoginRedirect({
+            user: res.user,
+            fallbackRoute: navigateTo,
+            lastTmbId
+          })
+        : undefined;
+
+      setUserInfo(res.user);
+
+      if (targetRoute) {
+        router.replace(targetRoute);
+      }
     },
-    [lastRoute, router, setUserInfo, t, toast]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
   useMount(() => {

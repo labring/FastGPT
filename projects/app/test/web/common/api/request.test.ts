@@ -4,10 +4,12 @@ import {
   checkMaxQuantity,
   requestFinish,
   checkRes,
-  responseError
+  responseError,
+  AUTH_ERROR_EVENT_NAME
 } from '../../../../src/web/common/api/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { clearToken } from '@/web/support/user/auth';
 
 // Mock all required dependencies
 vi.mock('@fastgpt/web/common/system/utils', () => ({
@@ -33,16 +35,21 @@ const mockLocation = {
   replace: vi.fn(),
   search: ''
 };
+const dispatchEventMock = vi.fn();
+const tokenErrorCode = Number(Object.keys(TOKEN_ERROR_CODE)[0]);
 
 vi.stubGlobal('window', {
-  location: mockLocation
+  location: mockLocation,
+  dispatchEvent: dispatchEventMock
 });
+vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
     mockLocation.pathname = '/test';
+    dispatchEventMock.mockReturnValue(true);
   });
 
   describe('checkMaxQuantity', () => {
@@ -60,8 +67,8 @@ describe('request utils', () => {
 
     it('should cancel oldest request when maxQuantity exceeded', () => {
       const result1 = checkMaxQuantity({ url: 'test', maxQuantity: 2 });
-      const result2 = checkMaxQuantity({ url: 'test', maxQuantity: 2 });
-      const result3 = checkMaxQuantity({ url: 'test', maxQuantity: 2 });
+      checkMaxQuantity({ url: 'test', maxQuantity: 2 });
+      checkMaxQuantity({ url: 'test', maxQuantity: 2 });
 
       expect(maxQuantityMap['test']?.length).toBe(2);
       expect(maxQuantityMap['test']?.find((item) => item.id === result1.id)).toBeUndefined();
@@ -103,13 +110,56 @@ describe('request utils', () => {
       const err = {
         response: {
           data: {
-            code: Object.values(TOKEN_ERROR_CODE)[0]
+            code: tokenErrorCode
           }
         }
       };
-      await expect(responseError(err)).rejects.toEqual({
-        code: Object.values(TOKEN_ERROR_CODE)[0]
+      await expect(responseError(err)).rejects.toEqual({ message: 'common:unauth_token' });
+      expect(dispatchEventMock).toHaveBeenCalledWith(expect.any(CustomEvent));
+      expect(dispatchEventMock.mock.calls[0]?.[0].type).toBe(AUTH_ERROR_EVENT_NAME);
+      expect(clearToken).toHaveBeenCalled();
+      expect(mockLocation.replace).toHaveBeenCalledWith('http://test.com');
+    });
+
+    it('should allow auth error listeners to skip clearing token', async () => {
+      mockLocation.pathname = '/dashboard';
+      dispatchEventMock.mockImplementation((event: CustomEvent) => {
+        event.detail.skipClearToken = true;
+        return true;
       });
+      const err = {
+        response: {
+          data: {
+            code: tokenErrorCode
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({ message: 'common:unauth_token' });
+
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).toHaveBeenCalledWith('http://test.com');
+    });
+
+    it('should allow auth error listeners to skip redirect', async () => {
+      mockLocation.pathname = '/dashboard';
+      dispatchEventMock.mockImplementation((event: CustomEvent) => {
+        event.detail.skipClearToken = true;
+        event.detail.skipRedirect = true;
+        return true;
+      });
+      const err = {
+        response: {
+          data: {
+            code: tokenErrorCode
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({ message: 'common:unauth_token' });
+
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).not.toHaveBeenCalled();
     });
 
     it('should handle token error for outlink page', async () => {
@@ -117,13 +167,13 @@ describe('request utils', () => {
       const err = {
         response: {
           data: {
-            code: Object.values(TOKEN_ERROR_CODE)[0]
+            code: tokenErrorCode
           }
         }
       };
-      await expect(responseError(err)).rejects.toEqual({
-        code: Object.values(TOKEN_ERROR_CODE)[0]
-      });
+      await expect(responseError(err)).rejects.toEqual({ message: 'common:unauth_token' });
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).not.toHaveBeenCalled();
     });
 
     it('should handle team error', async () => {
