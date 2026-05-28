@@ -189,10 +189,7 @@ const OneRowSelector = ({
             loading
               ? t('common:model_loading')
               : placeholder ??
-                (avatarList.length 
-                  ? t('common:please_select_model')
-                  : t('common:not_model_config')
-                )
+                (avatarList.length ? t('common:please_select_model') : t('common:not_model_config'))
           }
           h={'40px'}
           whiteSpace={'nowrap'}
@@ -322,11 +319,7 @@ const MultipleRowSelector = ({
       return (
         <>
           {placeholder ??
-            (selectorList.length
-              ? t('common:please_select_model')
-              : t('common:not_model_config')
-            )
-          }
+            (selectorList.length ? t('common:please_select_model') : t('common:not_model_config'))}
         </>
       );
     const modelData = modelList.find((model) => model?.model === props.value);
@@ -335,11 +328,7 @@ const MultipleRowSelector = ({
       return (
         <>
           {placeholder ??
-            (selectorList.length 
-              ? t('common:please_select_model')
-              : t('common:not_model_config')
-            )
-          }
+            (selectorList.length ? t('common:please_select_model') : t('common:not_model_config'))}
         </>
       );
 

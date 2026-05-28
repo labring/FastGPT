@@ -467,7 +467,7 @@ export const DashboardNavbar = ({
     ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
       ? [{ key: 'promotion', label: t('common:promotion_records'), path: '/account/promotion' }]
       : []),
-    { key: 'loginout', label: t('common:logout'), isLogout: true },
+    { key: 'loginout', label: t('common:logout'), isLogout: true }
   ];
 
   const appBuildItems = [
