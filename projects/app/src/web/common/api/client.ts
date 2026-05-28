@@ -6,7 +6,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { clearToken } from '@/web/support/user/auth';
-import { safeEncodeURIComponent } from '@/web/common/utils/uri';
+import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 
 const responseError = (err: any) => {
   console.log('error->', '请求错误', err);
@@ -34,7 +34,9 @@ const responseError = (err: any) => {
       clearToken();
       window.location.replace(
         getWebReqUrl(
-          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+          getAuthLoginRedirectPath({
+            lastRoute: location.pathname + location.search
+          })
         )
       );
     }

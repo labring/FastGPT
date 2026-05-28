@@ -15,7 +15,10 @@ import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 
 const Login = () => {
   const router = useRouter();
-  const { lastRoute = '' } = router.query as { lastRoute: string };
+  const { lastRoute = '', lastTmbId = '' } = router.query as {
+    lastRoute: string;
+    lastTmbId?: string;
+  };
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setUserInfo } = useUserStore();
@@ -48,7 +51,8 @@ const Login = () => {
       const targetRoute = navigateTo
         ? await resolveLoginRedirect({
             user: res.user,
-            fallbackRoute: navigateTo
+            fallbackRoute: navigateTo,
+            lastTmbId
           })
         : undefined;
 
@@ -58,7 +62,7 @@ const Login = () => {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, resolveLoginRedirect, router, setUserInfo, t, toast]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
   useMount(() => {

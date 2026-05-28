@@ -4,7 +4,6 @@ import {
   type WorkflowLocalDraftRestoreResult,
   useWorkflowLocalDraftRestore
 } from '@/web/core/workflow/localDraft/useWorkflowLocalDraftRestore';
-import { getLastAuthTmbId } from '../lastTmbIdStorage';
 
 const DEFAULT_LOGIN_ROUTE = '/dashboard/agent';
 
@@ -16,18 +15,18 @@ type RestoreWorkflowLocalDraft = (props: {
  * 计算普通登录成功后的兜底跳转地址。
  *
  * lastRoute 是登录前页面写入的浏览器状态，可能来自旧团队或其他标签页。
- * 因此只有本轮登录 tmbId 与上一轮已登录 tmbId 一致时，才允许继续使用 lastRoute。
+ * 只有 403 跳登录时 query 携带了当前标签页的 lastTmbId，才做跨团队拦截。
  */
 export const getSafeFallbackRouteAfterLogin = ({
   user,
-  fallbackRoute
+  fallbackRoute,
+  lastTmbId
 }: {
   user: UserType;
   fallbackRoute: string;
+  lastTmbId?: string;
 }) => {
-  const lastAuthTmbId = getLastAuthTmbId();
-
-  if (lastAuthTmbId && lastAuthTmbId !== user.team?.tmbId) {
+  if (lastTmbId && lastTmbId !== user.team?.tmbId) {
     return DEFAULT_LOGIN_ROUTE;
   }
 
@@ -44,10 +43,12 @@ export const getSafeFallbackRouteAfterLogin = ({
 export const resolveLoginRedirectAfterLogin = async ({
   user,
   fallbackRoute,
+  lastTmbId,
   restoreWorkflowLocalDraft
 }: {
   user: UserType;
   fallbackRoute: string;
+  lastTmbId?: string;
   restoreWorkflowLocalDraft: RestoreWorkflowLocalDraft;
 }) => {
   const draftResult = await restoreWorkflowLocalDraft({ user });
@@ -60,7 +61,7 @@ export const resolveLoginRedirectAfterLogin = async ({
     return DEFAULT_LOGIN_ROUTE;
   }
 
-  return getSafeFallbackRouteAfterLogin({ user, fallbackRoute });
+  return getSafeFallbackRouteAfterLogin({ user, fallbackRoute, lastTmbId });
 };
 
 /**
@@ -70,10 +71,19 @@ export const useLoginRedirectAfterLogin = () => {
   const restoreWorkflowLocalDraft = useWorkflowLocalDraftRestore();
 
   return useCallback(
-    ({ user, fallbackRoute }: { user: UserType; fallbackRoute: string }) => {
+    ({
+      user,
+      fallbackRoute,
+      lastTmbId
+    }: {
+      user: UserType;
+      fallbackRoute: string;
+      lastTmbId?: string;
+    }) => {
       return resolveLoginRedirectAfterLogin({
         user,
         fallbackRoute,
+        lastTmbId,
         restoreWorkflowLocalDraft
       });
     },

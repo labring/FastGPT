@@ -39,6 +39,7 @@ const provider = () => {
   const lastRoute = loginStore?.lastRoute
     ? validateRedirectUrl(loginStore.lastRoute)
     : '/dashboard/agent';
+  const lastTmbId = loginStore?.lastTmbId || '';
   const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
 
   const loginSuccess = useCallback(
@@ -65,7 +66,8 @@ const provider = () => {
       const targetRoute = navigateTo
         ? await resolveLoginRedirect({
             user: res.user,
-            fallbackRoute: navigateTo
+            fallbackRoute: navigateTo,
+            lastTmbId
           })
         : undefined;
 
@@ -75,7 +77,7 @@ const provider = () => {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, resolveLoginRedirect, router, setUserInfo, t, toast]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
   const authProps = useCallback(

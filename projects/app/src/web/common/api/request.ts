@@ -12,7 +12,7 @@ import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
-import { safeEncodeURIComponent } from '@/web/common/utils/uri';
+import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -153,7 +153,9 @@ function responseError(err: any) {
       }
       window.location.replace(
         getWebReqUrl(
-          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+          getAuthLoginRedirectPath({
+            lastRoute: location.pathname + location.search
+          })
         )
       );
     }

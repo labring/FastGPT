@@ -1,10 +1,10 @@
 import { Box, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { safeEncodeURIComponent } from '@/web/common/utils/uri';
 import { AUTH_ERROR_EVENT_NAME, type AuthErrorEventDetail } from '@/web/common/api/request';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { type MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 
 type UseWorkflowAuthExpiredDraftProps = {
   leaveSaveSignRef: MutableRefObject<boolean>;
@@ -33,7 +33,9 @@ export const useWorkflowAuthExpiredDraft = ({
   const authExpiredModalTimer = useRef<number>();
 
   const getLoginRoute = useCallback(() => {
-    return `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`;
+    return getAuthLoginRedirectPath({
+      lastRoute: location.pathname + location.search
+    });
   }, []);
 
   const showAuthExpiredNotice = useCallback(() => {

@@ -15,11 +15,13 @@ import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 const FastLogin = ({
   code,
   token,
-  callbackUrl
+  callbackUrl,
+  lastTmbId
 }: {
   code: string;
   token: string;
   callbackUrl: string;
+  lastTmbId?: string;
 }) => {
   const { setUserInfo } = useUserStore();
   const router = useRouter();
@@ -31,7 +33,8 @@ const FastLogin = ({
       const safeCallbackUrl = validateRedirectUrl(callbackUrl);
       const targetRoute = await resolveLoginRedirect({
         user: res.user,
-        fallbackRoute: safeCallbackUrl
+        fallbackRoute: safeCallbackUrl,
+        lastTmbId
       });
 
       setUserInfo(res.user);
@@ -42,7 +45,7 @@ const FastLogin = ({
         }, 100);
       }
     },
-    [callbackUrl, resolveLoginRedirect, router, setUserInfo]
+    [callbackUrl, lastTmbId, resolveLoginRedirect, router, setUserInfo]
   );
 
   const authCode = useCallback(
@@ -91,6 +94,7 @@ export async function getServerSideProps(content: any) {
       code: content?.query?.code || '',
       token: content?.query?.token || '',
       callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
+      lastTmbId: content?.query?.lastTmbId || '',
       ...(await serviceSideProps(content, ['login']))
     }
   };

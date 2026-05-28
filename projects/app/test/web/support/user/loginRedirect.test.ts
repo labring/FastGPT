@@ -5,7 +5,8 @@ import {
   saveWorkflowLocalDraft
 } from '../../../../src/web/core/workflow/localDraft/storage';
 import { restoreWorkflowLocalDraftAfterLogin } from '../../../../src/web/core/workflow/localDraft/useWorkflowLocalDraftRestore';
-import { markLastAuthTmbId } from '../../../../src/web/support/user/lastTmbIdStorage';
+import { setCurrentAuthTmbId } from '../../../../src/web/support/user/currentAuthTmbId';
+import { getAuthLoginRedirectPath } from '../../../../src/web/support/user/loginRedirect/url';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 vi.mock('@/web/core/app/api/version', () => ({
@@ -72,15 +73,18 @@ const saveDraftToStorage = ({
 const resolveLoginRoute = ({
   loginUser = user,
   fallbackRoute = '/app/detail?appId=app-1&currentTab=appEdit',
+  lastTmbId,
   saveDraft = vi.fn()
 }: {
   loginUser?: UserType;
   fallbackRoute?: string;
+  lastTmbId?: string;
   saveDraft?: ReturnType<typeof vi.fn>;
 } = {}) =>
   resolveLoginRedirectAfterLogin({
     user: loginUser,
     fallbackRoute,
+    lastTmbId,
     restoreWorkflowLocalDraft: ({ user }) =>
       restoreWorkflowLocalDraftAfterLogin({
         user,
@@ -94,6 +98,7 @@ describe('login redirect helpers', () => {
     vi.clearAllMocks();
     storageMap.clear();
     sessionStorageMap.clear();
+    setCurrentAuthTmbId();
     vi.stubGlobal('window', {
       localStorage: localStorageMock,
       sessionStorage: sessionStorageMock,
@@ -202,12 +207,12 @@ describe('login redirect helpers', () => {
     expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should restore draft when draft tmbId matches even if last auth tmbId differs', async () => {
+  it('should restore draft when draft tmbId matches even if query lastTmbId differs', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-b');
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const route = await resolveLoginRoute({
+      lastTmbId: 'tmb-b',
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -225,7 +230,6 @@ describe('login redirect helpers', () => {
 
   it('should discard draft and skip fallback route when login tmbId differs from draft tmbId', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-b');
     const saveDraft = vi.fn();
 
     const route = await resolveLoginRoute({
@@ -246,9 +250,8 @@ describe('login redirect helpers', () => {
     expect(route).toBe('/dashboard/agent');
   });
 
-  it('should discard draft and skip fallback route when draft and last auth tmbId both mismatch', async () => {
+  it('should discard draft and skip fallback route when draft and query lastTmbId both mismatch', async () => {
     saveDraftToStorage();
-    markLastAuthTmbId('tmb-a');
     const saveDraft = vi.fn();
 
     const route = await resolveLoginRoute({
@@ -260,6 +263,7 @@ describe('login redirect helpers', () => {
           tmbId: 'tmb-b'
         }
       },
+      lastTmbId: 'tmb-a',
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
@@ -269,8 +273,20 @@ describe('login redirect helpers', () => {
     expect(route).toBe('/dashboard/agent');
   });
 
-  it('should use fallback route without draft when login tmbId matches last auth tmbId', async () => {
-    markLastAuthTmbId('tmb-a');
+  it('should use fallback route without draft when login tmbId matches query lastTmbId', async () => {
+    const saveDraft = vi.fn();
+
+    const route = await resolveLoginRoute({
+      lastTmbId: 'tmb-a',
+      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
+      saveDraft: saveDraft as any
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
+  });
+
+  it('should use fallback route without draft when query lastTmbId is missing', async () => {
     const saveDraft = vi.fn();
 
     const route = await resolveLoginRoute({
@@ -282,20 +298,7 @@ describe('login redirect helpers', () => {
     expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
   });
 
-  it('should use fallback route without draft when last auth tmbId is missing', async () => {
-    const saveDraft = vi.fn();
-
-    const route = await resolveLoginRoute({
-      fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
-      saveDraft: saveDraft as any
-    });
-
-    expect(saveDraft).not.toHaveBeenCalled();
-    expect(route).toBe('/app/detail?appId=app-1&currentTab=appEdit');
-  });
-
-  it('should skip fallback route without draft when login tmbId differs from last auth tmbId', async () => {
-    markLastAuthTmbId('tmb-a');
+  it('should skip fallback route without draft when login tmbId differs from query lastTmbId', async () => {
     const saveDraft = vi.fn();
 
     const route = await resolveLoginRoute({
@@ -307,11 +310,20 @@ describe('login redirect helpers', () => {
           tmbId: 'tmb-b'
         }
       },
+      lastTmbId: 'tmb-a',
       fallbackRoute: '/app/detail?appId=app-1&currentTab=appEdit',
       saveDraft: saveDraft as any
     });
 
     expect(saveDraft).not.toHaveBeenCalled();
     expect(route).toBe('/dashboard/agent');
+  });
+
+  it('should build auth login redirect path with current tab tmbId', () => {
+    setCurrentAuthTmbId('tmb-a');
+
+    expect(getAuthLoginRedirectPath({ lastRoute: '/app/detail?appId=app-1' })).toBe(
+      '/login?lastRoute=%2Fapp%2Fdetail%3FappId%3Dapp-1&lastTmbId=tmb-a'
+    );
   });
 });
