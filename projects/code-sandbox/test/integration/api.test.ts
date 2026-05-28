@@ -15,11 +15,11 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   return h;
 }
 
-async function executeJs(code: string, variables: Record<string, any> = {}) {
+async function executeJs(code: string, variables: Record<string, any> = {}, queueId?: string) {
   const res = await app.request('/sandbox/js', {
     method: 'POST',
     headers: headers({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ code, variables })
+    body: JSON.stringify({ code, variables, queueId })
   });
 
   return res.json();
@@ -64,6 +64,17 @@ describe('API Routes', () => {
     });
     const data = await res.json();
     expect(data.success).toBe(true);
+  });
+
+  it('POST /sandbox/js 接受 queueId 正常执行', async () => {
+    const data = await executeJs(
+      'async function main(v) { return { ok: true, name: v.name } }',
+      { name: 'queue' },
+      'team-queue-test'
+    );
+
+    expect(data.success).toBe(true);
+    expect(data.data.codeReturn).toEqual({ ok: true, name: 'queue' });
   });
 
   it('POST /sandbox/js 安全拦截', async () => {
@@ -347,6 +358,22 @@ describe('API Zod 校验失败', () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.success).toBe(false);
+  });
+
+  it('JS: queueId 非字符串返回 400', async () => {
+    const res = await app.request('/sandbox/js', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        code: 'async function main() { return { ok: true } }',
+        variables: {},
+        queueId: 123
+      })
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toMatch(/Invalid request/i);
   });
 
   it('Python: code 为数字返回 400', async () => {

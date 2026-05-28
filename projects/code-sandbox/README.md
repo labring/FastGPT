@@ -75,9 +75,12 @@ docker run -p 3000:3000 \
 ```json
 {
   "code": "async function main(variables) {\n  return { result: variables.a + variables.b }\n}",
-  "variables": { "a": 1, "b": 2 }
+  "variables": { "a": 1, "b": 2 },
+  "queueId": "team-xxx"
 }
 ```
+
+`queueId` 可选；仅当配置 `SANDBOX_QUEUE_ID_CONCURRENCY` 时，同一 `queueId` 会按该并发数排队执行。
 
 ### `POST /sandbox/python`
 
@@ -86,7 +89,8 @@ docker run -p 3000:3000 \
 ```json
 {
   "code": "def main(variables):\n    return {'result': variables['a'] + variables['b']}",
-  "variables": { "a": 1, "b": 2 }
+  "variables": { "a": 1, "b": 2 },
+  "queueId": "team-xxx"
 }
 ```
 
@@ -140,6 +144,7 @@ docker run -p 3000:3000 \
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `SANDBOX_POOL_SIZE` | 每种语言的 worker 进程数 | `20` |
+| `SANDBOX_QUEUE_ID_CONCURRENCY` | 同一 `queueId` 同时可进入执行流程的请求数，空值表示不按 `queueId` 排队 | 空 |
 
 ### 资源限制
 
