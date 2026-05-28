@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import ToolMenu from './ToolMenu';
+import MarkdownExportButton from './MarkdownExportButton';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
 
@@ -102,7 +102,9 @@ const ChatHeader = ({
         {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
-        {!isPlugin && !hideMenu && <ToolMenu history={history} reserveSpace={reserveSpace} />}
+        {!isPlugin && !hideMenu && (
+          <MarkdownExportButton history={history} reserveSpace={reserveSpace} />
+        )}
       </Flex>
     </Flex>
   );

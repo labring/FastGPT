@@ -47,6 +47,7 @@ import ChatHistorySidebar, {
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import ChatWindowHeader from './ChatWindowHeader';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -443,18 +444,7 @@ const HomeChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          chatBoxData?.title && (
-            <Flex
-              py={3}
-              bg="white"
-              fontWeight={500}
-              color="myGray.900"
-              alignItems="center"
-              justifyContent="center"
-            >
-              {chatBoxData?.title}
-            </Flex>
-          )
+          <ChatWindowHeader title={chatBoxData?.title} history={chatRecords} />
         ) : (
           <ChatHeader
             pane={pane}

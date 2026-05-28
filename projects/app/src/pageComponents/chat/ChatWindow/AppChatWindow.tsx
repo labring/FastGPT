@@ -29,6 +29,7 @@ import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import ChatWindowHeader from './ChatWindowHeader';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -178,13 +179,17 @@ const AppChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        <ChatHeader
-          pane={pane}
-          chatSettings={chatSettings}
-          showHistory
-          history={chatRecords}
-          totalRecordsCount={totalRecordsCount}
-        />
+        {isPc ? (
+          <ChatWindowHeader title={chatBoxData.title} history={chatRecords} />
+        ) : (
+          <ChatHeader
+            pane={pane}
+            chatSettings={chatSettings}
+            showHistory
+            history={chatRecords}
+            totalRecordsCount={totalRecordsCount}
+          />
+        )}
 
         <Box flex={'1 0 0'} bg={'white'}>
           {isPlugin ? (

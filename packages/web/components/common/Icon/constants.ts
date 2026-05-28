@@ -249,6 +249,7 @@ export const iconPaths = {
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/chat/finishSpeak': () => import('./icons/core/chat/finishSpeak.svg'),
   'core/chat/imgSelect': () => import('./icons/core/chat/imgSelect.svg'),
+  'core/chat/markdown': () => import('./icons/core/chat/markdown.svg'),
   'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
   'core/chat/quoteSign': () => import('./icons/core/chat/quoteSign.svg'),
   'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
