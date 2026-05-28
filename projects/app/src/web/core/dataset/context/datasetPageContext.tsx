@@ -120,7 +120,11 @@ export const DatasetPageContextProvider = ({
         agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
         vectorModel: data.vectorModel ? getWebEmbeddingModel(data.vectorModel) : state.vectorModel,
         // vlmModel 传 null 表示清空，需将状态设为 undefined；不传则保留原值
-        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : data.vlmModel === null ? undefined : state.vlmModel,
+        vlmModel: data.vlmModel
+          ? getWebLLMModel(data.vlmModel)
+          : data.vlmModel === null
+            ? undefined
+            : state.vlmModel,
         apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
       }));
     }
