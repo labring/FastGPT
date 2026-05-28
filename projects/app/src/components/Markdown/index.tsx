@@ -12,7 +12,7 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat, convertMdImagesToHtml } from './utils';
+import { CodeClassNameEnum, mdTextFormat, convertMdImagesToHtml, resolveImgStreamPlaceholder } from './utils';
 import { useCreation } from 'ahooks';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
@@ -126,7 +126,8 @@ const MarkdownRender = ({
 
   const formatSource = useMemo(() => {
     const text = showAnimation || forbidZhFormat ? source : mdTextFormat(source);
-    return convertMdImagesToHtml(text);
+    const resolved = resolveImgStreamPlaceholder(text, !!showAnimation);
+    return convertMdImagesToHtml(resolved);
   }, [forbidZhFormat, showAnimation, source]);
 
   const urlTransform = useCallback((val: string) => {
