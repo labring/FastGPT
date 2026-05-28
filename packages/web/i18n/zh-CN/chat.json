@@ -9,6 +9,7 @@
   "agent_plan_status_set_plan": "设置 plan",
   "agent_plan_status_update_plan": "更新 plan",
   "agent_plan_updating": "正在更新计划",
+  "ai_chat_loading": "AI 对话",
   "ai_reasoning": "思考过程",
   "back_to_text": "返回输入",
   "balance_not_enough_pause": "由于 AI 积分不足，暂停运行工作流",
@@ -235,5 +236,6 @@
   "unsupported_file_type": "不支持的文件类型",
   "variable_invisable_in_share": "外部变量在免登录链接中不可见",
   "view_citations": "查看引用",
+  "run_detail": "运行详情",
   "web_site_sync": "Web站点同步"
 }

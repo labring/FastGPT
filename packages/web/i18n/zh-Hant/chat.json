@@ -9,6 +9,7 @@
   "agent_plan_status_set_plan": "設定 plan",
   "agent_plan_status_update_plan": "更新 plan",
   "agent_plan_updating": "正在更新計畫",
+  "ai_chat_loading": "AI 對話",
   "ai_reasoning": "思考過程",
   "back_to_text": "返回輸入",
   "balance_not_enough_pause": "由於 AI 積分不足，暫停運行工作流",
@@ -231,5 +232,6 @@
   "unsupported_file_type": "不支援的檔案類型",
   "variable_invisable_in_share": "外部變量在免登錄鏈接中不可見",
   "view_citations": "檢視引用",
+  "run_detail": "運行詳情",
   "web_site_sync": "網站同步"
 }

@@ -1,8 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
-import Markdown from '@/components/Markdown';
-import markdownStyles from '@/components/Markdown/index.module.scss';
-import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -16,17 +13,7 @@ type AIChatBubbleContentProps = {
   responseData?: ChatHistoryItemResType[];
   isLastChild: boolean;
   isChatting: boolean;
-  questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
-};
-
-const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
-  return (
-    <Markdown
-      source={`\`\`\`${CodeClassNameEnum.questionguide}
-${JSON.stringify(questionGuides)}`}
-    />
-  );
 };
 
 const AIChatBubbleContent = ({
@@ -35,15 +22,10 @@ const AIChatBubbleContent = ({
   dataId,
   isLastChild,
   isChatting,
-  questionGuides,
   onOpenCiteModal
 }: AIChatBubbleContentProps) => {
-  const lastValue = chatValue[chatValue.length - 1];
-  const lastHasText = !!lastValue?.text?.content?.trim();
-  const lastHasReasoning = !!lastValue?.reasoning?.content?.trim();
-
   return (
-    <Flex flexDirection={'column'}>
+    <Flex flexDirection={'column'} fontSize={'16px'} lineHeight={1.75}>
       {chatValue.map((value, i) => {
         const isLastResponse = isLastChild && i === chatValue.length - 1;
         const key = `${dataId}-ai-${i}`;
@@ -62,15 +44,6 @@ const AIChatBubbleContent = ({
           </Box>
         );
       })}
-
-      {/* 生成中占位动画（含断线续传拉流期间最后一条非文本时的 shimmer） */}
-      {isLastChild && !lastHasText && !lastHasReasoning && isChatting && (
-        <Box className={markdownStyles.animation}></Box>
-      )}
-
-      {isLastChild && questionGuides.length > 0 && (
-        <RenderQuestionGuide questionGuides={questionGuides} />
-      )}
     </Flex>
   );
 };

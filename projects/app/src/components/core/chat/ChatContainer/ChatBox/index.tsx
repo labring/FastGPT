@@ -113,8 +113,6 @@ const ChatBox = ({
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
   const { ScrollContainerRef, scrollToBottom, generatingScroll } = useChatScroll();
 
-  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
-  const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
@@ -487,8 +485,6 @@ const ChatBox = ({
       records: processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      userAvatar,
-      appAvatar,
       showVoiceIcon,
       showMarkIcon,
       statusBoxData,
@@ -505,8 +501,6 @@ const ChatBox = ({
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      userAvatar,
-      appAvatar,
       showVoiceIcon,
       showMarkIcon,
       statusBoxData,

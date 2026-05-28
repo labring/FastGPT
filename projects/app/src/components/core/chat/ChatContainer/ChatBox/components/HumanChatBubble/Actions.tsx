@@ -24,8 +24,9 @@ const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsPr
       alignItems={'center'}
       gap={3}
       pt={'10px'}
-      color={'myGray.500'}
+      color={'myGray.400'}
       fontSize={'12px'}
+      fontWeight={500}
       lineHeight={'24px'}
       whiteSpace={'nowrap'}
       zIndex={1}
@@ -43,7 +44,7 @@ const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsPr
           p={'4px'}
           cursor="pointer"
           name={'copy'}
-          color={'myGray.500'}
+          color={'myGray.400'}
           _hover={{ color: 'primary.600' }}
           onClick={() => copyData(chatText)}
         />
@@ -53,7 +54,7 @@ const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsPr
           p={'4px'}
           cursor="pointer"
           name={'edit'}
-          color={'myGray.500'}
+          color={'myGray.400'}
           _hover={{ color: 'primary.600' }}
         />
       </Flex>

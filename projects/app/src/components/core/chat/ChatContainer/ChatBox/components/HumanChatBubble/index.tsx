@@ -26,7 +26,7 @@ const HumanChatBubble = ({ chatValue, chatTime, children }: HumanChatBubbleProps
       display={'inline-block'}
       position={'relative'}
       w={'fit-content'}
-      maxW={['calc(100% - 25px)', '700px']}
+      maxW={'100%'}
       _hover={{
         '& .chat-controller-hover': {
           display: 'flex'

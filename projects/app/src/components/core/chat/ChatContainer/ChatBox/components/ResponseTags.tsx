@@ -31,7 +31,8 @@ const WholeResponseModal = dynamic(() => import('../../../components/WholeRespon
 const ResponseTags = ({
   showTags,
   historyItem,
-  onOpenCiteModal
+  onOpenCiteModal,
+  showFooterMeta = true
 }: {
   showTags: boolean;
   historyItem: ChatSiteItemType;
@@ -42,6 +43,7 @@ const ResponseTags = ({
     datasetId?: string;
     quoteId?: string;
   }) => void;
+  showFooterMeta?: boolean;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
@@ -135,7 +137,10 @@ const ResponseTags = ({
   }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags =
-    notSharePage || quoteList.length > 0 || useAgentSandbox || (isPc && durationSeconds > 0);
+    (showFooterMeta && notSharePage) ||
+    quoteList.length > 0 ||
+    useAgentSandbox ||
+    (showFooterMeta && isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>
@@ -249,7 +254,7 @@ const ResponseTags = ({
 
       {notEmptyTags && (
         <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
-          {isPc && durationSeconds > 0 && (
+          {showFooterMeta && isPc && durationSeconds > 0 && (
             <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
                 {durationSeconds.toFixed(2)}s
@@ -287,7 +292,7 @@ const ResponseTags = ({
             </>
           )}
 
-          {notSharePage && showWholeResponse && (
+          {showFooterMeta && notSharePage && showWholeResponse && (
             <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
               <MyTag
                 colorSchema="gray"

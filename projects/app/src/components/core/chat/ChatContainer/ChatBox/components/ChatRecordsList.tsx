@@ -15,8 +15,6 @@ export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
   expandedDeletedGroups: Set<string>;
   itemRefs: MutableRefObject<Map<string, HTMLElement | null>>;
-  userAvatar?: string;
-  appAvatar?: string;
   showVoiceIcon: boolean;
   showMarkIcon: boolean;
   statusBoxData:
@@ -54,8 +52,6 @@ const ChatRecordsList = ({
   records,
   expandedDeletedGroups,
   itemRefs,
-  userAvatar,
-  appAvatar,
   showVoiceIcon,
   showMarkIcon,
   statusBoxData,
@@ -95,7 +91,6 @@ const ChatRecordsList = ({
                 <Box py={item.hideInUI ? 0 : 6}>
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
-                      avatar={userAvatar}
                       chat={item}
                       onRetry={onRetry(item.dataId)}
                       isLastChild={index === records.length - 1}
@@ -103,7 +98,6 @@ const ChatRecordsList = ({
                   )}
                   {item.obj === ChatRoleEnum.AI && (
                     <ChatItem
-                      avatar={appAvatar}
                       chat={item}
                       isLastChild={index === records.length - 1}
                       {...{
@@ -170,6 +164,7 @@ const ChatRecordsList = ({
           </Box>
         );
       })}
+      {records.length > 0 && <Box h={'24px'} />}
     </Box>
   );
 };

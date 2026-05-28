@@ -1,7 +1,6 @@
 import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
-import ChatAvatar from './ChatAvatar';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
@@ -38,7 +37,6 @@ const colorMap = {
 };
 
 type Props = {
-  avatar?: string;
   statusBoxData?: {
     status: `${ChatStatusEnum}`;
     name: string;
@@ -48,7 +46,7 @@ type Props = {
 } & ChatControllerProps;
 
 const ChatItem = (props: Props) => {
-  const { avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
+  const { statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { t } = useTranslation();
 
@@ -75,7 +73,6 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
-  const showAvatar = useContextSelector(ChatItemContext, (v) => v.showAvatar);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
@@ -205,7 +202,7 @@ const ChatItem = (props: Props) => {
   return (
     <Box data-chat-id={chat.dataId}>
       {/* control icon */}
-      {!isHumanMessage && (
+      {!isHumanMessage && isChatLog && (
         <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
           {isChatting && chat.obj === ChatRoleEnum.AI && isLastChild ? null : (
             <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
@@ -217,8 +214,6 @@ const ChatItem = (props: Props) => {
               />
             </Flex>
           )}
-          {showAvatar !== false && <ChatAvatar src={avatar} type={chat.obj} />}
-
           {/* Workflow status */}
           {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
             <Flex
@@ -299,7 +294,15 @@ const ChatItem = (props: Props) => {
 
         if (chat.obj === ChatRoleEnum.Human) {
           return (
-            <Box key={i} mt={['6px', 2]} className="chat-box-card" textAlign={styleMap.textAlign}>
+            <Box
+              key={i}
+              mt={['6px', 2]}
+              className="chat-box-card"
+              w={'100%'}
+              maxW={['calc(100% - 25px)', '700px']}
+              mx={'auto'}
+              textAlign={styleMap.textAlign}
+            >
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
@@ -315,8 +318,10 @@ const ChatItem = (props: Props) => {
             key={i}
             mt={['6px', 2]}
             className="chat-box-card"
+            w={'100%'}
+            maxW={['calc(100% - 25px)', '700px']}
+            mx={'auto'}
             textAlign={styleMap.textAlign}
-            _hover={{ '& .footer-copy': { display: 'block' } }}
           >
             <AIChatBubble
               chat={chat}
@@ -327,6 +332,12 @@ const ChatItem = (props: Props) => {
               isChatting={isChatting}
               questionGuides={questionGuides}
               onOpenCiteModal={onOpenCiteModal}
+              chatControllerProps={{
+                ...props,
+                isLastChild,
+                showFeedbackContent,
+                onToggleFeedbackContent: () => setShowFeedbackContent(!showFeedbackContent)
+              }}
             >
               {renderCommonFooter()}
             </AIChatBubble>

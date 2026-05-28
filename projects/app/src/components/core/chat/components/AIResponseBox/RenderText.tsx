@@ -8,6 +8,7 @@ import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { useCreation } from 'ahooks';
 import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
+import styles from '../../ChatContainer/ChatBox/components/AIChatBubble/index.module.scss';
 
 const RenderText = React.memo(function RenderText({
   showAnimation,
@@ -42,6 +43,7 @@ const RenderText = React.memo(function RenderText({
 
   return (
     <Markdown
+      className={styles.markdown}
       source={source}
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}

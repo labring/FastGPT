@@ -9,6 +9,7 @@
   "agent_plan_status_set_plan": "Set plan",
   "agent_plan_status_update_plan": "Update plan",
   "agent_plan_updating": "Updating plan",
+  "ai_chat_loading": "AI Chat",
   "ai_reasoning": "Thinking process",
   "back_to_text": "Text input",
   "balance_not_enough_pause": "Workflow paused due to insufficient AI points",
@@ -235,5 +236,6 @@
   "unsupported_file_type": "Unsupported file types",
   "variable_invisable_in_share": "External variables are not visible in login-free links",
   "view_citations": "View References",
+  "run_detail": "Run Details",
   "web_site_sync": "Web Site Sync"
 }
