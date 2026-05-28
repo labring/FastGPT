@@ -7,7 +7,9 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Checkbox
+  Checkbox,
+  IconButton,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -38,7 +40,6 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatSidebarPaneEnum } from '../constants';
 import ChatHistorySidebar, {
@@ -48,6 +49,8 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import ChatWindowHeader from './ChatWindowHeader';
+import ToolMenu from '@/pageComponents/chat/ToolMenu';
+import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -67,6 +70,11 @@ const defaultWhisperConfig: AppWhisperConfigType = {
 const HomeChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const {
+    isOpen: isModelDrawerOpen,
+    onOpen: onOpenModelDrawer,
+    onClose: onCloseModelDrawer
+  } = useDisclosure();
 
   const { userInfo } = useUserStore();
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
@@ -75,6 +83,7 @@ const HomeChatWindow = () => {
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -83,14 +92,12 @@ const HomeChatWindow = () => {
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
 
-  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
 
@@ -105,6 +112,27 @@ const HomeChatWindow = () => {
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
     defaultValue: defaultModels.llm?.model
+  });
+  const selectedModelData = useMemo(
+    () => llmModelList.find((model) => model.model === selectedModel),
+    [llmModelList, selectedModel]
+  );
+
+  const onChangeModel = useMemoizedFn((model: string) => {
+    setChatBoxData((state) => ({
+      ...state,
+      app: {
+        ...state.app,
+        chatConfig: {
+          ...state.app.chatConfig,
+          fileSelectConfig: {
+            ...defaultFileSelectConfig,
+            canSelectImg: !!getWebLLMModel(model).vision
+          }
+        }
+      }
+    }));
+    setSelectedModel(model);
   });
 
   const availableTools = useMemo(
@@ -302,7 +330,7 @@ const HomeChatWindow = () => {
       isQuickApp ? undefined : (
         <>
           {/* 模型选择 */}
-          {availableModels.length > 0 && (
+          {isPc && availableModels.length > 0 && (
             <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
               <AIModelSelector
                 cacheModel={false}
@@ -313,22 +341,7 @@ const HomeChatWindow = () => {
                 rounded="full"
                 list={availableModels}
                 value={selectedModel}
-                onChange={async (model) => {
-                  setChatBoxData((state) => ({
-                    ...state,
-                    app: {
-                      ...state.app,
-                      chatConfig: {
-                        ...state.app.chatConfig,
-                        fileSelectConfig: {
-                          ...defaultFileSelectConfig,
-                          canSelectImg: !!getWebLLMModel(model).vision
-                        }
-                      }
-                    }
-                  }));
-                  setSelectedModel(model);
-                }}
+                onChange={onChangeModel}
               />
             </Box>
           )}
@@ -408,7 +421,8 @@ const HomeChatWindow = () => {
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      isQuickApp
+      isQuickApp,
+      onChangeModel
     ]
   );
 
@@ -446,14 +460,45 @@ const HomeChatWindow = () => {
         {isPc ? (
           <ChatWindowHeader title={chatBoxData?.title} history={chatRecords} />
         ) : (
-          <ChatHeader
-            pane={pane}
-            chatSettings={chatSettings}
-            showHistory
-            history={chatRecords}
-            totalRecordsCount={totalRecordsCount}
-          />
+          <Flex
+            h="46px"
+            px={3}
+            bg="white"
+            alignItems="center"
+            justifyContent="space-between"
+            color="myGray.900"
+          >
+            <IconButton
+              aria-label="Open history"
+              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="myGray.900" />}
+              variant="unstyled"
+              minW="32px"
+              h="32px"
+              onClick={onOpenSlider}
+            />
+            {isQuickApp ? (
+              <Box fontSize="16px" fontWeight={500} className="textEllipsis">
+                {chatBoxData.app.name}
+              </Box>
+            ) : (
+              <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
+                <Box fontSize="16px" fontWeight={500} className="textEllipsis" maxW="200px">
+                  {selectedModelData?.name || selectedModel}
+                </Box>
+                <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.700" ml={1} />
+              </Flex>
+            )}
+            <ToolMenu history={chatRecords} />
+          </Flex>
         )}
+
+        <MobileModelSelectorDrawer
+          isOpen={isModelDrawerOpen}
+          modelList={llmModelList}
+          value={selectedModel}
+          onChange={onChangeModel}
+          onClose={onCloseModelDrawer}
+        />
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
