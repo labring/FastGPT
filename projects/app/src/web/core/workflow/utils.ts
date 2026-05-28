@@ -882,6 +882,7 @@ export const autoAdjustDatasetNodeLimit = ({
   const DEFAULT_DATASET_MAX_TOKENS = 5000;
 
   const llmModelList = useSystemStore.getState().llmModelList;
+  const { show_dataset_search_params } = useSystemStore.getState().feConfigs;
   const llmModelMap = llmModelList.reduce(
     (acc, model) => {
       acc[model.model] = model;
@@ -942,6 +943,17 @@ export const autoAdjustDatasetNodeLimit = ({
 
   const result = nodes.map((node) => {
     if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return node;
+
+    // 开关开启 + 标准检索时，尊重用户手动配置的值，不做覆盖
+    if (show_dataset_search_params) {
+      const retrievalMode = node.inputs.find(
+        (i) => i.key === NodeInputKeyEnum.datasetRetrievalMode
+      )?.value;
+      const effectiveRetrievalMode = retrievalMode || DatasetRetrievalModeEnum.standard;
+      if (effectiveRetrievalMode === DatasetRetrievalModeEnum.standard) {
+        return node;
+      }
+    }
 
     const newLimit = datasetLimitMap.get(node.nodeId);
     const shouldReset = !datasetHasDirectChatNode.has(node.nodeId);

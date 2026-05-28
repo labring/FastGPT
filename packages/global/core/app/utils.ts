@@ -4,7 +4,7 @@ import { FlowNodeTemplateTypeEnum, NodeInputKeyEnum } from '../workflow/constant
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
-import { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
+import { DatasetSearchModeEnum, DatasetRetrievalModeEnum, RerankMethodEnum } from '../dataset/constants';
 import type { AppFormEditFormType } from './formEdit/type';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum, AssistantGlobalVarKey } from './constants';
@@ -29,7 +29,8 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       rerankMethod: RerankMethodEnum.question,
       rerankWeight: 0.4,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionBg: ''
+      datasetSearchExtensionBg: '',
+      retrievalMode: DatasetRetrievalModeEnum.standard
     },
     selectedTools: [],
     selectedAgentSkills: [],
