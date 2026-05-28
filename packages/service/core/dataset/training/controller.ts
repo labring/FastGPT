@@ -78,7 +78,8 @@ export const pushDataListToTrainingQueue = async ({
     datasetId: datasetId,
     mode: {
       $in: [TrainingModeEnum.synonymStandardize, TrainingModeEnum.synonymRestore]
-    }
+    },
+    retryCount: { $gt: 0 }
   });
 
   if (hasSynonymTask) {

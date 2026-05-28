@@ -287,7 +287,7 @@ export const processSynonymStandardize = async ({
       return index;
     });
 
-    // 6. 更新 MongoDB (使用 session 保证原子性)
+    // 5. 更新 MongoDB (使用 session 保证原子性)，不包含链式处理
     await retryFn(
       async () => {
         await mongoSessionRun(async (session) => {
@@ -329,8 +329,16 @@ export const processSynonymStandardize = async ({
 
           // 8. 删除训练任务
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+        });
+      },
+      3 // 最多重试3次
+    );
 
-          // 9. 链式处理:查找下一条需要处理的数据
+    // 8. 链式处理:查找下一条需要处理的数据
+    // 链式失败不影响当前任务，下一条数据会被后续 Worker 自然拉取到
+    try {
+      await retryFn(() =>
+        mongoSessionRun(async (session) => {
           const nextData = await MongoDatasetData.findOneAndUpdate(
             {
               synonymProcessing: 'standardize',
@@ -368,7 +376,7 @@ export const processSynonymStandardize = async ({
                     dataMetadata: {
                       synonymFileIds: nextData.synonymFileIds
                     },
-                    retryCount: 3,
+                    retryCount: 50,
                     billId: trainingData.billId
                   }
                 ],
@@ -376,13 +384,11 @@ export const processSynonymStandardize = async ({
               );
             }
           }
-        });
-      },
-      3 // 最多重试3次
-    );
+        })
+      );
+    } catch (error) {}
   } else {
-    // 无任何变化（包括向量和元数据），直接删除训练任务
-    // 但仍需处理 q/a 的全文检索更新
+    // indexes 无需更新的分支，不包含链式处理
     await retryFn(
       async () => {
         await mongoSessionRun(async (session) => {
@@ -412,8 +418,16 @@ export const processSynonymStandardize = async ({
           }
 
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+        });
+      },
+      3 // 最多重试3次
+    );
 
-          // 链式处理下一条
+    // 链式处理下一条
+    // 链式失败不影响当前任务，下一条数据会被后续 Worker 自然拉取到
+    try {
+      await retryFn(() =>
+        mongoSessionRun(async (session) => {
           const nextData = await MongoDatasetData.findOneAndUpdate(
             {
               synonymProcessing: 'standardize',
@@ -451,7 +465,7 @@ export const processSynonymStandardize = async ({
                     dataMetadata: {
                       synonymFileIds: nextData.synonymFileIds
                     },
-                    retryCount: 3,
+                    retryCount: 50,
                     billId: trainingData.billId
                   }
                 ],
@@ -459,10 +473,9 @@ export const processSynonymStandardize = async ({
               );
             }
           }
-        });
-      },
-      3 // 最多重试3次
-    );
+        })
+      );
+    } catch (error) {}
   }
 
   return { tokens: totalTokens };
