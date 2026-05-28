@@ -9,8 +9,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 import FileTree from './components/FileTree';
-import FileTabs from './components/FileTabs';
-import EditorContent from './components/EditorContent';
+import EditorWorkspace from './components/EditorWorkspace';
 import { filterTree } from './utils';
 import { useSandboxFileStore } from './hook';
 
@@ -30,6 +29,7 @@ export type Props = {
   defaultViewMode?: 'source' | 'preview';
   isPreparing?: boolean;
   preparingText?: string;
+  showTerminal?: boolean;
 };
 
 const SandboxEditor = ({
@@ -40,7 +40,8 @@ const SandboxEditor = ({
   showDownload = true,
   defaultViewMode,
   isPreparing = false,
-  preparingText
+  preparingText,
+  showTerminal = false
 }: Props) => {
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
@@ -48,8 +49,11 @@ const SandboxEditor = ({
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
+
   const {
     fileTree,
+    setFileTree,
+    isWsConnected,
     openedFiles,
     setOpenedFiles,
     activeFilePath,
@@ -61,12 +65,10 @@ const SandboxEditor = ({
     loadingDirs,
     loadingRoot,
     loadingFile,
-    saving,
     downloadingFile,
     searchQuery,
     setSearchQuery,
     activeFile,
-    refreshWorkspace,
     openFile,
     closeFile,
     saveFile,
@@ -81,7 +83,9 @@ const SandboxEditor = ({
   } = useSandboxFileStore({
     appId,
     chatId,
-    outLinkAuthData
+    outLinkAuthData,
+    isPreparing,
+    canWrite: showFileOps || showTerminal
   });
 
   // 绑定全部保存方法到 Context 引用上
@@ -97,15 +101,15 @@ const SandboxEditor = ({
     };
   }, [saveAllFiles, saveAllRef]);
 
-  const loadWorkspace = useCallback(() => {
-    if (isPreparing) return;
-    refreshWorkspace();
-  }, [isPreparing, refreshWorkspace]);
-
-  // 初始化加载根目录；Skill edit 等 sandbox ready 后再开始拉取文件列表。
+  // 沙盒准备或重建时，重置文件树、标签页及选中状态，保障就绪后显示最新内容
   useEffect(() => {
-    loadWorkspace();
-  }, [loadWorkspace]);
+    if (isPreparing) {
+      setFileTree([]);
+      setOpenedFiles([]);
+      setActiveFilePath('');
+      setSelectedPath('');
+    }
+  }, [isPreparing, setFileTree, setOpenedFiles, setActiveFilePath, setSelectedPath]);
 
   const filteredTree = filterTree(fileTree, searchQuery);
 
@@ -154,7 +158,7 @@ const SandboxEditor = ({
 
   const renderContent = () => {
     if (fileTree.length === 0) {
-      if (loadingRoot) return null;
+      if (loadingRoot || !isWsConnected) return null;
 
       return (
         <Center h="full" w={'full'}>
@@ -222,51 +226,29 @@ const SandboxEditor = ({
           }}
         />
 
-        {/* 右侧: 编辑器区域 */}
-        <MyBox
-          isLoading={loadingFile}
-          loadingVariant="particle"
-          display={'flex'}
-          flex={1}
-          w={0}
-          minH={0}
-          flexDirection="column"
-          bg="myGray.25"
-        >
-          {openedFiles.length > 0 ? (
-            <>
-              <FileTabs
-                openedFiles={openedFiles}
-                activeFilePath={activeFilePath}
-                setActiveFilePath={setActiveFilePath}
-                closeFile={closeFile}
-              />
-              <EditorContent
-                activeFile={activeFile}
-                activeFilePath={activeFilePath}
-                saving={saving}
-                downloadingFile={downloadingFile}
-                downloadCurrentFile={downloadCurrentFile}
-                saveFile={saveFile}
-                setOpenedFiles={setOpenedFiles}
-                openedFiles={openedFiles}
-                editorRef={editorRef}
-                appId={appId}
-                chatId={chatId}
-                outLinkAuthData={outLinkAuthData}
-                showDownload={showDownload}
-                defaultViewMode={defaultViewMode}
-              />
-            </>
-          ) : (
-            filteredTree.length > 0 && (
-              <Center h="full">
-                <VStack spacing={3}>
-                  <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
-                </VStack>
-              </Center>
-            )
-          )}
+        {/* 右侧: 工作区面板（已高度内聚封装，包含多标签页编辑器与交互式终端布局） */}
+        <MyBox display={'flex'} flex={1} w={0} minH={0} flexDirection="column" bg="myGray.25">
+          <EditorWorkspace
+            appId={appId}
+            chatId={chatId}
+            outLinkAuthData={outLinkAuthData}
+            showDownload={showDownload}
+            defaultViewMode={defaultViewMode}
+            openedFiles={openedFiles}
+            setOpenedFiles={setOpenedFiles}
+            activeFilePath={activeFilePath}
+            setActiveFilePath={setActiveFilePath}
+            closeFile={closeFile}
+            activeFile={activeFile}
+            downloadingFile={downloadingFile}
+            downloadCurrentFile={downloadCurrentFile}
+            saveFile={saveFile}
+            editorRef={editorRef}
+            filteredTree={filteredTree}
+            loadingFile={loadingFile}
+            showTerminalBtn={showTerminal}
+            canWrite={showFileOps || showTerminal}
+          />
         </MyBox>
       </>
     );
@@ -274,7 +256,7 @@ const SandboxEditor = ({
 
   return (
     <MyBox
-      isLoading={isPreparing || (loadingRoot && fileTree.length === 0)}
+      isLoading={isPreparing || ((!isWsConnected || loadingRoot) && fileTree.length === 0)}
       text={isPreparing ? preparingText : t('chat:sandbox_loading_files')}
       loadingVariant="particle"
       ref={editorLayoutRef}

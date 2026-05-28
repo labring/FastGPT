@@ -1,124 +1,17 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  SandboxListBodySchema,
-  SandboxListResponseSchema,
-  SandboxListRecursiveBodySchema,
-  SandboxListRecursiveResponseSchema,
-  SandboxWriteBodySchema,
-  SandboxWriteResponseSchema,
-  SandboxReadBodySchema,
-  SandboxReadResponseSchema,
   SandboxDownloadBodySchema,
   SandboxDownloadResponseSchema,
   SandboxCheckExistBodySchema,
   SandboxCheckExistResponseSchema,
+  SandboxGetTicketBodySchema,
+  SandboxGetTicketResponseSchema,
   SandboxGetHtmlPreviewLinkBodySchema,
-  SandboxGetHtmlPreviewLinkResponseSchema,
-  SandboxFileOpBodySchema,
-  SandboxFileOpResponseSchema
+  SandboxGetHtmlPreviewLinkResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
-  '/core/ai/sandbox/list': {
-    post: {
-      summary: '列出沙盒目录',
-      description: '列出指定目录下的文件和子目录',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxListBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '目录内容',
-          content: {
-            'application/json': {
-              schema: SandboxListResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
-  '/core/ai/sandbox/listRecursive': {
-    post: {
-      summary: '递归列出沙盒目录',
-      description: '递归列出指定目录下的文件和子目录，并返回可直接渲染的目录树',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxListRecursiveBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '递归目录树',
-          content: {
-            'application/json': {
-              schema: SandboxListRecursiveResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
-  '/core/ai/sandbox/write': {
-    post: {
-      summary: '写入沙盒文件',
-      description: '将内容写入指定路径的文件',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxWriteBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '写入成功',
-          content: {
-            'application/json': {
-              schema: SandboxWriteResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
-  '/core/ai/sandbox/read': {
-    post: {
-      summary: '读取沙盒文件内容',
-      description: '读取文件内容并以对应 MIME 类型内联返回，适用于预览场景',
-      tags: [TagsMap.sandbox],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SandboxReadBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          content: {
-            '*/*': {
-              schema: SandboxReadResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-
   '/core/ai/sandbox/download': {
     post: {
       summary: '下载沙盒文件或目录',
@@ -193,24 +86,24 @@ export const SandboxPath: OpenAPIPath = {
     }
   },
 
-  '/core/ai/sandbox/fileOp': {
+  '/core/ai/sandbox/getTicket': {
     post: {
-      summary: '文件系统操作',
-      description: '在沙盒中执行创建目录、删除、移动和复制等文件系统操作',
+      summary: '获取沙盒 WebSocket 临时凭证',
+      description: '鉴权并返回用于连接 agent-sandbox-proxy 的短期 ticket',
       tags: [TagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxFileOpBodySchema
+            schema: SandboxGetTicketBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '操作成功',
+          description: '返回沙盒 WebSocket 临时凭证',
           content: {
             'application/json': {
-              schema: SandboxFileOpResponseSchema
+              schema: SandboxGetTicketResponseSchema
             }
           }
         }

@@ -4,6 +4,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
@@ -48,6 +49,18 @@ export async function authSandboxSession({
       teamId: outLinkAuthData?.teamId,
       teamToken: outLinkAuthData?.teamToken
     });
+
+    // 普通 Chat 鉴权只证明会话可访问；写入沙盒文件时还需要显式校验 App 写权限。
+    if (per !== ReadPermissionVal) {
+      await authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId,
+        per
+      });
+    }
+
     return {
       uid: authResult.uid,
       teamId: authResult.teamId
@@ -56,7 +69,7 @@ export async function authSandboxSession({
 
   try {
     await checkTeamSandboxPermission(result.teamId);
-  } catch (err) {
+  } catch {
     throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
   }
 

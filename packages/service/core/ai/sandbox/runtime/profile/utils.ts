@@ -45,6 +45,8 @@ export const normalizeEntrypoint = (entrypoint?: string | string[]) => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
+import { serviceEnv } from '../../../../../env';
+
 /**
  * 构建 FastGPT 运行态在 sandbox 内约定的基础环境变量。
  *
@@ -56,6 +58,9 @@ export function buildBaseSandboxRuntimeEnv(
 ): Record<string, string> {
   return {
     FASTGPT_SESSION_ID: sessionId,
-    FASTGPT_WORKDIR: workDirectory
+    FASTGPT_WORKDIR: workDirectory,
+    ...(serviceEnv.AGENT_SANDBOX_PROXY_SECRET && {
+      AGENT_SANDBOX_PROXY_SECRET: serviceEnv.AGENT_SANDBOX_PROXY_SECRET
+    })
   };
 }

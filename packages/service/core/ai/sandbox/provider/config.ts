@@ -1,7 +1,7 @@
 import { serviceEnv } from '../../../../env';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
-import { getSandboxRuntimeProfile } from '../runtime/profile';
+import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from '../runtime/profile';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -100,6 +100,10 @@ export function getSandboxAdapterConfig({
   createConfig?: SandboxCreateConfig;
   sessionId?: string;
 } = {}): SandboxAdapterConfig {
+  const profile = getSandboxRuntimeProfile(provider);
+  const baseEnv =
+    runtime && sessionId ? buildBaseSandboxRuntimeEnv(sessionId, profile.workDirectory) : undefined;
+
   switch (provider) {
     case 'opensandbox': {
       const providerConfig: OpenSandboxProviderConfig = {
@@ -114,10 +118,14 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               resourceLimits,
               vmConfig,
-              createConfig
+              createConfig,
+              env: {
+                ...baseEnv,
+                ...createConfig?.env
+              }
             })
           : undefined
       };
@@ -134,9 +142,13 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               createConfig,
-              sessionId
+              sessionId,
+              env: {
+                ...baseEnv,
+                ...createConfig?.env
+              }
             })
           : undefined
       };
@@ -152,7 +164,7 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               createConfig
             })
           : undefined

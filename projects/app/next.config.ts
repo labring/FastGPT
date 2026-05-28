@@ -41,7 +41,8 @@ const nextConfig: NextConfig = {
   env: {
     SYSTEM_NAME: appEnv.SYSTEM_NAME,
     SYSTEM_DESCRIPTION: appEnv.SYSTEM_DESCRIPTION,
-    SYSTEM_FAVICON: appEnv.SYSTEM_FAVICON
+    SYSTEM_FAVICON: appEnv.SYSTEM_FAVICON,
+    AGENT_SANDBOX_PROXY_URL: appEnv.AGENT_SANDBOX_PROXY_URL
   },
   i18n: {
     defaultLocale: 'en',

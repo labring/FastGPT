@@ -12,7 +12,7 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
     AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token',
-    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: false
+    AGENT_SANDBOX_REPLACE_DOCKER_INTERNAL: false
   }
 }));
 

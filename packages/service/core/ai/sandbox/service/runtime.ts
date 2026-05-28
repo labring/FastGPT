@@ -187,6 +187,15 @@ export const getSandboxClient = async (
 
   const vmConfig = await getSessionVolumeConfig(sandboxId);
 
+  if ('chatId' in props && props.chatId === 'edit-debug') {
+    const createConfig = opts.createConfig ?? {};
+    createConfig.env = {
+      ...createConfig.env,
+      IDE_AGENT_ENABLED: 'true'
+    };
+    opts.createConfig = createConfig;
+  }
+
   const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });
   await sandbox.ensureAvailable();
   return sandbox;

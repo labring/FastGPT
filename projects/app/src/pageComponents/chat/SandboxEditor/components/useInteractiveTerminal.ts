@@ -1,0 +1,206 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Terminal } from 'xterm';
+import { FitAddon } from 'xterm-addon-fit';
+import { getSandboxProxyWsUrl, getSandboxTicket } from '../api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { parseAuthFromStableString, stableStringifyAuth } from '../utils';
+
+type UseTerminalProps = {
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+
+export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTerminalProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const termRef = useRef<Terminal | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const outLinkAuthDataStr = stableStringifyAuth(outLinkAuthData);
+
+  // 清理屏幕内容
+  const handleClear = useCallback(() => {
+    termRef.current?.clear();
+    termRef.current?.focus();
+  }, []);
+
+  // 1. 初始化 Terminal 终端与 WebSocket 数据通信流
+  useEffect(() => {
+    if (!containerRef.current || !appId || !chatId) return;
+
+    let isDestroyed = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: any = null;
+
+    // 实例化 Xterm 终端
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 12,
+      fontFamily: '"JetBrains Mono", Menlo, Monaco, Consolas, "Courier New", monospace',
+      lineHeight: 1.3,
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        cursorAccent: '#1e1e1e',
+        selectionBackground: 'rgba(255, 255, 255, 0.15)',
+        black: '#000000',
+        red: '#cd3131',
+        green: '#0dbc79',
+        yellow: '#e5e510',
+        blue: '#2472c8',
+        magenta: '#bc3fbc',
+        cyan: '#11a8cd',
+        white: '#e5e5e5',
+        brightBlack: '#666666',
+        brightRed: '#f14c4c',
+        brightGreen: '#23d18b',
+        brightYellow: '#f5f543',
+        brightBlue: '#3b8eea',
+        brightMagenta: '#d670d6',
+        brightCyan: '#29b8db',
+        brightWhite: '#e5e5e5'
+      }
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(containerRef.current);
+    termRef.current = term;
+
+    // 自适应尺寸变化信号器 (发送符合 Rust Agent 契约的 13 字节大端协议数据)
+    const sendResize = (cols: number, rows: number) => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const buf = new ArrayBuffer(13);
+        const view = new DataView(buf);
+        view.setUint8(0, 0xfe); // 0xFE 引导头
+        view.setUint32(1, cols, false); // cols (4字节 Big-Endian)
+        view.setUint32(5, rows, false); // rows (4字节 Big-Endian)
+        view.setUint32(9, 0, false); // padding
+        ws.send(buf);
+      }
+    };
+
+    const connect = async () => {
+      try {
+        const res = await getSandboxTicket({
+          appId,
+          chatId,
+          outLinkAuthData: parseAuthFromStableString(outLinkAuthDataStr),
+          channel: 'terminal',
+          permission: 'write'
+        });
+        const ticket = res.ticket;
+
+        if (!ticket) {
+          throw new Error('Ticket not found in response');
+        }
+        if (isDestroyed) return;
+
+        const wsUrl = getSandboxProxyWsUrl({ channel: 'terminal', ticket });
+
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          if (isDestroyed) {
+            ws?.close();
+            return;
+          }
+          setIsConnected(true);
+          term.write(
+            '\r\n\x1b[1;36m💡 System: Connected to Sandbox Terminal Session\x1b[0m\r\n\r\n'
+          );
+          try {
+            fitAddon.fit();
+            sendResize(term.cols, term.rows);
+          } catch (e) {
+            console.warn('Initial terminal fit failed', e);
+          }
+        };
+
+        ws.onmessage = (event) => {
+          if (isDestroyed) return;
+          if (event.data instanceof ArrayBuffer) {
+            term.write(new Uint8Array(event.data));
+          } else if (typeof event.data === 'string') {
+            term.write(event.data);
+          }
+        };
+
+        ws.onclose = () => {
+          if (wsRef.current !== ws) return;
+
+          setIsConnected(false);
+          wsRef.current = null;
+          if (!isDestroyed) {
+            term.write(
+              '\r\n\x1b[1;33m⚠️ Terminal: Connection lost. Reconnecting in 3s...\x1b[0m\r\n'
+            );
+            reconnectTimer = setTimeout(connect, 3000);
+          }
+        };
+
+        ws.onerror = (err) => {
+          console.error('[SandboxTerminal] WS error:', err);
+          ws?.close();
+        };
+      } catch (err: any) {
+        console.error('[SandboxTerminal] Connection error:', err);
+        if (!isDestroyed) {
+          term.write(
+            `\r\n\x1b[1;31m✖ Error: Connection failed: ${err.message}. Retrying in 5s...\x1b[0m\r\n`
+          );
+          reconnectTimer = setTimeout(connect, 5000);
+        }
+      }
+    };
+
+    connect();
+
+    // 绑定 xterm 键盘输入与 resize 响应
+    const onDataDisposable = term.onData((data) => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    });
+
+    const onResizeDisposable = term.onResize(({ cols, rows }) => {
+      sendResize(cols, rows);
+    });
+
+    // 基于 ResizeObserver 的窗口容器自适应
+    const resizeObserver = new ResizeObserver(() => {
+      if (isDestroyed) return;
+      try {
+        fitAddon.fit();
+      } catch {}
+    });
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      isDestroyed = true;
+      onDataDisposable.dispose();
+      onResizeDisposable.dispose();
+      resizeObserver.disconnect();
+      if (ws) {
+        if (wsRef.current === ws) {
+          wsRef.current = null;
+        }
+        ws.close();
+      }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      term.dispose();
+    };
+  }, [appId, chatId, outLinkAuthDataStr]);
+
+  return {
+    containerRef,
+    termRef,
+    handleClear,
+    isConnected
+  };
+};

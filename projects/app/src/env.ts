@@ -2,6 +2,27 @@ import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
 
+const hasAgentSandboxConfig = () => {
+  // 与 serviceEnv.hasAgentSandboxConfig 保持一致；show_agent_sandbox 由这组原始 env 推导。
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+
+  if (provider === 'sealosdevbox') {
+    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
+  }
+
+  if (provider === 'opensandbox') {
+    return !!(
+      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
+    );
+  }
+
+  if (provider === 'e2b') {
+    return !!process.env.AGENT_SANDBOX_E2B_API_KEY;
+  }
+
+  return false;
+};
+
 export const appEnv = createEnv({
   server: {
     DEFAULT_ROOT_PSW: z.string().default('123456'),
@@ -19,7 +40,8 @@ export const appEnv = createEnv({
 
     // 临时
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
-    PASSWORD_EXPIRED_MONTH: IntSchema.optional()
+    PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
+    AGENT_SANDBOX_PROXY_URL: z.string().optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
@@ -28,3 +50,9 @@ export const appEnv = createEnv({
     throw new Error(`Invalid app environment variables. Please check: ${paths}\n`);
   }
 });
+
+if (hasAgentSandboxConfig() && !appEnv.AGENT_SANDBOX_PROXY_URL) {
+  throw new Error(
+    'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
+  );
+}

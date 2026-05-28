@@ -42,7 +42,10 @@ export const SandboxMetadataSchema = z.object({
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
-  image: SandboxImageSchema
+  image: SandboxImageSchema,
+
+  skillName: z.string().optional(),
+  versionId: z.string().optional()
 });
 export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 

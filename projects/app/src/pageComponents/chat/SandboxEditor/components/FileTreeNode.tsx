@@ -104,6 +104,7 @@ const FileTreeNode = ({
         border={isOverNode ? '1px dashed #388BFD' : '1px solid transparent'}
         borderRadius="6px"
         onClick={() => {
+          if (!node || !node.path) return;
           setSelectedPath(node.path);
           if (node.type === 'file') {
             openFile(node.path);
@@ -197,7 +198,7 @@ const FileTreeNode = ({
       {/* 渲染子节点，同时在需要时渲染 Inline 新建子节点输入框 */}
       {shouldShowArrow && isExpanded && (
         <Box>
-          {node.children && renderTreeNodes(node.children)}
+          {node.children && <>{renderTreeNodes(node.children)}</>}
           {creatingNode && creatingNode.parentPath === node.path && (
             <InlineCreateNode
               level={node.level + 1}

@@ -12,27 +12,6 @@ const defaultableIntSchema = (defaultValue: number) =>
 
 // 系统最大字符串处理长度
 const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
-
-/**
- * 判断系统是否显式配置了 Agent 虚拟机能力。
- * 注意 serviceEnv 会给部分字段填默认值，这里必须读取原始 env，避免把未配置误判为已配置。
- */
-export const hasAgentSandboxConfig = () => {
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-
-  if (provider === 'sealosdevbox') {
-    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
-  }
-
-  if (provider === 'opensandbox') {
-    return !!(
-      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
-  }
-
-  return false;
-};
-
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
@@ -76,6 +55,7 @@ export const serviceEnv = createEnv({
 
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
+    AGENT_SANDBOX_PROXY_SECRET: z.string().optional(),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     // Sealos配置
@@ -270,7 +250,7 @@ export const serviceEnv = createEnv({
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),
-    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
+    AGENT_SANDBOX_REPLACE_DOCKER_INTERNAL: BoolSchema.default(false).meta({
       description:
         '是否把 endpoint 中的 host.docker.internal 改写为 localhost；当 sandbox-proxy 直接运行在宿主机进程时开启，容器或 k8s 内运行时保持关闭'
     }),
@@ -326,3 +306,27 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 
 export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
+
+/**
+ * 判断系统是否显式配置了 Agent 虚拟机能力。
+ * 必须直读 process.env 以尊重用户显式的物理配置激活，而不被 Zod 的 default('opensandbox') 逻辑强制回退启动。
+ */
+export const hasAgentSandboxConfig = (): boolean => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+
+  if (provider === 'sealosdevbox') {
+    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
+  }
+
+  if (provider === 'opensandbox') {
+    return !!(
+      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
+    );
+  }
+
+  if (provider === 'e2b') {
+    return !!process.env.AGENT_SANDBOX_E2B_API_KEY;
+  }
+
+  return false;
+};

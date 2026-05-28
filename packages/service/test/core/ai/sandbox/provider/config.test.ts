@@ -131,7 +131,11 @@ describe('sandbox provider config', () => {
       },
       createConfig: {
         workingDir: '/home/devbox/workspace',
-        upstreamID: 'session-1'
+        upstreamID: 'session-1',
+        env: {
+          FASTGPT_SESSION_ID: 'session-1',
+          FASTGPT_WORKDIR: '/home/devbox/workspace'
+        }
       }
     });
   });
@@ -234,16 +238,28 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
-
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/runtime/profile');
-
-    expect(getSandboxRuntimeProfile('opensandbox').buildConfig()).toEqual({
+    const profile = getSandboxRuntimeProfile('opensandbox');
+    expect(profile.buildConfig()).toEqual({
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
       },
+      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+    });
+
+    expect(
+      profile.buildConfig({
+        entrypoint: profile.entrypoint
+      })
+    ).toEqual({
+      image: {
+        repository: 'default-opensandbox-image',
+        tag: 'stable'
+      },
+      entrypoint: ['/home/sandbox/entrypoint.sh'],
       networkPolicy: defaultOpenSandboxDockerNetworkPolicy
     });
   });

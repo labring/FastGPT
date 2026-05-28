@@ -112,12 +112,12 @@ export async function useSandbox({
   );
 
   const getSkillsInfo = async () => {
-    // 编辑模式下复用编辑器已经写入 skills 目录的 skill 文件，避免工作区其他 SKILL.md 进入 prompt。
+    // 编辑调试包已解压到当前工作目录，调度侧需要扫描同一目录才能读取 SKILL.md。
     if (hasEditSkill) {
       const runtimeProfile = getSandboxRuntimeProfile();
       return getAgentSkillInfos({
         sandbox: sandboxClient.provider,
-        workDirectory: runtimeProfile.skillsRootPath
+        workDirectory: runtimeProfile.workDirectory
       });
     } else if (hasAgentSkills) {
       return injectAgentSkillFilesToSandbox({

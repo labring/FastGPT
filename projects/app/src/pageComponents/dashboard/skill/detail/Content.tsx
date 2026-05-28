@@ -45,6 +45,7 @@ const Content = () => {
             defaultViewMode={'source'}
             isPreparing={sandboxState !== 'ready'}
             preparingText={t('skill:generating')}
+            showTerminal={true}
           />
         )}
       </Box>

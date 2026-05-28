@@ -1,62 +1,33 @@
 import type {
-  SandboxListBody,
-  SandboxListResponse,
-  SandboxListRecursiveBody,
-  SandboxListRecursiveResponse,
-  SandboxWriteBody,
-  SandboxWriteResponse,
-  SandboxReadBody,
   SandboxDownloadBody,
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
+  SandboxGetTicketBody,
+  SandboxGetTicketResponse,
   SandboxGetHtmlPreviewLinkBody,
-  SandboxGetHtmlPreviewLinkResponse,
-  SandboxFileOpBody,
-  SandboxFileOpResponse
+  SandboxGetHtmlPreviewLinkResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
+import { appClientEnv } from '@/web/common/system/env';
 
 /**
- * 文件系统操作
+ * 生成浏览器直连 sandbox proxy 的 WebSocket 地址。
  */
-export const fileOpSandbox = async (data: SandboxFileOpBody) =>
-  POST<SandboxFileOpResponse>('/core/ai/sandbox/fileOp', data);
+export const getSandboxProxyWsUrl = ({
+  channel,
+  ticket
+}: {
+  channel: 'fs' | 'terminal';
+  ticket: string;
+}) => {
+  const proxyBaseUrl = appClientEnv.agentSandboxProxyUrl.replace(/\/+$/, '');
 
-/**
- * 列出目录文件
- */
-export const listSandboxFiles = async (data: SandboxListBody) =>
-  POST<SandboxListResponse>('/core/ai/sandbox/list', data);
-
-/**
- * 递归列出目录文件
- */
-export const listSandboxFilesRecursive = async (data: SandboxListRecursiveBody) =>
-  POST<SandboxListRecursiveResponse>('/core/ai/sandbox/listRecursive', data);
-
-/**
- * 写入文件内容
- */
-export const writeSandboxFile = async (data: SandboxWriteBody) =>
-  POST<SandboxWriteResponse>('/core/ai/sandbox/write', data);
-
-/**
- * 读取文件内容（内联预览）
- */
-export const getSandboxFile = async (data: SandboxReadBody) => {
-  const response = await fetch('/api/core/ai/sandbox/read', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    throw new Error(errText || `Fetch file failed: ${response.status}`);
+  if (!proxyBaseUrl) {
+    throw new Error('AGENT_SANDBOX_PROXY_URL is required but not configured');
   }
 
-  return response;
+  return `${proxyBaseUrl}/${channel}?ticket=${encodeURIComponent(ticket)}`;
 };
 
 /**
@@ -100,3 +71,6 @@ export const checkSandboxExist = async (data: SandboxCheckExistBody) =>
  */
 export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkBody) =>
   POST<SandboxGetHtmlPreviewLinkResponse>('/core/ai/sandbox/getHtmlPreviewLink', data);
+
+export const getSandboxTicket = async (data: SandboxGetTicketBody) =>
+  POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', data);

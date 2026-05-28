@@ -69,7 +69,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   });
 
   const sandbox = await getSandboxClient({ appId, userId: uid, chatId, teamId });
-  await sandbox.ensureAvailable();
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);
 

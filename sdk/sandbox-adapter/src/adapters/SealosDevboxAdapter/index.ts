@@ -348,7 +348,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
   private async getHttpgateTarget(
     port: number
-  ): Promise<{ origin: string; basePath: string; port: number; password?: string }> {
+  ): Promise<{ origin: string; basePath: string; port: number }> {
     const res = await this.api.info(this._id);
     if (res.code !== 200 || !res.data) {
       throw new ConnectionError(`Failed to get devbox info: ${res.message}`, this.config.baseUrl);

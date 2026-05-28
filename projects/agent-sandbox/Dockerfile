@@ -1,16 +1,32 @@
-# Agent Sandbox 镜像
-# 提供 code-server 开发环境
+# Dockerfile: Sandbox 镜像与内置极轻量 fastgpt-ide-agent
 #
-# 构建：docker build -t fastgpt-agent-sandbox:latest .
-# 产物：fastgpt-agent-sandbox:latest
+# Stage 1: 使用 cargo-chef 缓存并编译外部依赖
+FROM rust:1.95-slim AS chef
+RUN cargo install cargo-chef
+WORKDIR /usr/src/fastgpt-ide-agent
+
+# Stage 1.1: 准备配方 (将项目目录下的所有真实文件平铺拷贝至当前 WORKDIR，确保绝对的路径兼容性)
+FROM chef AS planner
+COPY projects/fastgpt-ide-agent/ .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# Stage 1.2: 编译依赖
+FROM chef AS builder
+COPY --from=planner /usr/src/fastgpt-ide-agent/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Stage 1.3: 编译源码 (平铺拷贝真实 src 目录进行最终 Release 编译)
+COPY projects/fastgpt-ide-agent/src/ src/
+RUN cargo build --release
+
+# Stage 2: 运行时环境配置
 FROM ubuntu:24.04
 
-# Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV BUN_INSTALL=/usr/local
 ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-# Install sandbox runtime tools.
+# 安装 sandbox 运行期基础工具链 (Node.js/Python/Bun/git 等)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     ca-certificates \
@@ -27,20 +43,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && curl -fsSL https://bun.sh/install | bash \
-    && for tool in bash python3 node bun git curl; do command -v "$tool"; done \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security. Keep /workspace owned by this user so
-# Docker named volumes initialized from the image remain writable by sandbox.
+# 创建非特权安全 sandbox 账户
 RUN useradd --create-home --shell /bin/bash --uid 10001 sandbox \
     && mkdir -p /workspace \
     && chown -R sandbox:sandbox /home/sandbox /workspace
 
+# 拷贝 Rust Agent 二进制文件
+COPY --from=builder /usr/src/fastgpt-ide-agent/target/release/fastgpt-ide-agent /usr/local/bin/fastgpt-ide-agent
+RUN chmod +x /usr/local/bin/fastgpt-ide-agent
+
 USER sandbox
 WORKDIR /home/sandbox
 
-# Copy and configure entrypoint
-COPY --chown=sandbox:sandbox entrypoint.sh /home/sandbox/entrypoint.sh
+COPY --chown=sandbox:sandbox projects/agent-sandbox/entrypoint.sh /home/sandbox/entrypoint.sh
 RUN chmod +x /home/sandbox/entrypoint.sh
 
 ENTRYPOINT ["/home/sandbox/entrypoint.sh"]

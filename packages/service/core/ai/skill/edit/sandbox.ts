@@ -1,21 +1,12 @@
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import {
-  parseSkillMarkdown,
-  shellQuote,
-  getSafeSkillDirectoryName,
-  joinSandboxPath,
-  parseGitignoreRules
-} from '../utils';
+import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
 import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
-import {
-  buildBaseSandboxRuntimeEnv,
-  getSandboxRuntimeProfile
-} from '../../sandbox/runtime/profile';
+import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
@@ -40,12 +31,6 @@ import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
-
-const getSandboxParentPath = (path: string) => {
-  const normalizedPath = path.replace(/\/+$/, '');
-  const slashIndex = normalizedPath.lastIndexOf('/');
-  return slashIndex > 0 ? normalizedPath.slice(0, slashIndex) : '/';
-};
 
 export type CreateEditDebugSandboxParams = {
   skillId: string;
@@ -118,9 +103,6 @@ export async function createEditDebugSandbox(
   }
 
   const sessionId = getEditDebugSandboxId(skillId);
-  const getEditSkillSandboxPaths = () => ({
-    skillsRootPath: runtimeProfile.skillsRootPath
-  });
 
   /**
    * 复用编辑沙盒时只保证 sandbox 工作目录下的 skills 存在。
@@ -195,8 +177,35 @@ export async function createEditDebugSandbox(
   };
 
   if (existingInstance) {
-    const reusedSandbox = await reuseExistingEditDebugSandbox(existingInstance);
-    if (reusedSandbox) return reusedSandbox;
+    // 切换历史版本或还原草稿时，如果版本不一致，强制销毁重建容器以同步最新文件包
+    const existingVersionId = existingInstance.metadata?.versionId;
+    const targetVersionId = currentVersion._id.toString();
+
+    if (!existingVersionId || existingVersionId !== targetVersionId) {
+      addLog.info(
+        '[Sandbox] Sandbox version mismatched or not found, forcing recreating edit-debug sandbox',
+        {
+          sandboxId: existingInstance.sandboxId,
+          existingVersionId,
+          targetVersionId
+        }
+      );
+      try {
+        await deleteSandboxResource(existingInstance);
+      } catch (deleteError) {
+        addLog.error(
+          '[Sandbox] Failed to delete mismatched sandbox resource, cleaning record anyway',
+          {
+            sandboxId: existingInstance.sandboxId,
+            error: deleteError
+          }
+        );
+        await deleteSandboxInstanceRecord(existingInstance._id);
+      }
+    } else {
+      const reusedSandbox = await reuseExistingEditDebugSandbox(existingInstance);
+      if (reusedSandbox) return reusedSandbox;
+    }
   }
 
   const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
@@ -250,7 +259,9 @@ export async function createEditDebugSandbox(
 
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
 
-    const runtimeEnv = buildBaseSandboxRuntimeEnv(sessionId, runtimeProfile.workDirectory);
+    const runtimeEnv = {
+      IDE_AGENT_ENABLED: 'true'
+    };
     const runtimeMetadata = {
       skillId,
       teamId,
@@ -287,8 +298,6 @@ export async function createEditDebugSandbox(
       status: client.provider.status
     });
 
-    const { skillsRootPath } = getEditSkillSandboxPaths();
-
     const prepareWorkDirectoryResult = await client.provider.execute(
       `mkdir -p ${shellQuote(runtimeProfile.workDirectory)}`
     );
@@ -299,14 +308,7 @@ export async function createEditDebugSandbox(
     }
 
     onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
-    const zipPath = joinSandboxPath(skillsRootPath, 'package.zip');
-
-    const prepareResult = await client.provider.execute(
-      `rm -rf ${shellQuote(skillsRootPath)} && mkdir -p ${shellQuote(skillsRootPath)}`
-    );
-    if (prepareResult.exitCode !== 0) {
-      throw new Error(`Failed to reset skill directory: ${prepareResult.stderr}`);
-    }
+    const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
 
     const writeResults = await client.provider.writeFiles([
       {
@@ -319,61 +321,18 @@ export async function createEditDebugSandbox(
       throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);
     }
 
-    const quotedSkillsRootPath = shellQuote(skillsRootPath);
-    const quotedZipPath = shellQuote(zipPath);
+    onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
+
     const unzipCmd = [
-      `cd ${quotedSkillsRootPath}`,
-      `mkdir -p tmp_unzip`,
-      `unzip -o -q package.zip -d tmp_unzip`,
-      `rm -f package.zip`
+      `cd ${shellQuote(runtimeProfile.workDirectory)}`,
+      `unzip -o -q ${shellQuote(zipPath)} -d .`,
+      `rm -f ${shellQuote(zipPath)}`,
+      `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
     ].join(' && ');
 
     const extractResult = await client.provider.execute(unzipCmd);
     if (extractResult.exitCode !== 0) {
       throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
-    }
-
-    const findSkillMdResult = await client.provider.execute(
-      `find ${quotedSkillsRootPath}/tmp_unzip -iname "skill.md" | head -n 1`
-    );
-    const skillMdPath = findSkillMdResult.stdout.trim();
-
-    let skillFolderName = getSafeSkillDirectoryName(skill.name);
-    if (skillMdPath) {
-      try {
-        const readFilesResult = await client.provider.readFiles([skillMdPath]);
-        const file = readFilesResult?.[0];
-        if (file && !file.error) {
-          const content =
-            typeof file.content === 'string'
-              ? file.content
-              : Buffer.from(file.content).toString('utf-8');
-          const { frontmatter } = parseSkillMarkdown(content);
-          if (frontmatter.name) {
-            skillFolderName = getSafeSkillDirectoryName(String(frontmatter.name));
-          }
-        }
-      } catch (err: any) {
-        addLog.warn('[Sandbox] Failed to read and parse SKILL.md from package', {
-          sandboxId: sessionId,
-          error: err.message
-        });
-      }
-    }
-
-    const quotedSkillFolderName = shellQuote(skillFolderName);
-    const moveCmd = [
-      `cd ${quotedSkillsRootPath}`,
-      `REAL_SKILL_DIR=$(dirname "$(find tmp_unzip -iname "skill.md" | head -n 1)")`,
-      `if [ -n "$REAL_SKILL_DIR" ] && [ "$REAL_SKILL_DIR" != "." ]; then mv "$REAL_SKILL_DIR" ${quotedSkillFolderName}; fi`,
-      `rm -rf tmp_unzip`,
-      `if [ -f ${quotedSkillFolderName}/.gitignore ]; then mv ${quotedSkillFolderName}/.gitignore ${shellQuote(runtimeProfile.workDirectory)}/ 2>/dev/null || true; fi`,
-      `if [ ! -f ${shellQuote(runtimeProfile.workDirectory)}/.gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > ${shellQuote(runtimeProfile.workDirectory)}/.gitignore; fi`
-    ].join(' && ');
-
-    const moveResult = await client.provider.execute(moveCmd);
-    if (moveResult.exitCode !== 0) {
-      throw new Error(`Failed to move and organize skill folder: ${moveResult.stderr}`);
     }
 
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
@@ -395,10 +354,8 @@ export async function createEditDebugSandbox(
           key: currentVersion.storageKey,
           uploadedAt: new Date()
         },
-        metadata: new Map([
-          ['skillName', skill.name],
-          ['versionId', currentVersion._id.toString()]
-        ])
+        skillName: skill.name,
+        versionId: currentVersion._id.toString()
       }
     });
 

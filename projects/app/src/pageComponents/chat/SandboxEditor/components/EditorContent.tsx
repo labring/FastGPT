@@ -21,7 +21,6 @@ type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMou
 type Props = {
   activeFile: OpenedFile | undefined;
   activeFilePath: string;
-  saving: boolean;
   downloadingFile: boolean;
   downloadCurrentFile: () => void;
   saveFile: (path?: string) => void;
@@ -33,12 +32,14 @@ type Props = {
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
+  showTerminal?: boolean;
+  canWrite?: boolean;
+  onToggleTerminal?: () => void;
 };
 
 const EditorContent = ({
   activeFile,
   activeFilePath,
-  saving,
   downloadingFile,
   downloadCurrentFile,
   saveFile,
@@ -49,7 +50,10 @@ const EditorContent = ({
   chatId,
   outLinkAuthData,
   showDownload = true,
-  defaultViewMode
+  defaultViewMode,
+  showTerminal,
+  canWrite = true,
+  onToggleTerminal
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -189,6 +193,7 @@ const EditorContent = ({
             fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
             tabSize: 2,
             wordWrap: 'on',
+            readOnly: !canWrite,
             smoothScrolling: true,
             cursorBlinking: 'smooth',
             renderLineHighlight: 'line',
@@ -202,6 +207,7 @@ const EditorContent = ({
 
             // 保存快捷键 Ctrl/Cmd + S
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+              if (!canWrite) return;
               saveFile();
             });
 
@@ -209,6 +215,7 @@ const EditorContent = ({
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
               () => {
+                if (!canWrite) return;
                 openedFilesRef.current?.forEach((file) => {
                   if (file.isDirty) {
                     saveFile(file.path);
@@ -219,6 +226,7 @@ const EditorContent = ({
 
             // 失去焦点时自动保存脏文件
             editor.onDidBlurEditorText(() => {
+              if (!canWrite) return;
               const files = openedFilesRef.current;
               if (!files) return;
               const currentFile = files.find((f) => f.path === activeFilePath);
@@ -228,6 +236,7 @@ const EditorContent = ({
             });
           }}
           onChange={(value) => {
+            if (!canWrite) return;
             // 更新当前文件内容
             if (activeFilePath && value !== undefined && value !== activeFile?.content) {
               setOpenedFiles((prev) =>
@@ -251,7 +260,7 @@ const EditorContent = ({
           </Box>
           {activeFile && (
             <Flex alignItems={'center'} h={'20px'}>
-              {activeFile.isDirty || saving ? (
+              {activeFile.isDirty ? (
                 <Flex alignItems={'center'} gap={1} color={'myGray.500'} fontSize={'xs'}>
                   <MyIcon name={'common/loading'} w={'12px'} />
                   <Box>{t('common:core.app.saving')}</Box>
@@ -307,6 +316,15 @@ const EditorContent = ({
               itemHeight="32px"
               fontSize="xs"
               iconSize="16px"
+            />
+          )}
+          {onToggleTerminal && (
+            <IconButton
+              size="sm"
+              icon={<MyIcon name="core/app/sandbox/sandbox" w="16px" />}
+              aria-label={t('chat:sandbox_toggle_terminal', 'Toggle Terminal Panel')}
+              onClick={onToggleTerminal}
+              variant={showTerminal ? 'primary' : 'whiteBase'}
             />
           )}
           {showDownload && activeFilePath && (
