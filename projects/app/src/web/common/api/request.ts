@@ -12,7 +12,7 @@ import { getWebReqUrl, subRoute } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
-import { safeEncodeURIComponent } from '@/web/common/utils/uri';
+import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -27,6 +27,13 @@ interface ResponseDataType {
   message: string;
   data: any;
 }
+
+export const AUTH_ERROR_EVENT_NAME = 'fastgpt:auth-error';
+export type AuthErrorEventDetail = {
+  data: any;
+  skipClearToken?: boolean;
+  skipRedirect?: boolean;
+};
 
 const maxQuantityMap: Record<
   string,
@@ -132,11 +139,23 @@ function responseError(err: any) {
 
   // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!isOutlinkPage && pathname !== `${subRoute}/chat`) {
-      clearToken();
+    const authErrorEvent = new CustomEvent<AuthErrorEventDetail>(AUTH_ERROR_EVENT_NAME, {
+      detail: {
+        data
+      }
+    });
+
+    window.dispatchEvent?.(authErrorEvent);
+
+    if (!authErrorEvent.detail.skipRedirect && !isOutlinkPage && pathname !== `${subRoute}/chat`) {
+      if (!authErrorEvent.detail.skipClearToken) {
+        clearToken();
+      }
       window.location.replace(
         getWebReqUrl(
-          `/login?lastRoute=${safeEncodeURIComponent(location.pathname + location.search)}`
+          getAuthLoginRedirectPath({
+            lastRoute: location.pathname + location.search
+          })
         )
       );
     }

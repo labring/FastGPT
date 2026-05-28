@@ -47,8 +47,8 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
   const renderType = renderTypeList?.[selectedTypeIndex || 0];
 
   return (
-    <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
-      <Flex alignItems={'center'} position={'relative'} fontWeight={'medium'}>
+    <Box display={'flex'} alignItems={'center'} position={'relative'}>
+      <Flex className="nodrag" alignItems={'center'} position={'relative'} fontWeight={'medium'}>
         <FormLabel required={required} color={'myGray.600'}>
           {t(label as any)}
         </FormLabel>
@@ -56,12 +56,12 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
       </Flex>
       {/* value type */}
       {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(renderType) && (
-        <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+        <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />
       )}
 
       {/* input type select */}
       {renderTypeList && renderTypeList.length > 1 && (
-        <Box ml={2}>
+        <Box ml={2} className="nodrag">
           <NodeInputSelect
             renderTypeList={renderTypeList}
             renderTypeIndex={selectedTypeIndex}
@@ -75,6 +75,7 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
           <Box flex={'1'} />
           <MyTooltip label={t('app:Click_to_delete_this_field')}>
             <Flex
+              className="nodrag"
               px={1.5}
               py={1}
               bg={'adora.50'}
@@ -107,7 +108,7 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
           {RightComponent}
         </>
       )}
-    </Flex>
+    </Box>
   );
 };
 

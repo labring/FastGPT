@@ -22,8 +22,6 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
   return (
     <Box position={'relative'}>
       <Flex
-        className="nodrag"
-        cursor={'default'}
         alignItems={'center'}
         fontWeight={'medium'}
         color={'myGray.600'}
@@ -34,20 +32,22 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
           : {})}
       >
         <Box
+          className="nodrag"
           position={'relative'}
           mr={1}
           ml={output.type === FlowNodeOutputTypeEnum.source ? 1 : 0}
         >
           {t(label as any)}
         </Box>
-        {description && <QuestionTip ml={1} label={t(description as any)} />}
-        <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+        {description && <QuestionTip className="nodrag" ml={1} label={t(description as any)} />}
+        <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />
 
         {output.deprecated && (
           <>
             <Box flex={'1'} />
             <MyTooltip label={t('app:Click_to_delete_this_field')}>
               <Flex
+                className="nodrag"
                 px={1.5}
                 py={1}
                 bg={'adora.50'}

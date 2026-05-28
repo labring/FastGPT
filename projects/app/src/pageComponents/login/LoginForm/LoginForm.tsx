@@ -1,9 +1,8 @@
-import React, { useEffect, type Dispatch } from 'react';
+import React, { type Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin, getPreLogin } from '@/web/support/user/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './FormLayout';
@@ -16,9 +15,11 @@ import { useMount } from 'ahooks';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: LoginSuccessResponseType) => void;
+  loginSuccess: LoginSuccessHandler;
 }
 
 interface LoginFormType {
@@ -41,14 +42,13 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
     async ({ username, password }: LoginFormType) => {
       const { code } = await getPreLogin(username);
-      loginSuccess(
-        await postLogin({
-          username,
-          password,
-          code,
-          language: i18n.language as LangEnum
-        })
-      );
+      const loginResponse = await postLogin({
+        username,
+        password,
+        code,
+        language: i18n.language as LangEnum
+      });
+      await loginSuccess(loginResponse);
     },
     {
       refreshDeps: [loginSuccess],

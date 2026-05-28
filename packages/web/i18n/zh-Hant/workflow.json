@@ -273,5 +273,8 @@
   "workflow.My edit": "我的編輯",
   "workflow.Switch_success": "切換成功",
   "workflow.Team cloud": "團隊雲端",
+  "workflow_local_draft_auth_expired_notice": "登入已過期，當前編輯內容已自動儲存至本機。請不要關閉頁面，在此分頁重新登入後，即可恢復編排內容。",
+  "workflow_local_draft_auth_expired_title": "已自動儲存",
+  "workflow_local_draft_relogin": "重新登入",
   "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
 }

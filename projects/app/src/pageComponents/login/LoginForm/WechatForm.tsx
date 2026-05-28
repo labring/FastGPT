@@ -17,19 +17,19 @@ import {
   removeFastGPTSem,
   getInviterId
 } from '@/web/support/marketing/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PolicyTip from './PolicyTip';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 interface Props {
-  loginSuccess: (e: LoginSuccessResponseType) => void;
+  loginSuccess: LoginSuccessHandler;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
 }
 
 const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
 
   const { data: wechatInfo } = useQuery(['getWXLoginQR'], getWXLoginQR, {
     onError(err) {
@@ -54,10 +54,10 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     {
       refetchInterval: 3 * 1000,
       enabled: !!wechatInfo?.code,
-      onSuccess(data: LoginSuccessResponseType | undefined) {
+      async onSuccess(data: LoginSuccessResponseType | undefined) {
         if (data) {
           removeFastGPTSem();
-          loginSuccess(data);
+          await loginSuccess(data);
         }
       }
     }

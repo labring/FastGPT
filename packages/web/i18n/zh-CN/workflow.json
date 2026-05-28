@@ -273,5 +273,8 @@
   "workflow.My edit": "我的编辑",
   "workflow.Switch_success": "切换成功",
   "workflow.Team cloud": "团队云端",
+  "workflow_local_draft_auth_expired_notice": "登录已过期，当前编辑内容已自动保存至本地。请不要关闭页面，在此标签页重新登录后，即可恢复编排内容。",
+  "workflow_local_draft_auth_expired_title": "已自动保存",
+  "workflow_local_draft_relogin": "重新登录",
   "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
 }

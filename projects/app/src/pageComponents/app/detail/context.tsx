@@ -181,6 +181,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       manual: true,
+      // 保存入口通常会再包一层 useRequest 处理按钮 loading 和 toast，这里只做共享保存动作，避免失败时重复提示。
+      errorToast: '',
       refreshDeps: [appDetail.permission.hasWritePer, appId]
     }
   );

@@ -11,6 +11,8 @@ import CookieConsentModal from './components/CookieConsentModal';
 import LoginFormPanel from './components/LoginFormPanel';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
+type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
+
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 // login container component
@@ -19,7 +21,7 @@ export const LoginContainer = ({
   onSuccess
 }: {
   children?: React.ReactNode;
-  onSuccess: (res: LoginSuccessResponseType) => void;
+  onSuccess: LoginSuccessHandler;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -30,8 +32,8 @@ export const LoginContainer = ({
 
   // login success handler
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponseType) => {
-      onSuccess?.(res);
+    async (res: LoginSuccessResponseType) => {
+      await onSuccess?.(res);
     },
     [onSuccess]
   );
