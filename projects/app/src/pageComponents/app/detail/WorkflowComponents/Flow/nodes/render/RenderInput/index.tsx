@@ -103,6 +103,15 @@ const RenderList: Record<
 
 const hideLabelTypeList = [FlowNodeInputTypeEnum.addInputParam];
 
+// assistant 应用节点内部配置字段，在父工作流中不对用户展示
+const ASSISTANT_HIDDEN_VAR_LABELS = new Set([
+  'fallbackReply',
+  'faqAnswerMode',
+  'correct_mapping_answer',
+  'faqAnswer',
+  'enableFallbackReply'
+]);
+
 type Props = {
   flowInputList: FlowNodeInputItemType[];
   nodeId: string;
@@ -128,6 +137,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
       const isDynamic = !!input.canEdit;
 
       if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
+      if (ASSISTANT_HIDDEN_VAR_LABELS.has(input.label)) return false;
 
       return true;
     });

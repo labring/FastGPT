@@ -59,6 +59,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
 
   isInvalid?: boolean;
   isDisabled?: boolean;
+  clearable?: boolean;
 };
 
 export const menuItemStyles: MenuItemProps = {
@@ -91,6 +92,7 @@ const MySelect = <T = any,>(
     footer,
     isInvalid,
     isDisabled,
+    clearable,
     h,
     minH,
     ...props
@@ -204,6 +206,8 @@ const MySelect = <T = any,>(
 
   const isSelecting = loading || isLoading;
 
+  const isShowClearable = clearable && value !== undefined && value !== '';
+
   return (
     <Box>
       <Menu
@@ -292,6 +296,27 @@ const MySelect = <T = any,>(
                 </>
               )}
             </Flex>
+            {isShowClearable && (
+              <Box
+                flexShrink={0}
+                ml={1}
+                cursor={'pointer'}
+                role={'button'}
+                aria-label={'clear selection'}
+                pointerEvents={'auto'}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  (onChange as any)?.(undefined);
+                }}
+              >
+                <MyIcon name={'close'} w={4} color={'myGray.400'} />
+              </Box>
+            )}
           </Flex>
         </MenuButton>
 

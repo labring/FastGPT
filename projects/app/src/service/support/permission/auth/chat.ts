@@ -4,7 +4,13 @@ import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
-import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  ReadPermissionVal,
+  ReadRoleVal
+} from '@fastgpt/global/support/permission/constant';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -14,8 +20,10 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCert, parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { authSkillByTmbId } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 /*
   检查chat的权限：
@@ -182,13 +190,44 @@ export async function authChatCrud({
   }
 
   // Cookie
-  const { teamId, tmbId, permission, authType } = await authApp({
-    req: props.req,
-    authToken: true,
-    authApiKey: true,
-    appId,
-    per: ReadPermissionVal
-  });
+  let teamId: string;
+  let tmbId: string;
+  let permission: AppPermission;
+  let authType: `${AuthUserTypeEnum}` | undefined;
+
+  try {
+    const authResult = await authApp({
+      req: props.req,
+      authToken: true,
+      authApiKey: true,
+      appId,
+      per: ReadPermissionVal
+    });
+    teamId = authResult.teamId;
+    tmbId = authResult.tmbId;
+    permission = authResult.permission;
+    authType = authResult.authType;
+  } catch (err: any) {
+    // Fallback: appId may be a skillId (e.g. Skill Preview debug chat).
+    // authApp fails with AppErrEnum.unExist when appId is not a real app.
+    const errCode = err?.message || err?.statusText || err;
+    if (errCode !== AppErrEnum.unExist) {
+      throw err;
+    }
+
+    const cert = await parseHeaderCert(props);
+    teamId = cert.teamId;
+    tmbId = cert.tmbId;
+
+    await authSkillByTmbId({
+      tmbId,
+      skillId: appId,
+      per: ReadPermissionVal
+    });
+
+    permission = new AppPermission({ isOwner: false, role: ReadRoleVal });
+    authType = AuthUserTypeEnum.token;
+  }
 
   if (!chatId) {
     return {
@@ -236,6 +275,59 @@ export async function authChatCrud({
   }
 
   return Promise.reject(ChatErrEnum.unAuthChat);
+}
+
+/**
+ * Auth for sandbox API endpoints. Tries app auth first; falls back to skill auth
+ * when appId is actually a skillId (e.g. Skill Preview sandbox file access).
+ */
+export async function authSandboxAccess({
+  appId,
+  chatId,
+  outLinkAuthData,
+  ...props
+}: AuthModeType & {
+  appId: string;
+  chatId?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}): Promise<{
+  teamId: string;
+  tmbId: string;
+  uid: string;
+}> {
+  try {
+    const result = await authChatCrud({ appId, chatId, ...outLinkAuthData, ...props });
+    return { teamId: result.teamId, tmbId: result.tmbId, uid: result.uid };
+  } catch (err: any) {
+    // Only fall back to skill auth for app-not-found / unAuthChat errors.
+    // Errors can be plain strings (Promise.reject(AppErrEnum.unExist)) or objects.
+    const errCode = err?.message || err?.statusText || err;
+    if (
+      errCode !== AppErrEnum.unExist &&
+      errCode !== AppErrEnum.unAuthApp &&
+      errCode !== ChatErrEnum.unAuthChat
+    ) {
+      throw err;
+    }
+
+    const { tmbId, teamId } = await parseHeaderCert(props);
+
+    // appId may be empty for endpoints that only need chatId-based sandbox lookup.
+    // Skip skill auth when appId is falsy — no specific app/resource to authorize.
+    if (appId) {
+      await authSkillByTmbId({
+        tmbId,
+        skillId: appId,
+        per: ReadPermissionVal
+      });
+    }
+
+    return {
+      teamId,
+      tmbId,
+      uid: tmbId
+    };
+  }
 }
 
 export const authCollectionInChat = async ({

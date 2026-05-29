@@ -22,6 +22,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const CorrectionModal = dynamic(
   () => import('@/pageComponents/app/detail/ConversationLogs/CorrectionModal')
@@ -51,6 +52,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const appId = chatBoxData?.appId;
   const chatId = chatBoxData?.chatId;
+  const isAssistantType = chatBoxData?.app?.type === AppTypeEnum.assistant;
 
   const { userInfo } = useUserStore();
   const [datasetReadPerMap, setDatasetReadPerMap] = useState<Record<string, boolean>>({});
@@ -214,7 +216,9 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
                       type={item.obj}
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
-                      onCorrectError={() => handleCorrectError(item.dataId)}
+                      onCorrectError={
+                        isAssistantType ? () => handleCorrectError(item.dataId) : undefined
+                      }
                       datasetReadPerMap={datasetReadPerMap}
                       showExtraInfo
                       {...{

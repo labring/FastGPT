@@ -73,7 +73,7 @@ const ToolMenu = ({
               ...(!isPc && sandboxExists
                 ? [
                     {
-                      icon: 'core/app/sandbox/file' as const,
+                      icon: 'core/chat/fileSelect' as const,
                       label: t('chat:sandox.files'),
                       onClick: () => onOpenSandboxModal()
                     }

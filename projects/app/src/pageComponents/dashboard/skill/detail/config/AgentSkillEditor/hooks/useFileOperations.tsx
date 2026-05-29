@@ -1,0 +1,348 @@
+import type React from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'next-i18next';
+import { useDisclosure } from '@chakra-ui/react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useLatest } from 'ahooks';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { OpenedFile } from '../components/FileTabs';
+import type { TreeNode } from '../components/FileTree';
+import { getLanguageByFileName, getIsBinaryByLanguage } from '../utils';
+import {
+  getSkillPackageFile,
+  writeSkillPackageFile,
+  deleteSkillPackageEntry,
+  renameSkillPackageEntry,
+  mkdirSkillPackageEntry,
+  uploadSkillPackageFile
+} from '../api';
+
+type UseFileOperationsParams = {
+  skillId: string;
+  closeFileFlush: (filePath: string) => void;
+  flushPendingForPath: (prefix: string) => Promise<void>;
+  cancelPendingForPath: (prefix: string) => void;
+  refreshDir: (dirPath: string) => Promise<void>;
+  packageVersionRef: React.MutableRefObject<number>;
+};
+
+export const useFileOperations = ({
+  skillId,
+  closeFileFlush,
+  flushPendingForPath,
+  cancelPendingForPath,
+  refreshDir,
+  packageVersionRef
+}: UseFileOperationsParams) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const [openedFiles, setOpenedFiles] = useState<OpenedFile[]>([]);
+  const [activeFilePath, setActiveFilePath] = useState<string>('');
+
+  const activeFile = useMemoEnhance(() => {
+    return openedFiles.find((f) => f.path === activeFilePath);
+  }, [openedFiles, activeFilePath]);
+
+  const openedFilesRef = useLatest(openedFiles);
+
+  // Name-input modal state exposed for inline rendering
+  const nameModalState = useRef<{ title: string; defaultValue?: string }>({ title: '' });
+  const nameResolveRef = useRef<((value: string | null) => void) | null>(null);
+  const [nameInputValue, setNameInputValue] = useState('');
+  const {
+    isOpen: isNameModalOpen,
+    onOpen: onNameModalOpen,
+    onClose: onNameModalClose
+  } = useDisclosure();
+
+  const requestName = useCallback(
+    (params: { title: string; defaultValue?: string }): Promise<string | null> => {
+      return new Promise((resolve) => {
+        nameResolveRef.current = resolve;
+        nameModalState.current = params;
+        setNameInputValue(params.defaultValue || '');
+        onNameModalOpen();
+      });
+    },
+    [onNameModalOpen]
+  );
+
+  const handleNameConfirm = useCallback(() => {
+    nameResolveRef.current?.(nameInputValue.trim() || null);
+    nameResolveRef.current = null;
+    onNameModalClose();
+  }, [nameInputValue, onNameModalClose]);
+
+  const handleNameCancel = useCallback(() => {
+    nameResolveRef.current?.(null);
+    nameResolveRef.current = null;
+    onNameModalClose();
+  }, [onNameModalClose]);
+
+  const { runAsync: loadFile, loading: loadingFile } = useRequest(
+    async (
+      filePath: string,
+      language: string
+    ): Promise<{ content: string; isUnknown: boolean }> => {
+      const response = await getSkillPackageFile({ skillId, path: filePath });
+      const isBinary = getIsBinaryByLanguage(language);
+      if (isBinary) {
+        const blob = await response.blob();
+        return { content: URL.createObjectURL(blob), isUnknown: false };
+      }
+      const buffer = await response.arrayBuffer();
+      try {
+        const content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        return { content, isUnknown: false };
+      } catch {
+        return { content: '', isUnknown: true };
+      }
+    },
+    { manual: true }
+  );
+
+  const openFile = useCallback(
+    async (filePath: string) => {
+      const existing = openedFiles.find((f) => f.path === filePath);
+      if (existing) {
+        setActiveFilePath(filePath);
+        return;
+      }
+      try {
+        const fileName = filePath.split('/').pop() || '';
+        const language = getLanguageByFileName(fileName);
+        const isBinary = getIsBinaryByLanguage(language);
+        const { content, isUnknown } = await loadFile(filePath, language);
+        const newFile: OpenedFile = {
+          path: filePath,
+          name: fileName,
+          content,
+          language,
+          isBinary,
+          isUnknown
+        };
+        setOpenedFiles((prev) => [...prev, newFile]);
+        setActiveFilePath(filePath);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_open_failed'),
+          description: getErrText(err)
+        });
+      }
+    },
+    [openedFiles, loadFile, t, toast]
+  );
+
+  const closeFile = useCallback(
+    (filePath: string, e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      closeFileFlush(filePath);
+      setOpenedFiles((prev) => {
+        const target = prev.find((f) => f.path === filePath);
+        if (target?.isBinary && target.content.startsWith('blob:')) {
+          URL.revokeObjectURL(target.content);
+        }
+        const next = prev.filter((f) => f.path !== filePath);
+        if (activeFilePath === filePath) {
+          setActiveFilePath(next.length > 0 ? next[next.length - 1].path : '');
+        }
+        return next;
+      });
+    },
+    [closeFileFlush, activeFilePath]
+  );
+
+  const handleCreateFile = useCallback(
+    async (parentDir: string) => {
+      const name = await requestName({ title: t('skill:editor_prompt_new_file_name') });
+      if (!name) return;
+      const fullPath = parentDir ? `${parentDir}/${name}` : name;
+      try {
+        const result = await writeSkillPackageFile({ skillId, path: fullPath, content: '' });
+        packageVersionRef.current = result.packageVersion;
+        await refreshDir(parentDir);
+        openFile(fullPath);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_create_failed'),
+          description: getErrText(err)
+        });
+      }
+    },
+    [skillId, requestName, t, toast, refreshDir, openFile]
+  );
+
+  const handleCreateFolder = useCallback(
+    async (parentDir: string) => {
+      const name = await requestName({ title: t('skill:editor_prompt_new_folder_name') });
+      if (!name) return;
+      const fullPath = parentDir ? `${parentDir}/${name}` : name;
+      try {
+        const result = await mkdirSkillPackageEntry({ skillId, path: fullPath });
+        packageVersionRef.current = result.packageVersion;
+        await refreshDir(parentDir);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_create_failed'),
+          description: getErrText(err)
+        });
+      }
+    },
+    [skillId, requestName, t, toast, refreshDir]
+  );
+
+  const refreshOpenedFiles = useCallback(async () => {
+    const currentFiles = openedFilesRef.current;
+    if (!currentFiles || currentFiles.length === 0) return;
+    const refreshed = await Promise.all(
+      currentFiles.map(async (file) => {
+        if (file.isBinary || file.isUnknown) return file;
+        try {
+          const { content, isUnknown } = await loadFile(file.path, file.language);
+          return { ...file, content, isUnknown };
+        } catch {
+          return file;
+        }
+      })
+    );
+    setOpenedFiles(refreshed);
+  }, [loadFile, openedFilesRef]);
+
+  const handleUploadFiles = useCallback(
+    async (parentDir: string, files: File[]) => {
+      try {
+        let uploadResult: { packageVersion: number } | undefined;
+        for (const file of files) {
+          const fullPath = parentDir ? `${parentDir}/${file.name}` : file.name;
+          uploadResult = await uploadSkillPackageFile({ skillId, path: fullPath, file });
+        }
+        if (uploadResult) {
+          packageVersionRef.current = uploadResult.packageVersion;
+        }
+        toast({ status: 'success', title: t('skill:editor_upload_success') });
+        await refreshDir(parentDir);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_upload_failed'),
+          description: getErrText(err)
+        });
+      }
+    },
+    [skillId, t, toast, refreshDir]
+  );
+
+  const handleRename = useCallback(
+    async (node: TreeNode) => {
+      const newName = await requestName({
+        title: t('skill:editor_prompt_rename'),
+        defaultValue: node.name
+      });
+      if (!newName || newName === node.name) return;
+      const parent = node.path.includes('/') ? node.path.slice(0, node.path.lastIndexOf('/')) : '';
+      const toPath = parent ? `${parent}/${newName}` : newName;
+
+      try {
+        await flushPendingForPath(node.path);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_flush_failed'),
+          description: getErrText(err)
+        });
+        return;
+      }
+
+      try {
+        const result = await renameSkillPackageEntry({ skillId, fromPath: node.path, toPath });
+        packageVersionRef.current = result.packageVersion;
+        setOpenedFiles((prev) =>
+          prev.filter((f) => f.path !== node.path && !f.path.startsWith(node.path + '/'))
+        );
+        if (activeFilePath === node.path || activeFilePath.startsWith(node.path + '/')) {
+          setActiveFilePath('');
+        }
+        await refreshDir(parent);
+      } catch (err) {
+        toast({
+          status: 'error',
+          title: t('skill:editor_rename_failed'),
+          description: getErrText(err)
+        });
+      }
+    },
+    [skillId, requestName, t, toast, flushPendingForPath, refreshDir, activeFilePath]
+  );
+
+  const { openConfirm: openConfirmDelete, ConfirmModal: DeleteConfirmModal } = useConfirm({
+    title: t('skill:editor_confirm_delete_title'),
+    content: t('skill:editor_confirm_delete_content')
+  });
+
+  const handleDelete = useCallback(
+    (node: TreeNode) => {
+      openConfirmDelete({
+        onConfirm: async () => {
+          try {
+            cancelPendingForPath(node.path);
+            const result = await deleteSkillPackageEntry({
+              skillId,
+              path: node.path,
+              recursive: node.type === 'directory'
+            });
+            packageVersionRef.current = result.packageVersion;
+            setOpenedFiles((prev) =>
+              prev.filter((f) => f.path !== node.path && !f.path.startsWith(node.path + '/'))
+            );
+            if (activeFilePath === node.path || activeFilePath.startsWith(node.path + '/')) {
+              setActiveFilePath('');
+            }
+            const parent = node.path.includes('/')
+              ? node.path.slice(0, node.path.lastIndexOf('/'))
+              : '';
+            await refreshDir(parent);
+          } catch (err) {
+            toast({
+              status: 'error',
+              title: t('skill:editor_delete_failed'),
+              description: getErrText(err)
+            });
+          }
+        }
+      })();
+    },
+    [skillId, t, toast, cancelPendingForPath, refreshDir, activeFilePath, openConfirmDelete]
+  );
+
+  return {
+    openedFiles,
+    setOpenedFiles,
+    activeFilePath,
+    setActiveFilePath,
+    activeFile,
+    openedFilesRef,
+    openFile,
+    closeFile,
+    loadingFile,
+    handleCreateFile,
+    handleCreateFolder,
+    handleUploadFiles,
+    handleRename,
+    handleDelete,
+    DeleteConfirmModal,
+    nameModalState,
+    nameInputValue,
+    setNameInputValue,
+    isNameModalOpen,
+    handleNameConfirm,
+    handleNameCancel,
+    refreshOpenedFiles
+  };
+};

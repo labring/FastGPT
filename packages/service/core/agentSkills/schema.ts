@@ -88,6 +88,12 @@ const AgentSkillsSchema = new Schema({
     bucket: String,
     key: String,
     size: Number
+  },
+  // Monotonically increasing counter incremented on every editCurrentPackage
+  // call. Used by the frontend to detect stale state (P2 conflict awareness).
+  packageVersion: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -101,14 +107,6 @@ try {
   AgentSkillsSchema.index({ category: 1 });
   // Folder hierarchy index
   AgentSkillsSchema.index({ parentId: 1, teamId: 1, deleteTime: 1 });
-  // Unique constraint: same parent folder cannot have two live skills/folders with the same name (personal only)
-  AgentSkillsSchema.index(
-    { parentId: 1, name: 1, teamId: 1, deleteTime: 1 },
-    {
-      unique: true,
-      partialFilterExpression: { deleteTime: null, source: AgentSkillSourceEnum.personal }
-    }
-  );
 } catch (error) {
   console.log('AgentSkill index error:', error);
 }

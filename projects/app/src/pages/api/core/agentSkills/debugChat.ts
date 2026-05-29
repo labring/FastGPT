@@ -34,8 +34,6 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
-import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -67,7 +65,7 @@ const AGENT_NODE_ID = 'skill-debug-agent';
 
 /**
  * Build a minimal two-node runtime workflow for skill debug:
- * workflowStart -> agent (with useEditDebugSandbox=true + skillId)
+ * workflowStart -> agent (with skillId, agent sandbox)
  */
 export function buildDebugRuntimeNodes(
   skillId: string,
@@ -156,13 +154,6 @@ export function buildDebugRuntimeNodes(
           valueType: WorkflowIOValueTypeEnum.arrayString,
           label: 'Skills',
           value: [skillId]
-        },
-        {
-          key: NodeInputKeyEnum.useEditDebugSandbox,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.boolean,
-          label: 'Use Edit Debug Sandbox',
-          value: true
         }
       ],
       outputs: [
@@ -225,19 +216,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return;
     }
-
-    // Verify edit-debug sandbox exists for this skill
-    const sandboxInstance = await MongoSandboxInstance.findOne({
-      appId: skillId,
-      chatId: 'edit-debug',
-      'metadata.sandboxType': SandboxTypeEnum.editDebug
-    }).lean();
-    if (!sandboxInstance) {
-      throw new UserError(
-        'Edit debug sandbox not found. Please create it via /api/core/agentSkills/edit first.'
-      );
-    }
-    logger.debug('Edit debug sandbox found', { skillId, sandboxId: String(sandboxInstance._id) });
 
     // Parse messages: pop the last human message as userQuestion
     const chatMessages = GPTMessages2Chats({ messages });

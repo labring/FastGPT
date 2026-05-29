@@ -249,9 +249,9 @@ export const DispatchNodeResponseSchema = z
     retrievalResults: z
       .array(SearchDataResponseItemSchema)
       .optional()
-      .meta({ description: '检索结果（仅assistant场景）' }),
+      .meta({ description: '检索结果（RRF融合后的中间结果）' }),
 
-    // assistant 场景耗时
+    // 检索耗时
     retrievalTime: z.number().optional().meta({ description: '知识检索耗时（秒）' }),
     sqlRetrievalTime: z.number().optional().meta({ description: 'SQL 检索耗时（秒）' }),
     rerankTime: z.number().optional().meta({ description: '重排耗时（秒）' }),
@@ -291,6 +291,7 @@ export const DispatchNodeResponseSchema = z
     toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
     pluginOutput: z.record(z.string(), z.any()).optional().meta({ description: '插件输出' }),
     pluginDetail: z.array(z.any()).optional(),
+    appType: z.string().optional().meta({ description: '应用类型' }),
     toolParamsResult: z
       .record(z.string(), z.any())
       .optional()

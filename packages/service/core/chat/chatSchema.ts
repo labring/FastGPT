@@ -120,6 +120,24 @@ const ChatSchema = new Schema({
     default: false
   },
 
+  // Parent app association fields (when this chat is triggered by a workflow appModule node)
+  parentChatId: {
+    type: String
+  },
+  parentResponseChatItemId: {
+    type: String
+  },
+  parentNodeId: {
+    type: String
+  },
+  parentNodeName: {
+    type: String
+  },
+  parentAppId: {
+    type: Schema.Types.ObjectId,
+    ref: AppCollectionName
+  },
+
   /** @deprecated */
   userId: Schema.Types.ObjectId
 });

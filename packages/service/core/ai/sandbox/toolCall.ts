@@ -36,7 +36,7 @@ export async function uploadSandboxFileToS3({
   const readable = Readable.from(stream);
 
   const chatBucket = getS3ChatSource();
-  const expiredTime = addHours(new Date(), 2);
+  const expiredTime = addHours(new Date(), 24);
   const { key } = await chatBucket.uploadChatFile({
     appId,
     chatId,

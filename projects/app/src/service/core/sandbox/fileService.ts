@@ -7,6 +7,7 @@ export type SandboxFileEntry = {
   path: string;
   type: 'file' | 'directory';
   size?: number;
+  children?: SandboxFileEntry[];
 };
 
 export type SandboxFileContent = {
@@ -15,17 +16,30 @@ export type SandboxFileContent = {
   fileName: string;
 };
 
+const MAX_RECURSIVE_DEPTH = 20;
+
 export async function listSandboxDirectory(
   sandbox: SandboxClient,
-  path: string
+  path: string,
+  recursive?: boolean,
+  depth: number = 0
 ): Promise<SandboxFileEntry[]> {
   const entries = await sandbox.provider.listDirectory(path);
-  return entries.map((entry) => ({
-    name: entry.name,
-    path: entry.path,
-    type: entry.isDirectory ? ('directory' as const) : ('file' as const),
-    size: entry.isFile ? entry.size : undefined
-  }));
+  const result: SandboxFileEntry[] = await Promise.all(
+    entries.map(async (entry) => {
+      const item: SandboxFileEntry = {
+        name: entry.name,
+        path: entry.path,
+        type: entry.isDirectory ? 'directory' : 'file',
+        size: entry.isFile ? entry.size : undefined
+      };
+      if (recursive && entry.isDirectory && depth < MAX_RECURSIVE_DEPTH) {
+        item.children = await listSandboxDirectory(sandbox, entry.path, true, depth + 1);
+      }
+      return item;
+    })
+  );
+  return result;
 }
 
 export async function writeSandboxFile(

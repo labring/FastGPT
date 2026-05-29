@@ -4,7 +4,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   updateSkill,
-  checkSkillNameExists,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/agentSkills/controller';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
@@ -103,15 +102,6 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
       }
       if (name.length > 50) {
         return Promise.reject(SkillErrEnum.invalidSkillName);
-      }
-      const nameExists = await checkSkillNameExists(
-        name.trim(),
-        teamId,
-        skill.parentId ?? null,
-        skillId
-      );
-      if (nameExists) {
-        return Promise.reject(SkillErrEnum.skillNameExists);
       }
     }
 

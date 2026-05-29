@@ -80,6 +80,7 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
   const displayTitle = title || chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
+  const isAssistant = chat?.app.type === AppTypeEnum.assistant;
 
   return (
     <>
@@ -149,6 +150,7 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
               goodTotal={goodTotal}
               badTotal={badTotal}
               notFoundTotal={notFoundTotal}
+              showNotFoundKnowledgeTab={isAssistant}
             />
           </Flex>
         )}

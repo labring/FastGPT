@@ -19,7 +19,6 @@ import { formatChatValue2InputType } from '../utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { SimpleCitationDisplay } from './assistant/ChatItem';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -67,8 +66,7 @@ const ResponseTags = ({
     totalQuoteList: quotes = [],
     llmModuleAccount = 0,
     historyPreviewLength = 0,
-    toolCiteLinks = [],
-    useSandboxFileDisplay
+    toolCiteLinks = []
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -92,12 +90,6 @@ const ResponseTags = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatBoxData = { appId, chatId, outLinkAuthData };
-
-  const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
-    appId,
-    chatId,
-    outLinkAuthData
-  });
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
@@ -165,20 +157,6 @@ const ResponseTags = ({
     <>
       {/* quote */}
       <SimpleCitationDisplay historyItem={historyItem} datasetReadPerMap={datasetReadPerMap} />
-
-      {useSandboxFileDisplay && (
-        <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
-          <MyTag
-            colorSchema="green"
-            type="borderSolid"
-            cursor={'pointer'}
-            onClick={onOpenSandboxModal}
-          >
-            {t('chat:sandbox_files')}
-          </MyTag>
-          <SandboxEditorModal />
-        </Flex>
-      )}
 
       {isOpenWholeModal && isAssistantType && (
         <AssistantDetailModal

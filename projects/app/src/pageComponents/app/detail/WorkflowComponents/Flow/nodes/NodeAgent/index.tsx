@@ -446,7 +446,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
 
         {/* 4. Skills section (manual select / reference dual mode) */}
-        {feConfigs?.show_skill && skillsInput && (
+        {skillsInput && (
           <Box mb={5}>
             <CustomInputLabel
               nodeId={nodeId}
@@ -471,7 +471,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color="#156AD9"
                       border="1px solid #91BBF2"
                       _hover={{ bg: 'myGray.50' }}
-                      leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+                      leftIcon={
+                        <MyIcon
+                          name={'core/chat/sendLight'}
+                          w={'14px'}
+                          transform="rotate(-135deg)"
+                        />
+                      }
                       onClick={onOpenSkillSelect}
                     >
                       {t('common:Choose')}
@@ -596,7 +602,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color="#156AD9"
                       border="1px solid #91BBF2"
                       _hover={{ bg: 'myGray.50' }}
-                      leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+                      leftIcon={
+                        <MyIcon
+                          name={'core/chat/sendLight'}
+                          w={'14px'}
+                          transform="rotate(-135deg)"
+                        />
+                      }
                       onClick={onOpenToolSelect}
                     >
                       {t('common:Choose')}
@@ -704,7 +716,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color="#156AD9"
                       border="1px solid #91BBF2"
                       _hover={{ bg: 'myGray.50' }}
-                      leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+                      leftIcon={
+                        <MyIcon
+                          name={'core/chat/sendLight'}
+                          w={'14px'}
+                          transform="rotate(-135deg)"
+                        />
+                      }
                       onClick={onOpenDatasetSelect}
                     >
                       {t('common:Choose')}

@@ -24,7 +24,6 @@ type BaseSandboxProviderConfig = {
 export type OpenSandboxProviderConfig = BaseSandboxProviderConfig & {
   provider: 'opensandbox';
   apiKey?: string;
-  useServerProxy?: boolean;
 };
 
 export type SealosDevboxProviderConfig = BaseSandboxProviderConfig & {
@@ -83,8 +82,7 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
         provider,
         baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? 'http://127.0.0.1:8080',
         apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-        runtime,
-        useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
+        runtime
       };
 
     case 'sealosdevbox':
@@ -168,7 +166,6 @@ export function buildSandboxAdapter(
           apiKey: providerConfig.apiKey,
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
-          useServerProxy: providerConfig.useServerProxy,
           sessionId: props.providerSandboxId
         },
         toOpenSandboxCreateConfig(props.createConfig)
@@ -252,7 +249,7 @@ export async function getProviderSandboxEndpoint(
   }
 
   throw new Error(
-    `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
+    `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This workflow currently requires opensandbox-compatible endpoint support.`
   );
 }
 

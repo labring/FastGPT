@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Flex, Box, Switch } from '@chakra-ui/react';
+import { Flex, Box, Switch, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import {
   DatasetRetrievalModeEnum,
@@ -21,13 +21,16 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 import RetrievalModeSelector from './RetrievalModeSelector';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
+import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const getNodeList = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeList);
   const nodeAmount = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeAmount);
   const { t } = useTranslation();
-  const { defaultModels, llmModelList, reRankModelList, embeddingModelList } = useSystemStore();
+  const { defaultModels, llmModelList, reRankModelList, embeddingModelList, feConfigs } = useSystemStore();
+  const showDatasetSearchParams = feConfigs.show_dataset_search_params;
 
   const [data, setData] = useState<AppDatasetSearchParamsType>({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -54,6 +57,12 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     agenticSearchRerankModel: defaultModels.rerank?.model || '',
     agenticSearchReasoning: true
   });
+
+  const {
+    isOpen: isOpenDatasetParamsModal,
+    onOpen: onOpenDatasetParamsModal,
+    onClose: onCloseDatasetParamsModal
+  } = useDisclosure();
 
   const knowledgeTypeConfig = useMemo(() => {
     const datasetList = inputs.filter((input) => input.key === NodeInputKeyEnum.datasetSelectList);
@@ -82,7 +91,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         knowledgeInfoList.some(
           (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
         ) || knowledgeInfoList.length === 0,
-      datasetVectorModel: knowledgeInfoList[0]?.vectorModel?.model
+      // 优先取有向量模型的知识库，避免数据库类型排在首位时取到空值
+      datasetVectorModel: knowledgeInfoList.find((d) => d.vectorModel?.model)?.vectorModel?.model
     };
   }, [inputs]);
 
@@ -333,108 +343,129 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           </Box>
         </Flex>
 
-        {/* 内联表单（两种模式共享，仅值/Key/部分提示不同） */}
+        {/* 内联表单 / 参数配置入口 */}
         <Box>
-          {/* AI 模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
-            <FormLabel w="96px" color={'myGray.600'}>
-              {t('app:smart_customer_service_ai_model')}
-              <QuestionTip
-                ml={1}
-                label={
-                  retrievalMode === DatasetRetrievalModeEnum.agentic
-                    ? t('app:smart_customer_service_ai_model_tip_agentic')
-                    : t('app:smart_customer_service_ai_model_tip_standard')
-                }
-              />
-            </FormLabel>
-            <Box flex="1">
-              <SelectAiModel
-                fontSize="12px"
-                fontWeight="normal"
-                width="100%"
-                value={
-                  retrievalMode === DatasetRetrievalModeEnum.agentic
-                    ? agenticSearchConfig.agenticSearchLLMModel
-                    : data.datasetSearchExtensionModel || ''
-                }
-                list={llmModelList.map((item) => ({ value: item.model, label: item.name }))}
-                onChange={(val: string) => {
-                  if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                    setAgenticSearchConfig((prev) => ({ ...prev, agenticSearchLLMModel: val }));
-                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, val);
-                  } else {
-                    setData((prev) => ({ ...prev, datasetSearchExtensionModel: val }));
-                    updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, val);
-                  }
-                  if (knowledgeTypeConfig.hasDatabaseKnowledge) {
-                    updateNodeInput(NodeInputKeyEnum.generateSqlModel, val);
-                  }
-                }}
-              />
-            </Box>
-          </Flex>
+          {retrievalMode === DatasetRetrievalModeEnum.standard && showDatasetSearchParams ? (
+            /* 标准检索 + 开关开启: 参数配置入口 */
+            <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+              <FormLabel w="96px" color={'myGray.600'}>
+                {t('app:Params_config')}
+              </FormLabel>
+              <Box flex="1" display="flex" alignItems="center">
+                <MyIcon
+                  name="common/settingLight"
+                  w="16px"
+                  cursor="pointer"
+                  onClick={onOpenDatasetParamsModal}
+                />
+              </Box>
+            </Flex>
+          ) : (
+            <>
+              {/* AI 模型 */}
+              <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+                <FormLabel w="96px" color={'myGray.600'}>
+                  {t('app:smart_customer_service_ai_model')}
+                  <QuestionTip
+                    ml={1}
+                    label={
+                      retrievalMode === DatasetRetrievalModeEnum.agentic
+                        ? t('app:smart_customer_service_ai_model_tip_agentic')
+                        : t('app:smart_customer_service_ai_model_tip_standard')
+                    }
+                  />
+                </FormLabel>
+                <Box flex="1">
+                  <SelectAiModel
+                    fontSize="12px"
+                    fontWeight="normal"
+                    width="100%"
+                    value={
+                      retrievalMode === DatasetRetrievalModeEnum.agentic
+                        ? agenticSearchConfig.agenticSearchLLMModel
+                        : data.datasetSearchExtensionModel || ''
+                    }
+                    list={llmModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    onChange={(val: string) => {
+                      if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
+                        setAgenticSearchConfig((prev) => ({ ...prev, agenticSearchLLMModel: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModel, val);
+                      } else {
+                        setData((prev) => ({ ...prev, datasetSearchExtensionModel: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetSearchExtensionModel, val);
+                      }
+                      if (knowledgeTypeConfig.hasDatabaseKnowledge) {
+                        updateNodeInput(NodeInputKeyEnum.generateSqlModel, val);
+                      }
+                    }}
+                  />
+                </Box>
+              </Flex>
 
-          {/* 向量模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
-            <FormLabel w="96px" color={'myGray.600'}>
-              {t('common:core.ai.model.Vector Model')}
-              <QuestionTip ml={1} label={t('app:smart_customer_service_embedding_model_tip')} />
-            </FormLabel>
-            <Box flex="1">
-              <SelectAiModel
-                width="100%"
-                fontSize="12px"
-                fontWeight="normal"
-                value={
-                  retrievalMode === DatasetRetrievalModeEnum.agentic
-                    ? agenticSearchConfig.embeddingModel
-                    : data.embeddingModel
-                }
-                list={embeddingModelSelectList}
-                onChange={(val: string) => {
-                  if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                    setAgenticSearchConfig((prev) => ({ ...prev, embeddingModel: val }));
-                  } else {
-                    setData((prev) => ({ ...prev, embeddingModel: val }));
-                  }
-                  updateNodeInput(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
-                }}
-              />
-            </Box>
-          </Flex>
+              {/* 向量模型 */}
+              <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+                <FormLabel w="96px" color={'myGray.600'}>
+                  {t('common:core.ai.model.Vector Model')}
+                  {retrievalMode === DatasetRetrievalModeEnum.agentic && (
+                    <QuestionTip ml={1} label={t('app:smart_customer_service_embedding_model_tip')} />
+                  )}
+                </FormLabel>
+                <Box flex="1">
+                  <SelectAiModel
+                    width="100%"
+                    fontSize="12px"
+                    fontWeight="normal"
+                    value={
+                      retrievalMode === DatasetRetrievalModeEnum.agentic
+                        ? agenticSearchConfig.embeddingModel
+                        : data.embeddingModel
+                    }
+                    list={embeddingModelSelectList}
+                    onChange={(val: string) => {
+                      if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
+                        setAgenticSearchConfig((prev) => ({ ...prev, embeddingModel: val }));
+                      } else {
+                        setData((prev) => ({ ...prev, embeddingModel: val }));
+                      }
+                      updateNodeInput(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
+                    }}
+                  />
+                </Box>
+              </Flex>
 
-          {/* 重排模型 */}
-          <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
-            <FormLabel w="96px" color={'myGray.600'}>
-              {t('app:smart_customer_service_rerank_model')}
-            </FormLabel>
-            <Box flex="1">
-              <SelectAiModel
-                width="100%"
-                fontSize="12px"
-                fontWeight="normal"
-                value={
-                  retrievalMode === DatasetRetrievalModeEnum.agentic
-                    ? agenticSearchConfig.agenticSearchRerankModel
-                    : data.rerankModel || ''
-                }
-                list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
-                onChange={(val: string) => {
-                  if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                    setAgenticSearchConfig((prev) => ({
-                      ...prev,
-                      agenticSearchRerankModel: val
-                    }));
-                    updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, val);
-                  } else {
-                    setData((prev) => ({ ...prev, rerankModel: val }));
-                    updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, val);
-                  }
-                }}
-              />
-            </Box>
-          </Flex>
+              {/* 重排模型 */}
+              <Flex alignItems="center" justifyContent="space-between" mb={2} fontWeight={'medium'}>
+                <FormLabel w="96px" color={'myGray.600'}>
+                  {t('app:smart_customer_service_rerank_model')}
+                </FormLabel>
+                <Box flex="1">
+                  <SelectAiModel
+                    width="100%"
+                    fontSize="12px"
+                    fontWeight="normal"
+                    value={
+                      retrievalMode === DatasetRetrievalModeEnum.agentic
+                        ? agenticSearchConfig.agenticSearchRerankModel
+                        : data.rerankModel || ''
+                    }
+                    list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                    onChange={(val: string) => {
+                      if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
+                        setAgenticSearchConfig((prev) => ({
+                          ...prev,
+                          agenticSearchRerankModel: val
+                        }));
+                        updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchRerankModel, val);
+                      } else {
+                        setData((prev) => ({ ...prev, rerankModel: val }));
+                        updateNodeInput(NodeInputKeyEnum.datasetSearchRerankModel, val);
+                      }
+                    }}
+                  />
+                </Box>
+              </Flex>
+            </>
+          )}
 
           {/* 输出思考过程 —— 仅多轮智能检索 */}
           {retrievalMode === DatasetRetrievalModeEnum.agentic && (
@@ -473,10 +504,48 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     embeddingModelSelectList,
     llmModelList,
     reRankModelList,
-    updateNodeInput
+    updateNodeInput,
+    showDatasetSearchParams
   ]);
 
-  return <>{Render}</>;
+  return (
+    <>
+      {Render}
+      {/* 标准检索参数配置弹窗 */}
+      {isOpenDatasetParamsModal && (
+        <DatasetParamsModal
+          {...data}
+          searchMode={
+            data.searchMode === DatasetSearchModeEnum.database
+              ? DatasetSearchModeEnum.embedding
+              : data.searchMode
+          }
+          maxTokens={tokenLimit}
+          datasetVectorModel={knowledgeTypeConfig.datasetVectorModel}
+          hasDatabaseKnowledge={knowledgeTypeConfig.hasDatabaseKnowledge}
+          hasOtherKnowledge={knowledgeTypeConfig.hasOtherKnowledge}
+          onClose={onCloseDatasetParamsModal}
+          onSuccess={(e) => {
+            setData((prev) => ({ ...prev, ...e }));
+            for (let key in e) {
+              const item = inputs.find((input) => input.key === key);
+              if (!item) continue;
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key,
+                value: {
+                  ...item,
+                  //@ts-ignore
+                  value: e[key]
+                }
+              });
+            }
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 export default React.memo(SelectDatasetParam);

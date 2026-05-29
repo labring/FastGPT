@@ -8,7 +8,7 @@
   "channel": "模型管道",
   "chat_history_store_duration": "對話記錄保留時長",
   "config_model": "模型設定",
-  "confirm_logout": "確認登出？",
+  "confirm_logout": "確認退出登錄？",
   "create_model": "新增模型",
   "custom_config_details": "定制配置詳情",
   "custom_domain.DNS_record": "DNS 記錄",

@@ -12,7 +12,7 @@ import { WorkflowStart } from './system/workflowStart';
 
 import { StopToolNode } from './system/stopTool';
 import { ToolCallNode } from './system/toolCall';
-// import { AgentNode } from './system/agent'; // TODO: 暂时隐藏 Agent 节点
+import { AgentNode } from './system/agent';
 
 import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
@@ -50,7 +50,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   ToolCallNode,
   ToolParamsNode,
   StopToolNode,
-  // AgentNode, // TODO: 暂时隐藏 Agent 节点
+  AgentNode,
   ReadFilesNode,
   HttpNode468,
   AiQueryExtension,

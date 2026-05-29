@@ -105,7 +105,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       return updateDataset({
         id: datasetId,
         agentModel: data.agentModel?.model,
-        vlmModel: data.vlmModel?.model,
+        // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
+        vlmModel: data.vlmModel?.model ?? null,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -303,12 +304,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box pt={2}>
               <AIModelSelector
                 w={'100%'}
+                clearable
                 value={vlmModel?.model}
                 list={vlmModelSelectList}
                 fontSize={'mini'}
                 onChange={(e) => {
                   const vlmModel = vllmModelList.find((item) => item.model === e);
-                  if (!vlmModel) return;
                   setValue('vlmModel', vlmModel);
                   return handleSubmit((data) => onSave({ ...data, vlmModel }))();
                 }}

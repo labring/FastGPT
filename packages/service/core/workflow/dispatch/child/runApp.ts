@@ -1,7 +1,11 @@
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  getChatSourceName
+} from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -22,6 +26,8 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { pushChatRecords } from '../../../chat/saveChat';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -144,7 +150,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       runTimes,
       workflowInteractiveResponse,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      durationSeconds
     } = await runWorkflow({
       ...props,
       lastInteractive: childrenInteractive,
@@ -192,6 +199,46 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       }
     ]);
 
+    // Write child app execution logs (chat, chat_items, chat_item_responses, app_chat_logs)
+    const childChatId = getNanoid();
+    await pushChatRecords({
+      chatId: childChatId,
+      appId: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
+      nodes,
+      appChatConfig: chatConfig,
+      versionId: version,
+      variables: childrenRunVariables,
+      newTitle: (typeof userChatInput === 'string' ? userChatInput : '').slice(0, 8),
+      source: ChatSourceEnum.workflow,
+      sourceName: getChatSourceName(
+        ChatSourceEnum.workflow,
+        props.mode === 'test' ? runningAppInfo.name.replace(/^[^-]+-\s*/, '') : runningAppInfo.name,
+        props.lang
+      ),
+      parentChatId: props.chatId,
+      parentResponseChatItemId: props.responseChatItemId,
+      parentNodeId: props.node.nodeId,
+      parentNodeName: props.node.name,
+      parentAppId: runningAppInfo.id,
+      userContent: {
+        obj: ChatRoleEnum.Human,
+        value: runtimePrompt2ChatsValue({
+          files: userInputFiles,
+          text: userChatInput
+        })
+      },
+      aiContent: {
+        obj: ChatRoleEnum.AI,
+        value: assistantResponses,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
+        memories: system_memories,
+        customFeedbacks
+      },
+      durationSeconds
+    });
+
     return {
       data: {
         [NodeOutputKeyEnum.answerText]: text,
@@ -215,7 +262,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         query: userChatInput,
         textOutput: text,
         pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
-        mergeSignId: props.node.nodeId
+        mergeSignId: props.node.nodeId,
+        appType: appData.type
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks

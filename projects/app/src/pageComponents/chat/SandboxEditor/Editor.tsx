@@ -10,6 +10,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useMount, useLatest } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { SandboxFileItem } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 import FileTree, { type TreeNode } from './components/FileTree';
 import FileTabs, { type OpenedFile } from './components/FileTabs';
@@ -17,6 +18,22 @@ import EditorContent from './components/EditorContent';
 import { getLanguageByFileName, updateTreeNode, filterTree, getIsBinaryByLanguage } from './utils';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+
+function itemsToTreeNodes(items: SandboxFileItem[], level: number): TreeNode[] {
+  return items.map((item) => ({
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    size: item.size,
+    level,
+    loaded: item.type === 'directory' && item.children !== undefined,
+    children: item.children
+      ? itemsToTreeNodes(item.children, level + 1)
+      : item.type === 'directory'
+        ? []
+        : undefined
+  }));
+}
 
 export type Props = {
   appId: string;
@@ -215,12 +232,16 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     });
   };
 
-  // 初始化加载根目录
+  // 初始化加载根目录（recursive 获取全量文件树，支持搜索所有文件）
   useMount(() => {
     setLoadingRoot(true);
-    loadDirectory('.', 0).finally(() => {
-      setLoadingRoot(false);
-    });
+    listSandboxFiles({ appId, chatId, outLinkAuthData, path: '.', recursive: true })
+      .then((data) => {
+        setFileTree(itemsToTreeNodes(data.files || [], 0));
+      })
+      .finally(() => {
+        setLoadingRoot(false);
+      });
   });
 
   // 当切换 tab 时,更新编辑器内容

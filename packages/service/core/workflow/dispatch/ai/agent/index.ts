@@ -47,6 +47,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
 import { resolveDatasetParams } from './resolveDatasetParams';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -59,7 +60,6 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
   [NodeInputKeyEnum.skills]?: Array<string | SelectedAgentSkillItemType>; // 兼容 string[]（debugChat）和对象数组（workflow NodeAgent）
-  [NodeInputKeyEnum.useEditDebugSandbox]?: boolean; // 客户端显式指定使用 editDebug 沙箱
 
   // Knowledge base search configuration
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
@@ -110,7 +110,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
-      useEditDebugSandbox,
       // Sandbox (Computer Use)
       useAgentSandbox = false
     }
@@ -216,22 +215,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     })();
     // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
-    // Skill capability is gated by SHOW_SKILL env: when disabled, we skip skill loading entirely
-    // (no MongoDB query, no sandbox init), even if existing apps still have skills configured.
-    if (env.SHOW_SKILL) {
-      const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
-      const useEditDebugSandbox_flag = !!useEditDebugSandbox;
-      const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';
+    {
+      const sandboxSessionId =
+        mode === 'chat'
+          ? chatId
+          : `debug-${hashStr(`${runningAppInfo.id}-${nodeId}-${chatId}`).slice(0, 40)}`;
 
       const sandboxCap = await createSandboxSkillsCapability({
         skillIds: normalizedSkillIds,
         teamId: runningAppInfo.teamId,
         tmbId: runningAppInfo.tmbId,
         sessionId: sandboxSessionId,
-        mode: sandboxMode,
         workflowStreamResponse,
         showSkillReferences: showSkillReferences === true,
-        allFilesMap
+        allFilesMap,
+        chatId
       });
       capabilities.push(sandboxCap);
     }

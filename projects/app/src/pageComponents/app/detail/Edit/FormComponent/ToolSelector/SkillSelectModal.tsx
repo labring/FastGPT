@@ -3,6 +3,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -33,6 +34,7 @@ const SkillSelectModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [searchKey, setSearchKey] = useState('');
   // 导航栈：每个元素代表一级文件夹 {id, name}，空数组表示根目录
   const [navStack, setNavStack] = useState<NavItem[]>([]);
@@ -119,14 +121,21 @@ const SkillSelectModal = ({
                   item={item}
                   isSelected={selectedSkills.some((s) => s.skillId === item._id)}
                   isAtLimit={isAtLimit}
-                  onAdd={() =>
+                  onAdd={() => {
+                    if (selectedSkills.some((s) => s.name === item.name)) {
+                      toast({
+                        title: t('skill:duplicate_skill_name'),
+                        status: 'warning'
+                      });
+                      return;
+                    }
                     onAddSkill({
                       skillId: item._id,
                       name: item.name,
                       description: item.description,
                       avatar: item.avatar
-                    })
-                  }
+                    });
+                  }}
                   onRemove={() => onRemoveSkill(item._id)}
                   onOpenFolder={() => onEnterFolder(item)}
                 />

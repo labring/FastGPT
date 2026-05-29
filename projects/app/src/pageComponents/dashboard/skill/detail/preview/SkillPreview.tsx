@@ -16,7 +16,7 @@ import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/
 
 const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: () => void }) => {
   const { t } = useTranslation();
-  const { skillId, sandboxState } = useContextSelector(SkillDetailContext, (v) => v);
+  const skillId = useContextSelector(SkillDetailContext, (v) => v.skillId);
 
   const { llmModelList } = useSystemStore();
   const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.model || '');
@@ -26,13 +26,11 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
     [llmModelList]
   );
 
-  const isReady = sandboxState === 'ready';
-
+  // Agent sandbox lazily initialized; ChatBox always allows send; first message triggers warm-up
   const { ChatContainer } = useSkillChatTest({
     skillId,
     model: selectedModel,
-    chatId,
-    isReady
+    chatId
   });
 
   return (
