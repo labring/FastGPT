@@ -12,12 +12,7 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
     req.query
   );
 
-  const {
-    teamId: chatTeamId,
-    tmbId,
-    uid,
-    authType
-  } = await authChatCrud({
+  const { tmbId, uid, authType } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,

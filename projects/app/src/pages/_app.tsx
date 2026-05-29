@@ -28,8 +28,9 @@ type AppPropsWithLayout = AppProps & {
 };
 
 const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
+const openAPIReferenceRoutes = ['/openapi', '/devapidoc'];
 // 哪些路由不需要 Layout
-const routesWithoutLayout = ['/openapi'];
+const routesWithoutLayout = openAPIReferenceRoutes;
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -59,7 +60,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
   const headDesc = appClientEnv.systemDescription || t('common:system_intro', { title });
   const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
 
-  if (router.pathname === '/openapi') {
+  if (openAPIReferenceRoutes.includes(router.pathname)) {
     return (
       <>
         {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
@@ -72,7 +73,9 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
     <>
       {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
 
-      {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
+      {scripts?.map((item, i) => (
+        <Script key={i} strategy="lazyOnload" {...item}></Script>
+      ))}
 
       <QueryClientContext>
         <SystemStoreContextProvider device={pageProps.deviceSize}>

@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import {
   UpdateFeedbackReadStatusBodySchema,
   UpdateFeedbackReadStatusResponseSchema,
@@ -18,7 +19,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '添加/更新用户反馈',
       description: '用户对消息添加或更新好评/差评反馈',
-      tags: [TagsMap.chatFeedback],
+      tags: [TagsMap.chatFeedback, ApiKeyTagMap.chat],
       requestBody: {
         content: {
           'application/json': {

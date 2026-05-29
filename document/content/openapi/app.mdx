@@ -10,87 +10,86 @@ description: FastGPT OpenAPI 应用接口
 
 ![alt text](../../public/imgs/image-120.png)
 
-
 ## 日志接口
 
-### 获取累积运行结果
-
-<Tabs items={["请求示例","响应示例","参数说明"]}>
-
-  <Tab value="请求示例">
-
-  ```bash
- curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
---header 'Authorization: Bearer apikey'
-  ```
-
-  </Tab>
-
-  <Tab value="响应示例">
-
-  ```bash
-    {
-        "code": 200,
-        "statusText": "",
-        "message": "",
-        "data": {
-            "totalUsers": 0,
-            "totalChats": 0,
-            "totalPoints": 0
-        }
-    }
-  ```
-
-  </Tab>
-
-  <Tab value="参数说明">
-
-  <div>
-  **入参：**
-  - appId: 应用Id
-
-  **出参：**
-  - totalUsers: 累积使用用户数量
-  - totalChats: 累积对话数量
-  - totalPoints: 累积积分消耗
-  </div>
-
-  </Tab>
-
-</Tabs>
-
-### 获取应用日志看板
+### 获取应用总体数据统计
 
 <Tabs items={["请求示例","响应示例","参数说明"]}>
 
 <Tab value="请求示例">
 
-  ```bash
+```bash
+curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
+--header 'Authorization: Bearer apikey'
+```
+
+</Tab>
+
+<Tab value="响应示例">
+
+```bash
+  {
+      "code": 200,
+      "statusText": "",
+      "message": "",
+      "data": {
+          "totalUsers": 0,
+          "totalChats": 0,
+          "totalPoints": 0
+      }
+  }
+```
+
+</Tab>
+
+<Tab value="参数说明">
+
+**入参：**
+
+- appId: 应用 ID
+
+**出参：**
+
+- totalUsers: 累积使用用户数量
+- totalChats: 累积对话数量
+- totalPoints: 累积积分消耗
+
+</Tab>
+
+</Tabs>
+
+### 获取应用图表数据
+
+<Tabs items={["请求示例","响应示例","参数说明"]}>
+
+<Tab value="请求示例">
+
+```bash
 curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "appId": "68c46a70d950e8850ae564ba",
-    "dateStart": "2025-09-19T16:00:00.000Z",
-    "dateEnd": "2025-09-27T15:59:59.999Z",
-    "offset": 1,
-    "source": [
-        "test",
-        "online",
-        "share",
-        "api",
-        "cronJob",
-        "team",
-        "feishu",
-        "official_account",
-        "wecom",
-        "mcp"
-    ],
-    "userTimespan": "day",
-    "chatTimespan": "day",
-    "appTimespan": "day"
+  "appId": "68c46a70d950e8850ae564ba",
+  "dateStart": "2025-09-19T16:00:00.000Z",
+  "dateEnd": "2025-09-27T15:59:59.999Z",
+  "offset": 1,
+  "source": [
+      "test",
+      "online",
+      "share",
+      "api",
+      "cronJob",
+      "team",
+      "feishu",
+      "official_account",
+      "wecom",
+      "mcp"
+  ],
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
 }'
-  ```
+```
 
 </Tab>
 
@@ -156,14 +155,15 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
 <Tab value="参数说明">
 
 **入参：**
-- appId: 应用Id
+
+- appId: 应用 ID
 - dateStart: 开始时间
 - dateEnd: 结束时间
 - source: 日志来源
-- offset: 用户留存偏移量
-- userTimespan: 用户数据时间跨度  //day｜week｜month｜quarter
-- chatTimespan: 对话数据时间跨度  //day｜week｜month｜quarter
-- appTimespan: 应用数据时间跨度  //day｜week｜month｜quarter
+- offset: 用户留存偏移量，单位随 userTimespan 变化
+- userTimespan: 用户数据时间跨度 //day｜week｜month｜quarter
+- chatTimespan: 对话数据时间跨度 //day｜week｜month｜quarter
+- appTimespan: 应用数据时间跨度 //day｜week｜month｜quarter
 
 **出参：**
 

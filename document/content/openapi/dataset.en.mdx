@@ -3,9 +3,9 @@ title: Dataset API
 description: FastGPT OpenAPI Dataset API
 ---
 
-| How to Get Dataset ID (datasetId) | How to Get Collection ID (collection_id) |
-| ----------------------------- | ----------------------------------- |
-| ![](../../public/imgs/getDatasetId.jpg)   | ![](../../public/imgs/getfile_id.webp)          |
+| How to Get Dataset ID (datasetId)       | How to Get Collection ID (collection_id) |
+| --------------------------------------- | ---------------------------------------- |
+| ![](../../public/imgs/getDatasetId.jpg) | ![](../../public/imgs/getfile_id.webp)   |
 
 ## Create Training Order
 
@@ -43,7 +43,7 @@ data is the billId, which can be used for bill aggregation when adding dataset d
 
 ## Dataset
 
-### Create a Dataset
+### Create Knowledge Base
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -113,9 +113,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
   </Tab>
   <Tab value="Parameters">
 
-<div>
-- parentId - Parent ID. Pass empty string or null to get datasets in the root directory
-</div>
+<div>- parentId - Parent ID. Pass empty string or null to get datasets in the root directory</div>
 
   </Tab>
 
@@ -153,7 +151,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
   </Tab>
 </Tabs>
 
-### Get Dataset Details
+### Get Knowledge Base Details
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -166,9 +164,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
   </Tab>
   <Tab value="Parameters" >
 
-<div>
-- id: Dataset ID
-</div>
+<div>- id: Dataset ID</div>
 
   </Tab>
 
@@ -215,7 +211,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
   </Tab>
 </Tabs>
 
-### Delete a Dataset
+### Delete Knowledge Base
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -228,9 +224,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
   </Tab>
   <Tab value="Parameters" >
 
-<div>
-- id: Dataset ID
-</div>
+<div>- id: Dataset ID</div>
 
   </Tab>
 
@@ -254,30 +248,30 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **Request**
 
-| Parameter        | Description                                                                                                        | Required |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | ---- |
-| datasetId        | Dataset ID                                                                                                    | ✅   |
-| parentId：       | Parent ID. Defaults to root directory if not provided                                                                                  |      |
-| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                      | ✅   |
-| indexPrefixTitle | Whether to auto-generate title index                                                                                        |      |
-| customPdfParse | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                             |      |
-| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                              |      |
-| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                          |      |
-| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                      |      |
-| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                           |      |
-| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                        |      |
-| indexSize        | Index size, default 512, must be less than index model max token. Ineffective when chunkSettingMode=auto.                              |      |
-| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |      |
-| qaPrompt         | QA split prompt                                                                                                |      |
-| tags             | Collection tags (string array)                                                                                      |      |
-| createTime       | File creation time (Date / String)                                                                               |      |
+| Parameter        | Description                                                                                                                                     | Required |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| datasetId        | Dataset ID                                                                                                                                      | ✅       |
+| parentId：       | Parent ID. Defaults to root directory if not provided                                                                                           |          |
+| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                         | ✅       |
+| indexPrefixTitle | Whether to auto-generate title index                                                                                                            |          |
+| customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                  |          |
+| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                      |          |
+| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                                |          |
+| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                        |          |
+| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                      |          |
+| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                               |          |
+| indexSize        | Index size, default 512, must be less than index model max token. Ineffective when chunkSettingMode=auto.                                       |          |
+| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |          |
+| qaPrompt         | QA split prompt                                                                                                                                 |          |
+| tags             | Collection tags (string array)                                                                                                                  |          |
+| createTime       | File creation time (Date / String)                                                                                                              |          |
 
 **Response**
 
 - collectionId - New collection ID
 - insertLen：Number of inserted chunks
 
-### Create an Empty Collection
+### Create Empty Collection/Folder
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -301,13 +295,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
   <Tab value="Parameters" >
 
 <div>
-- datasetId: Dataset ID(Required)
-- parentId： Parent ID. Defaults to root directory if not provided
-- name: Collection name (required)
-- type:
-  - folder：Folder
-  - virtual: Virtual collection (manual collection)
-- metadata： Metadata (not currently used)
+  - datasetId: Dataset ID(Required) - parentId： Parent ID. Defaults to root directory if not
+  provided - name: Collection name (required) - type: - folder：Folder - virtual: Virtual collection
+  (manual collection) - metadata： Metadata (not currently used)
 </div>
 
   </Tab>
@@ -357,11 +347,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
   <Tab value="Parameters" >
 
 <div>
-- text: Original text
-- datasetId: Dataset ID(Required)
-- parentId： Parent ID. Defaults to root directory if not provided
-- name: Collection name (required)
-- metadata： Metadata (not currently used)
+  - text: Original text - datasetId: Dataset ID(Required) - parentId： Parent ID. Defaults to root
+  directory if not provided - name: Collection name (required) - metadata： Metadata (not currently
+  used)
 </div>
 
   </Tab>
@@ -420,10 +408,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
   <Tab value="Parameters" >
 
 <div>
-- link: Web link
-- datasetId: Dataset ID(Required)
-- parentId： Parent ID. Defaults to root directory if not provided
-- metadata.webPageSelector: Web page selector to specify which element to use as text (optional)
+  - link: Web link - datasetId: Dataset ID(Required) - parentId： Parent ID. Defaults to root
+  directory if not provided - metadata.webPageSelector: Web page selector to specify which element
+  to use as text (optional)
 </div>
 
   </Tab>
@@ -476,11 +463,12 @@ Use POST form-data format for upload. Contains file and data fields.
 
 - file: File
 - data: Dataset-related info (pass as serialized JSON). See "Common Creation Parameters" above
-</div>
 
-  </Tab>
+  </div>
 
-  <Tab value="Response Example" >
+    </Tab>
+
+    <Tab value="Response Example" >
 
 data is the collection ID.
 
@@ -504,7 +492,7 @@ data is the collection ID.
   </Tab>
 </Tabs>
 
-### Create an API Collection
+### Create a Collection from an API Dataset (V1)
 
 Pass in a file ID to create a collection. File content will be read and split. Currently supports: pdf, docx, md, txt, html, csv.
 
@@ -545,7 +533,7 @@ Use POST form-data format for upload. Contains file and data fields.
 - chunkSize: Length of each chunk (optional). chunk mode: 100~3000; qa mode: 4000~model max token (16k models usually recommended not to exceed 10000)
 - chunkSplitter: Custom highest priority split symbol (optional)
 - qaPrompt: QA split custom prompt (optional)
-</div>
+  </div>
 
 </Tab>
 
@@ -603,12 +591,12 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
   <Tab value="Parameters" >
 
-| Parameter       | Description                                 | Required |
-| --------------- | ------------------------------------ | ---- |
-| externalFileUrl | File access URL (can be temporary)       | ✅   |
-| externalFileId  | External file ID                           |      |
-| filename        | Custom filename with extension             |      |
-| createTime      | File creation time (Date or ISO string both ok) |      |
+| Parameter       | Description                                     | Required |
+| --------------- | ----------------------------------------------- | -------- |
+| externalFileUrl | File access URL (can be temporary)              | ✅       |
+| externalFileId  | External file ID                                |          |
+| filename        | Custom filename with extension                  |          |
+| createTime      | File creation time (Date or ISO string both ok) |          |
 
   </Tab>
 
@@ -659,11 +647,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
   <Tab value="Parameters" >
 
 <div>
-- offset: Offset
-- pageSize: Items per page, max 30 (optional)
-- datasetId: Dataset ID(Required)
-- parentId: Parent ID (optional)
-- searchText: Fuzzy search text (optional)
+  - offset: Offset - pageSize: Items per page, max 30 (optional) - datasetId: Dataset ID(Required) -
+  parentId: Parent ID (optional) - searchText: Fuzzy search text (optional)
 </div>
 
   </Tab>
@@ -743,9 +728,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 
   <Tab value="Parameters" >
 
-<div>
-- id: Collection ID
-</div>
+<div>- id: Collection ID</div>
 
   </Tab>
 
@@ -795,7 +778,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
   </Tab>
 </Tabs>
 
-### Update Collection Info
+### Update Dataset Collection Info
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
@@ -803,7 +786,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 **Update Collection Info by Collection ID**
 
 ```bash
-curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/update' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -819,7 +802,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 **Update Collection Info by External File ID**， Just replace id with datasetId and externalFileId.
 
 ```bash
-curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/update' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -838,12 +821,9 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
   <Tab value="Parameters" >
 
 <div>
-- id: Collection ID
-- parentId: Update parent ID (optional)
-- name: Update collection name (optional)
-- tags: Update collection tags (optional)
-- forbid: Update collection disabled status (optional)
-- createTime: Update collection creation time (optional)
+  - id: Collection ID - parentId: Update parent ID (optional) - name: Update collection name
+  (optional) - tags: Update collection tags (optional) - forbid: Update collection disabled status
+  (optional) - createTime: Update collection creation time (optional)
 </div>
 
   </Tab>
@@ -862,13 +842,13 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
   </Tab>
 </Tabs>
 
-### Delete a Collection
+### Delete Collection
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
   <Tab value="Request Example" >
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/delete' \
+curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collection/delete' \
 --header 'Authorization: Bearer fastgpt-' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -880,9 +860,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
   <Tab value="Parameters" >
 
-<div>
-- collectionIds: Collection ID list
-</div>
+<div>- collectionIds: Collection ID list</div>
 
   </Tab>
 
@@ -906,32 +884,32 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 **Data Structure**
 
-| Field          | Type    | Description     | Required |
-| ------------- | ------- | -------- | ---- |
-| teamId        | String  | Team ID   | ✅   |
-| tmbId         | String  | Member ID   | ✅   |
-| datasetId     | String  | Dataset ID | ✅   |
-| collectionId  | String  | CollectionID   | ✅   |
-| q             | String  | Primary data | ✅   |
-| a             | String  | Auxiliary data | ✖   |
-| fullTextToken | String  | Tokenization     | ✖   |
-| indexes       | Index[] | Vector indexes | ✅   |
-| updateTime    | Date    | Update time | ✅   |
-| chunkIndex    | Number  | Chunk index | ✖   |
+| Field         | Type    | Description    | Required |
+| ------------- | ------- | -------------- | -------- |
+| teamId        | String  | Team ID        | ✅       |
+| tmbId         | String  | Member ID      | ✅       |
+| datasetId     | String  | Dataset ID     | ✅       |
+| collectionId  | String  | CollectionID   | ✅       |
+| q             | String  | Primary data   | ✅       |
+| a             | String  | Auxiliary data | ✖        |
+| fullTextToken | String  | Tokenization   | ✖        |
+| indexes       | Index[] | Vector indexes | ✅       |
+| updateTime    | Date    | Update time    | ✅       |
+| chunkIndex    | Number  | Chunk index    | ✖        |
 
 **Index Structure**
 
 Maximum 5 custom indexes per data group
 
-| Field   | Type   | Description                                                                                                   | Required |
-| ------ | ------ | ------------------------------------------------------------------------------------------------------ | ---- |
-| type   | String | Optional index types: default-default index; custom-custom index; summary-summary index; question-question index; image-image index |      |
-| dataId | String | Associated vector ID. Pass this ID when updating data for incremental updates instead of full updates                                    |      |
-| text   | String | Text content                                                                                               | ✅   |
+| Field  | Type   | Description                                                                                                                         | Required |
+| ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| type   | String | Optional index types: default-default index; custom-custom index; summary-summary index; question-question index; image-image index |          |
+| dataId | String | Associated vector ID. Pass this ID when updating data for incremental updates instead of full updates                               |          |
+| text   | String | Text content                                                                                                                        | ✅       |
 
 `type` If not provided, defaults to `custom` index. A default index will also be created based on q/a. If a default index is provided, no additional one will be created.
 
-### Batch Add Data to Collection
+### Push Data to Training Queue
 
 Note: Maximum 200 data groups per push.
 
@@ -978,10 +956,10 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 - prompt: Custom QA split prompt. Must follow template strictly. Recommended not to pass. (optional)
 - data：(Specific data)
 
-  - q: Primary data（Required）
-  - a: Auxiliary data (optional)
-  - indexes: Custom indexes (optional). Can omit or pass empty array. By default, an index will be created from q and a.
-</div>
+- q: Primary data（Required）
+- a: Auxiliary data (optional)
+- indexes: Custom indexes (optional). Can omit or pass empty array. By default, an index will be created from q and a.
+  </div>
 
   </Tab>
 
@@ -1048,10 +1026,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
   <Tab value="Parameters" >
 
 <div>
-- offset: Offset (optional)
-- pageSize: Items per page, max 30 (optional)
-- collectionId: Collection ID（Required）
-- searchText: Fuzzy search term (optional)
+  - offset: Offset (optional) - pageSize: Items per page, max 30 (optional) - collectionId:
+  Collection ID（Required） - searchText: Fuzzy search term (optional)
 </div>
 
   </Tab>
@@ -1104,9 +1080,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
 
   <Tab value="Parameters" >
 
-<div>
-- id: Data ID
-</div>
+<div>- id: Data ID</div>
 
   </Tab>
 
@@ -1180,10 +1154,9 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
   <Tab value="Parameters" >
 
 <div>
-- dataId: Data ID
-- q: Primary data (optional)
-- a: Auxiliary data (optional)
-- indexes: Custom indexes (optional). See `Batch Add Data to Collection` for types. If custom indexes exist when created,
+  - dataId: Data ID - q: Primary data (optional) - a: Auxiliary data (optional) - indexes: Custom
+  indexes (optional). See `Batch Add Data to Collection` for types. If custom indexes exist when
+  created,
 </div>
 
   </Tab>
@@ -1216,9 +1189,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 
   <Tab value="Parameters" >
 
-<div>
-- id: Data ID
-</div>
+<div>- id: Data ID</div>
 
   </Tab>
 
@@ -1264,15 +1235,11 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
   <Tab value="Parameters" >
 
 <div>
-- datasetId - Dataset ID
-- text - Text to test
-- limit - Maximum tokens
-- similarity - Minimum similarity (0~1, optional)
-- searchMode - Search mode: embedding | fullTextRecall | mixedRecall
-- usingReRank - Use rerank
-- datasetSearchUsingExtensionQuery - Use query extension
-- datasetSearchExtensionModel - Query extension model
-- datasetSearchExtensionBg - Query extension background description
+  - datasetId - Dataset ID - text - Text to test - limit - Maximum tokens - similarity - Minimum
+  similarity (0~1, optional) - searchMode - Search mode: embedding | fullTextRecall | mixedRecall -
+  usingReRank - Use rerank - datasetSearchUsingExtensionQuery - Use query extension -
+  datasetSearchExtensionModel - Query extension model - datasetSearchExtensionBg - Query extension
+  background description
 </div>
 
   </Tab>

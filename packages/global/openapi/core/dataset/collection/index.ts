@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema,
@@ -22,7 +23,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     delete: {
       summary: '删除集合',
       description: '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定',
-      tags: [TagsMap.datasetCollection],
+      tags: [TagsMap.datasetCollection, ApiKeyTagMap.datasetCollection],
       requestParams: {
         query: DeleteCollectionQuerySchema
       },
@@ -44,7 +45,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     get: {
       summary: '获取集合详情',
       description: '获取集合详细信息，包括索引数量、错误数量、文件信息等',
-      tags: [TagsMap.datasetCollection],
+      tags: [TagsMap.datasetCollection, ApiKeyTagMap.datasetCollection],
       requestParams: {
         query: GetCollectionDetailQuerySchema
       },
@@ -59,7 +60,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '获取集合列表（分页）',
       description: '获取数据集集合列表，支持分页、搜索、标签过滤',
-      tags: [TagsMap.datasetCollection],
+      tags: [TagsMap.datasetCollection, ApiKeyTagMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
@@ -97,7 +98,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '更新数据集集合信息',
       description: '更新数据集集合信息，支持通过集合ID或数据集ID+外部文件ID定位集合',
-      tags: [TagsMap.datasetCollection],
+      tags: [TagsMap.datasetCollection, ApiKeyTagMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {

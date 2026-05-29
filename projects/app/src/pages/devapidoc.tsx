@@ -9,10 +9,10 @@ const ApiReferenceReact = dynamic(
   { ssr: false }
 );
 
-function OpenAPIPage() {
+function ApiDocPage() {
   return (
     <Box w="100vw" h="100vh" overflow="auto">
-      <ApiReferenceReact configuration={getScalarOpenApiReferenceConfig('/api/openapi.json')} />
+      <ApiReferenceReact configuration={getScalarOpenApiReferenceConfig('/api/devapidoc.json')} />
     </Box>
   );
 }
@@ -24,4 +24,4 @@ export async function getServerSideProps() {
   };
 }
 
-export default OpenAPIPage;
+export default ApiDocPage;

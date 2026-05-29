@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import z from 'zod';
 import {
   GetAppChatLogsBodySchema,
@@ -113,7 +114,7 @@ export const AppLogPath: OpenAPIPath = {
     get: {
       summary: '获取应用总体数据统计',
       description: '获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗',
-      tags: [TagsMap.appLog],
+      tags: [TagsMap.appLog, ApiKeyTagMap.appLog],
       requestParams: {
         query: GetTotalDataQuerySchema
       },
@@ -133,7 +134,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取应用图表数据',
       description: '获取应用的图表统计数据，包括用户数据、对话数据、应用数据的时序统计',
-      tags: [TagsMap.appLog],
+      tags: [TagsMap.appLog, ApiKeyTagMap.appLog],
       requestBody: {
         content: {
           'application/json': {

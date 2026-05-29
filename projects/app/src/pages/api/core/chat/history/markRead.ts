@@ -11,10 +11,10 @@ export async function handler(req: ApiRequestProps, _res: ApiResponseType): Prom
   const body = parseApiInput({ req, bodySchema: MarkChatReadBodySchema }).body;
 
   await authChatCrud({
+    ...body,
     req,
     authToken: true,
     authApiKey: true,
-    ...body,
     per: WritePermissionVal
   });
 

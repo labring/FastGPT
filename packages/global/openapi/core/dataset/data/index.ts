@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import {
   GetDatasetDataDetailQuerySchema,
   UpdateDatasetDataBodySchema,
@@ -25,7 +26,7 @@ export const DatasetDataPath: OpenAPIPath = {
     post: {
       summary: '获取数据列表',
       description: '分页查询集合内的数据列表，支持关键词搜索，包含图片预览 URL',
-      tags: [TagsMap.datasetData],
+      tags: [TagsMap.datasetData, ApiKeyTagMap.datasetData],
       requestBody: {
         content: {
           'application/json': {
@@ -49,7 +50,7 @@ export const DatasetDataPath: OpenAPIPath = {
     get: {
       summary: '获取数据详情',
       description: '获取单条数据集数据的详细信息，包括向量索引',
-      tags: [TagsMap.datasetData],
+      tags: [TagsMap.datasetData, ApiKeyTagMap.datasetData],
       requestParams: {
         query: GetDatasetDataDetailQuerySchema
       },
@@ -70,7 +71,7 @@ export const DatasetDataPath: OpenAPIPath = {
     put: {
       summary: '更新数据',
       description: '更新数据集数据的 q、a 和向量索引，触发重新向量化',
-      tags: [TagsMap.datasetData],
+      tags: [TagsMap.datasetData, ApiKeyTagMap.datasetData],
       requestBody: {
         content: {
           'application/json': {
@@ -170,7 +171,7 @@ export const DatasetDataPath: OpenAPIPath = {
     delete: {
       summary: '删除数据',
       description: '删除指定数据集数据，需要写权限',
-      tags: [TagsMap.datasetData],
+      tags: [TagsMap.datasetData, ApiKeyTagMap.datasetData],
       requestParams: {
         query: DeleteDatasetDataQuerySchema
       },
@@ -248,7 +249,7 @@ export const DatasetDataPath: OpenAPIPath = {
     post: {
       summary: '推送数据到训练队列',
       description: '批量推送数据到训练队列，最多 200 条',
-      tags: [TagsMap.datasetData],
+      tags: [TagsMap.datasetData, ApiKeyTagMap.datasetData],
       requestBody: {
         content: {
           'application/json': {

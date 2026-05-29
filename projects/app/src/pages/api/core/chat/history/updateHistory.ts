@@ -14,10 +14,10 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
     bodySchema: UpdateHistoryBodySchema
   }).body;
   await authChatCrud({
+    ...req.body,
     req,
     authToken: true,
     authApiKey: true,
-    ...req.body,
     per: WritePermissionVal
   });
 
