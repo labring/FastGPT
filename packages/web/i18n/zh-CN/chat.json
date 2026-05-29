@@ -266,6 +266,8 @@
   "source_type_sql": "数据库",
   "source_type_correction": "优化记录",
   "source_type_chunk": "分块",
+  "recall_card_prefix": "召回",
+  "rerank_card_prefix": "重排",
   "recall_stats_prefix": "召回",
   "recall_stats_sql": "{{count}} 个数据库查询内容",
   "recall_stats_chunk": "{{count}} 个分块",

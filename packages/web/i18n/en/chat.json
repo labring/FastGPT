@@ -266,6 +266,8 @@
   "source_type_sql": "Database",
   "source_type_correction": "Correction record",
   "source_type_chunk": "Chunk",
+  "recall_card_prefix": "Recall",
+  "rerank_card_prefix": "Rerank",
   "recall_stats_prefix": "Recalled",
   "recall_stats_sql": "{{count}} database queries",
   "recall_stats_chunk": "{{count}} chunks",

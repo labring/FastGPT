@@ -291,6 +291,7 @@ export const DispatchNodeResponseSchema = z
     toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
     pluginOutput: z.record(z.string(), z.any()).optional().meta({ description: '插件输出' }),
     pluginDetail: z.array(z.any()).optional(),
+    appType: z.string().optional().meta({ description: '应用类型' }),
     toolParamsResult: z
       .record(z.string(), z.any())
       .optional()

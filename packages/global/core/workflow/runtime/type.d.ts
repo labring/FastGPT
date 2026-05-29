@@ -13,6 +13,7 @@ import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
 import type { NextApiResponse } from 'next';
 import { UserModelSchema } from '../../../support/user/type';
+import type { AppTypeEnum } from '../../app/constants';
 import type { AppSchema } from '../../app/type';
 import { AppDetailType } from '../../app/type';
 import type { RuntimeNodeItemType } from '../runtime/type';
@@ -246,6 +247,7 @@ export type DispatchNodeResponseType = {
   toolInput?: Record<string, any>;
   pluginOutput?: Record<string, any>;
   pluginDetail?: ChatHistoryItemResType[];
+  appType?: AppTypeEnum;
 
   // if-else
   ifElseResult?: string;
