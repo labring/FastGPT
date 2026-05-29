@@ -77,6 +77,9 @@ jobs:
       - name: Install browser-sandbox dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts --filter @fastgpt/browser-sandbox...
 
+      - name: Build browser-sandbox SDK dependencies
+        run: pnpm --filter @fastgpt-sdk/otel build
+
       - name: Typecheck browser-sandbox
         run: pnpm --filter @fastgpt/browser-sandbox typecheck
 
