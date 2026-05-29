@@ -23,7 +23,8 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  getChatSourceName
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -263,6 +264,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       variables: newVariables,
       newTitle,
       source: ChatSourceEnum.mcp,
+      sourceName: getChatSourceName(ChatSourceEnum.mcp, app.name),
       userContent: userQuestion,
       aiContent: aiResponse,
       durationSeconds

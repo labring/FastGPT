@@ -34,6 +34,8 @@ export const AppChatLogSchema = z.object({
   badFeedbackCount: z.number(),
   totalResponseTime: z.number(),
 
-  isFirstChat: z.boolean() // whether this is the user's first session in the app
+  isFirstChat: z.boolean(), // whether this is the user's first session in the app
+
+  parentAppId: ObjectIdSchema.optional() // parent app ID (when triggered by workflow appModule node)
 });
 export type AppChatLogSchema = z.infer<typeof AppChatLogSchema>;

@@ -2,7 +2,11 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  getChatSourceName
+} from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType,
@@ -104,6 +108,7 @@ export const getScheduleTriggerApp = async () => {
           variables: {},
           newTitle: 'Cron Job',
           source: ChatSourceEnum.cronJob,
+          sourceName: getChatSourceName(ChatSourceEnum.cronJob, app.name),
           userContent: {
             obj: ChatRoleEnum.Human,
             value: userQuery

@@ -77,7 +77,26 @@ export const ChatLogItemSchema = z.object({
   sourceMember: SourceMemberSchema.nullish().meta({ description: '来源成员信息' }),
   versionName: z.string().nullish().meta({ example: 'v1.0.0', description: '版本名称' }),
   originIp: z.string().nullish().meta({ example: '192.168.1.1', description: '原始 IP 地址' }),
-  region: z.string().nullish().meta({ example: '中国', description: '区域' })
+  region: z.string().nullish().meta({ example: '中国', description: '区域' }),
+
+  /* Parent app association fields (populated when this chat is triggered by a workflow appModule node) */
+  parentChatId: z.string().nullish().meta({ example: 'abc123', description: '父应用的 chatId' }),
+  parentResponseChatItemId: z
+    .string()
+    .nullish()
+    .meta({ example: 'dataId123', description: '父对话的 responseChatItemId' }),
+  parentNodeId: z
+    .string()
+    .nullish()
+    .meta({ example: 'nodeA', description: '父应用的 appModule 节点 ID' }),
+  parentNodeName: z
+    .string()
+    .nullish()
+    .meta({ example: '子应用调用', description: '父应用的 appModule 节点名称' }),
+  parentAppId: z
+    .string()
+    .nullish()
+    .meta({ example: '68ad85a7463006c963799a05', description: '父应用的 appId' })
 });
 export type AppLogsListItemType = z.infer<typeof ChatLogItemSchema>;
 

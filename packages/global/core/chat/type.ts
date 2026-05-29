@@ -130,6 +130,13 @@ export type ChatSchemaType = {
   chatGenerateStatus?: ChatGenerateStatusEnum;
   hasBeenRead: boolean;
 
+  // Parent app association fields (when this chat is triggered by a workflow appModule node)
+  parentChatId?: string;
+  parentResponseChatItemId?: string;
+  parentNodeId?: string;
+  parentNodeName?: string;
+  parentAppId?: string;
+
   deleteTime?: Date | null;
 };
 

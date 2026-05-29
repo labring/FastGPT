@@ -1301,6 +1301,7 @@
   "core.chat.feedback.Feedback Close": "关闭反馈",
   "core.chat.feedback.Read User dislike": "用户表示反对\n点击查看内容",
   "core.chat.logs.evaluation": "评估测试",
+  "core.chat.logs.workflow": "工作流调用",
   "core.chat.module_unexist": "运行失败：应用缺失组件",
   "core.chat.quote.afterUpdate": "更新后",
   "core.chat.quote.beforeUpdate": "更新前",

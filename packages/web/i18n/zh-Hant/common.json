@@ -1287,6 +1287,7 @@
   "core.chat.feedback.Feedback Close": "關閉回饋",
   "core.chat.feedback.Read User dislike": "使用者表示反對\n點選檢視內容",
   "core.chat.logs.evaluation": "評估測試",
+  "core.chat.logs.workflow": "工作流調用",
   "core.chat.module_unexist": "執行失敗：應用遺失元件",
   "core.chat.quote.afterUpdate": "更新後",
   "core.chat.quote.beforeUpdate": "更新前",
