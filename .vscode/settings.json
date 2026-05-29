@@ -1,4 +1,8 @@
 {
+    "git.autofetch": false,
+    "git.detectSubmodules": true,
+    "git.autoRepositoryDetection": "subFolders",
+    "git.repositoryScanMaxDepth": 1,
     "editor.formatOnSave": true,
     "editor.mouseWheelZoom": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
