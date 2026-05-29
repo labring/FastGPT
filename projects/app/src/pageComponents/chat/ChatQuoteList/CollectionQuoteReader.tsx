@@ -1,4 +1,4 @@
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -9,15 +9,12 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
 import { getDatasetPermission } from '@/web/core/dataset/api';
-import ScoreTag from './ScoreTag';
-import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
 import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/record/api';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { useContextSelector } from 'use-context-selector';
@@ -26,11 +23,13 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 const CollectionReader = ({
   rawSearch,
   metadata,
-  onClose
+  onClose,
+  onBack
 }: {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetCollectionQuoteDataProps;
   onClose: () => void;
+  onBack?: () => void;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -38,7 +37,7 @@ const CollectionReader = ({
 
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
-  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
+  const { collectionId, datasetId, chatItemDataId, sourceName, quoteId } = metadata;
   const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
@@ -156,144 +155,138 @@ const CollectionReader = ({
   });
 
   return (
-    <MyBox display={'flex'} flexDirection={'column'} h={'full'}>
+    <MyBox display={'flex'} flexDirection={'column'} minH={'full'} h={'full'}>
       {/* title */}
-      <Box borderBottom={'1px solid'} borderBottomColor={'myGray.150'} px={3} py={2}>
-        {/* name */}
-        <HStack>
-          <Flex alignItems={'center'} flex={'1 0 0'} w={0}>
-            <MyIcon
-              name={getSourceNameIcon({ sourceId, sourceName }) as any}
-              w={['1rem', '1.25rem']}
-              color={'primary.600'}
-            />
-            <Box
-              ml={1}
-              maxW={['200px', '220px']}
-              className={'textEllipsis'}
-              wordBreak={'break-all'}
-              fontSize={'sm'}
-              color={'myGray.900'}
-              fontWeight={'medium'}
-              {...(!!userInfo &&
-                datasetData?.permission?.hasReadPer && {
-                  cursor: 'pointer',
-                  _hover: { color: 'primary.600', textDecoration: 'underline' },
-                  onClick: () => {
-                    router.push(
-                      `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
-                    );
-                  }
-                })}
+      <Box>
+        <Flex
+          alignItems={'center'}
+          h={'56px'}
+          px={4}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.150'}
+        >
+          {onBack && (
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              boxSize={'28px'}
+              borderRadius={'6px'}
+              cursor={'pointer'}
+              _hover={{ bg: 'myGray.100' }}
+              onClick={onBack}
             >
-              {sourceName || t('common:unknow_source')}
-            </Box>
-            <Box ml={3}>
-              {canDownloadSource && (
-                <DownloadButton
-                  canAccessRawData={true}
-                  onDownload={handleDownload}
-                  onRead={handleRead}
-                />
-              )}
-            </Box>
-          </Flex>
-          <MyIconButton
-            icon={'common/closeLight'}
-            size={'1.25rem'}
-            color={'myGray.900'}
-            onClick={onClose}
-          />
-        </HStack>
-        {datasetData?.permission?.hasReadPer && (
+              <MyIcon name={'core/workflow/undo'} w={'16px'} color={'myGray.600'} />
+            </Flex>
+          )}
+
           <Box
-            fontSize={'mini'}
-            color={'myGray.500'}
-            {...(!!userInfo
-              ? {
-                  cursor: 'pointer',
-                  _hover: { color: 'primary.600', textDecoration: 'underline' },
-                  onClick: () => {
-                    router.push(`/dataset/detail?datasetId=${datasetId}`);
-                  }
-                }
-              : {})}
+            flex={1}
+            minW={0}
+            mx={3}
+            textAlign={'center'}
+            className={'textEllipsis'}
+            wordBreak={'break-all'}
+            fontSize={'16px'}
+            lineHeight={'24px'}
+            color={'myGray.900'}
+            fontWeight={500}
           >
-            {t('chat:data_source', {
-              name: datasetData.datasetName
-            })}
+            {sourceName || t('common:unknow_source')}
           </Box>
-        )}
+
+          <Flex alignItems={'center'} gap={'8px'}>
+            {canDownloadSource && (
+              <DownloadButton
+                canAccessRawData={true}
+                onDownload={handleDownload}
+                onRead={handleRead}
+                onRouteToDataset={
+                  !!userInfo && datasetData?.permission?.hasReadPer
+                    ? () => {
+                        router.push(
+                          `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
+                        );
+                      }
+                    : undefined
+                }
+              />
+            )}
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              boxSize={'28px'}
+              borderRadius={'6px'}
+              cursor={'pointer'}
+              _hover={{ bg: 'myGray.100' }}
+              onClick={onClose}
+            >
+              <MyIcon name={'common/closeLight'} color={'myGray.600'} w={'16px'} />
+            </Flex>
+          </Flex>
+        </Flex>
       </Box>
 
       {/* header control */}
       {datasetDataList.length > 0 && (
-        <Box>
-          <Flex
-            w={'full'}
-            px={4}
-            py={2}
-            alignItems={'center'}
-            borderBottom={'1px solid'}
-            borderColor={'myGray.150'}
-          >
-            {/* 引用序号 */}
-            <Flex fontSize={'mini'} mr={3} alignItems={'center'} gap={1}>
-              <Box as={'span'} color={'myGray.900'}>
-                {t('common:core.chat.Quote')} {quoteIndex + 1}
-              </Box>
-              <Box as={'span'} color={'myGray.500'}>
-                /
-              </Box>
-              <Box as={'span'} color={'myGray.500'}>
-                {filterResults.length}
-              </Box>
-            </Flex>
-
-            {/* 检索分数 */}
-            {currentQuoteItem?.score ? (
-              <ScoreTag {...formatScore(currentQuoteItem?.score)} />
-            ) : isDeleted ? (
-              <Flex
-                borderRadius={'sm'}
-                py={1}
-                px={2}
-                color={'red.600'}
-                bg={'red.50'}
-                alignItems={'center'}
-                fontSize={'11px'}
-              >
-                <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
-                {t('chat:chat.quote.deleted')}
-              </Flex>
-            ) : null}
-
-            <Box flex={1} />
-
-            {/* 检索按钮 */}
-            <Flex gap={1}>
-              <NavButton
-                direction="up"
-                isDisabled={quoteIndex === 0}
-                onClick={() => setQuoteIndex(quoteIndex - 1)}
-              />
-              <NavButton
-                direction="down"
-                isDisabled={quoteIndex === filterResults.length - 1}
-                onClick={() => setQuoteIndex(quoteIndex + 1)}
-              />
-            </Flex>
+        <Flex
+          w={'full'}
+          px={4}
+          py={3}
+          alignItems={'center'}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.150'}
+        >
+          {/* 引用序号 */}
+          <Flex fontSize={'14px'} lineHeight={'20px'} alignItems={'center'} gap={1}>
+            <Box as={'span'} color={'myGray.900'}>
+              {t('common:core.chat.Quote')} {quoteIndex + 1}
+            </Box>
+            <Box as={'span'} color={'myGray.500'}>
+              /
+            </Box>
+            <Box as={'span'} color={'myGray.500'}>
+              {filterResults.length}
+            </Box>
           </Flex>
-          <Box fontSize={'mini'} color={'myGray.500'} bg={'myGray.25'} px={4} py={1}>
-            {t('common:core.chat.quote.Quote Tip')}
-          </Box>
-        </Box>
+
+          {isDeleted ? (
+            <Flex
+              ml={3}
+              borderRadius={'sm'}
+              py={1}
+              px={2}
+              color={'red.600'}
+              bg={'red.50'}
+              alignItems={'center'}
+              fontSize={'11px'}
+            >
+              <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
+              {t('chat:chat.quote.deleted')}
+            </Flex>
+          ) : null}
+
+          <Box flex={1} />
+
+          {/* 检索按钮 */}
+          <Flex gap={'12px'}>
+            <NavButton
+              direction="up"
+              isDisabled={quoteIndex === 0}
+              onClick={() => setQuoteIndex(quoteIndex - 1)}
+            />
+            <NavButton
+              direction="down"
+              isDisabled={quoteIndex === filterResults.length - 1}
+              onClick={() => setQuoteIndex(quoteIndex + 1)}
+            />
+          </Flex>
+        </Flex>
       )}
 
       {/* quote list */}
       {isLoading || datasetDataList.length > 0 ? (
-        <ScrollData flex={'1 0 0'} mt={2} px={5} py={1}>
-          <Flex flexDir={'column'}>
+        <ScrollData flex={'1 0 0'} p={'12px'}>
+          <Flex flexDir={'column'} gap={'12px'}>
             {formatedDataList.map((item) => (
               <CollectionQuoteItem
                 key={item._id}
@@ -328,6 +321,12 @@ const CollectionReader = ({
           </Box>
         </Flex>
       )}
+
+      <Box px={5} py={3}>
+        <Flex fontSize={'mini'} justifyContent={'center'} color={'myGray.500'}>
+          {t('chat:quote_result_notice')}
+        </Flex>
+      </Box>
     </MyBox>
   );
 };

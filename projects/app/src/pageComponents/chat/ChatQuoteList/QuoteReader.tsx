@@ -7,18 +7,22 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { formatScore } from '@/components/core/dataset/QuoteItem';
-import { type GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
+import {
+  type GetAllQuoteDataProps,
+  type GetCollectionQuoteDataProps
+} from '@/web/core/chat/context/chatItemContext';
 import { getQuoteDataList } from '@/web/core/chat/record/api';
 
 const QuoteReader = ({
   rawSearch,
   metadata,
-  onClose
+  onClose,
+  onOpenCollectionQuote
 }: {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetAllQuoteDataProps;
   onClose: () => void;
+  onOpenCollectionQuote: (metadata: GetCollectionQuoteDataProps) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -51,7 +55,11 @@ const QuoteReader = ({
           id: searchItem.id,
           q: dataItem?.q || 'Can not find Data',
           a: dataItem?.a || '',
-          score: formatScore(searchItem.score),
+          score: searchItem.score,
+          quoteId: searchItem.id,
+          collectionId: searchItem.collectionId,
+          datasetId: searchItem.datasetId,
+          sourceId: searchItem.sourceId,
           sourceName: searchItem?.sourceName || '',
           icon: getSourceNameIcon({
             sourceId: searchItem.sourceId,
@@ -65,95 +73,74 @@ const QuoteReader = ({
   }, [quoteList, filterRawSearch]);
 
   return (
-    <Flex flexDirection={'column'} h={'full'}>
+    <Flex flexDirection={'column'} minH={'full'} h={'full'}>
       {/* title */}
       <Flex
         w={'full'}
         alignItems={'center'}
-        px={5}
+        justifyContent={'center'}
+        px={6}
+        py={'16px'}
         borderBottom={'1px solid'}
         borderColor={'myGray.150'}
+        position={'relative'}
       >
-        <Box flex={1} py={4}>
-          <Flex gap={2} mr={2} mb={1}>
-            {metadata.sourceId ? (
-              <>
-                <MyIcon
-                  name={
-                    getSourceNameIcon({
-                      sourceId: metadata.sourceId,
-                      sourceName: metadata.sourceName || ''
-                    }) as any
-                  }
-                  w={['1rem', '1.25rem']}
-                  color={'primary.600'}
-                />
-                <Box
-                  ml={1}
-                  maxW={['200px', '220px']}
-                  className={'textEllipsis'}
-                  wordBreak={'break-all'}
-                  fontSize={'sm'}
-                  color={'myGray.900'}
-                  fontWeight={'medium'}
-                >
-                  {metadata.sourceName || t('common:unknow_source')}
-                </Box>
-              </>
-            ) : (
-              <>
-                <MyIcon
-                  name={'core/chat/quoteFill'}
-                  w={['1rem', '1.25rem']}
-                  color={'primary.600'}
-                />
-                <Box
-                  maxW={['200px', '300px']}
-                  className={'textEllipsis'}
-                  wordBreak={'break-all'}
-                  color={'myGray.900'}
-                  fontWeight={'medium'}
-                >
-                  {t('common:core.chat.Quote Amount', { amount: filterRawSearch.length })}
-                </Box>
-              </>
-            )}
-          </Flex>
-          <Box fontSize={'mini'} color={'myGray.500'}>
-            {t('common:core.chat.quote.Quote Tip')}
-          </Box>
+        <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'16px'}>
+          {t('common:chat.quote_detail_title')}
         </Box>
-        <Box
+
+        <Flex
+          position={'absolute'}
+          right={4}
+          justifyContent={'center'}
+          alignItems={'center'}
           cursor={'pointer'}
           borderRadius={'sm'}
-          p={1}
           _hover={{
             bg: 'myGray.100'
           }}
+          p={2}
           onClick={onClose}
         >
-          <MyIcon name="common/closeLight" color={'myGray.900'} w={6} />
-        </Box>
+          <MyIcon name="common/closeLight" color={'myGray.900'} w={4} />
+        </Flex>
       </Flex>
 
       {/* quote list */}
-      <MyBox flex={'1 0 0'} mt={2} px={5} py={1} overflow={'auto'} isLoading={loading}>
+      <MyBox flex={'1 0 0'} p={'12px'} overflow={'auto'} isLoading={loading}>
         {!loading && (
-          <Flex flexDir={'column'} gap={3}>
+          <Flex flexDir={'column'} gap={'12px'}>
             {formatedDataList?.map((item, index) => (
               <QuoteItem
                 key={item.id}
-                index={index}
                 icon={item.icon}
                 sourceName={item.sourceName}
-                score={item.score}
                 q={item.q}
                 a={item.a}
+                onClick={() => {
+                  onOpenCollectionQuote({
+                    appId: metadata.appId,
+                    chatId: metadata.chatId,
+                    chatItemDataId: metadata.chatItemDataId,
+                    outLinkAuthData: metadata.outLinkAuthData,
+                    quoteId: item.quoteId,
+                    collectionId: item.collectionId,
+                    sourceId: item.sourceId,
+                    sourceName: item.sourceName,
+                    datasetId: item.datasetId
+                  });
+                }}
               />
             ))}
           </Flex>
         )}
       </MyBox>
+
+      <Box px={5} py={3}>
+        <Flex fontSize={'mini'} color={'myGray.500'} justifyContent={'center'}>
+          {t('chat:quote_result_notice')}
+        </Flex>
+      </Box>
     </Flex>
   );
 };

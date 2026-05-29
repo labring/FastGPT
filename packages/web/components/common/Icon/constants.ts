@@ -246,6 +246,7 @@ export const iconPaths = {
   'core/chat/feedback/badLight': () => import('./icons/core/chat/feedback/badLight.svg'),
   'core/chat/feedback/goodLight': () => import('./icons/core/chat/feedback/goodLight.svg'),
   'core/chat/deepThinking': () => import('./icons/core/chat/deepThinking.svg'),
+  'core/chat/fileDownload': () => import('./icons/core/chat/fileDownload.svg'),
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/chat/finishSpeak': () => import('./icons/core/chat/finishSpeak.svg'),
   'core/chat/imgSelect': () => import('./icons/core/chat/imgSelect.svg'),

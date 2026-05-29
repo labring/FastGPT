@@ -5,13 +5,23 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 const DownloadButton = ({
   canAccessRawData,
   onDownload,
-  onRead
+  onRead,
+  onRouteToDataset
 }: {
   canAccessRawData: boolean;
   onDownload: () => void;
   onRead: () => void;
+  onRouteToDataset?: () => void;
 }) => {
   const { t } = useTranslation();
+  const datasetMenuItem = onRouteToDataset
+    ? {
+        icon: 'core/dataset/datasetLightSmall',
+        label: t('chat:go_to_dataset'),
+        type: 'grayBg' as const,
+        onClick: onRouteToDataset
+      }
+    : undefined;
 
   if (canAccessRawData) {
     return (
@@ -19,28 +29,28 @@ const DownloadButton = ({
         size={'xs'}
         Button={
           <MyIconButton
-            icon="common/download"
+            icon="more"
             size={'1rem'}
-            border={'1px solid'}
-            borderColor={'myGray.250'}
-            boxShadow={
-              '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-            }
+            color={'myGray.600'}
+            hoverBg={'myGray.100'}
           />
         }
         menuList={[
           {
             children: [
               {
+                icon: 'common/link',
+                label: t('chat:read_raw_source'),
+                type: 'grayBg',
+                onClick: onRead
+              },
+              {
+                icon: 'core/chat/fileDownload',
                 label: t('chat:download_chunks'),
                 type: 'grayBg',
                 onClick: onDownload
               },
-              {
-                label: t('chat:read_raw_source'),
-                type: 'grayBg',
-                onClick: onRead
-              }
+              ...(datasetMenuItem ? [datasetMenuItem] : [])
             ]
           }
         ]}
@@ -48,7 +58,15 @@ const DownloadButton = ({
     );
   }
 
-  return <MyIconButton icon="common/download" size={'1rem'} onClick={onDownload} />;
+  return (
+    <MyIconButton
+      icon="more"
+      size={'1rem'}
+      color={'myGray.600'}
+      hoverBg={'myGray.100'}
+      onClick={onRouteToDataset || onDownload}
+    />
+  );
 };
 
 export default DownloadButton;
