@@ -4,7 +4,12 @@ import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
-import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  ReadPermissionVal,
+  ReadRoleVal
+} from '@fastgpt/global/support/permission/constant';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -185,13 +190,44 @@ export async function authChatCrud({
   }
 
   // Cookie
-  const { teamId, tmbId, permission, authType } = await authApp({
-    req: props.req,
-    authToken: true,
-    authApiKey: true,
-    appId,
-    per: ReadPermissionVal
-  });
+  let teamId: string;
+  let tmbId: string;
+  let permission: AppPermission;
+  let authType: `${AuthUserTypeEnum}` | undefined;
+
+  try {
+    const authResult = await authApp({
+      req: props.req,
+      authToken: true,
+      authApiKey: true,
+      appId,
+      per: ReadPermissionVal
+    });
+    teamId = authResult.teamId;
+    tmbId = authResult.tmbId;
+    permission = authResult.permission;
+    authType = authResult.authType;
+  } catch (err: any) {
+    // Fallback: appId may be a skillId (e.g. Skill Preview debug chat).
+    // authApp fails with AppErrEnum.unExist when appId is not a real app.
+    const errCode = err?.message || err?.statusText || err;
+    if (errCode !== AppErrEnum.unExist) {
+      throw err;
+    }
+
+    const cert = await parseHeaderCert(props);
+    teamId = cert.teamId;
+    tmbId = cert.tmbId;
+
+    await authSkillByTmbId({
+      tmbId,
+      skillId: appId,
+      per: ReadPermissionVal
+    });
+
+    permission = new AppPermission({ isOwner: false, role: ReadRoleVal });
+    authType = AuthUserTypeEnum.token;
+  }
 
   if (!chatId) {
     return {
