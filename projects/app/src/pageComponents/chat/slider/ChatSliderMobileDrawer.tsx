@@ -8,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import ChatSliderFooter from '@/pageComponents/chat/slider/ChatSliderFooter';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import ChatSliderMobileNewChatButton from '@/pageComponents/chat/slider/ChatSliderMobileNewChatButton';
 
 type Props = {
   title?: string;
@@ -49,6 +50,7 @@ const ChatSliderMobileDrawer = ({
         <MyBox
           display={'flex'}
           flexDirection={'column'}
+          position="relative"
           w={'100%'}
           h={'100%'}
           px={'16px'}
@@ -67,6 +69,8 @@ const ChatSliderMobileDrawer = ({
           {showList && <ChatSliderList />}
 
           {footerSlot}
+
+          {showList && <ChatSliderMobileNewChatButton />}
 
           {showFooter && <ChatSliderFooter />}
         </MyBox>
