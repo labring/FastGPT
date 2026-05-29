@@ -9,6 +9,7 @@ packages:
   - pro/llm_benchmark/content_benchmark
   - pro/admin
   - pro/sso
+  - pro/browser-sandbox
 
   - document/
   - scripts/icon

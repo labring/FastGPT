@@ -1,0 +1,254 @@
+name: Build fastgpt-browser-sandbox images
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (e.g. v1.0.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: browser-sandbox-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stable: ${{ steps.version.outputs.stable }}
+    steps:
+      - name: Validate release version
+        id: version
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$REF_NAME" != "$DEFAULT_BRANCH" ]]; then
+            echo "::error::Release workflow must run from default branch ${DEFAULT_BRANCH}. Current ref: ${REF_NAME}"
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Image version must be SemVer like v1.2.3 or v1.2.3-rc.1. Current value: ${VERSION}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  validate-browser-sandbox:
+    needs: validate-version
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule."
+              exit 1
+            fi
+            git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git submodule update --init --recursive
+          fi
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.33.4
+
+      - name: Install browser-sandbox dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter @fastgpt/browser-sandbox...
+
+      - name: Typecheck browser-sandbox
+        run: pnpm --filter @fastgpt/browser-sandbox typecheck
+
+      - name: Typecheck browser-sandbox tests
+        run: pnpm --filter @fastgpt/browser-sandbox typecheck:test
+
+      - name: Test browser-sandbox
+        run: pnpm --filter @fastgpt/browser-sandbox test
+
+      - name: Build browser-sandbox
+        run: pnpm --filter @fastgpt/browser-sandbox build
+
+  build-fastgpt-browser-sandbox-images:
+    needs: [validate-version, validate-browser-sandbox]
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule."
+              exit 1
+            fi
+            git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git submodule update --init --recursive
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-browser-sandbox-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-browser-sandbox-buildx-
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: pro/browser-sandbox/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=fastgpt-browser-sandbox image
+          sbom: true
+          provenance: mode=max
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Smoke test pushed image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox@${{ steps.build.outputs.digest }}
+          SKIP_BUILD: "true"
+          BROWSER_STABILITY_ITERATIONS: "3"
+          BROWSER_SANDBOX_REPORT_DIR: pro/browser-sandbox/reports
+        run: |
+          bash pro/browser-sandbox/test/basic/run-basic-e2e.sh
+          bash pro/browser-sandbox/test/security/run-security.sh
+          bash pro/browser-sandbox/test/stability/run-stability.sh
+
+      - name: Upload smoke reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-sandbox-smoke-reports-${{ github.sha }}-${{ matrix.arch }}
+          path: pro/browser-sandbox/reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-browser-sandbox-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-browser-sandbox-images:
+    permissions:
+      packages: write
+      contents: read
+    needs: [validate-version, build-fastgpt-browser-sandbox-images]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-browser-sandbox-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image name and tag
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
+          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
+          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+
+      - name: Create GHCR manifest list
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create -t "${Git_Tag}" \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox@sha256:%s ' *)
+
+      - name: Tag GHCR latest
+        if: needs.validate-version.outputs.stable == 'true'
+        run: docker buildx imagetools create -t "${Git_Latest}" "${Git_Tag}"
+
+      - name: Set up crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Copy version tags to downstream registries
+        run: |
+          crane copy "${Git_Tag}" "${Ali_Tag}"
+          crane copy "${Git_Tag}" "${Docker_Hub_Tag}"
+
+      - name: Copy latest tags to downstream registries
+        if: needs.validate-version.outputs.stable == 'true'
+        run: |
+          crane copy "${Git_Tag}" "${Ali_Latest}"
+          crane copy "${Git_Tag}" "${Docker_Hub_Latest}"
