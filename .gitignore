@@ -34,8 +34,6 @@ files/helm/fastgpt/fastgpt-0.1.0.tgz
 files/helm/fastgpt/charts/*.tgz
 
 tmp/
-eval-runs/
-.cache/content-benchmark-real-sources/
 coverage
 document/.source
 
@@ -44,3 +42,9 @@ pro/admin/worker/
 
 .turbo
 .antigravitycli
+
+# content_benchmark local secrets and generated artifacts
+/pro/llm_benchmark/content_benchmark/.env.local
+/pro/llm_benchmark/content_benchmark/.env.*.local
+/pro/llm_benchmark/content_benchmark/eval-runs/
+/pro/llm_benchmark/content_benchmark/.cache/
