@@ -1112,6 +1112,9 @@ importers:
 
   pro/browser-sandbox:
     dependencies:
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@4.1.12)
