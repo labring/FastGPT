@@ -330,6 +330,7 @@ const ChatItem = (props: Props) => {
               isLastChild={isLastChild}
               isLastValueGroup={i === splitAiResponseResults.length - 1}
               isChatting={isChatting}
+              loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
               onOpenCiteModal={onOpenCiteModal}
               chatControllerProps={{

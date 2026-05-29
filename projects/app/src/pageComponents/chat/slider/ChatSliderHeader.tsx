@@ -38,7 +38,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
 
   return isPc ? (
-    <Flex py={4} px={[2, 2]} alignItems={'center'} fontSize={'sm'}>
+    <Flex py={4} px={[2, 2]} gap={2} alignItems={'center'} fontSize={'sm'}>
       {!title && <Avatar src={appAvatar} borderRadius={'md'} />}
 
       <Box

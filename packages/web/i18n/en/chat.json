@@ -19,6 +19,9 @@
   "chat_history": "Chat history",
   "chat_input_guide_lexicon_is_empty": "Lexicon not configured yet",
   "chat_test_app": "Debug-{{name}}",
+  "citation_card_prefix": "",
+  "citation_card_suffix": " References",
+  "citation_card_title": "{{num}} References",
   "citations": "{{num}} References",
   "clear_input_value": "Clear input",
   "click_to_add_url": "Enter file link",
@@ -235,6 +238,7 @@
   "tool_response_compress": "Tool response compression",
   "unsupported_file_type": "Unsupported file types",
   "variable_invisable_in_share": "External variables are not visible in login-free links",
+  "view_all_citations": "View all",
   "view_citations": "View References",
   "run_detail": "Run Details",
   "web_site_sync": "Web Site Sync"

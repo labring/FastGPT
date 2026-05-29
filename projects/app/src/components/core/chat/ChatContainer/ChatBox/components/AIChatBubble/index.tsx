@@ -24,6 +24,7 @@ type AIChatBubbleProps = {
   isLastChild: boolean;
   isLastValueGroup: boolean;
   isChatting: boolean;
+  loadingText?: string;
   questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
   chatControllerProps: ChatControllerProps;
@@ -37,6 +38,7 @@ const AIChatBubble = ({
   isLastChild,
   isLastValueGroup,
   isChatting,
+  loadingText,
   questionGuides,
   onOpenCiteModal,
   chatControllerProps,
@@ -81,7 +83,7 @@ const AIChatBubble = ({
         {children}
         {showLoading && (
           <Box mt={3}>
-            <AIChatLoading size={'md'} />
+            <AIChatLoading text={loadingText} size={'md'} />
           </Box>
         )}
       </Box>
