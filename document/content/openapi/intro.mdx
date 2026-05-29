@@ -3,25 +3,18 @@ title: OpenAPI 介绍
 description: FastGPT OpenAPI 介绍
 ---
 
-## 最新 OpenAPI 文档
+## 自动化 API 文档
 
-这部分接口是 FastGPT 对外提供 API 能力的文档，如果你是外部使用 FastGPT 需使用这个文档里的接口，并通过 apikey 鉴权。
+自动化 API 文档为当前版本系统的所有接口，不区分是否可通过 API Key 调用。
+
+后续所有接口都将做自动化生成，会逐步完善文档。
 
 - [中国大陆版 API 文档](https://cloud.fastgpt.cn/openapi)
 - [国际版 API 文档](https://cloud.fastgpt.io/openapi)
 
-## 开发者 API 文档
-
-开发者 API 文档为当前版本系统的所有接口，不区分是否可通过 API Key 调用。
-
-后续所有接口都将做自动化生成，会逐步完善文档。
-
-- [中国大陆版 API 文档](https://cloud.fastgpt.cn/devapidoc)
-- [国际版 API 文档](https://cloud.fastgpt.io/devapidoc)
-
 ## 使用说明
 
-FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGPT 上的相关服务和资源，例如：调用应用对话接口、上传知识库数据、搜索测试等等。出于兼容性和安全考虑，并不是所有的接口都允许通过 API Key 访问。
+FasGPT OpenAPI 接口允许你使用 Api Key 进行鉴权，从而操作 FastGPT 上的相关服务和资源，例如：调用应用对话接口、上传知识库数据、搜索测试等等。出于兼容性和安全考虑，并不是所有的接口都允许通过 Api Key 访问。
 
 ## 如何查看 BaseURL
 
@@ -29,15 +22,16 @@ FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGP
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## 如何获取 API Key
+## 如何获取 Api Key
 
 FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接调用应用对话)；一类是携带了 AppId 也就是有应用标记的 key (可直接调用应用对话)。
 
 我们建议，仅操作应用或者对话的相关接口使用 `应用特定key`，其他接口使用 `通用key`。
 
-| 通用 key                                | 应用特定 key                            |
-| --------------------------------------- | --------------------------------------- |
+|        通用key               |           应用特定 key            |
+| --------------------- | --------------------- |
 | ![](../../public/imgs/fastgpt-api2.jpg) | ![](../../public/imgs/fastgpt-api1.jpg) |
+
 
 ## 基本配置
 
@@ -71,7 +65,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 ## 自定义用户 ID
 
-`v4.8.13` 后支持传入自定义的用户 ID, 并且存入历史记录中。
+`v4.8.13`后支持传入自定义的用户 ID, 并且存入历史记录中。
 
 ```sh
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
