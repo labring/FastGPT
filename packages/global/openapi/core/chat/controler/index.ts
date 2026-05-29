@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import {
   StopV2ChatSchema,
   StopV2ChatResponseSchema,
@@ -10,9 +11,9 @@ import {
 export const ChatControllerPath: OpenAPIPath = {
   '/core/chat/init': {
     get: {
-      summary: '初始化聊天',
-      description: '初始化聊天',
-      tags: [TagsMap.chatController],
+      summary: '获取会话框基本信息',
+      description: '',
+      tags: [TagsMap.chatController, ApiKeyTagMap.chatSession],
       requestParams: {
         query: InitChatQuerySchema
       },

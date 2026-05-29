@@ -191,7 +191,7 @@ export const GetChartDataBodySchema = z.object({
     }),
   offset: z.number().meta({
     example: 1,
-    description: '时区偏移量'
+    description: '用户留存偏移量，单位随 userTimespan 变化'
   }),
   userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
     example: AppLogTimespanEnum.day,

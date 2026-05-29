@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { ApiKeyTagMap } from '../../../apikey/tag';
 import { ChatTestPropsSchema, CompletionsPropsSchema, CompletionsResponseSchema } from './api';
 
 /* =============== Request examples =============== */
@@ -280,7 +281,7 @@ data: [DONE]`;
 export const ChatCompletionPath: OpenAPIPath = {
   '/v1/chat/completions': {
     post: {
-      tags: [TagsMap.chatController],
+      tags: [TagsMap.chatController, ApiKeyTagMap.chat],
       summary: '请求对话 Agent 和工作流',
       description: `v1 对话接口兼容 GPT 的接口。如果你的项目使用的是标准的 GPT 官方接口，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGPT 应用。
 

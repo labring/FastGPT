@@ -20,98 +20,96 @@ You can find the AppId in your application details URL.
 
 The `v1` chat API is compatible with the `GPT` interface! If you're using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:
 
-* Parameters like `model` and `temperature` are ignored. These values are determined by your workflow configuration.
-* Won't return actual `Token` consumed. If needed, set `detail=true` and manually calculate `tokens` from `responseData`.
+- Parameters like `model` and `temperature` are ignored. These values are determined by your workflow configuration.
+- Won't return actual `Token` consumed. If needed, set `detail=true` and manually calculate `tokens` from `responseData`.
 
 ### Request
 
 <Tabs items={["Basic Request Example","Image/File Request Example","Parameters"]}>
 
-  <Tab value="Basic Request Example">
+<Tab value="Basic Request Example">
 
-  ```bash
-  curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
-  --header 'Authorization: Bearer fastgpt-xxxxxx' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-  "chatId": "my_chatId",
-  "stream": false,
-  "detail": false,
-  "responseChatItemId": "my_responseChatItemId",
-  "variables": {
-      "uid": "asdfadsfasfd2323",
-      "name": "张三"
-  },
-  "messages": [
-      {
-          "role": "user",
-          "content": "导演是谁"
-      }
-  ]
-  }'
-  ```
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+"chatId": "my_chatId",
+"stream": false,
+"detail": false,
+"responseChatItemId": "my_responseChatItemId",
+"variables": {
+    "uid": "asdfadsfasfd2323",
+    "name": "张三"
+},
+"messages": [
+    {
+        "role": "user",
+        "content": "导演是谁"
+    }
+]
+}'
+```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Image/File Request Example">
+<Tab value="Image/File Request Example">
 
-  - Only `messages` differs slightly; other parameters are the same.
-  - Direct file uploads are not supported. Upload files to your object storage and provide the URL.
+- Only `messages` differs slightly; other parameters are the same.
+- Direct file uploads are not supported. Upload files to your object storage and provide the URL.
 
-  ```bash
-  curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
-  --header 'Authorization: Bearer fastgpt-xxxxxx' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-      "chatId": "abcd",
-      "stream": false,
-      "messages": [
-          {
-              "role": "user",
-              "content": [
-                  {
-                      "type": "text",
-                      "text": "导演是谁"
-                  },
-                  {
-                      "type": "image_url",
-                      "image_url": {
-                          "url": "图片链接"
-                      }
-                  },
-                  {
-                      "type": "file_url",
-                      "name": "文件名",
-                      "url": "文档链接，支持 txt md html word pdf ppt csv excel"
-                  }
-              ]
-          }
-      ]
-  }'
-  ```
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "abcd",
+    "stream": false,
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "导演是谁"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "图片链接"
+                    }
+                },
+                {
+                    "type": "file_url",
+                    "name": "文件名",
+                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                }
+            ]
+        }
+    ]
+}'
+```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters">
+<Tab value="Parameters">
 
-<div>
 - headers.Authorization: Bearer [apikey]
-- chatId: string | undefined 。
-  - 为时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与[GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- detail:是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
-- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`[key]`
-</div>
+- chatId: string | undefined.
+  - Empty or omitted: FastGPT context is not used, and context is built entirely from `messages`.
+  - Non-empty string: uses `chatId` for the chat, automatically reads history from the FastGPT database, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters.
+- messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object).
+- responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId`.
+- detail: Whether to return intermediate values. In `stream` mode, they are separated by `event`; in non-stream mode, they are stored in `responseData`.
+- variables: Module variables. This object replaces `[key]` placeholders in input fields.
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ### Response
 
 <Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','Event Values']}>
-  <Tab value="detail=false, stream=false Response">
+<Tab value="detail=false, stream=false Response">
 
 ```json
 {
@@ -135,8 +133,8 @@ The `v1` chat API is compatible with the `GPT` interface! If you're using the st
 }
 ```
 
-  </Tab>
-  <Tab value="detail=false, stream=true Response">
+</Tab>
+<Tab value="detail=false, stream=true Response">
 
 ```bash
 data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":""},"index":0,"finish_reason":null}]}
@@ -148,8 +146,8 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"影"},"in
 data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"index":0,"finish_reason":null}]}
 ```
 
-  </Tab>
-  <Tab value="detail=true, stream=false Response">
+</Tab>
+<Tab value="detail=true, stream=false Response">
 
 ```json
 {
@@ -238,8 +236,8 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"in
 }
 ```
 
-  </Tab>
-  <Tab value="detail=true, stream=true Response">
+</Tab>
+<Tab value="detail=true, stream=true Response">
 
 ```bash
 event: flowNodeStatus
@@ -273,8 +271,8 @@ event: flowResponses
 data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","runningTime":1.78},{"question":"导演是谁","quoteList":[{"id":"654f2e49b64caef1d9431e8b","q":"电影《铃芽之旅》的导演是谁？","a":"电影《铃芽之旅》的导演是新海诚!","indexes":[{"type":"qa","dataId":"3515487","text":"电影《铃芽之旅》的导演是谁？","_id":"654f2e49b64caef1d9431e8c","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8935586214065552},{"id":"6552e14c50f4a2a8e632af11","q":"导演是谁？","a":"电影《铃芽之旅》的导演是新海诚。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3644565","text":"导演是谁？\n电影《铃芽之旅》的导演是新海诚。","_id":"6552e14dde5cc7ba3954e417"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8890955448150635},{"id":"654f34a0b64caef1d946337e","q":"本作的主人公是谁？","a":"本作的主人公是名叫铃芽的少女。","indexes":[{"type":"qa","dataId":"3515541","text":"本作的主人公是谁？","_id":"654f34a0b64caef1d946337f","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8738770484924316},{"id":"654f3002b64caef1d944207a","q":"电影《铃芽之旅》男主角是谁？","a":"电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。","indexes":[{"type":"qa","dataId":"3515538","text":"电影《铃芽之旅》男主角是谁？","_id":"654f3002b64caef1d944207b","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8607980012893677},{"id":"654f2fc8b64caef1d943fd46","q":"电影《铃芽之旅》的编剧是谁？","a":"新海诚是本片的编剧。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3515550","text":"电影《铃芽之旅》的编剧是谁？22","_id":"654f2fc8b64caef1d943fd47"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8468944430351257}],"moduleName":"AI 对话","moduleType":"chatNode","runningTime":1.86}]
 ```
 
-  </Tab>
-  <Tab value="Event Values">
+</Tab>
+<Tab value="Event Values">
 
 event取值：
 
@@ -288,7 +286,7 @@ event取值：
     - updateVariables: 更新变量
     - error: 报错
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ### Response
@@ -298,7 +296,7 @@ If your workflow contains interactive nodes, still call this API with `detail=tr
 When calling a workflow with interactive nodes, if an interactive node is encountered, it returns immediately with this info:
 
 <Tabs items={['User Selection','Form Input']}>
-  <Tab value="User Selection">
+<Tab value="User Selection">
 
 ```json
 {
@@ -321,8 +319,8 @@ When calling a workflow with interactive nodes, if an interactive node is encoun
 }
 ```
 
-  </Tab>
-  <Tab value="Form Input">
+</Tab>
+<Tab value="Form Input">
 
 ```json
 {
@@ -369,7 +367,7 @@ When calling a workflow with interactive nodes, if an interactive node is encoun
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ### Continue Interactive Node
@@ -377,7 +375,7 @@ When calling a workflow with interactive nodes, if an interactive node is encoun
 After receiving interactive node info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:
 
 <Tabs items={['User Selection','Form Input']}>
-  <Tab value="User Selection">
+<Tab value="User Selection">
 
 For user selection, simply pass the selected value to messages.
 
@@ -398,8 +396,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 }'
 ```
 
-  </Tab>
-  <Tab value="Form Input">
+</Tab>
+<Tab value="Form Input">
 
 Form input is slightly more complex. Serialize the input as a JSON string for `messages`. Object keys match form keys, values are user inputs. Ensure `chatId` is consistent.
 
@@ -420,7 +418,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 }'
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Request Plugin
@@ -451,7 +449,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 ### Response
 
 <Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','Output Retrieval']}>
-  <Tab value="detail=true, stream=false Response">
+<Tab value="detail=true, stream=false Response">
 
 - Find plugin output by locating `moduleType=pluginOutput` in `responseData`. Its `pluginOutput` contains the output.
 - Stream output is still available via `choices`.
@@ -515,8 +513,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 }
 ```
 
-  </Tab>
-  <Tab value="detail=true, stream=true Response">
+</Tab>
+<Tab value="detail=true, stream=true Response">
 
 - Get plugin output by deserializing the `event=flowResponses` string into an array. Find `moduleType=pluginOutput` element; its `pluginOutput` contains the output.
 - Stream output works the same as chat API.
@@ -580,8 +578,8 @@ event: flowResponses
 data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"插件输出","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
 ```
 
-  </Tab>
-  <Tab value="Output Retrieval">
+</Tab>
+<Tab value="Output Retrieval">
 
 event取值：
 
@@ -595,25 +593,25 @@ event取值：
     - updateVariables: 更新变量
     - error: 报错
 
-  </Tab>
+</Tab>
 </Tabs>
 
 # Chat CRUD
 
-* The following APIs can be called with any `API Key`.
-* 4.8.12 and above
+- The following APIs can be called with any `API Key`.
+- 4.8.12 and above
 
-****Important Fields****
+\***\*Important Fields\*\***
 
 - chatId - The ID of a conversation window under an application
 - dataId - The ID of a chat record under a conversation window
 
-## History
+## History Management
 
-## History
+### Get History List
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/history/getHistories' \
@@ -627,19 +625,17 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 }'
 ```
 
-  </Tab>
-  <Tab value="Parameters">
+</Tab>
+<Tab value="Parameters">
 
-<div>
 - appId - Application ID
 - offset - Offset (starting position)
 - pageSize - Number of records
-- source - Chat source. source=api means get API-created chats only (excludes web UI chats)
-</div>
+- source - Chat source. `source=api` means get API-created chats only (excludes web UI chats)
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -670,16 +666,16 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
-### Update Chat Title
+### Update History Title
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/history/updateHistory' \
+curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updateHistory' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -689,19 +685,17 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/upda
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - customTitle - Custom chat title
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -712,16 +706,16 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/upda
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
-### Pin / Unpin
+### Update History Pin Status
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/history/updateHistory' \
+curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updateHistory' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -731,19 +725,17 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/upda
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - top - Whether to pin. true = pin, false = unpin
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -754,31 +746,29 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/upda
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
-## History
+### Delete a History Record
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/delHistory?chatId=[chatId]&appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -789,32 +779,30 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/de
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
-## History
+### Clear App History Records
 
 Only clears chat history created via API Key. Does not clear history from web UI, share links, or other sources.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/clearHistories?appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -825,89 +813,87 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/cl
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Chat Records
 
 Operations on chat records under a specific chatId.
 
-### Get Chat Initialization Info
+### Get Chat Box Basic Info
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
-  ```bash
-  curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[appId]&chatId=[chatId]' \
-  --header 'Authorization: Bearer [apikey]'
-  ```
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[appId]&chatId=[chatId]' \
+--header 'Authorization: Bearer [apikey]'
+```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example">
+<Tab value="Response Example">
 
-  ```json
-  {
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-      "chatId": "sPVOuEohjo3w",
-      "appId": "66e29b870b24ce35330c0f08",
-      "variables": {},
-      "app": {
-        "chatConfig": {
-          "questionGuide": true,
-          "ttsConfig": {
-            "type": "web"
-          },
-          "whisperConfig": {
-            "open": false,
-            "autoSend": false,
-            "autoTTSResponse": false
-          },
-          "chatInputGuide": {
-            "open": false,
-            "textList": [],
-            "customUrl": ""
-          },
-          "instruction": "",
-          "variables": [],
-          "fileSelectConfig": {
-            "canSelectFile": true,
-            "canSelectImg": true,
-            "maxFiles": 10
-          },
-          "_id": "66f1139aaab9ddaf1b5c596d",
-          "welcomeText": ""
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "chatId": "sPVOuEohjo3w",
+    "appId": "66e29b870b24ce35330c0f08",
+    "variables": {},
+    "app": {
+      "chatConfig": {
+        "questionGuide": true,
+        "ttsConfig": {
+          "type": "web"
         },
-        "chatModels": ["GPT-4o-mini"],
-        "name": "测试",
-        "avatar": "/imgs/app/avatar/workflow.svg",
-        "intro": "",
-        "type": "advanced",
-        "pluginInputs": []
-      }
+        "whisperConfig": {
+          "open": false,
+          "autoSend": false,
+          "autoTTSResponse": false
+        },
+        "chatInputGuide": {
+          "open": false,
+          "textList": [],
+          "customUrl": ""
+        },
+        "instruction": "",
+        "variables": [],
+        "fileSelectConfig": {
+          "canSelectFile": true,
+          "canSelectImg": true,
+          "maxFiles": 10
+        },
+        "_id": "66f1139aaab9ddaf1b5c596d",
+        "welcomeText": ""
+      },
+      "chatModels": ["GPT-4o-mini"],
+      "name": "测试",
+      "avatar": "/imgs/app/avatar/workflow.svg",
+      "intro": "",
+      "type": "advanced",
+      "pluginInputs": []
     }
   }
-  ```
+}
+```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Chat Records
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginationRecords' \
@@ -922,21 +908,19 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - offset - Offset
 - pageSize - Number of records
 - loadCustomFeedbacks - Whether to load custom feedbacks (optional)
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -980,32 +964,30 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Chat Records
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?appId=[appId]&chatId=[chatId]&dataId=[dataId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - Chat ID
 - dataId - Chat Record ID
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -1055,32 +1037,30 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Chat Records
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example" >
+<Tab value="Request Example" >
 
 ```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delete?contentId=[contentId]&chatId=[chatId]&appId=[appId]' \
+curl --location --request DELETE 'http://localhost:3000/api/core/chat/record/delete?contentId=[contentId]&chatId=[chatId]&appId=[appId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - contentId - Chat Record ID
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -1091,13 +1071,13 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ### Like / Unlike
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1111,20 +1091,18 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - dataId - Chat Record ID
 - userGoodFeedback - User feedback when liking (optional). Omit to unlike.
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -1135,13 +1113,13 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ### Dislike / Remove Dislike
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1155,20 +1133,18 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
-<div>
 - appId - Application ID
 - chatId - History ID
 - dataId - Chat Record ID
 - userBadFeedback - User feedback when disliking (optional). Omit to remove dislike.
-</div>
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -1179,7 +1155,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>
 
 ## Question Suggestions
@@ -1189,7 +1165,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 The new question suggestion feature requires both appId and chatId parameters. It automatically fetches the last 6 conversation turns from chatId as context.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
-  <Tab value="Request Example">
+<Tab value="Request Example">
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/createQuestionGuide' \
@@ -1206,9 +1182,9 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 }'
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Parameters" >
+<Tab value="Parameters" >
 
 | 参数名        | 类型   | 必填 | 说明                                                       |
 | ------------- | ------ | ---- | ---------------------------------------------------------- |
@@ -1228,9 +1204,9 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
 };
 ```
 
-  </Tab>
+</Tab>
 
-  <Tab value="Response Example" >
+<Tab value="Response Example" >
 
 ```json
 {
@@ -1241,5 +1217,5 @@ type CreateQuestionGuideParams = OutLinkChatAuthProps & {
 }
 ```
 
-  </Tab>
+</Tab>
 </Tabs>

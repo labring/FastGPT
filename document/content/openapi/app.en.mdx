@@ -10,87 +10,86 @@ description: FastGPT OpenAPI Application Interface
 
 ![alt text](../../public/imgs/image-120.png)
 
-
 ## Log API
 
-### Get Cumulative Run Results
-
-<Tabs items={["Request Example","Response Example","Parameters"]}>
-
-  <Tab value="Request Example">
-
-  ```bash
- curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
---header 'Authorization: Bearer apikey'
-  ```
-
-  </Tab>
-
-  <Tab value="Response Example">
-
-  ```bash
-    {
-        "code": 200,
-        "statusText": "",
-        "message": "",
-        "data": {
-            "totalUsers": 0,
-            "totalChats": 0,
-            "totalPoints": 0
-        }
-    }
-  ```
-
-  </Tab>
-
-  <Tab value="Parameters">
-
-  <div>
-  **Request Parameters:**
-  - appId: Application ID
-
-  **Response Parameters:**
-  - totalUsers: Total number of users
-  - totalChats: Total number of conversations
-  - totalPoints: Total points consumed
-  </div>
-
-  </Tab>
-
-</Tabs>
-
-### Get Application Log Dashboard
+### Get Application Overall Statistics
 
 <Tabs items={["Request Example","Response Example","Parameters"]}>
 
 <Tab value="Request Example">
 
-  ```bash
+```bash
+curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
+--header 'Authorization: Bearer apikey'
+```
+
+</Tab>
+
+<Tab value="Response Example">
+
+```bash
+  {
+      "code": 200,
+      "statusText": "",
+      "message": "",
+      "data": {
+          "totalUsers": 0,
+          "totalChats": 0,
+          "totalPoints": 0
+      }
+  }
+```
+
+</Tab>
+
+<Tab value="Parameters">
+
+**Request Parameters:**
+
+- appId: Application ID
+
+**Response Parameters:**
+
+- totalUsers: Total number of users
+- totalChats: Total number of conversations
+- totalPoints: Total points consumed
+
+</Tab>
+
+</Tabs>
+
+### Get Application Chart Data
+
+<Tabs items={["Request Example","Response Example","Parameters"]}>
+
+<Tab value="Request Example">
+
+```bash
 curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "appId": "68c46a70d950e8850ae564ba",
-    "dateStart": "2025-09-19T16:00:00.000Z",
-    "dateEnd": "2025-09-27T15:59:59.999Z",
-    "offset": 1,
-    "source": [
-        "test",
-        "online",
-        "share",
-        "api",
-        "cronJob",
-        "team",
-        "feishu",
-        "official_account",
-        "wecom",
-        "mcp"
-    ],
-    "userTimespan": "day",
-    "chatTimespan": "day",
-    "appTimespan": "day"
+  "appId": "68c46a70d950e8850ae564ba",
+  "dateStart": "2025-09-19T16:00:00.000Z",
+  "dateEnd": "2025-09-27T15:59:59.999Z",
+  "offset": 1,
+  "source": [
+      "test",
+      "online",
+      "share",
+      "api",
+      "cronJob",
+      "team",
+      "feishu",
+      "official_account",
+      "wecom",
+      "mcp"
+  ],
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
 }'
-  ```
+```
 
 </Tab>
 
@@ -156,14 +155,15 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
 <Tab value="Parameters">
 
 **Request Parameters:**
+
 - appId: Application ID
 - dateStart: Start time
 - dateEnd: End time
 - source: Log source
-- offset: User retention offset
-- userTimespan: User data timespan  //day|week|month|quarter
-- chatTimespan: Chat data timespan  //day|week|month|quarter
-- appTimespan: Application data timespan  //day|week|month|quarter
+- offset: User retention offset. The unit follows userTimespan
+- userTimespan: User data timespan //day|week|month|quarter
+- chatTimespan: Chat data timespan //day|week|month|quarter
+- appTimespan: Application data timespan //day|week|month|quarter
 
 **Response Parameters:**
 

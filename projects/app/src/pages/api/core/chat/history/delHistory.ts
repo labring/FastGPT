@@ -11,10 +11,10 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { appId, chatId } = parseApiInput({ req, querySchema: DelChatHistorySchema }).query;
 
   await authChatCrud({
+    ...req.query,
     req,
     authToken: true,
-    authApiKey: true,
-    ...req.query
+    authApiKey: true
   });
 
   await MongoChat.updateOne(
