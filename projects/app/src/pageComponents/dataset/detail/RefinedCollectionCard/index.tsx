@@ -1023,17 +1023,19 @@ const CollectionCard = () => {
                   {t('dataset:tag.batch_set_tags')}
                 </Button>
               )}
-              <Button
-                variant={'whiteBase'}
-                onClick={() => {
-                  const linkItems = selectedItems.filter(
-                    (e) => e.type === DatasetCollectionTypeEnum.link
-                  );
-                  linkItems.forEach((item) => onclickStartSync(item._id));
-                }}
-              >
-                {t('dataset:batch_sync')}
-              </Button>
+              {formatCollections.some((e) => e.type === DatasetCollectionTypeEnum.link) && (
+                <Button
+                  variant={'whiteBase'}
+                  onClick={() => {
+                    const linkItems = selectedItems.filter(
+                      (e) => e.type === DatasetCollectionTypeEnum.link
+                    );
+                    linkItems.forEach((item) => onclickStartSync(item._id));
+                  }}
+                >
+                  {t('dataset:batch_sync')}
+                </Button>
+              )}
               <Button
                 variant={'whiteBase'}
                 onClick={() =>

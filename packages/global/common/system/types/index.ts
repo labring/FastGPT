@@ -359,6 +359,7 @@ export type customPdfParseType = {
   url?: string;
   key?: string;
   timeout?: number;
+  chunkTimeout?: number;
   doc2xKey?: string;
   textinAppId?: string;
   textinSecretCode?: string;

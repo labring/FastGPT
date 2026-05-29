@@ -96,22 +96,7 @@ export const processSynonymRestore = async ({
       return rest;
     });
 
-    // 5. 更新数据库
-    /**
-     * 使用 retryFn 处理 WriteConflict 错误
-     *
-     * 问题场景：
-     * 多个 worker 并发处理不同的 training 任务时，在链式处理阶段会同时执行
-     * findOneAndUpdate 去抢夺下一条 synonymProcessing='restore' 的数据。
-     * MongoDB 事务中的 findOneAndUpdate 是排他的，当多个 session 同时尝试
-     * 更新满足相同条件的文档时，只有一个能成功，其他会抛出 WriteConflict。
-     *
-     * 解决方案：
-     * 1. retryFn 重试机制：发生冲突时自动重试，下次可能获取到其他未被锁定的数据
-     * 2. 幂等性检查：创建任务前先检查是否已存在，避免重复创建
-     *
-     * 这个方案与 generateVector.ts 中的 rebuildData 函数以及 standardize.ts 保持一致。
-     */
+    // 5. 更新数据库，不包含链式处理
     await retryFn(
       async () => {
         await mongoSessionRun(async (session) => {
@@ -145,8 +130,16 @@ export const processSynonymRestore = async ({
           );
 
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+        });
+      },
+      3 // 最多重试3次
+    );
 
-          // 7. 链式处理下一条
+    // 7. 链式处理下一条
+    // 链式失败不影响当前任务，下一条数据会被后续 Worker 自然拉取到
+    try {
+      await retryFn(() =>
+        mongoSessionRun(async (session) => {
           const nextData = await MongoDatasetData.findOneAndUpdate(
             {
               synonymProcessing: 'restore',
@@ -184,7 +177,7 @@ export const processSynonymRestore = async ({
                     dataMetadata: {
                       synonymFileIds: nextData.synonymFileIds
                     },
-                    retryCount: 3,
+                    retryCount: 50,
                     billId: trainingData.billId
                   }
                 ],
@@ -192,10 +185,9 @@ export const processSynonymRestore = async ({
               );
             }
           }
-        });
-      },
-      3 // 最多重试3次
-    );
+        })
+      );
+    } catch (error) {}
   }
 
   return { tokens: totalTokens };
