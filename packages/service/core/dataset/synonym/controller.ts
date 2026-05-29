@@ -461,7 +461,7 @@ export async function uploadSynonymFile({
                         dataMetadata: {
                           synonymFileIds: data.synonymFileIds
                         },
-                        retryCount: 3,
+                        retryCount: 50,
                         billId: usageId
                       }
                     ],
