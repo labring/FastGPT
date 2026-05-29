@@ -77,3 +77,53 @@ export const convertMdImagesToHtml = (text: string): string => {
     return `<img src="${src}" alt="${escapedAlt}">`;
   });
 };
+
+const SHIMMER_DIV =
+  '<div class="img-stream-placeholder"><div class="img-stream-placeholder-inner"></div></div>';
+
+const COMPLETE_IMG_RE = /!\[[^\]]*\]\([^)]+\)/g;
+const INCOMPLETE_IMG_RE = /!\[[^\]]*(?:\](?:\([^)]*)?)?$/;
+
+/**
+ * 流式输出过程中检测末尾不完整的图片语法（如 ![](url 还没闭合)，
+ * 替换为 shimmer 占位符，避免用户看到逐字输出的原始图片 markdown 文本。
+ * 仅在 showAnimation 为 true 时处理；历史消息中图片语法都是完整的，不受影响。
+ */
+export const resolveImgStreamPlaceholder = (text: string, showAnimation: boolean): string => {
+  if (!showAnimation) return text;
+
+  let result = '';
+  let lastEnd = 0;
+
+  COMPLETE_IMG_RE.lastIndex = 0;
+  let completeMatch: RegExpExecArray | null;
+
+  while ((completeMatch = COMPLETE_IMG_RE.exec(text)) !== null) {
+    // Check the segment before this complete match for incomplete syntax
+    const segment = text.slice(lastEnd, completeMatch.index);
+    const incompleteMatch = INCOMPLETE_IMG_RE.exec(segment);
+
+    if (incompleteMatch) {
+      result += segment.slice(0, incompleteMatch.index) + SHIMMER_DIV;
+      result += segment.slice(incompleteMatch.index + incompleteMatch[0].length);
+    } else {
+      result += segment;
+    }
+
+    result += completeMatch[0];
+    lastEnd = completeMatch.index + completeMatch[0].length;
+  }
+
+  // Handle the final segment after the last complete match
+  const finalSegment = text.slice(lastEnd);
+  const finalIncomplete = INCOMPLETE_IMG_RE.exec(finalSegment);
+
+  if (finalIncomplete) {
+    result += finalSegment.slice(0, finalIncomplete.index) + SHIMMER_DIV;
+    result += finalSegment.slice(finalIncomplete.index + finalIncomplete[0].length);
+  } else {
+    result += finalSegment;
+  }
+
+  return result;
+};

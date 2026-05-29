@@ -425,6 +425,54 @@
       }
     }
   }
+
+  /* 流式输出图片 loading 占位符 */
+  :global(.img-stream-placeholder) {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    height: 300px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: linear-gradient(
+      135deg,
+      #dae6fa 0%,
+      #d2ebf6 25%,
+      #d4f0e8 50%,
+      #daf2e4 75%,
+      #dceaf8 100%
+    );
+    position: relative;
+    margin: 8px 0;
+    flex-shrink: 0;
+  }
+
+  :global(.img-stream-placeholder-inner) {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.18) 42%,
+      rgba(255, 255, 255, 0.32) 50%,
+      rgba(255, 255, 255, 0.18) 58%,
+      transparent 70%
+    );
+    animation: imgShimmerSweep 3.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+@keyframes imgShimmerSweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  65% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
 }
 
 .mermaid {
