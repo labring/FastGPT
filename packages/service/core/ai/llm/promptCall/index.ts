@@ -7,7 +7,9 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { getPromptToolCallPrompt } from './prompt';
-import { cloneDeep } from 'lodash';
+import lodash from 'lodash';
+
+const { cloneDeep } = lodash;
 
 export const promptToolCallMessageRewrite = (
   messages: ChatCompletionMessageParam[],
@@ -82,7 +84,7 @@ export const parsePromptToolCall = (
     const toolString = sliceJsonStr(str);
 
     try {
-      const toolCall = json5.parse(toolString) as { name: string; arguments: Object };
+      const toolCall = json5.parse(toolString) as { name: string; arguments: object };
 
       return {
         answer: '',

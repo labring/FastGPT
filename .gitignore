@@ -42,3 +42,9 @@ pro/admin/worker/
 
 .turbo
 .antigravitycli
+
+# content_benchmark local secrets and generated artifacts
+/pro/llm_benchmark/content_benchmark/.env.local
+/pro/llm_benchmark/content_benchmark/.env.*.local
+/pro/llm_benchmark/content_benchmark/eval-runs/
+/pro/llm_benchmark/content_benchmark/.cache/
