@@ -6,6 +6,7 @@ packages:
   - projects/marketplace
   - projects/mcp_server
   - projects/volume-manager
+  - pro/llm_benchmark/content_benchmark
   - pro/admin
   - pro/sso
 

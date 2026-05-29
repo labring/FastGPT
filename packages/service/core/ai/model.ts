@@ -1,9 +1,11 @@
-import { cloneDeep } from 'lodash';
+import lodash from 'lodash';
 import { type SystemModelItemType } from './type';
 import type {
   EmbeddingModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
+
+const { cloneDeep } = lodash;
 
 export const getDefaultLLMModel = () => global.systemDefaultModel.llm!;
 export const getLLMModel = (model?: string | LLMModelItemType) => {
