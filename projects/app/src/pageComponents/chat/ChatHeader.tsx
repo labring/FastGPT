@@ -61,6 +61,7 @@ const ChatHeader = ({
   const isPlugin = chatData.app.type === AppTypeEnum.workflowTool;
   const isShare = source === 'share';
   const chatType = isShare ? ChatTypeEnum.share : ChatTypeEnum.chat;
+  const hasHistory = history.length > 0;
 
   return isPc && isPlugin ? null : (
     <Flex
@@ -102,7 +103,7 @@ const ChatHeader = ({
         {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
-        {!isPlugin && !hideMenu && (
+        {!isPlugin && !hideMenu && hasHistory && (
           <MarkdownExportButton history={history} reserveSpace={reserveSpace} />
         )}
       </Flex>

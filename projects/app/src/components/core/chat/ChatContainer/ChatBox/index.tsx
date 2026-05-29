@@ -52,10 +52,11 @@ import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
-const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
-const QuickApps = dynamic(() => import('./components/home/QuickApps'));
+const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
+const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayout'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 type Props = OutLinkChatAuthProps &
@@ -101,6 +102,7 @@ const ChatBox = ({
   onMarkChatRead
 }: Props) => {
   const { t } = useTranslation();
+  const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -514,17 +516,26 @@ const ChatBox = ({
       onToggleFeedbackReadStatus
     ]
   );
-  const HomeChatRenderBox = useMemo(() => {
-    return (
-      <>
-        <WelcomeHomeBox />
-
-        <Box mt={5} w={'100%'}>
-          <QuickApps />
+  const HomeChatInput = (
+    <>
+      {variableList.filter((item) => item.type !== VariableInputEnum.internal).length > 0 ? (
+        <Box w={'100%'}>
+          <ChatHomeVariablesForm chatForm={chatForm} />
         </Box>
-      </>
-    );
-  }, []);
+      ) : (
+        <ChatInput
+          onSendMessage={sendPrompt}
+          onStop={() => abortRequest('stop')}
+          onStopChat={requestStopChat}
+          onStopSettled={handleStopSettled}
+          disableSend={isRoundPending}
+          TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
+          chatForm={chatForm}
+        />
+      )}
+    </>
+  );
 
   return (
     <MyBox
@@ -539,32 +550,21 @@ const ChatBox = ({
       {isHomeRender ? (
         <MyBox
           isLoading={isLoadingRecords}
+          display="flex"
+          flexDirection="column"
           flex={'1 0 0'}
           h={0}
-          px={[2, 4]}
+          px={['16px', 4]}
+          pb={['46px', 0]}
           w="100%"
           maxW={['auto', 'min(820px, 100%)']}
           mx={'auto'}
         >
-          <Flex h={'100%'} flexDir={'column'} justifyContent={'center'} w={'100%'}>
-            {HomeChatRenderBox}
-            {variableList.filter((item) => item.type !== VariableInputEnum.internal).length > 0 ? (
-              <Box w={'100%'}>
-                <ChatHomeVariablesForm chatForm={chatForm} />
-              </Box>
-            ) : (
-              <ChatInput
-                onSendMessage={sendPrompt}
-                onStop={() => abortRequest('stop')}
-                onStopChat={requestStopChat}
-                onStopSettled={handleStopSettled}
-                disableSend={isRoundPending}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-              />
-            )}
-          </Flex>
+          {isPc ? (
+            <DesktopHomeLayout inputSlot={HomeChatInput} />
+          ) : (
+            <MobileHomeLayout inputSlot={HomeChatInput} />
+          )}
         </MyBox>
       ) : (
         <>

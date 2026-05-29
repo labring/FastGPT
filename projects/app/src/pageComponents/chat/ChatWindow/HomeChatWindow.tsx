@@ -82,7 +82,6 @@ const HomeChatWindow = () => {
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
-  const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -100,11 +99,6 @@ const HomeChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
-
-  const isQuickApp = useMemo(
-    () => chatSettings?.quickAppList.some((app) => app._id === appId),
-    [chatSettings?.quickAppList, appId]
-  );
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -167,25 +161,23 @@ const HomeChatWindow = () => {
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
 
-      if (!isQuickApp) {
-        if (!res.app.chatConfig) {
-          res.app.chatConfig = {
-            fileSelectConfig: {
-              ...defaultFileSelectConfig,
-              canSelectImg: !!modelData.vision
-            },
-            whisperConfig: defaultWhisperConfig
-          };
-        } else {
-          res.app.chatConfig.fileSelectConfig = {
+      if (!res.app.chatConfig) {
+        res.app.chatConfig = {
+          fileSelectConfig: {
             ...defaultFileSelectConfig,
             canSelectImg: !!modelData.vision
-          };
-          res.app.chatConfig.whisperConfig = {
-            ...defaultWhisperConfig,
-            open: true
-          };
-        }
+          },
+          whisperConfig: defaultWhisperConfig
+        };
+      } else {
+        res.app.chatConfig.fileSelectConfig = {
+          ...defaultFileSelectConfig,
+          canSelectImg: !!modelData.vision
+        };
+        res.app.chatConfig.whisperConfig = {
+          ...defaultWhisperConfig,
+          open: true
+        };
       }
 
       setChatBoxData(res);
@@ -214,11 +206,7 @@ const HomeChatWindow = () => {
   );
 
   const handleSwitchQuickApp = async (id: string) => {
-    if (isQuickApp && appId === id) {
-      onChangeGlobalAppId(homeAppId);
-      return;
-    }
-    onChangeGlobalAppId(id);
+    handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
   };
 
   useMount(() => {
@@ -242,36 +230,7 @@ const HomeChatWindow = () => {
 
       const histories = messages.slice(-1);
 
-      // using original workflow of quick app
-      if (isQuickApp && appId) {
-        const { responseText } = await streamFetch({
-          data: {
-            messages: histories,
-            variables,
-            responseChatItemId,
-            appId,
-            chatId,
-            retainDatasetCite: isShowCite,
-            showSkillReferences
-          },
-          abortCtrl: controller,
-          onMessage: generatingMessage
-        });
-
-        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
-
-        onUpdateHistoryTitle({ chatId, newTitle });
-        setChatBoxData((state) => ({
-          ...state,
-          title: newTitle
-        }));
-
-        refreshRecentlyUsed();
-
-        return { responseText, isNewChat: forbidLoadChatRef.current };
-      }
-
-      // not quick app, using model and tools selected on home page
+      // Home chat uses the selected model and tools. Quick apps enter the normal app chat pane.
       if (!selectedModel) {
         return Promise.reject('No model selected');
       }
@@ -326,90 +285,89 @@ const HomeChatWindow = () => {
 
   // 自定义按钮组（模型选择和工具选择）
   const InputLeftComponent = useMemo(
-    () =>
-      isQuickApp ? undefined : (
-        <>
-          {/* 模型选择 */}
-          {isPc && availableModels.length > 0 && (
-            <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
-              <AIModelSelector
-                cacheModel={false}
-                h={['30px', '36px']}
-                boxShadow={'none'}
-                size="sm"
-                bg={'myGray.50'}
-                rounded="full"
-                list={availableModels}
-                value={selectedModel}
-                onChange={onChangeModel}
-              />
-            </Box>
-          )}
+    () => (
+      <>
+        {/* 模型选择 */}
+        {isPc && availableModels.length > 0 && (
+          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
+            <AIModelSelector
+              cacheModel={false}
+              h={['30px', '36px']}
+              boxShadow={'none'}
+              size="sm"
+              bg={'myGray.50'}
+              rounded="full"
+              list={availableModels}
+              value={selectedModel}
+              onChange={onChangeModel}
+            />
+          </Box>
+        )}
 
-          {/* 工具选择下拉框 */}
-          {availableTools.length > 0 && (
-            <Menu isLazy closeOnSelect={false} autoSelect={false}>
-              <MenuButton
-                as={Button}
-                h={['30px', '36px']}
-                boxShadow={'none'}
-                size="sm"
-                rounded="full"
-                variant="whiteBase"
-                leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
-                flexShrink={0}
-                _active={{
-                  transform: 'none'
-                }}
-                {...(selectedTools.length > 0 && {
-                  color: 'primary.600',
-                  bg: 'primary.50',
-                  borderColor: 'primary.200'
-                })}
-              >
-                {isPc
-                  ? selectedTools.length > 0
-                    ? t('chat:home.tools', { num: selectedTools.length })
-                    : t('chat:home.select_tools')
-                  : `：${selectedTools.length}`}
-              </MenuButton>
-              <MenuList px={2}>
-                {availableTools.map((tool) => {
-                  const toolId = tool.pluginId || '';
-                  const isSelected = selectedToolIds.includes(toolId);
+        {/* 工具选择下拉框 */}
+        {availableTools.length > 0 && (
+          <Menu isLazy closeOnSelect={false} autoSelect={false}>
+            <MenuButton
+              as={Button}
+              h={['30px', '36px']}
+              boxShadow={'none'}
+              size="sm"
+              rounded="full"
+              variant="whiteBase"
+              leftIcon={<MyIcon name="core/app/toolCall" w="14px" />}
+              flexShrink={0}
+              _active={{
+                transform: 'none'
+              }}
+              {...(selectedTools.length > 0 && {
+                color: 'primary.600',
+                bg: 'primary.50',
+                borderColor: 'primary.200'
+              })}
+            >
+              {isPc
+                ? selectedTools.length > 0
+                  ? t('chat:home.tools', { num: selectedTools.length })
+                  : t('chat:home.select_tools')
+                : `：${selectedTools.length}`}
+            </MenuButton>
+            <MenuList px={2}>
+              {availableTools.map((tool) => {
+                const toolId = tool.pluginId || '';
+                const isSelected = selectedToolIds.includes(toolId);
 
-                  return (
-                    <MenuItem
-                      key={toolId}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setSelectedToolIds(
-                          selectedToolIds.includes(toolId)
-                            ? selectedToolIds.filter((id) => id !== toolId)
-                            : [...selectedToolIds, toolId]
-                        );
-                      }}
-                      closeOnSelect={false}
-                      _hover={{
-                        bg: 'primary.50'
-                      }}
-                      _notLast={{ mb: 1 }}
-                      borderRadius={'md'}
-                    >
-                      <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
-                      <Flex alignItems="center" gap={2}>
-                        <Avatar src={tool.avatar} w={5} borderRadius="xs" />
-                        <Box fontSize="sm">{tool.name}</Box>
-                      </Flex>
-                    </MenuItem>
-                  );
-                })}
-              </MenuList>
-            </Menu>
-          )}
-        </>
-      ),
+                return (
+                  <MenuItem
+                    key={toolId}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setSelectedToolIds(
+                        selectedToolIds.includes(toolId)
+                          ? selectedToolIds.filter((id) => id !== toolId)
+                          : [...selectedToolIds, toolId]
+                      );
+                    }}
+                    closeOnSelect={false}
+                    _hover={{
+                      bg: 'primary.50'
+                    }}
+                    _notLast={{ mb: 1 }}
+                    borderRadius={'md'}
+                  >
+                    <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
+                    <Flex alignItems="center" gap={2}>
+                      <Avatar src={tool.avatar} w={5} borderRadius="xs" />
+                      <Box fontSize="sm">{tool.name}</Box>
+                    </Flex>
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          </Menu>
+        )}
+      </>
+    ),
     [
       availableModels,
       selectedModel,
@@ -421,7 +379,6 @@ const HomeChatWindow = () => {
       setSelectedToolIds,
       setChatBoxData,
       isPc,
-      isQuickApp,
       onChangeModel
     ]
   );
@@ -476,19 +433,13 @@ const HomeChatWindow = () => {
               h="32px"
               onClick={onOpenSlider}
             />
-            {isQuickApp ? (
-              <Box fontSize="16px" fontWeight={500} className="textEllipsis">
-                {chatBoxData.app.name}
+            <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
+              <Box fontSize="16px" fontWeight={500} className="textEllipsis" maxW="200px">
+                {selectedModelData?.name || selectedModel}
               </Box>
-            ) : (
-              <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
-                <Box fontSize="16px" fontWeight={500} className="textEllipsis" maxW="200px">
-                  {selectedModelData?.name || selectedModel}
-                </Box>
-                <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.700" ml={1} />
-              </Flex>
-            )}
-            <ToolMenu history={chatRecords} />
+              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.700" ml={1} />
+            </Flex>
+            {chatRecords.length > 0 ? <ToolMenu history={chatRecords} /> : <Box w="32px" />}
           </Flex>
         )}
 
@@ -511,11 +462,11 @@ const HomeChatWindow = () => {
             slogan={chatSettings?.slogan}
             outLinkAuthData={outLinkAuthData}
             wideLogo={chatSettings?.wideLogoUrl}
+            squareLogo={chatSettings?.squareLogoUrl}
             dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
             quickAppList={chatSettings?.quickAppList || []}
-            currentQuickAppId={isQuickApp ? appId : undefined}
             onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>

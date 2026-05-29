@@ -10,6 +10,8 @@ const ChatWindowHeader = ({
   title?: string;
   history: ChatItemMiniType[];
 }) => {
+  const hasHistory = history.length > 0;
+
   return (
     <Flex
       minH="60px"
@@ -22,9 +24,11 @@ const ChatWindowHeader = ({
       position="relative"
     >
       {title}
-      <Box position="absolute" right={5}>
-        <MarkdownExportButton history={history} />
-      </Box>
+      {hasHistory && (
+        <Box position="absolute" right={5}>
+          <MarkdownExportButton history={history} />
+        </Box>
+      )}
     </Flex>
   );
 };

@@ -213,7 +213,7 @@
   "setting.home.quick_apps.add": "配置快捷应用",
   "setting.home.quick_apps.placeholder": "请选择应用",
   "setting.home.slogan": "Slogan",
-  "setting.home.slogan.default": "你好👋，我是 FastGPT ! 请问有什么可以帮你？",
+  "setting.home.slogan.default": "今天想做点什么？",
   "setting.home.slogan_placeholder": "请输入 Slogan",
   "setting.home.title": "首页配置",
   "setting.log_details.title": "首页日志",

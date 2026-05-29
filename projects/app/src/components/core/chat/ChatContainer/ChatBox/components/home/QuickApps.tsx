@@ -4,39 +4,52 @@ import { ChatBoxContext } from '../../Provider';
 import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 
-const QuickApps = () => {
+type QuickAppsProps = {
+  variant?: 'desktop' | 'mobile';
+};
+
+const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
   const quickAppList = useContextSelector(ChatBoxContext, (v) => v.quickAppList);
-  const currentQuickAppId = useContextSelector(ChatBoxContext, (v) => v.currentQuickAppId);
   const onSwitchQuickApp = useContextSelector(ChatBoxContext, (v) => v.onSwitchQuickApp);
+  const isMobile = variant === 'mobile';
 
   return quickAppList && quickAppList.length > 0 ? (
-    <Flex mb="2" alignItems="center" gap={2} flexWrap="wrap">
+    <Flex
+      mb={isMobile ? 0 : '2'}
+      alignItems={isMobile ? 'flex-start' : 'center'}
+      gap={isMobile ? '12px' : 2}
+      flexWrap={isMobile ? 'nowrap' : 'wrap'}
+      flexDir={isMobile ? 'column' : 'row'}
+    >
       {quickAppList.map((q) => (
         <Flex
           key={q._id}
           alignItems="center"
-          gap={1}
+          gap={isMobile ? '8px' : 1}
           border="sm"
           borderRadius="md"
-          px={2}
-          py={1}
+          px={isMobile ? '16px' : 2}
+          py={isMobile ? '8px' : 1}
+          maxW={isMobile ? '100%' : undefined}
           cursor="pointer"
           _hover={{ bg: 'myGray.50' }}
-          {...(currentQuickAppId === q._id
-            ? {
-                bg: 'primary.50',
-                color: 'primary.600',
-                borderColor: 'primary.200'
-              }
-            : {
-                bg: 'white',
-                color: 'myGray.600',
-                borderColor: 'myGray.200'
-              })}
+          bg="white"
+          color="myGray.600"
+          borderColor="myGray.200"
           onClick={() => onSwitchQuickApp?.(q._id)}
         >
           <Avatar src={q.avatar} w={4} borderRadius="xs" />
-          <Box fontSize="xs" fontWeight="500" userSelect="none">
+          <Box
+            fontSize="xs"
+            fontWeight="500"
+            userSelect="none"
+            {...(isMobile
+              ? {
+                  className: 'textEllipsis',
+                  minW: 0
+                }
+              : {})}
+          >
             {q.name}
           </Box>
         </Flex>

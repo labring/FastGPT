@@ -8,7 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 
 /**
  * 移动端侧边抽屉内的快捷应用入口。
- * 保持在导航区之后展示，点击后切到 Home 对话承载的快捷应用，避免复用桌面最近使用列表的滚动和折叠状态。
+ * 点击后进入普通应用聊天，保持“首页”菜单只表示首页聊天本身。
  */
 const ChatSliderQuickAppList = () => {
   const { appId: activeAppId, setChatId } = useChatStore();
@@ -26,7 +26,7 @@ const ChatSliderQuickAppList = () => {
   return (
     <Flex flexDir="column" gap="4px">
       {quickAppList.map((app) => {
-        const isActive = pane === ChatSidebarPaneEnum.HOME && activeAppId === app._id;
+        const isActive = pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && activeAppId === app._id;
 
         return (
           <Flex
@@ -43,7 +43,7 @@ const ChatSliderQuickAppList = () => {
               color: 'primary.600'
             }}
             onClick={() => {
-              handlePaneChange(ChatSidebarPaneEnum.HOME, app._id);
+              handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app._id);
               onCloseSlider();
               setChatId();
             }}

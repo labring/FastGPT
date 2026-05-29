@@ -1,6 +1,5 @@
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import { Flex, Box } from '@chakra-ui/react';
+import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideBar from '@/components/SideBar';
@@ -30,6 +29,9 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import ChatWindowHeader from './ChatWindowHeader';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import ToolMenu from '@/pageComponents/chat/ToolMenu';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -42,6 +44,7 @@ const AppChatWindow = () => {
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
@@ -53,11 +56,9 @@ const AppChatWindow = () => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
 
-  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
@@ -182,13 +183,32 @@ const AppChatWindow = () => {
         {isPc ? (
           <ChatWindowHeader title={chatBoxData.title} history={chatRecords} />
         ) : (
-          <ChatHeader
-            pane={pane}
-            chatSettings={chatSettings}
-            showHistory
-            history={chatRecords}
-            totalRecordsCount={totalRecordsCount}
-          />
+          <Flex
+            h="46px"
+            px={3}
+            bg="white"
+            alignItems="center"
+            justifyContent="space-between"
+            color="myGray.900"
+          >
+            <IconButton
+              aria-label="Open history"
+              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="myGray.900" />}
+              variant="unstyled"
+              minW="32px"
+              h="32px"
+              onClick={onOpenSlider}
+            />
+
+            <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
+              <Avatar src={chatBoxData.app.avatar} w="20px" borderRadius="6px" />
+              <Box ml={2} fontSize="16px" fontWeight={500} className="textEllipsis">
+                {chatBoxData.app.name}
+              </Box>
+            </Flex>
+
+            {chatRecords.length > 0 ? <ToolMenu history={chatRecords} /> : <Box w="32px" />}
+          </Flex>
         )}
 
         <Box flex={'1 0 0'} bg={'white'}>
