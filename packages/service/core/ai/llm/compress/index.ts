@@ -80,7 +80,7 @@ export const compressRequestMessages = async ({
       userKey,
       body: {
         stream: true,
-        model,
+        modelId: model.id,
         messages: [
           {
             role: ChatCompletionRequestMessageRoleEnum.System,
@@ -103,13 +103,13 @@ export const compressRequestMessages = async ({
     const totalPoints = userKey
       ? 0
       : formatModelChars2Points({
-          model: model.model,
+          modelId: model.id,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }).totalPoints;
     const compressedUsage = {
       moduleName: i18nT('account_usage:compress_llm_messages'),
-      model: model.name,
+      modelId: model.id,
       totalPoints,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
@@ -241,7 +241,7 @@ export const compressLargeContent = async ({
       const { answerText, usage } = await createLLMResponse({
         userKey,
         body: {
-          model,
+          modelId: model.id,
           messages: [
             {
               role: ChatCompletionRequestMessageRoleEnum.System,
@@ -264,7 +264,7 @@ export const compressLargeContent = async ({
       const totalPoints = userKey
         ? 0
         : formatModelChars2Points({
-            model: model.model,
+            modelId: model.id,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens
           }).totalPoints;
@@ -418,7 +418,7 @@ export const compressLargeContent = async ({
       compressed: result.compressed.trim(),
       usage: {
         moduleName: i18nT('account_usage:llm_compress_text'),
-        model: model.name,
+        modelId: model.id,
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens

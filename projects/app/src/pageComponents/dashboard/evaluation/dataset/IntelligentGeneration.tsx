@@ -62,7 +62,7 @@ const formatSubmitData = (
   const baseData = {
     count: params.dataAmount,
     kbDatasetIds: params.selectedDatasets.map((v) => v.datasetId),
-    intelligentGenerationModel: params.generationModel
+    intelligentGenerationModelId: params.generationModel
   };
 
   if (params.collectionId) {
@@ -120,7 +120,7 @@ const IntelligentGeneration = ({
   } = useForm<IntelligentGenerationForm>({
     defaultValues: {
       name: defaultValues?.name || '',
-      generationModel: defaultValues?.generationModel || evalModelList[0]?.model || '',
+      generationModel: defaultValues?.generationModel || evalModelList[0]?.id || '',
       dataAmount: defaultValues?.dataAmount || 50,
       selectedDatasets: defaultValues?.selectedDatasets || []
     }
@@ -328,7 +328,7 @@ const IntelligentGeneration = ({
               bg="myGray.50"
               value={generationModelValue}
               list={llmModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={(value) => setValue('generationModel', value)}

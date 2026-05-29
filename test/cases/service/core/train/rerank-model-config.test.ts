@@ -16,7 +16,15 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
   MongoSystemModel: {
+    create: vi.fn(),
     findOneAndUpdate: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/task/schema', () => ({
+  MongoRerankTrainTask: {
+    findById: vi.fn(),
+    updateOne: vi.fn()
   }
 }));
 
@@ -54,10 +62,15 @@ describe('Rerank Model Config Controller', () => {
   describe('createRerankModelConfig', () => {
     test('应该成功创建rerank模型配置', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
       const { updatedReloadSystemModel } = await import('@fastgpt/service/core/ai/config/utils');
 
-      // Mock database findOneAndUpdate
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_123' });
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_123' });
 
       const configId = await createRerankModelConfig({
         name: 'Test Rerank Model',
@@ -66,32 +79,36 @@ describe('Rerank Model Config Controller', () => {
           api_key: 'test-api-key',
           model: 'test-model'
         },
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
         isActive: true,
         charsPointsPrice: 1,
-        maxToken: 8192
+        maxToken: 8192,
+        taskId: 'task_123'
       });
 
       expect(configId).toBe('config_123');
-      expect(MongoSystemModel.findOneAndUpdate).toHaveBeenCalledWith(
-        { model: 'test-model' },
+      expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        provider: 'aicp',
+        model: 'test-model',
+        name: 'Test Rerank Model',
+        isActive: true,
+        isCustom: true,
+        isTuned: true,
+        type: 'rerank',
+        charsPointsPrice: 1,
+        maxToken: 8192,
+        instruction: undefined,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        isShared: false
+      });
+
+      expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
+        { _id: 'task_123' },
         {
-          model: 'test-model',
-          metadata: expect.objectContaining({
-            provider: 'aicp',
-            model: 'test-model',
-            name: 'Test Rerank Model',
-            isActive: true,
-            isCustom: true,
-            isTuned: true, // Verify isTuned field is set correctly
-            type: 'rerank',
-            charsPointsPrice: 1,
-            maxToken: 8192,
-            instruction: undefined
-          })
-        },
-        {
-          upsert: true,
-          new: true
+          'checkpoint.data.registering.tunedModelId': 'config_123',
+          updateTime: expect.any(Date)
         }
       );
 
@@ -100,11 +117,17 @@ describe('Rerank Model Config Controller', () => {
 
     test('应该在创建后调用waitForChannelAvailable进行轮询验证', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
       const { waitForChannelAvailable } = await import(
         '@fastgpt/service/core/train/rerank/task/helpers/channel'
       );
 
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_poll' });
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_poll' });
 
       const endpoint = {
         base_url: 'http://192.168.1.100:8080/v1',
@@ -116,7 +139,10 @@ describe('Rerank Model Config Controller', () => {
         name: 'Poll Test Model',
         endpoint,
         isActive: true,
-        charsPointsPrice: 1
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        charsPointsPrice: 1,
+        taskId: 'task_poll'
       });
 
       expect(waitForChannelAvailable).toHaveBeenCalledWith({
@@ -127,11 +153,17 @@ describe('Rerank Model Config Controller', () => {
 
     test('应该在通道不可用时抛出超时错误', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
       const { waitForChannelAvailable } = await import(
         '@fastgpt/service/core/train/rerank/task/helpers/channel'
       );
 
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_timeout' });
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_timeout' });
       (waitForChannelAvailable as any).mockRejectedValueOnce(
         new Error(
           'Channel for model "test-model" did not become available within 30 minutes. Last error: connection refused'
@@ -147,16 +179,25 @@ describe('Rerank Model Config Controller', () => {
             model: 'test-model'
           },
           isActive: true,
-          charsPointsPrice: 1
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          charsPointsPrice: 1,
+          taskId: 'task_timeout'
         })
       ).rejects.toThrow('did not become available');
     });
 
     test('应该处理空的API密钥', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
       const { updatedReloadSystemModel } = await import('@fastgpt/service/core/ai/config/utils');
 
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_456' });
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_456' });
 
       await createRerankModelConfig({
         name: 'Simple Model',
@@ -166,40 +207,41 @@ describe('Rerank Model Config Controller', () => {
           model: 'simple-model'
         },
         isActive: false,
-        charsPointsPrice: 2
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        charsPointsPrice: 2,
+        taskId: 'task_simple'
       });
 
-      expect(MongoSystemModel.findOneAndUpdate).toHaveBeenCalledWith(
-        { model: 'simple-model' },
-        {
-          model: 'simple-model',
-          metadata: expect.objectContaining({
-            provider: 'aicp',
-            model: 'simple-model',
-            name: 'Simple Model',
-            isActive: false,
-            isCustom: true,
-            isTuned: true, // Created by training module, should have isTuned flag
-            type: 'rerank',
-            charsPointsPrice: 2,
-            instruction: undefined
-          })
-        },
-        {
-          upsert: true,
-          new: true
-        }
-      );
+      expect(MongoSystemModel.create).toHaveBeenCalledWith({
+        provider: 'aicp',
+        model: 'simple-model',
+        name: 'Simple Model',
+        isActive: false,
+        isCustom: true,
+        isTuned: true, // Created by training module, should have isTuned flag
+        type: 'rerank',
+        charsPointsPrice: 2,
+        maxToken: 3000,
+        instruction: undefined,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        isShared: false
+      });
 
       expect(updatedReloadSystemModel).toHaveBeenCalled();
     });
 
     test('应该处理数据库创建错误', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
-
-      (MongoSystemModel.findOneAndUpdate as any).mockRejectedValue(
-        new Error('Database connection failed')
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
       );
+
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockRejectedValue(new Error('Database connection failed'));
 
       await expect(
         createRerankModelConfig({
@@ -210,17 +252,26 @@ describe('Rerank Model Config Controller', () => {
             model: 'error-model'
           },
           isActive: true,
-          charsPointsPrice: 1
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          charsPointsPrice: 1,
+          taskId: 'task_error'
         })
       ).rejects.toThrow('Database connection failed');
     });
 
     test('应该正确记录创建日志', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
       const { addLog } = await import('@fastgpt/service/common/system/log');
       const { updatedReloadSystemModel } = await import('@fastgpt/service/core/ai/config/utils');
 
-      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'config_log' });
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ checkpoint: { data: {} } })
+      });
+      (MongoSystemModel.create as any).mockResolvedValue({ _id: 'config_log' });
 
       await createRerankModelConfig({
         name: 'Log Test Model',
@@ -230,7 +281,10 @@ describe('Rerank Model Config Controller', () => {
           model: 'log-test-model'
         },
         isActive: true,
-        charsPointsPrice: 0
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        charsPointsPrice: 0,
+        taskId: 'task_log'
       });
 
       expect(addLog.info).toHaveBeenCalledWith(
@@ -252,6 +306,47 @@ describe('Rerank Model Config Controller', () => {
       );
 
       expect(updatedReloadSystemModel).toHaveBeenCalled();
+    });
+
+    test('应该根据checkpoint中的模型id更新已有rerank模型配置', async () => {
+      const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
+      const { MongoRerankTrainTask } = await import(
+        '@fastgpt/service/core/train/rerank/task/schema'
+      );
+
+      (MongoRerankTrainTask.findById as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          checkpoint: { data: { registering: { tunedModelId: 'existing_model_id' } } }
+        })
+      });
+      (MongoSystemModel.findOneAndUpdate as any).mockResolvedValue({ _id: 'existing_model_id' });
+
+      const configId = await createRerankModelConfig({
+        name: 'Retry Rerank Model',
+        endpoint: {
+          base_url: 'http://example.com/v1',
+          api_key: 'test-key',
+          model: 'retry-model'
+        },
+        isActive: true,
+        tmbId: 'tmb_test',
+        teamId: 'team_test',
+        taskId: 'task_retry'
+      });
+
+      expect(configId).toBe('existing_model_id');
+      expect(MongoSystemModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: 'existing_model_id' },
+        expect.objectContaining({
+          model: 'retry-model',
+          tmbId: 'tmb_test',
+          teamId: 'team_test',
+          isShared: false
+        }),
+        { new: true }
+      );
+      expect(MongoSystemModel.create).not.toHaveBeenCalled();
+      expect(MongoRerankTrainTask.updateOne).not.toHaveBeenCalled();
     });
   });
 });

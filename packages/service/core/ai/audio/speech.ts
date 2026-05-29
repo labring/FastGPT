@@ -1,29 +1,29 @@
 import type { NextApiResponse } from 'next';
 import { getAIApi } from '../config';
-import { getTTSModel } from '../model';
+import { getTTSModelById } from '../model';
 
 export async function text2Speech({
   res,
   onSuccess,
   onError,
   input,
-  model,
+  modelId,
   voice,
   speed = 1
 }: {
   res: NextApiResponse;
-  onSuccess: (e: { model: string; buffer: Buffer }) => void;
+  onSuccess: (e: { modelId: string; buffer: Buffer }) => void;
   onError: (e: any) => void;
   input: string;
-  model: string;
+  modelId: string;
   voice: string;
   speed?: number;
 }) {
-  const modelData = getTTSModel(model)!;
+  const modelData = getTTSModelById(modelId)!;
   const ai = getAIApi();
   const response = await ai.audio.speech.create(
     {
-      model,
+      model: modelData.model,
       // @ts-ignore
       voice,
       input,
@@ -49,7 +49,7 @@ export async function text2Speech({
     chunks.push(chunk);
   });
   readableStream.on('end', () => {
-    onSuccess({ model, buffer: Buffer.concat(chunks) });
+    onSuccess({ modelId: modelData.id, buffer: Buffer.concat(chunks) });
   });
   readableStream.on('error', (e) => {
     onError(e);

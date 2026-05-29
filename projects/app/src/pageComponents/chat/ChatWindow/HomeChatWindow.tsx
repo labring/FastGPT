@@ -95,11 +95,11 @@ const HomeChatWindow = () => {
   );
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
+    () => llmModelList.map((model) => ({ value: model.id, label: model.name })),
     [llmModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.model
+    defaultValue: defaultModels.llm?.id
   });
 
   const availableTools = useMemo(
@@ -128,7 +128,7 @@ const HomeChatWindow = () => {
   // 初始化聊天数据
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
+      if (!appId || !chatId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
@@ -256,7 +256,7 @@ const HomeChatWindow = () => {
       );
 
       const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
+      formData.aiSettings.modelId = selectedModel;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
 

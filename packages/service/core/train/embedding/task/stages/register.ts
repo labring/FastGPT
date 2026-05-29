@@ -11,7 +11,7 @@ import {
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
-import { MongoSystemModel } from '../../../../ai/config/schema';
+import { getEmbeddingModelById } from '../../../../ai/model';
 
 /**
  * Stage 5: Model Registration
@@ -48,44 +48,39 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
 
   const tunedEndpoint = checkpointData.finetuning.tunedModelEndpoint;
   const baseModelId = task.baseModelId;
-  const tunedModelId = tunedEndpoint.model;
 
   // Use task.newModelName if provided, otherwise fall back to the model ID from SFT Bridge
-  const tunedModelName = task.newModelName || tunedModelId;
+  const tunedModelName = task.newModelName || tunedEndpoint.model;
 
   // Inherit config from base model
-  const baseModelDoc = await MongoSystemModel.findOne({ model: baseModelId }).lean();
-  const baseMeta = (baseModelDoc?.metadata ?? {}) as {
-    charsPointsPrice?: number;
-    defaultToken?: number;
-    maxToken?: number;
-    weight?: number;
-    normalization?: boolean;
-    batchSize?: number;
-    defaultConfig?: Record<string, any>;
-    instruction?: string;
-  };
+  const baseModel = getEmbeddingModelById(baseModelId);
 
+  let tunedModelId: string;
   try {
-    const tunedModelObjectId = await createEmbeddingModelConfig({
+    tunedModelId = await createEmbeddingModelConfig({
       name: tunedModelName,
       endpoint: tunedEndpoint,
       isActive: true,
-      charsPointsPrice: baseMeta.charsPointsPrice,
-      defaultToken: baseMeta.defaultToken,
-      maxToken: baseMeta.maxToken,
-      weight: baseMeta.weight,
-      normalization: baseMeta.normalization,
-      batchSize: baseMeta.batchSize,
-      defaultConfig: baseMeta.defaultConfig,
+      tmbId: task.tmbId,
+      teamId: task.teamId,
+      charsPointsPrice: baseModel.charsPointsPrice,
+      defaultToken: baseModel.defaultToken,
+      maxToken: baseModel.maxToken,
+      weight: baseModel.weight,
+      normalization: baseModel.normalization,
+      batchSize: baseModel.batchSize,
+      defaultConfig: baseModel.defaultConfig,
       instruction:
-        task.trainMethod === EmbeddingTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
+        task.trainMethod === EmbeddingTrainMethodEnum.task_tuning
+          ? undefined
+          : baseModel.instruction,
+      taskId: String(task._id)
     });
 
     addLog.info('Created tuned embedding model config and channel', {
       taskId: String(task._id),
       tunedModelId,
-      tunedModelObjectId,
+      tunedModelName,
       endpoint: tunedEndpoint
     });
   } catch (error) {
@@ -109,7 +104,8 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
   addLog.info('Register stage completed (embedding)', {
     taskId: String(task._id),
     baseModelId,
-    tunedModelId
+    tunedModelId,
+    tunedModelName
   });
 
   return {

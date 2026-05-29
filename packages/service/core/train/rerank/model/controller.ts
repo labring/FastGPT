@@ -2,16 +2,17 @@ import { MongoSystemModel } from '../../../ai/config/schema';
 import { updatedReloadSystemModel } from '../../../ai/config/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getModelProvider } from '../../../app/provider/controller';
 import {
   deleteTunedModelChannel,
   createTunedModelChannel,
   waitForChannelAvailable
 } from '../task/helpers/channel';
+import { MongoRerankTrainTask } from '../task/schema';
 
 /**
- * Create rerank model configuration (idempotent)
+ * Create rerank model configuration
  *
  * Architecture: Model config contains metadata only, channel contains access credentials.
  * Order: 1) Create model config, 2) Create channel, 3) Poll until channel is available.
@@ -31,15 +32,20 @@ export async function createRerankModelConfig(params: {
     model: string;
   };
   isActive: boolean;
+  tmbId: string;
+  teamId: string;
   charsPointsPrice?: number;
   maxToken?: number;
   instruction?: string;
+  taskId: string;
 }): Promise<string> {
-  const { name, endpoint, isActive, charsPointsPrice, maxToken, instruction } = params;
+  const { name, endpoint, isActive, tmbId, teamId, charsPointsPrice, maxToken, instruction } =
+    params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
   const modelConfig: RerankModelItemType = {
+    id: '',
     provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
@@ -48,27 +54,53 @@ export async function createRerankModelConfig(params: {
     isTuned: true,
     type: ModelTypeEnum.rerank,
     charsPointsPrice: charsPointsPrice ?? 0,
-    maxToken,
+    maxToken: maxToken ?? 3000,
     instruction
   };
 
-  const result = await MongoSystemModel.findOneAndUpdate(
-    { model },
-    {
-      model,
-      metadata: modelConfig
-    },
-    {
-      upsert: true,
-      new: true
-    }
-  );
+  const task = await MongoRerankTrainTask.findById(
+    params.taskId,
+    'checkpoint.data.registering.tunedModelId'
+  ).lean();
+  const existingModelId = task?.checkpoint?.data?.registering?.tunedModelId;
+
+  const { id: _, ...configFields } = modelConfig;
+
+  const result = existingModelId
+    ? await MongoSystemModel.findOneAndUpdate(
+        { _id: existingModelId },
+        {
+          ...configFields,
+          tmbId,
+          teamId,
+          isShared: false
+        },
+        {
+          new: true
+        }
+      )
+    : await MongoSystemModel.create({
+        ...configFields,
+        tmbId,
+        teamId,
+        isShared: false
+      });
 
   if (!result) {
     throw new Error('Failed to create or update model config');
   }
 
   const objectId = String(result._id);
+
+  if (!existingModelId) {
+    await MongoRerankTrainTask.updateOne(
+      { _id: params.taskId },
+      {
+        'checkpoint.data.registering.tunedModelId': objectId,
+        updateTime: new Date()
+      }
+    );
+  }
 
   addLog.info('Created or updated rerank model config', {
     model,
@@ -103,30 +135,39 @@ export async function createRerankModelConfig(params: {
  * SFT Bridge resource cleanup is handled separately by deleteRerankTrainTask.
  * Order: 1) Delete channel first, 2) Delete model config + reload.
  *
- * @param modelConfigId - Model configuration ID (same as endpoint.model)
+ * @param modelId - Model's MongoDB _id (platform-unique model ID)
  * @returns Promise that resolves when deletion is complete
  * @throws {Error} When channel or model deletion fails
  */
-export async function deleteRerankModelConfig(modelConfigId: string): Promise<void> {
-  addLog.info('Deleting rerank model config', { modelConfigId });
+export async function deleteRerankModelConfig(modelId: string): Promise<void> {
+  addLog.info('Deleting rerank model config', { modelId });
+
+  // Look up the model config to get the model name (needed for channel operations)
+  const doc = await MongoSystemModel.findById(modelId).lean();
+  if (!doc) {
+    addLog.warn('No model config found to delete in FastGPT', { modelId });
+    return;
+  }
+  const modelName = doc.model;
 
   // Step 1: Delete AI Proxy channel first (contains access credentials)
-  await deleteTunedModelChannel(modelConfigId);
-  addLog.info('Deleted AI Proxy channel', { modelConfigId });
+  await deleteTunedModelChannel(modelName);
+  addLog.info('Deleted AI Proxy channel', { modelId, modelName });
 
   // Step 2: Delete model configuration from FastGPT database
-  const deleteResult = await MongoSystemModel.deleteOne({ model: modelConfigId });
+  const deleteResult = await MongoSystemModel.deleteOne({ _id: modelId });
 
   if (deleteResult.deletedCount === 0) {
-    addLog.warn('No model config found to delete in FastGPT', { modelConfigId });
+    addLog.warn('No model config found to delete in FastGPT', { modelId });
   } else {
     addLog.info('Deleted rerank model config from FastGPT', {
-      modelConfigId,
+      modelId,
+      modelName,
       deletedCount: deleteResult.deletedCount
     });
 
     // Reload system models after deletion
     await updatedReloadSystemModel();
-    addLog.info('Reloaded system models', { modelConfigId });
+    addLog.info('Reloaded system models', { modelId });
   }
 }

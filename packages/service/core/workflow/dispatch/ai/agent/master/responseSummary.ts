@@ -1,6 +1,6 @@
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../../ai/llm/request';
-import { getLLMModel } from '../../../../../ai/model';
+import { getLLMModelById } from '../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '../../../../../../../global/common/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -10,11 +10,11 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 
 export const getOneStepResponseSummary = async ({
   response,
-  model,
+  modelId,
   checkIsStopping
 }: {
   response: string;
-  model: string;
+  modelId?: string;
   checkIsStopping: () => boolean;
 }): Promise<{
   answerText: string;
@@ -25,12 +25,12 @@ export const getOneStepResponseSummary = async ({
   const startTime = Date.now();
   getLogger(LogCategories.MODULE.AI.AGENT).debug('[GetOneStepResponseSummary] start');
 
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModelById(modelId);
   try {
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       isAborted: checkIsStopping,
       body: {
-        model: modelData.model,
+        modelId: modelData.id,
         stream: true,
         messages: [
           {
@@ -53,7 +53,7 @@ export const getOneStepResponseSummary = async ({
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelData.model,
+      modelId: modelData.id,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
@@ -62,7 +62,7 @@ export const getOneStepResponseSummary = async ({
       answerText: finish_reason === 'close' ? response : answerText,
       usage: {
         moduleName: i18nT('account_usage:step_summary'),
-        model: modelName,
+        modelId: modelData.id,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens

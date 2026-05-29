@@ -44,8 +44,9 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     avatar: '/icon/logo.svg',
     name: '',
     intro: '',
-    vectorModel: defaultVectorModels[0].model,
-    agentModel: defaultQAModels[0].model,
+    vectorModelId: defaultVectorModels[0].id,
+    agentModelId: defaultQAModels[0].id,
+    vlmModelId: defaultQAModels[0].id,
     inheritPermission: true
   },
   tags: [],

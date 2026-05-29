@@ -69,5 +69,3 @@ export type EvaluationSummaryResponse = {
   aggregateScore: number;
 };
 
-// ===== Generate Summary API Types =====
-// Note: GenerateSummaryParams and GenerateSummaryResponse are already defined in ../type.d.ts

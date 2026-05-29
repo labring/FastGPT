@@ -1,79 +1,115 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import {
+  UpdateModelBodySchema,
+  UpdateModelResponseSchema,
+  type UpdateModelBody,
+  type UpdateModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
-export type updateQuery = {};
+const buildModelUpdate = ({
+  fields,
+  modelItem
+}: {
+  fields: Record<string, any>;
+  modelItem: { id: string; model: string; type: string; isCustom?: boolean };
+}) => {
+  const $set: Record<string, any> = {};
+  const $unset: Record<string, 1> = {};
 
-export type updateBody = {
-  model: string;
-  metadata?: Record<string, any>;
-};
-
-export type updateResponse = {};
-
-async function handler(
-  req: ApiRequestProps<updateBody, updateQuery>,
-  res: ApiResponseType<any>
-): Promise<updateResponse> {
-  await authSystemAdmin({ req });
-
-  let { model, metadata } = req.body;
-  if (!model) return Promise.reject(new Error('model is required'));
-  model = model.trim();
-
-  const dbModel = await MongoSystemModel.findOne({ model }).lean();
-  const modelData = findModelFromAlldata(model);
-
-  const metadataConcat: Record<string, any> = {
-    ...modelData, // system config
-    ...dbModel?.metadata, // db config
-    ...metadata // user config
-  };
-  delete metadataConcat.avatar;
-  delete metadataConcat.isCustom;
-
-  // delete deprecated fields
-  delete metadataConcat.datasetProcess;
-  delete metadataConcat.usedInClassify;
-  delete metadataConcat.usedInExtractFields;
-  delete metadataConcat.usedInToolCall;
-  delete metadataConcat.useInEvaluation;
-  // TODO: 这里应该是所有模型，而不是仅LLM，我再看看
-  if (metadataConcat.type === ModelTypeEnum.llm && Array.isArray(metadataConcat.priceTiers)) {
-    delete metadataConcat.charsPointsPrice;
-    delete metadataConcat.inputPrice;
-    delete metadataConcat.outputPrice;
+  const nextModel = typeof fields.model === 'string' ? fields.model.trim() : undefined;
+  if (nextModel !== undefined) {
+    if (modelItem.isCustom !== true && nextModel !== modelItem.model) {
+      throw new Error(ModelErrEnum.systemModelNotSupportUpdate);
+    }
+    $set.model = nextModel;
   }
 
-  // 强制赋值 model，避免脏的 metadata 覆盖真实 model
-  metadataConcat.model = model;
-  metadataConcat.name = metadataConcat?.name?.trim();
+  const usePriceTiers = modelItem.type === 'llm' && Array.isArray(fields.priceTiers);
 
-  // Delete null value
-  Object.keys(metadataConcat).forEach((key) => {
-    if (metadataConcat[key] === null || metadataConcat[key] === undefined) {
-      delete metadataConcat[key];
+  for (const [key, rawValue] of Object.entries(fields)) {
+    if (['id', 'model', 'isCustom', 'tmbId', 'teamId'].includes(key)) continue;
+    if (usePriceTiers && ['charsPointsPrice', 'inputPrice', 'outputPrice'].includes(key)) continue;
+
+    const value = key === 'name' && typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+
+    if (value === null || value === undefined) {
+      $unset[key] = 1;
+      continue;
     }
+
+    $set[key] = value;
+  }
+
+  if (usePriceTiers) {
+    $unset.charsPointsPrice = 1;
+    $unset.inputPrice = 1;
+    $unset.outputPrice = 1;
+  }
+
+  return { $set, $unset };
+};
+
+async function handler(
+  req: ApiRequestProps<UpdateModelBody, any>,
+  res: ApiResponseType<any>
+): Promise<UpdateModelResponse> {
+  const parsed = UpdateModelBodySchema.parse(req.body);
+  const { id, isShared, ...fields } = parsed;
+
+  const {
+    model: modelItem,
+    teamId,
+    tmbId
+  } = await authModel({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelId: id,
+    per: WritePermissionVal
   });
 
-  await MongoSystemModel.updateOne(
-    { model },
-    {
-      model,
-      metadata: metadataConcat
-    },
-    {
-      upsert: true
-    }
-  );
+  const updateData: Record<string, any> = {};
+
+  if (Object.keys(fields).length > 0) {
+    const { $set, $unset } = buildModelUpdate({
+      fields,
+      modelItem
+    });
+
+    if (Object.keys($set).length > 0) updateData.$set = $set;
+    if (Object.keys($unset).length > 0) updateData.$unset = $unset;
+  }
+
+  if (isShared !== undefined) {
+    updateData.$set = { ...(updateData.$set || {}), isShared };
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return UpdateModelResponseSchema.parse({});
+  }
+
+  await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
 
   await updatedReloadSystemModel();
 
-  return {};
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.UPDATE_MODEL,
+      params: { modelName: modelItem.name, modelType: getI18nModelType(modelItem.type) }
+    });
+  })();
+
+  return UpdateModelResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

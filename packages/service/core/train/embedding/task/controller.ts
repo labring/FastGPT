@@ -8,11 +8,10 @@ import {
   EmbeddingTrainTaskStatusEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 import { addLog } from '../../../../common/system/log';
-import { getEmbeddingModel } from '../../../ai/model';
+import { getEmbeddingModelById } from '../../../ai/model';
 import type { ClientSession } from '../../../../common/mongo';
 import { buildModelEndpoint } from '../utils';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
-import { MongoSystemModel } from '../../../ai/config/schema';
 import { deleteEmbeddingModelConfig } from '../model/controller';
 import { getEmbeddingTrainDataDir } from '../constants';
 import { MongoEmbeddingTrainset } from '../trainset/schema';
@@ -28,7 +27,7 @@ import { setTrainTaskAbortSignal, type TrainTaskAbortReason } from '../../common
  *
  * Key logic:
  * 1. Accepts baseModelId directly
- * 2. Calls getEmbeddingModel(baseModelId) to build baseModelEndpoint
+ * 2. Calls getEmbeddingModelById(baseModelId) to build baseModelEndpoint
  * 3. trainsetId is optional (auto mode: written by generate_trainset stage)
  * 4. evalDatasetId and datasetIds are optional based on mode
  *
@@ -69,15 +68,13 @@ export async function createEmbeddingTrainTask(params: {
     generateConfig
   } = params;
 
-  // Reject disabled models
-  const dbModel = await MongoSystemModel.findOne({ model: baseModelId }, 'metadata').lean();
-  if (dbModel?.metadata?.isActive === false) {
-    return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskBaseModelDisabled);
-  }
-
-  const embeddingModel = getEmbeddingModel(baseModelId);
+  const embeddingModel = getEmbeddingModelById(baseModelId);
   if (!embeddingModel) {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskModelNotFound);
+  }
+
+  if (embeddingModel.isActive === false) {
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskBaseModelDisabled);
   }
 
   const baseModelEndpoint = buildModelEndpoint(embeddingModel);

@@ -8,7 +8,7 @@
 
 import { addLog } from '../../../common/system/log';
 import { reRankRecall } from '../../ai/rerank';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import {
   RerankMethodEnum,

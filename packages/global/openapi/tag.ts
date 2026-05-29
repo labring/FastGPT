@@ -6,6 +6,7 @@ export const TagsMap = {
   appLog: 'Agent 日志',
   // Ai -skill
   aiSkill: 'AI技能管理',
+  modelManage: '模型管理',
   // AI
   aiCommon: 'AI 通用接口',
   // Sandbox

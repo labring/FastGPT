@@ -81,7 +81,7 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn()
+  getEmbeddingModelById: vi.fn()
 }));
 
 describe('Embedding Train Task Controller', () => {
@@ -94,9 +94,10 @@ describe('Embedding Train Task Controller', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    // Mock getEmbeddingModel
-    const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-    (getEmbeddingModel as any).mockReturnValue({
+    // Mock getEmbeddingModelById
+    const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+    (getEmbeddingModelById as any).mockReturnValue({
+      id: 'bge-large-zh',
       model: 'bge-large-zh',
       name: 'BGE Large ZH',
       provider: 'openai',

@@ -3,32 +3,33 @@ import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-
-export type updateDefaultQuery = {};
-
-export type updateDefaultBody = {
-  [ModelTypeEnum.llm]?: string;
-  [ModelTypeEnum.embedding]?: string;
-  [ModelTypeEnum.tts]?: string;
-  [ModelTypeEnum.stt]?: string;
-  [ModelTypeEnum.rerank]?: string;
-  datasetTextLLM?: string;
-  datasetImageLLM?: string;
-  evaluation?: string;
-};
-
-export type updateDefaultResponse = {};
+import { Types } from '@fastgpt/service/common/mongo';
+import {
+  UpdateDefaultModelBodySchema,
+  UpdateDefaultModelResponseSchema,
+  type UpdateDefaultModelBody,
+  type UpdateDefaultModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
-  req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>,
+  req: ApiRequestProps<UpdateDefaultModelBody, any>,
   res: ApiResponseType<any>
-): Promise<updateDefaultResponse> {
-  await authSystemAdmin({ req });
+): Promise<UpdateDefaultModelResponse> {
+  const { tmbId, teamId } = await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, evaluation } =
-    req.body;
+  const {
+    llmId,
+    embeddingId,
+    ttsId,
+    sttId,
+    rerankId,
+    datasetTextLLMId,
+    datasetImageLLMId,
+    evaluationId
+  } = UpdateDefaultModelBodySchema.parse(req.body);
 
   await mongoSessionRun(async (session) => {
     // Remove all default flags
@@ -36,68 +37,68 @@ async function handler(
       {},
       {
         $unset: {
-          'metadata.isDefault': 1,
-          'metadata.isDefaultDatasetTextModel': 1,
-          'metadata.isDefaultDatasetImageModel': 1,
-          'metadata.isDefaultEvaluationModel': 1
+          isDefault: 1,
+          isDefaultDatasetTextModel: 1,
+          isDefaultDatasetImageModel: 1,
+          isDefaultEvaluationModel: 1
         }
       },
       { session }
     );
 
-    if (llm) {
+    if (llmId) {
       await MongoSystemModel.updateOne(
-        { model: llm },
-        { $set: { 'metadata.isDefault': true } },
+        { _id: new Types.ObjectId(llmId) },
+        { $set: { isDefault: true } },
         { session }
       );
     }
-    if (datasetTextLLM) {
+    if (datasetTextLLMId) {
       await MongoSystemModel.updateOne(
-        { model: datasetTextLLM },
-        { $set: { 'metadata.isDefaultDatasetTextModel': true } },
+        { _id: new Types.ObjectId(datasetTextLLMId) },
+        { $set: { isDefaultDatasetTextModel: true } },
         { session }
       );
     }
-    if (datasetImageLLM) {
+    if (datasetImageLLMId) {
       await MongoSystemModel.updateOne(
-        { model: datasetImageLLM },
-        { $set: { 'metadata.isDefaultDatasetImageModel': true } },
+        { _id: new Types.ObjectId(datasetImageLLMId) },
+        { $set: { isDefaultDatasetImageModel: true } },
         { session }
       );
     }
-    if (evaluation) {
+    if (evaluationId) {
       await MongoSystemModel.updateOne(
-        { model: evaluation },
-        { $set: { 'metadata.isDefaultEvaluationModel': true } },
+        { _id: new Types.ObjectId(evaluationId) },
+        { $set: { isDefaultEvaluationModel: true } },
         { session }
       );
     }
-    if (embedding) {
+    if (embeddingId) {
       await MongoSystemModel.updateOne(
-        { model: embedding },
-        { $set: { 'metadata.isDefault': true } },
+        { _id: new Types.ObjectId(embeddingId) },
+        { $set: { isDefault: true } },
         { session }
       );
     }
-    if (tts) {
+    if (ttsId) {
       await MongoSystemModel.updateOne(
-        { model: tts },
-        { $set: { 'metadata.isDefault': true } },
+        { _id: new Types.ObjectId(ttsId) },
+        { $set: { isDefault: true } },
         { session }
       );
     }
-    if (stt) {
+    if (sttId) {
       await MongoSystemModel.updateOne(
-        { model: stt },
-        { $set: { 'metadata.isDefault': true } },
+        { _id: new Types.ObjectId(sttId) },
+        { $set: { isDefault: true } },
         { session }
       );
     }
-    if (rerank) {
+    if (rerankId) {
       await MongoSystemModel.updateOne(
-        { model: rerank },
-        { $set: { 'metadata.isDefault': true } },
+        { _id: new Types.ObjectId(rerankId) },
+        { $set: { isDefault: true } },
         { session }
       );
     }
@@ -105,7 +106,15 @@ async function handler(
 
   await updatedReloadSystemModel();
 
-  return {};
+  (async () => {
+    addAuditLog({
+      teamId,
+      tmbId,
+      event: AdminAuditEventEnum.ADMIN_UPDATE_MODEL_DEFAULT
+    });
+  })();
+
+  return UpdateDefaultModelResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

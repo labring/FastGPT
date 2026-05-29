@@ -19,7 +19,7 @@ import {
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
 import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 
 // Request body type
 export type CustomLinkImportBody = {

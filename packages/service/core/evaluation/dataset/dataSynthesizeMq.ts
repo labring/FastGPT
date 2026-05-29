@@ -10,7 +10,7 @@ import {
 
 export type EvalDatasetDataSynthesizeData = {
   dataId: string;
-  intelligentGenerationModel: string;
+  intelligentGenerationModelId: string;
   evalDatasetCollectionId: string;
 };
 

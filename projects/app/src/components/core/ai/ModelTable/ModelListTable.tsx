@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   HStack,
+  IconButton,
   Table,
   TableContainer,
   Tbody,
@@ -75,6 +76,7 @@ type ModelTableRowProps = {
   handleOpenTrainDrawer: OpenTrainModelHandler;
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
   datasetInfo: DatasetInfo;
+  showModelId: boolean;
 };
 
 type TableActionCellProps = {
@@ -107,6 +109,11 @@ const ModelListTable = ({
 }: ModelListTableProps) => {
   const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
+  const [showModelId, setShowModelId] = useState(false);
+  const hasSelectableModel = useMemo(
+    () => modelList.some((item) => item.permission.hasManagePer),
+    [modelList]
+  );
 
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo>({
     datasetNameMap: {},
@@ -167,15 +174,37 @@ const ModelListTable = ({
           <Tr color={'myGray.600'}>
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '180px' : undefined}>
               <HStack>
-                {permissionConfig && hasManagePer && (
+                {permissionConfig && hasManagePer && hasSelectableModel && (
                   <Checkbox mr={1} isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
                 )}
                 <Box>{t('common:model.name')}</Box>
+                <MyTooltip label={t('account:model.model_id')}>
+                  <IconButton
+                    aria-label="Toggle model ID"
+                    icon={
+                      <MyIcon
+                        name={showModelId ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                        w={'14px'}
+                      />
+                    }
+                    variant={'transparentBase'}
+                    size={'sm'}
+                    minW={'20px'}
+                    h={'20px'}
+                    onClick={() => setShowModelId((prev) => !prev)}
+                  />
+                </MyTooltip>
               </HStack>
             </Th>
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
               {t('common:model.model_type')}
             </Th>
+            {permissionConfig && (
+              <>
+                <Th fontSize={'xs'}>{t('common:permission.Owner')}</Th>
+                <Th fontSize={'xs'}>{t('common:permission.Permission')}</Th>
+              </>
+            )}
             {showTrainedModelColumns ? (
               <>
                 <Th
@@ -255,7 +284,7 @@ const ModelListTable = ({
         <Tbody>
           {modelList.map((item) => (
             <ModelTableRow
-              key={item.model}
+              key={item.id}
               item={item}
               tabType={tabType}
               t={t}
@@ -267,6 +296,7 @@ const ModelListTable = ({
               handleOpenTrainDrawer={handleOpenTrainDrawer}
               setTrainDetailDrawer={setTrainDetailDrawer}
               datasetInfo={datasetInfo}
+              showModelId={showModelId}
             />
           ))}
         </Tbody>
@@ -286,7 +316,8 @@ const ModelTableRow = ({
   isSelected,
   handleOpenTrainDrawer,
   setTrainDetailDrawer,
-  datasetInfo
+  datasetInfo,
+  showModelId
 }: ModelTableRowProps) => {
   const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
@@ -297,6 +328,7 @@ const ModelTableRow = ({
   const onClickTrainTaskCell = () => {
     if (trainTaskCount === 0 || !item.trainableModelType) return;
     setTrainDetailDrawer({
+      id: item.id,
       model: item.model,
       name: item.name,
       baseModelType: item.trainableModelType
@@ -336,7 +368,7 @@ const ModelTableRow = ({
     <Tr _hover={{ bg: 'myGray.50' }}>
       <Td fontSize={'sm'}>
         <HStack>
-          {permissionConfig && hasManagePer && (
+          {permissionConfig && item.permission.hasManagePer && (
             <Checkbox
               mr={1}
               isChecked={isSelected(item)}
@@ -348,10 +380,29 @@ const ModelTableRow = ({
             {item.name}
           </CopyBox>
         </HStack>
+        {showModelId && (
+          <Box mt={1} maxW={'260px'}>
+            <CopyBox value={item.id} color={'myGray.500'} fontSize={'xs'}>
+              {item.id}
+            </CopyBox>
+          </Box>
+        )}
       </Td>
       <Td>
         <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
       </Td>
+      {permissionConfig && (
+        <>
+          <Td fontSize={'sm'} color={'myGray.700'}>
+            {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
+          </Td>
+          <Td fontSize={'sm'}>
+            <MyTag type="borderFill" colorSchema={item.isShared ? 'green' : 'gray'}>
+              {item.isShared ? t('common:permission.Public') : t('common:permission.Private')}
+            </MyTag>
+          </Td>
+        </>
+      )}
       {showTrainedModelColumns ? (
         <>
           <Td fontSize={'sm'} color={'myGray.700'}>
@@ -450,7 +501,7 @@ const ModelTableActionCell = ({
   userPermission,
   handleOpenTrainDrawer
 }: TableActionCellProps) => {
-  const showPermissionButton = permissionConfig && hasManagePer;
+  const showPermissionButton = permissionConfig && item.permission.hasManagePer;
   const showTrainButton = tabType === modelTableTabValues.base && !!item.trainableModelType;
 
   if (!showPermissionButton && !showTrainButton) {
@@ -462,7 +513,7 @@ const ModelTableActionCell = ({
       size={'sm'}
       variant={'whiteBase'}
       fontSize={'12px'}
-      onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.model)}
+      onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.id, item.model)}
     >
       {t('account_model:train')}
     </Button>
@@ -474,11 +525,11 @@ const ModelTableActionCell = ({
         <LazyCollaboratorProvider
           selectedHint={t('account_model:model_permission_config_hint')}
           defaultRole={ReadRoleVal}
-          onGetCollaboratorList={() => getModelCollaborators(item.model)}
+          onGetCollaboratorList={() => getModelCollaborators(item.id)}
           onUpdateCollaborators={({ collaborators }) =>
             updateModelCollaborators({
               collaborators,
-              models: [item.model]
+              modelIds: [item.id]
             })
           }
           permission={userPermission}

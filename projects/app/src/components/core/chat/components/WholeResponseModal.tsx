@@ -30,6 +30,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import dynamic from 'next/dynamic';
 
@@ -71,6 +72,22 @@ export const WholeResponseContent = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
+  const { llmModelList, embeddingModelList, reRankModelList } = useSystemStore();
+
+  const modelNameMap = useMemo(() => {
+    return [...llmModelList, ...embeddingModelList, ...reRankModelList].reduce(
+      (acc, model) => {
+        acc[model.id] = model.name || model.model;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+  }, [embeddingModelList, llmModelList, reRankModelList]);
+
+  const getModelDisplayName = useCallback(
+    (modelId?: string) => (modelId ? modelNameMap[modelId] || modelId : undefined),
+    [modelNameMap]
+  );
 
   const retrievalModeTextMap: Record<DatasetRetrievalModeEnum, string> = {
     [DatasetRetrievalModeEnum.agentic]: t('app:retrieval_mode_multiple'),
@@ -449,7 +466,10 @@ export const WholeResponseContent = ({
                 value={t(completionFinishReasonMap[activeModule?.finishReason])}
               />
             )}
-            <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
+            <Row
+              label={t('common:core.chat.response.module model')}
+              value={getModelDisplayName(activeModule?.modelId)}
+            />
             {activeModule?.tokens && (
               <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
             )}
@@ -609,7 +629,10 @@ export const WholeResponseContent = ({
               value={activeModule?.similarity}
             />
             <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
-            <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
+            <Row
+              label={t('chat:response_embedding_model')}
+              value={getModelDisplayName(activeModule?.embeddingModelId)}
+            />
             <Row
               label={t('chat:response_embedding_model_tokens')}
               value={`${activeModule?.embeddingTokens}`}
@@ -621,8 +644,10 @@ export const WholeResponseContent = ({
                   rawDom={
                     <Box border={'base'} borderRadius={'md'} p={2}>
                       {activeModule?.searchUsingReRank ? (
-                        activeModule?.rerankModel ? (
-                          <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                        activeModule?.rerankModelId ? (
+                          <Box>{`${getModelDisplayName(activeModule.rerankModelId)}: ${
+                            activeModule.rerankWeight
+                          }`}</Box>
                         ) : (
                           'True'
                         )
@@ -642,7 +667,7 @@ export const WholeResponseContent = ({
               <>
                 <Row
                   label={t('common:core.chat.response.Extension model')}
-                  value={activeModule.queryExtensionResult.model}
+                  value={getModelDisplayName(activeModule.queryExtensionResult.modelId)}
                 />
                 <Row
                   label={t('chat:query_extension_IO_tokens')}
@@ -656,7 +681,7 @@ export const WholeResponseContent = ({
             )}
             <Row
               label={t('common:core.chat.response.Extension model')}
-              value={activeModule?.extensionModel}
+              value={getModelDisplayName(activeModule?.extensionModelId)}
             />
             <Row
               label={t('chat:query_extension_result')}

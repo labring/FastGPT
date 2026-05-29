@@ -46,24 +46,24 @@ const DatasetParamsModal = ({
   similarity,
   embeddingWeight,
   usingReRank,
-  rerankModel,
+  rerankModelId,
   rerankWeight,
   rerankMethod,
   datasetSearchUsingExtensionQuery,
-  datasetSearchExtensionModel,
+  datasetSearchExtensionModelId,
   datasetSearchExtensionBg,
   collectionFilterMatch,
-  embeddingModel,
+  embeddingModelId,
   maxTokens,
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
-  generateSqlModel = '',
-  datasetVectorModel,
+  generateSqlModelId = '',
+  datasetVectorModelId,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
   maxTokens?: number; // limit max tokens
-  datasetVectorModel?: string;
+  datasetVectorModelId?: string;
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
   hasDatabaseKnowledge?: boolean;
@@ -77,7 +77,7 @@ const DatasetParamsModal = ({
   const queryExtensionModelList = useMemo(
     () =>
       llmModelList.map((item) => ({
-        value: item.model,
+        value: item.id,
         label: item.name
       })),
     [llmModelList]
@@ -85,15 +85,15 @@ const DatasetParamsModal = ({
   const reRankModelSelectList = useMemo(
     () =>
       reRankModelList.map((item) => ({
-        value: item.model,
+        value: item.id,
         label: item.name
       })),
     [reRankModelList]
   );
 
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   const { register, setValue, getValues, handleSubmit, watch } =
@@ -102,36 +102,36 @@ const DatasetParamsModal = ({
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
-        rerankModel: rerankModel || defaultModels?.rerank?.model,
+        rerankModelId: rerankModelId || defaultModels?.rerank?.id,
         rerankWeight: rerankWeight || 0.5,
         rerankMethod: rerankMethod || RerankMethodEnum.content,
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
+        datasetSearchExtensionModelId: datasetSearchExtensionModelId || defaultModels.llm?.id,
         datasetSearchExtensionBg,
-        generateSqlModel: hasDatabaseKnowledge ? generateSqlModel || defaultModels.llm?.model : '',
+        generateSqlModelId: hasDatabaseKnowledge ? generateSqlModelId || defaultModels.llm?.id : '',
         collectionFilterMatch,
-        embeddingModel: embeddingModel || ''
+        embeddingModelId: embeddingModelId || ''
       }
     });
 
   const searchModeWatch = watch('searchMode');
   const embeddingWeightWatch = watch('embeddingWeight');
-  const embeddingModelWatch = watch('embeddingModel');
+  const embeddingModelWatch = watch('embeddingModelId');
   const fullTextWeightWatch = useMemo(() => {
     const val = 1 - (embeddingWeightWatch || 0.5);
     return Number(val.toFixed(2));
   }, [embeddingWeightWatch]);
 
   const datasetSearchUsingCfrForm = watch('datasetSearchUsingExtensionQuery');
-  const queryExtensionModel = watch('datasetSearchExtensionModel');
+  const queryExtensionModel = watch('datasetSearchExtensionModelId');
 
   const usingReRankWatch = watch('usingReRank');
-  const reRankModelWatch = watch('rerankModel');
+  const reRankModelWatch = watch('rerankModelId');
   const rerankMethodWatch = watch('rerankMethod');
   const rerankWeightWatch = watch('rerankWeight');
-  const generateSqlModelWatch = watch('generateSqlModel');
+  const generateSqlModelWatch = watch('generateSqlModelId');
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -146,38 +146,39 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      !queryExtensionModel && setValue('datasetSearchExtensionModel', defaultModels.llm?.model);
+      !queryExtensionModel &&
+        setValue(NodeInputKeyEnum.datasetSearchExtensionModelId, defaultModels.llm?.id);
     } else {
-      setValue('datasetSearchExtensionModel', '');
+      setValue(NodeInputKeyEnum.datasetSearchExtensionModelId, '');
     }
   }, [
     queryExtensionModelList,
     datasetSearchUsingCfrForm,
-    defaultModels.llm?.model,
+    defaultModels.llm?.id,
     queryExtensionModel,
     setValue
   ]);
 
   useEffect(() => {
-    if (!datasetVectorModel) {
-      setValue('embeddingModel', '');
+    if (!datasetVectorModelId) {
+      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, '');
       return;
     }
     // 选项列表未加载完成时不做校验，避免异步数据导致已保存的微调模型被误清空
     if (embeddingModelSelectList.length === 0) return;
 
-    const current = getValues('embeddingModel');
+    const current = getValues(NodeInputKeyEnum.datasetSearchEmbeddingModelId);
     // 当前值为空，联动设置为知识库向量模型
     if (!current) {
-      setValue('embeddingModel', datasetVectorModel);
+      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModelId);
       return;
     }
     // 当前值有值时，校验是否在有效选项中；若无效则回退为当前知识库向量模型
     const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
     if (!validIds.has(current)) {
-      setValue('embeddingModel', datasetVectorModel);
+      setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, datasetVectorModelId);
     }
-  }, [datasetVectorModel, embeddingModelSelectList, getValues, setValue]);
+  }, [datasetVectorModelId, embeddingModelSelectList, getValues, setValue]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -225,7 +226,7 @@ const DatasetParamsModal = ({
                 ml={2}
                 list={queryExtensionModelList}
                 onChange={(e) => {
-                  setValue('generateSqlModel', e);
+                  setValue(NodeInputKeyEnum.generateSqlModelId, e);
                 }}
               />
             </Box>
@@ -261,18 +262,18 @@ const DatasetParamsModal = ({
             value={embeddingModelWatch}
             list={embeddingModelSelectList}
             placeholder={
-              !datasetVectorModel
+              !datasetVectorModelId
                 ? t('app:smart_customer_service_embedding_model_placeholder')
                 : undefined
             }
             onChange={(val) => {
-              setValue(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
+              setValue(NodeInputKeyEnum.datasetSearchEmbeddingModelId, val);
             }}
           />
         </Box>
       </HStack>
     ),
-    [datasetVectorModel, embeddingModelWatch, embeddingModelSelectList, setValue, t]
+    [datasetVectorModelId, embeddingModelWatch, embeddingModelSelectList, setValue, t]
   );
 
   return (
@@ -462,7 +463,7 @@ const DatasetParamsModal = ({
                             value={reRankModelWatch}
                             list={reRankModelSelectList}
                             onChange={(val) => {
-                              setValue(NodeInputKeyEnum.datasetSearchRerankModel, val);
+                              setValue(NodeInputKeyEnum.datasetSearchRerankModelId, val);
                             }}
                           />
                         </Box>
@@ -554,7 +555,7 @@ const DatasetParamsModal = ({
                           value={queryExtensionModel}
                           list={queryExtensionModelList}
                           onChange={(val: any) => {
-                            setValue('datasetSearchExtensionModel', val);
+                            setValue(NodeInputKeyEnum.datasetSearchExtensionModelId, val);
                           }}
                         />
                       </Box>

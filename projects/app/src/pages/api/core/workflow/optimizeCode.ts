@@ -4,6 +4,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
@@ -14,7 +15,7 @@ const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 
 type OptimizeCodeBody = {
   optimizerInput: string;
-  model: string;
+  modelId: string;
   conversationHistory?: Array<ChatCompletionMessageParam>;
 };
 
@@ -85,7 +86,7 @@ function main({paramName, paramRefer, paramType}) {
 
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   try {
-    const { optimizerInput, model, conversationHistory = [] } = req.body;
+    const { optimizerInput, modelId, conversationHistory = [] } = req.body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -111,7 +112,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
 
     const llmResponse = await createLLMResponse({
       body: {
-        model,
+        modelId: modelId,
         messages,
         temperature: 0.1,
         max_tokens: 2000,
@@ -143,7 +144,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelId: modelId,
       inputTokens,
       outputTokens
     });
@@ -158,7 +159,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         {
           moduleName: i18nT('common:support.wallet.usage.Code Copilot'),
           amount: totalPoints,
-          model: modelName,
+          modelId: modelId,
           inputTokens,
           outputTokens
         }

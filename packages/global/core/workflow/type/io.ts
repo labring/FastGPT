@@ -12,7 +12,7 @@ export const SelectedDatasetSchema = z.object({
   name: z.string(),
   vectorModel: z
     .object({
-      model: z.string()
+      id: z.string()
     })
     .optional(),
   dataCount: z.number().optional(),
@@ -138,7 +138,7 @@ export const FlowNodeOutputItemTypeSchema = z.object({
       input: z.tuple([
         z.object({
           inputs: z.array(FlowNodeInputItemTypeSchema),
-          llmModelMap: z.record(z.string(), LLMModelItemSchema)
+          llmModelIdMap: z.record(z.string(), LLMModelItemSchema)
         })
       ]),
       output: z.boolean()

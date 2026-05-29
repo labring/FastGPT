@@ -13,7 +13,7 @@ import type { EvalDatasetDataKeyEnum } from './constants';
 type EvalDatasetCollectionBase = {
   name: string;
   description?: string;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 };
 
 export type createEvalDatasetCollectionBody = EvalDatasetCollectionBase;
@@ -53,7 +53,7 @@ export type listEvalDatasetCollectionV2Response = PaginationResponse<
 >;
 type QualityEvaluationBase = {
   enableQualityEvaluation: boolean;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 };
 
 export type importEvalDatasetFromFileBody = {
@@ -107,12 +107,12 @@ export type updateEvalDatasetDataBody = EvalDatasetDataBase & {
 
 export type qualityAssessmentBody = {
   dataId: string;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 };
 
 export type qualityAssessmentBatchBody = {
   collectionId: string;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 };
 
 export type qualityAssessmentBatchResponse = {
@@ -154,7 +154,7 @@ export type smartGenerateEvalDatasetBody = {
   collectionId?: string;
   kbDatasetIds: string[];
   count?: number;
-  intelligentGenerationModel: string;
+  intelligentGenerationModelId: string;
   // Optional fields for creating new collection
   name?: string;
   description?: string;
@@ -215,7 +215,7 @@ export type getEvalDatasetCollectionDetailResponse = Pick<
   | 'description'
   | 'createTime'
   | 'updateTime'
-  | 'evaluationModel'
+  | 'evaluationModelId'
   | 'metadata'
 > & {
   creatorAvatar?: string;

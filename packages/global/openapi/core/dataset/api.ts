@@ -42,17 +42,17 @@ export const CreateDatasetBodySchema = z.object({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),
-  vectorModel: z.string().optional().meta({
-    example: 'text-embedding-3-small',
-    description: '向量模型名称,不传则使用默认向量模型'
+  vectorModelId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '向量模型Id(平台维护的唯一模型ID),不传则使用默认向量模型'
   }),
-  agentModel: z.string().optional().meta({
-    example: 'gpt-4o-mini',
-    description: '知识库 Agent 模型名称,不传则使用默认模型'
+  agentModelId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 Agent 模型Id(平台维护的唯一模型ID),不传则使用默认模型'
   }),
-  vlmModel: z.string().nullable().optional().meta({
-    example: 'gpt-4o',
-    description: '视觉语言模型名称，传 null 表示不使用'
+  vlmModelId: z.string().optional().nullable().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '视觉语言模型Id(平台维护的唯一模型ID),传 null 表示不使用VLM'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀)'
@@ -102,17 +102,17 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: '68ad85a7463006c963799a05',
         description: '父级文件夹 ID'
       }),
-      vectorModel: z.string().optional().meta({
+      vectorModelId: z.string().optional().meta({
         example: 'text-embedding-3-small',
-        description: '向量模型名称,不传则使用默认向量模型'
+        description: '向量模型Id,不传则使用默认向量模型'
       }),
-      agentModel: z.string().optional().meta({
+      agentModelId: z.string().optional().meta({
         example: 'gpt-4o-mini',
-        description: 'Agent 模型名称,不传则使用默认模型'
+        description: 'Agent 模型Id,不传则使用默认模型'
       }),
-      vlmModel: z.string().nullable().optional().meta({
+      vlmModelId: z.string().optional().meta({
         example: 'gpt-4o',
-        description: '视觉语言模型名称，传 null 表示不使用'
+        description: '视觉语言模型Id'
       })
     })
     .meta({ description: '知识库参数' }),
@@ -261,17 +261,17 @@ export const UpdateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  agentModel: z.string().optional().meta({
+  agentModelId: z.string().optional().meta({
     example: 'gpt-4o-mini',
-    description: '知识库 Agent 模型名称'
+    description: '知识库 Agent 模型Id'
   }),
-  vectorModel: z.string().optional().meta({
+  vectorModelId: z.string().optional().meta({
     example: 'text-embedding-3-small',
-    description: '向量嵌入模型名称'
+    description: '向量嵌入模型Id'
   }),
-  vlmModel: z.string().nullable().optional().meta({
+  vlmModelId: z.string().optional().nullable().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型名称，传 null 清空'
+    description: '视觉语言模型Id,传 null 表示清空VLM配置'
   }),
   websiteConfig: z
     .object({
@@ -385,14 +385,14 @@ export const SearchDatasetTestBodySchema = z.object({
     example: 1,
     description: '向量搜索权重'
   }),
-  embeddingModel: z.string().optional().meta({
+  embeddingModelId: z.string().optional().meta({
     description: '向量嵌入模型名称，不传则使用知识库默认向量模型'
   }),
   usingReRank: z.boolean().optional().meta({
     description: '是否使用重排序'
   }),
-  rerankModel: z.string().optional().meta({
-    description: '重排序模型名称'
+  rerankModelId: z.string().optional().meta({
+    description: '重排序模型Id'
   }),
   rerankMethod: z.enum(RerankMethodEnum).optional().meta({
     description: '重排序方法'
@@ -403,8 +403,8 @@ export const SearchDatasetTestBodySchema = z.object({
   datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
     description: '是否使用问题扩展'
   }),
-  datasetSearchExtensionModel: z.string().optional().meta({
-    description: '问题扩展模型'
+  datasetSearchExtensionModelId: z.string().optional().meta({
+    description: '问题扩展模型Id'
   }),
   datasetSearchExtensionBg: z.string().optional().meta({
     description: '问题扩展背景描述'
@@ -412,8 +412,8 @@ export const SearchDatasetTestBodySchema = z.object({
   datasetDeepSearch: z.boolean().optional().meta({
     description: '是否启用深度搜索'
   }),
-  datasetDeepSearchModel: z.string().optional().meta({
-    description: '深度搜索模型'
+  datasetDeepSearchModelId: z.string().optional().meta({
+    description: '深度搜索模型Id'
   }),
   datasetDeepSearchMaxTimes: z.number().optional().meta({
     description: '深度搜索最大轮次'
@@ -444,8 +444,8 @@ export const SearchDatasetTestResponseSchema = z.object({
   similarity: z.number().meta({
     description: '实际使用的相似度阈值'
   }),
-  queryExtensionModel: z.string().optional().meta({
-    description: '问题扩展使用的模型'
+  queryExtensionModelId: z.string().optional().meta({
+    description: '问题扩展使用的模型Id'
   })
 });
 export type SearchDatasetTestResponse = z.infer<typeof SearchDatasetTestResponseSchema>;

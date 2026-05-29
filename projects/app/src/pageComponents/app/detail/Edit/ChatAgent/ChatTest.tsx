@@ -91,12 +91,7 @@ const ChatTest = ({
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
-      modelConfig: {
-        model: appForm.aiSettings.model,
-        temperature: appForm.aiSettings.temperature,
-        maxToken: appForm.aiSettings.maxToken,
-        stream: true
-      }
+      modelId: appForm.aiSettings.modelId
     }),
     [appForm]
   );

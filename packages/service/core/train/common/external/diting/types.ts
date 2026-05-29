@@ -10,6 +10,9 @@ export type DiTingSyntheticEvalDataRequest = {
   };
   llm_config: {
     name: string;
+    base_url?: string;
+    api_key?: string;
+    parameters?: Record<string, any>;
     timeout?: number;
   };
 };

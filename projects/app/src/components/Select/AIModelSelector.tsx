@@ -1,7 +1,7 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
-import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
@@ -20,7 +20,7 @@ type Props = SelectProps & {
   isMultipleRow?: boolean;
 };
 
-const isTestModeModel = (model?: SystemModelItemType) => {
+const isTestModeModel = (model?: GetModelDetailResponse) => {
   return !!model?.testMode;
 };
 
@@ -113,18 +113,18 @@ const OneRowSelector = ({
     [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]
   );
   const selectedModelData = useMemo(
-    () => allModels.find((model) => model.model === props.value),
+    () => allModels.find((model) => model.id === props.value),
     [allModels, props.value]
   );
 
   const avatarList = useMemo(() => {
     return list
       .map((item) => {
-        const modelData = allModels.find((model) => model.model === item.value);
+        const modelData = allModels.find((model) => model.id === item.value);
         if (!modelData) return;
 
         const avatar = getModelProvider(modelData.provider)?.avatar;
-        if (!myModels?.has(modelData.model)) {
+        if (!myModels?.has(modelData.id)) {
           return;
         }
         return {
@@ -238,8 +238,8 @@ const MultipleRowSelector = ({
     ];
 
     return list
-      .map((item) => allModels.find((model) => model.model === item.value))
-      .filter((item) => !!item && !!myModels?.has(item.model));
+      .map((item) => allModels.find((model) => model.id === item.value))
+      .filter((item) => !!item && !!myModels?.has(item.id));
   }, [
     llmModelList,
     embeddingModelList,
@@ -262,7 +262,7 @@ const MultipleRowSelector = ({
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
   const selectedModelData = useMemo(
-    () => modelList.find((model) => model?.model === props.value),
+    () => modelList.find((model) => model?.id === props.value),
     [modelList, props.value]
   );
 
@@ -289,7 +289,7 @@ const MultipleRowSelector = ({
     }));
 
     for (const item of list) {
-      const modelData = modelList.find((model) => model?.model === item.value);
+      const modelData = modelList.find((model) => model?.id === item.value);
       if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
@@ -299,7 +299,7 @@ const MultipleRowSelector = ({
         label: (
           <ModelOptionLabel name={modelData.name} showTestModeTip={isTestModeModel(modelData)} />
         ),
-        value: modelData.model
+        value: modelData.id
       });
     }
 
@@ -322,7 +322,7 @@ const MultipleRowSelector = ({
             (selectorList.length ? t('common:please_select_model') : t('common:not_model_config'))}
         </>
       );
-    const modelData = modelList.find((model) => model?.model === props.value);
+    const modelData = modelList.find((model) => model?.id === props.value);
 
     if (!modelData)
       return (

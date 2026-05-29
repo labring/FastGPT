@@ -38,11 +38,11 @@ async function handler(
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],
-    model: qgModel.model
+    modelId: qgModel.id
   });
 
   pushQuestionGuideUsage({
-    model: qgModel.model,
+    modelId: qgModel.id,
     inputTokens,
     outputTokens,
     teamId,

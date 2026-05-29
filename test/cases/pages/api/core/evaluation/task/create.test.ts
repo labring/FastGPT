@@ -88,10 +88,11 @@ describe('Create Evaluation Task API Handler', () => {
     vi.clearAllMocks();
 
     // Register gpt-4 in the global model map so evaluator validation can find it
-    if (!global.llmModelMap) {
-      global.llmModelMap = new Map<string, any>();
+    if (!global.llmModelIdMap) {
+      global.llmModelIdMap = new Map<string, any>();
     }
-    global.llmModelMap.set('gpt-4', {
+    global.llmModelIdMap.set('gpt-4', {
+      id: 'gpt-4',
       model: 'gpt-4',
       name: 'gpt-4',
       isActive: true,
@@ -145,14 +146,14 @@ describe('Create Evaluation Task API Handler', () => {
               _id: new Types.ObjectId().toString(),
               name: 'Test Metric',
               type: 'ai_model',
-              config: { llm: 'gpt-4', prompt: 'test' },
+              config: { llmId: 'gpt-4', prompt: 'test' },
               dependencies: ['llm'],
               teamId: new Types.ObjectId().toString(),
               tmbId: new Types.ObjectId().toString(),
               createTime: new Date(),
               updateTime: new Date()
             },
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llmId: 'gpt-4' }
           }
         ]
       }
@@ -213,14 +214,14 @@ describe('Create Evaluation Task API Handler', () => {
               _id: new Types.ObjectId().toString(),
               name: 'Test Metric',
               type: 'ai_model',
-              config: { llm: 'gpt-4', prompt: 'test' },
+              config: { llmId: 'gpt-4', prompt: 'test' },
               dependencies: ['llm'],
               teamId: new Types.ObjectId().toString(),
               tmbId: new Types.ObjectId().toString(),
               createTime: new Date(),
               updateTime: new Date()
             },
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llmId: 'gpt-4' }
           }
         ],
         autoStart: true // 测试自动启动
@@ -278,14 +279,14 @@ describe('Create Evaluation Task API Handler', () => {
               _id: new Types.ObjectId().toString(),
               name: 'Test Metric',
               type: 'ai_model',
-              config: { llm: 'gpt-4', prompt: 'test' },
+              config: { llmId: 'gpt-4', prompt: 'test' },
               dependencies: ['llm'],
               teamId: new Types.ObjectId().toString(),
               tmbId: new Types.ObjectId().toString(),
               createTime: new Date(),
               updateTime: new Date()
             },
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llmId: 'gpt-4' }
           }
         ],
         autoStart: false // 显式关闭自动启动
@@ -332,14 +333,14 @@ describe('Create Evaluation Task API Handler', () => {
               _id: new Types.ObjectId().toString(),
               name: 'Test Metric',
               type: 'ai_model',
-              config: { llm: 'gpt-4', prompt: 'test' },
+              config: { llmId: 'gpt-4', prompt: 'test' },
               dependencies: ['llm'],
               teamId: new Types.ObjectId().toString(),
               tmbId: new Types.ObjectId().toString(),
               createTime: new Date(),
               updateTime: new Date()
             },
-            runtimeConfig: { llm: 'gpt-4' }
+            runtimeConfig: { llmId: 'gpt-4' }
           }
         ]
       }

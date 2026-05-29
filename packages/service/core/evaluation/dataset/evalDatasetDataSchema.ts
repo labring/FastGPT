@@ -105,7 +105,7 @@ const EvalDatasetDataSchema = new Schema({
       max: 1
     },
     reason: String,
-    model: String,
+    modelId: String,
     usages: [Schema.Types.Mixed],
     runLogs: [Schema.Types.Mixed],
     startTime: Date,
@@ -117,7 +117,7 @@ const EvalDatasetDataSchema = new Schema({
     sourceDataId: String,
     sourceDatasetId: String,
     sourceCollectionId: String,
-    intelligentGenerationModel: String,
+    intelligentGenerationModelId: String,
     synthesizedAt: Date,
     generatedAt: Date
   },

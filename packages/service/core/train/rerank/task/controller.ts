@@ -8,7 +8,7 @@ import {
   RerankTrainTaskStatusEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import { getRerankModel } from '../../../ai/model';
+import { getRerankModelById } from '../../../ai/model';
 import type { ClientSession } from '../../../../common/mongo';
 import { MongoEvalDatasetCollection } from '../../../evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../../evaluation/dataset/evalDatasetDataSchema';
@@ -28,7 +28,7 @@ import { setTrainTaskAbortSignal, type TrainTaskAbortReason } from '../../common
  *
  * Key logic:
  * 1. Accepts baseModelId directly
- * 2. Calls getRerankModel(baseModelId) to build baseModelEndpoint
+ * 2. Calls getRerankModelById(baseModelId) to build baseModelEndpoint
  * 3. trainsetId is optional (auto mode: written by generate_trainset stage)
  * 4. evalDatasetId and datasetIds are optional based on mode
  *
@@ -69,17 +69,13 @@ export async function createRerankTrainTask(params: {
     generateConfig
   } = params;
 
-  // Reject disabled models: getRerankModel() silently falls back to the default model
-  // for disabled models (not in reRankModelMap), which would cause a baseModelId/endpoint mismatch.
-  // Check DB directly to detect disabled models before the fallback kicks in.
-  const dbModel = await MongoSystemModel.findOne({ model: baseModelId }, 'metadata').lean();
-  if (dbModel?.metadata?.isActive === false) {
-    return Promise.reject(RerankTrainErrEnum.rerankTaskBaseModelDisabled);
-  }
-
-  const rerankModel = getRerankModel(baseModelId);
+  const rerankModel = getRerankModelById(baseModelId);
   if (!rerankModel) {
     return Promise.reject(RerankTrainErrEnum.rerankTaskModelNotFound);
+  }
+
+  if (rerankModel.isActive === false) {
+    return Promise.reject(RerankTrainErrEnum.rerankTaskBaseModelDisabled);
   }
 
   const baseModelEndpoint = buildModelEndpoint(rerankModel);

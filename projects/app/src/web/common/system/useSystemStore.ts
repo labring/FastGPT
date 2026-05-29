@@ -20,7 +20,11 @@ import {
   type langType,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
-import { getMyModels, getOperationalAd } from './api';
+import { getOperationalAd } from './api';
+
+type ModelWithPermission<T> = T & {
+  permission: NonNullable<InitDateResponse['activeModelList']>[number]['permission'];
+};
 
 type LoginStoreType = { provider: OAuthEnum; lastRoute: string; state: string };
 
@@ -61,16 +65,12 @@ type State = {
   modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
   aiproxyChannels: NonNullable<InitDateResponse['aiproxyChannels']>;
   defaultModels: SystemDefaultModelType;
-  llmModelList: LLMModelItemType[];
-  embeddingModelList: EmbeddingModelItemType[];
-  ttsModelList: TTSModelType[];
-  reRankModelList: RerankModelItemType[];
-  sttModelList: STTModelType[];
-  datasetModelList: LLMModelItemType[];
-  myModelList: {
-    modelSet: Set<string>;
-    versionKey: string;
-  };
+  llmModelList: ModelWithPermission<LLMModelItemType>[];
+  embeddingModelList: ModelWithPermission<EmbeddingModelItemType>[];
+  ttsModelList: ModelWithPermission<TTSModelType>[];
+  reRankModelList: ModelWithPermission<RerankModelItemType>[];
+  sttModelList: ModelWithPermission<STTModelType>[];
+  datasetModelList: ModelWithPermission<LLMModelItemType>[];
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
@@ -172,10 +172,6 @@ export const useSystemStore = create<State>()(
         reRankModelList: [],
         sttModelList: [],
         datasetModelList: [],
-        myModelList: {
-          modelSet: new Set(),
-          versionKey: ''
-        },
         operationalAd: undefined,
         loadOperationalAd: async () => {
           try {
@@ -188,23 +184,19 @@ export const useSystemStore = create<State>()(
           }
         },
         getMyModelList: async () => {
-          try {
-            const res = await getMyModels({ versionKey: get().myModelList.versionKey });
-            if (res.isRefreshed === false) {
-              return new Set(get().myModelList.modelSet);
-            } else {
-              set((state) => {
-                state.myModelList = {
-                  modelSet: new Set(res.models),
-                  versionKey: res.versionKey
-                };
-              });
-              return new Set(res.models);
-            }
-          } catch {
-            console.log('Get my modals error');
-          }
-          return new Set(get().myModelList.modelSet);
+          const models = [
+            ...get().llmModelList,
+            ...get().embeddingModelList,
+            ...get().ttsModelList,
+            ...get().sttModelList,
+            ...get().reRankModelList
+          ];
+
+          return new Set(
+            models
+              .filter((model) => model.permission?.hasReadPer !== false)
+              .map((model) => model.id)
+          );
         },
 
         getVlmModelList: () => {
@@ -261,47 +253,33 @@ export const useSystemStore = create<State>()(
       })),
       {
         name: 'globalStore',
-        partialize: (state) => {
-          const stripTrainTaskSummary = (list: any[]) =>
-            list?.map(({ trainTaskSummary, ...rest }: any) => ({
-              ...rest,
-              trainTaskSummary: trainTaskSummary
-                ? {
-                    totalCount: trainTaskSummary.totalCount,
-                    hasRunning: trainTaskSummary.hasRunning,
-                    hasError: trainTaskSummary.hasError,
-                    baseModelIds: trainTaskSummary.baseModelIds,
-                    latestTask: trainTaskSummary.latestTask
-                      ? {
-                          createTime: trainTaskSummary.latestTask.createTime,
-                          creatorName: trainTaskSummary.latestTask.creatorName,
-                          datasetIds: trainTaskSummary.latestTask.datasetIds
-                        }
-                      : undefined
-                  }
-                : undefined
-            }));
+        version: 1,
+        migrate: (persistedState: any, _version: number) => {
+          // v0→v1: remove model lists and initDataBufferId from old persisted data
+          const {
+            llmModelList,
+            embeddingModelList,
+            ttsModelList,
+            reRankModelList,
+            sttModelList,
+            initDataBufferId,
+            ...rest
+          } = persistedState as Record<string, unknown>;
+          return rest;
+        },
+        partialize: (state) => ({
+          gitStar: state.gitStar,
 
-          return {
-            gitStar: state.gitStar,
+          loginStore: state.loginStore,
+          feConfigs: state.feConfigs,
+          subPlans: state.subPlans,
+          systemVersion: state.systemVersion,
 
-            loginStore: state.loginStore,
-            initDataBufferId: state.initDataBufferId,
-            feConfigs: state.feConfigs,
-            subPlans: state.subPlans,
-            systemVersion: state.systemVersion,
-
-            modelProviders: state.modelProviders,
-            modelProviderMap: state.modelProviderMap,
-            aiproxyChannels: state.aiproxyChannels,
-            defaultModels: state.defaultModels,
-            llmModelList: stripTrainTaskSummary(state.llmModelList),
-            embeddingModelList: stripTrainTaskSummary(state.embeddingModelList),
-            ttsModelList: stripTrainTaskSummary(state.ttsModelList),
-            reRankModelList: stripTrainTaskSummary(state.reRankModelList),
-            sttModelList: stripTrainTaskSummary(state.sttModelList)
-          };
-        }
+          modelProviders: state.modelProviders,
+          modelProviderMap: state.modelProviderMap,
+          aiproxyChannels: state.aiproxyChannels,
+          defaultModels: state.defaultModels
+        })
       }
     )
   )

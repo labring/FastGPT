@@ -93,7 +93,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo',
+          modelId: 'gpt-3.5-turbo',
           baseUrl: 'https://api.openai.com/v1',
           apiKey: 'test-key'
         },
@@ -126,7 +126,7 @@ describe('/api/core/evaluation/metric/debug', () => {
         prompt: 'Evaluate the quality of the response'
       },
       {
-        name: 'gpt-3.5-turbo',
+        modelId: 'gpt-3.5-turbo',
         baseUrl: 'https://api.openai.com/v1',
         apiKey: 'test-key'
       }
@@ -144,7 +144,7 @@ describe('/api/core/evaluation/metric/debug', () => {
       tmbId: mockTmbId,
       metricName: 'Test Metric',
       totalPoints: 10,
-      model: 'gpt-3.5-turbo',
+      modelId: 'gpt-3.5-turbo',
       inputTokens: 0,
       outputTokens: 0
     });
@@ -187,7 +187,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -223,7 +223,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -261,7 +261,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -298,7 +298,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -336,7 +336,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -373,7 +373,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           actualOutput: 'The capital of France is Paris.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -411,7 +411,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: ''
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -449,7 +449,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -486,7 +486,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -560,7 +560,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: ''
+          modelId: ''
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -591,7 +591,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -644,7 +644,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -700,7 +700,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -754,7 +754,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -808,7 +808,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -862,7 +862,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -896,7 +896,7 @@ describe('/api/core/evaluation/metric/debug', () => {
     const req = {
       body: {
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -961,7 +961,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -997,7 +997,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -1033,7 +1033,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: longName,
@@ -1067,7 +1067,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricType: 'custom_metric',
@@ -1100,7 +1100,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',
@@ -1133,7 +1133,7 @@ describe('/api/core/evaluation/metric/debug', () => {
           expectedOutput: 'Paris is the capital of France.'
         },
         llmConfig: {
-          name: 'gpt-3.5-turbo'
+          modelId: 'gpt-3.5-turbo'
         },
         metricConfig: {
           metricName: 'Test Metric',

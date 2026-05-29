@@ -10,16 +10,16 @@ import { useTranslation } from 'next-i18next';
 import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
 
 type AgenticSearchParamsType = {
-  agenticSearchLLMModel: string;
-  embeddingModel: string;
-  agenticSearchRerankModel: string;
+  agenticSearchLLMModelId: string;
+  embeddingModelId: string;
+  agenticSearchRerankModelId: string;
   agenticSearchReasoning: boolean;
 };
 
 type MultipleRetrievalModalProps = {
   defaultValues: AgenticSearchParamsType;
   hideAiModel?: boolean;
-  datasetVectorModel?: string;
+  datasetVectorModelId?: string;
   onClose: () => void;
   onSuccess: (data: AgenticSearchParamsType) => void;
 };
@@ -27,7 +27,7 @@ type MultipleRetrievalModalProps = {
 const MultipleRetrievalModal = ({
   defaultValues,
   hideAiModel = false,
-  datasetVectorModel,
+  datasetVectorModelId,
   onClose,
   onSuccess
 }: MultipleRetrievalModalProps) => {
@@ -36,43 +36,43 @@ const MultipleRetrievalModal = ({
 
   const { setValue, handleSubmit, watch, getValues } = useForm<AgenticSearchParamsType>({
     defaultValues: {
-      agenticSearchLLMModel: defaultValues.agenticSearchLLMModel || defaultModels.llm?.model || '',
-      embeddingModel: defaultValues.embeddingModel || '',
-      agenticSearchRerankModel:
-        defaultValues.agenticSearchRerankModel || defaultModels.rerank?.model || '',
+      agenticSearchLLMModelId: defaultValues.agenticSearchLLMModelId || defaultModels.llm?.id || '',
+      embeddingModelId: defaultValues.embeddingModelId || '',
+      agenticSearchRerankModelId:
+        defaultValues.agenticSearchRerankModelId || defaultModels.rerank?.id || '',
       agenticSearchReasoning: defaultValues.agenticSearchReasoning ?? true
     }
   });
 
-  const agenticSearchLLMModel = watch('agenticSearchLLMModel');
-  const embeddingModel = watch('embeddingModel');
-  const agenticSearchRerankModel = watch('agenticSearchRerankModel');
+  const agenticSearchLLMModelId = watch('agenticSearchLLMModelId');
+  const embeddingModelId = watch('embeddingModelId');
+  const agenticSearchRerankModelId = watch('agenticSearchRerankModelId');
   const agenticSearchReasoning = watch('agenticSearchReasoning');
 
   const embeddingModelSelectList = useMemo(
-    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
-    [embeddingModelList, datasetVectorModel]
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModelId),
+    [embeddingModelList, datasetVectorModelId]
   );
 
   useEffect(() => {
-    if (!datasetVectorModel) {
-      setValue('embeddingModel', '');
+    if (!datasetVectorModelId) {
+      setValue('embeddingModelId', '');
       return;
     }
     if (embeddingModelSelectList.length === 0) return;
 
-    const current = getValues('embeddingModel');
+    const current = getValues('embeddingModelId');
     // 当前值为空，联动设置为知识库向量模型
     if (!current) {
-      setValue('embeddingModel', datasetVectorModel);
+      setValue('embeddingModelId', datasetVectorModelId);
       return;
     }
     // 当前值有值时，校验是否在有效选项中；若无效则回退为当前知识库向量模型
     const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
     if (!validIds.has(current)) {
-      setValue('embeddingModel', datasetVectorModel);
+      setValue('embeddingModelId', datasetVectorModelId);
     }
-  }, [datasetVectorModel, embeddingModelSelectList, getValues, setValue]);
+  }, [datasetVectorModelId, embeddingModelSelectList, getValues, setValue]);
 
   const onSubmit = handleSubmit((data) => {
     onSuccess(data);
@@ -97,12 +97,12 @@ const MultipleRetrievalModal = ({
             <Box flex={'0 0 340px'}>
               <SelectAiModel
                 width="100%"
-                value={agenticSearchLLMModel}
+                value={agenticSearchLLMModelId}
                 list={llmModelList.map((item) => ({
-                  value: item.model,
+                  value: item.id,
                   label: item.name
                 }))}
-                onChange={(val: string) => setValue('agenticSearchLLMModel', val)}
+                onChange={(val: string) => setValue('agenticSearchLLMModelId', val)}
               />
             </Box>
           </HStack>
@@ -116,14 +116,14 @@ const MultipleRetrievalModal = ({
           <Box flex={'0 0 340px'}>
             <SelectAiModel
               width="100%"
-              value={embeddingModel}
+              value={embeddingModelId}
               list={embeddingModelSelectList}
               placeholder={
-                !datasetVectorModel
+                !datasetVectorModelId
                   ? t('app:smart_customer_service_embedding_model_placeholder')
                   : undefined
               }
-              onChange={(val: string) => setValue('embeddingModel', val)}
+              onChange={(val: string) => setValue('embeddingModelId', val)}
             />
           </Box>
         </HStack>
@@ -133,12 +133,12 @@ const MultipleRetrievalModal = ({
           <Box flex={'0 0 340px'}>
             <SelectAiModel
               width="100%"
-              value={agenticSearchRerankModel}
+              value={agenticSearchRerankModelId}
               list={reRankModelList.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
-              onChange={(val: string) => setValue('agenticSearchRerankModel', val)}
+              onChange={(val: string) => setValue('agenticSearchRerankModelId', val)}
             />
           </Box>
         </HStack>

@@ -147,10 +147,10 @@ async function createNewCollection(
   tmbId: string,
   name: string,
   description: string | undefined,
-  evaluationModel: string | undefined
+  evaluationModelId: string | undefined
 ) {
   const defaultEvaluationModel = getDefaultEvaluationModel();
-  const evaluationModelToUse = evaluationModel || defaultEvaluationModel?.model;
+  const evaluationModelToUse = evaluationModelId || defaultEvaluationModel?.id;
 
   const collectionData = await mongoSessionRun(async (session) => {
     const [collection] = await MongoEvalDatasetCollection.create(
@@ -160,7 +160,7 @@ async function createNewCollection(
           tmbId,
           name: name.trim(),
           description: (description || '').trim(),
-          evaluationModel: evaluationModelToUse
+          evaluationModelId: evaluationModelToUse
         }
       ],
       { session, ordered: true }
@@ -200,7 +200,7 @@ async function handler(
       }
     }
 
-    const { collectionId, name, description, enableQualityEvaluation, evaluationModel } = data;
+    const { collectionId, name, description, enableQualityEvaluation, evaluationModelId } = data;
 
     if (!collectionId && name === undefined) {
       return Promise.reject(CommonErrEnum.missingParams);
@@ -212,10 +212,10 @@ async function handler(
     if (typeof enableQualityEvaluation !== 'boolean') {
       return Promise.reject(EvaluationErrEnum.datasetDataEnableQualityEvalRequired);
     }
-    if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+    if (enableQualityEvaluation && (!evaluationModelId || typeof evaluationModelId !== 'string')) {
       return Promise.reject(EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality);
     }
-    if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+    if (evaluationModelId && !global.llmModelIdMap.has(evaluationModelId)) {
       return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
     }
 
@@ -249,7 +249,7 @@ async function handler(
     }
 
     // Check AI points if quality evaluation is enabled
-    if (enableQualityEvaluation && evaluationModel) {
+    if (enableQualityEvaluation && evaluationModelId) {
       await checkTeamAIPoints(teamId);
     }
 
@@ -365,7 +365,7 @@ async function handler(
         tmbId,
         name!,
         description,
-        evaluationModel
+        evaluationModelId
       );
       datasetCollection = collectionResult.datasetCollection;
       targetCollectionId = collectionResult.targetCollectionId;
@@ -389,10 +389,10 @@ async function handler(
     });
 
     // Queue quality evaluation jobs if enabled
-    if (enableQualityEvaluation && evaluationModel) {
+    if (enableQualityEvaluation && evaluationModelId) {
       const qualityJobsData = insertedRecords.map((record) => ({
         dataId: record._id.toString(),
-        evaluationModel: evaluationModel
+        evaluationModelId: evaluationModelId
       }));
       await addEvalDatasetDataQualityBulk(qualityJobsData);
     }

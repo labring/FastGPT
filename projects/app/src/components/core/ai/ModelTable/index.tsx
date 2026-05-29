@@ -34,12 +34,7 @@ type TableSharedProps = {
   toggleTrainTaskCountSort: () => void;
   trainTimeSortOrder?: 'asc' | 'desc';
   toggleTrainTimeSort?: () => void;
-  handleOpenTrainDrawer: (
-    type:
-      | import('@fastgpt/global/core/ai/model').ModelTypeEnum.embedding
-      | import('@fastgpt/global/core/ai/model').ModelTypeEnum.rerank,
-    model: string
-  ) => void;
+  handleOpenTrainDrawer: import('./types').OpenTrainModelHandler;
   setTrainDetailDrawer: React.Dispatch<
     React.SetStateAction<import('./types').TrainDetailModel | null>
   >;
@@ -186,7 +181,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           onClose={() => setTrainDetailDrawer(null)}
           onSuccess={() => clientInitData(undefined, { forceRefresh: true })}
           modelName={trainDetailDrawer.name}
-          modelId={trainDetailDrawer.model}
+          modelId={trainDetailDrawer.id}
           baseModelType={trainDetailDrawer.baseModelType}
           tabType={activeTab}
         />

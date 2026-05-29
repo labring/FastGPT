@@ -1,7 +1,7 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel } from '../../ai/model';
+import { getEmbeddingModelById } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetCollection } from '../collection/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
@@ -23,7 +23,7 @@ export const embeddingRecall = async ({
   teamId,
   datasetIds,
   queries,
-  model,
+  modelId,
   limit,
   forbidCollectionIdList = [],
   filterCollectionIdList
@@ -31,7 +31,7 @@ export const embeddingRecall = async ({
   teamId: string;
   datasetIds: string[];
   queries: string[];
-  model: string;
+  modelId: string;
   limit: number;
   forbidCollectionIdList?: string[];
   filterCollectionIdList?: string[];
@@ -47,7 +47,7 @@ export const embeddingRecall = async ({
   }
 
   const { vectors, tokens } = await getVectorsByText({
-    model: getEmbeddingModel(model),
+    model: getEmbeddingModelById(modelId),
     input: queries,
     type: 'query'
   });

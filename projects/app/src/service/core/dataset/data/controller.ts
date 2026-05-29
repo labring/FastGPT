@@ -9,7 +9,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -177,11 +177,11 @@ export async function insertData2Dataset({
   indexes,
   metadata,
   indexPrefix,
-  embeddingModel,
+  embeddingModelId,
   imageDescMap,
   session
 }: CreateDatasetDataPropsType & {
-  embeddingModel: string;
+  embeddingModelId: string;
   indexSize?: number;
   imageDescMap?: Record<string, string>;
   session?: ClientSession;
@@ -189,8 +189,8 @@ export async function insertData2Dataset({
   if (imageId && !q) {
     return Promise.reject(DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse);
   }
-  if (!q || !datasetId || !collectionId || !embeddingModel) {
-    return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
+  if (!q || !datasetId || !collectionId || !embeddingModelId) {
+    return Promise.reject('q, datasetId, collectionId, embeddingModelId is required');
   }
   if (String(teamId) === String(tmbId)) {
     return Promise.reject("teamId and tmbId can't be the same");
@@ -203,14 +203,15 @@ export async function insertData2Dataset({
     q: q?.substring(0, 100),
     hasIndexes: !!indexes?.length,
     indexCount: indexes?.length,
-    embeddingModel,
+    embeddingModelId,
     hasSession: !!session
   });
 
-  const embModel = getEmbeddingModel(embeddingModel);
+  const embModel = getEmbeddingModelById(embeddingModelId);
   indexSize = Math.min(embModel.maxToken, indexSize);
 
   addLog.debug('[insertData2Dataset] embModel loaded', {
+    modelId: embModel.id,
     model: embModel.model,
     maxToken: embModel.maxToken,
     indexSize
@@ -333,10 +334,10 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model,
+  modelId,
   indexSize = 512,
   indexPrefix
-}: UpdateDatasetDataPropsType & { model: string; indexSize?: number }) {
+}: UpdateDatasetDataPropsType & { modelId: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }
@@ -351,7 +352,7 @@ export async function updateData2Dataset({
     q,
     a,
     indexSize,
-    maxIndexSize: getEmbeddingModel(model).maxToken,
+    maxIndexSize: getEmbeddingModelById(modelId).maxToken,
     indexPrefix
   });
 
@@ -419,7 +420,7 @@ export async function updateData2Dataset({
       // Batch insert vectors
       const result = await insertDatasetDataVector({
         inputs: insertItems.map((item) => item.index.text),
-        model: getEmbeddingModel(model),
+        model: getEmbeddingModelById(modelId),
         teamId: mongoData.teamId,
         datasetId: mongoData.datasetId,
         collectionId: mongoData.collectionId

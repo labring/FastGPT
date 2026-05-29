@@ -24,8 +24,8 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { getSystemModelDefaultConfig, postSystemModel, putSystemModel } from '@/web/core/ai/config';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
   useFieldArray,
   useForm,
@@ -171,6 +171,30 @@ const emptyPriceTier = {
   outputPrice: undefined
 };
 
+export const getNewModelFormData = (
+  defaultModel: GetModelDetailResponse | undefined,
+  type: ModelTypeEnum
+): GetModelDetailResponse =>
+  ({
+    ...defaultModel,
+    id: '',
+    model: '',
+    name: '',
+    charsPointsPrice: 0,
+    inputPrice: undefined,
+    outputPrice: undefined,
+    priceTiers: undefined,
+
+    isCustom: true,
+    isActive: true,
+    isDefault: false,
+    isDefaultDatasetTextModel: false,
+    isDefaultDatasetImageModel: false,
+    isDefaultEvaluationModel: false,
+    // @ts-ignore
+    type
+  }) as GetModelDetailResponse;
+
 const getOptionalNumber = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined;
 
@@ -187,6 +211,11 @@ const getOptionalNumber = (value: unknown) => {
   }
 
   return undefined;
+};
+
+const buildModelFieldsPayload = (data: GetModelDetailResponse) => {
+  const { id, avatar, permission, sourceMember, tmbId, teamId, ...fields } = data as any;
+  return fields;
 };
 
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
@@ -246,7 +275,7 @@ const SwitchField = ({
   label: string;
   tip?: string;
   field: string;
-  register: UseFormRegister<SystemModelItemType>;
+  register: UseFormRegister<GetModelDetailResponse>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -265,8 +294,8 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   providerList: React.MutableRefObject<{ label: React.ReactNode; value: string }[]>;
   t: any;
 }) {
@@ -293,8 +322,8 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const responseFormatList = useWatch({
@@ -344,10 +373,10 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  register: UseFormRegister<SystemModelItemType>;
-  getValues: UseFormGetValues<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  register: UseFormRegister<GetModelDetailResponse>;
+  getValues: UseFormGetValues<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});
@@ -670,8 +699,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   label,
   tip
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   label: string;
   tip: string;
 }) {
@@ -708,8 +737,8 @@ const VoicesField = React.memo(function VoicesField({
   setValue,
   t
 }: {
-  control: Control<SystemModelItemType>;
-  setValue: UseFormSetValue<SystemModelItemType>;
+  control: Control<GetModelDetailResponse>;
+  setValue: UseFormSetValue<GetModelDetailResponse>;
   t: any;
 }) {
   const voices = useWatch({
@@ -739,7 +768,7 @@ export const ModelEditModal = ({
   onSuccess,
   onClose
 }: {
-  modelData: SystemModelItemType;
+  modelData: GetModelDetailResponse;
   onSuccess: () => void;
   onClose: () => void;
 }) => {
@@ -747,7 +776,7 @@ export const ModelEditModal = ({
   const { feConfigs, getModelProviders } = useSystemStore();
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
-    useForm<SystemModelItemType>({
+    useForm<GetModelDetailResponse>({
       defaultValues: {
         ...modelData,
         priceTiers: (() => {
@@ -796,7 +825,7 @@ export const ModelEditModal = ({
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest(
-    async (data: SystemModelItemType) => {
+    async (data: GetModelDetailResponse) => {
       if (data.type === ModelTypeEnum.llm) {
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
@@ -835,14 +864,17 @@ export const ModelEditModal = ({
         const val = data[key];
         if (val === null || val === undefined || Number.isNaN(val)) {
           // @ts-ignore
-          data[key] = '';
+          delete data[key];
         }
       }
 
-      return putSystemModel({
-        model: data.model,
-        metadata: data
-      }).then(onSuccess);
+      const modelFields = buildModelFieldsPayload(data);
+
+      return (
+        modelData.id
+          ? putSystemModel({ id: modelData.id, ...modelFields })
+          : postSystemModel({ ...modelFields })
+      ).then(onSuccess);
     },
     {
       onSuccess: () => {
@@ -859,7 +891,8 @@ export const ModelEditModal = ({
       onSuccess(res) {
         reset({
           ...getValues(),
-          ...res
+          ...res,
+          id: modelData.id || ''
         });
         setTimeout(() => {
           setKey((prev) => prev + 1);
@@ -914,7 +947,7 @@ export const ModelEditModal = ({
                 <Input
                   {...register('model', { required: true })}
                   {...InputStyles}
-                  isReadOnly={!isCustom || !!modelData.model}
+                  isReadOnly={!isCustom}
                 />
               </Field>
               <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
@@ -925,6 +958,12 @@ export const ModelEditModal = ({
                 setValue={setValue}
                 providerList={providerList}
                 t={t}
+              />
+              <SwitchField
+                label={t('common:permission.Public')}
+                tip={t('common:permission.Public Tip')}
+                field={'isShared'}
+                register={register}
               />
             </Grid>
           </Flex>
@@ -1199,7 +1238,7 @@ export const ModelEditModal = ({
             variant={'whiteBase'}
             mr={4}
             size={'md'}
-            onClick={() => loadDefaultConfig(modelData.model)}
+            onClick={() => loadDefaultConfig(modelData.id)}
           >
             {t('account:reset_default')}
           </Button>

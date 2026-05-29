@@ -35,7 +35,7 @@ export type HelperBotDispatchParamsType<T = unknown> = Omit<
 export const HelperBotDispatchResponseSchema = z.object({
   aiResponse: z.array(AIChatItemValueItemSchema),
   usage: z.object({
-    model: z.string(),
+    modelId: z.string(),
     inputTokens: z.number(),
     outputTokens: z.number()
   })

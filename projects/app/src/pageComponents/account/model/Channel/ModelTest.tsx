@@ -29,7 +29,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type ModelTestItem = {
   label: React.ReactNode;
-  model: string;
+  modelId: string;
+  providerModel: string;
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
@@ -74,22 +75,25 @@ const ModelTest = ({
     refreshDeps: [models],
     onSuccess(res) {
       const list = models
-        .map((model) => {
-          const modelData = res.find((item) => item.model === model);
-          if (!modelData) return null;
-          const provider = getModelProvider(modelData.provider, i18n.language);
+        .flatMap((model) => {
+          const matchedModels = res.filter((item) => item.model === model);
 
-          return {
-            label: (
-              <HStack>
-                <MyIcon name={provider.avatar as any} w={'1rem'} />
-                <Box>{t(modelData.name as any)}</Box>
-              </HStack>
-            ),
-            model: modelData.model,
-            status: 'waiting',
-            loading: false
-          };
+          return matchedModels.map((modelData) => {
+            const provider = getModelProvider(modelData.provider, i18n.language);
+
+            return {
+              label: (
+                <HStack>
+                  <MyIcon name={provider.avatar as any} w={'1rem'} />
+                  <Box>{t(modelData.name as any)}</Box>
+                </HStack>
+              ),
+              modelId: modelData.id,
+              providerModel: modelData.model,
+              status: 'waiting',
+              loading: false
+            };
+          });
         })
         .filter(Boolean) as ModelTestItem[];
       setTestModelList(list);
@@ -101,19 +105,19 @@ const ModelTest = ({
       let errorNum = 0;
       setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
 
-      const testModel = async (model: string) => {
+      const testModel = async (modelId: string) => {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model ? { ...item, status: 'running', message: '' } : item
+            item.modelId === modelId ? { ...item, status: 'running', message: '' } : item
           )
         );
         const start = Date.now();
         try {
-          await getTestModel({ model, channelId });
+          await getTestModel({ id: modelId, channelId });
           const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.model === model
+              item.modelId === modelId
                 ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                 : item
             )
@@ -121,7 +125,7 @@ const ModelTest = ({
         } catch (error) {
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.model === model
+              item.modelId === modelId
                 ? { ...item, status: 'error', message: getErrText(error), loading: false }
                 : item
             )
@@ -131,7 +135,7 @@ const ModelTest = ({
       };
 
       await batchRun(
-        testModelList.map((item) => item.model),
+        testModelList.map((item) => item.modelId),
         testModel,
         5
       );
@@ -149,22 +153,24 @@ const ModelTest = ({
   );
 
   const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
-    async (model: string) => {
+    async (modelId: string) => {
       const start = Date.now();
 
       setTestModelList((prev) =>
         prev.map((item) =>
-          item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
+          item.modelId === modelId
+            ? { ...item, status: 'running', message: '', loading: true }
+            : item
         )
       );
 
       try {
-        await getTestModel({ model, channelId });
+        await getTestModel({ id: modelId, channelId });
         const duration = Date.now() - start;
 
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model
+            item.modelId === modelId
               ? { ...item, status: 'success', duration: duration / 1000, loading: false }
               : item
           )
@@ -172,7 +178,7 @@ const ModelTest = ({
       } catch (error) {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.model === model
+            item.modelId === modelId
               ? { ...item, status: 'error', message: getErrText(error), loading: false }
               : item
           )
@@ -202,6 +208,7 @@ const ModelTest = ({
               <Tr>
                 <Th>{t('account_model:model_name')}</Th>
                 <Th>{t('account:model.model_id')}</Th>
+                <Th>{t('common:model.name')}</Th>
                 <Th>{t('account_model:channel_status')}</Th>
                 <Th></Th>
               </Tr>
@@ -210,9 +217,10 @@ const ModelTest = ({
               {testModelList.map((item) => {
                 const data = statusMap.current[item.status];
                 return (
-                  <Tr key={item.model}>
+                  <Tr key={item.modelId}>
                     <Td>{item.label}</Td>
-                    <Td>{item.model}</Td>
+                    <Td>{item.modelId}</Td>
+                    <Td>{item.providerModel}</Td>
                     <Td>
                       <Flex alignItems={'center'}>
                         <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
@@ -234,7 +242,7 @@ const ModelTest = ({
                           isLoading={item.loading}
                           icon={'core/chat/sendLight'}
                           tip={t('account:model.test_model')}
-                          onClick={() => onTestOneModel(item.model)}
+                          onClick={() => onTestOneModel(item.modelId)}
                         />
                       )}
                     </Td>

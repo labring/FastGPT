@@ -26,7 +26,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   GetDatasetListBodySchema,
@@ -375,7 +375,7 @@ async function handler(req: ApiRequestProps) {
         type: dataset.type,
         vectorModel:
           dataset.type !== DatasetTypeEnum.structureDocument
-            ? getEmbeddingModel(dataset.vectorModel)
+            ? getEmbeddingModelById(dataset.vectorModelId)
             : undefined,
         inheritPermission: dataset.inheritPermission,
         permissionEffectScope: dataset.permissionEffectScope,

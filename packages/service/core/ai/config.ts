@@ -8,8 +8,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../global/common/i18n/utils';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import { getLLMModel } from './model';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
   ? `${process.env.AIPROXY_API_ENDPOINT}/v1`
@@ -43,6 +42,26 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   };
 };
 
+/**
+ * Resolve full endpoint config for a model (e.g., for passing to external services like DiTing).
+ * Follows the same credential resolution chain as getAIApi:
+ *
+ *   baseUrl: callerOverride → modelData.requestUrl → oneapiUrl → OPENAI_BASE_URL → https://api.openai.com/v1
+ *   apiKey:  callerOverride → modelData.requestAuth → chatApiKey  → CHAT_API_KEY     → ''
+ */
+export const getModelEndpointConfig = (
+  modelData?: { model?: string; requestUrl?: string; requestAuth?: string },
+  overrides?: { baseUrl?: string; apiKey?: string }
+) => {
+  return {
+    name: modelData?.model || '',
+    baseUrl:
+      overrides?.baseUrl || modelData?.requestUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl,
+    apiKey:
+      overrides?.apiKey || modelData?.requestAuth || global?.systemEnv?.chatApiKey || openaiBaseKey
+  };
+};
+
 export const createChatCompletion = async ({
   modelData,
   body,
@@ -50,7 +69,7 @@ export const createChatCompletion = async ({
   timeout,
   options
 }: {
-  modelData?: LLMModelItemType;
+  modelData: LLMModelItemType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
@@ -71,11 +90,7 @@ export const createChatCompletion = async ({
 > => {
   try {
     // Rewrite model
-    const modelConstantsData = modelData || getLLMModel(body.model);
-    if (!modelConstantsData) {
-      return Promise.reject(`${body.model} not found`);
-    }
-    body.model = modelConstantsData.model;
+    body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;
     const ai = getAIApi({
@@ -89,12 +104,10 @@ export const createChatCompletion = async ({
 
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),
+      ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelConstantsData.requestAuth
-          ? { Authorization: `Bearer ${modelConstantsData.requestAuth}` }
-          : {})
+        ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
       }
     });
 

@@ -20,7 +20,7 @@ describe('getDefaultAppForm', () => {
     const result = getDefaultAppForm();
 
     expect(result.aiSettings).toEqual({
-      model: '',
+      modelId: '',
       isResponseAnswerText: true,
       maxHistories: 6
     });
@@ -32,12 +32,13 @@ describe('getDefaultAppForm', () => {
     expect(result.dataset).toEqual({
       datasets: [],
       similarity: 0.4,
-      limit: 3000,
-      searchMode: DatasetSearchModeEnum.embedding,
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
+      embeddingWeight: 0.65,
       usingReRank: true,
-      rerankModel: '',
-      rerankMethod: RerankMethodEnum.content,
-      rerankWeight: 0.5,
+      rerankModelId: '',
+      rerankMethod: RerankMethodEnum.question,
+      rerankWeight: 0.4,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: ''
     });
@@ -63,18 +64,20 @@ describe('getAppType', () => {
   it('should return simple type when config has aiSettings', () => {
     const config = {
       aiSettings: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         isResponseAnswerText: true,
         maxHistories: 6
       },
       dataset: {
         datasets: [],
         similarity: 0.4,
-        limit: 3000,
-        searchMode: DatasetSearchModeEnum.embedding,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.mixedRecall,
+        embeddingWeight: 0.65,
         usingReRank: true,
-        rerankModel: '',
-        rerankWeight: 0.5,
+        rerankModelId: '',
+        rerankMethod: RerankMethodEnum.question,
+        rerankWeight: 0.4,
         datasetSearchUsingExtensionQuery: true,
         datasetSearchExtensionBg: ''
       },

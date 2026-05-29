@@ -12,18 +12,19 @@ import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metri
 import { createEvaluatorInstance } from '../evaluator';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import { createEvalDatasetDataQualityUsage } from '../../../support/wallet/usage/controller';
+import { getLLMModelById } from '../../ai/model';
 
 // Queue processor function
 export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQualityData>) => {
-  const { dataId, evaluationModel } = job.data;
+  const { dataId, evaluationModelId } = job.data;
 
-  addLog.info('Processing eval dataset data quality job', { dataId, evaluationModel });
+  addLog.info('Processing eval dataset data quality job', { dataId, evaluationModelId });
 
-  if (!global.llmModelMap.has(evaluationModel)) {
-    const errorMsg = `Invalid evaluation model: ${evaluationModel}`;
+  if (!getLLMModelById(evaluationModelId)) {
+    const errorMsg = `Invalid evaluation model: ${evaluationModelId}`;
     addLog.error('Eval dataset data quality job failed - invalid model', {
       dataId,
-      evaluationModel
+      evaluationModelId
     });
 
     await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
@@ -74,7 +75,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
     const evaluatorConfig = {
       metric: metricSchema,
       runtimeConfig: {
-        llm: evaluationModel
+        llmId: evaluationModelId
       }
     };
 
@@ -96,7 +97,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
         const { totalPoints: calculatedPoints } = await createEvalDatasetDataQualityUsage({
           teamId: datasetData.teamId,
           tmbId: datasetData.tmbId,
-          model: evaluationModel,
+          modelId: getLLMModelById(evaluationModelId)?.id || evaluationModelId,
           usages: metricResult.usages
         });
         totalPoints = calculatedPoints;
@@ -115,7 +116,7 @@ export const processEvalDatasetDataQuality = async (job: Job<EvalDatasetDataQual
           'qualityMetadata.runLogs': metricResult.data?.runLogs,
           'qualityMetadata.usages': metricResult?.usages,
           'qualityMetadata.finishTime': new Date(),
-          'qualityMetadata.model': evaluationModel,
+          'qualityMetadata.modelId': evaluationModelId,
           qualityResult: qualityResult
         }
       });

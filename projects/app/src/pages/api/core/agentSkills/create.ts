@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     name,
     description,
     requirements,
-    model,
+    modelId,
     category = [],
     config = {},
     avatar
@@ -70,7 +70,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   if (description && description.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);
   }
-  if (requirements && !model) {
+  if (requirements && !modelId) {
     return Promise.reject(SkillErrEnum.missingModel);
   }
   if (requirements && requirements.length > 8000) {
@@ -88,19 +88,19 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   // Generate SKILL.md content
   let skillMd: string;
 
-  if (requirements && model) {
+  if (requirements && modelId) {
     logger.debug('Using AI-assisted skill generation', {
       name: name.trim(),
       hasDescription: !!description,
       requirementsLength: requirements.length,
-      model
+      modelId
     });
 
     const [generatedSkillMd, usage] = await generateSkillMd({
       name: name.trim(),
       description: description?.trim() || '',
       requirements: requirements.trim(),
-      model
+      modelId
     });
 
     skillMd = generatedSkillMd;
@@ -112,7 +112,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelId,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
@@ -127,7 +127,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         {
           moduleName: i18nT('common:support.wallet.usage.Assist Generate Skill'),
           amount: totalPoints,
-          model: modelName,
+          modelId: modelId,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }

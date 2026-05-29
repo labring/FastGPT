@@ -1,7 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   type EmbeddingModelItemType,
   type LLMModelItemType,
@@ -17,35 +16,42 @@ import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions'
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import {
+  TestModelQuerySchema,
+  type TestModelQuery
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = { model: string; channelId?: number };
-
-export type testBody = {};
-
-export type testResponse = any;
-
 async function handler(
-  req: ApiRequestProps<testBody, testQuery>,
+  req: ApiRequestProps<TestModelQuery, TestModelQuery>,
   res: ApiResponseType<any>
-): Promise<testResponse> {
-  await authSystemAdmin({ req });
-
-  const { model, channelId } = req.query;
-  const modelData = findModelFromAlldata(model);
-
-  if (!modelData) return Promise.reject('Model not found');
-
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
-  }
+): Promise<any> {
+  const { id, channelId } = TestModelQuerySchema.parse({
+    ...req.query,
+    ...req.body
+  });
+  const { model: rawModelData } = await authModel({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelId: id,
+    per: ReadPermissionVal
+  });
 
   const headers: Record<string, string> = channelId
     ? {
         'Aiproxy-Channel': String(channelId)
       }
     : {};
+  const modelData = channelId
+    ? {
+        ...rawModelData,
+        requestUrl: undefined,
+        requestAuth: undefined
+      }
+    : rawModelData;
   logger.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
@@ -64,7 +70,7 @@ async function handler(
     return testReRankModel(modelData, headers);
   }
 
-  return Promise.reject('Model type not supported');
+  return Promise.reject(ModelErrEnum.modelTypeNotSupported);
 }
 
 export default NextAPI(handler);
@@ -72,7 +78,7 @@ export default NextAPI(handler);
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const { answerText } = await createLLMResponse({
     body: {
-      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
+      modelId: model.id,
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },
@@ -83,7 +89,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     return answerText;
   }
 
-  return Promise.reject('Model response empty');
+  return Promise.reject(ModelErrEnum.modelResponseEmpty);
 };
 
 const testEmbeddingModel = async (

@@ -55,7 +55,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
@@ -103,7 +103,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     chatId,
     showSkillReferences,
     params: {
-      model,
+      modelId,
       systemPrompt,
       userChatInput, // 本次任务的输入
       history = 6,
@@ -344,7 +344,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         completionTools: agentCompletionTools,
         getSubAppInfo,
         systemPrompt: formatedSystemPrompt,
-        model,
+        modelId,
         stream,
 
         mode: 'interactive', // 初始规划模式
@@ -392,7 +392,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           completionTools: agentCompletionTools,
           getSubAppInfo,
           systemPrompt: formatedSystemPrompt,
-          model,
+          modelId,
           stream,
           mode: 'continue', // 继续规划模式
           query: getContinuePlanQuery({

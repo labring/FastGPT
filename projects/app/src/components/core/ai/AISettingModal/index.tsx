@@ -89,7 +89,7 @@ const AIChatSettingsModal = ({
   const { handleSubmit, getValues, setValue, watch, register } = useForm({
     defaultValues: defaultData
   });
-  const model = watch('model');
+  const modelId = watch(NodeInputKeyEnum.aiModelId);
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
@@ -100,14 +100,14 @@ const AIChatSettingsModal = ({
   const useVision = watch('aiChatVision');
 
   const data = useMemo(() => {
-    const modelData = getWebLLMModel(model);
+    const modelData = getWebLLMModel(modelId);
     const support = getLLMSupportParams(modelData);
 
     return {
       selectedModel: modelData,
       supportParams: support
     };
-  }, [model]);
+  }, [modelId]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
 
@@ -121,7 +121,7 @@ const AIChatSettingsModal = ({
   }, [selectedModel?.maxResponse]);
 
   const onChangeModel = (e: string) => {
-    setValue('model', e);
+    setValue(NodeInputKeyEnum.aiModelId, e);
 
     // update max tokens
     const modelData = getWebLLMModel(e);
@@ -163,9 +163,9 @@ const AIChatSettingsModal = ({
           <Box flex={'1 0 0'}>
             <AIModelSelector
               width={'100%'}
-              value={model}
+              value={modelId}
               list={llmModels.map((item) => ({
-                value: item.model,
+                value: item.id,
                 label: item.name
               }))}
               onChange={onChangeModel}

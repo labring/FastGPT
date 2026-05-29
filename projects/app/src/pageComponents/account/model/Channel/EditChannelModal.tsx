@@ -22,9 +22,9 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AddModelButton } from '../AddModelBox';
+import { AddModelButton, getNewModelFormData } from '../AddModelBox';
 import dynamic from 'next/dynamic';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
@@ -69,25 +69,20 @@ const EditChannelModal = ({
   const { data: providerList = [] } = useRequest(
     () =>
       getChannelProviders().then((res) => {
-        return aiproxyChannels
-          .map((channel) => {
-            const mapData = res[channel.channelId];
+        return Object.entries(res).map(([channelId, mapData]) => {
+          const value = Number(channelId);
+          const channel = aiproxyChannels.find((item) => item.channelId === value);
 
-            if (!mapData) {
-              return [];
-            }
-
-            return [
-              {
-                defaultBaseUrl: mapData.defaultBaseUrl,
-                keyHelp: mapData.keyHelp,
-                icon: channel.avatar,
-                label: parseI18nString(channel.name, i18n.language as localeType),
-                value: channel.channelId
-              }
-            ];
-          })
-          .flat();
+          return {
+            defaultBaseUrl: mapData.defaultBaseUrl,
+            keyHelp: mapData.keyHelp,
+            icon: channel?.avatar || defaultProvider.avatar,
+            label: channel
+              ? parseI18nString(channel.name, i18n.language as localeType)
+              : mapData.name,
+            value
+          };
+        });
       }),
     {
       manual: false
@@ -99,23 +94,11 @@ const EditChannelModal = ({
     return res;
   }, [providerList, providerType]);
 
-  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  const [editModelData, setEditModelData] = useState<GetModelDetailResponse>();
   const onCreateModel = (type: ModelTypeEnum) => {
     const defaultModel = defaultModels[type];
 
-    setEditModelData({
-      ...defaultModel,
-      model: '',
-      name: '',
-      charsPointsPrice: 0,
-      inputPrice: undefined,
-      outputPrice: undefined,
-
-      isCustom: true,
-      isActive: true,
-      // @ts-ignore
-      type
-    });
+    setEditModelData(getNewModelFormData(defaultModel, type));
   };
 
   const models = watch('models');

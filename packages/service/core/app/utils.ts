@@ -1,5 +1,5 @@
 import { MongoDataset } from '../dataset/schema';
-import { getEmbeddingModel } from '../ai/model';
+import { getEmbeddingModelById } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -28,7 +28,7 @@ export async function listAppDatasetDataByTeamIdAndDatasetIds({
     datasetId: String(item._id),
     avatar: item.avatar,
     name: item.name,
-    vectorModel: getEmbeddingModel(item.vectorModel)
+    vectorModel: getEmbeddingModelById(item.vectorModelId)
   }));
 }
 

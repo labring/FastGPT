@@ -16,7 +16,7 @@ export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   chatId: string;
   questionGuide?: {
     open: boolean;
-    model?: string;
+    modelId?: string;
     customPrompt?: string;
   };
 };
@@ -51,16 +51,16 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
-  const qgModel = questionGuide?.model || getDefaultLLMModel().model;
+  const qgModelId = questionGuide?.modelId || getDefaultLLMModel().id;
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,
-    model: qgModel,
+    modelId: qgModelId,
     customPrompt: questionGuide?.customPrompt
   });
 
   pushQuestionGuideUsage({
-    model: qgModel,
+    modelId: qgModelId,
     inputTokens,
     outputTokens,
     teamId,

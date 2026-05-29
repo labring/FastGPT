@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
-  updateDatasetConfig,
+  putDatasetById,
   postCheckDatabaseConnection,
   postDetectDatabaseChanges
 } from '@/web/core/dataset/api';
@@ -190,7 +190,7 @@ const FormBottomButtons: React.FC<FormBottomButtonsProps> = ({
         })
       };
 
-      await updateDatasetConfig({
+      await putDatasetById({
         id: datasetId,
         databaseConfig
       });

@@ -11,12 +11,13 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 const logger = getLogger(LogCategories.MODULE.AI.OPTIMIZE_PROMPT);
 
 type OptimizePromptBody = {
   originalPrompt: string;
   optimizerInput: string;
-  model: string;
+  modelId: string;
 };
 
 const getPromptOptimizerSystemPrompt = () => {
@@ -74,7 +75,7 @@ ${originalPrompt}
 
 async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiResponseType) {
   try {
-    const { originalPrompt, optimizerInput, model } = req.body;
+    const { originalPrompt, optimizerInput, modelId } = req.body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -101,7 +102,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       usage: { inputTokens, outputTokens }
     } = await createLLMResponse({
       body: {
-        model,
+        modelId: modelId,
         messages,
         temperature: 0.1,
         max_tokens: 2000,
@@ -131,7 +132,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelId,
       inputTokens,
       outputTokens
     });
@@ -146,7 +147,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
         {
           moduleName: i18nT('common:support.wallet.usage.Optimize Prompt'),
           amount: totalPoints,
-          model: modelName,
+          modelId: modelId,
           inputTokens,
           outputTokens
         }

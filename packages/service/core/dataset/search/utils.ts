@@ -1,7 +1,7 @@
 import { queryExtension, queryExtensionForAssistant } from '../../ai/functions/queryExtension';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { getLLMModel } from '../../ai/model';
+import { getLLMModelById } from '../../ai/model';
 import { searchSynonymMappings } from '../synonym/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { applySynonymTransform } from '../indexTransform/utils';
@@ -107,23 +107,23 @@ export function standardizeQuery(query: string, synonyms: Record<string, string[
  *
  * 四个场景说明：
  * ────────────────────────────────────────────────────────────────
- * 场景1: isAssistant=false, llmModel=undefined (非assistant类型应用 + 不开启问题改写)
+ * 场景1: isAssistant=false, llmModelId=undefined (非assistant类型应用 + 不开启问题改写)
  *        流程: 独立同义词改写 → return
  *        有同义词: queries = [原始, 标准化]
  *        无同义词: queries = [原始]
  *
- * 场景2: isAssistant=false, llmModel=存在 (非assistant类型应用 + 开启问题改写)
+ * 场景2: isAssistant=false, llmModelId=存在 (非assistant类型应用 + 开启问题改写)
  *        流程: 独立同义词改写 → 问题改写 → 合并结果
  *        有同义词: queries = [原始, 标准化, 改写1, 改写2, ...]
  *        无同义词: queries = [原始, 改写1, 改写2, ...]
  *        注意：改写问题未进行同义词标准化
  *
- * 场景3: isAssistant=true, llmModel=undefined (assistant类型应用 + 不开启问题改写)
+ * 场景3: isAssistant=true, llmModelId=undefined (assistant类型应用 + 不开启问题改写)
  *        流程: 独立同义词改写 → return
  *        有同义词: queries = [原始, 标准化]
  *        无同义词: queries = [原始]
  *
- * 场景4: isAssistant=true, llmModel=存在 (assistant类型应用 + 开启问题改写)
+ * 场景4: isAssistant=true, llmModelId=存在 (assistant类型应用 + 开启问题改写)
  *        流程: 独立同义词改写 → queryExtensionForAssistant()内部:
  *              ① 指代消除 ② 问题改写 ③ 同义词标准化所有问题
  *        queries = [标准化(指代消除), 标准化(改写1), 标准化(改写2), ...]
@@ -133,8 +133,8 @@ export function standardizeQuery(query: string, synonyms: Record<string, string[
  */
 export const datasetSearchQueryExtension = async ({
   query,
-  llmModel,
-  embeddingModel,
+  llmModelId,
+  embeddingModelId,
   extensionBg = '',
   histories = [],
   isAssistant = false,
@@ -143,8 +143,8 @@ export const datasetSearchQueryExtension = async ({
   lang
 }: {
   query: string;
-  llmModel?: string;
-  embeddingModel?: string;
+  llmModelId?: string;
+  embeddingModelId?: string;
   extensionBg?: string;
   histories?: ChatItemMiniType[];
   isAssistant?: boolean;
@@ -224,7 +224,7 @@ export const datasetSearchQueryExtension = async ({
   /**
    * 【问题改写分支】场景2/4 会执行这段逻辑
    *
-   * 条件判断: llmModel && embeddingModel && !alreadyExtension
+   * 条件判断: llmModelId && embeddingModelId && !alreadyExtension
    *
    * 场景2 (非assistant类型应用): 调用 queryExtension()
    *       返回: extensionQueries = [改写问题1, 改写问题2, ...]
@@ -239,14 +239,14 @@ export const datasetSearchQueryExtension = async ({
    *       所有问题都已标准化，质量最高
    */
   const aiExtensionResult = await (async () => {
-    if (!llmModel || !embeddingModel || alreadyExtension) return;
+    if (!llmModelId || !embeddingModelId || alreadyExtension) return;
 
     // 如果是 assistant 类型且有 teamId 和 datasetIds，使用新逻辑
     if (isAssistant && teamId && datasetIds && datasetIds.length > 0) {
       const result = await queryExtensionForAssistant({
         query,
         histories,
-        model: llmModel,
+        modelId: llmModelId,
         teamId,
         datasetIds,
         lang
@@ -259,8 +259,8 @@ export const datasetSearchQueryExtension = async ({
       chatBg: extensionBg,
       query,
       histories,
-      llmModel,
-      embeddingModel
+      llmModelId,
+      embeddingModelId
     });
     if (result.extensionQueries?.length === 0) return;
     return result;
@@ -306,8 +306,8 @@ export const datasetSearchQueryExtension = async ({
   } else if (synonymRewriteResult) {
     // 如果没有问题改写但有同义词改写,创建一个结果对象
     const dummyResult = {
-      llmModel: '',
-      embeddingModel: '',
+      llmModelId: '',
+      embeddingModelId: '',
       inputTokens: 0,
       outputTokens: 0,
       embeddingTokens: 0,
@@ -378,16 +378,16 @@ export const getDatasetSqlResultLimit = (): number => {
 
 // Calculate dynamic limit based on LLM model's max context and safety factor
 export const calculateDynamicLimit = ({
-  generateSqlModel,
+  generateSqlModelId,
   safetyFactor = 0.6,
   estimatedTokensPerItem = 512
 }: {
-  generateSqlModel?: string;
+  generateSqlModelId?: string;
   safetyFactor?: number;
   estimatedTokensPerItem?: number;
 }): number => {
   // Get the LLM model configuration
-  const llmModel = getLLMModel(generateSqlModel);
+  const llmModel = getLLMModelById(generateSqlModelId);
 
   // Calculate safe limit based on model's maxContext
   const modelMaxToken = llmModel.maxContext;

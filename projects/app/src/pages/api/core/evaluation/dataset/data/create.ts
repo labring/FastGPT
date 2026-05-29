@@ -34,7 +34,7 @@ function validateRequestParams(params: {
   context?: string[];
   retrievalContext?: string[];
   enableQualityEvaluation?: boolean;
-  evaluationModel?: string;
+  evaluationModelId?: string;
 }) {
   const {
     collectionId,
@@ -44,7 +44,7 @@ function validateRequestParams(params: {
     context,
     retrievalContext,
     enableQualityEvaluation,
-    evaluationModel
+    evaluationModelId
   } = params;
 
   if (!collectionId || typeof collectionId !== 'string') {
@@ -90,11 +90,11 @@ function validateRequestParams(params: {
     throw EvaluationErrEnum.datasetDataEnableQualityEvalRequired;
   }
 
-  if (enableQualityEvaluation && (!evaluationModel || typeof evaluationModel !== 'string')) {
+  if (enableQualityEvaluation && (!evaluationModelId || typeof evaluationModelId !== 'string')) {
     throw EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality;
   }
 
-  if (evaluationModel && !global.llmModelMap.has(evaluationModel)) {
+  if (evaluationModelId && !global.llmModelIdMap.has(evaluationModelId)) {
     throw EvaluationErrEnum.datasetModelNotFound;
   }
 }
@@ -110,7 +110,7 @@ async function handler(
     context,
     retrievalContext,
     enableQualityEvaluation,
-    evaluationModel
+    evaluationModelId
   } = req.body;
 
   validateRequestParams({
@@ -121,7 +121,7 @@ async function handler(
     context,
     retrievalContext,
     enableQualityEvaluation,
-    evaluationModel
+    evaluationModelId
   });
 
   const { teamId, tmbId } = await authEvaluationDatasetDataCreate(collectionId, {
@@ -142,7 +142,7 @@ async function handler(
   // Check evaluation data limit
   await checkTeamEvalDatasetDataLimit(teamId);
 
-  if (enableQualityEvaluation && evaluationModel) {
+  if (enableQualityEvaluation && evaluationModelId) {
     // Check AI points availability
     await checkTeamAIPoints(teamId);
   }
@@ -178,10 +178,10 @@ async function handler(
     return _id;
   });
 
-  if (enableQualityEvaluation && evaluationModel) {
+  if (enableQualityEvaluation && evaluationModelId) {
     await addEvalDatasetDataQualityJob({
       dataId: dataId.toString(),
-      evaluationModel: evaluationModel
+      evaluationModelId: evaluationModelId
     });
   }
 

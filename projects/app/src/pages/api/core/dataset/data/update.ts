@@ -15,7 +15,7 @@ async function handler(req: ApiRequestProps) {
   // auth data permission
   const {
     collection: {
-      dataset: { vectorModel },
+      dataset: { vectorModelId },
       name,
       indexPrefixTitle
     },
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps) {
       q,
       a,
       indexes,
-      model: vectorModel,
+      modelId: vectorModelId,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
 
@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps) {
       teamId,
       tmbId,
       inputTokens: tokens,
-      model: vectorModel
+      modelId: vectorModelId
     });
 
     (() => {

@@ -116,7 +116,7 @@ describe('Dataset Search Helper', () => {
             ],
             userChatInput: query,
             usingReRank: false, // Rerank disabled during evaluation
-            rerankModel: undefined
+            rerankModelId: undefined
           })
         })
       );
@@ -187,7 +187,7 @@ describe('Dataset Search Helper', () => {
         expect.objectContaining({
           params: expect.objectContaining({
             usingReRank: false,
-            rerankModel: undefined
+            rerankModelId: undefined
           })
         })
       );

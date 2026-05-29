@@ -57,13 +57,13 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { runAsync: onCreate, loading: isCreating } = useRequest(
     async ({ avatar, name, intro, requirement }: FormType) => {
       const trimmedRequirement = requirement.trim();
-      const defaultModel = defaultModels.llm?.model;
+      const defaultModel = defaultModels.llm?.id;
       return postCreateSkill({
         parentId: parentId ?? null,
         name: name.trim(),
         description: intro?.trim() || undefined,
         requirements: trimmedRequirement || undefined,
-        model: trimmedRequirement && defaultModel ? defaultModel : undefined,
+        modelId: trimmedRequirement && defaultModel ? defaultModel : undefined,
         avatar: avatar || undefined
       });
     },

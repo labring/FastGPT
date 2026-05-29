@@ -45,7 +45,7 @@ export const DatasetSelect = ({
   const isSmartGenerateScene = scene === 'smartGenerate';
 
   // The vector model of the first selected dataset
-  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
+  const activeVectorModel = selectedDatasets[0]?.vectorModel?.id;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
@@ -64,7 +64,7 @@ export const DatasetSelect = ({
     }
     return isSmartGenerateScene
       ? isEmptyDatabase(item)
-      : !!activeVectorModel && activeVectorModel !== item.vectorModel?.model;
+      : !!activeVectorModel && activeVectorModel !== item.vectorModel?.id;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
@@ -73,9 +73,9 @@ export const DatasetSelect = ({
     }
 
     // 如果知识库被禁用且向量模型不匹配，显示详细的向量模型信息
-    if (isDatasetDisabled(item) && activeVectorModel && item.vectorModel?.model) {
+    if (isDatasetDisabled(item) && activeVectorModel && item.vectorModel?.id) {
       return t('app:vector_model_mismatch', {
-        model1: item.vectorModel.model,
+        model1: item.vectorModel.id,
         model2: activeVectorModel
       });
     }

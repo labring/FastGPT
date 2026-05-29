@@ -197,10 +197,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.llm?.model,
+    rerankModelId: defaultModels.rerank?.id,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: defaultModels.llm?.id,
     datasetSearchExtensionBg: ''
   });
   const {
@@ -244,7 +244,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const manualKeys = useMemo(
     () =>
       new Set([
-        NodeInputKeyEnum.aiModel,
+        NodeInputKeyEnum.aiModelId,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
         NodeInputKeyEnum.selectedTools
@@ -252,7 +252,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     []
   );
   const modelInputs = useMemo(
-    () => commonInputs.filter((i) => i.key === NodeInputKeyEnum.aiModel),
+    () => commonInputs.filter((i) => i.key === NodeInputKeyEnum.aiModelId),
     [commonInputs]
   );
   // Inputs rendered before skills/tools (fileLink, userChatInput)
@@ -283,8 +283,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(datasetSelectInput?.value) ? datasetSelectInput!.value : []),
     [datasetSelectInput]
   );
-  const datasetVectorModel = useMemo(
-    () => selectedDatasets[0]?.vectorModel?.model as string | undefined,
+  const datasetVectorModelId = useMemo(
+    () => selectedDatasets[0]?.vectorModel?.id as string | undefined,
     [selectedDatasets]
   );
   const datasetKnowledgeTypeConfig = useMemo(
@@ -394,7 +394,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   // ---- Model ----
   const currentModel = useMemo(() => {
-    const modelValue = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
+    const modelValue = inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId)?.value;
     return getWebLLMModel(modelValue);
   }, [inputs]);
 
@@ -798,7 +798,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <DatasetParamsModal
           {...datasetParamsData}
           {...datasetKnowledgeTypeConfig}
-          datasetVectorModel={datasetVectorModel}
+          datasetVectorModelId={datasetVectorModelId}
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {

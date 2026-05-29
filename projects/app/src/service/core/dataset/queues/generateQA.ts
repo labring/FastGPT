@@ -6,7 +6,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -30,7 +30,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel?: string };
+  dataset: { vectorModelId: string; agentModelId: string; vlmModelId?: string };
   collection: { qaPrompt?: string };
 };
 
@@ -66,7 +66,7 @@ export async function generateQA(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'agentModel vectorModel vlmModel'
+                select: 'agentModelId vectorModelId vlmModelId'
               },
               {
                 path: 'collection',
@@ -125,7 +125,7 @@ export async function generateQA(): Promise<any> {
       });
 
       try {
-        const modelData = getLLMModel(data.dataset.agentModel);
+        const modelData = getLLMModelById(data.dataset.agentModelId);
         const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
   ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
@@ -142,7 +142,7 @@ export async function generateQA(): Promise<any> {
           usage: { inputTokens, outputTokens }
         } = await createLLMResponse({
           body: {
-            model: modelData.model,
+            modelId: modelData.id,
             temperature: 0.3,
             messages,
             stream: true
@@ -163,9 +163,9 @@ export async function generateQA(): Promise<any> {
             chunkIndex: data.chunkIndex
           })),
           billId: data.billId,
-          vectorModel: data.dataset.vectorModel,
-          agentModel: data.dataset.agentModel,
-          vlmModel: data.dataset.vlmModel
+          vectorModelId: data.dataset.vectorModelId,
+          agentModelId: data.dataset.agentModelId,
+          vlmModelId: data.dataset.vlmModelId
         });
 
         // delete data from training
@@ -177,7 +177,7 @@ export async function generateQA(): Promise<any> {
           inputTokens,
           outputTokens,
           usageId: data.billId,
-          model: modelData.model,
+          modelId: modelData.id,
           type: UsageItemTypeEnum.training_qa
         });
 

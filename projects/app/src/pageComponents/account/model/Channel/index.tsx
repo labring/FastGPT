@@ -127,10 +127,11 @@ const ChannelTable = () => {
             </Thead>
             <Tbody>
               {channelList.map((item) => {
+                const channelProvider = channelProviders[item.type];
                 const providerData = aiproxyChannels.find(
                   (channel) => channel.channelId === item.type
                 ) || {
-                  name: 'Invalid provider',
+                  name: channelProvider?.name || 'Invalid provider',
                   avatar: 'model/huggingface'
                 };
                 return (

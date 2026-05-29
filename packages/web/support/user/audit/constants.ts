@@ -120,6 +120,16 @@ export const adminAuditLogMap = {
     content: i18nT('account_team:log_admin_update_operational_ad'),
     typeLabel: i18nT('account_team:admin_update_operational_ad'),
     params: {}
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_MODEL_DEFAULT]: {
+    content: i18nT('account_team:log_admin_update_model_default'),
+    typeLabel: i18nT('account_team:admin_update_model_default'),
+    params: {} as { name?: string }
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_MODEL_WITH_JSON]: {
+    content: i18nT('account_team:log_admin_update_model_with_json'),
+    typeLabel: i18nT('account_team:admin_update_model_with_json'),
+    params: {} as { name?: string; modelCount: number }
   }
 };
 
@@ -963,6 +973,46 @@ export const auditLogMap = {
       skillType: string;
       oldOwnerName: string;
       newOwnerName: string;
+    }
+  },
+  //Model
+  [AuditEventEnum.CREATE_MODEL]: {
+    content: i18nT('account_team:log_create_model'),
+    typeLabel: i18nT('account_team:create_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.UPDATE_MODEL]: {
+    content: i18nT('account_team:log_update_model'),
+    typeLabel: i18nT('account_team:update_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.DELETE_MODEL]: {
+    content: i18nT('account_team:log_delete_model'),
+    typeLabel: i18nT('account_team:delete_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.UPDATE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_model_collaborator'),
+    typeLabel: i18nT('account_team:update_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      tmbList: string[];
+      groupList: string[];
+      orgList: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_model_collaborator'),
+    typeLabel: i18nT('account_team:delete_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      itemName: string;
+      itemValueName: string;
     }
   }
 } as const;

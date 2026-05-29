@@ -85,7 +85,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       value: 0.65
     },
     {
-      key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+      key: NodeInputKeyEnum.datasetSearchEmbeddingModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
@@ -99,7 +99,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       value: true
     },
     {
-      key: NodeInputKeyEnum.datasetSearchRerankModel,
+      key: NodeInputKeyEnum.datasetSearchRerankModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
@@ -127,7 +127,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       value: true
     },
     {
-      key: NodeInputKeyEnum.datasetSearchExtensionModel,
+      key: NodeInputKeyEnum.datasetSearchExtensionModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
@@ -165,7 +165,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
 
     // database
     {
-      key: NodeInputKeyEnum.generateSqlModel,
+      key: NodeInputKeyEnum.generateSqlModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: i18nT('common:search_model'),
       value: '',
@@ -183,14 +183,14 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
 
     // 多轮智能检索专用
     {
-      key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+      key: NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: i18nT('workflow:agentic_search_llm_model'),
       valueType: WorkflowIOValueTypeEnum.string,
       value: ''
     },
     {
-      key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+      key: NodeInputKeyEnum.datasetAgenticSearchRerankModelId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: i18nT('workflow:agentic_search_rerank_model'),
       valueType: WorkflowIOValueTypeEnum.string,

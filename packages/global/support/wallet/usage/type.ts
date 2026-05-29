@@ -30,7 +30,7 @@ export type UsageItemSchemaType = {
 } & UsageItemCountType;
 
 export type UsageItemCountType = {
-  model?: string;
+  modelId?: string;
   inputTokens?: number;
   outputTokens?: number;
   charsLength?: number;

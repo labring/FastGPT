@@ -8,7 +8,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { getLLMModel } from '../../../ai/model';
+import { getLLMModelById } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -19,7 +19,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
@@ -40,14 +40,14 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     runningAppInfo,
     node: { nodeId, name },
     histories,
-    params: { model, history = 6, agents, userChatInput }
+    params: { modelId, history = 6, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
 
-  const cqModel = getLLMModel(model);
+  const cqModel = getLLMModelById(modelId);
 
   const memoryKey = `${runningAppInfo.id}-${nodeId}`;
   const chatHistories = getHistories(history, histories);
@@ -66,7 +66,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
   const { totalPoints, modelName } = formatModelChars2Points({
-    model: cqModel.model,
+    modelId: cqModel.id,
     inputTokens: inputTokens,
     outputTokens: outputTokens
   });
@@ -74,7 +74,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     {
       moduleName: name,
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-      model: modelName,
+      modelId: cqModel.id,
       inputTokens: inputTokens,
       outputTokens: outputTokens
     }
@@ -92,7 +92,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-      model: modelName,
+      modelId: cqModel.id,
       query: userChatInput,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
@@ -145,7 +145,7 @@ const completions = async ({
     usage: { inputTokens, outputTokens }
   } = await createLLMResponse({
     body: {
-      model: cqModel.model,
+      modelId: cqModel.id,
       temperature: 0.01,
       messages: chats2GPTMessages({ messages, reserveId: false }),
       stream: true

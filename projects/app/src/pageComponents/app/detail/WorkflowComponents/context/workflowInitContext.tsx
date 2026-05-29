@@ -201,7 +201,7 @@ const WorkflowInitContextProvider = ({
       };
       if (map[flowNodeType]) {
         const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value || '';
         const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }

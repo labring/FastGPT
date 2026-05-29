@@ -114,7 +114,7 @@ export type CreateRerankTrainTaskRequest = {
   trainsetId?: string; // Optional: if present, skip trainset generation stage
   evalDatasetId?: string; // Optional: if present, skip eval dataset generation stage
 
-  baseModelId: string; // Base model ID (BaseModelItemType.model)
+  baseModelId: string; // Base model ID (BaseModelItemType.id)
   newModelName?: string; // Optional name for the trained model
   name?: string;
   trainMethod?: `${RerankTrainMethodEnum}`; // Training type: lora or task_tuning, defaults to lora

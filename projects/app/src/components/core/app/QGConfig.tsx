@@ -89,7 +89,7 @@ const QGConfigModal = ({
 
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
-  const model = value?.model || llmModelList?.[0]?.model;
+  const modelId = value?.modelId || llmModelList?.[0]?.id;
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -128,15 +128,15 @@ const QGConfigModal = ({
                 <Box flex={'1 0 0'}>
                   <AIModelSelector
                     width={'100%'}
-                    value={model}
+                    value={modelId}
                     list={llmModelList.map((item) => ({
-                      value: item.model,
+                      value: item.id,
                       label: item.name
                     }))}
                     onChange={(e) => {
                       onChange({
                         ...value,
-                        model: e
+                        modelId: e
                       });
                     }}
                   />

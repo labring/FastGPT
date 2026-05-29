@@ -1,5 +1,5 @@
 import { i18nT } from '../../common/i18n/utils';
-import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
+import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.schema';
 
 export enum ModelTypeEnum {
   llm = 'llm',
@@ -11,6 +11,7 @@ export enum ModelTypeEnum {
 
 export const defaultQAModels: LLMModelItemType[] = [
   {
+    id: 'default-llm-gpt5',
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
     model: 'gpt-5',
@@ -32,6 +33,7 @@ export const defaultQAModels: LLMModelItemType[] = [
 
 export const defaultVectorModels: EmbeddingModelItemType[] = [
   {
+    id: 'default-embedding-3-small',
     type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
     model: 'text-embedding-3-small',
@@ -45,6 +47,7 @@ export const defaultVectorModels: EmbeddingModelItemType[] = [
 
 export const defaultSTTModels: STTModelType[] = [
   {
+    id: 'default-stt-whisper',
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
     model: 'whisper-1',
@@ -53,11 +56,11 @@ export const defaultSTTModels: STTModelType[] = [
   }
 ];
 
-export const getModelFromList = <T extends { model: string }>(
+export const getModelFromList = <T extends { id: string }>(
   list: T[],
-  modelName: string
+  modelId: string
 ): T | undefined => {
-  return list.find((item) => item.model === modelName);
+  return list.find((item) => item.id === modelId);
 };
 
 export const modelTypeList = [

@@ -20,7 +20,7 @@ export type GenerateSkillParam = {
   name: string;
   description: string;
   requirements: string;
-  model: string;
+  modelId: string;
 };
 
 /**
@@ -169,7 +169,7 @@ export async function getSkillGuidance(
   name: string,
   description: string,
   requirements: string,
-  model: string
+  modelId: string
 ): Promise<{
   guidance: { goal: string; workflow?: string; requirements?: string; examples?: string };
   usage: { inputTokens: number; outputTokens: number };
@@ -187,7 +187,7 @@ export async function getSkillGuidance(
 
   const { answerText, usage } = await createLLMResponse({
     body: {
-      model,
+      modelId,
       messages,
       temperature: 0,
       max_tokens: 1000,
@@ -226,14 +226,14 @@ export async function getSkillGuidance(
 export async function generateSkillMd(
   params: GenerateSkillParam
 ): Promise<[string, { inputTokens: number; outputTokens: number }]> {
-  const model = params.model;
+  const modelId = params.modelId;
 
   // Step 1: Parse requirements into structured guidance
   const { guidance, usage: guidanceUsage } = await getSkillGuidance(
     params.name,
     params.description,
     params.requirements,
-    model
+    modelId
   );
 
   // Build messages for LLM
@@ -256,7 +256,7 @@ export async function generateSkillMd(
   // Step 2: Call LLM to generate SKILL.md (non-streaming)
   const { answerText, usage: generateUsage } = await createLLMResponse({
     body: {
-      model,
+      modelId,
       messages,
       temperature: 0.1,
       max_tokens: 4000,

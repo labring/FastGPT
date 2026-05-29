@@ -131,8 +131,8 @@ describe('EvalDatasetData Create API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock global.llmModelMap
-    global.llmModelMap = new Map([
+    // Mock global.llmModelIdMap
+    global.llmModelIdMap = new Map([
       ['gpt-4', { name: 'GPT-4' }],
       ['gpt-3.5-turbo', { name: 'GPT-3.5 Turbo' }]
     ]) as any;
@@ -253,14 +253,14 @@ describe('EvalDatasetData Create API', () => {
       );
 
       testValidation(
-        'should reject when enableQualityEvaluation is true but evaluationModel is missing',
+        'should reject when enableQualityEvaluation is true but evaluationModelId is missing',
         { enableQualityEvaluation: true },
         EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality
       );
 
       testValidation(
-        'should reject when enableQualityEvaluation is true but evaluationModel is not a string',
-        { enableQualityEvaluation: true, evaluationModel: 123 },
+        'should reject when enableQualityEvaluation is true but evaluationModelId is not a string',
+        { enableQualityEvaluation: true, evaluationModelId: 123 },
         EvaluationErrEnum.datasetDataEvaluationModelRequiredForQuality
       );
     });
@@ -439,7 +439,7 @@ describe('EvalDatasetData Create API', () => {
     it('should trigger quality evaluation when enabled with valid model', async () => {
       const req = createBaseRequest({
         enableQualityEvaluation: true,
-        evaluationModel: 'gpt-4'
+        evaluationModelId: 'gpt-4'
       });
 
       mockAddEvalDatasetDataQualityJob.mockResolvedValue(undefined);
@@ -447,7 +447,7 @@ describe('EvalDatasetData Create API', () => {
 
       expect(mockAddEvalDatasetDataQualityJob).toHaveBeenCalledWith({
         dataId: mockDataId,
-        evaluationModel: 'gpt-4'
+        evaluationModelId: 'gpt-4'
       });
       expect(result).toBe(mockDataId);
     });
@@ -463,7 +463,7 @@ describe('EvalDatasetData Create API', () => {
     it('should set correct metadata when quality evaluation is enabled', async () => {
       const req = createBaseRequest({
         enableQualityEvaluation: true,
-        evaluationModel: 'gpt-4'
+        evaluationModelId: 'gpt-4'
       });
 
       mockAddEvalDatasetDataQualityJob.mockResolvedValue(undefined);
@@ -511,7 +511,7 @@ describe('EvalDatasetData Create API', () => {
 
       const req = createBaseRequest({
         enableQualityEvaluation: true,
-        evaluationModel: 'gpt-4'
+        evaluationModelId: 'gpt-4'
       });
       await expect(handler_test(req as any)).rejects.toBe(pointsError);
     });

@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
@@ -13,6 +12,22 @@ import { resolveEmbeddingTasksByTunedModelId } from '@fastgpt/service/core/train
 import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { Types } from '@fastgpt/service/common/mongo';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
+import { ReadPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import type {
+  EmbeddingModelItemType,
+  LLMModelItemType,
+  RerankModelItemType,
+  STTModelType,
+  TTSModelType
+} from '@fastgpt/global/core/ai/model.schema';
+import { getModelListWithPermission } from '@fastgpt/service/support/permission/model/controller';
+import { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
+
+type ModelWithPermission = SystemModelItemType & {
+  permission: ModelPermission;
+};
 
 export type TrainTaskSummary = {
   totalCount: number;
@@ -27,7 +42,9 @@ export type TrainTaskSummary = {
 };
 
 export type ActiveModelListItem = SystemModelItemType & {
+  permission: ModelPermission;
   trainTaskSummary: TrainTaskSummary;
+  sourceMember?: SourceMemberType;
 };
 
 export type InitDateResponse = {
@@ -169,7 +186,7 @@ async function resolveCreatorNames(
 }
 
 async function buildActiveModelList(
-  models: SystemModelItemType[],
+  models: ModelWithPermission[],
   teamId: string
 ): Promise<ActiveModelListItem[]> {
   // Separate models by type and tuned status
@@ -185,12 +202,12 @@ async function buildActiveModelList(
     batchQueryNonTunedSummaries(
       MongoEmbeddingTrainTask,
       teamId,
-      nonTunedEmbedding.map((m) => m.model)
+      nonTunedEmbedding.map((m) => m.id)
     ),
     batchQueryNonTunedSummaries(
       MongoRerankTrainTask,
       teamId,
-      nonTunedRerank.map((m) => m.model)
+      nonTunedRerank.map((m) => m.id)
     )
   ]);
 
@@ -199,28 +216,116 @@ async function buildActiveModelList(
 
   // Individual queries for tuned models (rare, one per model)
   for (const model of tunedEmbedding) {
-    const tasks = await resolveEmbeddingTasksByTunedModelId(model.model, teamId);
-    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+    const tasks = await resolveEmbeddingTasksByTunedModelId(model.id, teamId);
+    summaryMap.set(model.id, computeSummaryFromTasks(tasks as any));
   }
   for (const model of tunedRerank) {
-    const tasks = await resolveRerankTasksByTunedModelId(model.model, teamId);
-    summaryMap.set(model.model, computeSummaryFromTasks(tasks as any));
+    const tasks = await resolveRerankTasksByTunedModelId(model.id, teamId);
+    summaryMap.set(model.id, computeSummaryFromTasks(tasks as any));
   }
 
   // Batch resolve creator names (1 query)
   await resolveCreatorNames(summaryMap);
 
-  // Build result list
-  return models.map((model) => {
-    if (model.type !== ModelTypeEnum.embedding && model.type !== ModelTypeEnum.rerank) {
-      return { ...model, trainTaskSummary: emptySummary() };
-    }
-    const summary = summaryMap.get(model.model);
-    return {
-      ...model,
-      trainTaskSummary: summary || emptySummary()
-    };
+  // Build result list with train task summaries
+  const resultList = models.map((model) => ({
+    ...model,
+    trainTaskSummary:
+      model.type === ModelTypeEnum.embedding || model.type === ModelTypeEnum.rerank
+        ? summaryMap.get(model.id) || emptySummary()
+        : emptySummary()
+  }));
+
+  const tmbIds = [...new Set(resultList.map((item) => item.tmbId).filter(Boolean) as string[])];
+  const members = tmbIds.length
+    ? await MongoTeamMember.find(
+        { _id: { $in: tmbIds.map((id) => new Types.ObjectId(id)) } },
+        { name: 1, avatar: 1, status: 1 }
+      ).lean()
+    : [];
+  const sourceMemberMap = new Map<string, SourceMemberType>(
+    members.map((member) => [
+      String(member._id),
+      {
+        name: member.name,
+        avatar: member.avatar ?? undefined,
+        status: member.status
+      }
+    ])
+  );
+
+  return resultList.map((item) => ({
+    ...item,
+    ...(item.tmbId
+      ? {
+          sourceMember: sourceMemberMap.get(String(item.tmbId))
+        }
+      : {})
+  }));
+}
+
+async function filterModelsByPermission({
+  teamId,
+  tmbId,
+  isRoot,
+  teamPer
+}: {
+  teamId: string;
+  tmbId: string;
+  isRoot: boolean;
+  teamPer: { isOwner: boolean };
+}): Promise<ModelWithPermission[]> {
+  return getModelListWithPermission({
+    models: global.systemActiveDesensitizedModels,
+    teamId,
+    tmbId,
+    teamPer,
+    isRoot
   });
+}
+
+function getDefaultModelsByPermission(models: SystemModelItemType[]): SystemDefaultModelType {
+  const modelIdSet = new Set(models.map((model) => model.id));
+  const getVisibleModel = <T extends SystemModelItemType | undefined>(model: T): T | undefined => {
+    if (!model?.id) return undefined;
+    return modelIdSet.has(model.id) ? model : undefined;
+  };
+  const llmModels = models.filter(
+    (model): model is LLMModelItemType => model.type === ModelTypeEnum.llm
+  );
+  const embeddingModels = models.filter(
+    (model): model is EmbeddingModelItemType => model.type === ModelTypeEnum.embedding
+  );
+  const ttsModels = models.filter(
+    (model): model is TTSModelType => model.type === ModelTypeEnum.tts
+  );
+  const sttModels = models.filter(
+    (model): model is STTModelType => model.type === ModelTypeEnum.stt
+  );
+  const rerankModels = models.filter(
+    (model): model is RerankModelItemType => model.type === ModelTypeEnum.rerank
+  );
+
+  return {
+    [ModelTypeEnum.llm]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.llm]) || llmModels[0],
+    datasetTextLLM: getVisibleModel(global.systemDefaultModel.datasetTextLLM) || llmModels[0],
+    datasetImageLLM:
+      getVisibleModel(global.systemDefaultModel.datasetImageLLM) ||
+      llmModels.find((model) => model.vision),
+    evaluation:
+      getVisibleModel(global.systemDefaultModel.evaluation) ||
+      llmModels.find((model) => model.useInEvaluation),
+    helperBotLLM: getVisibleModel(global.systemDefaultModel.helperBotLLM) || llmModels[0],
+    [ModelTypeEnum.embedding]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.embedding]) || embeddingModels[0],
+    [ModelTypeEnum.tts]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.tts]) || ttsModels[0],
+    [ModelTypeEnum.stt]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.stt]) || sttModels[0],
+    [ModelTypeEnum.rerank]:
+      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.rerank]) || rerankModels[0]
+  };
 }
 
 async function handler(
@@ -230,7 +335,16 @@ async function handler(
   const { bufferId } = req.query;
 
   try {
-    const { teamId } = await authCert({ req, authToken: true });
+    const {
+      teamId,
+      tmbId,
+      isRoot,
+      permission: teamPer
+    } = await authUserPer({
+      req,
+      authToken: true,
+      per: ReadPermissionVal
+    });
     // If bufferId is the same as the current bufferId, return directly
     if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
       return {
@@ -239,28 +353,38 @@ async function handler(
       };
     }
 
+    const userAccessibleModels = await filterModelsByPermission({
+      teamId,
+      tmbId,
+      isRoot,
+      teamPer
+    });
+
     return {
       bufferId: global.systemInitBufferId,
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
-      activeModelList: await buildActiveModelList(global.systemActiveDesensitizedModels, teamId),
-      defaultModels: global.systemDefaultModel,
+      activeModelList: await buildActiveModelList(userAccessibleModels, teamId),
+      defaultModels: getDefaultModelsByPermission(userAccessibleModels),
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache
     };
   } catch (error) {
-    const referer = req.headers.referer;
+    const referer = req.headers?.referer;
     if (referer?.includes('/price')) {
       return {
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
         aiproxyChannels: global.aiproxyChannelsCache,
-        activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
-          ...model,
-          trainTaskSummary: emptySummary()
-        }))
+        activeModelList: global.systemActiveDesensitizedModels
+          .filter((model) => !model.isCustom)
+          .map((model) => ({
+            ...model,
+            permission: new ModelPermission({ role: ReadRoleVal }),
+            trainTaskSummary: emptySummary()
+          }))
       };
     }
 

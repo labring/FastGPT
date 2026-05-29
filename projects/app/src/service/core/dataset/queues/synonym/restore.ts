@@ -6,7 +6,7 @@ import {
   deleteDatasetDataVector,
   insertDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import type {
@@ -19,7 +19,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { restoreOriginalText } from '@fastgpt/service/core/dataset/indexTransform/utils';
 
 type TrainingDataType = DatasetTrainingSchemaType & {
-  dataset: { vectorModel: string };
+  dataset: { vectorModelId: string };
   collection: { name: string };
   data: {
     _id: string;
@@ -70,7 +70,7 @@ export const processSynonymRestore = async ({
 
     const insertResult = await insertDatasetDataVector({
       inputs: indexesToRestore.map((item) => item.originalText),
-      model: getEmbeddingModel(trainingData.dataset.vectorModel),
+      model: getEmbeddingModelById(trainingData.dataset.vectorModelId),
       teamId: String(teamId),
       datasetId: String(datasetId),
       collectionId: String(trainingData.collectionId)

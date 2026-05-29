@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -90,7 +90,7 @@ export const useInitApp = () => {
   const initFetch = useMemoizedFn(async () => {
     const {
       feConfigs: { scripts, isPlus, systemTitle }
-    } = await clientInitData();
+    } = await clientInitData(3, { forceRefresh: true });
 
     setTitle(systemTitle || 'FastGPT');
 

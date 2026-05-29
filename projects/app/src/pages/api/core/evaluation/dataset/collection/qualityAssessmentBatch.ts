@@ -17,7 +17,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { authEvaluationDatasetWrite } from '@fastgpt/service/core/evaluation/common';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { getEvaluationModel } from '@fastgpt/service/core/ai/model';
+import { getEvaluationModelById } from '@fastgpt/service/core/ai/model';
 import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation';
 
 export type QualityAssessmentBatchQuery = {};
@@ -26,7 +26,7 @@ export type QualityAssessmentBatchResponse = qualityAssessmentBatchResponse;
 async function handler(
   req: ApiRequestProps<QualityAssessmentBatchBody, QualityAssessmentBatchQuery>
 ): Promise<QualityAssessmentBatchResponse> {
-  const { collectionId, evaluationModel } = req.body;
+  const { collectionId, evaluationModelId } = req.body;
 
   const { teamId, tmbId } = await authEvaluationDatasetWrite(collectionId, {
     req,
@@ -38,12 +38,12 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.datasetCollectionIdRequired);
   }
 
-  if (evaluationModel !== undefined && typeof evaluationModel !== 'string') {
+  if (evaluationModelId !== undefined && typeof evaluationModelId !== 'string') {
     return Promise.reject(EvaluationErrEnum.evalModelNameInvalid);
   }
 
-  if (evaluationModel) {
-    if (!global.llmModelMap.has(evaluationModel)) {
+  if (evaluationModelId) {
+    if (!global.llmModelIdMap.has(evaluationModelId)) {
       return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
     }
   }
@@ -60,13 +60,15 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.datasetCollectionNotFound);
   }
 
-  const finalEvaluationModel = getEvaluationModel(evaluationModel || collection.evaluationModel);
+  const finalEvaluationModel = getEvaluationModelById(
+    evaluationModelId || collection.evaluationModelId
+  );
 
   if (!finalEvaluationModel) {
     return Promise.reject(EvaluationErrEnum.evaluatorLLmModelNotFound);
   }
 
-  const evalModel = finalEvaluationModel.model;
+  const evalModelId = finalEvaluationModel.id;
 
   const dataItems = await MongoEvalDatasetData.find({
     evalDatasetCollectionId: collectionId,
@@ -122,14 +124,14 @@ async function handler(
         // Create new job
         await addEvalDatasetDataQualityJob({
           dataId: dataId,
-          evaluationModel: evalModel
+          evaluationModelId: evalModelId
         });
 
         // Reset quality metadata and quality result fields
         await MongoEvalDatasetData.findByIdAndUpdate(dataId, {
           $set: {
             'qualityMetadata.status': EvalDatasetDataQualityStatusEnum.queuing,
-            'qualityMetadata.model': evalModel,
+            'qualityMetadata.modelId': evalModelId,
             'qualityMetadata.queueTime': new Date()
           },
           $unset: {
@@ -160,7 +162,7 @@ async function handler(
 
   addLog.info('Batch quality assessment completed', {
     collectionId,
-    finalEvaluationModel: evalModel,
+    finalEvaluationModel: evalModelId,
     processedCount,
     skippedCount,
     errorCount,

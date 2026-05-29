@@ -19,35 +19,6 @@ import type { ParentIdType } from '../../common/parentFolder/type';
 import type { APIFileItemType } from './apiDataset/type';
 import type { PermissionEffectScopeEnum } from '../../support/permission/constant';
 
-/* ================= dataset ===================== */
-export type DatasetUpdateBody = {
-  id: string;
-
-  apiDatasetServer?: DatasetSchemaType['apiDatasetServer'];
-
-  parentId?: ParentIdType;
-  name?: string;
-  avatar?: string;
-  intro?: string;
-
-  agentModel?: string;
-  vlmModel?: string;
-  vectorModel?: string;
-
-  websiteConfig?: DatasetSchemaType['websiteConfig'];
-  databaseConfig?: DatasetSchemaType['databaseConfig'];
-  externalReadUrl?: DatasetSchemaType['externalReadUrl'];
-  defaultPermission?: DatasetSchemaType['defaultPermission'];
-  chunkSettings?: DatasetSchemaType['chunkSettings'];
-  permissionEffectScope?: PermissionEffectScopeEnum;
-
-  // sync schedule
-  autoSync?: boolean;
-
-  // move option: whether to inherit new parent's permission (default true)
-  inheritParentPermission?: boolean;
-};
-
 /* ================= collection ===================== */
 // Input + store params
 type DatasetCollectionStoreDataType = ChunkSettingsType & {

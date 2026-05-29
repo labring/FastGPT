@@ -30,7 +30,7 @@ export type VariableItemType = z.infer<typeof VariableItemTypeSchema>;
 // tts
 export const AppTTSConfigTypeSchema = z.object({
   type: z.enum(['none', 'web', 'model']),
-  model: z.string().optional(),
+  modelId: z.string().optional(),
   voice: z.string().optional(),
   speed: z.number().optional()
 });
@@ -47,7 +47,7 @@ export type AppWhisperConfigType = z.infer<typeof AppWhisperConfigTypeSchema>;
 // question guide
 export const AppQGConfigTypeSchema = z.object({
   open: z.boolean(),
-  model: z.string().optional(),
+  modelId: z.string().optional(),
   customPrompt: z.string().optional()
 });
 export type AppQGConfigType = z.infer<typeof AppQGConfigTypeSchema>;
@@ -181,23 +181,23 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   embeddingWeight: z.number().optional(), // embedding weight, fullText weight = 1 - embeddingWeight
 
   usingReRank: z.boolean().optional(),
-  rerankModel: z.string().optional(),
-  embeddingModel: z.string().optional(),
+  rerankModelId: z.string().optional(),
+  embeddingModelId: z.string().optional(),
   rerankMethod: z.enum(RerankMethodEnum).optional(),
   rerankWeight: z.number().optional(),
 
   datasetSearchUsingExtensionQuery: z.boolean().optional(),
-  datasetSearchExtensionModel: z.string().optional(),
+  datasetSearchExtensionModelId: z.string().optional(),
   datasetSearchExtensionBg: z.string().optional(),
 
   // database
-  generateSqlModel: z.string().optional(),
+  generateSqlModelId: z.string().optional(),
 
   // retrieval mode
   retrievalMode: z.enum(DatasetRetrievalModeEnum).optional(),
-  agenticSearchLLMModel: z.string().optional(),
+  agenticSearchLLMModelId: z.string().optional(),
   agenticSearchReasoning: z.boolean().optional(),
-  agenticSearchRerankModel: z.string().optional(),
+  agenticSearchRerankModelId: z.string().optional(),
 
   collectionFilterMatch: z.string().optional(),
   authTmbId: z.boolean().optional()
@@ -205,7 +205,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 
 export type SettingAIDataType = {
-  model: string;
+  modelId: string;
   temperature?: number;
   maxToken?: number;
   isResponseAnswerText?: boolean;
@@ -258,7 +258,7 @@ export type AppSchema = AppSchemaType;
 
 export type AppSimpleEditFormType = {
   aiSettings: {
-    [NodeInputKeyEnum.aiModel]: string;
+    [NodeInputKeyEnum.aiModelId]: string;
     [NodeInputKeyEnum.aiSystemPrompt]?: string | undefined;
     [NodeInputKeyEnum.aiChatTemperature]?: number;
     [NodeInputKeyEnum.aiChatMaxToken]?: number;

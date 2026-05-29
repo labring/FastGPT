@@ -20,8 +20,8 @@ describe('update training data test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',

@@ -5,7 +5,8 @@ import type {
   EvalModelConfigType,
   SynthesisResult
 } from '@fastgpt/global/core/evaluation/metric/type';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModelById, getEmbeddingModelById } from '../../ai/model';
+import { getModelEndpointConfig } from '../../ai/config';
 import { createDitingSynthesisClient } from './ditingSynthesisClient';
 
 export abstract class Synthesizer {
@@ -73,26 +74,29 @@ export function createSynthesizerInstance(
     synthesizerName: synthesizerName
   };
 
-  if (llmConfig?.name) {
+  if (llmConfig?.modelId) {
     try {
-      const llm = getLLMModel(llmConfig.name);
+      const llm = getLLMModelById(llmConfig.modelId);
+      const endpoint = getModelEndpointConfig(llm);
       llmConfig = {
         ...llmConfig,
-        baseUrl: llm.requestUrl || '',
-        apiKey: llm.requestAuth || ''
+        name: endpoint.name,
+        baseUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey
       };
     } catch (err) {
       throw new Error(`Get LLM model failed: ${(err as Error).message}`);
     }
   }
 
-  if (embeddingConfig?.name) {
+  if (embeddingConfig?.modelId) {
     try {
-      const embedding = getEmbeddingModel(embeddingConfig.name);
+      const embedding = getEmbeddingModelById(embeddingConfig.modelId);
+      const endpoint = getModelEndpointConfig(embedding);
       embeddingConfig = {
         ...embeddingConfig,
-        baseUrl: embedding.requestUrl || '',
-        apiKey: embedding.requestAuth || ''
+        baseUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey
       };
     } catch (err) {
       throw new Error(`Get embedding model failed: ${(err as Error).message}`);

@@ -1095,11 +1095,11 @@ export class WorkflowQueue {
           'langfuse.observation.output',
           JSON.stringify(filterLangfuseNodeOutput(dispatchRes))
         );
-        if (LANGFUSE_LLM_NODE_TYPES.has(node.flowNodeType) && formatResponseData?.model) {
+        if (LANGFUSE_LLM_NODE_TYPES.has(node.flowNodeType) && formatResponseData?.modelId) {
           stepSpan.setAttribute('langfuse.observation.type', 'generation');
           stepSpan.setAttribute(
             'langfuse.observation.model.name',
-            String(formatResponseData.model)
+            String(formatResponseData.modelId)
           );
           const usageDetails: Record<string, number> = {};
           if (formatResponseData.inputTokens != null) {

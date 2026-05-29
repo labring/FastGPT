@@ -22,7 +22,7 @@ export type OptimizerPromptProps = {
 export type OnOptimizePromptProps = {
   originalPrompt?: string;
   input: string;
-  model: string;
+  modelId: string;
   onResult: (result: string) => void;
   abortController?: AbortController;
 };
@@ -44,7 +44,7 @@ const OptimizerPopover = ({
   const [selectedModel = '', setSelectedModel] = useLocalStorageState<string>(
     'prompt-editor-selected-model',
     {
-      defaultValue: defaultModels.llm?.model || ''
+      defaultValue: defaultModels.llm?.id || ''
     }
   );
 
@@ -69,7 +69,7 @@ const OptimizerPopover = ({
             </Box>
           </Flex>
         ),
-        value: model.model
+        value: model.id
       };
     });
   }, [llmModelList]);
@@ -89,7 +89,7 @@ const OptimizerPopover = ({
     await onOptimizePrompt({
       originalPrompt: defaultPrompt,
       input: optimizerInput,
-      model: selectedModel,
+      modelId: selectedModel,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {
           setOptimizedResult((prev) => prev + result);

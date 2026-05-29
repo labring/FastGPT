@@ -38,7 +38,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: 'AI 相关',
-      tags: [TagsMap.aiSkill, TagsMap.sandbox]
+      tags: [TagsMap.aiSkill, TagsMap.sandbox, TagsMap.modelManage]
     },
     {
       name: '对话模块配置',

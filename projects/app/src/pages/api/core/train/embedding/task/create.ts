@@ -20,6 +20,8 @@ import type {
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { expandFolderDatasetIds } from '@fastgpt/service/core/dataset/controller';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -50,6 +52,14 @@ async function handler(
     authApiKey: true,
     per: WritePermissionVal
   });
+  const { model } = await authModel({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelId: baseModelId,
+    per: ReadPermissionVal
+  });
+  assertModelAvailable(model, { type: ModelTypeEnum.embedding });
 
   // 2. Validate training environment (SFT Bridge and DiTing availability)
   await validateTrainingEnvironment();

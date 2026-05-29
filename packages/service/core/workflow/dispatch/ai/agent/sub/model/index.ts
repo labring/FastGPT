@@ -1,11 +1,11 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { createLLMResponse, type ResponseEvents } from '../../../../../../ai/llm/request';
-import { getLLMModel } from '../../../../../../ai/model';
+import { getLLMModelById } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 type ModelAgentConfig = {
-  model: string;
+  modelId: string;
   temperature?: number;
   top_p?: number;
   stream?: boolean;
@@ -24,7 +24,7 @@ type DispatchPlanAgentResponse = {
 };
 
 export async function dispatchModelAgent({
-  model,
+  modelId,
   temperature,
   top_p,
   stream,
@@ -33,7 +33,7 @@ export async function dispatchModelAgent({
   onReasoning,
   onStreaming
 }: DispatchModelAgentProps): Promise<DispatchPlanAgentResponse> {
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModelById(modelId);
 
   const messages: ChatCompletionMessageParam[] = [
     ...(systemPrompt
@@ -52,7 +52,7 @@ export async function dispatchModelAgent({
 
   const { answerText, usage } = await createLLMResponse({
     body: {
-      model: modelData.model,
+      modelId: modelData.id,
       temperature,
       messages: messages,
       top_p,
@@ -63,7 +63,7 @@ export async function dispatchModelAgent({
   });
 
   const { totalPoints, modelName } = formatModelChars2Points({
-    model: modelData.model,
+    modelId: modelData.id,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens
   });
@@ -73,7 +73,7 @@ export async function dispatchModelAgent({
     usages: [
       {
         moduleName: modelName,
-        model: modelData.model,
+        modelId: modelData.id,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens

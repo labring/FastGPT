@@ -29,12 +29,12 @@ export const resolveDatasetParams = (
     limit: params[NodeInputKeyEnum.datasetMaxTokens],
     searchMode: params[NodeInputKeyEnum.datasetSearchMode],
     embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
-    embeddingModel: params[NodeInputKeyEnum.datasetSearchEmbeddingModel],
+    embeddingModelId: params[NodeInputKeyEnum.datasetSearchEmbeddingModelId],
     usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
-    rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
+    rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
-    datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
+    datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
     collectionFilterMatch: params[NodeInputKeyEnum.collectionFilterMatch]
   } as AppFormEditFormType['dataset'];

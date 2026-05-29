@@ -33,8 +33,7 @@ export async function mockSynthesizeEvalData(
       success: false,
       requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       status: 'failed',
-      error: 'Mock synthesis failed',
-      usages: []
+      error: 'Mock synthesis failed'
     };
   }
 

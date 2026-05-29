@@ -75,9 +75,9 @@ const mockCheckEvalDatasetDataQualityQueueHealth = vi.mocked(
   checkEvalDatasetDataQualityQueueHealth
 );
 
-// Mock global.llmModelMap
+// Mock global.llmModelIdMap
 beforeEach(() => {
-  global.llmModelMap = new Map([
+  global.llmModelIdMap = new Map([
     ['gpt-4', { model: 'gpt-4' }],
     ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
   ]) as any;
@@ -120,8 +120,8 @@ describe('EvalDatasetData Import API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset global.llmModelMap
-    global.llmModelMap = new Map([
+    // Reset global.llmModelIdMap
+    global.llmModelIdMap = new Map([
       ['gpt-4', { model: 'gpt-4' }],
       ['gpt-3.5-turbo', { model: 'gpt-3.5-turbo' }]
     ]) as any;
@@ -273,7 +273,7 @@ describe('EvalDatasetData Import API', () => {
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
-          evaluationModel: 'non-existent-model'
+          evaluationModelId: 'non-existent-model'
         }
       } as any);
 
@@ -490,7 +490,7 @@ describe('EvalDatasetData Import API', () => {
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
-          evaluationModel: 'gpt-4'
+          evaluationModelId: 'gpt-4'
         }
       } as any);
 
@@ -504,11 +504,11 @@ describe('EvalDatasetData Import API', () => {
       expect(mockAddEvalDatasetDataQualityBulk).toHaveBeenCalledWith([
         {
           dataId: '65f5b5b5b5b5b5b5b5b5b5b6',
-          evaluationModel: 'gpt-4'
+          evaluationModelId: 'gpt-4'
         },
         {
           dataId: '65f5b5b5b5b5b5b5b5b5b5b7',
-          evaluationModel: 'gpt-4'
+          evaluationModelId: 'gpt-4'
         }
       ]);
     });

@@ -23,7 +23,7 @@ import {
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { getLLMModel } from '../../../ai/model';
+import { getLLMModelById } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -82,7 +82,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     chatConfig,
     usageId,
     params: {
-      model,
+      modelId,
       temperature,
       maxToken,
       history = 6,
@@ -107,10 +107,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
-  const modelConstantsData = getLLMModel(model);
+  const modelConstantsData = getLLMModelById(modelId);
   if (!modelConstantsData) {
     return getNodeErrResponse({
-      error: `Model ${model} is undefined, you need to select a chat model.`
+      error: `Model ${modelId} not found`,
     });
   }
 
@@ -210,7 +210,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     } = await createLLMResponse({
       throwError: false,
       body: {
-        model: modelConstantsData.model,
+        modelId: modelConstantsData.id,
         stream,
         messages: filterMessages,
         temperature,
@@ -253,7 +253,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
     // Usage push
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelConstantsData.model,
+      modelId: modelConstantsData.id,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
@@ -262,7 +262,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       {
         moduleName: name,
         totalPoints: points,
-        model: modelName,
+        modelId: modelConstantsData.id,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
@@ -275,7 +275,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         error,
         responseData: {
           totalPoints: points,
-          model: modelName,
+          modelId: modelConstantsData.id,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           query: `${userChatInput}`,
@@ -300,7 +300,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: points,
-        model: modelName,
+        modelId: modelConstantsData.id,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         query: `${userChatInput}`,

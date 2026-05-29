@@ -9,15 +9,15 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn().mockReturnValue({
+  getLLMModelById: vi.fn().mockReturnValue({
     requestUrl: 'https://api.test.com',
     requestAuth: 'test-key'
   }),
-  getEvaluationModel: vi.fn().mockReturnValue({
+  getEvaluationModelById: vi.fn().mockReturnValue({
     requestUrl: 'https://api.test.com',
     requestAuth: 'test-key'
   }),
-  getEmbeddingModel: vi.fn().mockReturnValue({
+  getEmbeddingModelById: vi.fn().mockReturnValue({
     requestUrl: 'https://api.test.com',
     requestAuth: 'test-key'
   })
@@ -53,7 +53,7 @@ describe('Evaluator Validation', () => {
         updateTime: new Date()
       },
       runtimeConfig: {
-        llm: 'gpt-4'
+        llmId: 'gpt-4'
       }
     };
 
@@ -138,13 +138,13 @@ describe('Evaluator Validation', () => {
         updateTime: new Date()
       },
       runtimeConfig: {
-        llm: 'invalid-model-name'
+        llmId: 'invalid-model-name'
       }
     };
 
-    // Mock getEvaluationModel to throw an error (used by createEvaluatorInstance)
-    const { getEvaluationModel } = await import('@fastgpt/service/core/ai/model');
-    (getEvaluationModel as any).mockImplementation(() => {
+    // Mock getEvaluationModelById to throw an error (used by createEvaluatorInstance)
+    const { getEvaluationModelById } = await import('@fastgpt/service/core/ai/model');
+    (getEvaluationModelById as any).mockImplementation(() => {
       throw new Error('Model not found');
     });
 

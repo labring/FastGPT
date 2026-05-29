@@ -33,7 +33,7 @@ import {
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
@@ -42,10 +42,13 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { AddModelButton } from './AddModelBox';
+import { AddModelButton, getNewModelFormData } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -56,6 +59,7 @@ const ModelTable = () => {
   const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
+  const canCreateModel = isRoot || !!userInfo?.team.permission.hasModelCreatePer;
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: React.ReactNode; value: string | '' }[]>([
@@ -254,11 +258,11 @@ const ModelTable = () => {
     onSuccess: refreshModels
   });
 
-  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+  const [editModelData, setEditModelData] = useState<GetModelDetailResponse>();
   const { runAsync: onEditModel, loading: loadingData } = useRequest(
     (modelId: string) => getSystemModelDetail(modelId),
     {
-      onSuccess: (data: SystemModelItemType) => {
+      onSuccess: (data: GetModelDetailResponse) => {
         setEditModelData(data);
       }
     }
@@ -267,24 +271,7 @@ const ModelTable = () => {
   const onCreateModel = (type: ModelTypeEnum) => {
     const defaultModel = defaultModels[type];
 
-    setEditModelData({
-      ...defaultModel,
-      model: '',
-      name: '',
-      charsPointsPrice: 0,
-      inputPrice: undefined,
-      outputPrice: undefined,
-      priceTiers: undefined,
-
-      isCustom: true,
-      isActive: true,
-
-      isDefault: false,
-      isDefaultDatasetTextModel: false,
-      isDefaultDatasetImageModel: false,
-      // @ts-ignore
-      type
-    });
+    setEditModelData(getNewModelFormData(defaultModel, type));
   };
 
   const {
@@ -345,9 +332,9 @@ const ModelTable = () => {
             <Button h={'36px'} variant={'whiteBase'} onClick={onOpenJsonConfig}>
               {t('account:model.json_config')}
             </Button>
-            <AddModelButton h={'36px'} onCreate={onCreateModel} />
           </>
         )}
+        {canCreateModel && <AddModelButton h={'36px'} onCreate={onCreateModel} />}
       </Flex>
       <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <TableContainer h={'100%'} overflowY={'auto'}>
@@ -369,26 +356,35 @@ const ModelTable = () => {
                 <Th fontSize={'xs'}>
                   {t('account:model.active')}({activeModelLength})
                 </Th>
+                <Th fontSize={'xs'}>{t('common:permission.Owner')}</Th>
+                <Th fontSize={'xs'}>{t('common:permission.Permission')}</Th>
                 <Th fontSize={'xs'}></Th>
               </Tr>
             </Thead>
             <Tbody>
               {modelList.map((item, index) => (
-                <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
+                <Tr key={item.id} _hover={{ bg: 'myGray.50' }}>
                   <Td fontSize={'sm'}>
                     <HStack>
                       <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
                       <Flex alignItems={'center'} gap={1} minW={0}>
                         <CopyBox
-                          value={showModelId ? item.model : item.name}
+                          value={showModelId ? item.id : item.name}
                           color={'myGray.900'}
                           fontWeight={'500'}
                         >
-                          {showModelId ? item.model : item.name}
+                          {showModelId ? item.id : item.name}
                         </CopyBox>
                         {item.testMode && <TestModeBetaTag />}
                       </Flex>
                     </HStack>
+                    {!showModelId && (
+                      <Box mt={1} pl={7}>
+                        <CopyBox value={item.model} color={'myGray.500'} fontSize={'xs'}>
+                          {item.model}
+                        </CopyBox>
+                      </Box>
+                    )}
                     <HStack mt={2}>
                       {item.contextToken && (
                         <MyTag type="borderFill" colorSchema="blue" py={0.5}>
@@ -415,38 +411,73 @@ const ModelTable = () => {
                     <Switch
                       size={'sm'}
                       isChecked={item.isActive}
+                      isDisabled={!item.permission.hasManagePer}
                       onChange={(e) =>
                         updateModel({
-                          model: item.model,
-                          metadata: { isActive: e.target.checked }
+                          id: item.id,
+                          isActive: e.target.checked
                         })
                       }
                       colorScheme={'myBlue'}
                     />
+                  </Td>
+                  <Td fontSize={'sm'} color={'myGray.700'}>
+                    {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
+                  </Td>
+                  <Td fontSize={'sm'}>
+                    <MyTag type="borderFill" colorSchema={item.isShared ? 'green' : 'gray'}>
+                      {item.isShared
+                        ? t('common:permission.Public')
+                        : t('common:permission.Private')}
+                    </MyTag>
                   </Td>
                   <Td>
                     <HStack>
                       <MyIconButton
                         icon={'core/chat/sendLight'}
                         tip={t('account:model.test_model')}
-                        onClick={() => onTestModel({ model: item.model })}
+                        onClick={() => onTestModel({ id: item.id })}
                       />
-                      <MyIconButton
-                        icon={'common/settingLight'}
-                        tip={t('account:model.edit_model')}
-                        onClick={() => onEditModel(item.model)}
-                      />
-                      {item.isCustom && (
-                        <PopoverConfirm
-                          Trigger={
-                            <Box>
-                              <MyIconButton icon={'delete'} hoverColor={'red.500'} />
-                            </Box>
-                          }
-                          type="delete"
-                          content={t('account:model.delete_model_confirm')}
-                          onConfirm={() => deleteModel({ model: item.model })}
-                        />
+                      {item.permission.hasManagePer && (
+                        <>
+                          <MyIconButton
+                            icon={'common/settingLight'}
+                            tip={t('account:model.edit_model')}
+                            onClick={() => onEditModel(item.id)}
+                          />
+                          <LazyCollaboratorProvider
+                            selectedHint={t('account_model:model_permission_config_hint')}
+                            defaultRole={ReadRoleVal}
+                            onGetCollaboratorList={() => getModelCollaborators(item.id)}
+                            onUpdateCollaborators={({ collaborators }) =>
+                              updateModelCollaborators({
+                                collaborators,
+                                modelIds: [item.id]
+                              })
+                            }
+                            permission={userInfo!.team.permission}
+                          >
+                            {({ onOpenManageModal }) => (
+                              <MyIconButton
+                                icon={'modal/changePer'}
+                                tip={t('common:permission.Permission config')}
+                                onClick={onOpenManageModal}
+                              />
+                            )}
+                          </LazyCollaboratorProvider>
+                          {item.isCustom && (
+                            <PopoverConfirm
+                              Trigger={
+                                <Box>
+                                  <MyIconButton icon={'delete'} hoverColor={'red.500'} />
+                                </Box>
+                              }
+                              type="delete"
+                              content={t('account:model.delete_model_confirm')}
+                              onConfirm={() => deleteModel({ id: item.id })}
+                            />
+                          )}
+                        </>
                       )}
                     </HStack>
                   </Td>

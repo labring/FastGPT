@@ -27,10 +27,10 @@ describe('resolveDatasetParams', () => {
       searchMode: 'fullText',
       embeddingWeight: 0.3,
       usingReRank: true,
-      rerankModel: 'rerank-v1',
+      rerankModelId: 'rerank-v1',
       rerankWeight: 0.6,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModel: 'gpt-4',
+      datasetSearchExtensionModelId: 'gpt-4',
       datasetSearchExtensionBg: 'background text',
       collectionFilterMatch: 'filter'
     });
@@ -41,10 +41,10 @@ describe('resolveDatasetParams', () => {
     expect(result!.searchMode).toBe('fullText');
     expect(result!.embeddingWeight).toBe(0.3);
     expect(result!.usingReRank).toBe(true);
-    expect(result!.rerankModel).toBe('rerank-v1');
+    expect(result!.rerankModelId).toBe('rerank-v1');
     expect(result!.rerankWeight).toBe(0.6);
     expect(result!.datasetSearchUsingExtensionQuery).toBe(true);
-    expect(result!.datasetSearchExtensionModel).toBe('gpt-4');
+    expect(result!.datasetSearchExtensionModelId).toBe('gpt-4');
     expect(result!.datasetSearchExtensionBg).toBe('background text');
     expect(result!.collectionFilterMatch).toBe('filter');
   });

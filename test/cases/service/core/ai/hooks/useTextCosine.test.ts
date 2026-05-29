@@ -16,7 +16,7 @@ describe('useTextCosine', () => {
   describe('lazyGreedyQuerySelection', () => {
     it('should return empty array when candidates is empty', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'test query',
@@ -29,7 +29,7 @@ describe('useTextCosine', () => {
 
     it('should select k candidates when k <= candidates.length', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original text',
@@ -42,7 +42,7 @@ describe('useTextCosine', () => {
 
     it('should select all candidates when k > candidates.length', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original text',
@@ -55,7 +55,7 @@ describe('useTextCosine', () => {
 
     it('should select single candidate correctly', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original text',
@@ -79,7 +79,7 @@ describe('useTextCosine', () => {
       });
 
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original text',
@@ -94,7 +94,7 @@ describe('useTextCosine', () => {
 
     it('should balance relevance and diversity with default alpha', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original text',
@@ -111,7 +111,7 @@ describe('useTextCosine', () => {
     });
 
     it('should call getVectorsByText with correct parameters', async () => {
-      const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModel: 'custom-model' });
+      const { lazyGreedyQuerySelection } = useTextCosine({ embeddingModelId: 'custom-model' });
       await lazyGreedyQuerySelection({
         originalText: 'test query',
         candidates: ['candidate'],
@@ -135,7 +135,7 @@ describe('useTextCosine', () => {
       });
 
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original',
@@ -158,7 +158,7 @@ describe('useTextCosine', () => {
       });
 
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
 
       // With high alpha (more relevance)
@@ -179,7 +179,7 @@ describe('useTextCosine', () => {
       mockGetVectorsByText.mockResolvedValueOnce(mockResponse);
 
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'test',
@@ -192,7 +192,7 @@ describe('useTextCosine', () => {
 
     it('should handle k=0 correctly', async () => {
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'test',
@@ -216,7 +216,7 @@ describe('useTextCosine', () => {
       });
 
       const { lazyGreedyQuerySelection } = useTextCosine({
-        embeddingModel: 'text-embedding-ada-002'
+        embeddingModelId: 'text-embedding-ada-002'
       });
       const result = await lazyGreedyQuerySelection({
         originalText: 'original',

@@ -1,4 +1,4 @@
-import { getVlmModel, getVlmModelList, getLLMModel } from '../../ai/model';
+import { getVlmModelById, getVlmModelList, getLLMModelById } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type {
@@ -30,9 +30,9 @@ export type AdaptiveConfigResult = {
 /**
  * Check if VLM model is available
  */
-function checkVlmModelAvailable(vlmModel?: string): boolean {
+function checkVlmModelAvailable(vlmModelId?: string): boolean {
   // 1. Check if dataset has vlmModel configured
-  if (!vlmModel) {
+  if (!vlmModelId) {
     return false;
   }
 
@@ -43,21 +43,21 @@ function checkVlmModelAvailable(vlmModel?: string): boolean {
   }
 
   // 3. Check if configured model is in available list
-  const model = getVlmModel(vlmModel);
+  const model = getVlmModelById(vlmModelId);
   return !!model;
 }
 
 /**
  * Check if Agent model (LLM) is available
  */
-function checkAgentModelAvailable(agentModel?: string): boolean {
-  if (!agentModel) {
+function checkAgentModelAvailable(agentModelId?: string): boolean {
+  if (!agentModelId) {
     return false;
   }
 
   // Agent model is LLM model, check if it exists in system model list
-  const model = getLLMModel(agentModel);
-  return !!model && model.model === agentModel;
+  const model = getLLMModelById(agentModelId);
+  return !!model;
 }
 
 /**
@@ -89,7 +89,7 @@ export function adaptiveAdjustConfig(params: AdaptiveConfigParams): AdaptiveConf
   const adjustedParseConfig: { customPdfParse?: boolean } = {};
 
   // 1. Check VLM model availability, adaptively adjust image index
-  const hasVlmModel = checkVlmModelAvailable(dataset.vlmModel);
+  const hasVlmModel = checkVlmModelAvailable(dataset.vlmModelId);
   if (adjustedEnhanceConfig.imageIndex && !hasVlmModel) {
     adjustments.push({
       field: 'imageIndex',
@@ -101,7 +101,7 @@ export function adaptiveAdjustConfig(params: AdaptiveConfigParams): AdaptiveConf
   }
 
   // 2. Check Agent model availability, adaptively adjust AI-related indexes
-  const hasAgentModel = checkAgentModelAvailable(dataset.agentModel);
+  const hasAgentModel = checkAgentModelAvailable(dataset.agentModelId);
 
   if (adjustedEnhanceConfig.autoIndexes && !hasAgentModel) {
     adjustments.push({

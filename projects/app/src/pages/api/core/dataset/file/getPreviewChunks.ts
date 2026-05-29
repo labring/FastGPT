@@ -13,7 +13,7 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById, getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import {
@@ -66,8 +66,8 @@ async function handler(
 
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: getLLMModelById(dataset.agentModelId),
+    vectorModel: getEmbeddingModelById(dataset.vectorModelId)
   });
 
   const { rawText } = await readDatasetSourceRawText({
@@ -89,7 +89,7 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+    maxSize: getLLMMaxChunkSize(getLLMModelById(dataset.agentModelId)),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
   });

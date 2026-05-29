@@ -14,7 +14,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { PermissionEffectScopeEnum } from '@fastgpt/global/support/permission/constant';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '../../common/logger';
 
 export const DatasetCollectionName = 'datasets';
@@ -115,23 +115,21 @@ const DatasetSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  vectorModel: {
+  vectorModelId: {
     type: String,
     required: function (this: any) {
       return this.type !== DatasetTypeEnum.structureDocument;
-    },
-    default: 'text-embedding-3-small'
+    }
   },
-  agentModel: {
+  agentModelId: {
     type: String,
     required: function (this: any) {
       return (
         this.type !== DatasetTypeEnum.database && this.type !== DatasetTypeEnum.structureDocument
       );
-    },
-    default: 'gpt-4o-mini'
+    }
   },
-  vlmModel: String,
+  vlmModelId: String,
   intro: {
     type: String,
     default: ''

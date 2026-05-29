@@ -22,8 +22,8 @@ export interface EvalTarget {
 }
 
 export interface RuntimeConfig {
-  llm?: string; // LLM model selection
-  embedding?: string; // Embedding model selection
+  llmId?: string; // LLM model selection
+  embeddingId?: string; // Embedding model selection
 }
 
 // Summary configuration type

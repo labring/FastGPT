@@ -69,7 +69,7 @@ const TestRun = ({
   // 初始化默认模型
   React.useEffect(() => {
     if (llmModelList.length > 0 && !selectedModel) {
-      setSelectedModel(llmModelList[0].model);
+      setSelectedModel(llmModelList[0].id);
     }
   }, [llmModelList, selectedModel]);
 
@@ -78,7 +78,7 @@ const TestRun = ({
     if (!selectedModel) return null;
 
     return {
-      name: selectedModel
+      modelId: selectedModel
     };
   }, [selectedModel]);
 
@@ -246,7 +246,7 @@ const TestRun = ({
                 value={selectedModel}
                 list={llmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.id
                 }))}
                 onChange={(model) => {
                   setSelectedModel(model);

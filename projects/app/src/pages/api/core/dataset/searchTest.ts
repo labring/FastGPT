@@ -12,11 +12,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { getRerankModel } from '@fastgpt/service/core/ai/model';
+import { getRerankModelById } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
@@ -34,19 +36,19 @@ async function handler(
     similarity,
     searchMode,
     embeddingWeight,
-    embeddingModel,
+    embeddingModelId,
 
     usingReRank,
-    rerankModel,
+    rerankModelId,
     rerankMethod,
     rerankWeight,
 
     datasetSearchUsingExtensionQuery = false,
-    datasetSearchExtensionModel,
+    datasetSearchExtensionModelId,
     datasetSearchExtensionBg,
 
     datasetDeepSearch = false,
-    datasetDeepSearchModel,
+    datasetDeepSearchModelId,
     datasetDeepSearchMaxTimes,
     datasetDeepSearchBg
   } = SearchDatasetTestBodySchema.parse(req.body);
@@ -64,7 +66,52 @@ async function handler(
   // auth balance
   await checkTeamAIPoints(teamId);
 
-  const rerankModelData = getRerankModel(rerankModel);
+  await Promise.all([
+    authModel({
+      req,
+      authToken: true,
+      authApiKey: true,
+      modelId: embeddingModelId || dataset.vectorModelId,
+      per: ReadPermissionVal
+    }).then(({ model }) => {
+      assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+    }),
+    usingReRank && rerankModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: rerankModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.rerank });
+        })
+      : undefined,
+    datasetSearchUsingExtensionQuery && datasetSearchExtensionModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: datasetSearchExtensionModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined,
+    datasetDeepSearch && datasetDeepSearchModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: datasetDeepSearchModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined
+  ]);
+
+  const rerankModelData = getRerankModelById(rerankModelId);
 
   // Convert rerankMethod string to RerankMethodEnum
   const rerankMethodEnum = rerankMethod as RerankMethodEnum;
@@ -74,7 +121,7 @@ async function handler(
     teamId,
     reRankQuery: text,
     queries: [text],
-    model: embeddingModel || dataset.vectorModel,
+    modelId: embeddingModelId || dataset.vectorModelId,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -97,14 +144,14 @@ async function handler(
   } = datasetDeepSearch
     ? await deepRagSearch({
         ...searchData,
-        datasetDeepSearchModel,
+        datasetDeepSearchModelId,
         datasetDeepSearchMaxTimes,
         datasetDeepSearchBg
       })
     : await defaultSearchDatasetData({
         ...searchData,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel,
+        datasetSearchExtensionModelId,
         datasetSearchExtensionBg
       });
 
@@ -115,22 +162,22 @@ async function handler(
     tmbId,
     source,
     embUsage: {
-      model: embeddingModel || dataset.vectorModel,
+      modelId: embeddingModelId || dataset.vectorModelId,
       inputTokens: embeddingTokens
     },
     rerankUsage: searchUsingReRank
       ? {
-          model: rerankModelData.model,
+          modelId: rerankModelData.id,
           inputTokens: reRankInputTokens
         }
       : undefined,
     extensionUsage: queryExtensionResult
       ? {
-          model: queryExtensionResult.llmModel,
+          modelId: queryExtensionResult.llmModelId,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
-          embeddingModel: embeddingModel || dataset.vectorModel
+          embeddingModelId: embeddingModelId || dataset.vectorModelId
         }
       : undefined
   });
@@ -157,7 +204,7 @@ async function handler(
   return SearchDatasetTestResponseSchema.parse({
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-    queryExtensionModel: queryExtensionResult?.llmModel,
+    queryExtensionModelId: queryExtensionResult?.llmModelId,
     usingReRank: searchUsingReRank,
     ...result
   });

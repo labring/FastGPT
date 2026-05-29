@@ -52,6 +52,38 @@ import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 
+const workflowModelInputKeySet = new Set<string>([
+  NodeInputKeyEnum.aiModelId,
+  NodeInputKeyEnum.datasetSearchEmbeddingModelId,
+  NodeInputKeyEnum.datasetSearchRerankModelId,
+  NodeInputKeyEnum.datasetSearchExtensionModelId,
+  NodeInputKeyEnum.generateSqlModelId,
+  NodeInputKeyEnum.datasetDeepSearchModelId,
+  NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
+  NodeInputKeyEnum.datasetAgenticSearchRerankModelId
+]);
+
+const datasetParamsModelKeySet = new Set<string>([
+  NodeInputKeyEnum.datasetSearchEmbeddingModelId,
+  NodeInputKeyEnum.datasetSearchRerankModelId,
+  NodeInputKeyEnum.datasetSearchExtensionModelId,
+  NodeInputKeyEnum.generateSqlModelId,
+  NodeInputKeyEnum.datasetDeepSearchModelId,
+  NodeInputKeyEnum.datasetAgenticSearchLLMModelId,
+  NodeInputKeyEnum.datasetAgenticSearchRerankModelId
+]);
+
+const appChatConfigModelPaths = [
+  ['questionGuide', 'modelId'],
+  ['ttsConfig', 'modelId']
+] as const;
+
+const addModelId = (set: Set<string>, value: unknown) => {
+  if (typeof value === 'string' && value) {
+    set.add(value);
+  }
+};
+
 export const getHandleId = (
   nodeId: string,
   type: 'source' | 'source_catch' | 'target',
@@ -470,6 +502,42 @@ export const clientGetWorkflowToolRunUserQuery = ({
   };
 };
 
+export const extractWorkflowModelIds = ({
+  modules,
+  chatConfig
+}: {
+  modules?: AppSchema['modules'];
+  chatConfig?: AppChatConfigType;
+}) => {
+  const modelIds = new Set<string>();
+
+  modules?.forEach((module) => {
+    module.inputs.forEach((input) => {
+      if (checkInputIsReference(input) || Array.isArray(input.value)) return;
+
+      if (workflowModelInputKeySet.has(input.key)) {
+        addModelId(modelIds, input.value);
+      }
+
+      if (
+        input.key === NodeInputKeyEnum.datasetParams &&
+        input.value &&
+        typeof input.value === 'object'
+      ) {
+        datasetParamsModelKeySet.forEach((key) => {
+          addModelId(modelIds, (input.value as Record<string, unknown>)[key]);
+        });
+      }
+    });
+  });
+
+  appChatConfigModelPaths.forEach(([configKey, modelKey]) => {
+    addModelId(modelIds, chatConfig?.[configKey]?.[modelKey]);
+  });
+
+  return Array.from(modelIds);
+};
+
 export const removeUnauthModels = async ({
   modules,
   allowedModels = new Set()
@@ -480,14 +548,24 @@ export const removeUnauthModels = async ({
   if (modules) {
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
-        if (input.key === 'model') {
-          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
-          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
-            return;
-          }
-          if (!allowedModels.has(input.value)) {
-            input.value = undefined;
-          }
+        if (checkInputIsReference(input) || Array.isArray(input.value)) {
+          return;
+        }
+
+        if (workflowModelInputKeySet.has(input.key) && !allowedModels.has(input.value)) {
+          input.value = undefined;
+        }
+
+        if (
+          input.key === NodeInputKeyEnum.datasetParams &&
+          input.value &&
+          typeof input.value === 'object'
+        ) {
+          datasetParamsModelKeySet.forEach((key) => {
+            if (!allowedModels.has((input.value as Record<string, any>)[key])) {
+              delete (input.value as Record<string, any>)[key];
+            }
+          });
         }
       });
     });

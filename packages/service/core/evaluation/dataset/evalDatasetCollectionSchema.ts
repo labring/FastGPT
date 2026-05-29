@@ -46,7 +46,7 @@ const EvalDatasetCollectionSchema = new Schema({
     type: Schema.Types.Mixed,
     default: {}
   },
-  evaluationModel: {
+  evaluationModelId: {
     type: String,
     trim: true,
     maxlength: 100

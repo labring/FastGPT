@@ -21,18 +21,19 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getRerankModel: vi.fn()
+  getRerankModelById: vi.fn()
 }));
 
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
-import { getRerankModel } from '@fastgpt/service/core/ai/model';
+import { getRerankModelById } from '@fastgpt/service/core/ai/model';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { evaluateRerankModelHelper } from '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model';
 import { trainEnv } from '@fastgpt/service/core/train/common/env';
 
 const mockModel = {
+  id: 'bge-reranker-v2',
   model: 'bge-reranker-v2',
   requestUrl: 'http://test:8080/rerank',
   requestAuth: 'test-key'
@@ -73,7 +74,7 @@ function makeRerankResponse(orderedIds: string[]) {
 describe('evaluateRerankModelHelper（本地 reranker）', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (getRerankModel as any).mockReturnValue(mockModel);
+    (getRerankModelById as any).mockReturnValue(mockModel);
     // Default: auto-generate q/a from any candidate IDs
     (MongoDatasetData.find as any).mockReturnValue({
       lean: () =>
@@ -229,7 +230,7 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     (MongoEvalDatasetData.find as any).mockReturnValue({
       lean: () => Promise.resolve([makeEvalItem('q', ['doc1'], ['doc1'])])
     });
-    (getRerankModel as any).mockReturnValue(undefined);
+    (getRerankModelById as any).mockReturnValue(undefined);
 
     await expect(
       evaluateRerankModelHelper(

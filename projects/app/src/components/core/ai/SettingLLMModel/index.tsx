@@ -20,33 +20,33 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
-  const model = defaultData.model;
+  const modelId = defaultData.modelId;
 
   const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
-    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
+    const modelSet = new Set<string>(llmModelList.map((item) => item.id));
     return {
       modelList: llmModelList,
       modelSet,
-      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
+      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.id
     };
   }, [llmModelList]);
 
   // Reset undefined model
   useEffect(() => {
-    if (model) {
-      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
+    if (modelId) {
+      if (modelSet.size > 0 && !modelSet.has(modelId) && defaultLLMModel) {
         onChange({
           ...defaultData,
-          model: defaultLLMModel
+          modelId: defaultLLMModel
         });
       }
     } else if (defaultLLMModel) {
       onChange({
         ...defaultData,
-        model: defaultLLMModel
+        modelId: defaultLLMModel
       });
     }
-  }, [model, defaultData, modelSet, defaultLLMModel]);
+  }, [modelId, defaultData, modelSet, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -68,15 +68,15 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
           <AIModelSelector
             {...props}
             w={'100%'}
-            value={model}
+            value={modelId}
             list={llmModelList.map((item) => ({
-              value: item.model,
+              value: item.id,
               label: item.name
             }))}
             onChange={(e) => {
               onChange({
                 ...defaultData,
-                model: e
+                modelId: e
               });
             }}
           />

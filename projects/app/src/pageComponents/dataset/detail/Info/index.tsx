@@ -68,7 +68,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         .filter((item) => !item.isTuned)
         .map((item) => ({
           label: item.name,
-          value: item.model
+          value: item.id
         })),
     [embeddingModelList]
   );
@@ -76,7 +76,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     () =>
       llmModelList.map((item) => ({
         label: item.name,
-        value: item.model
+        value: item.id
       })),
     [llmModelList]
   );
@@ -84,7 +84,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     () =>
       vllmModelList.map((item) => ({
         label: item.name,
-        value: item.model
+        value: item.id
       })),
     [vllmModelList]
   );
@@ -104,9 +104,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        agentModel: data.agentModel?.model,
-        // 若未选择图片理解模型时需要显示传递null，否则后端不会更新此字段
-        vlmModel: data.vlmModel?.model ?? null,
+        agentModelId: data.agentModel?.id,
+        vlmModelId: data.vlmModel?.id ?? null,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -120,7 +119,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (vectorModel: EmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
-        vectorModel: vectorModel?.model
+        vectorModelId: vectorModel?.id
       });
     },
     {
@@ -249,7 +248,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box pt={2}>
               <AIModelSelector
                 w={'100%'}
-                value={vectorModel?.model}
+                value={vectorModel?.id}
                 fontSize={'mini'}
                 disableTip={
                   isTraining
@@ -260,7 +259,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 }
                 list={filteredEmbeddingModelList}
                 onChange={(e) => {
-                  const vectorModel = embeddingModelList.find((item) => item.model === e);
+                  const vectorModel = embeddingModelList.find((item) => item.id === e);
                   if (!vectorModel) return;
                   return onOpenConfirmRebuild({
                     onConfirm: async () => {
@@ -282,11 +281,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box pt={2}>
               <AIModelSelector
                 w={'100%'}
-                value={agentModel.model}
+                value={agentModel.id}
                 list={llmModelSelectList}
                 fontSize={'mini'}
                 onChange={(e) => {
-                  const agentModel = llmModelList.find((item) => item.model === e);
+                  const agentModel = llmModelList.find((item) => item.id === e);
                   if (!agentModel) return;
                   setValue('agentModel', agentModel);
                   return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
@@ -309,7 +308,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 list={vlmModelSelectList}
                 fontSize={'mini'}
                 onChange={(e) => {
-                  const vlmModel = vllmModelList.find((item) => item.model === e);
+                  const vlmModel = vllmModelList.find((item) => item.id === e);
                   setValue('vlmModel', vlmModel);
                   return handleSubmit((data) => onSave({ ...data, vlmModel }))();
                 }}

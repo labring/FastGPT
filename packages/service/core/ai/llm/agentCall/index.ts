@@ -14,7 +14,7 @@ import { createLLMResponse } from '../request';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { compressRequestMessages, compressToolResponse } from '../compress';
 import { filterGPTMessageByMaxContext } from '../utils';
-import { getLLMModel } from '../../model';
+import { getLLMModelById } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
@@ -84,7 +84,7 @@ type RunAgentResponse = {
   interactiveResponse?: ToolCallChildrenInteractive;
 
   // Usage
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
   llmTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
@@ -112,7 +112,7 @@ type RunAgentResponse = {
 */
 export const runAgentCall = async ({
   maxRunAgentTimes,
-  body: { model, messages, max_tokens, tools, ...body },
+  body: { modelId, messages, max_tokens, tools, ...body },
 
   userKey,
   usagePush,
@@ -129,7 +129,7 @@ export const runAgentCall = async ({
   onToolCall,
   onToolParam
 }: RunAgentCallProps): Promise<RunAgentResponse> => {
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModelById(modelId);
 
   let runTimes = 0;
   let interactiveResponse: ToolCallChildrenInteractive | undefined;
@@ -209,7 +209,7 @@ export const runAgentCall = async ({
     if (interactiveResponse || stop) {
       return {
         requestIds: [],
-        model: modelData.model,
+        modelId: modelData.id,
         inputTokens: 0,
         outputTokens: 0,
         llmTotalPoints: 0,
@@ -272,7 +272,7 @@ export const runAgentCall = async ({
       body: {
         ...body,
         max_tokens,
-        model,
+        modelId,
         messages: requestMessages,
         tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
@@ -310,7 +310,7 @@ export const runAgentCall = async ({
     const totalPoints = userKey
       ? 0
       : formatModelChars2Points({
-          model: modelData,
+          modelId: modelData.id,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }).totalPoints;
@@ -319,7 +319,7 @@ export const runAgentCall = async ({
     usagePush?.([
       {
         moduleName: i18nT('account_usage:agent_call'),
-        model: modelData.name,
+        modelId: modelData.id,
         totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
@@ -414,7 +414,7 @@ export const runAgentCall = async ({
   return {
     requestIds,
     error: requestError,
-    model: modelData.model,
+    modelId: modelData.id,
     inputTokens,
     outputTokens,
     llmTotalPoints,

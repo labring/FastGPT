@@ -6,7 +6,7 @@ import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { getEmbeddingModel } from '../../../../ai/model';
+import { getEmbeddingModelById } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
@@ -64,7 +64,7 @@ export async function evaluateEmbeddingModelHelper(
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const modelConfig = getEmbeddingModel(modelId);
+  const modelConfig = getEmbeddingModelById(modelId);
   if (!modelConfig) {
     const enhancedError = createEmbeddingEnhancedError(
       stage,
@@ -143,11 +143,11 @@ export async function evaluateEmbeddingModelHelper(
               searchMode: DatasetSearchModeEnum.embedding,
               embeddingWeight: undefined,
               usingReRank: false,
-              rerankModel: undefined,
+              rerankModelId: undefined,
               rerankMethod: RerankMethodEnum.question,
               collectionFilterMatch: '',
               datasetSearchUsingExtensionQuery: false,
-              datasetSearchExtensionModel: '',
+              datasetSearchExtensionModelId: '',
               datasetSearchExtensionBg: ''
             }
           });

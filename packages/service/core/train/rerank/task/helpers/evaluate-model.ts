@@ -7,7 +7,7 @@ import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { getRerankModel } from '../../../../ai/model';
+import { getRerankModelById } from '../../../../ai/model';
 import { reRankRecall } from '../../../../ai/rerank';
 import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
@@ -56,7 +56,7 @@ export async function evaluateRerankModelHelper(
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const modelConfig = getRerankModel(modelId);
+  const modelConfig = getRerankModelById(modelId);
   if (!modelConfig) {
     const enhancedError = createRerankEnhancedError(
       stage,

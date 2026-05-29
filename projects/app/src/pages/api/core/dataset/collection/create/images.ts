@@ -92,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       num: result.fileMetadata.length
     });
 
-    const hasVlm = !!dataset.vlmModel;
+    const hasVlm = !!dataset.vlmModelId;
     const hasCustomParse = !!(
       global.systemEnv.customPdfParse?.url && global.systemEnv.customPdfParse?.key
     );

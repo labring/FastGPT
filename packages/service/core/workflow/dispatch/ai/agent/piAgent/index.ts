@@ -49,7 +49,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     chatId,
     showSkillReferences,
     params: {
-      model,
+      modelId,
       systemPrompt,
       userChatInput,
       history = 6,
@@ -181,8 +181,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     }
 
     /* ===== Build pi-agent-core model & tools ===== */
-    const piModel = buildPiModel(model, aiChatVision);
-    const apiKey = getModelApiKey(model);
+    const piModel = buildPiModel(modelId, aiChatVision);
+    const apiKey = getModelApiKey(modelId);
 
     const toolCtx: ToolDispatchContext = {
       checkIsStopping,
@@ -202,7 +202,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       maxRunTimes: props.maxRunTimes,
       workflowDispatchDeep: props.workflowDispatchDeep,
       usagePush,
-      model,
+      modelId,
       datasetParams
     };
 

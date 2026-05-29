@@ -50,7 +50,7 @@ export type SpecificProps = {
   // JSONEditor - no extra props
 
   // selectLLMModel
-  modelList?: { model: string; name: string }[];
+  modelList?: { id: string; model: string; name: string }[];
 
   // fileSelect
   form?: UseFormReturn<any>;

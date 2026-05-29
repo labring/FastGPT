@@ -11,10 +11,10 @@ import {
   ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 
-// Mock getEmbeddingModel
+// Mock getEmbeddingModelById
 const mockGetEmbeddingModel = vi.fn();
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: (model?: string) => mockGetEmbeddingModel(model)
+  getEmbeddingModelById: (modelId?: string) => mockGetEmbeddingModel(modelId)
 }));
 
 import {
@@ -165,19 +165,6 @@ describe('getMaxIndexSize', () => {
     expect(getMaxIndexSize(model)).toBe(2048);
   });
 
-  it('should call getEmbeddingModel and return maxToken when model is string', () => {
-    const embeddingModel = createMockEmbeddingModel({ maxToken: 1536 });
-    mockGetEmbeddingModel.mockReturnValue(embeddingModel);
-
-    expect(getMaxIndexSize('text-embedding-ada-002')).toBe(1536);
-    expect(mockGetEmbeddingModel).toHaveBeenCalledWith('text-embedding-ada-002');
-  });
-
-  it('should return 512 when getEmbeddingModel returns undefined', () => {
-    mockGetEmbeddingModel.mockReturnValue(undefined);
-    expect(getMaxIndexSize('unknown-model')).toBe(512);
-  });
-
   it('should return 512 when model object has no maxToken', () => {
     const model = { ...createMockEmbeddingModel(), maxToken: undefined } as any;
     expect(getMaxIndexSize(model)).toBe(512);
@@ -196,19 +183,6 @@ describe('getAutoIndexSize', () => {
   it('should return defaultToken from EmbeddingModelItemType object', () => {
     const model = createMockEmbeddingModel({ defaultToken: 768 });
     expect(getAutoIndexSize(model)).toBe(768);
-  });
-
-  it('should call getEmbeddingModel and return defaultToken when model is string', () => {
-    const embeddingModel = createMockEmbeddingModel({ defaultToken: 256 });
-    mockGetEmbeddingModel.mockReturnValue(embeddingModel);
-
-    expect(getAutoIndexSize('text-embedding-3-small')).toBe(256);
-    expect(mockGetEmbeddingModel).toHaveBeenCalledWith('text-embedding-3-small');
-  });
-
-  it('should return 512 when getEmbeddingModel returns undefined', () => {
-    mockGetEmbeddingModel.mockReturnValue(undefined);
-    expect(getAutoIndexSize('unknown-model')).toBe(512);
   });
 
   it('should return 512 when model object has no defaultToken', () => {

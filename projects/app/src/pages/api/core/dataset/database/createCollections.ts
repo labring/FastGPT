@@ -12,7 +12,7 @@ import {
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { DatasetSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -71,7 +71,7 @@ async function CreateDatabaseCollections(
           tmbId,
           appName: table.tableName,
           billSource: UsageSourceEnum.training,
-          vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
+          vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id,
           session
         });
 

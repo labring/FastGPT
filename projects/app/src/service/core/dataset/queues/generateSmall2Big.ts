@@ -22,7 +22,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel?: string };
+  dataset: { vectorModelId: string; agentModelId: string; vlmModelId?: string };
   collection: {
     small2bigConfig?: small2bigConfigType;
     indexSize?: number;
@@ -189,7 +189,7 @@ export async function generateSmall2Big(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'vectorModel agentModel vlmModel'
+                select: 'vectorModelId agentModelId vlmModelId'
               },
               {
                 path: 'collection',

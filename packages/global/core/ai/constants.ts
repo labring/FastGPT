@@ -18,8 +18,10 @@ export enum ModelTypeEnum {
   rerank = 'rerank'
 }
 
+// Fallback defaults used only when no models are loaded from plugins or DB
 export const defaultQAModels: LLMModelItemType[] = [
   {
+    id: 'default-llm-gpt5',
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
     model: 'gpt-5',
@@ -40,6 +42,7 @@ export const defaultQAModels: LLMModelItemType[] = [
 
 export const defaultVectorModels: EmbeddingModelItemType[] = [
   {
+    id: 'default-embedding-3-small',
     type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
     model: 'text-embedding-3-small',
@@ -53,6 +56,7 @@ export const defaultVectorModels: EmbeddingModelItemType[] = [
 
 export const defaultSTTModels: STTModelType[] = [
   {
+    id: 'default-stt-whisper',
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
     model: 'whisper-1',

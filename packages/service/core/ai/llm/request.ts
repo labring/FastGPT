@@ -21,7 +21,7 @@ import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { customNanoid, getNanoid } from '@fastgpt/global/common/string/tools';
 import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptCall';
-import { getLLMModel } from '../model';
+import { getLLMModelById } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
@@ -107,7 +107,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
-  const model = getLLMModel(body.model);
+  const model = getLLMModelById(body.modelId);
+  if (!model) {
+    return Promise.reject(`Model ${body.modelId} not found`);
+  }
 
   // Messages process
   const requestMessages = await loadRequestMessages({
@@ -408,9 +411,8 @@ export const createStreamResponse = async ({
   response: StreamResponseType;
   isAborted?: CreateLLMResponseProps['isAborted'];
 }): Promise<CompleteResponse> => {
-  const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
-  const modelData = getLLMModel(model);
-
+  const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', modelId } = body;
+  const modelData = getLLMModelById(modelId);
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 
   if (tools?.length) {
@@ -622,8 +624,8 @@ export const createCompleteResponse = async ({
   onReasoning,
   onToolCall
 }: CompleteParams & { response: UnStreamResponseType }): Promise<CompleteResponse> => {
-  const { tools, toolCallMode = 'toolChoice', retainDatasetCite = true } = body;
-  const modelData = getLLMModel(body.model);
+  const { tools, toolCallMode = 'toolChoice', retainDatasetCite = true, modelId } = body;
+  const modelData = getLLMModelById(modelId);
 
   const finish_reason = response.choices?.[0]?.finish_reason as CompletionFinishReason;
   const usage = response.usage;
@@ -704,7 +706,7 @@ type InferCompletionsBody<T> = T extends { stream: true }
     : ChatCompletionCreateParams;
 
 type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
-  model: string | LLMModelItemType;
+  modelId: string;
   stop?: string;
   response_format?: {
     type?: string;
@@ -729,17 +731,16 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
   tool_choice,
   parallel_tool_calls,
   toolCallMode,
+  modelId,
+  enableThinking,
   ...body
 }: LLMRequestBodyType<T>): Promise<{
   requestBody: InferCompletionsBody<T>;
   modelData: LLMModelItemType;
 }> => {
-  const modelData = getLLMModel(body.model);
+  const modelData = getLLMModelById(modelId);
   if (!modelData) {
-    return {
-      requestBody: body as unknown as InferCompletionsBody<T>,
-      modelData
-    };
+    return Promise.reject(`Model ${modelId} not found`);
   }
 
   const response_format = (() => {
@@ -765,7 +766,7 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
 
   const maxTokens = computedMaxToken({
     model: modelData,
-    maxToken: resolveMaxTokenFallback(body.max_tokens, body.enableThinking)
+    maxToken: resolveMaxTokenFallback(body.max_tokens, enableThinking)
   });
 
   const formatStop = stop?.split('|').filter((item) => !!item.trim());
@@ -788,12 +789,12 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
         tool_choice,
         parallel_tool_calls
       })
-  } as T;
+  } as unknown as InferCompletionsBody<T>;
 
   // Filter undefined/null value
   requestBody = Object.fromEntries(
     Object.entries(requestBody).filter(([_, value]) => value !== null && value !== undefined)
-  ) as T;
+  ) as unknown as InferCompletionsBody<T>;
 
   const supportParams = getLLMSupportParams(modelData);
 
@@ -853,9 +854,6 @@ const createChatCompletion = async ({
     }
 > => {
   try {
-    if (!modelData) {
-      return Promise.reject(`${body.model} not found`);
-    }
     body.model = modelData.model;
 
     const formatTimeout = timeout ? timeout : 600000;

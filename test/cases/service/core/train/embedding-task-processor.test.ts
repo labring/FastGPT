@@ -68,29 +68,18 @@ vi.mock('@fastgpt/service/core/train/embedding/data/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   createEmbeddingModelConfig: vi.fn(),
   getDefaultLLMModel: vi.fn(),
-  getEmbeddingModel: vi.fn()
+  getEmbeddingModelById: vi.fn().mockReturnValue({
+    charsPointsPrice: 0,
+    defaultToken: 512,
+    maxToken: 512,
+    weight: 0,
+    instruction: 'Given a web search query, retrieve relevant passages that answer the query'
+  })
 }));
 
 vi.mock('@fastgpt/service/core/train/embedding/model/controller', () => ({
   createEmbeddingModelConfig: vi.fn(),
   deleteEmbeddingModelConfig: vi.fn()
-}));
-
-// Mock ai/config/schema (used by register stage to query base model metadata)
-vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
-  MongoSystemModel: {
-    findOne: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        metadata: {
-          charsPointsPrice: 0,
-          defaultToken: 512,
-          maxToken: 512,
-          weight: 0,
-          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
-        }
-      })
-    })
-  }
 }));
 
 // Mock channel module
@@ -142,7 +131,10 @@ vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   querySFTTaskStatus: vi.fn(),
   deleteSFTTask: vi.fn(),
   synthesizeEmbeddingEvalData: vi.fn(),
-  judgeRelevantChunks: vi.fn(),
+  judgeRelevantChunks: vi.fn().mockResolvedValue({
+    status: 'success',
+    detected_data_ids: ['507f1f77bcf86cd799439020']
+  }),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -430,12 +422,18 @@ describe('Embedding Train Task Processor', () => {
           .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
-      // Mock getEmbeddingModel
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        defaultToken: 512,
+        maxToken: 512,
+        weight: 0,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       // Mock eval data synthesis (embedding uses synthesizeEmbeddingEvalData, no dispatchDatasetSearch)
@@ -521,7 +519,7 @@ describe('Embedding Train Task Processor', () => {
         EmbeddingTrainTaskStatusEnum.running
       );
 
-      // Verify stage execution order (6 stages)
+      // Verify stage execution order (7 stages)
       expect(updateEmbeddingCheckpointStage).toHaveBeenNthCalledWith(
         1,
         mockTaskId,
@@ -626,7 +624,7 @@ describe('Embedding Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -764,12 +762,18 @@ describe('Embedding Train Task Processor', () => {
           .mockResolvedValue([{ _id: 'data_001', q: 'Test question 1', a: 'Test answer 1' }])
       });
 
-      // Mock getEmbeddingModel
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
-        requestAuth: 'test-api-key'
+        requestAuth: 'test-api-key',
+        charsPointsPrice: 0,
+        defaultToken: 512,
+        maxToken: 512,
+        weight: 0,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       (synthesizeEmbeddingEvalData as any).mockResolvedValue({
@@ -853,7 +857,7 @@ describe('Embedding Train Task Processor', () => {
           result: expect.objectContaining({
             trainDatasetId: 'trainset_1',
             trainDatasetFilePath: '/tmp/test.jsonl',
-            tunedModelId: 'tuned-model',
+            tunedModelId: 'config_123',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: expect.objectContaining({
               detailed_results: {
@@ -1133,9 +1137,10 @@ describe('Embedding Train Task Processor', () => {
         ])
       });
 
-      // Mock getEmbeddingModel for eval_basemodel stage
-      const { getEmbeddingModel } = await import('@fastgpt/service/core/ai/model');
-      (getEmbeddingModel as any).mockReturnValue({
+      // Mock getEmbeddingModelById for eval_basemodel stage
+      const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
+      (getEmbeddingModelById as any).mockReturnValue({
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         requestUrl: 'http://test.com',
         requestAuth: 'test-api-key'
@@ -1567,7 +1572,7 @@ describe('Embedding Train Task Processor', () => {
       expect(synthesizeEmbeddingEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'gpt-4'
+            name: expect.any(String)
           })
         })
       );

@@ -30,9 +30,9 @@ export type CreateDatasetParams = {
   name: string;
   intro: string;
   avatar: string;
-  vectorModel?: string;
-  agentModel?: string;
-  vlmModel?: string | null;
+  vectorModelId?: string;
+  agentModelId?: string;
+  vlmModelId?: string | null;
   apiDatasetServer?: ApiDatasetServerType;
   websiteConfig?: {
     url: string;
@@ -43,7 +43,7 @@ export type CreateDatasetParams = {
 
 export type RebuildEmbeddingProps = {
   datasetId: string;
-  vectorModel: string;
+  vectorModelId: string;
 };
 
 /* ================= collection ===================== */
@@ -68,16 +68,16 @@ export type SearchTestProps = {
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankMethod]: `${RerankMethodEnum}`;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
 
   [NodeInputKeyEnum.datasetDeepSearch]?: boolean;
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };

@@ -121,16 +121,19 @@ vi.mock('@fastgpt/service/core/dataset/search/providers/fastgptProviders', () =>
 // Mock model 模块
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getDefaultLLMModel: vi.fn().mockReturnValue({
+    id: 'qwen-max',
     model: 'qwen-max',
     name: 'Qwen Max'
   }),
-  getEmbeddingModel: vi.fn().mockReturnValue({
+  getEmbeddingModelById: vi.fn().mockReturnValue({
+    id: 'text-embedding-3-small',
     model: 'text-embedding-3-small',
     name: 'Text Embedding 3 Small',
     dimensions: 1536
   }),
   getDefaultRerankModel: vi.fn().mockReturnValue(null),
-  getLLMModel: vi.fn().mockReturnValue({
+  getLLMModelById: vi.fn().mockReturnValue({
+    id: 'qwen-max',
     model: 'qwen-max',
     name: 'Qwen Max',
     contextSize: 16000,
@@ -248,7 +251,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '什么是 FastGPT？',
         queries: ['什么是 FastGPT？'],
@@ -257,7 +260,7 @@ describe('AgenticSearch 单元测试', () => {
 
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: true
       });
 
@@ -274,7 +277,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试查询',
         queries: ['测试查询'],
@@ -283,7 +286,7 @@ describe('AgenticSearch 单元测试', () => {
 
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: true
       });
 
@@ -307,7 +310,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试查询',
         queries: ['测试查询'],
@@ -316,7 +319,7 @@ describe('AgenticSearch 单元测试', () => {
 
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: false // 关闭思考过程
       });
 
@@ -330,7 +333,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试',
         queries: ['测试'],
@@ -356,7 +359,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: histories as any,
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '什么是 FastGPT？',
         queries: ['什么是 FastGPT？'],
@@ -365,7 +368,7 @@ describe('AgenticSearch 单元测试', () => {
 
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: false
       });
 
@@ -378,7 +381,7 @@ describe('AgenticSearch 单元测试', () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试',
         queries: ['测试'],
@@ -387,7 +390,7 @@ describe('AgenticSearch 单元测试', () => {
 
       const result = await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: true
       });
 
@@ -406,11 +409,11 @@ describe('AgenticSearch 单元测试', () => {
       expect(typeof result.searchMode).toBe('string');
     });
 
-    it('不传 agenticSearchRerankModel 时 createFastGPTProviders 应不含 rerankModel', async () => {
+    it('不传 agenticSearchRerankModelId 时 createFastGPTProviders 应不含 rerankModelId', async () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试',
         queries: ['测试'],
@@ -421,18 +424,18 @@ describe('AgenticSearch 单元测试', () => {
 
       await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
+        agenticSearchLLMModelId: mockConfig.llmModel,
         agenticSearchReasoning: false
       });
 
-      expect(vi.mocked(createFastGPTProviders).mock.calls[0][0].rerankModel).toBeUndefined();
+      expect(vi.mocked(createFastGPTProviders).mock.calls[0][0].rerankModelId).toBeUndefined();
     });
 
-    it('传入 agenticSearchRerankModel 时 createFastGPTProviders 应收到对应 rerankModel', async () => {
+    it('传入 agenticSearchRerankModelId 时 createFastGPTProviders 应收到对应 rerankModelId', async () => {
       const props: SearchDatasetDataProps = {
         histories: [],
         teamId: mockConfig.teamId,
-        model: mockConfig.embedModel,
+        modelId: mockConfig.embedModel,
         datasetIds: mockConfig.datasetIds,
         reRankQuery: '测试',
         queries: ['测试'],
@@ -443,13 +446,13 @@ describe('AgenticSearch 单元测试', () => {
 
       await agenticSearchDispatch({
         ...props,
-        agenticSearchLLMModel: mockConfig.llmModel,
-        agenticSearchRerankModel: 'bge-reranker-v2-m3',
+        agenticSearchLLMModelId: mockConfig.llmModel,
+        agenticSearchRerankModelId: 'bge-reranker-v2-m3',
         agenticSearchReasoning: false
       });
 
       expect(vi.mocked(createFastGPTProviders).mock.calls[0][0]).toMatchObject({
-        rerankModel: 'bge-reranker-v2-m3'
+        rerankModelId: 'bge-reranker-v2-m3'
       });
     });
   });

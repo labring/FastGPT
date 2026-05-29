@@ -9,23 +9,6 @@ export const DatasetSearchToolSchema = z.object({
   query: z.string()
 });
 
-// 工具配置类型（从 Agent 节点配置传入的预设参数）
-export type DatasetSearchToolConfig = {
-  datasets: SelectedDatasetType[];
-  similarity: number;
-  maxTokens: number;
-  searchMode: `${DatasetSearchModeEnum}`;
-  embeddingWeight?: number;
-  usingReRank: boolean;
-  rerankModel?: string;
-  rerankWeight?: number;
-  usingExtensionQuery: boolean;
-  extensionModel?: string;
-  extensionBg?: string;
-  collectionFilterMatch?: string;
-  model: string;
-};
-
 // ChatCompletionTool 定义
 export const datasetSearchTool: ChatCompletionTool = {
   type: 'function',

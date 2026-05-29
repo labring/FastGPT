@@ -7,10 +7,8 @@
       "WebFetch",
       "MCP",
       "Agent(*)",
-      "mcp__ide__getDiagnostics"
-    ],
-    "additionalDirectories": [
-      "/data/home/cz/diting"
+      "mcp__ide__getDiagnostics",
+      "Skill(*)"
     ]
   }
 }

@@ -14,7 +14,7 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';

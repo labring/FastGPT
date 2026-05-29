@@ -9,12 +9,6 @@ import type {
 import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 
-export type SystemModelSchemaType = {
-  _id: string;
-  model: string;
-  metadata: SystemModelItemType;
-};
-
 export type SystemModelItemType =
   | LLMModelItemType
   | EmbeddingModelItemType
@@ -42,12 +36,12 @@ declare global {
   var aiproxyChannelsCache: AIProxyChannelsType;
 
   var systemModelList: SystemModelItemType[];
-  // var systemModelMap: Map<string, SystemModelItemType>;
-  var llmModelMap: Map<string, LLMModelItemType>;
-  var embeddingModelMap: Map<string, EmbeddingModelItemType>;
-  var ttsModelMap: Map<string, TTSModelType>;
-  var sttModelMap: Map<string, STTModelType>;
-  var reRankModelMap: Map<string, RerankModelItemType>;
+  var systemModelIdMap: Map<string, SystemModelItemType>;
+  var llmModelIdMap: Map<string, LLMModelItemType>;
+  var embeddingModelIdMap: Map<string, EmbeddingModelItemType>;
+  var ttsModelIdMap: Map<string, TTSModelType>;
+  var sttModelIdMap: Map<string, STTModelType>;
+  var reRankModelIdMap: Map<string, RerankModelItemType>;
 
   var systemActiveModelList: SystemModelItemType[];
   var systemActiveDesensitizedModels: SystemModelItemType[];

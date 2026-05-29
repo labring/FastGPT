@@ -14,7 +14,7 @@ import pluginErrList from '../../common/error/code/plugin';
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
-      model: '',
+      modelId: '',
       isResponseAnswerText: true,
       maxHistories: 6
     },
@@ -25,7 +25,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       searchMode: DatasetSearchModeEnum.mixedRecall,
       embeddingWeight: 0.65,
       usingReRank: true,
-      rerankModel: '',
+      rerankModelId: '',
       rerankMethod: RerankMethodEnum.question,
       rerankWeight: 0.4,
       datasetSearchUsingExtensionQuery: true,
@@ -56,7 +56,7 @@ export const appWorkflow2Form = ({
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent
     ) {
-      defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModelId);
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.aiSystemPrompt
@@ -113,18 +113,18 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchEmbeddingWeight
       );
-      defaultAppForm.dataset.embeddingModel =
-        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchEmbeddingModel) ||
-        defaultAppForm.dataset.datasets?.[0]?.vectorModel?.model;
+      defaultAppForm.dataset.embeddingModelId =
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchEmbeddingModelId) ||
+        defaultAppForm.dataset.datasets?.[0]?.vectorModel?.id;
       // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
-      const rerankModel1 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
-      const rerankModel2 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel);
+      const rerankModel1 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModelId);
+      const rerankModel2 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModelId);
       // 使用两种是因为两种检索方式使用不同的key
-      defaultAppForm.dataset.rerankModel = rerankModel1 || rerankModel2;
+      defaultAppForm.dataset.rerankModelId = rerankModel1 || rerankModel2;
       defaultAppForm.dataset.rerankMethod =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankMethod) ||
         RerankMethodEnum.question;
@@ -137,17 +137,17 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingExtensionQuery
       );
-      defaultAppForm.dataset.datasetSearchExtensionModel = findInputValueByKey(
+      defaultAppForm.dataset.datasetSearchExtensionModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetSearchExtensionModel
+        NodeInputKeyEnum.datasetSearchExtensionModelId
       );
       defaultAppForm.dataset.datasetSearchExtensionBg = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionBg
       );
-      defaultAppForm.dataset.generateSqlModel = findInputValueByKey(
+      defaultAppForm.dataset.generateSqlModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.generateSqlModel
+        NodeInputKeyEnum.generateSqlModelId
       );
       // Agentic Search
       defaultAppForm.dataset.retrievalMode = findInputValueByKey(
@@ -160,11 +160,11 @@ export const appWorkflow2Form = ({
       );
 
       // 不单独配置，取AI配置中的模型即可
-      defaultAppForm.dataset.agenticSearchLLMModel = findInputValueByKey(
+      defaultAppForm.dataset.agenticSearchLLMModelId = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.aiModel
+        NodeInputKeyEnum.aiModelId
       );
-      defaultAppForm.dataset.agenticSearchRerankModel = rerankModel2 || rerankModel1;
+      defaultAppForm.dataset.agenticSearchRerankModelId = rerankModel2 || rerankModel1;
       // 标签过滤
       defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
         node.inputs,

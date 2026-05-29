@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -11,13 +11,14 @@ import getInitDataHandler from '@/pages/api/common/system/getInitData';
 describe('getInitData API - trainTaskSummary', () => {
   let rootUser: any;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     process.env.NODE_ENV = 'test';
     rootUser = await getRootUser();
 
     // Set up global models with an embedding model and a rerank model
     global.systemActiveDesensitizedModels = [
       {
+        id: 'test-embedding-model',
         model: 'test-embedding-model',
         name: 'Test Embedding',
         type: ModelTypeEnum.embedding,
@@ -29,6 +30,7 @@ describe('getInitData API - trainTaskSummary', () => {
         supportTrain: true
       } as any,
       {
+        id: 'test-rerank-model',
         model: 'test-rerank-model',
         name: 'Test Rerank',
         type: ModelTypeEnum.rerank,
@@ -37,6 +39,7 @@ describe('getInitData API - trainTaskSummary', () => {
         supportTrain: true
       } as any,
       {
+        id: 'test-llm-model',
         model: 'test-llm-model',
         name: 'Test LLM',
         type: ModelTypeEnum.llm,
@@ -119,7 +122,7 @@ describe('getInitData API - trainTaskSummary', () => {
     ]);
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await MongoEmbeddingTrainTask.deleteMany({
       teamId: rootUser.teamId,
       baseModelId: { $in: ['test-embedding-model', 'test-rerank-model'] }
@@ -195,5 +198,52 @@ describe('getInitData API - trainTaskSummary', () => {
     expect(res.data?.activeModelList).toBeUndefined();
     expect(res.data?.bufferId).toBe('test-buffer-id');
     expect(res.data?.systemVersion).toBe('1.0.0-test');
+  });
+
+  it('should keep active system models in activeModelList when source members are resolved', async () => {
+    global.systemActiveDesensitizedModels = [
+      {
+        id: 'system-llm-no-tmb',
+        model: 'system-llm-no-tmb',
+        name: 'System LLM',
+        type: ModelTypeEnum.llm,
+        provider: 'test-provider',
+        charsPointsPrice: 1,
+        isCustom: false,
+        isShared: true
+      } as any,
+      {
+        id: 'custom-llm-with-tmb',
+        model: 'custom-llm-with-tmb',
+        name: 'Custom LLM',
+        type: ModelTypeEnum.llm,
+        provider: 'test-provider',
+        charsPointsPrice: 1,
+        isCustom: true,
+        isShared: false,
+        tmbId: rootUser.tmbId,
+        teamId: rootUser.teamId
+      } as any
+    ];
+
+    const res = await Call<{}, {}, InitDateResponse>(getInitDataHandler, {
+      auth: rootUser
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    expect(res.data?.activeModelList?.map((item) => item.id)).toEqual([
+      'system-llm-no-tmb',
+      'custom-llm-with-tmb'
+    ]);
+    expect(
+      res.data?.activeModelList?.find((item) => item.id === 'system-llm-no-tmb')
+    ).toMatchObject({
+      name: 'System LLM'
+    });
+    expect(
+      res.data?.activeModelList?.find((item) => item.id === 'custom-llm-with-tmb')?.sourceMember
+        ?.name
+    ).toBe('Test Creator');
   });
 });

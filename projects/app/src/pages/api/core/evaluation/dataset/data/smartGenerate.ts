@@ -46,7 +46,7 @@ export type SmartGenerateEvalDatasetResponse = {
 async function handler(
   req: ApiRequestProps<SmartGenerateEvalDatasetBody, SmartGenerateEvalDatasetQuery>
 ): Promise<SmartGenerateEvalDatasetResponse> {
-  const { collectionId, kbDatasetIds, count, intelligentGenerationModel, name, description } =
+  const { collectionId, kbDatasetIds, count, intelligentGenerationModelId, name, description } =
     req.body;
 
   if (!collectionId && !name) {
@@ -120,7 +120,7 @@ async function handler(
     return Promise.reject(EvaluationErrEnum.evalInvalidFormat);
   }
 
-  if (!intelligentGenerationModel || typeof intelligentGenerationModel !== 'string') {
+  if (!intelligentGenerationModelId || typeof intelligentGenerationModelId !== 'string') {
     return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
 
@@ -128,7 +128,7 @@ async function handler(
   await checkTeamAIPoints(teamId);
 
   // Validate model
-  if (!global.llmModelMap.has(intelligentGenerationModel)) {
+  if (!global.llmModelIdMap.has(intelligentGenerationModelId)) {
     return Promise.reject(EvaluationErrEnum.datasetModelNotFound);
   }
 
@@ -186,7 +186,7 @@ async function handler(
       collectionId: targetCollectionId,
       kbDatasetIds,
       finalCount,
-      intelligentGenerationModel
+      intelligentGenerationModelId
     });
 
     const match = {
@@ -228,7 +228,7 @@ async function handler(
     const completeQAPairs: Array<Partial<EvalDatasetDataSchemaType>> = [];
     const synthesizeJobs: Array<{
       dataId: string;
-      intelligentGenerationModel: string;
+      intelligentGenerationModelId: string;
       evalDatasetCollectionId: string;
     }> = [];
 
@@ -252,7 +252,7 @@ async function handler(
             sourceDataId: sample._id.toString(),
             sourceDatasetId: sample.datasetId.toString(),
             sourceCollectionId: sample.collectionId.toString(),
-            intelligentGenerationModel,
+            intelligentGenerationModelId,
             generatedAt: new Date()
           },
           createFrom: EvalDatasetDataCreateFromEnum.intelligentGeneration
@@ -262,7 +262,7 @@ async function handler(
         // Q-only - needs AI synthesis
         synthesizeJobs.push({
           dataId: sample._id.toString(),
-          intelligentGenerationModel,
+          intelligentGenerationModelId,
           evalDatasetCollectionId: targetCollectionId || ''
         });
       }
@@ -282,7 +282,7 @@ async function handler(
               tmbId,
               name: name!.trim(),
               description: (description || '').trim(),
-              evaluationModel: intelligentGenerationModel
+              evaluationModelId: intelligentGenerationModelId
             }
           ],
           { session, ordered: true }

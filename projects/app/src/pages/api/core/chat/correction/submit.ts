@@ -30,14 +30,14 @@ async function handler(
   const app = await MongoApp.findById(appId, 'modules').lean();
   if (!app) return Promise.reject(AppErrEnum.unExist);
 
-  const configuredModel = app.modules
+  const configuredModelId = app.modules
     ?.find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
     ?.inputs?.find((item) => item.key === NodeInputKeyEnum.datasetSelectList)
-    ?.value?.find((v: { vectorModel?: { name: string } }) => v.vectorModel)?.vectorModel.name;
+    ?.value?.find((v: { vectorModel?: { id: string } }) => v.vectorModel)?.vectorModel.id;
 
-  const modelName = configuredModel || getDefaultEmbeddingModel().name;
+  const modelId = configuredModelId || getDefaultEmbeddingModel().id;
 
-  addLog.debug(`used model for correction: ${modelName}`);
+  addLog.debug(`used model for correction: ${modelId}`);
 
   // 3. Call controller to process correction
   const correctionId = await submitChatCorrection({
@@ -47,7 +47,7 @@ async function handler(
     chatId,
     dataId,
     correctionData,
-    modelName
+    modelId
   });
 
   return { correctionId };

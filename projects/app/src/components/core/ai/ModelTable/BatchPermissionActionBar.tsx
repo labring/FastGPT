@@ -18,6 +18,9 @@ const BatchPermissionActionBar = ({
   permission,
   t
 }: BatchPermissionActionBarProps) => {
+  const manageableItems = selectedItems.filter((item) => item.permission.hasManagePer);
+  if (manageableItems.length === 0) return null;
+
   return (
     <FloatingActionBar
       activedStyles={{
@@ -36,7 +39,7 @@ const BatchPermissionActionBar = ({
           onUpdateCollaborators={({ collaborators }) =>
             updateModelCollaborators({
               collaborators,
-              models: selectedItems.map((i) => i.model)
+              modelIds: manageableItems.map((i) => i.id)
             })
           }
           permission={permission}

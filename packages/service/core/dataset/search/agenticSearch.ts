@@ -41,8 +41,8 @@ type AgentEvent = {
 };
 
 export type AgenticSearchDispatchProps = SearchDatasetDataProps & {
-  [NodeInputKeyEnum.datasetAgenticSearchLLMModel]?: string;
-  [NodeInputKeyEnum.datasetAgenticSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchLLMModelId]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchRerankModelId]?: string;
   agenticSearchReasoning?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
   synonymDatasetIds?: string[];
@@ -142,12 +142,12 @@ export async function agenticSearchDispatch(
   props: AgenticSearchDispatchProps
 ): Promise<SearchDatasetDataResponse> {
   const {
-    agenticSearchLLMModel,
-    agenticSearchRerankModel,
+    agenticSearchLLMModelId,
+    agenticSearchRerankModelId,
     agenticSearchReasoning,
     workflowStreamResponse,
     teamId,
-    model: embedModel,
+    modelId: embedModelId,
     datasetIds,
     reRankQuery,
     histories,
@@ -161,14 +161,14 @@ export async function agenticSearchDispatch(
   try {
     // 获取默认 LLM 模型
     const defaultLLM = getDefaultLLMModel();
-    const llmModel = agenticSearchLLMModel || defaultLLM?.model;
+    const llmModelId = agenticSearchLLMModelId || defaultLLM?.id;
     const defaultRerankModel = getDefaultRerankModel();
-    const rerankModel = agenticSearchRerankModel || defaultRerankModel?.model;
+    const rerankModelId = agenticSearchRerankModelId || defaultRerankModel?.id;
 
     addLog.info('[AgenticSearch] Starting', {
-      llmModel,
-      rerankModel,
-      embedModel,
+      llmModelId,
+      rerankModelId,
+      embedModelId,
       datasetIds: datasetIds?.length,
       query: reRankQuery
     });
@@ -177,9 +177,9 @@ export async function agenticSearchDispatch(
 
     // 创建 Providers
     const providers = createFastGPTProviders({
-      llmModel,
-      embedModel,
-      rerankModel,
+      llmModelId,
+      embedModelId,
+      rerankModelId,
       teamId
     });
 
@@ -214,7 +214,7 @@ export async function agenticSearchDispatch(
           searchMode: DatasetSearchModeEnum.mixedRecall,
           limit: 0,
           similarity: 0,
-          usingReRank: !!rerankModel,
+          usingReRank: !!rerankModelId,
           usingSimilarityFilter: false
         };
       }
@@ -349,7 +349,7 @@ export async function agenticSearchDispatch(
       searchMode: DatasetSearchModeEnum.mixedRecall,
       limit: searchRes.length,
       similarity: 0,
-      usingReRank: !!rerankModel,
+      usingReRank: !!rerankModelId,
       usingSimilarityFilter: false,
       retrievalTime,
       // 思考过程
@@ -358,7 +358,7 @@ export async function agenticSearchDispatch(
         reasoningText: accumulatedReasoningText,
         searchCount: result.searchCount || 0,
         toolCallCount: result.toolCallCount || 0,
-        llmModel: llmModel,
+        llmModelId: llmModelId,
         llmInputTokens: result.llmInputTokens || 0,
         llmOutputTokens: result.llmOutputTokens || 0,
         playbook: result.playbook,
@@ -380,10 +380,7 @@ export async function agenticSearchDispatch(
     const errorMsg = error instanceof Error ? error.message : String(error);
     // diting-rag-ts agent 节点 LLM 重试全部耗尽且无 chunks：
     // 底模完全不可用，不应静默降级，需将错误抛给前端展示
-    if (
-      errorMsg.includes('LLM call failed after') &&
-      errorMsg.includes('no chunks collected')
-    ) {
+    if (errorMsg.includes('LLM call failed after') && errorMsg.includes('no chunks collected')) {
       addLog.error('[AgenticSearch] LLM fatal error, propagating to caller');
       throw new Error(i18nT('chat:language_model_error'));
     }

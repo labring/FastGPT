@@ -99,7 +99,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   useEffect(() => {
     const initEvaluationModel = async () => {
       const detail = await getCollectionDetail(collectionId);
-      setEvaluationModel(detail.evaluationModel || evalModelList[0]?.model || '');
+      setEvaluationModel(detail.evaluationModelId || evalModelList[0]?.id || '');
     };
 
     if (collectionId && evalModelList.length > 0) {
@@ -108,7 +108,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   }, [collectionId, evalModelList, getCollectionDetail, isSettingsModalOpen]);
 
   const handleSettingsConfirm = async () => {
-    await updateModelSettingFn({ collectionId, evaluationModel });
+    await updateModelSettingFn({ collectionId, evaluationModelId: evaluationModel });
     onSettingsModalClose();
   };
 
@@ -274,7 +274,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
                   bg="myGray.50"
                   value={evaluationModel}
                   list={evalModelList.map((item) => ({
-                    value: item.model,
+                    value: item.id,
                     label: item.name
                   }))}
                   onChange={(value) => setEvaluationModel(value)}

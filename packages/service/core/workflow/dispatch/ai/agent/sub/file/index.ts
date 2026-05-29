@@ -9,7 +9,7 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readS3FileContentByBuffer } from '../../../../../../../common/file/read/utils';
-import { getLLMModel } from '../../../../../../ai/model';
+import { getLLMModelById } from '../../../../../../ai/model';
 import { compressLargeContent } from '../../../../../../ai/llm/compress';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -26,7 +26,7 @@ type FileReadParams = {
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
-  model: string;
+  modelId?: string;
   userKey?: OpenaiAccountType;
 };
 
@@ -35,7 +35,7 @@ export const dispatchFileRead = async ({
   teamId,
   tmbId,
   customPdfParse,
-  model,
+  modelId,
   userKey
 }: FileReadParams): Promise<{
   response: string;
@@ -136,7 +136,7 @@ export const dispatchFileRead = async ({
     let responseText = JSON.stringify(readFilesResult);
 
     // Check if compression is needed
-    const llmModel = getLLMModel(model);
+    const llmModel = getLLMModelById(modelId);
     const thresholds = calculateCompressionThresholds(llmModel.maxContext);
     const maxTokens = thresholds.fileReadResponse.threshold;
 

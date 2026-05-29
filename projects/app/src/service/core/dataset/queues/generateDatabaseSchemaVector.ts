@@ -15,7 +15,7 @@ import {
   DBDatasetVectorTableName,
   DBDatasetValueVectorTableName
 } from '@fastgpt/service/common/vectorDB/constants';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type {
@@ -38,7 +38,7 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string };
+  dataset: { vectorModelId: string };
   collection: { tableSchema?: any };
 };
 
@@ -77,7 +77,7 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'vectorModel'
+                select: 'vectorModelId'
               },
               {
                 path: 'collection',
@@ -150,7 +150,7 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
           teamId: data.teamId,
           tmbId: data.tmbId,
           inputTokens: tokens,
-          model: data.dataset.vectorModel,
+          modelId: data.dataset.vectorModelId,
           usageId: data.billId
         });
 
@@ -279,7 +279,7 @@ const processDatabaseSchema = async ({
   }
 
   const { tableName, columns } = collection.tableSchema;
-  const model = getEmbeddingModel(dataset.vectorModel);
+  const model = getEmbeddingModelById(dataset.vectorModelId);
   let totalTokens = 0;
 
   // If rebuilding, delete existing indexes first

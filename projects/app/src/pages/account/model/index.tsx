@@ -29,7 +29,7 @@ const ModelProvider = () => {
     return [
       { label: t('account:active_model'), value: 'model' },
       { label: t('account:config_model'), value: 'config' },
-      ...(feConfigs?.show_aiproxy
+      ...(isRoot && feConfigs?.show_aiproxy
         ? [
             { label: t('account:channel'), value: 'channel' },
             { label: t('account_model:log'), value: 'channel_log' },
@@ -37,18 +37,16 @@ const ModelProvider = () => {
           ]
         : [])
     ];
-  }, [feConfigs.show_aiproxy, t]);
+  }, [feConfigs.show_aiproxy, isRoot, t]);
 
   const header = (
     <Flex alignItems={'center'} position={'relative'} flex={1}>
       <Box fontSize={'lg'} fontWeight={'medium'} lineHeight="26px" color={'black'}>
         {t('account_model:model_management')}
       </Box>
-      {isRoot && (
-        <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
-          <MyTabs tabs={tabList} value={tab} onChange={(value) => setTab(value as TabType)} />
-        </Box>
-      )}
+      <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+        <MyTabs tabs={tabList} value={tab} onChange={(value) => setTab(value as TabType)} />
+      </Box>
     </Flex>
   );
 

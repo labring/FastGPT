@@ -1,29 +1,28 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
-
-export type detailQuery = {
-  model: string;
-};
-
-export type detailBody = {};
-
-export type detailResponse = SystemModelItemType;
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import {
+  GetModelDetailQuerySchema,
+  GetModelDetailResponseSchema,
+  type GetModelDetailQuery,
+  type GetModelDetailResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 
 async function handler(
-  req: ApiRequestProps<detailBody, detailQuery>,
+  req: ApiRequestProps<any, GetModelDetailQuery>,
   res: ApiResponseType<any>
-): Promise<detailResponse> {
-  await authSystemAdmin({ req });
+): Promise<GetModelDetailResponse> {
+  const { id } = GetModelDetailQuerySchema.parse(req.query);
+  const { model: modelItem } = await authModel({
+    req,
+    authToken: true,
+    authApiKey: true,
+    modelId: id,
+    per: ReadPermissionVal
+  });
 
-  const { model } = req.query;
-  const modelItem = findModelFromAlldata(model);
-  if (!modelItem) {
-    return Promise.reject('Model not found');
-  }
-  return modelItem;
+  return GetModelDetailResponseSchema.parse(modelItem);
 }
 
 export default NextAPI(handler);

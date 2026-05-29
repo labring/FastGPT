@@ -52,8 +52,8 @@ describe('EvalDatasetCollection Update API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    if (!global.llmModelMap) {
-      global.llmModelMap = new Map();
+    if (!global.llmModelIdMap) {
+      global.llmModelIdMap = new Map();
     }
 
     mockAuthEvaluationDatasetWrite.mockResolvedValue({
@@ -194,7 +194,7 @@ describe('EvalDatasetCollection Update API', () => {
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: 123
+        evaluationModelId: 123
       });
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -207,7 +207,7 @@ describe('EvalDatasetCollection Update API', () => {
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: longModel
+        evaluationModelId: longModel
       });
 
       await expect(handler_test(req as any)).rejects.toEqual(
@@ -217,35 +217,35 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should reject invalid evaluation model', async () => {
       const invalidModel = 'invalid-model';
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(false);
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(false);
 
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: invalidModel
+        evaluationModelId: invalidModel
       });
 
       await expect(handler_test(req as any)).rejects.toEqual(
         EvaluationErrEnum.datasetModelNotFound
       );
 
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(invalidModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(invalidModel);
     });
 
     it('should accept valid evaluation model', async () => {
       const validModel = 'gpt-4';
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(true);
       setupSuccessfulUpdate();
 
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: validModel
+        evaluationModelId: validModel
       });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(validModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(validModel);
     });
 
     it('should accept valid parameters', async () => {
@@ -598,24 +598,24 @@ describe('EvalDatasetCollection Update API', () => {
 
     it('should handle exactly 100 character evaluation model', async () => {
       const exactModel = 'a'.repeat(100);
-      vi.spyOn(global.llmModelMap, 'has').mockReturnValue(true);
+      vi.spyOn(global.llmModelIdMap, 'has').mockReturnValue(true);
 
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: exactModel
+        evaluationModelId: exactModel
       });
 
       const result = await handler_test(req as any);
       expect(result).toBe('success');
-      expect(global.llmModelMap.has).toHaveBeenCalledWith(exactModel);
+      expect(global.llmModelIdMap.has).toHaveBeenCalledWith(exactModel);
     });
 
     it('should handle empty evaluation model string', async () => {
       const req = createRequest({
         collectionId: mockCollectionId,
         name: 'Updated Name',
-        evaluationModel: ''
+        evaluationModelId: ''
       });
 
       const result = await handler_test(req as any);

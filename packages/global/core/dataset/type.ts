@@ -17,6 +17,8 @@ import {
   FeishuServerSchema,
   YuqueServerSchema
 } from './apiDataset/type';
+import type { DatasetPermission } from '../../support/permission/dataset/controller';
+import type { CollectionStatusEnum, DatasetTrainingStatusEnum } from '../../core/dataset/constants';
 import { SourceMemberSchema } from '../../support/user/type';
 import { DatasetDataIndexTypeEnum } from './data/constants';
 import { ParentIdSchema } from '../../common/parentFolder/type';
@@ -101,9 +103,9 @@ export const DatasetSchema = z
     intro: z.string().meta({ description: '简介' }),
     type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
 
-    vectorModel: z.string().meta({ description: '向量模型' }),
-    agentModel: z.string().meta({ description: 'AI 模型' }),
-    vlmModel: z.string().optional().meta({ description: '视觉语言模型' }),
+    vectorModelId: z.string().meta({ description: '向量模型id' }),
+    agentModelId: z.string().meta({ description: 'AI 模型id' }),
+    vlmModelId: z.string().optional().meta({ description: '视觉语言模型Id' }),
 
     websiteConfig: z
       .object({
@@ -351,9 +353,9 @@ export const DatasetListItemSchema = z.object({
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 
 export const DatasetItemSchema = DatasetSchema.omit({
-  vectorModel: true,
-  agentModel: true,
-  vlmModel: true
+  vectorModelId: true,
+  agentModelId: true,
+  vlmModelId: true
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
@@ -612,4 +614,59 @@ export type TransformationRecordType = {
   transformedEndPos: number;
   standardizedTerm: string;
   synonymMappingId: string;
+};
+
+export type DatasetCollectionsListItemType = {
+  tableSchemaDescription?: DatasetCollectionSchemaType['tableSchema']['description'];
+  _id: string;
+  parentId?: string | null;
+  tmbId: DatasetCollectionSchemaType['tmbId'];
+  name: DatasetCollectionSchemaType['name'];
+  type: DatasetCollectionSchemaType['type'];
+  createTime: DatasetCollectionSchemaType['createTime'];
+  updateTime: DatasetCollectionSchemaType['updateTime'];
+  forbid?: DatasetCollectionSchemaType['forbid'];
+  trainingType?: DatasetCollectionSchemaType['trainingType'];
+  tags?: (string | CollectionTagValueType)[];
+
+  externalFileId?: string;
+  autoSync?: boolean;
+
+  fileId?: string;
+  rawLink?: string;
+  permission: DatasetPermission;
+  inheritPermission?: DatasetCollectionSchemaType['inheritPermission'];
+  permissionEffectScope?: DatasetCollectionSchemaType['permissionEffectScope'];
+
+  dataAmount: number;
+  trainingAmount: number;
+  hasError?: boolean;
+
+  // 计算得出的状态字段
+  // - 对于普通文件：单一状态值
+  // - 对于 folder：使用 matchingStatuses 数组（递归聚合模式）
+  status?: CollectionStatusEnum; // 文件的单一状态（folder 无此字段）
+  matchingStatuses?: CollectionStatusEnum[]; // folder 的匹配状态数组（仅 folder 类型有此字段）
+
+  // For database type datasets, include table schema description
+  tableSchema?: DatasetCollectionSchemaType['tableSchema'];
+
+  // For structureDocument type datasets, include row and column count
+  rows?: number;
+  cols?: number;
+};
+
+/* ================= data ===================== */
+export type DatasetDataListItemType = {
+  _id: string;
+  datasetId: string;
+  collectionId: string;
+  q?: string;
+  a?: string;
+  imageId?: string;
+  imageSize?: number;
+  imagePreviewUrl?: string; //image preview url
+  chunkIndex?: number;
+  updated?: boolean;
+  trainingStatus?: `${DatasetTrainingStatusEnum}`;
 };

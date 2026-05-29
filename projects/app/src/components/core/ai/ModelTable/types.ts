@@ -2,6 +2,8 @@ import type { TFunction } from 'i18next';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
 import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import type { SourceMemberType } from '@fastgpt/global/support/user/type';
+import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 
 export type TrainTaskItem = TrainTaskSummary['latestTask'];
 
@@ -24,6 +26,7 @@ export type ProviderOption = {
 };
 
 export type ModelRow = {
+  id: string;
   model: string;
   name: string;
   avatar: string;
@@ -34,6 +37,10 @@ export type ModelRow = {
   order: number;
   tagColor: string;
   isTuned?: boolean;
+  isCustom?: boolean;
+  isShared?: boolean;
+  permission: ModelPermission;
+  sourceMember?: SourceMemberType;
   trainableModelType?: ModelTypeEnum.embedding | ModelTypeEnum.rerank;
   trainTaskSummary?: TrainTaskSummary;
 };
@@ -41,6 +48,7 @@ export type ModelRow = {
 export type { TeamPermission };
 
 export type TrainDetailModel = {
+  id: string;
   model: string;
   name: string;
   baseModelType: ModelTypeEnum.embedding | ModelTypeEnum.rerank;
@@ -48,6 +56,7 @@ export type TrainDetailModel = {
 
 export type OpenTrainModelHandler = (
   type: ModelTypeEnum.embedding | ModelTypeEnum.rerank,
+  modelId: string,
   model: string
 ) => void;
 

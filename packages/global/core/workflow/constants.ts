@@ -139,7 +139,7 @@ export enum NodeInputKeyEnum {
 
   // latest
   // common
-  aiModel = 'model',
+  aiModelId = 'modelId',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
   anyInput = 'system_anyInput',
@@ -181,30 +181,30 @@ export enum NodeInputKeyEnum {
   datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
   datasetSearchEmbeddingWeight = 'embeddingWeight',
-  datasetSearchEmbeddingModel = 'embeddingModel',
+  datasetSearchEmbeddingModelId = 'embeddingModelId',
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
-  datasetSearchRerankModel = 'rerankModel',
+  datasetSearchRerankModelId = 'rerankModelId',
   datasetSearchRerankMethod = 'rerankMethod',
 
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
-  datasetSearchExtensionModel = 'datasetSearchExtensionModel',
+  datasetSearchExtensionModelId = 'datasetSearchExtensionModelId',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
   searchColumnslLimitRatio = 'searchRatio',
-  generateSqlModel = 'generateSqlModel',
+  generateSqlModelId = 'generateSqlModelId',
   datasetDeepSearch = 'datasetDeepSearch',
-  datasetDeepSearchModel = 'datasetDeepSearchModel',
+  datasetDeepSearchModelId = 'datasetDeepSearchModelId',
   datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
   datasetDeepSearchBg = 'datasetDeepSearchBg',
 
   // 检索模式（单轮/多轮）
   datasetRetrievalMode = 'retrievalMode',
   // 多轮智能检索专用
-  datasetAgenticSearchLLMModel = 'agenticSearchLLMModel',
-  datasetAgenticSearchRerankModel = 'agenticSearchRerankModel',
+  datasetAgenticSearchLLMModelId = 'agenticSearchLLMModelId',
+  datasetAgenticSearchRerankModelId = 'agenticSearchRerankModelId',
   datasetAgenticSearchReasoning = 'agenticSearchReasoning',
 
   // concat dataset

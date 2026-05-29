@@ -111,7 +111,11 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
     return Promise.reject(EvaluationErrEnum.evalLLmConfigRequired);
   }
 
-  if (!llmConfig.name || typeof llmConfig.name !== 'string' || llmConfig.name.trim().length === 0) {
+  if (
+    !llmConfig.modelId ||
+    typeof llmConfig.modelId !== 'string' ||
+    llmConfig.modelId.trim().length === 0
+  ) {
     return Promise.reject(EvaluationErrEnum.evalLLmModelNameRequired);
   }
 
@@ -136,7 +140,7 @@ async function handler(req: ApiRequestProps<DebugMetricBody, {}>, res: ApiRespon
         tmbId,
         metricName: metricConfig.metricName,
         totalPoints: result.totalPoints,
-        model: llmConfig.name,
+        modelId: llmConfig.modelId,
         inputTokens: result.usages?.reduce((sum, u) => sum + (u.promptTokens || 0), 0) || 0,
         outputTokens: result.usages?.reduce((sum, u) => sum + (u.completionTokens || 0), 0) || 0
       });

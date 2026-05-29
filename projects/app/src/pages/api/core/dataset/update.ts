@@ -3,7 +3,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
-  PerResourceTypeEnum
+  PerResourceTypeEnum,
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -33,7 +34,8 @@ import { isEqual } from 'lodash';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById, getLLMModelById } from '@fastgpt/service/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatabaseConnection } from '@fastgpt/service/core/dataset/database/clientManager';
 import {
@@ -41,6 +43,7 @@ import {
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -60,9 +63,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     name,
     avatar,
     intro,
-    agentModel,
-    vectorModel,
-    vlmModel,
+    agentModelId,
+    vectorModelId,
+    vlmModelId,
     websiteConfig,
     externalReadUrl,
     apiDatasetServer,
@@ -78,6 +81,41 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     datasetId: id,
     per: ManagePermissionVal
   });
+  await Promise.all([
+    agentModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: agentModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm });
+        })
+      : undefined,
+    vectorModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: vectorModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+        })
+      : undefined,
+    vlmModelId
+      ? authModel({
+          req,
+          authToken: true,
+          authApiKey: true,
+          modelId: vlmModelId,
+          per: ReadPermissionVal
+        }).then(({ model }) => {
+          assertModelAvailable(model, { type: ModelTypeEnum.llm, requireVision: true });
+        })
+      : undefined
+  ]);
 
   const isMove = parentId !== undefined && String(parentId) !== String(dataset.parentId ?? '');
 
@@ -86,8 +124,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   chunkSettings = chunkSettings
     ? computedCollectionChunkSettings({
         ...chunkSettings,
-        llmModel: getLLMModel(dataset.agentModel),
-        vectorModel: getEmbeddingModel(dataset.vectorModel)
+        llmModel: getLLMModelById(dataset.agentModelId),
+        vectorModel: getEmbeddingModelById(dataset.vectorModelId)
       })
     : undefined;
 
@@ -128,7 +166,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   updateTraining({
     teamId: dataset.teamId,
     datasetId: id,
-    agentModel
+    agentModelId
   });
 
   const onUpdate = async (session: ClientSession) => {
@@ -204,14 +242,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       return flattenObjectWithConditions(apiDatasetServer);
     })();
 
-    // vlmModel 为 null 时表示清空，用 $unset 删除字段；有值时用 $set 更新
+    // vlmModelId 为 null 时表示清空，用 $unset 删除字段；有值时用 $set 更新
     const updateData: Record<string, any> = {
       ...parseParentIdInMongo(parentId),
       ...(name && { name }),
       ...(avatar && { avatar }),
-      ...(agentModel && { agentModel }),
-      ...(vectorModel && { vectorModel }),
-      ...(vlmModel !== undefined && vlmModel !== null && { vlmModel }),
+      ...(agentModelId && { agentModelId }),
+      ...(vectorModelId && { vectorModelId }),
+      ...(vlmModelId !== undefined && vlmModelId !== null && { vlmModelId }),
       ...(websiteConfig && { websiteConfig }),
       ...(databaseConfig && { databaseConfig }),
       ...(chunkSettings && { chunkSettings }),
@@ -222,7 +260,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       ...apiDatasetParams
     };
     const unsetData: Record<string, any> = {
-      ...(vlmModel === null && { vlmModel: '' })
+      ...(vlmModelId === null && { vlmModelId: '' })
     };
 
     await MongoDataset.findByIdAndUpdate(
@@ -294,13 +332,13 @@ export default NextAPI(handler);
 const updateTraining = async ({
   teamId,
   datasetId,
-  agentModel
+  agentModelId
 }: {
   teamId: string;
   datasetId: string;
-  agentModel?: string;
+  agentModelId?: string;
 }) => {
-  if (!agentModel) return;
+  if (!agentModelId) return;
 
   await MongoDatasetTraining.updateMany(
     {
@@ -310,7 +348,6 @@ const updateTraining = async ({
     },
     {
       $set: {
-        model: agentModel,
         retryCount: 5,
         lockTime: new Date('2000/1/1')
       }

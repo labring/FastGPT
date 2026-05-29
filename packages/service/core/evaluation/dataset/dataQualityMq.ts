@@ -12,7 +12,7 @@ import {
 
 export type EvalDatasetDataQualityData = {
   dataId: string;
-  evaluationModel: string;
+  evaluationModelId: string;
 };
 
 export const evalDatasetDataQualityQueue = getQueue<EvalDatasetDataQualityData>(

@@ -107,7 +107,7 @@ const CreateModal = ({
                 input.value = smartCustomerService?.datasets || [];
               }
               // 重置创建模板中的配置的重排模型默认值
-              if (input.key === NodeInputKeyEnum.datasetSearchRerankModel) {
+              if (input.key === NodeInputKeyEnum.datasetSearchRerankModelId) {
                 input.value = '';
               }
             });

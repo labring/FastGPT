@@ -17,14 +17,14 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   addLog: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
-// Mock getEmbeddingModel
+// Mock getEmbeddingModelById
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn()
+  getEmbeddingModelById: vi.fn()
 }));
 
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { dispatchDatasetSearch } from '@fastgpt/service/core/workflow/dispatch/dataset/search';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { EmbeddingTaskCheckpointStageEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { evaluateEmbeddingModelHelper } from '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model';
@@ -59,7 +59,8 @@ function makeSearchResponse(orderedDocIds: string[]) {
 describe('evaluateEmbeddingModelHelper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (getEmbeddingModel as any).mockReturnValue({
+    (getEmbeddingModelById as any).mockReturnValue({
+      id: 'bge-m3',
       model: 'bge-m3',
       baseUrl: 'http://test:8080/v1',
       apiKey: 'test-key'
@@ -199,8 +200,8 @@ describe('evaluateEmbeddingModelHelper', () => {
   });
 
   test('dispatchDatasetSearch 调用时携带正确的 vectorModel', async () => {
-    const modelConfig = { model: 'bge-m3', baseUrl: 'http://test:8080/v1', apiKey: 'test-key' };
-    (getEmbeddingModel as any).mockReturnValue(modelConfig);
+    const modelConfig = { id: 'bge-m3', model: 'bge-m3', baseUrl: 'http://test:8080/v1', apiKey: 'test-key' };
+    (getEmbeddingModelById as any).mockReturnValue(modelConfig);
     (MongoEvalDatasetData.find as any).mockReturnValue({
       lean: () => Promise.resolve([makeEvalItem('query1', ['doc1'])])
     });
@@ -227,7 +228,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     (MongoEvalDatasetData.find as any).mockReturnValue({
       lean: () => Promise.resolve([makeEvalItem('q', ['doc1'])])
     });
-    (getEmbeddingModel as any).mockReturnValue(undefined);
+    (getEmbeddingModelById as any).mockReturnValue(undefined);
 
     await expect(
       evaluateEmbeddingModelHelper(

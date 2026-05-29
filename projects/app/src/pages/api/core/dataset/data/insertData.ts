@@ -2,7 +2,7 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
 
   const [
     {
-      dataset: { _id: datasetId, vectorModel, agentModel },
+      dataset: { _id: datasetId, vectorModelId, agentModelId },
       indexPrefixTitle,
       name
     }
@@ -54,7 +54,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     text: simpleText(item.text)
   }));
 
-  const vectorModelData = getEmbeddingModel(vectorModel);
+  const vectorModelData = getEmbeddingModelById(vectorModelId);
 
   await hasSameValue({
     teamId,
@@ -73,7 +73,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     a: formatA,
     chunkIndex: 0,
     indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
-    embeddingModel: vectorModelData.model,
+    embeddingModelId: vectorModelData.id,
     indexes: formatIndexes
   });
 
@@ -81,7 +81,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     teamId,
     tmbId,
     inputTokens: tokens,
-    model: vectorModelData.model
+    modelId: vectorModelData.id
   });
 
   (() => {

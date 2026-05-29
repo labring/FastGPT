@@ -50,7 +50,7 @@ async function handler(
   }
 
   // 统计信息
-  const datasets = await MongoDataset.find({}, '_id name teamId tmbId vectorModel').lean();
+  const datasets = await MongoDataset.find({}, '_id name teamId tmbId vectorModelId').lean();
   const totalDataCount = await MongoDatasetData.countDocuments({});
   const estimatedMinutes = Math.ceil(totalDataCount / 500);
 
@@ -127,7 +127,6 @@ async function handler(
                       datasetId: dataset._id,
                       collectionId: data.collectionId,
                       mode: TrainingModeEnum.chunk,
-                      model: dataset.vectorModel,
                       dataId: data._id
                     }
                   ],

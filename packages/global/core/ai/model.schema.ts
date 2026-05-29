@@ -34,6 +34,7 @@ const PriceTypeSchema = z.object({
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
+  id: z.string(),
   provider: z.string(),
   model: z.string(),
   name: z.string(),
@@ -49,16 +50,21 @@ const BaseModelItemSchema = z.object({
   requestAuth: z.string().optional(),
 
   // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
-  testMode: z.boolean().optional() // test mode flag
+  testMode: z.boolean().optional(), // test mode flag
+
+  // Permission fields
+  tmbId: z.string().optional(),
+  teamId: z.string().optional(),
+  isShared: z.boolean().optional()
 });
 type BaseModelItemType = z.infer<typeof BaseModelItemSchema>;
 
 export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.llm),
   // Model params
-  maxContext: z.number(),
-  maxResponse: z.number(),
-  quoteMaxToken: z.number(),
+  maxContext: z.number().default(16000),
+  maxResponse: z.number().default(8000),
+  quoteMaxToken: z.number().default(8000),
   maxTemperature: z.number().optional(),
 
   showTopP: z.boolean().optional(),
@@ -69,8 +75,8 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
 
-  functionCall: z.boolean(),
-  toolChoice: z.boolean(),
+  functionCall: z.boolean().default(true),
+  toolChoice: z.boolean().default(true),
 
   defaultSystemChatPrompt: z.string().optional(),
   defaultConfig: z.record(z.string(), z.any()).optional(),
@@ -97,9 +103,9 @@ export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;
 
 export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.embedding),
-  defaultToken: z.number(), // split text default token
-  maxToken: z.number(), // model max token
-  weight: z.number(), // training weight
+  defaultToken: z.number().default(512), // split text default token
+  maxToken: z.number().default(512), // model max token
+  weight: z.number().default(0), // training weight
   hidden: z.boolean().optional(), // Disallow creation
   normalization: z.boolean().optional(), // normalization processing
   dimensions: z.number().optional(), // vector dimensions (e.g. 1536 for ada-002, 3072 for text-embedding-3-large)
@@ -115,7 +121,7 @@ export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
 export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.rerank),
-  maxToken: z.number().optional(), // max input token for rerank query + one document
+  maxToken: z.number().default(3000), // max input token for rerank query + one document
   instruction: z.string().optional(), // Instruction for instruction-aware models
   supportTrain: z.boolean().optional(), // Whether the model supports training
   trainTaskList: z.array(z.any()).optional() // Runtime: RerankTrainTaskListItem[], injected for isTuned models
@@ -124,7 +130,7 @@ export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
 
 export const TTSModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.tts),
-  voices: z.array(z.object({ label: z.string(), value: z.string() }))
+  voices: z.array(z.object({ label: z.string(), value: z.string() })).default([])
 });
 export type TTSModelType = z.infer<typeof TTSModelItemSchema>;
 

@@ -15,14 +15,14 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
+      defaultValue: getWebDefaultLLMModel()?.id || ''
     }
   );
 
   const onChangeModel = useCallback(
     (e: SettingAIDataType) => {
       for (const key in e) {
-        if (key === NodeInputKeyEnum.aiModel) {
+        if (key === NodeInputKeyEnum.aiModelId) {
           setDefaultModel(e[key]);
         }
 
@@ -46,7 +46,8 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
-      model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? defaultModel,
+      modelId:
+        inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value ?? defaultModel,
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
       temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(

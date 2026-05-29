@@ -262,7 +262,7 @@ const NodeTemplateList = ({
         const defaultValueMap: Record<string, any> = {
           [NodeInputKeyEnum.userChatInput]: undefined,
           [NodeInputKeyEnum.fileUrlList]: undefined,
-          [NodeInputKeyEnum.aiModel]: getWebDefaultLLMModel()?.model
+          [NodeInputKeyEnum.aiModelId]: getWebDefaultLLMModel()?.id
         };
 
         getNodeList().forEach((node) => {

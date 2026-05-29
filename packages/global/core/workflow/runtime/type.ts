@@ -173,7 +173,7 @@ export const DispatchNodeResponseSchema = z
     tokens: z.number().optional().meta({ description: '总 token' }),
     inputTokens: z.number().optional().meta({ description: '输入 token' }),
     outputTokens: z.number().optional().meta({ description: '输出 token' }),
-    model: z.string().optional().meta({ description: '模型' }),
+    modelId: z.string().optional().meta({ description: '模型Id' }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
     childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
@@ -198,19 +198,19 @@ export const DispatchNodeResponseSchema = z
     finishReason: CompletionFinishReasonSchema.optional(),
 
     // dataset search
-    embeddingModel: z.string().optional().meta({ description: '嵌入模型' }),
+    embeddingModelId: z.string().optional().meta({ description: '嵌入模型Id' }),
     embeddingTokens: z.number().optional().meta({ description: '嵌入 token' }),
     similarity: z.number().optional().meta({ description: '相似度' }),
     limit: z.number().optional().meta({ description: '限制' }),
     searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
-    rerankModel: z.string().optional().meta({ description: '重排模型' }),
+    rerankModelId: z.string().optional().meta({ description: '重排模型Id' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
     queryExtensionResult: z
       .object({
-        model: z.string().meta({ description: '模型' }),
+        modelId: z.string().meta({ description: '模型' }),
         inputTokens: z.number().meta({ description: '输入 token' }),
         outputTokens: z.number().meta({ description: '输出 token' }),
         query: z.string().meta({ description: '查询内容' }),
@@ -227,7 +227,7 @@ export const DispatchNodeResponseSchema = z
       .meta({ description: '查询扩展结果' }),
     deepSearchResult: z
       .object({
-        model: z.string().meta({ description: '模型' }),
+        modelId: z.string().meta({ description: '模型' }),
         inputTokens: z.number().meta({ description: '输入 token' }),
         outputTokens: z.number().meta({ description: '输出 token' })
       })
@@ -359,7 +359,7 @@ export const DispatchNodeResponseSchema = z
     // Tools
     toolId: z.string().optional().meta({ description: '工具 ID' }),
 
-    extensionModel: z.string().optional().meta({ description: '扩展模型', deprecated: true }),
+    extensionModelId: z.string().optional().meta({ description: '扩展模型Id', deprecated: true }),
     extensionResult: z.string().optional().meta({ description: '扩展结果', deprecated: true }),
     extensionTokens: z.number().optional().meta({ description: '扩展 token', deprecated: true })
   })
@@ -401,7 +401,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
 
 /* Single node props */
 export type AIChatNodeProps = {
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]?: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
   [NodeInputKeyEnum.aiChatTemperature]?: number;
   [NodeInputKeyEnum.aiChatMaxToken]?: number;

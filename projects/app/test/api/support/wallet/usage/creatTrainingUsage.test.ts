@@ -33,9 +33,9 @@ describe('createTrainingUsage', () => {
       teamId: user.teamId,
       tmbId: user.tmbId,
       type: DatasetTypeEnum.dataset,
-      vectorModel: 'text-embedding-ada-002',
-      agentModel: 'gpt-3.5-turbo',
-      vlmModel: 'gpt-4-vision-preview'
+      vectorModelId: 'mock-embedding-id',
+      agentModelId: 'mock-llm-id',
+      vlmModelId: 'mock-vlm-id'
     });
 
     // Add dataset permission
@@ -100,8 +100,8 @@ describe('createTrainingUsage', () => {
       teamId: owner.teamId,
       tmbId: owner.tmbId,
       type: DatasetTypeEnum.dataset,
-      vectorModel: 'text-embedding-ada-002',
-      agentModel: 'gpt-3.5-turbo'
+      vectorModelId: 'mock-embedding-id',
+      agentModelId: 'mock-llm-id'
     });
 
     // Only give owner permission, not the unauthorized user
@@ -173,8 +173,8 @@ describe('createTrainingUsage', () => {
       teamId: user.teamId,
       tmbId: user.tmbId,
       type: DatasetTypeEnum.dataset,
-      vectorModel: 'text-embedding-ada-002',
-      agentModel: 'gpt-3.5-turbo'
+      vectorModelId: 'mock-embedding-id',
+      agentModelId: 'mock-llm-id'
       // vlmModel is optional
     });
 

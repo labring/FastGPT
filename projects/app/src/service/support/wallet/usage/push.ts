@@ -2,25 +2,25 @@ import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wall
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultTTSModel, getModelById } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const pushHelperBotUsage = ({
   teamId,
   tmbId,
-  model,
+  modelId,
   inputTokens,
   outputTokens
 }: {
   teamId: string;
   tmbId: string;
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
 }) => {
   const { totalPoints, modelName } = formatModelChars2Points({
-    model,
+    modelId,
     inputTokens,
     outputTokens
   });
@@ -35,7 +35,7 @@ export const pushHelperBotUsage = ({
       {
         moduleName: i18nT('account_usage:helper_bot'),
         amount: totalPoints,
-        model: modelName,
+        modelId: modelId,
         inputTokens,
         outputTokens
       }
@@ -48,12 +48,12 @@ export const pushGenerateVectorUsage = ({
   teamId,
   tmbId,
   inputTokens,
-  model,
+  modelId,
   source = UsageSourceEnum.fastgpt,
-  extensionModel,
+  extensionModelId,
   extensionInputTokens,
   extensionOutputTokens,
-  deepSearchModel,
+  deepSearchModelId,
   deepSearchInputTokens,
   deepSearchOutputTokens
 }: {
@@ -61,30 +61,30 @@ export const pushGenerateVectorUsage = ({
   teamId: string;
   tmbId: string;
   inputTokens: number;
-  model: string;
+  modelId: string;
   source?: UsageSourceEnum;
 
-  extensionModel?: string;
+  extensionModelId?: string;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
 
-  deepSearchModel?: string;
+  deepSearchModelId?: string;
   deepSearchInputTokens?: number;
   deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
-    model,
+    modelId,
     inputTokens
   });
 
   const { extensionTotalPoints, extensionModelName } = (() => {
-    if (!extensionModel || !extensionInputTokens)
+    if (!extensionModelId || !extensionInputTokens)
       return {
         extensionTotalPoints: 0,
         extensionModelName: ''
       };
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: extensionModel,
+      modelId: extensionModelId,
       inputTokens: extensionInputTokens,
       outputTokens: extensionOutputTokens
     });
@@ -94,13 +94,13 @@ export const pushGenerateVectorUsage = ({
     };
   })();
   const { deepSearchTotalPoints, deepSearchModelName } = (() => {
-    if (!deepSearchModel || !deepSearchInputTokens)
+    if (!deepSearchModelId || !deepSearchInputTokens)
       return {
         deepSearchTotalPoints: 0,
         deepSearchModelName: ''
       };
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: deepSearchModel,
+      modelId: deepSearchModelId,
       inputTokens: deepSearchInputTokens,
       outputTokens: deepSearchOutputTokens
     });
@@ -132,26 +132,26 @@ export const pushGenerateVectorUsage = ({
         {
           moduleName: i18nT('account_usage:embedding_index'),
           amount: totalVector,
-          model: vectorModelName,
+          modelId: modelId,
           inputTokens
         },
-        ...(extensionModel !== undefined
+        ...(extensionModelId !== undefined
           ? [
               {
                 moduleName: i18nT('common:core.module.template.Query extension'),
                 amount: extensionTotalPoints,
-                model: extensionModelName,
+                modelId: extensionModelId,
                 inputTokens: extensionInputTokens,
                 outputTokens: extensionOutputTokens
               }
             ]
           : []),
-        ...(deepSearchModel !== undefined
+        ...(deepSearchModelId !== undefined
           ? [
               {
                 moduleName: i18nT('common:deep_rag_search'),
                 amount: deepSearchTotalPoints,
-                model: deepSearchModelName,
+                modelId: deepSearchModelId,
                 inputTokens: deepSearchInputTokens,
                 outputTokens: deepSearchOutputTokens
               }
@@ -164,13 +164,13 @@ export const pushGenerateVectorUsage = ({
 };
 
 export const pushQuestionGuideUsage = ({
-  model,
+  modelId,
   inputTokens,
   outputTokens,
   teamId,
   tmbId
 }: {
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
   teamId: string;
@@ -179,7 +179,7 @@ export const pushQuestionGuideUsage = ({
   const { totalPoints, modelName } = formatModelChars2Points({
     inputTokens,
     outputTokens,
-    model
+    modelId
   });
 
   createUsage({
@@ -192,7 +192,7 @@ export const pushQuestionGuideUsage = ({
       {
         moduleName: i18nT('common:core.app.Question Guide'),
         amount: totalPoints,
-        model: modelName,
+        modelId: modelId,
         inputTokens,
         outputTokens
       }
@@ -202,21 +202,21 @@ export const pushQuestionGuideUsage = ({
 
 export const pushAudioSpeechUsage = ({
   appName = i18nT('common:support.wallet.usage.Audio Speech'),
-  model,
+  modelId,
   charsLength,
   teamId,
   tmbId,
   source = UsageSourceEnum.fastgpt
 }: {
   appName?: string;
-  model: string;
+  modelId: string;
   charsLength: number;
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
 }) => {
   const { totalPoints, modelName } = formatModelChars2Points({
-    model,
+    modelId,
     inputTokens: charsLength
   });
 
@@ -230,7 +230,7 @@ export const pushAudioSpeechUsage = ({
       {
         moduleName: appName,
         amount: totalPoints,
-        model: modelName,
+        modelId: modelId,
         charsLength
       }
     ]
@@ -251,7 +251,7 @@ export const pushWhisperUsage = ({
   if (!whisperModel) return;
 
   const { totalPoints, modelName } = formatModelChars2Points({
-    model: whisperModel.model,
+    modelId: whisperModel.id,
     inputTokens: duration,
     multiple: 60
   });
@@ -268,7 +268,7 @@ export const pushWhisperUsage = ({
       {
         moduleName: name,
         amount: totalPoints,
-        model: modelName,
+        modelId: whisperModel.id,
         duration
       }
     ]
@@ -287,27 +287,27 @@ export const pushDatasetTestUsage = ({
   tmbId: string;
   source?: UsageSourceEnum;
   embUsage?: {
-    model: string;
+    modelId: string;
     inputTokens: number;
   };
   rerankUsage?: {
-    model: string;
+    modelId: string;
     inputTokens: number;
   };
   extensionUsage?: {
-    model: string;
+    modelId: string;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
-    embeddingModel: string;
+    embeddingModelId: string;
   };
 }) => {
   const list: UsageItemType[] = [];
   let points = 0;
 
   if (extensionUsage) {
-    const { totalPoints: llmPoints, modelName: llmModelName } = formatModelChars2Points({
-      model: extensionUsage.model,
+    const { totalPoints: llmPoints } = formatModelChars2Points({
+      modelId: extensionUsage.modelId,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
     });
@@ -315,48 +315,46 @@ export const pushDatasetTestUsage = ({
     list.push({
       moduleName: i18nT('common:core.module.template.Query extension'),
       amount: llmPoints,
-      model: llmModelName,
+      modelId: extensionUsage.modelId,
       inputTokens: extensionUsage.inputTokens,
       outputTokens: extensionUsage.outputTokens
     });
 
-    const { totalPoints: embeddingPoints, modelName: embeddingModelName } = formatModelChars2Points(
-      {
-        model: extensionUsage.embeddingModel,
-        inputTokens: extensionUsage.embeddingTokens
-      }
-    );
+    const { totalPoints: embeddingPoints } = formatModelChars2Points({
+      modelId: extensionUsage.embeddingModelId,
+      inputTokens: extensionUsage.embeddingTokens
+    });
     points += embeddingPoints;
     list.push({
       moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
       amount: embeddingPoints,
-      model: embeddingModelName,
+      modelId: extensionUsage.embeddingModelId,
       inputTokens: extensionUsage.embeddingTokens
     });
   }
   if (embUsage) {
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: embUsage.model,
+      modelId: embUsage.modelId,
       inputTokens: embUsage.inputTokens
     });
     points += totalPoints;
     list.push({
       moduleName: i18nT('account_usage:embedding_index'),
       amount: totalPoints,
-      model: modelName,
+      modelId: embUsage.modelId,
       inputTokens: embUsage.inputTokens
     });
   }
   if (rerankUsage) {
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: rerankUsage.model,
+      modelId: rerankUsage.modelId,
       inputTokens: rerankUsage.inputTokens
     });
     points += totalPoints;
     list.push({
       moduleName: i18nT('account_usage:rerank'),
       amount: totalPoints,
-      model: modelName,
+      modelId: rerankUsage.modelId,
       inputTokens: rerankUsage.inputTokens
     });
   }
@@ -374,13 +372,13 @@ export const pushDatasetTestUsage = ({
 };
 
 export const pushGenerateSqlUsage = ({
-  model,
+  modelId,
   inputTokens,
   outputTokens,
   teamId,
   tmbId
 }: {
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
   teamId: string;
@@ -389,7 +387,7 @@ export const pushGenerateSqlUsage = ({
   const { totalPoints, modelName } = formatModelChars2Points({
     inputTokens,
     outputTokens,
-    model
+    modelId
   });
 
   createUsage({
@@ -402,7 +400,7 @@ export const pushGenerateSqlUsage = ({
       {
         moduleName: 'core.app.Generate Sql',
         amount: totalPoints,
-        model: modelName,
+        modelId: modelId,
         inputTokens,
         outputTokens
       }

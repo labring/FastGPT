@@ -160,7 +160,7 @@ const DimensionItem = ({
             value={dimension.evaluationModel}
             list={evalModelList.map((item) => ({
               label: item.name,
-              value: item.model
+              value: item.id
             }))}
             onChange={(e) => {
               if (!isDisabled) {
@@ -184,7 +184,7 @@ const DimensionItem = ({
             value={dimension.indexModel || ''}
             list={filterNotHiddenVectorModelList.map((item) => ({
               label: item.name,
-              value: item.model
+              value: item.id
             }))}
             onChange={(e) => {
               if (!isDisabled) {
@@ -265,8 +265,8 @@ const ManageDimension = ({
   const transformedDimensions = useMemo(() => {
     if (!metricListData?.list?.length) return [];
 
-    const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.model;
-    const defaultEvaluationModel = getWebDefaultEvaluationModel(evalModelList)?.model;
+    const defaultEmbeddingModel = getWebDefaultEmbeddingModel(embeddingModelList)?.id;
+    const defaultEvaluationModel = getWebDefaultEvaluationModel(evalModelList)?.id;
 
     return metricListData.list.map((metric) => {
       const dimension = transformMetricToDimension(

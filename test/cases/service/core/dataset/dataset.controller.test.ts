@@ -51,8 +51,8 @@ async function createDataset({
     name,
     type,
     parentId: parentId ? new Types.ObjectId(parentId) : null,
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   });
 }
 

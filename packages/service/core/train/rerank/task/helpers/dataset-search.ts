@@ -88,14 +88,14 @@ export async function performDatasetSearch(
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: undefined,
       usingReRank: false,
-      rerankModel: undefined,
+      rerankModelId: undefined,
       rerankMethod: RerankMethodEnum.question,
       collectionFilterMatch: '',
       datasetSearchUsingExtensionQuery: false, // disable for ensuring the retrieval contexts stable
-      datasetSearchExtensionModel: '',
+      datasetSearchExtensionModelId: '',
       datasetSearchExtensionBg: ''
     }
-  } as any);
+  });
 
   // Prefer retrievalResults (top 20 results from retrieval stage, used for Assistant scenarios)
   // Fall back to quoteQA (final top 10 results after filtering)
