@@ -278,12 +278,12 @@ export async function dispatchDatasetSearch(
       | { correctionId: string; correctedAnswer: string; question: string; similarity: number }
       | undefined = undefined;
     let faqAnswer: string | undefined = undefined; // FAQ 匹配成功时的答案
-    let rerankTime: number | undefined = undefined; // 新增：重排耗时（仅assistant场景）
-    let retrievalTime: number | undefined = undefined; // 新增：检索总耗时（仅assistant场景）
-    let sqlRetrievalTime: number | undefined = undefined; // 新增：SQL数据库检索耗时（仅assistant场景）
-    let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 新增：检索结果（仅assistant场景）
-    let retrievalType: 'correction' | 'faq' | undefined = undefined; // 新增：检索类型（仅correction/faq命中时有值）
-    let sqlChunks: SearchDataResponseItemType[] = []; // 新增：SQL检索结果转换的chunks（仅assistant场景）
+    let rerankTime: number | undefined = undefined; // 重排耗时
+    let retrievalTime: number | undefined = undefined; // 检索总耗时
+    let sqlRetrievalTime: number | undefined = undefined; // SQL数据库检索耗时
+    let retrievalResults: SearchDataResponseItemType[] | undefined = undefined; // 检索结果
+    let retrievalType: 'correction' | 'faq' | undefined = undefined; // 检索类型（仅correction/faq命中时有值）
+    let sqlChunks: SearchDataResponseItemType[] = []; // SQL检索结果转换的chunks
     let rerankError:
       | {
           errorMessage: Record<string, any>;
@@ -317,8 +317,8 @@ export async function dispatchDatasetSearch(
     };
     // Database search for database datasets - search each dataset individually and generate SQL
     if (databaseDatasetIds.length > 0) {
-      // 新增：SQL数据库检索开始计时（仅assistant场景）
-      const sqlRetrievalStartTime = isAssistant ? Date.now() : undefined;
+      // SQL数据库检索开始计时
+      const sqlRetrievalStartTime = Date.now();
 
       const sqlLLM = getLLMModel(generateSqlModel);
       // Calculate dynamic limit based on generateSqlModel's maxContext
@@ -448,10 +448,8 @@ export async function dispatchDatasetSearch(
               // convertSqlResultsToChunks
               const sqlChunk = await convertSqlResultsToChunks(singleSqlResult, datasetId);
               searchRes.push(sqlChunk);
-              // 仅assistant场景保存SQL检索结果到sqlChunks
-              if (isAssistant) {
-                sqlChunks.push(sqlChunk);
-              }
+              // 保存SQL检索结果到sqlChunks
+              sqlChunks.push(sqlChunk);
             } else {
               addLog.warn('Dataset Search - SQL result has empty answer or sql', {
                 datasetId,
@@ -466,8 +464,8 @@ export async function dispatchDatasetSearch(
         })
       );
 
-      // 新增：SQL数据库检索结束计时（仅assistant场景）
-      if (isAssistant && sqlRetrievalStartTime !== undefined) {
+      // SQL数据库检索结束计时
+      if (sqlRetrievalStartTime !== undefined) {
         sqlRetrievalTime = +((Date.now() - sqlRetrievalStartTime) / 1000).toFixed(2);
         addLog.debug('Dataset Search - SQL Retrieval Time', { sqlRetrievalTime });
       }
@@ -906,17 +904,17 @@ export async function dispatchDatasetSearch(
       deepSearchResult = commonResult.deepSearchResult;
       // 提取校正数据信息
       correctionData = commonResult.correctionData;
-      // 新增：提取重排耗时
+      // 提取重排耗时
       rerankTime = commonResult.rerankTime;
-      // 新增：提取检索总耗时
+      // 提取检索总耗时
       retrievalTime = commonResult.retrievalTime;
-      // 新增：提取检索结果（仅assistant场景）
+      // 提取检索结果
       retrievalResults = commonResult.retrievalResults;
       // 新增：提取检索类型（仅correction/faq命中时有值）
       retrievalType = commonResult.retrievalType;
-      // 新增：提取 reranker 错误信息（仅 reranker 报错时有值）
+      // 提取 reranker 错误信息
       rerankError = commonResult.rerankError;
-      // 新增：提取 agentic 检索过程信息（仅 agentic 路径有值）
+      // 提取 agentic 检索过程信息
       agenticSearchResult = commonResult.agenticSearchResult;
       // 提取 FAQ 数据信息
       if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
@@ -924,8 +922,8 @@ export async function dispatchDatasetSearch(
       }
     }
 
-    // 合并SQL检索结果到retrievalResults（仅assistant场景）
-    if (isAssistant && sqlChunks.length > 0) {
+    // 合并SQL检索结果到retrievalResults
+    if (sqlChunks.length > 0) {
       retrievalResults = [...sqlChunks, ...(retrievalResults || [])];
       addLog.debug('Dataset Search - SQL chunks merged to retrievalResults', {
         sqlChunksCount: sqlChunks.length,
@@ -1130,15 +1128,15 @@ export async function dispatchDatasetSearch(
         deepSearchResult,
         // Results
         quoteList: searchRes,
-        // 新增：重排耗时（仅assistant场景）
+        // 重排耗时
         ...(rerankTime !== undefined && { rerankTime }),
-        // 新增：检索总耗时（仅assistant场景）
+        // 检索总耗时
         ...(retrievalTime !== undefined && { retrievalTime }),
-        // 新增：SQL数据库检索耗时（仅assistant场景）
+        // SQL数据库检索耗时
         ...(sqlRetrievalTime !== undefined && { sqlRetrievalTime }),
-        // 新增：检索结果（仅assistant场景）
-        ...(isAssistant && retrievalResults && { retrievalResults }),
-        // 新增：检索类型（仅correction/faq命中时有值）
+        // 检索结果
+        ...(retrievalResults && retrievalResults.length > 0 && { retrievalResults }),
+        // 检索类型（仅correction/faq命中时有值）
         ...(retrievalType && { retrievalType }),
         // 校正数据搜索结果
         ...(correctionData && {
@@ -1151,9 +1149,9 @@ export async function dispatchDatasetSearch(
             }
           ]
         }),
-        // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
+        // Reranker 错误信息（仅当 reranker 报错时存在）
         ...(rerankError && { rerankError }),
-        // 新增：agentic 检索过程信息（仅 agentic 路径有值）
+        // agentic 检索过程信息（仅 agentic 路径有值）
         ...(agenticSearchResult && { agenticSearchResult }),
         // 查询语言检测结果（所有检索路径均可用）
         queryLanguage

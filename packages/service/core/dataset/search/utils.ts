@@ -152,8 +152,8 @@ export const datasetSearchQueryExtension = async ({
   datasetIds?: string[];
   lang: string;
 }) => {
-  // 仅assistant场景下统计整个问题改写流程的耗时
-  const startTime = isAssistant ? Date.now() : undefined;
+  // 统计整个问题改写流程的耗时
+  const startTime = Date.now();
 
   const filterSamQuery = (queries: string[]) => {
     const set = new Set<string>();
@@ -350,9 +350,8 @@ export const datasetSearchQueryExtension = async ({
     queries = [queries.join(';')]; // 检索使用分号拼接
   }
 
-  // 计算问题改写耗时（仅assistant场景且实际执行了改写逻辑）
-  const rewriteTime =
-    startTime !== undefined ? +((Date.now() - startTime) / 1000).toFixed(2) : undefined;
+  // 计算问题改写耗时
+  const rewriteTime = +((Date.now() - startTime) / 1000).toFixed(2);
 
   return {
     searchQueries: queries,
