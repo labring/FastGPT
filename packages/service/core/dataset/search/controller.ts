@@ -139,12 +139,12 @@ export type SearchDatasetDataResponse = {
   usingSimilarityFilter: boolean;
   isFaqResult?: boolean; // 标记是否为 FAQ 检索结果
 
-  retrievalTime?: number; // 新增：检索耗时(s)，统计到进入reranker之前，保留2位小数（仅assistant场景）
-  rerankTime?: number; // 新增：重排耗时(s)，仅当 usingReRank=true 时有值，保留2位小数（仅assistant场景）
-  retrievalResults?: SearchDataResponseItemType[]; // 新增：检索结果（仅assistant场景）
-  retrievalType?: 'correction' | 'faq'; // 新增：检索类型标记，仅当 correction 或 faq 命中时存在
+  retrievalTime?: number; // 检索耗时(s)，统计到进入reranker之前，保留2位小数
+  rerankTime?: number; // 重排耗时(s)，仅当 usingReRank=true 时有值，保留2位小数
+  retrievalResults?: SearchDataResponseItemType[]; // 检索结果（RRF融合后的中间结果，用于落库）
+  retrievalType?: 'correction' | 'faq'; // 检索类型标记，仅当 correction 或 faq 命中时存在
   rerankError?: {
-    // 新增：Reranker 错误信息（仅当 reranker 报错时存在，仅assistant场景）
+    // Reranker 错误信息（仅当 reranker 报错时存在）
     errorMessage: Record<string, any>; // 错误详细信息（结构化对象）
     i18nErrorMessage: string; // 错误信息的 i18n key（用于前端根据语言动态翻译）
     i18nErrorMessageData: { modelName: string }; // i18n 占位符数据（用于前端渲染 i18n 消息）
@@ -161,7 +161,7 @@ export type SearchDatasetDataResponse = {
       standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
       coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
     };
-    rewriteTime?: number; // 新增：问题改写耗时(s)，保留2位小数（仅assistant场景）
+    rewriteTime?: number; // 问题改写耗时(s)，保留2位小数
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
 
@@ -722,6 +722,40 @@ export async function resolveCollectionFilter({
   }
 }
 
+/**
+ * 生成 i18n 错误 key（用于前端展示）
+ */
+function generateI18nErrorKey(errorMessage: string): string {
+  const lowerError = errorMessage.toLowerCase();
+
+  if (lowerError.includes('timeout') || lowerError.includes('超时')) {
+    return 'common:core.dataset.error.Rerank timeout';
+  }
+  if (lowerError.includes('network') || lowerError.includes('网络')) {
+    return 'common:core.dataset.error.Rerank network error';
+  }
+  if (lowerError.includes('404') || lowerError.includes('not found')) {
+    return 'common:core.dataset.error.Rerank service not found';
+  }
+  if (lowerError.includes('401') || lowerError.includes('unauthorized')) {
+    return 'common:core.dataset.error.Rerank unauthorized';
+  }
+  if (lowerError.includes('403') || lowerError.includes('forbidden')) {
+    return 'common:core.dataset.error.Rerank forbidden';
+  }
+  if (lowerError.includes('500') || lowerError.includes('internal server error')) {
+    return 'common:core.dataset.error.Rerank internal error';
+  }
+  if (lowerError.includes('502') || lowerError.includes('bad gateway')) {
+    return 'common:core.dataset.error.Rerank bad gateway';
+  }
+  if (lowerError.includes('503') || lowerError.includes('service unavailable')) {
+    return 'common:core.dataset.error.Rerank service unavailable';
+  }
+
+  return 'common:core.dataset.error.Rerank error';
+}
+
 export async function searchDatasetData(
   props: SearchDatasetDataProps
 ): Promise<SearchDatasetDataResponse> {
@@ -746,6 +780,18 @@ export async function searchDatasetData(
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
   usingReRank = usingReRank && !!getDefaultRerankModel();
+
+  // 检索耗时计时
+  const retrievalStartTime = Date.now();
+
+  // 重排错误信息
+  let rerankError:
+    | {
+        errorMessage: Record<string, any>;
+        i18nErrorMessage: string;
+        i18nErrorMessageData: { modelName: string };
+      }
+    | undefined = undefined;
 
   // Compatible with topk limit
   let set = new Set<string>();
@@ -1421,6 +1467,9 @@ export async function searchDatasetData(
     fullTextLimit
   });
 
+  // 重排计时
+  const rerankStartTime = usingReRank ? Date.now() : undefined;
+
   // ReRank results
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
     if (!usingReRank) {
@@ -1446,10 +1495,55 @@ export async function searchDatasetData(
         rerankMethod: rerankMethod ?? RerankMethodEnum.content
       });
     } catch (error) {
+      addLog.error('Reranker raw error caught', { error, model: rerankModel?.model });
+
+      let errorMessage: Record<string, any> = {};
+      let errorTextForI18n = '';
+
+      if (error instanceof Error) {
+        errorMessage = { type: 'Error', name: error.name, message: error.message };
+        errorTextForI18n = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = { type: 'string', message: error };
+        errorTextForI18n = error;
+      } else if (error && typeof error === 'object') {
+        const errorObj = error as any;
+        errorMessage = {
+          type: 'object',
+          ...(errorObj.message && { message: errorObj.message }),
+          ...(errorObj.error && { error: errorObj.error }),
+          ...(errorObj.status && { status: errorObj.status }),
+          ...(errorObj.statusText && { statusText: errorObj.statusText }),
+          ...(errorObj.code && { code: errorObj.code }),
+          ...(errorObj.response && { response: errorObj.response })
+        };
+        if (errorObj.message) {
+          errorTextForI18n = errorObj.message;
+        } else if (errorObj.statusText) {
+          errorTextForI18n = `${errorObj.statusText}${errorObj.status ? ` (${errorObj.status})` : ''}`;
+        } else if (typeof errorObj.error === 'string') {
+          errorTextForI18n = errorObj.error;
+        } else {
+          errorTextForI18n = JSON.stringify(errorObj);
+        }
+      } else {
+        errorMessage = { type: 'unknown', value: String(error) };
+        errorTextForI18n = String(error);
+      }
+
+      const i18nErrorMessage = generateI18nErrorKey(errorTextForI18n);
+
       addLog.error('Reranker error', {
         model: rerankModel?.model,
-        error: error instanceof Error ? error.message : String(error)
+        errorMessage,
+        i18nErrorKey: i18nErrorMessage
       });
+
+      rerankError = {
+        errorMessage,
+        i18nErrorMessage,
+        i18nErrorMessageData: { modelName: rerankModel?.name || rerankModel?.model || 'Unknown' }
+      };
       usingReRank = false;
       return {
         results: [],
@@ -1458,10 +1552,23 @@ export async function searchDatasetData(
     }
   })();
 
+  // 计算重排耗时
+  const rerankTime =
+    rerankStartTime !== undefined
+      ? +((Date.now() - rerankStartTime) / 1000).toFixed(2)
+      : undefined;
+
   const rrfSearchResult = datasetSearchResultConcat([
     { weight: embeddingWeight, list: embeddingRecallResults },
     { weight: 1 - embeddingWeight, list: fullTextRecallResults }
   ]);
+
+  // 计算检索耗时（召回阶段结束，进入 reranker 前）
+  const retrievalTime = +((Date.now() - retrievalStartTime) / 1000).toFixed(2);
+
+  // 构建 retrievalResults（RRF 融合后的中间结果，用于落库）
+  const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
+  const retrievalResults = dedupeByContent(rrfSearchResult).slice(0, retrievalLimit);
 
   const rrfConcatResults = (() => {
     if (reRankResults.length === 0) return rrfSearchResult;
@@ -1518,7 +1625,11 @@ export async function searchDatasetData(
     limit: maxTokens,
     similarity,
     usingReRank,
-    usingSimilarityFilter
+    usingSimilarityFilter,
+    retrievalTime,
+    retrievalResults,
+    rerankTime,
+    rerankError
   };
 }
 
