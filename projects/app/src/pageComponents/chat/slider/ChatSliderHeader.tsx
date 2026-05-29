@@ -1,4 +1,3 @@
-import { GridItem, Grid } from '@chakra-ui/react';
 import React from 'react';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
@@ -11,8 +10,8 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
+import ChatSliderQuickAppList from '@/pageComponents/chat/slider/ChatSliderQuickAppList';
 
 type Props = {
   title?: string;
@@ -27,13 +26,15 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const enableHome = useContextSelector(ChatPageContext, (v) => v.chatSettings?.enableHome);
+  const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId);
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
+  const currentAppId = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.appId);
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
-  const isHomePane = pane === ChatSidebarPaneEnum.HOME;
+  const isHomePane = pane === ChatSidebarPaneEnum.HOME && currentAppId === homeAppId;
   const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
 
   return isPc ? (
@@ -53,71 +54,63 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
     </Flex>
   ) : (
     <>
-      <Flex align={'center'} justify={'flex-start'} p={2}>
-        <Image src={banner || DEFAULT_LOGO_BANNER_URL} alt="banner" w="60%" />
+      <Flex align={'center'} justify={'flex-start'} pl="8px" pr="12px" pb="16px">
+        <Image src={banner || DEFAULT_LOGO_BANNER_URL} alt="banner" w="60%" maxW="100%" />
       </Flex>
 
-      <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />
-
-      <Grid templateRows="repeat(1, 1fr)" rowGap={2} py={2}>
+      <Flex flexDir="column" gap="4px">
         {enableHome && (
-          <GridItem
+          <Flex
+            p="8px"
+            gap={2}
+            cursor={'pointer'}
+            borderRadius={'8px'}
+            alignItems={'center'}
+            bg={isHomePane ? 'primary.100' : 'transparent'}
+            color={isHomePane ? 'primary.600' : 'myGray.500'}
+            _hover={{
+              bg: 'primary.100',
+              color: 'primary.600'
+            }}
             onClick={() => {
               handlePaneChange(ChatSidebarPaneEnum.HOME);
               onCloseSlider();
               setChatId();
             }}
           >
-            <Flex
-              p={2}
-              mx={2}
-              gap={2}
-              cursor={'pointer'}
-              borderRadius={'8px'}
-              alignItems={'center'}
-              bg={isHomePane ? 'primary.100' : 'transparent'}
-              color={isHomePane ? 'primary.600' : 'myGray.500'}
-              _hover={{
-                bg: 'primary.100',
-                color: 'primary.600'
-              }}
-            >
-              <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
-              <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-                {t('chat:sidebar.home')}
-              </Box>
-            </Flex>
-          </GridItem>
+            <MyIcon name="core/chat/sidebar/home" w="20px" h="20px" />
+            <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
+              {t('chat:sidebar.home')}
+            </Box>
+          </Flex>
         )}
 
-        <GridItem
+        <Flex
+          p="8px"
+          gap={2}
+          cursor={'pointer'}
+          borderRadius={'8px'}
+          alignItems={'center'}
+          bg={isAllAppsPane ? 'primary.100' : 'transparent'}
+          color={isAllAppsPane ? 'primary.600' : 'myGray.500'}
+          _hover={{
+            bg: 'primary.100',
+            color: 'primary.600'
+          }}
           onClick={() => {
             handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
             onCloseSlider();
             setChatId();
           }}
         >
-          <Flex
-            p={2}
-            mx={2}
-            gap={2}
-            cursor={'pointer'}
-            borderRadius={'8px'}
-            alignItems={'center'}
-            bg={isAllAppsPane ? 'primary.100' : 'transparent'}
-            color={isAllAppsPane ? 'primary.600' : 'myGray.500'}
-            _hover={{
-              bg: 'primary.100',
-              color: 'primary.600'
-            }}
-          >
-            <MyIcon name="common/app" w="20px" h="20px" />
-            <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
-              {t('chat:sidebar.all_apps')}
-            </Box>
-          </Flex>
-        </GridItem>
-      </Grid>
+          <MyIcon name="common/app" w="20px" h="20px" />
+          <Box fontSize="sm" fontWeight={500} flexShrink={0} whiteSpace="nowrap">
+            {t('chat:sidebar.all_apps')}
+          </Box>
+        </Flex>
+
+        <ChatSliderQuickAppList />
+      </Flex>
     </>
   );
 };

@@ -105,14 +105,14 @@ const ChatSliderList = () => {
     <>
       {/* 移动端侧栏只需要纵向滚动；隐藏横向滚动条，避免底部语言入口上方出现灰线。 */}
       {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
-      <ScrollData flex={'1 0 0'} h={0} px={[2, 0]} overflowY={'auto'} overflowX={'hidden'}>
+      <ScrollData flex={'1 0 0'} h={0} p={0} overflowY={'auto'} overflowX={'hidden'}>
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
             key={item.id}
             alignItems={'center'}
-            px={4}
-            h={'44px'}
+            p="8px"
+            minH={'44px'}
             cursor={'pointer'}
             userSelect={'none'}
             borderRadius={'md'}
@@ -132,7 +132,7 @@ const ChatSliderList = () => {
             bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeChatId
               ? {
-                  backgroundColor: 'primary.50 !important',
+                  backgroundColor: 'primary.100 !important',
                   color: 'primary.600'
                 }
               : {
@@ -186,8 +186,13 @@ const ChatSliderList = () => {
                     Button={
                       <IconButton
                         size={'xs'}
-                        variant={'whiteBase'}
-                        icon={<MyIcon name={'more'} w={'14px'} p={1} />}
+                        variant={'ghost'}
+                        border={'none'}
+                        bg={'transparent'}
+                        color={'myGray.500'}
+                        _hover={{ bg: 'transparent', color: 'myGray.700' }}
+                        _active={{ bg: 'transparent' }}
+                        icon={<MyIcon name={'more'} w={'14px'} p={1} color={'currentColor'} />}
                         aria-label={''}
                       />
                     }

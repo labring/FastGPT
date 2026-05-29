@@ -43,7 +43,7 @@ const ChatSliderMobileDrawer = ({
       isOpen={isOpenSlider}
       onClose={onCloseSlider}
     >
-      <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
+      <DrawerOverlay backgroundColor="rgba(0, 0, 0, 0.16)" />
 
       <DrawerContent maxWidth="75vw">
         <MyBox
@@ -51,13 +51,17 @@ const ChatSliderMobileDrawer = ({
           flexDirection={'column'}
           w={'100%'}
           h={'100%'}
+          px={'16px'}
+          py={'12px'}
           bg={'white'}
           borderRight={['', theme.borders.base]}
           whiteSpace={'nowrap'}
         >
           {showHeader && <ChatSliderHeader title={title} banner={banner} />}
 
-          {showMenu && <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />}
+          {showMenu && (
+            <MyDivider h="0.5px" bg="myGray.100" my="16px" mx={2} w="calc(100% - 16px)" />
+          )}
           {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}
 
           {showList && <ChatSliderList />}
