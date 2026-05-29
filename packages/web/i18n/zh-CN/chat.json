@@ -98,6 +98,7 @@
   "query_extension_result": "问题优化结果",
   "question_tip": "从上到下，为各个模块的响应顺序",
   "quote_result_notice": "仅代表本次搜索时的结果，请注意信息的时效性",
+  "quote_source_title": "引用来源",
   "read_file": "文件解析",
   "read_raw_source": "打开原文",
   "reasoning_content": "思考过程",

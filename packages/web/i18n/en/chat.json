@@ -98,6 +98,7 @@
   "query_extension_result": "Problem optimization results",
   "question_tip": "From top to bottom, the response order of each module",
   "quote_result_notice": "Results only reflect this search. Please note that information may become outdated.",
+  "quote_source_title": "Citation sources",
   "read_file": "File parsing",
   "read_raw_source": "Open the original text",
   "reasoning_content": "Thinking process",
