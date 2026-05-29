@@ -7,3 +7,5 @@ export const SANDBOX_NAME: I18nStringType = {
 };
 
 export const SANDBOX_ICON = 'core/app/sandbox/sandbox' as const;
+
+export const AGENT_SANDBOX_TOOLSET_ID = 'agent_sandbox';

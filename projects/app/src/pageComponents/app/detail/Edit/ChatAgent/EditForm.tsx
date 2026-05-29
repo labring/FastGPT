@@ -28,7 +28,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSkillManager } from './hooks/useSkillManager';
-import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
+import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -134,6 +134,30 @@ const EditForm = ({
     enableSandbox,
     setAppForm
   });
+  const promptSkillOption = useMemo(
+    () => ({
+      ...skillOption,
+      onSelect: async (id: string) => {
+        const option = await skillOption.onSelect?.(id);
+        if (!option?.onClick) return option;
+
+        return {
+          ...option,
+          onClick: async (toolId: string) => {
+            const skillId = await option.onClick?.(toolId);
+
+            // AgentV2 提示词 @虚拟机 时，同步打开下方虚拟机开关。
+            if (skillId === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
+              onChangeAgentSandbox(true);
+            }
+
+            return skillId;
+          }
+        };
+      }
+    }),
+    [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
+  );
   const tokenLimit = useMemo(() => {
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
@@ -217,7 +241,7 @@ const EditForm = ({
                 bg={'myGray.50'}
                 title={t('common:core.ai.Prompt')}
                 isRichText={true}
-                skillOption={skillOption}
+                skillOption={promptSkillOption}
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}
                 onRemoveSkill={onRemoveSkill}
