@@ -263,6 +263,8 @@
   "source_type_sql": "資料庫",
   "source_type_correction": "優化記錄",
   "source_type_chunk": "分塊",
+  "recall_card_prefix": "召回",
+  "rerank_card_prefix": "重排",
   "recall_stats_prefix": "召回",
   "recall_stats_sql": "{{count}} 個資料庫查詢內容",
   "recall_stats_chunk": "{{count}} 個分塊",

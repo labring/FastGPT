@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { quoteDataFieldSelectorForAssistant } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
@@ -16,7 +16,7 @@ import type {
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { isDatabaseSource, isCorrectionSource } from '@fastgpt/global/core/dataset/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
@@ -110,13 +110,7 @@ async function handler(
     datasetDataIdList
   } = req.body;
 
-  // 1. 验证应用类型是否为 assistant
-  const app = await MongoApp.findById(appId, 'type').lean();
-  if (app?.type !== AppTypeEnum.assistant) {
-    return Promise.reject('This API only supports assistant type applications');
-  }
-
-  // 2. 过滤掉特殊来源的 ID（SQL 和 Correction）
+  // 1. 过滤掉特殊来源的 ID（SQL 和 Correction）
   let filterCollectionIdList = collectionIdList.filter(
     (id) => id?.trim() && !isDatabaseSource(id) && !isCorrectionSource(id)
   );

@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 import QuoteList from '../ChatContainer/ChatBox/components/ChunkCardList';
+import DatasetSearchRetrievalResults from './DatasetSearchRetrievalResults';
 import {
   DatasetSearchModeMap,
   DatasetSearchModeEnum,
@@ -25,7 +27,9 @@ import { isEmpty } from 'lodash';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 import dynamic from 'next/dynamic';
 
@@ -48,6 +52,8 @@ type sideTabItemType = {
 export const WholeResponseContent = ({
   activeModule,
   hideTabs,
+  hideNodeName,
+  isNested,
   dataId,
   chatTime,
   appId,
@@ -56,6 +62,8 @@ export const WholeResponseContent = ({
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
+  hideNodeName?: boolean;
+  isNested?: boolean;
   dataId?: string;
   chatTime?: Date;
   appId?: string;
@@ -218,6 +226,22 @@ export const WholeResponseContent = ({
     [activeModule]
   );
 
+  const isAssistantAppModule = useMemo(
+    () =>
+      activeModule.moduleType === FlowNodeTypeEnum.appModule &&
+      activeModule.appType === AppTypeEnum.assistant,
+    [activeModule.moduleType, activeModule.appType]
+  );
+
+  const datasetSearchChild = useMemo(() => {
+    if (!isAssistantAppModule) return null;
+    return (
+      activeModule.pluginDetail?.find(
+        (item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode
+      ) ?? null
+    );
+  }, [isAssistantAppModule, activeModule.pluginDetail]);
+
   const quoteListDom = useMemo(() => {
     const isEmpty = !activeModule.quoteList || activeModule.quoteList.length === 0;
     if (isEmpty && isDataSearch) {
@@ -320,10 +344,9 @@ export const WholeResponseContent = ({
 
   return activeModule ? (
     <Box
-      h={'100%'}
+      {...(isNested ? { h: 'auto' } : { h: '100%' })}
       ref={ContentRef}
-      px={4}
-      py={1}
+      {...(isNested ? {} : { px: 4, py: 1 })}
       backgroundColor={'white'}
       {...(hideTabs
         ? {}
@@ -332,7 +355,33 @@ export const WholeResponseContent = ({
             overflow: 'auto'
           })}
     >
-      {isAgenticMode ? (
+      {isAssistantAppModule ? (
+        <>
+          {/* 父节点名 */}
+          <Row
+            label={t('chat:response.node_name')}
+            value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+          />
+          {/* 知识检索子节点信息（除节点名外） */}
+          {datasetSearchChild && (
+            <WholeResponseContent
+              activeModule={datasetSearchChild}
+              hideTabs={true}
+              hideNodeName={true}
+              isNested={true}
+              dataId={dataId}
+              appId={appId}
+              chatId={chatId}
+              onOpenRequestIdDetail={onOpenRequestIdDetail}
+            />
+          )}
+          {/* 父节点文本输出 */}
+          <Row
+            label={t('common:core.chat.response.text output')}
+            value={activeModule?.textOutput}
+          />
+        </>
+      ) : isAgenticMode ? (
         <>
           {/* 节点名 */}
           <Row
@@ -362,10 +411,12 @@ export const WholeResponseContent = ({
         <>
           {/* common info */}
           <>
-            <Row
-              label={t('chat:response.node_name')}
-              value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
-            />
+            {!hideNodeName && (
+              <Row
+                label={t('chat:response.node_name')}
+                value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+              />
+            )}
             {activeModule?.totalPoints !== undefined && (
               <Row
                 label={t('common:support.wallet.usage.Total points')}
@@ -611,7 +662,18 @@ export const WholeResponseContent = ({
               label={t('chat:query_extension_result')}
               value={`${activeModule?.extensionResult}`}
             />
-            {quoteListDom}
+            {isDataSearch ? (
+              <DatasetSearchRetrievalResults
+                activeModule={activeModule}
+                dataId={dataId}
+                chatId={chatId}
+                appId={appId}
+                Row={Row}
+                quoteListDom={quoteListDom}
+              />
+            ) : (
+              quoteListDom
+            )}
           </>
           {/* dataset concat */}
           <>
@@ -987,7 +1049,12 @@ export const ResponseBox = React.memo(function ResponseBox({
               helper(item.toolDetail);
             }
             if (Array.isArray(item.pluginDetail)) {
-              helper(item.pluginDetail);
+              const isAssistantApp =
+                item.moduleType === FlowNodeTypeEnum.appModule &&
+                item.appType === AppTypeEnum.assistant;
+              if (!isAssistantApp) {
+                helper(item.pluginDetail);
+              }
             }
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
@@ -1027,7 +1094,14 @@ export const ResponseBox = React.memo(function ResponseBox({
         let children: sideTabItemType[] = [];
 
         if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-        if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+        if (item?.pluginDetail) {
+          const isAssistantApp =
+            item.moduleType === FlowNodeTypeEnum.appModule &&
+            item.appType === AppTypeEnum.assistant;
+          if (!isAssistantApp) {
+            children.push(...pretreatmentResponse(item.pluginDetail));
+          }
+        }
         if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
         if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
         if (item?.childrenResponses)
