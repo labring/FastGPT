@@ -29,7 +29,7 @@ import {
 } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
@@ -276,16 +276,16 @@ function EditLinkModal({
   const {
     register,
     setValue,
-    watch,
+    control,
     handleSubmit: submitShareChat
-  } = useForm({
+  } = useForm<OutLinkEditType>({
     defaultValues: defaultData
   });
 
-  const showSkillReferences = watch('showSkillReferences');
-  const showCite = watch('showCite');
-  const showFullText = watch('showFullText');
-  const canDownloadSource = watch('canDownloadSource');
+  const showSkillReferences = useWatch({ control, name: 'showSkillReferences' });
+  const showCite = useWatch({ control, name: 'showCite' });
+  const showFullText = useWatch({ control, name: 'showFullText' });
+  const canDownloadSource = useWatch({ control, name: 'canDownloadSource' });
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
@@ -503,7 +503,9 @@ function EditLinkModal({
         </Button>
         <Button
           isLoading={creating || updating}
-          onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
+          onClick={submitShareChat((data) =>
+            isEdit && data._id ? onclickUpdate({ ...data, _id: data._id }) : onclickCreate(data)
+          )}
         >
           {t('common:Confirm')}
         </Button>

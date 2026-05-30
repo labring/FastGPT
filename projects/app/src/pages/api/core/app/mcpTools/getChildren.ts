@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -12,12 +12,17 @@ import {
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
-  req: ApiRequestProps<{}, GetMcpChildrenQueryType>,
-  _res: ApiResponseType<any>
+  req: ApiRequestProps<Record<string, never>, GetMcpChildrenQueryType>
 ): Promise<GetMcpChildrenResponseType> {
-  const { id, searchKey } = GetMcpChildrenQuerySchema.parse(req.query);
+  const {
+    query: { id, searchKey }
+  } = parseApiInput({
+    req,
+    querySchema: GetMcpChildrenQuerySchema
+  });
 
   const { app } = await authApp({ req, authToken: true, appId: id, per: ReadPermissionVal });
 

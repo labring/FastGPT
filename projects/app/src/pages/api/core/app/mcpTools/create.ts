@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -11,6 +11,7 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateMcpToolsBodySchema,
   CreateMcpToolsResponseSchema,
@@ -19,11 +20,10 @@ import {
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
 
-export type createMCPToolsQuery = {};
+export type createMCPToolsQuery = Record<string, never>;
 
 async function handler(
-  req: ApiRequestProps<CreateMcpToolsBodyType>,
-  res: ApiResponseType
+  req: ApiRequestProps<CreateMcpToolsBodyType>
 ): Promise<CreateMcpToolsResponseType> {
   const {
     name,
@@ -32,7 +32,10 @@ async function handler(
     url,
     headerSecret = {},
     parentId
-  } = CreateMcpToolsBodySchema.parse(req.body);
+  } = parseApiInput({
+    req,
+    bodySchema: CreateMcpToolsBodySchema
+  }).body;
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })

@@ -5,16 +5,20 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import {
-  type PlaygroundVisibilityConfigQuery,
-  type PlaygroundVisibilityConfigResponse,
-  PlaygroundVisibilityConfigQuerySchema,
-  PlaygroundVisibilityConfigResponseSchema
-} from '@fastgpt/global/support/outLink/api';
+  PlaygroundConfigQuerySchema,
+  PlaygroundConfigResponseSchema,
+  type GetPlaygroundVisibilityConfigParamsType,
+  type PlaygroundVisibilityConfigResponseType
+} from '@fastgpt/global/openapi/core/app/publishChannel/playground/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
-  req: ApiRequestProps<{}, PlaygroundVisibilityConfigQuery>
-): Promise<PlaygroundVisibilityConfigResponse> {
-  const { appId } = PlaygroundVisibilityConfigQuerySchema.parse(req.query);
+  req: ApiRequestProps<Record<string, never>, GetPlaygroundVisibilityConfigParamsType>
+): Promise<PlaygroundVisibilityConfigResponseType> {
+  const { appId } = parseApiInput({
+    req,
+    querySchema: PlaygroundConfigQuerySchema
+  }).query;
 
   await authApp({
     req,
@@ -31,7 +35,7 @@ async function handler(
     'showRunningStatus showSkillReferences showCite showFullText canDownloadSource showWholeResponse'
   ).lean();
 
-  return PlaygroundVisibilityConfigResponseSchema.parse({
+  return PlaygroundConfigResponseSchema.parse({
     showRunningStatus: existingConfig?.showRunningStatus ?? true,
     showSkillReferences: existingConfig?.showSkillReferences ?? false,
     showCite: existingConfig?.showCite ?? true,

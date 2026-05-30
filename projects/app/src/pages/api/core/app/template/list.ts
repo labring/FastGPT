@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
@@ -7,31 +6,35 @@ import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  ListAppTemplateQuerySchema,
+  ListAppTemplateResponseSchema,
+  type ListAppTemplateQueryType,
+  type ListAppTemplateResponseType
+} from '@fastgpt/global/openapi/core/app/template/api';
 const logger = getLogger(LogCategories.MODULE.APP.TEMPLATE);
 
-export type ListParams = {
-  isQuickTemplate?: boolean;
-  randomNumber?: number;
-  type?: AppTypeEnum | 'all';
-  excludeIds?: string;
-};
+export type ListParams = ListAppTemplateQueryType;
 
-export type ListResponse = {
-  list: AppTemplateSchemaType[];
-  total: number;
-};
+export type ListResponse = ListAppTemplateResponseType;
 
-async function handler(
-  req: ApiRequestProps<ListParams>,
-  res: NextApiResponse<any>
-): Promise<ListResponse> {
+async function handler(req: ApiRequestProps<ListParams>): Promise<ListResponse> {
   const { tmbId } = await authCert({ req, authToken: true });
 
   // Get user tags for filtering
   const userDetail = await getUserDetail({ tmbId });
   const userTags = userDetail.tags || [];
 
-  const { isQuickTemplate = false, randomNumber = 0, type = 'all', excludeIds } = req.query;
+  const {
+    isQuickTemplate = false,
+    randomNumber = 0,
+    type = 'all',
+    excludeIds
+  } = parseApiInput({
+    req,
+    querySchema: ListAppTemplateQuerySchema
+  }).query;
 
   const parsedExcludeIds: string[] = (() => {
     if (!excludeIds) return [];
@@ -119,10 +122,10 @@ async function handler(
     };
   });
 
-  return {
+  return ListAppTemplateResponseSchema.parse({
     list,
     total
-  };
+  });
 }
 
 export default NextAPI(handler);

@@ -1,5 +1,4 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -8,7 +7,14 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-export type OutLinkUpdateQuery = {};
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  OutLinkUpdateBodySchema,
+  OutLinkUpdateResponseSchema,
+  type OutLinkUpdateBodyType,
+  type OutLinkUpdateResponseType
+} from '@fastgpt/global/openapi/support/outLink/api';
+export type OutLinkUpdateQuery = Record<string, never>;
 
 // {
 // _id?: string; // Outlink 的 ID
@@ -19,9 +25,9 @@ export type OutLinkUpdateQuery = {};
 // limit?: OutLinkSchemaType<T>['limit']; // 限制
 // app?: T; // 平台的配置
 // }
-export type OutLinkUpdateBody = OutLinkEditType;
+export type OutLinkUpdateBody = OutLinkUpdateBodyType;
 
-export type OutLinkUpdateResponse = string;
+export type OutLinkUpdateResponse = OutLinkUpdateResponseType;
 
 async function handler(
   req: ApiRequestProps<OutLinkUpdateBody, OutLinkUpdateQuery>
@@ -36,7 +42,10 @@ async function handler(
     showRunningStatus,
     showSkillReferences,
     showFullText
-  } = req.body;
+  } = parseApiInput({
+    req,
+    bodySchema: OutLinkUpdateBodySchema
+  }).body;
 
   if (!_id) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -77,6 +86,6 @@ async function handler(
       }
     });
   })();
-  return doc?.shareId!;
+  return OutLinkUpdateResponseSchema.parse(doc?.shareId!);
 }
 export default NextAPI(handler);

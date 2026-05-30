@@ -4,16 +4,23 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
-import { OutLinkListQuerySchema } from '@fastgpt/global/openapi/support/outLink/api';
+import {
+  OutLinkListQuerySchema,
+  OutLinkListResponseSchema
+} from '@fastgpt/global/openapi/support/outLink/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type OutLinkListBody = {};
+export type OutLinkListBody = Record<string, never>;
 
 // 应用内全部 Outlink 列表
 export type OutLinkListResponse = OutLinkSchemaType[];
 
 // 查询应用的所有 OutLink
 export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse> {
-  const { appId, type } = OutLinkListQuerySchema.parse(req.query);
+  const { appId, type } = parseApiInput({
+    req,
+    querySchema: OutLinkListQuerySchema
+  }).query;
   await authApp({
     req,
     authToken: true,
@@ -28,7 +35,7 @@ export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse
     _id: -1
   });
 
-  return data;
+  return OutLinkListResponseSchema.parse(data) as OutLinkListResponse;
 }
 
 export default NextAPI(handler);

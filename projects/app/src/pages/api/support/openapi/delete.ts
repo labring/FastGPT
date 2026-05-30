@@ -2,19 +2,30 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-export type OpenAPIDeleteQuery = { id: string };
-export type OpenAPIDeleteBody = {};
-export type OpenAPIDeleteResponse = {};
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  DeleteApiKeyQuerySchema,
+  DeleteApiKeyResponseSchema,
+  type DeleteApiKeyBodyType,
+  type DeleteApiKeyQueryType,
+  type DeleteApiKeyResponseType
+} from '@fastgpt/global/openapi/support/openapi/api';
+
+export type OpenAPIDeleteQuery = DeleteApiKeyQueryType;
+export type OpenAPIDeleteBody = DeleteApiKeyBodyType;
+export type OpenAPIDeleteResponse = DeleteApiKeyResponseType;
 
 async function handler(
-  req: ApiRequestProps<OpenAPIDeleteBody, OpenAPIDeleteQuery>,
-  _res: ApiResponseType<any>
+  req: ApiRequestProps<OpenAPIDeleteBody, OpenAPIDeleteQuery>
 ): Promise<OpenAPIDeleteResponse> {
-  const { id } = req.query as { id: string };
+  const { id } = parseApiInput({
+    req,
+    querySchema: DeleteApiKeyQuerySchema
+  }).query;
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -40,7 +51,7 @@ async function handler(
 
   await MongoOpenApi.deleteOne({ _id: id });
 
-  return {};
+  return DeleteApiKeyResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

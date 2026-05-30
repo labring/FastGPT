@@ -1,4 +1,4 @@
-import { GET, POST } from '@/web/common/api/request';
+import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
   getLogKeysQuery,
   getLogKeysResponseType,
@@ -10,11 +10,12 @@ import type {
   getTotalDataResponse,
   getAppChatLogsResponseType,
   GetLogUsersBody,
-  GetLogUsersResponse
+  GetLogUsersResponse,
+  updateLogKeysResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 
 export const updateLogKeys = (data: updateLogKeysBody) =>
-  POST('/core/app/logs/updateLogKeys', data);
+  PUT<updateLogKeysResponseType>('/core/app/logs/updateLogKeys', data);
 
 export const getLogKeys = (data: getLogKeysQuery) =>
   GET<getLogKeysResponseType>('/core/app/logs/getLogKeys', data);

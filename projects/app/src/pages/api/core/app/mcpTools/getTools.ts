@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { assertMCPUrlNotInternal, MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import {
@@ -9,14 +9,19 @@ import {
   type GetMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
-  req: ApiRequestProps<GetMcpToolsBodyType>,
-  _res: ApiResponseType<any>
+  req: ApiRequestProps<GetMcpToolsBodyType>
 ): Promise<GetMcpToolsResponseType> {
   await authCert({ req, authToken: true });
 
-  const { url, headerSecret } = GetMcpToolsBodySchema.parse(req.body);
+  const {
+    body: { url, headerSecret }
+  } = parseApiInput({
+    req,
+    bodySchema: GetMcpToolsBodySchema
+  });
 
   await assertMCPUrlNotInternal(url);
 

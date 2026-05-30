@@ -5,10 +5,12 @@ import { ApiKeyPath } from './openapi';
 import { CustomDomainPath } from './customDomain';
 import { OutLinkPath } from './outLink';
 import { McpPath } from './mcpServer';
+import { PermissionPath } from './permission';
 
 export const SupportPath: OpenAPIPath = {
   ...UserPath,
   ...WalletPath,
+  ...PermissionPath,
   ...ApiKeyPath,
   ...CustomDomainPath,
   ...OutLinkPath,

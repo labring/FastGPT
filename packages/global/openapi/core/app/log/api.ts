@@ -5,6 +5,19 @@ import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
 
+const OpenAPIAppLogKeysSchema = AppLogKeysSchema.extend({
+  key: z.enum(AppLogKeysEnum).meta({
+    example: AppLogKeysEnum.SOURCE,
+    description: '日志列标识，对应导出和列表中可展示的日志字段'
+  }),
+  enable: z.boolean().meta({
+    example: true,
+    description: '该日志列是否在当前应用中启用'
+  })
+}).meta({
+  description: '应用日志列配置'
+});
+
 /* Log key mange */
 export const GetLogKeysQuerySchema = z.object({
   appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' })
@@ -13,7 +26,7 @@ export type getLogKeysQuery = z.infer<typeof GetLogKeysQuerySchema>;
 
 export const GetLogKeysResponseSchema = z.object({
   logKeys: z
-    .array(AppLogKeysSchema)
+    .array(OpenAPIAppLogKeysSchema)
     .default([])
     .meta({
       example: [
@@ -33,7 +46,7 @@ export type getLogKeysResponseType = z.infer<typeof GetLogKeysResponseSchema>;
 
 export const UpdateLogKeysBodySchema = z.object({
   appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
-  logKeys: z.array(AppLogKeysSchema).meta({
+  logKeys: z.array(OpenAPIAppLogKeysSchema).meta({
     example: [
       {
         key: AppLogKeysEnum.SOURCE,
@@ -44,6 +57,11 @@ export const UpdateLogKeysBodySchema = z.object({
   })
 });
 export type updateLogKeysBody = z.infer<typeof UpdateLogKeysBodySchema>;
+
+export const UpdateLogKeysResponseSchema = z.object({}).meta({
+  description: '更新成功'
+});
+export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSchema>;
 
 // Chat Log Item Schema (based on AppChatLogSchema)
 export const ChatLogItemSchema = z.object({
@@ -142,10 +160,17 @@ export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;
 export const GetAppChatLogsResponseSchema = z
   .object({
     total: z.number().meta({ example: 100, description: '总记录数' }),
-    list: z.array(ChatLogItemSchema)
+    list: z.array(ChatLogItemSchema).meta({
+      description: '对话日志记录列表'
+    })
   })
   .meta({ example: { total: 100, list: [] }, description: '应用对话日志列表' });
 export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSchema>;
+
+export const ExportChatLogsResponseSchema = z.string().meta({
+  description: '导出的 CSV 文件内容'
+});
+export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 
 /* Export chat log */
 export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.omit({
@@ -157,10 +182,20 @@ export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.omit({
     example: 'chat logs',
     description: '标题'
   }),
-  sourcesMap: z.record(z.string(), z.object({ label: z.string() })).meta({
-    example: { api: { label: 'API' }, online: { label: '在线' } },
-    description: '来源映射'
-  }),
+  sourcesMap: z
+    .record(
+      z.string(),
+      z.object({
+        label: z.string().meta({
+          example: 'API',
+          description: '来源在导出文件中的展示名称'
+        })
+      })
+    )
+    .meta({
+      example: { api: { label: 'API' }, online: { label: '在线' } },
+      description: '来源映射'
+    }),
   logKeys: z.array(z.enum(AppLogKeysEnum)).meta({
     example: [AppLogKeysEnum.SOURCE, AppLogKeysEnum.CREATED_TIME],
     description: '日志键'
@@ -211,40 +246,52 @@ export type getChartDataBody = z.infer<typeof GetChartDataBodySchema>;
 // User Statistics Data Point (based on AppChatLogUserData)
 export const UserStatsDataPointSchema = z.object({
   timestamp: z.number().meta({ example: 1704067200, description: '时间戳' }),
-  summary: z.object({
-    userCount: z.number().meta({ example: 100, description: '用户总数' }),
-    newUserCount: z.number().meta({ example: 30, description: '新用户数' }),
-    retentionUserCount: z.number().meta({ example: 70, description: '留存用户数' }),
-    points: z.number().meta({ example: 1500, description: '积分消耗' }),
-    sourceCountMap: z.record(z.string(), z.number()).meta({
-      example: { api: 50, web: 30, mobile: 20 },
-      description: '各来源用户数量'
+  summary: z
+    .object({
+      userCount: z.number().meta({ example: 100, description: '用户总数' }),
+      newUserCount: z.number().meta({ example: 30, description: '新用户数' }),
+      retentionUserCount: z.number().meta({ example: 70, description: '留存用户数' }),
+      points: z.number().meta({ example: 1500, description: '积分消耗' }),
+      sourceCountMap: z.record(z.string(), z.number()).meta({
+        example: { api: 50, web: 30, mobile: 20 },
+        description: '各来源用户数量'
+      })
     })
-  })
+    .meta({
+      description: '当前时间桶内的用户统计汇总'
+    })
 });
 export type userStatsDataPoint = z.infer<typeof UserStatsDataPointSchema>;
 
 // Chat Statistics Data Point (based on AppChatLogChatData)
 export const ChatStatsDataPointSchema = z.object({
   timestamp: z.number().meta({ example: 1704067200, description: '时间戳' }),
-  summary: z.object({
-    chatItemCount: z.number().meta({ example: 500, description: '对话项目总数' }),
-    chatCount: z.number().meta({ example: 100, description: '对话会话总数' }),
-    errorCount: z.number().meta({ example: 5, description: '错误次数' }),
-    points: z.number().meta({ example: 800, description: '积分消耗' })
-  })
+  summary: z
+    .object({
+      chatItemCount: z.number().meta({ example: 500, description: '消息总数' }),
+      chatCount: z.number().meta({ example: 100, description: '对话会话总数' }),
+      errorCount: z.number().meta({ example: 5, description: '报错消息数量' }),
+      points: z.number().meta({ example: 800, description: '积分消耗' })
+    })
+    .meta({
+      description: '当前时间桶内的对话统计汇总'
+    })
 });
 export type chatStatsDataPoint = z.infer<typeof ChatStatsDataPointSchema>;
 
 // App Statistics Data Point (based on AppChatLogAppData)
 export const AppStatsDataPointSchema = z.object({
   timestamp: z.number().meta({ example: 1704067200, description: '时间戳' }),
-  summary: z.object({
-    goodFeedBackCount: z.number().meta({ example: 25, description: '好评反馈数量' }),
-    badFeedBackCount: z.number().meta({ example: 3, description: '差评反馈数量' }),
-    chatCount: z.number().meta({ example: 100, description: '对话数量' }),
-    totalResponseTime: z.number().meta({ example: 120000, description: '总响应时间(毫秒)' })
-  })
+  summary: z
+    .object({
+      goodFeedBackCount: z.number().meta({ example: 25, description: '好评反馈数量' }),
+      badFeedBackCount: z.number().meta({ example: 3, description: '差评反馈数量' }),
+      chatCount: z.number().meta({ example: 100, description: '对话数量' }),
+      totalResponseTime: z.number().meta({ example: 120000, description: '总响应时间(毫秒)' })
+    })
+    .meta({
+      description: '当前时间桶内的应用效果统计汇总'
+    })
 });
 export type appStatsDataPoint = z.infer<typeof AppStatsDataPointSchema>;
 

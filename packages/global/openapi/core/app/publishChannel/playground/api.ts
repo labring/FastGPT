@@ -7,17 +7,25 @@ const PlaygroundVisibilityConfigFieldsSchema = z.object({
     example: true,
     description: '是否显示运行状态'
   }),
-  showCite: z.boolean().meta({
+  showCite: z.boolean().optional().default(true).meta({
     example: true,
     description: '是否显示引用'
   }),
-  showFullText: z.boolean().meta({
+  showSkillReferences: z.boolean().optional().default(true).meta({
+    example: true,
+    description: '是否显示技能引用'
+  }),
+  showFullText: z.boolean().optional().default(true).meta({
     example: true,
     description: '是否显示全文'
   }),
-  canDownloadSource: z.boolean().meta({
+  canDownloadSource: z.boolean().optional().default(true).meta({
     example: true,
     description: '是否可下载来源'
+  }),
+  showWholeResponse: z.boolean().optional().default(true).meta({
+    example: true,
+    description: '是否显示完整响应按钮'
   })
 });
 
@@ -50,3 +58,11 @@ export const UpdatePlaygroundVisibilityConfigParamsSchema = z
 export type UpdatePlaygroundVisibilityConfigParamsType = z.infer<
   typeof UpdatePlaygroundVisibilityConfigParamsSchema
 >;
+
+export const PlaygroundConfigQuerySchema = GetPlaygroundVisibilityConfigParamsSchema;
+export const PlaygroundConfigResponseSchema = PlaygroundVisibilityConfigResponseSchema;
+export const PlaygroundUpdateBodySchema = UpdatePlaygroundVisibilityConfigParamsSchema;
+export const PlaygroundUpdateResponseSchema = z.void().meta({
+  description: '更新成功'
+});
+export type PlaygroundUpdateResponseType = z.infer<typeof PlaygroundUpdateResponseSchema>;

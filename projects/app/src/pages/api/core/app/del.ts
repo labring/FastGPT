@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -11,9 +11,18 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  DeleteAppQuerySchema,
+  DeleteAppResponseSchema,
+  type DeleteAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
-  const { appId } = req.query as { appId: string };
+async function handler(req: NextApiRequest): Promise<DeleteAppResponseType> {
+  const { appId } = parseApiInput({
+    req,
+    querySchema: DeleteAppQuerySchema
+  }).query;
 
   if (!appId) {
     return Promise.reject('参数错误');
@@ -68,9 +77,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<string[]>) {
   // Tracks
   pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
 
-  return deleteAppsList
+  const ids = deleteAppsList
     .filter((app) => !['folder'].includes(app.type))
     .map((app) => String(app._id));
+
+  return DeleteAppResponseSchema.parse(ids);
 }
 
 export default NextAPI(handler);

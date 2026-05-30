@@ -28,10 +28,15 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  UpdateAppBodySchema,
+  UpdateAppQuerySchema,
+  UpdateAppResponseSchema,
+  type UpdateAppQueryType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
-export type AppUpdateQuery = {
-  appId: string;
-};
+export type AppUpdateQuery = UpdateAppQueryType;
 
 export type AppUpdateBody = AppUpdateParams;
 
@@ -47,9 +52,14 @@ export type AppUpdateBody = AppUpdateParams;
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
-  const { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags } = req.body;
-
-  const { appId } = req.query;
+  const {
+    query: { appId },
+    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags }
+  } = parseApiInput({
+    req,
+    querySchema: UpdateAppQuerySchema,
+    bodySchema: UpdateAppBodySchema
+  });
 
   if (!appId) {
     Promise.reject(CommonErrEnum.missingParams);
@@ -186,12 +196,12 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         session
       });
       logAppMove({ tmbId, teamId, app, targetName });
-      return onUpdate(session);
+      return UpdateAppResponseSchema.parse(await onUpdate(session));
     });
   } else {
     logAppUpdate({ tmbId, teamId, app, name, intro });
 
-    return onUpdate();
+    return UpdateAppResponseSchema.parse(await onUpdate());
   }
 }
 

@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -22,11 +21,9 @@ import {
   GetAppChatLogsResponseSchema,
   type getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<getAppChatLogsResponseType> {
+async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType> {
   const {
     appId,
     dateStart,
@@ -38,7 +35,10 @@ async function handler(
     feedbackType,
     unreadOnly,
     errorFilter
-  } = GetAppChatLogsBodySchema.parse(req.body);
+  } = parseApiInput({
+    req,
+    bodySchema: GetAppChatLogsBodySchema
+  }).body;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
 

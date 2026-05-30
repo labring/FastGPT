@@ -329,7 +329,7 @@ const EditMcpModal = ({
             <FormLabel required mb={0.5}>
               {t('common:input_name')}
             </FormLabel>
-            <Input {...register('name', { required: true })} bg={'myGray.50'} />
+            <Input {...register('name', { required: true })} maxLength={100} bg={'myGray.50'} />
           </Box>
           <Box mt={6}>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
@@ -358,6 +358,7 @@ const EditMcpModal = ({
                         <Td>
                           <Input
                             {...register(`apps.${index}.toolName`, { required: true })}
+                            maxLength={100}
                             placeholder={t('dashboard_mcp:tool_name_placeholder')}
                             bg={'myGray.50'}
                             w={'100%'}
@@ -367,6 +368,7 @@ const EditMcpModal = ({
                         <Td>
                           <Input
                             {...register(`apps.${index}.description`, { required: true })}
+                            maxLength={2000}
                             bg={'myGray.50'}
                             w={'100%'}
                           />
