@@ -169,7 +169,7 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
     {
       ...readFromSecondary
     }
-  );
+  ).lean();
   sortStandPlans(plans);
 
   const standardPlans = global.subPlans?.standard;
