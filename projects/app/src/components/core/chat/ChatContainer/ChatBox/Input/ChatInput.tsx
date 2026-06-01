@@ -11,7 +11,7 @@ import {
   type SendPromptFnType,
   type StopChatFnResult
 } from '../type';
-import { textareaMinH } from '../constants';
+import { ChatInputDefaultHeight, textareaMinH } from '../constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
@@ -118,6 +118,8 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const isDefaultInputHeight =
+    !mobilePreSpeak && !inputValue && fileList.length === 0 && !chatInputGuide.open;
 
   // Upload files
   useRequest(uploadFiles, {
@@ -450,9 +452,10 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={mobilePreSpeak ? '48px' : ['96px', '120px']}
-        pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
-        pb={InputLeftComponent ? 2 : 3}
+        h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
+        minH={mobilePreSpeak ? '48px' : ChatInputDefaultHeight}
+        pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : 4}
+        pb={mobilePreSpeak ? [0, 4] : 4}
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}

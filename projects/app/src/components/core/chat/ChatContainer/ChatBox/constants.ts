@@ -2,6 +2,23 @@ import { type BoxProps } from '@chakra-ui/react';
 
 export const textareaMinH = '22px';
 
+export const ChatInputDefaultHeight: BoxProps['h'] = '120px';
+
+export const HomeChatMobileBottomGap = '46px';
+
+export const HomeChatContentWrapperStyle: BoxProps = {
+  px: ['16px', 4],
+  pb: [HomeChatMobileBottomGap, 0],
+  mx: 'auto',
+  w: '100%',
+  maxW: ['auto', 'min(820px, 100%)']
+};
+
+export const ChatInputWrapperStyle: BoxProps = {
+  ...HomeChatContentWrapperStyle,
+  flexShrink: 0
+};
+
 export const MessageCardStyle: BoxProps = {
   px: 4,
   py: 3,

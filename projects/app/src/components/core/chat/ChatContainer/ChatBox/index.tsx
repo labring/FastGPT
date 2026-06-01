@@ -24,7 +24,12 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories } from './utils/interactive';
-import { ChatTypeEnum, FeedbackTypeEnum } from './constants';
+import {
+  ChatInputWrapperStyle,
+  ChatTypeEnum,
+  FeedbackTypeEnum,
+  HomeChatContentWrapperStyle
+} from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import dynamic from 'next/dynamic';
@@ -554,11 +559,7 @@ const ChatBox = ({
           flexDirection="column"
           flex={'1 0 0'}
           h={0}
-          px={['16px', 4]}
-          pb={['46px', 0]}
-          w="100%"
-          maxW={['auto', 'min(820px, 100%)']}
-          mx={'auto'}
+          {...HomeChatContentWrapperStyle}
         >
           {isPc ? (
             <DesktopHomeLayout inputSlot={HomeChatInput} />
@@ -578,12 +579,7 @@ const ChatBox = ({
             recordsListProps={recordsListProps}
           />
           {canRenderChatInput && (
-            <Box
-              px={[3, 5]}
-              m={['0 auto 10px', '10px auto']}
-              w={'100%'}
-              maxW={['auto', 'min(820px, 100%)']}
-            >
+            <Box {...ChatInputWrapperStyle}>
               {showWorkorder && <WorkorderEntrance />}
 
               <ChatInput
