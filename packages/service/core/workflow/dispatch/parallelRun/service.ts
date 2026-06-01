@@ -88,7 +88,6 @@ export const buildTaskRuntimeContext = (
 ): TaskRuntimeContext => {
   const { runtimeNodes, runtimeEdges, childrenNodeIdList, item, index } = params;
 
-  const childrenSet = new Set(childrenNodeIdList);
   // Include ALL nodes (not just children) so that external node outputs remain accessible
   // for variable reference resolution (getReferenceVariableValue uses runtimeNodesMap).
   const taskRuntimeNodes = cloneDeep(runtimeNodes);
@@ -102,13 +101,21 @@ export const buildTaskRuntimeContext = (
 // ─── 4. parseTaskResponse & parseTaskError ────────────────────────────────────
 
 export type ParallelTaskResult =
-  | { success: true; index: number; data: any; response: DispatchFlowResponse; totalPoints: number }
+  | {
+      success: true;
+      index: number;
+      data: any;
+      response: DispatchFlowResponse;
+      totalPoints: number;
+      taskResponseId?: string;
+    }
   | {
       success: false;
       index: number;
       error?: string;
       response?: DispatchFlowResponse;
       totalPoints: number;
+      taskResponseId?: string;
     };
 
 /**
@@ -250,7 +257,7 @@ export const aggregateParallelResults = (
       0
     );
 
-    const taskNodeId = `${opts.parentNodeId}_task_${result.index}`;
+    const taskNodeId = result.taskResponseId || `${opts.parentNodeId}_task_${result.index}`;
     const taskWrapper: ChatHistoryItemResType = {
       id: taskNodeId,
       nodeId: taskNodeId,

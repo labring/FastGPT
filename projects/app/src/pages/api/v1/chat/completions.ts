@@ -42,7 +42,6 @@ import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { NextAPI } from '@/service/middleware/entry';
@@ -279,7 +278,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       newVariables,
       durationSeconds,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      nodeResponseSummary
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -328,7 +328,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       memories: system_memories,
       customFeedbacks
     };
@@ -353,7 +352,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...metadata,
         originIp
       },
-      durationSeconds
+      durationSeconds,
+      nodeResponseSummary
     };
     if (interactive) {
       await updateInteractiveChat({ interactive, ...params });

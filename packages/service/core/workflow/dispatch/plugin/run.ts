@@ -32,11 +32,15 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getSystemToolByIdAndVersionId } from '../../../app/tool/controller';
 import { WorkflowVariableState } from '../utils/variables';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+};
 type RunPluginResponse = DispatchNodeResultType<
   {
     [key: string]: any;
@@ -245,6 +249,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints
       }
     ]);
+    const shouldKeepChildDetails = !props.nodeResponseWriter && toolData?.permission?.hasWritePer;
+    const childStats = getNodeResponseChildStats(flowResponses);
 
     return {
       data: output ? output.pluginOutput : {},
@@ -258,9 +264,13 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints,
         toolInput: data,
         pluginOutput: output?.pluginOutput,
-        pluginDetail: toolData?.permission?.hasWritePer // Not system workflowTool
-          ? flowResponses
-          : undefined
+        pluginDetail: shouldKeepChildDetails ? flowResponses : undefined,
+        ...(props.nodeResponseWriter
+          ? {
+              childTotalPoints: childStats.childTotalPoints,
+              childResponseCount: childStats.childResponseCount
+            }
+          : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
         ? Object.keys(output.pluginOutput)

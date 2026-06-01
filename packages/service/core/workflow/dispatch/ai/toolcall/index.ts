@@ -12,12 +12,19 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
+import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../../chat/nodeResponseStorage';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
+  const nodeResponseWriter = (
+    props as DispatchToolModuleProps & {
+      nodeResponseWriter?: WorkflowNodeResponseWriter;
+    }
+  ).nodeResponseWriter;
   const {
     node: { nodeId, isEntry, inputs },
     runtimeNodes,
@@ -47,7 +54,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     try {
       await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch (err) {
+    } catch {
       throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
     }
   }
@@ -154,15 +161,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .reduce((sum, item) => sum + item.totalPoints, 0);
     const totalPointsUsage = modelTotalPoints + toolTotalPoints;
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+    const childStats = getNodeResponseChildStats(toolDetail);
+    if (nodeResponseWriter && toolDetail.length > 0) {
+      await nodeResponseWriter.recordWithParent(toolDetail, props.nodeResponseParentId);
+    }
     const nodeResponse: Record<string, any> = {
       totalPoints: totalPointsUsage,
       toolCallInputTokens,
       toolCallOutputTokens,
-      childTotalPoints: toolTotalPoints,
+      childTotalPoints: childStats.childTotalPoints ?? toolTotalPoints,
+      childResponseCount: childStats.childResponseCount,
       model: modelName,
       query: userChatInput,
       historyPreview,
-      toolDetail,
+      toolDetail: nodeResponseWriter ? undefined : toolDetail,
       mergeSignId: nodeId,
       finishReason: finish_reason,
       llmRequestIds: requestIds

@@ -4,7 +4,7 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { appendNodeResponseByParent, mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
@@ -150,15 +150,12 @@ export const mergeResumeCompletedChatRecords = ({
 
     const mergedResponseData =
       shouldMergeResponseData && resumedResponseData?.length
-        ? mergeChatResponseData([
-            ...(item.responseData || []),
-            ...(resumedResponseData.filter(
-              (resumedItem) =>
-                !item.responseData?.some((completedItem) =>
-                  areSameChatResponseDataItem(completedItem, resumedItem)
-                )
-            ) || [])
-          ])
+        ? mergeChatResponseData(
+            resumedResponseData.reduce<ChatHistoryItemResType[]>(
+              (responses, resumedItem) => appendNodeResponseByParent(responses, resumedItem),
+              item.responseData || []
+            )
+          )
         : item.responseData;
 
     return {
@@ -203,9 +200,6 @@ export const shouldAppendResumeInteractive = ({
     existingFinalInteractive.type === 'userInput' && existingFinalInteractive.params.submitted
   );
 };
-
-const areSameChatResponseDataItem = (a: ChatHistoryItemResType, b: ChatHistoryItemResType) =>
-  a.id === b.id && a.nodeId === b.nodeId;
 
 /** 判断两个交互是否为同一轮工作流交互（比较最内层 interactive，而非 child 包装层）。 */
 const areSameInteractive = (

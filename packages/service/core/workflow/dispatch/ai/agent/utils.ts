@@ -19,6 +19,7 @@ import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
+import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
@@ -108,6 +109,8 @@ export type ToolDispatchContext = Pick<
   | 'params'
   | 'stream'
 > & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+  nodeResponseParentId?: string;
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
@@ -146,7 +149,8 @@ export const getExecuteTool = ({
   timezone,
   retainDatasetCite,
   maxRunTimes,
-  workflowDispatchDeep
+  workflowDispatchDeep,
+  nodeResponseWriter
 }: ToolDispatchContext) => {
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
@@ -295,6 +299,8 @@ export const getExecuteTool = ({
             retainDatasetCite,
             maxRunTimes,
             workflowDispatchDeep,
+            nodeResponseWriter,
+            nodeResponseParentId: callId,
             variableState
           });
 
@@ -325,6 +331,8 @@ export const getExecuteTool = ({
             retainDatasetCite,
             maxRunTimes,
             workflowDispatchDeep,
+            nodeResponseWriter,
+            nodeResponseParentId: callId,
             variableState
           });
 
@@ -353,6 +361,11 @@ export const getExecuteTool = ({
         (sum, item) => sum + (item.totalPoints || 0),
         0
       );
+      const childResponseCount =
+        nodeResponse.childResponseCount ??
+        (nodeResponse.childrenResponses?.length
+          ? nodeResponse.childrenResponses.length
+          : undefined);
       return {
         ...nodeResponse,
         moduleType: nodeResponse.moduleType || FlowNodeTypeEnum.tool,
@@ -362,7 +375,12 @@ export const getExecuteTool = ({
         id: callId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0),
-        ...(childTotalPoints > 0 ? { childTotalPoints } : {})
+        ...(childTotalPoints > 0
+          ? { childTotalPoints }
+          : nodeResponse.childTotalPoints !== undefined
+            ? { childTotalPoints: nodeResponse.childTotalPoints }
+            : {}),
+        ...(childResponseCount !== undefined ? { childResponseCount } : {})
       };
     })();
 

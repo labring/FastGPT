@@ -23,6 +23,8 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -30,7 +32,9 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+};
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemMiniType[];
@@ -193,6 +197,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints
       }
     ]);
+    const shouldKeepChildDetails = !props.nodeResponseWriter && appData.permission.hasWritePer;
+    const childStats = getNodeResponseChildStats(flowResponses);
 
     return {
       data: {
@@ -216,7 +222,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
-        pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
+        pluginDetail: shouldKeepChildDetails ? flowResponses : undefined,
+        ...(props.nodeResponseWriter
+          ? {
+              childTotalPoints: childStats.childTotalPoints,
+              childResponseCount: childStats.childResponseCount
+            }
+          : {}),
         mergeSignId: props.node.nodeId
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: text,

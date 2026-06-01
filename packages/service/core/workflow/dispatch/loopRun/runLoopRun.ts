@@ -17,6 +17,8 @@ import {
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
 
 import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -36,7 +38,10 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
   [NodeInputKeyEnum.loopRunInputArray]?: Array<any>;
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+  nodeResponseParentId?: string;
+};
 
 type Response = DispatchNodeResultType<Record<string, any>>;
 
@@ -141,6 +146,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     const isResumeIteration = !!interactiveData && iteration === resumeIteration;
+    const iterationResponseId = `${node.nodeId}_iter_${iteration}`;
 
     if (isResumeIteration) {
       isolatedNodes.forEach((n) => {
@@ -162,6 +168,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const response = await runWorkflow({
       ...props,
       lastInteractive: interactiveData?.childrenResponse,
+      nodeResponseParentId: iterationResponseId,
       runtimeNodes: isolatedNodes,
       runtimeEdges: cloneDeep(
         storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
@@ -189,16 +196,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     totalPoints += iterationTotalPoints;
     collectResponseFeedbacks(response, customFeedbacks);
 
-    // Pause: stash accumulated children so the next resume still sees pre-interrupt
-    // nodes (supports multiple interrupts in the same iteration).
-    if (response.workflowInteractiveResponse) {
-      interactiveResponse = response.workflowInteractiveResponse;
-      pendingIterationResponses = iterationChildrenResponses;
-      break;
-    }
-
     // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
-    // as finished for the customOutputs snapshot.
+    // as finished for the customOutputs snapshot. 交互暂停时也要先算一次，避免
+    // partial iteration wrapper 缺少已完成输出。
     const finishedNodeIds = extractFinishedNodeIds(iterationChildrenResponses);
     const customOutputs = readCustomOutputSnapshot({
       customOutputInputs,
@@ -210,10 +210,11 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     // Wrap this iteration as a virtual task node so the whole-response tree
     // shows a per-iteration layer (mirrors parallelRun's aggregation).
-    const pushIterationDetail = (opts: { error?: string }) => {
+    const pushIterationDetail = async (opts: { error?: string }) => {
+      const childStats = getNodeResponseChildStats(iterationChildrenResponses);
       const wrapper: ChatHistoryItemResType = {
-        id: `${node.nodeId}_iter_${iteration}`,
-        nodeId: `${node.nodeId}_iter_${iteration}`,
+        id: iterationResponseId,
+        nodeId: iterationResponseId,
         moduleType: FlowNodeTypeEnum.loopRun,
         moduleName: i18nT('workflow:parallel_task'),
         moduleNameArgs: { index: iteration },
@@ -222,15 +223,29 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
-        childrenResponses: iterationChildrenResponses
+        childResponseCount: childStats.childResponseCount,
+        childTotalPoints: childStats.childTotalPoints,
+        childrenResponses: props.nodeResponseWriter ? undefined : iterationChildrenResponses
       };
+      if (props.nodeResponseWriter) {
+        await props.nodeResponseWriter.recordWithParent([wrapper], props.nodeResponseParentId);
+      }
       loopResponseDetail.push(wrapper);
     };
+
+    // Pause: stash accumulated children so the next resume still sees pre-interrupt
+    // nodes (supports multiple interrupts in the same iteration).
+    if (response.workflowInteractiveResponse) {
+      interactiveResponse = response.workflowInteractiveResponse;
+      pendingIterationResponses = iterationChildrenResponses;
+      await pushIterationDetail({});
+      break;
+    }
 
     const errorItem = response.flowResponses.find((r) => r.error);
     if (errorItem) {
       const errText = getErrText(errorItem.error);
-      pushIterationDetail({ error: errText });
+      await pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
         customOutputs,
@@ -240,7 +255,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    pushIterationDetail({});
+    await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
 
     if (isLoopBreakHit(response.flowResponses)) break;
@@ -274,6 +289,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     : lastFailed
       ? (lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed'))
       : undefined;
+  const childStats = getNodeResponseChildStats(loopResponseDetail);
 
   return {
     data,
@@ -294,7 +310,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,
-      loopRunDetail: loopResponseDetail,
+      childResponseCount: childStats.childResponseCount,
+      childTotalPoints: childStats.childTotalPoints,
+      ...(props.nodeResponseWriter ? {} : { loopRunDetail: loopResponseDetail }),
       mergeSignId: node.nodeId,
       ...(errorText ? { errorText } : {})
     },

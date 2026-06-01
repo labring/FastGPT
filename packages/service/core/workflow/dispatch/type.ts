@@ -14,6 +14,7 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { NodeResponseWriteSummary } from '../../chat/nodeResponseStorage';
 import z from 'zod';
 
 export type WorkflowDebugResponse = {
@@ -42,6 +43,7 @@ export type DispatchFlowResponse = {
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
   [DispatchNodeResponseKeyEnum.newVariables]: Record<string, any>;
+  nodeResponseSummary?: NodeResponseWriteSummary;
   durationSeconds: number;
 };
 

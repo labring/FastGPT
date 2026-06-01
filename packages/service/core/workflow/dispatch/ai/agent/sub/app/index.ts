@@ -20,6 +20,7 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import { WorkflowVariableState } from '../../../../utils/variables';
+import { getNodeResponseChildStats } from '../../../../../../../core/chat/nodeResponseStorage';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -39,6 +40,8 @@ type Props = Pick<
   | 'workflowDispatchDeep'
   | 'responseAllData'
   | 'responseDetail'
+  | 'nodeResponseWriter'
+  | 'nodeResponseParentId'
   | 'variableState'
 > & {
   app: {
@@ -99,7 +102,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
 
-  const { assistantResponses, flowUsages } = await runWorkflow({
+  const { assistantResponses, flowResponses, flowUsages } = await runWorkflow({
     ...data,
     runningAppInfo: {
       id: String(appData._id),
@@ -126,6 +129,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   });
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
+  const childStats = getNodeResponseChildStats(flowResponses);
 
   return {
     response: text,
@@ -138,7 +142,9 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         userChatInput,
         ...customAppVariables
       },
-      toolRes: text
+      toolRes: text,
+      childTotalPoints: childStats.childTotalPoints,
+      childResponseCount: childStats.childResponseCount
     }
   };
 };
@@ -153,6 +159,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     userChatInput,
     ...data
   } = props;
+  // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
+  void userChatInput;
 
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
@@ -231,7 +239,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         return acc;
       }, {}) ?? {};
 
-  const { flowResponses, flowUsages, runTimes } = await runWorkflow({
+  const { flowResponses, flowUsages } = await runWorkflow({
     ...data,
     runningAppInfo: {
       id: String(appData._id),
@@ -267,6 +275,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       )
     : 'Run plugin failed';
 
+  const childStats = getNodeResponseChildStats(flowResponses);
+
   return {
     response,
     usages: flowUsages,
@@ -275,7 +285,9 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleName: app.name,
       moduleLogo: app.avatar,
       toolInput: customAppVariables,
-      toolRes: output?.pluginOutput || {}
+      toolRes: output?.pluginOutput || {},
+      childTotalPoints: childStats.childTotalPoints,
+      childResponseCount: childStats.childResponseCount
     }
   };
 };

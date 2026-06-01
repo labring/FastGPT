@@ -106,6 +106,7 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+  nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
 
   // TODO: 移除
   usageId?: string;
@@ -184,6 +185,7 @@ export const DispatchNodeResponseSchema = z
     nodeInputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输入' }),
     nodeOutputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输出' }),
     mergeSignId: z.string().optional().meta({ description: '合并签名 ID' }),
+    parentId: z.string().optional().meta({ description: '父节点响应实例 ID' }),
 
     // bill
     tokens: z.number().optional().meta({ description: '总 token' }),
@@ -193,6 +195,7 @@ export const DispatchNodeResponseSchema = z
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
     childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
+    childResponseCount: z.number().optional().meta({ description: '子节点响应数量' }),
 
     // LLM chat
     temperature: z.number().optional().meta({ description: '温度' }),
@@ -349,10 +352,17 @@ export const DispatchNodeResponseSchema = z
 type Tmp_DispatchNodeResponseType = z.infer<typeof DispatchNodeResponseSchema>;
 export type DispatchNodeResponseType = Omit<
   Tmp_DispatchNodeResponseType,
-  'childrenResponses' | 'loopDetail' | 'pluginDetail' | 'toolDetail'
+  | 'childrenResponses'
+  | 'loopDetail'
+  | 'loopRunDetail'
+  | 'parallelDetail'
+  | 'pluginDetail'
+  | 'toolDetail'
 > & {
   childrenResponses?: DispatchNodeResponseType[];
   loopDetail?: DispatchNodeResponseType[];
+  loopRunDetail?: DispatchNodeResponseType[];
+  parallelDetail?: DispatchNodeResponseType[];
   pluginDetail?: DispatchNodeResponseType[];
   toolDetail?: DispatchNodeResponseType[];
 };

@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import {
+  appendNodeResponseByParent,
   mergeChatResponseData,
   getChatTitleFromChatMessage
 } from '@fastgpt/global/core/chat/utils';
@@ -184,9 +185,7 @@ export const useChatGenerate = ({
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
               ...item,
-              responseData: item.responseData
-                ? [...item.responseData, nodeResponse]
-                : [nodeResponse]
+              responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
             };
           }
           if (event === SseResponseEventEnum.flowNodeStatus && status) {

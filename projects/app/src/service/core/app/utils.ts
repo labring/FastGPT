@@ -5,10 +5,9 @@ import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
-  UserChatItemValueItemType,
-  ChatHistoryItemResType
+  UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { NodeResponseWriteSummary } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -55,6 +54,7 @@ export const getScheduleTriggerApp = async () => {
     async (app) => {
       if (!app.scheduledTriggerConfig) return;
       const chatId = getNanoid();
+      const responseChatItemId = getNanoid(24);
 
       // Get app latest version
       const { versionId, nodes, edges, chatConfig } = await retryFn(() =>
@@ -82,16 +82,16 @@ export const getScheduleTriggerApp = async () => {
         error,
         durationSeconds = 0,
         assistantResponses = [],
-        flowResponses = [],
         system_memories,
-        customFeedbacks
+        customFeedbacks,
+        nodeResponseSummary
       }: {
         error?: any;
         durationSeconds?: number;
         assistantResponses?: AIChatItemValueItemType[];
-        flowResponses?: ChatHistoryItemResType[];
         system_memories?: Record<string, any>;
         customFeedbacks?: string[];
+        nodeResponseSummary?: NodeResponseWriteSummary;
       }) => {
         return pushChatRecords({
           chatId,
@@ -111,12 +111,12 @@ export const getScheduleTriggerApp = async () => {
           aiContent: {
             obj: ChatRoleEnum.AI,
             value: assistantResponses,
-            [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
             memories: system_memories,
             customFeedbacks
           },
           durationSeconds,
-          errorMsg: getErrText(error)
+          errorMsg: getErrText(error),
+          nodeResponseSummary
         });
       };
 
@@ -126,10 +126,12 @@ export const getScheduleTriggerApp = async () => {
           flowResponses,
           durationSeconds,
           system_memories,
-          customFeedbacks
+          customFeedbacks,
+          nodeResponseSummary
         } = await retryFn(async () => {
           return dispatchWorkFlow({
             chatId,
+            responseChatItemId,
             mode: 'chat',
             usageId,
             runningAppInfo: {
@@ -158,9 +160,9 @@ export const getScheduleTriggerApp = async () => {
           error,
           durationSeconds,
           assistantResponses,
-          flowResponses,
           system_memories,
-          customFeedbacks
+          customFeedbacks,
+          nodeResponseSummary
         });
       } catch (error) {
         logger.error('Schedule trigger workflow run failed', {

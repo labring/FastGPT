@@ -1,4 +1,5 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import type { SideTabItemType } from './types';
 
 export const flattenResponse = (response: ChatHistoryItemResType[]) => {
@@ -9,24 +10,7 @@ export const flattenResponse = (response: ChatHistoryItemResType[]) => {
       if (item && typeof item === 'object') {
         result.push(item);
 
-        if (Array.isArray(item.toolDetail)) {
-          helper(item.toolDetail);
-        }
-        if (Array.isArray(item.pluginDetail)) {
-          helper(item.pluginDetail);
-        }
-        if (Array.isArray(item.loopDetail)) {
-          helper(item.loopDetail);
-        }
-        if (Array.isArray(item.parallelDetail)) {
-          helper(item.parallelDetail);
-        }
-        if (Array.isArray(item.loopRunDetail)) {
-          helper(item.loopRunDetail);
-        }
-        if (Array.isArray(item.childrenResponses)) {
-          helper(item.childrenResponses);
-        }
+        helper(getChildrenResponses(item));
       }
     });
   };
@@ -43,12 +27,7 @@ export const getSideTabItems = (response: ChatHistoryItemResType[]): SideTabItem
   return response.map((item) => {
     const children: SideTabItemType[] = [];
 
-    if (item?.toolDetail) children.push(...getSideTabItems(item.toolDetail));
-    if (item?.pluginDetail) children.push(...getSideTabItems(item.pluginDetail));
-    if (item?.loopDetail) children.push(...getSideTabItems(item.loopDetail));
-    if (item?.parallelDetail) children.push(...getSideTabItems(item.parallelDetail));
-    if (item?.loopRunDetail) children.push(...getSideTabItems(item.loopRunDetail));
-    if (item?.childrenResponses) children.push(...getSideTabItems(item.childrenResponses));
+    children.push(...getSideTabItems(getChildrenResponses(item)));
 
     return {
       moduleLogo: item.moduleLogo,

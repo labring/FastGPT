@@ -9,6 +9,8 @@ import {
 
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
   clampParallelRetryTimes,
@@ -25,13 +27,27 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
   [NodeInputKeyEnum.parallelRunMaxConcurrency]?: number;
   [NodeInputKeyEnum.parallelRunMaxRetryTimes]?: number;
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+  nodeResponseParentId?: string;
+};
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.parallelSuccessResults]: Array<any>;
   [NodeOutputKeyEnum.parallelFullResults]: ParallelFullResultItem[];
   [NodeOutputKeyEnum.parallelStatus]: string;
 }>;
+
+const getResponseIdsForCleanup = ({
+  taskResponseId,
+  response
+}: {
+  taskResponseId: string;
+  response?: Awaited<ReturnType<typeof runWorkflow>>;
+}) => [
+  taskResponseId,
+  ...((response?.flowResponses || []).map((item) => item.id).filter(Boolean) as string[])
+];
 
 export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   const { params, runtimeNodes, runtimeEdges, node, checkIsStopping } = props;
@@ -67,6 +83,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       // Accumulate points across all retry attempts so nodeResponse.totalPoints
       // matches the sum of all usagePush calls for this task.
       let accumulatedPoints = 0;
+      const taskAttemptResponseIdGroups: string[][] = [];
 
       for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
         if (checkIsStopping()) {
@@ -79,14 +96,21 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           item,
           index
         });
+        const taskResponseId =
+          maxRetryAttempts > 0
+            ? `${node.nodeId}_task_${index}_attempt_${attempt}`
+            : `${node.nodeId}_task_${index}`;
 
         try {
           const response = await runWorkflow({
             ...props,
             variableState: props.variableState.clone(),
+            nodeResponseParentId: taskResponseId,
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });
+          const currentAttemptResponseIds = getResponseIdsForCleanup({ taskResponseId, response });
+          taskAttemptResponseIdGroups.push(currentAttemptResponseIds);
 
           // Push usage per attempt (resources were consumed regardless of success)
           accumulatedPoints += pushSubWorkflowUsage({
@@ -97,17 +121,39 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           });
 
           const result = parseTaskResponse({ index, response });
-          if (result.success) return { ...result, totalPoints: accumulatedPoints };
+          if (result.success) {
+            if (props.nodeResponseWriter && taskAttemptResponseIdGroups.length > 1) {
+              await props.nodeResponseWriter.deleteResponses(
+                taskAttemptResponseIdGroups.slice(0, -1).flat()
+              );
+            }
+            return {
+              ...result,
+              taskResponseId,
+              totalPoints: accumulatedPoints
+            };
+          }
 
           // Non-retryable: interactive response will never succeed on retry
           if (response.workflowInteractiveResponse)
-            return { ...result, totalPoints: accumulatedPoints };
+            return { ...result, taskResponseId, totalPoints: accumulatedPoints };
 
-          lastResult = { ...result, totalPoints: accumulatedPoints };
+          lastResult = { ...result, taskResponseId, totalPoints: accumulatedPoints };
         } catch (err) {
-          lastResult = { ...parseTaskError(index, err), totalPoints: accumulatedPoints };
+          taskAttemptResponseIdGroups.push(getResponseIdsForCleanup({ taskResponseId }));
+          lastResult = {
+            ...parseTaskError(index, err),
+            taskResponseId,
+            totalPoints: accumulatedPoints
+          };
         }
         // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
+      }
+
+      if (props.nodeResponseWriter && taskAttemptResponseIdGroups.length > 1) {
+        await props.nodeResponseWriter.deleteResponses(
+          taskAttemptResponseIdGroups.slice(0, -1).flat()
+        );
       }
 
       return lastResult;
@@ -131,6 +177,35 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       parentNodeId: node.nodeId
     }
   );
+  const rootChildStats = getNodeResponseChildStats(responseDetails);
+  const finalResponseDetails = await (async () => {
+    if (!props.nodeResponseWriter) return responseDetails;
+
+    const slimDetails: typeof responseDetails = [];
+    for (const detail of responseDetails) {
+      const childrenResponses = detail.childrenResponses || [];
+      const childStats = getNodeResponseChildStats(childrenResponses);
+      await props.nodeResponseWriter.recordWithParent(
+        [
+          {
+            ...detail,
+            childResponseCount: childStats.childResponseCount,
+            childTotalPoints: childStats.childTotalPoints,
+            childrenResponses: undefined
+          }
+        ],
+        props.nodeResponseParentId
+      );
+      slimDetails.push({
+        ...detail,
+        childResponseCount: childStats.childResponseCount,
+        childTotalPoints: childStats.childTotalPoints,
+        childrenResponses: undefined
+      });
+    }
+
+    return slimDetails;
+  })();
 
   return {
     data: {
@@ -144,7 +219,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       parallelInput: loopInputArray,
       parallelResult: filteredArray,
       parallelRunDetail: fullDetail,
-      parallelDetail: responseDetails,
+      childResponseCount: rootChildStats.childResponseCount,
+      childTotalPoints: rootChildStats.childTotalPoints,
+      ...(props.nodeResponseWriter ? {} : { parallelDetail: finalResponseDetails }),
       mergeSignId: node.nodeId
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:

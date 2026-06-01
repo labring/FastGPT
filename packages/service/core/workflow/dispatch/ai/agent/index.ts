@@ -94,7 +94,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   // 这些数组会贯穿整轮 dispatch，并由 adapter 持续写入。
   // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
   const assistantResponses: AIChatItemValueItemType[] = [];
-  const childNodeResponses: ChatHistoryItemResType[] = [];
+  const childResponses: ChatHistoryItemResType[] = [];
 
   const {
     node: { nodeId, inputs },
@@ -247,7 +247,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       usagePush,
       workflowStreamResponse,
       assistantResponses,
-      nodeResponses: childNodeResponses
+      nodeResponses: childResponses
     });
 
     // ask_agent 追问会把 pendingMainContext 写入 memory。
@@ -294,7 +294,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       return {
-        [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses,
+        [DispatchNodeResponseKeyEnum.nodeResponses]: childResponses,
         [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
           nodeId,
@@ -353,7 +353,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: childResponses
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory，并把已有 assistantResponses/nodeResponses 返回给前端恢复。
@@ -373,7 +373,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: childResponses
     };
   }
 };

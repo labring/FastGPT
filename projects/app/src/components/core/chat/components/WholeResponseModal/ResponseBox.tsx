@@ -7,7 +7,11 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { WholeResponseSideTab } from './SideTab';
+import {
+  WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING,
+  WHOLE_RESPONSE_SIDE_TAB_WIDTH,
+  WholeResponseSideTab
+} from './SideTab';
 import { WholeResponseContent } from './WholeResponseContent';
 import { flattenResponse, getSideTabItems } from './responseData';
 
@@ -60,18 +64,17 @@ export const ResponseBox = React.memo(function ResponseBox({
         <Flex
           overflow={'hidden'}
           height={'100%'}
-          mx={'32px'}
           bg={'myGray.25'}
           border={'1px solid'}
           borderColor={'myGray.200'}
           borderRadius={'12px'}
         >
           <Box
-            w={'204px'}
+            w={`${WHOLE_RESPONSE_SIDE_TAB_WIDTH}px`}
             flexShrink={0}
             borderRight={'1px solid'}
             borderColor={'myGray.200'}
-            p={3}
+            p={`${WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING}px`}
             overflowY={'auto'}
             overflowX={'hidden'}
           >

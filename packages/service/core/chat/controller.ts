@@ -1,4 +1,4 @@
-import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -6,11 +6,20 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import type { ClientSession } from '../../common/mongo';
 import { Types } from '../../common/mongo';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
+import { composeChatItemResponseData } from './nodeResponseStorage';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
+
+/**
+ * 判断 AI 消息是否仍使用旧的 chat_items.responseData 内联详情。
+ *
+ * 历史数据可能带空数组 responseData；只用 `.length` 会把这类旧记录误判成新记录，
+ * 进而用独立表的空结果覆盖原字段。新链路默认不写该字段，所以以字段是否存在作为边界。
+ */
+const hasInlineNodeResponses = (item: object) =>
+  Object.prototype.hasOwnProperty.call(item, DispatchNodeResponseKeyEnum.nodeResponse);
 
 export async function getChatItems({
   includeDeleted = false,
@@ -166,30 +175,37 @@ export async function getChatItems({
   // Add node responses field
   if (field.includes(DispatchNodeResponseKeyEnum.nodeResponse) && histories.length > 0) {
     const chatItemDataIds = histories
-      .filter((item) => item.obj === ChatRoleEnum.AI && !item.responseData?.length)
+      // 旧记录的 responseData 已内联在 chat_items，存在时不能被独立表的空结果覆盖。
+      .filter((item) => item.obj === ChatRoleEnum.AI && !hasInlineNodeResponses(item))
       .map((item) => item.dataId);
 
     if (chatItemDataIds.length > 0) {
       const chatItemResponsesMap = await MongoChatItemResponse.find(
         { appId, chatId, chatItemDataId: { $in: chatItemDataIds } },
-        { chatItemDataId: 1, data: 1 }
+        {
+          chatItemDataId: 1,
+          data: 1
+        }
       )
+        .sort({ _id: 1 })
         .lean()
         .then((res) => {
-          const map = new Map<string, ChatHistoryItemResType[]>();
+          const map = new Map<string, typeof res>();
           res.forEach((item) => {
             const val = map.get(item.chatItemDataId) || [];
-            val.push(item.data);
+            val.push(item);
             map.set(item.chatItemDataId, val);
           });
           return map;
         });
 
       histories.forEach((item) => {
-        const val = chatItemResponsesMap.get(String(item.dataId));
-        if (item.obj === ChatRoleEnum.AI && val) {
-          item.responseData = val;
-        }
+        if (item.obj !== ChatRoleEnum.AI) return;
+        if (hasInlineNodeResponses(item)) return;
+
+        item.responseData = composeChatItemResponseData({
+          rows: chatItemResponsesMap.get(String(item.dataId)) || []
+        });
       });
     }
   }

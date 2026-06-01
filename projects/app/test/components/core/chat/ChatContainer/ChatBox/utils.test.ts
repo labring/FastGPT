@@ -11,6 +11,7 @@ import {
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
+import { appendNodeResponseByParent } from '@fastgpt/global/core/chat/utils';
 
 describe('stripChatValueFileUrls', () => {
   it('removes signed urls from keyed files before sending messages', () => {
@@ -596,6 +597,53 @@ describe('mergeResumeCompletedChatRecords', () => {
         url: 'https://example.com/file.docx'
       }
     ]);
+  });
+});
+
+describe('appendNodeResponseByParent', () => {
+  it('inserts streamed child responses into childrenResponses', () => {
+    const result = appendNodeResponseByParent(
+      [
+        {
+          id: 'root-response',
+          nodeId: 'root-node',
+          moduleName: 'Root',
+          moduleType: FlowNodeTypeEnum.agent
+        }
+      ],
+      {
+        id: 'child-response',
+        parentId: 'root-response',
+        nodeId: 'child-node',
+        moduleName: 'Child',
+        moduleType: FlowNodeTypeEnum.tool
+      }
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-response']);
+  });
+
+  it('appends as root when parent is missing in the current streaming state', () => {
+    const result = appendNodeResponseByParent(
+      [
+        {
+          id: 'root',
+          nodeId: 'root-node',
+          moduleName: 'Root',
+          moduleType: FlowNodeTypeEnum.agent
+        }
+      ],
+      {
+        id: 'orphan',
+        parentId: 'missing-parent',
+        nodeId: 'orphan-node',
+        moduleName: 'Orphan',
+        moduleType: FlowNodeTypeEnum.tool
+      }
+    );
+
+    expect(result.map((item) => item.id)).toEqual(['root', 'orphan']);
   });
 });
 

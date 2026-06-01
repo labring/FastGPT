@@ -1,6 +1,7 @@
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -16,6 +17,14 @@ const ImageQuery = dynamic(() => import('./ImageQuery'));
 
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
+  const childResponses = getChildrenResponses(activeModule);
+  const hasChildResponses = childResponses.length > 0;
+  const childTotalPoints =
+    activeModule.childTotalPoints ??
+    childResponses.reduce(
+      (sum, item) => sum + (item.totalPoints || 0) + (item.childTotalPoints || 0),
+      0
+    );
 
   return (
     <>
@@ -37,17 +46,8 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
           value={formatNumber(activeModule.totalPoints)}
         />
       )}
-      {(activeModule.childrenResponses || activeModule.toolDetail || activeModule.pluginDetail) && (
-        <Row
-          label={t('chat:response.child total points')}
-          value={formatNumber(
-            [
-              ...(activeModule.childrenResponses || []),
-              ...(activeModule.toolDetail || []),
-              ...(activeModule.pluginDetail || [])
-            ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
-          )}
-        />
+      {hasChildResponses && (
+        <Row label={t('chat:response.child total points')} value={formatNumber(childTotalPoints)} />
       )}
       <Row
         label={t('workflow:response.Error')}
@@ -119,11 +119,9 @@ const LlmRequestIdsRow = ({
 
 export const AiChatRows = ({
   activeModule,
-  queryPreviewDatasetId,
   onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
-  queryPreviewDatasetId?: string;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();

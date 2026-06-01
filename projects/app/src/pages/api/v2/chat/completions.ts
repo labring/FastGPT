@@ -43,7 +43,6 @@ import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -69,6 +68,10 @@ import {
   tryStartGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
+import {
+  composeNodeResponseDetail,
+  getChatItemResponseRows
+} from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
 import {
   ChatGenerateStatusEnum,
@@ -340,7 +343,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       newVariables,
       durationSeconds,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      nodeResponseSummary
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -390,7 +394,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       memories: system_memories,
       customFeedbacks
     };
@@ -415,6 +418,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp,
         ...metadata
       },
+      nodeResponseSummary,
       durationSeconds
     };
     if (interactive) {
@@ -443,9 +447,28 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     logger.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
+    const persistedFlowResponseRows =
+      detail || shareId
+        ? await getChatItemResponseRows({
+            appId: runningAppId,
+            chatId: saveChatId,
+            chatItemDataId: finalResponseChatItemId
+          })
+        : [];
+    const finalFlowResponses =
+      persistedFlowResponseRows.length > 0
+        ? composeNodeResponseDetail(persistedFlowResponseRows)
+        : flowResponses;
+    const finalError =
+      finalFlowResponses[finalFlowResponses.length - 1]?.error ||
+      finalFlowResponses[finalFlowResponses.length - 1]?.errorText ||
+      nodeResponseSummary?.lastError;
     const feResponseData = responseAllData
-      ? flowResponses
-      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showCite });
+      ? finalFlowResponses
+      : filterPublicNodeResponseData({
+          nodeRespones: finalFlowResponses,
+          responseDetail: showCite
+        });
 
     if (stream) {
       workflowResponseWrite({
@@ -495,13 +518,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return formatResponseContent;
       })();
 
-      const error =
-        flowResponses[flowResponses.length - 1]?.error ||
-        flowResponses[flowResponses.length - 1]?.errorText;
-
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
-        error,
+        error: finalError,
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -531,7 +550,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid,
         shareId,
         appName: app.name,
-        flowResponses,
+        flowResponses: finalFlowResponses,
         chatId: saveChatId
       });
       addOutLinkUsage({

@@ -1,8 +1,4 @@
-import type {
-  AIChatItemType,
-  ChatHistoryItemResType,
-  UserChatItemType
-} from '@fastgpt/global/core/chat/type';
+import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
@@ -11,10 +7,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
-import {
-  checkInteractiveResponseStatus,
-  mergeChatResponseData
-} from '@fastgpt/global/core/chat/utils';
+import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {
   FlowNodeTypeEnum,
@@ -24,9 +17,6 @@ import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { getLogger, LogCategories } from '../../common/logger';
-
-const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
-import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
@@ -34,11 +24,12 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
-import { cloneDeep } from 'lodash';
+import type { NodeResponseWriteSummary } from './nodeResponseStorage';
+
+const logger = getLogger(LogCategories.MODULE.CHAT);
 
 export type Props = {
   chatId: string;
@@ -57,6 +48,7 @@ export type Props = {
   userContent: UserChatItemType & { dataId?: string };
   aiContent: AIChatItemType & { dataId?: string };
   metadata?: Record<string, any>;
+  nodeResponseSummary?: NodeResponseWriteSummary;
   durationSeconds: number; //s
   errorMsg?: string;
 };
@@ -132,7 +124,7 @@ const afterProcess = async ({
                     }
                   });
                 }
-              } catch (err) {}
+              } catch {}
             }
 
             return keys;
@@ -170,60 +162,40 @@ const afterProcess = async ({
 const formatAiContent = ({
   aiContent,
   durationSeconds,
-  errorMsg
+  errorMsg,
+  nodeResponseSummary
 }: {
   aiContent: AIChatItemType & { dataId?: string };
   durationSeconds: number;
   errorMsg?: string;
+  nodeResponseSummary?: NodeResponseWriteSummary;
 }) => {
-  const { responseData, ...aiResponse } = aiContent;
-
-  const citeCollectionIds = new Set<string>();
-  const cloneResponseData = cloneDeep(responseData || []);
-
-  getFlatAppResponses(cloneResponseData).forEach((responseItem: ChatHistoryItemResType) => {
-    if (responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode && responseItem.quoteList) {
-      responseItem.quoteList = responseItem.quoteList.map((quote) => {
-        citeCollectionIds.add(quote.collectionId);
-        return {
-          id: quote.id,
-          chunkIndex: quote.chunkIndex,
-          datasetId: quote.datasetId,
-          collectionId: quote.collectionId,
-          sourceId: quote.sourceId,
-          sourceName: quote.sourceName,
-          score: quote.score
-        };
-      });
-    }
-  });
-
-  const errorCount = cloneResponseData?.filter((item) => item.errorText).length ?? 0;
+  // nodeResponse 由 runtime writer 分批持久化；saveChat 只保存 AI 消息主体。
+  const aiResponse = { ...aiContent };
+  delete aiResponse.responseData;
+  const errorCount = nodeResponseSummary?.errorCount ?? 0;
 
   return {
     aiResponse: {
       ...aiResponse,
       durationSeconds,
       errorMsg,
-      citeCollectionIds: Array.from(citeCollectionIds)
+      citeCollectionIds: nodeResponseSummary?.citeCollectionIds || []
     },
-    nodeResponses: cloneResponseData,
-    citeCollectionIds,
     errorCount
   };
 };
 
 const getChatDataLog = async ({
-  nodeResponses
+  nodeResponseSummary
 }: {
-  nodeResponses: ReturnType<typeof formatAiContent>['nodeResponses'];
+  nodeResponseSummary?: NodeResponseWriteSummary;
 }) => {
   const now = new Date();
   const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-  const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
-  const totalPoints =
-    nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+  const errorCount = nodeResponseSummary?.errorCount ? 1 : 0;
+  const totalPoints = nodeResponseSummary?.totalPoints ?? 0;
 
   return {
     fifteenMinutesAgo,
@@ -430,10 +402,11 @@ export const finalizeChatRound = async (props: Props) => {
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   )?.inputs;
 
-  const { aiResponse, nodeResponses, errorCount } = formatAiContent({
+  const { aiResponse, errorCount } = formatAiContent({
     aiContent,
     durationSeconds,
-    errorMsg
+    errorMsg,
+    nodeResponseSummary: props.nodeResponseSummary
   });
   const processedContent = [userContent, aiResponse];
   const { humanDataId, aiDataId } = await getPreparedRoundDataIds({
@@ -495,24 +468,6 @@ export const finalizeChatRound = async (props: Props) => {
       throw new Error(`Pending chat round items not found: ${chatId}`);
     }
 
-    await MongoChatItemResponse.deleteMany(
-      { appId, chatId, chatItemDataId: aiDataId },
-      { session }
-    );
-
-    if (nodeResponses?.length) {
-      await MongoChatItemResponse.create(
-        nodeResponses.map((item) => ({
-          teamId,
-          appId,
-          chatId,
-          chatItemDataId: aiDataId,
-          data: item
-        })),
-        { session, ordered: true }
-      );
-    }
-
     await MongoChat.updateOne(
       {
         appId,
@@ -563,7 +518,7 @@ export const finalizeChatRound = async (props: Props) => {
 
   try {
     const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-      nodeResponses
+      nodeResponseSummary: props.nodeResponseSummary
     });
     const userId = String(outLinkUid || tmbId);
 
@@ -678,6 +633,7 @@ export const pushChatRecords = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
+    nodeResponseSummary,
     metadata = {}
   } = props;
 
@@ -707,15 +663,16 @@ export const pushChatRecords = async (props: Props) => {
     )?.inputs;
 
     // Format save chat content: Remove quote q/a
-    const { aiResponse, nodeResponses, errorCount } = formatAiContent({
+    const { aiResponse, errorCount } = formatAiContent({
       aiContent,
       durationSeconds,
-      errorMsg
+      errorMsg,
+      nodeResponseSummary
     });
     const processedContent = [userContent, aiResponse];
 
     await mongoSessionRun(async (session) => {
-      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi, dataId }] = await MongoChatItem.create(
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.create(
         processedContent.map((item) => ({
           chatId,
           teamId,
@@ -725,19 +682,6 @@ export const pushChatRecords = async (props: Props) => {
         })),
         { session, ordered: true, ...writePrimary }
       );
-
-      if (nodeResponses) {
-        await MongoChatItemResponse.create(
-          nodeResponses.map((item) => ({
-            teamId,
-            appId,
-            chatId,
-            chatItemDataId: dataId,
-            data: item
-          })),
-          { session, ordered: true, ...writePrimary }
-        );
-      }
 
       await MongoChat.updateOne(
         {
@@ -793,7 +737,7 @@ export const pushChatRecords = async (props: Props) => {
     // Create chat data log
     try {
       const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-        nodeResponses
+        nodeResponseSummary
       });
       const userId = String(outLinkUid || tmbId);
 
@@ -922,14 +866,15 @@ export const updateInteractiveChat = async ({
   const parsedUserInteractiveVal = (() => {
     try {
       return JSON.parse(userInteractiveVal);
-    } catch (err) {
+    } catch {
       return userInteractiveVal;
     }
   })();
-  const { aiResponse, nodeResponses, errorCount } = formatAiContent({
+  const { aiResponse, errorCount } = formatAiContent({
     aiContent,
     durationSeconds,
-    errorMsg
+    errorMsg,
+    nodeResponseSummary: props.nodeResponseSummary
   });
 
   /*
@@ -1037,39 +982,6 @@ export const updateInteractiveChat = async ({
       }
     );
 
-    // Create chat item respones
-    if (nodeResponses) {
-      /*
-        Merge with last response data
-        如果是从嵌套的 node 里触发的交互，这里需要进行一个合并，否则会导致出现两次相同的 node（child response 无法合并起来）
-      */
-      const lastResponse = await MongoChatItemResponse.findOneAndDelete({
-        appId,
-        chatId,
-        chatItemDataId: chatItem.dataId
-      })
-        .sort({
-          _id: -1
-        })
-        .lean()
-        .session(session);
-
-      const newResponses = lastResponse?.data
-        ? mergeChatResponseData([lastResponse?.data, ...nodeResponses])
-        : nodeResponses;
-
-      await MongoChatItemResponse.create(
-        newResponses.map((item) => ({
-          teamId,
-          appId,
-          chatId,
-          chatItemDataId: chatItem.dataId,
-          data: item
-        })),
-        { session, ordered: true }
-      );
-    }
-
     await afterProcess({
       contents: [userContent, aiContent],
       variables,
@@ -1081,7 +993,7 @@ export const updateInteractiveChat = async ({
   // Push chat data logs
   try {
     const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-      nodeResponses
+      nodeResponseSummary: props.nodeResponseSummary
     });
 
     await MongoAppChatLog.updateOne(
