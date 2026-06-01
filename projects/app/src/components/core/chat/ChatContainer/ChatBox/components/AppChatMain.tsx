@@ -57,11 +57,11 @@ const AppChatMain = ({
       <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
         {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
-        <ChatRecordsList {...recordsListProps} />
-
         <Box id="variable-input">
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
+
+        <ChatRecordsList {...recordsListProps} />
       </Box>
     </ScrollData>
   );
