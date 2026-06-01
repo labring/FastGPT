@@ -336,6 +336,8 @@ export class SystemToolRepo {
         }
       );
 
+      console.log(appVersions, associatedPluginId);
+
       return appVersions.map((item) => ({
         version: item.versionName
       }));
