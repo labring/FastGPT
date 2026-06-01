@@ -208,7 +208,7 @@ const List = ({
     listKey: `${router.pathname}-${router.query.parentId || ''}-${searchKey}`,
     reservedSlotCount: onClickCreate && !searchKey ? 1 : 0,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 12
   });
 
   const selectedSkill = useMemo(
