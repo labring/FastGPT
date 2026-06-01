@@ -34,6 +34,8 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
+import { Types } from '../../../../common/mongo';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -177,12 +179,9 @@ export class SystemToolRepo {
         avatar: app.avatar,
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
-        inputs:
-          appVersion.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
-            ?.inputs ?? [],
-        outputs:
-          appVersion.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)
-            ?.outputs ?? [],
+        ...pluginData2FlowNodeIO({
+          nodes: appVersion.nodes
+        }),
         isToolSet: false,
         currentCost: dbTool.currentCost ?? 0,
         hasTokenFee: dbTool.hasTokenFee ?? false,
@@ -251,7 +250,7 @@ export class SystemToolRepo {
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
-      avatar: childPluginId ? child?.icon ?? tool.icon : tool.icon,
+      avatar: childPluginId ? (child?.icon ?? tool.icon) : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
       hasSystemSecret,
       systemSecretStatus: SystemToolCodec.getSystemSecretStatus({
@@ -330,13 +329,15 @@ export class SystemToolRepo {
       const { associatedPluginId } = tool.customConfig;
       const appVersions = await MongoAppVersion.find(
         {
-          appId: associatedPluginId,
-          isAutoSave: false
+          appId: new Types.ObjectId(associatedPluginId),
+          $or: [{ isAutoSave: false }, { isAutoSave: undefined }]
         },
         {
           versionName: 1
         }
       );
+
+      console.log(appVersions, associatedPluginId);
 
       return appVersions.map((item) => ({
         version: item.versionName
