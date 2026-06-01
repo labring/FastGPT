@@ -15,5 +15,7 @@
   "register": "注册账号",
   "reset_password_tip": "新密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",
   "root_password_placeholder": "root 用户密码为环境变量 DEFAULT_ROOT_PSW 的值",
-  "use_root_login": "使用 root 用户登录"
+  "use_root_login": "使用 root 用户登录",
+  "copyright": "@2012-2026 深信服科技股份有限公司 版权所有",
+  "powered_by": "Powered by FASTGPT"
 }

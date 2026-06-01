@@ -5,6 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
 import {
@@ -92,7 +93,7 @@ export const useInitApp = () => {
       feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData(3, { forceRefresh: true });
 
-    setTitle(systemTitle || 'FastGPT');
+    setTitle(systemTitle || DEFAULT_SYSTEM_TITLE);
 
     // log fastgpt
     if (!isPlus) {

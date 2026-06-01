@@ -204,6 +204,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
           bg={[`url(${getWebReqUrl('/icon/login-bg-phone2.svg')}) no-repeat, white`, 'white']}
           backgroundSize={'cover'}
           minH={'100vh'}
+          position={'relative'}
         >
           <Flex flexDirection={'column'} w={'60%'} minWidth={'320px'} bg={'white'}>
             <Box w={'100%'}>
@@ -229,6 +230,21 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
               </Box>
             )}
           </Flex>
+
+          {/* 版权及支持信息 */}
+          <Box
+            position={'absolute'}
+            bottom={'24px'}
+            left={0}
+            w={'100%'}
+            textAlign={'center'}
+            fontSize={'12px'}
+            color={'#aaa'}
+            lineHeight={'24px'}
+          >
+            <Box>{t('login:copyright')}</Box>
+            <Box>{t('login:powered_by')}</Box>
+          </Box>
         </Flex>
 
         {isOpen && <CommunityModal onClose={onClose} />}

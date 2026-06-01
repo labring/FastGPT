@@ -24,6 +24,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { ChatSettingTabOptionEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import NextHead from '@/components/common/NextHead';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -112,7 +113,7 @@ const ChatFavouriteApp = () => {
 
   return (
     <MyBox isLoading={isSearching} display="flex" flexDirection={'column'} h={'100%'}>
-      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE} />
 
       {!isPc && (
         <Flex

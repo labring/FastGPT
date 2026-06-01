@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import {
   Box,
   Button,
@@ -103,7 +104,7 @@ const ToolDetailDrawer = ({
               {parseI18nString(parentTool?.description || '', i18n.language)}
             </Box>
             <Box fontSize={'12px'} color="myGray.500" mt={3}>
-              {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
+              {`by ${parentTool?.author || systemTitle || DEFAULT_SYSTEM_TITLE}`}
             </Box>
             <Flex mt={3} gap={2}>
               {/* Determine if we have two buttons */}

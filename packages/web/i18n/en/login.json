@@ -18,5 +18,7 @@
   "login_failed": "Login error occurred.",
   "privacy": "DPA",
   "terms": "EULA",
-  "wecom": "WeCom"
+  "wecom": "WeCom",
+  "copyright": "@2012-2026 Sangfor Technology Co., Ltd. All rights reserved.",
+  "powered_by": "Powered by FASTGPT"
 }

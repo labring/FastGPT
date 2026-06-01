@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import SideBar from '@/components/SideBar';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
@@ -411,7 +412,7 @@ const HomeChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE} />
 
       {/* show history slider */}
       {isPc ? (

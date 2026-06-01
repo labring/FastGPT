@@ -18,6 +18,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
 import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import MyBox from '../../../common/MyBox';
 import Markdown from '../../../common/Markdown';
 import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
@@ -229,7 +230,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 {parseI18nString(parentTool?.description || '', i18n.language)}
               </Box>
               <Box fontSize={'12px'} color="myGray.500" mt={3}>
-                {`by ${parentTool?.author || 'FastGPT'}`}
+                {`by ${parentTool?.author || DEFAULT_SYSTEM_TITLE}`}
               </Box>
               <Flex mt={3} gap={2}>
                 <Button

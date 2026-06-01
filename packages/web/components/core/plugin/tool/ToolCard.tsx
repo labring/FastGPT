@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 
 export type ToolCardItemType = {
   id: string;
@@ -266,7 +267,7 @@ const ToolCard = ({
           className="author-info"
           color={'myGray.500'}
           mt={3}
-        >{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
+        >{`by ${item.author || systemTitle || DEFAULT_SYSTEM_TITLE}`}</Box>
         {/*TODO: when statistics is ready*/}
         {/*<Flex flexDirection={'row'} gap={1} className="download-count" color={'myGray.500'} mt={3}>
           <MyIcon name="common/downloadLine" />

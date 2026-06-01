@@ -15,5 +15,7 @@
   "register": "註冊帳號",
   "reset_password_tip": "新密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字符",
   "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
-  "use_root_login": "使用 root 使用者登入"
+  "use_root_login": "使用 root 使用者登入",
+  "copyright": "@2012-2026 克莫拉爾科技股份有限公司 版權所有",
+  "powered_by": "Powered by FASTGPT"
 }
