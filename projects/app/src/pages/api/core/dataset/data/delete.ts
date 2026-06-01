@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataResponse>
       }
     });
   })();
-  return DeleteDatasetDataResponseSchema.parse('success');
+  return DeleteDatasetDataResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

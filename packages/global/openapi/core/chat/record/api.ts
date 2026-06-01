@@ -42,7 +42,7 @@ export const DeleteChatRecordBodySchema = OutLinkChatAuthSchema.extend({
 });
 export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodySchema>;
 
-export const DeleteChatRecordResponseSchema = z.object({});
+export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
 
 /* ============================================================================

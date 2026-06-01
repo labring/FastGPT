@@ -119,7 +119,7 @@ export const DeleteDatasetDataQuerySchema = z.object({
 });
 export type DeleteDatasetDataQuery = z.infer<typeof DeleteDatasetDataQuerySchema>;
 
-export const DeleteDatasetDataResponseSchema = z.literal('success');
+export const DeleteDatasetDataResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type DeleteDatasetDataResponse = z.infer<typeof DeleteDatasetDataResponseSchema>;
 
 /* ============================================================================
@@ -138,7 +138,7 @@ export const DeleteDatasetDataIndexBodySchema = z.object({
 });
 export type DeleteDatasetDataIndexBody = z.infer<typeof DeleteDatasetDataIndexBodySchema>;
 
-export const DeleteDatasetDataIndexResponseSchema = z.object({});
+export const DeleteDatasetDataIndexResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type DeleteDatasetDataIndexResponse = z.infer<typeof DeleteDatasetDataIndexResponseSchema>;
 
 /* ============================================================================
@@ -226,7 +226,7 @@ export const InsertImagesBodySchema = z.object({
 });
 export type InsertImagesBody = z.infer<typeof InsertImagesBodySchema>;
 
-export const InsertImagesResponseSchema = z.object({});
+export const InsertImagesResponseSchema = z.undefined().meta({ description: '插入成功' });
 export type InsertImagesResponse = z.infer<typeof InsertImagesResponseSchema>;
 
 /* ============================================================================

@@ -10,7 +10,7 @@ import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, DeletePluginToolTagQuery>
-): Promise<Record<string, never>> {
+): Promise<void> {
   await authSystemAdmin({ req });
 
   const { tagId } = req.query;
@@ -36,8 +36,6 @@ async function handler(
   });
 
   await refreshVersionKey(SystemCacheKeyEnum.systemTool);
-
-  return {};
 }
 
 export default NextAPI(handler);

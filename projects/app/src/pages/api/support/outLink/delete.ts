@@ -54,7 +54,7 @@ async function handler(
     });
   })();
 
-  return OutLinkDeleteResponseSchema.parse({});
+  return OutLinkDeleteResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

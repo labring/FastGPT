@@ -50,6 +50,6 @@ async function handler(
     );
   }
 
-  return ResumeInheritPermissionResponseSchema.parse(null);
+  return ResumeInheritPermissionResponseSchema.parse(undefined);
 }
 export default NextAPI(handler);

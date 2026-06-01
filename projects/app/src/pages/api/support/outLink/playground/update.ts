@@ -58,7 +58,7 @@ async function handler(
     { upsert: true }
   );
 
-  return PlaygroundUpdateResponseSchema.parse(null);
+  return PlaygroundUpdateResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

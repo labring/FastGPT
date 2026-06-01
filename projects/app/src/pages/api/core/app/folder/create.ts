@@ -78,7 +78,7 @@ async function handler(
     });
   })();
 
-  return CreateAppFolderResponseSchema.parse(null);
+  return CreateAppFolderResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

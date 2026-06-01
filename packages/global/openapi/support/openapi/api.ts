@@ -92,7 +92,7 @@ export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
   });
 export type UpdateApiKeyBodyType = z.infer<typeof UpdateApiKeyBodySchema>;
 
-export const UpdateApiKeyResponseSchema = z.null().meta({
+export const UpdateApiKeyResponseSchema = z.undefined().meta({
   description: '更新成功'
 });
 export type UpdateApiKeyResponseType = z.infer<typeof UpdateApiKeyResponseSchema>;
@@ -115,7 +115,7 @@ export const DeleteApiKeyBodySchema = z.object({}).meta({
 });
 export type DeleteApiKeyBodyType = z.infer<typeof DeleteApiKeyBodySchema>;
 
-export const DeleteApiKeyResponseSchema = z.object({}).meta({
+export const DeleteApiKeyResponseSchema = z.undefined().meta({
   description: '删除成功'
 });
 export type DeleteApiKeyResponseType = z.infer<typeof DeleteApiKeyResponseSchema>;

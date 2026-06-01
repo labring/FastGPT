@@ -67,7 +67,7 @@ async function handler(
     parentId: app.parentId
   });
 
-  return UpdateMcpToolsResponseSchema.parse(null);
+  return UpdateMcpToolsResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

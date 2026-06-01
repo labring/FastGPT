@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -10,10 +9,7 @@ import {
   type UpdateChatInputGuideResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<UpdateChatInputGuideResponseType> {
+async function handler(req: ApiRequestProps): Promise<UpdateChatInputGuideResponseType> {
   const { appId, dataId, text } = UpdateChatInputGuideBodySchema.parse(req.body);
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
@@ -27,7 +23,7 @@ async function handler(
     }
   );
 
-  return UpdateChatInputGuideResponseSchema.parse({});
+  return UpdateChatInputGuideResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

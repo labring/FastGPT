@@ -42,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataIndexResp
     }
   });
 
-  return DeleteDatasetDataIndexResponseSchema.parse({});
+  return DeleteDatasetDataIndexResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

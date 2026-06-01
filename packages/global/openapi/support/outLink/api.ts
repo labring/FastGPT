@@ -154,7 +154,7 @@ export const OutLinkDeleteBodySchema = z.object({}).meta({
 });
 export type OutLinkDeleteBodyType = z.infer<typeof OutLinkDeleteBodySchema>;
 
-export const OutLinkDeleteResponseSchema = z.object({}).meta({
+export const OutLinkDeleteResponseSchema = z.undefined().meta({
   description: '删除成功'
 });
 export type OutLinkDeleteResponseType = z.infer<typeof OutLinkDeleteResponseSchema>;

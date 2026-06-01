@@ -5,7 +5,7 @@ export const TeamChangeOwnerBodySchema = z.object({
   userId: z.string().describe("the New Owner's UserId.")
 });
 
-export const TeamChangeOwnerResponseSchema = z.object();
+export const TeamChangeOwnerResponseSchema = z.undefined().meta({ description: '操作成功' });
 
 export type TeamChangeOwnerBodyType = z.infer<typeof TeamChangeOwnerBodySchema>;
 export type TeamChangeOwnerResponseType = z.infer<typeof TeamChangeOwnerResponseSchema>;
@@ -52,5 +52,5 @@ export const UpdateTeamBodySchema = z.object({
 });
 export type UpdateTeamBodyType = z.infer<typeof UpdateTeamBodySchema>;
 
-export const UpdateTeamResponseSchema = z.object({});
+export const UpdateTeamResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateTeamResponseType = z.infer<typeof UpdateTeamResponseSchema>;

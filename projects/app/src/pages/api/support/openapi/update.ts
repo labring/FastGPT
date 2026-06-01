@@ -44,7 +44,7 @@ async function handler(
     ...(limit && { limit })
   });
 
-  return UpdateApiKeyResponseSchema.parse(null);
+  return UpdateApiKeyResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

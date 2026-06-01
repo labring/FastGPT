@@ -22,7 +22,7 @@ async function handler(
 
   await MongoAppVersion.updateOne({ _id: versionId, appId }, { $set: { versionName } });
 
-  return UpdateAppVersionResponseSchema.parse({});
+  return UpdateAppVersionResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

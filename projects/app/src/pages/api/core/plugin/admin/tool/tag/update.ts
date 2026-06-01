@@ -4,9 +4,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { UpdatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 
-async function handler(
-  req: ApiRequestProps<UpdatePluginToolTagBody>
-): Promise<Record<string, never>> {
+async function handler(req: ApiRequestProps<UpdatePluginToolTagBody>): Promise<void> {
   await authSystemAdmin({ req });
 
   const { tagId, tagName } = req.body;
@@ -29,8 +27,6 @@ async function handler(
       }
     }
   );
-
-  return {};
 }
 
 export default NextAPI(handler);

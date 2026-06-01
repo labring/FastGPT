@@ -36,7 +36,7 @@ export const UpdateTrainingDataBodySchema = z.object({
 });
 export type UpdateTrainingDataBody = z.infer<typeof UpdateTrainingDataBodySchema>;
 
-export const UpdateTrainingDataResponseSchema = z.object({});
+export const UpdateTrainingDataResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateTrainingDataResponse = z.infer<typeof UpdateTrainingDataResponseSchema>;
 
 /* ============================================================================
@@ -55,7 +55,7 @@ export const RebuildEmbeddingBodySchema = z.object({
 });
 export type RebuildEmbeddingBody = z.infer<typeof RebuildEmbeddingBodySchema>;
 
-export const RebuildEmbeddingResponseSchema = z.object({});
+export const RebuildEmbeddingResponseSchema = z.undefined().meta({ description: '重建成功' });
 export type RebuildEmbeddingResponse = z.infer<typeof RebuildEmbeddingResponseSchema>;
 
 /* ============================================================================
@@ -78,7 +78,7 @@ export const DeleteTrainingDataBodySchema = z.object({
 });
 export type DeleteTrainingDataBody = z.infer<typeof DeleteTrainingDataBodySchema>;
 
-export const DeleteTrainingDataResponseSchema = z.object({});
+export const DeleteTrainingDataResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type DeleteTrainingDataResponse = z.infer<typeof DeleteTrainingDataResponseSchema>;
 
 /* ============================================================================

@@ -26,7 +26,7 @@ export type UpdatePlaygroundVisibilityConfigParamsType = z.infer<
   typeof UpdatePlaygroundVisibilityConfigParamsSchema
 >;
 
-export const PlaygroundUpdateResponseSchema = z.null().meta({
+export const PlaygroundUpdateResponseSchema = z.undefined().meta({
   description: '更新成功'
 });
 export type PlaygroundUpdateResponseType = z.infer<typeof PlaygroundUpdateResponseSchema>;

@@ -50,7 +50,7 @@ export const UpdateLogKeysBodySchema = z.object({
 });
 export type updateLogKeysBody = z.infer<typeof UpdateLogKeysBodySchema>;
 
-export const UpdateLogKeysResponseSchema = z.object({}).meta({
+export const UpdateLogKeysResponseSchema = z.undefined().meta({
   description: '更新成功'
 });
 export type updateLogKeysResponseType = z.infer<typeof UpdateLogKeysResponseSchema>;

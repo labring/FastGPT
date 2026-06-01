@@ -27,7 +27,7 @@ async function handler(req: ApiRequestProps): Promise<updateLogKeysResponseType>
 
   await MongoAppLogKeys.findOneAndUpdate({ teamId, appId }, { logKeys }, { upsert: true });
 
-  return UpdateLogKeysResponseSchema.parse({});
+  return UpdateLogKeysResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

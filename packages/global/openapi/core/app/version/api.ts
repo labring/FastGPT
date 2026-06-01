@@ -91,7 +91,7 @@ export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;
  * Tags: ['版本管理']
  * ============================================================================ */
 
-export const PublishAppResponseSchema = z.null().meta({
+export const PublishAppResponseSchema = z.undefined().meta({
   description: '保存成功'
 });
 export type PublishAppResponseType = z.infer<typeof PublishAppResponseSchema>;
@@ -239,7 +239,7 @@ export const UpdateAppVersionBodySchema = z.object({
 });
 export type UpdateAppVersionBodyType = z.infer<typeof UpdateAppVersionBodySchema>;
 
-export const UpdateAppVersionResponseSchema = z.object({}).meta({
+export const UpdateAppVersionResponseSchema = z.undefined().meta({
   description: '更新成功'
 });
 export type UpdateAppVersionResponseType = z.infer<typeof UpdateAppVersionResponseSchema>;

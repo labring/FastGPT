@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authMcp } from '@fastgpt/service/support/permission/mcp/auth';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -11,10 +11,7 @@ import {
   type McpUpdateResponseType
 } from '@fastgpt/global/openapi/support/mcpServer/api';
 
-async function handler(
-  req: ApiRequestProps,
-  res: ApiResponseType<any>
-): Promise<McpUpdateResponseType> {
+async function handler(req: ApiRequestProps): Promise<McpUpdateResponseType> {
   const { id: mcpId, name, apps } = parseApiInput({ req, bodySchema: McpUpdateBodySchema }).body;
   const { tmbId } = await authMcp({
     req,
@@ -55,7 +52,7 @@ async function handler(
     }
   );
 
-  return McpUpdateResponseSchema.parse({});
+  return McpUpdateResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

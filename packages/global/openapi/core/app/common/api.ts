@@ -386,7 +386,12 @@ export const TransitionWorkflowBodySchema = z.object({
 });
 export type TransitionWorkflowBodyType = z.infer<typeof TransitionWorkflowBodySchema>;
 
-export const TransitionWorkflowResponseSchema = z.object({
-  id: ObjectIdSchema.optional().meta({ description: '新应用 ID；原地转换时为空' })
-});
+export const TransitionWorkflowResponseSchema = z
+  .object({
+    id: ObjectIdSchema.meta({ description: '复制生成的新应用 ID' })
+  })
+  .optional()
+  .meta({
+    description: '复制为新应用时返回新应用 ID；原地转换无返回数据'
+  });
 export type TransitionWorkflowResponseType = z.infer<typeof TransitionWorkflowResponseSchema>;

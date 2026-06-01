@@ -46,7 +46,7 @@ async function handler(
 
   await MongoOpenApi.deleteOne({ _id: id });
 
-  return DeleteApiKeyResponseSchema.parse({});
+  return DeleteApiKeyResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

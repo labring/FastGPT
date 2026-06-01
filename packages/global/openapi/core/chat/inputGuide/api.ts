@@ -98,7 +98,7 @@ export const DeleteChatInputGuideBodySchema = z.object({
 });
 export type DeleteChatInputGuideBodyType = z.infer<typeof DeleteChatInputGuideBodySchema>;
 
-export const DeleteChatInputGuideResponseSchema = z.object({});
+export const DeleteChatInputGuideResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type DeleteChatInputGuideResponseType = z.infer<typeof DeleteChatInputGuideResponseSchema>;
 
 /* ============================================================================
@@ -114,7 +114,9 @@ export const DeleteAllChatInputGuideBodySchema = z.object({
 });
 export type DeleteAllChatInputGuideBodyType = z.infer<typeof DeleteAllChatInputGuideBodySchema>;
 
-export const DeleteAllChatInputGuideResponseSchema = z.object({});
+export const DeleteAllChatInputGuideResponseSchema = z
+  .undefined()
+  .meta({ description: '删除成功' });
 export type DeleteAllChatInputGuideResponseType = z.infer<
   typeof DeleteAllChatInputGuideResponseSchema
 >;
@@ -153,5 +155,5 @@ export const UpdateChatInputGuideBodySchema = z.object({
 });
 export type UpdateChatInputGuideBodyType = z.infer<typeof UpdateChatInputGuideBodySchema>;
 
-export const UpdateChatInputGuideResponseSchema = z.object({});
+export const UpdateChatInputGuideResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateChatInputGuideResponseType = z.infer<typeof UpdateChatInputGuideResponseSchema>;

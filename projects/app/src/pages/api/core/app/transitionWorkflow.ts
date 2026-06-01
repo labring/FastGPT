@@ -64,7 +64,7 @@ async function handler(
 
   await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
 
-  return TransitionWorkflowResponseSchema.parse({});
+  return TransitionWorkflowResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

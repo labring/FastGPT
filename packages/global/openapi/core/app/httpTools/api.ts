@@ -69,7 +69,7 @@ export const UpdateHttpToolsBodySchema = z
   });
 export type UpdateHttpToolsBodyType = z.infer<typeof UpdateHttpToolsBodySchema>;
 
-export const UpdateHttpToolsResponseSchema = z.null().meta({
+export const UpdateHttpToolsResponseSchema = z.undefined().meta({
   description: '更新成功'
 });
 export type UpdateHttpToolsResponseType = z.infer<typeof UpdateHttpToolsResponseSchema>;
