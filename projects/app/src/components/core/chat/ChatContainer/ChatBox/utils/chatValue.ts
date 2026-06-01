@@ -4,6 +4,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { type ChatBoxInputType, type UserInputFileItemType } from '../type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -27,7 +28,10 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
               id: item.file.url,
               type: item.file.type,
               name: item.file.name,
-              icon: getFileIcon(item.file.name),
+              icon:
+                item.file.type === ChatFileTypeEnum.image
+                  ? item.file.url
+                  : getFileIcon(item.file.name),
               url: item.file.url,
               key: item.file.key
             }

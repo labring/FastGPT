@@ -56,6 +56,7 @@
   "download_all_files": "Download all",
   "download_chunks": "Download data",
   "empty_directory": "This directory is empty~",
+  "edit_message": "Edit message",
   "error_message": "error message",
   "file_amount_over": "Exceeded maximum file quantity {{max}}",
   "file_compress_text": "File content compression",

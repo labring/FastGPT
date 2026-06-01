@@ -56,6 +56,7 @@
   "download_all_files": "下載所有",
   "download_chunks": "下載資料",
   "empty_directory": "此目錄中已無項目可選～",
+  "edit_message": "編輯訊息",
   "error_message": "錯誤訊息",
   "file_amount_over": "超出檔案數量上限 {{max}}",
   "file_compress_text": "文件內容壓縮",

@@ -10,6 +10,7 @@ import DeletedItemsCollapse from '../../DeletedItemsCollapse';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
 import ChatItem from './ChatItem';
+import type { ChatBoxInputType } from '../type';
 
 export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
@@ -26,6 +27,7 @@ export type ChatRecordsListProps = {
   questionGuides: string[];
   onToggleDeletedGroup: (dataIds: string[]) => void;
   onRetry: (dataId?: string) => (() => Promise<void>) | undefined;
+  onEdit: (dataId?: string) => ((input: ChatBoxInputType) => Promise<void>) | undefined;
   onMark: (chat: ChatSiteItemType, q?: string) => (() => void) | undefined;
   onAddUserLike: (chat: ChatSiteItemType) => (() => void) | undefined;
   onAddUserDislike: (chat: ChatSiteItemType) => (() => void) | undefined;
@@ -58,6 +60,7 @@ const ChatRecordsList = ({
   questionGuides,
   onToggleDeletedGroup,
   onRetry,
+  onEdit,
   onMark,
   onAddUserLike,
   onAddUserDislike,
@@ -70,6 +73,9 @@ const ChatRecordsList = ({
     <Box id={'history'}>
       {records.map((item, index) => {
         const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
+        const previousRecord = records[index - 1];
+        const retryPreviousHuman =
+          previousRecord?.obj === ChatRoleEnum.Human ? onRetry(previousRecord.dataId) : undefined;
 
         return (
           <Box key={item.dataId}>
@@ -93,6 +99,7 @@ const ChatRecordsList = ({
                     <ChatItem
                       chat={item}
                       onRetry={onRetry(item.dataId)}
+                      onEditSubmit={onEdit(item.dataId)}
                       isLastChild={index === records.length - 1}
                     />
                   )}
@@ -104,9 +111,10 @@ const ChatRecordsList = ({
                         showVoiceIcon,
                         statusBoxData,
                         questionGuides,
+                        onRetry: retryPreviousHuman,
                         onMark: onMark(
                           item,
-                          formatChatValue2InputType(records[index - 1]?.value)?.text
+                          formatChatValue2InputType(previousRecord?.value)?.text
                         ),
                         onAddUserLike: onAddUserLike(item),
                         onAddUserDislike: onAddUserDislike(item),

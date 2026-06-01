@@ -8,9 +8,10 @@ import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 type HumanChatBubbleActionsProps = {
   chatText: string;
   chatTime?: Date;
+  onEdit: () => void;
 };
 
-const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsProps) => {
+const HumanChatBubbleActions = ({ chatText, chatTime, onEdit }: HumanChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
@@ -48,7 +49,6 @@ const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsPr
           _hover={{ color: 'primary.600' }}
           onClick={() => copyData(chatText)}
         />
-        {/* TODO: 当前只补齐用户消息编辑入口 UI，后续需要接入编辑消息接口和重新生成流程。 */}
         <MyIcon
           w={'16px'}
           p={'4px'}
@@ -56,6 +56,7 @@ const HumanChatBubbleActions = ({ chatText, chatTime }: HumanChatBubbleActionsPr
           name={'edit'}
           color={'myGray.400'}
           _hover={{ color: 'primary.600' }}
+          onClick={onEdit}
         />
       </Flex>
     </Flex>

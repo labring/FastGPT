@@ -21,11 +21,7 @@ const AIChatBubbleActions = ({
   durationSeconds
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
-  const handleRetry =
-    chatControllerProps.onRetry ??
-    (() => {
-      // TODO: AI 消息重试需要接入按 response dataId 重新生成的动作。
-    });
+  const { onRetry } = chatControllerProps;
 
   return (
     <Box mt={'10px'} maxW={'100%'}>
@@ -42,15 +38,17 @@ const AIChatBubbleActions = ({
         <Flex alignItems={'center'} gap={'4px'}>
           <ChatController {...chatControllerProps} variant="footer" />
 
-          <MyIcon
-            name={'common/retryLight'}
-            w={'16px'}
-            p={'4px'}
-            cursor={'pointer'}
-            color={'myGray.400'}
-            _hover={{ color: 'primary.600' }}
-            onClick={handleRetry}
-          />
+          {onRetry && (
+            <MyIcon
+              name={'common/retryLight'}
+              w={'16px'}
+              p={'4px'}
+              cursor={'pointer'}
+              color={'myGray.400'}
+              _hover={{ color: 'primary.600' }}
+              onClick={onRetry}
+            />
+          )}
 
           {showWholeResponse && (
             <Flex

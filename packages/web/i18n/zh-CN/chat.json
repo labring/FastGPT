@@ -56,6 +56,7 @@
   "download_all_files": "下载所有",
   "download_chunks": "下载数据",
   "empty_directory": "这个目录已经没东西可选了~",
+  "edit_message": "编辑消息",
   "error_message": "错误信息",
   "file_amount_over": "超出最大文件数量 {{max}}",
   "file_compress_text": "文件内容压缩",

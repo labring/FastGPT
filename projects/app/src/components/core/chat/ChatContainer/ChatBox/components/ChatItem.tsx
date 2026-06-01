@@ -20,6 +20,7 @@ import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import HumanChatBubble from './HumanChatBubble';
 import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
+import type { ChatBoxInputType } from '../type';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -42,11 +43,12 @@ type Props = {
     name: string;
   };
   questionGuides?: string[];
+  onEditSubmit?: (input: ChatBoxInputType) => void | Promise<void>;
   children?: React.ReactNode;
 } & ChatControllerProps;
 
 const ChatItem = (props: Props) => {
-  const { statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
+  const { statusBoxData, children, isLastChild, questionGuides = [], chat, onEditSubmit } = props;
 
   const { t } = useTranslation();
 
@@ -306,6 +308,7 @@ const ChatItem = (props: Props) => {
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
+                onEditSubmit={onEditSubmit}
               >
                 {renderCommonFooter()}
               </HumanChatBubble>
