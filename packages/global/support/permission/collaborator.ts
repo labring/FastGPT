@@ -29,9 +29,3 @@ export type CollaboratorListType = {
   clbs: CollaboratorItemDetailType[];
   parentClbs?: CollaboratorItemDetailType[];
 };
-
-export {
-  CollaboratorItemSchema,
-  CollaboratorItemDetailSchema,
-  CollaboratorListSchema
-} from './collaborator.schema';

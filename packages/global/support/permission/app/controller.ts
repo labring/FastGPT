@@ -23,6 +23,3 @@ export class AppPermission extends Permission {
     });
   }
 }
-
-export { AppPermissionSchema, AppPermissionCheckSchema } from './controller.schema';
-export type { AppPermissionCheckType } from './controller.schema';
