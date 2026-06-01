@@ -1,0 +1,10 @@
+target/
+**/target/
+.git/
+.gitignore
+.DS_Store
+*.log
+*.tmp
+*.swp
+.env
+.env.*

@@ -73,7 +73,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   const isDirectory = await isSandboxPathDirectory(sandbox, path);
 
   if (isDirectory) {
-    const isRoot = path === '.' || path === '' || path === '/';
+    const isRoot = path === '.' || path === '';
     const rawFileName = isRoot ? 'workspace' : path.split('/').filter(Boolean).pop() || 'workspace';
     const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
 

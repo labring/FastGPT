@@ -140,6 +140,39 @@ describe('SealosDevboxAdapter', () => {
     });
   });
 
+  it('should dynamically derive httpgate domain from gateway host names like fastgpt-sandbox-gateway', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        json: async () => ({
+          code: 200,
+          message: 'ok',
+          data: {
+            name: 'fastgpt-sandbox',
+            state: { phase: 'Running' },
+            ssh: {},
+            gateway: {
+              url: 'https://fastgpt-sandbox-gateway.hzh.sealos.run/codex/abc123',
+              uniqueID: 'abc123'
+            }
+          }
+        })
+      }))
+    );
+
+    const adapter = new SealosDevboxAdapter({
+      ...CONFIG,
+      sandboxId: 'fastgpt-sandbox'
+    });
+
+    await expect(adapter.getEndpoint(1317)).resolves.toMatchObject({
+      host: 'devbox-abc123-1317.hzh.sealos.run',
+      port: 1317,
+      protocol: 'https',
+      url: 'https://devbox-abc123-1317.hzh.sealos.run'
+    });
+  });
+
   it('should accept Devbox create success code 201', async () => {
     vi.useFakeTimers();
     const fetchMock = vi
@@ -449,5 +482,79 @@ describe('SealosDevboxAdapter', () => {
 
     await expect(adapter.delete('devbox-instance-1')).rejects.toThrow('Failed to delete sandbox');
     expect(adapter.status.state).toBe('Deleting');
+  });
+
+  it('should upload file through SealosDevbox api.uploadFile', async () => {
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({
+        code: 200,
+        message: 'ok',
+        data: {
+          name: 'devbox-1',
+          podName: 'pod-1',
+          container: 'c1',
+          path: '/home/devbox/workspace/test.txt',
+          sizeBytes: 11,
+          mode: '0644',
+          uploadedAt: '2026-06-02T10:00:00Z',
+          timeoutSecond: 300
+        }
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/devbox/workspace'
+    });
+
+    const results = await adapter.writeFiles([
+      {
+        path: 'test.txt',
+        data: 'hello world',
+        mode: 0o644
+      }
+    ]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].error).toBeNull();
+    expect(results[0].bytesWritten).toBe(11);
+    expect(results[0].path).toBe('/home/devbox/workspace/test.txt');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/upload?path=%2Fhome%2Fdevbox%2Fworkspace%2Ftest.txt&mode=0644',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.any(Headers),
+        body: new TextEncoder().encode('hello world')
+      })
+    );
+  });
+
+  it('should download file through SealosDevbox api.downloadFile', async () => {
+    const fileContent = new TextEncoder().encode('downloaded content');
+    const fetchMock = vi.fn(async () => ({
+      arrayBuffer: async () => fileContent.buffer
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/devbox/workspace'
+    });
+
+    const results = await adapter.readFiles(['test.txt']);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].error).toBeNull();
+    expect(results[0].content).toEqual(new Uint8Array(fileContent.buffer));
+    expect(results[0].path).toBe('/home/devbox/workspace/test.txt');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/download?path=%2Fhome%2Fdevbox%2Fworkspace%2Ftest.txt',
+      expect.objectContaining({
+        headers: {
+          Authorization: 'Bearer test-token'
+        }
+      })
+    );
   });
 });

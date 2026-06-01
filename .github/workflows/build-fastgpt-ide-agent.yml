@@ -8,8 +8,6 @@ jobs:
     permissions:
       packages: write
       contents: read
-      attestations: write
-      id-token: write
     strategy:
       matrix:
         include:
@@ -47,7 +45,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: projects/fastgpt-ide-agent
           file: projects/fastgpt-ide-agent/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
@@ -75,8 +73,6 @@ jobs:
     permissions:
       packages: write
       contents: read
-      attestations: write
-      id-token: write
     needs: build-fastgpt-ide-agent-images
     runs-on: ubuntu-24.04
     steps:

@@ -3,6 +3,7 @@ import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { hasAgentSandboxConfig as hasAgentSandboxConfigFromEnv } from '@fastgpt/global/core/ai/sandbox/env';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess(
@@ -55,7 +56,8 @@ export const serviceEnv = createEnv({
 
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
-    AGENT_SANDBOX_PROXY_SECRET: z.string().optional(),
+    AGENT_SANDBOX_PROXY_SECRET: z.string().min(32).optional(),
+    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     // Sealos配置
@@ -78,7 +80,6 @@ export const serviceEnv = createEnv({
       description: 'Skill 包大小上限（MB），用于上传、解压、下载和 sandbox 打包校验'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
-    AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.default(300),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
@@ -311,22 +312,4 @@ export const SYSTEM_MAX_STRING_LENGTH =
  * 判断系统是否显式配置了 Agent 虚拟机能力。
  * 必须直读 process.env 以尊重用户显式的物理配置激活，而不被 Zod 的 default('opensandbox') 逻辑强制回退启动。
  */
-export const hasAgentSandboxConfig = (): boolean => {
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-
-  if (provider === 'sealosdevbox') {
-    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
-  }
-
-  if (provider === 'opensandbox') {
-    return !!(
-      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
-  }
-
-  if (provider === 'e2b') {
-    return !!process.env.AGENT_SANDBOX_E2B_API_KEY;
-  }
-
-  return false;
-};
+export const hasAgentSandboxConfig = (): boolean => hasAgentSandboxConfigFromEnv(process.env);

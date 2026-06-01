@@ -102,7 +102,13 @@ export function getSandboxAdapterConfig({
 } = {}): SandboxAdapterConfig {
   const profile = getSandboxRuntimeProfile(provider);
   const baseEnv =
-    runtime && sessionId ? buildBaseSandboxRuntimeEnv(sessionId, profile.workDirectory) : undefined;
+    runtime && sessionId
+      ? buildBaseSandboxRuntimeEnv({
+          sessionId,
+          workDirectory: profile.workDirectory,
+          ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR
+        })
+      : undefined;
 
   switch (provider) {
     case 'opensandbox': {

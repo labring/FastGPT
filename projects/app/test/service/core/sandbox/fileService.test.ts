@@ -78,10 +78,26 @@ describe('resolveSandboxWorkspacePath', () => {
     );
   });
 
-  it('保持绝对路径不变，兼容已加载文件树中的路径', () => {
-    expect(resolveSandboxWorkspacePath('/home/devbox/workspace/src/index.ts', '/workspace')).toBe(
-      '/home/devbox/workspace/src/index.ts'
-    );
+  it('公开 API 用户输入拒绝绝对路径，避免读取 workspace 外文件', () => {
+    expect(() =>
+      resolveSandboxWorkspacePath('/home/devbox/workspace/src/index.ts', '/workspace')
+    ).toThrow('Absolute sandbox paths are not allowed');
+  });
+
+  it('内部 provider 路径可显式允许 workspace 内绝对路径', () => {
+    expect(
+      resolveSandboxWorkspacePath('/workspace/src/index.ts', '/workspace', {
+        allowAbsolutePath: true
+      })
+    ).toBe('/workspace/src/index.ts');
+  });
+
+  it('内部 provider 路径即使显式允许绝对路径也不能越出 workspace', () => {
+    expect(() =>
+      resolveSandboxWorkspacePath('/home/devbox/workspace/src/index.ts', '/workspace', {
+        allowAbsolutePath: true
+      })
+    ).toThrow('Sandbox path is outside workspace');
   });
 
   it('拒绝路径穿越', () => {
@@ -95,17 +111,19 @@ describe('resolveSandboxWorkspacePath', () => {
 
 describe('isSandboxPathDirectory', () => {
   it('getFileInfo 返回 isDirectory:true', async () => {
+    const providerPath = resolveSandboxWorkspacePath('src');
     const sandbox = makeSandbox({
-      getFileInfo: vi.fn().mockResolvedValue(makeFileInfoMap('/src', { isDirectory: true }))
+      getFileInfo: vi.fn().mockResolvedValue(makeFileInfoMap(providerPath, { isDirectory: true }))
     });
-    expect(await isSandboxPathDirectory(sandbox, '/src')).toBe(true);
+    expect(await isSandboxPathDirectory(sandbox, 'src')).toBe(true);
   });
 
   it('getFileInfo 返回 isDirectory:false', async () => {
+    const providerPath = resolveSandboxWorkspacePath('main.py');
     const sandbox = makeSandbox({
-      getFileInfo: vi.fn().mockResolvedValue(makeFileInfoMap('/main.py', { isDirectory: false }))
+      getFileInfo: vi.fn().mockResolvedValue(makeFileInfoMap(providerPath, { isDirectory: false }))
     });
-    expect(await isSandboxPathDirectory(sandbox, '/main.py')).toBe(false);
+    expect(await isSandboxPathDirectory(sandbox, 'main.py')).toBe(false);
   });
 
   it('fileInfo 不存在时，path 为 "." 返回 true', async () => {
@@ -126,21 +144,21 @@ describe('isSandboxPathDirectory', () => {
     const sandbox = makeSandbox({
       getFileInfo: vi.fn().mockResolvedValue(new Map())
     });
-    expect(await isSandboxPathDirectory(sandbox, '/workspace/')).toBe(true);
+    expect(await isSandboxPathDirectory(sandbox, 'workspace/')).toBe(true);
   });
 
   it('fileInfo 不存在时，普通文件路径返回 false', async () => {
     const sandbox = makeSandbox({
       getFileInfo: vi.fn().mockResolvedValue(new Map())
     });
-    expect(await isSandboxPathDirectory(sandbox, '/main.py')).toBe(false);
+    expect(await isSandboxPathDirectory(sandbox, 'main.py')).toBe(false);
   });
 
   it('传递正确的 path 数组给 getFileInfo', async () => {
     const getFileInfo = vi.fn().mockResolvedValue(new Map());
     const sandbox = makeSandbox({ getFileInfo });
-    await isSandboxPathDirectory(sandbox, '/some/path');
-    expect(getFileInfo).toHaveBeenCalledWith(['/some/path']);
+    await isSandboxPathDirectory(sandbox, 'some/path');
+    expect(getFileInfo).toHaveBeenCalledWith([resolveSandboxWorkspacePath('some/path')]);
   });
 });
 
@@ -149,52 +167,50 @@ describe('isSandboxPathDirectory', () => {
 describe('getSandboxFileContent', () => {
   it('preview=false 时 contentType 为 application/octet-stream', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/main.py', 'print(1)')])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('main.py', 'print(1)')])
     });
-    const result = await getSandboxFileContent(sandbox, '/main.py', false);
+    const result = await getSandboxFileContent(sandbox, 'main.py', false);
     expect(result.contentType).toBe('application/octet-stream');
   });
 
   it('preview=undefined 时 contentType 为 application/octet-stream', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/main.py', 'code')])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('main.py', 'code')])
     });
-    const result = await getSandboxFileContent(sandbox, '/main.py');
+    const result = await getSandboxFileContent(sandbox, 'main.py');
     expect(result.contentType).toBe('application/octet-stream');
   });
 
   it('preview=true 且可识别扩展名时返回正确 contentType', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/index.html', '<html/>')])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('index.html', '<html/>')])
     });
-    const result = await getSandboxFileContent(sandbox, '/index.html', true);
+    const result = await getSandboxFileContent(sandbox, 'index.html', true);
     expect(result.contentType).toBe('text/html');
   });
 
   it('preview=true 且扩展名无法识别时回退 application/octet-stream', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/foo.unknown123', 'data')])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('foo.unknown123', 'data')])
     });
-    const result = await getSandboxFileContent(sandbox, '/foo.unknown123', true);
+    const result = await getSandboxFileContent(sandbox, 'foo.unknown123', true);
     expect(result.contentType).toBe('application/octet-stream');
   });
 
   it('读取失败时 reject', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi
-        .fn()
-        .mockResolvedValue([makeReadResult('/file.txt', '', new Error('not found'))])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('file.txt', '', new Error('not found'))])
     });
-    await expect(getSandboxFileContent(sandbox, '/file.txt')).rejects.toThrow(
+    await expect(getSandboxFileContent(sandbox, 'file.txt')).rejects.toThrow(
       'Failed to read file: not found'
     );
   });
 
   it('正确提取 fileName（路径最后一段）', async () => {
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/a/b/script.py', 'code')])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('a/b/script.py', 'code')])
     });
-    const result = await getSandboxFileContent(sandbox, '/a/b/script.py');
+    const result = await getSandboxFileContent(sandbox, 'a/b/script.py');
     expect(result.fileName).toBe('script.py');
   });
 
@@ -209,17 +225,17 @@ describe('getSandboxFileContent', () => {
   it('content 正确转换为 Buffer', async () => {
     const text = 'hello world';
     const sandbox = makeSandbox({
-      readFiles: vi.fn().mockResolvedValue([makeReadResult('/f.txt', text)])
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('f.txt', text)])
     });
-    const result = await getSandboxFileContent(sandbox, '/f.txt');
+    const result = await getSandboxFileContent(sandbox, 'f.txt');
     expect(result.content).toEqual(Buffer.from(text));
   });
 
   it('传递正确的 path 数组给 readFiles', async () => {
-    const readFiles = vi.fn().mockResolvedValue([makeReadResult('/x.ts', '')]);
+    const readFiles = vi.fn().mockResolvedValue([makeReadResult('x.ts', '')]);
     const sandbox = makeSandbox({ readFiles });
-    await getSandboxFileContent(sandbox, '/x.ts');
-    expect(readFiles).toHaveBeenCalledWith(['/x.ts']);
+    await getSandboxFileContent(sandbox, 'x.ts');
+    expect(readFiles).toHaveBeenCalledWith([resolveSandboxWorkspacePath('x.ts')]);
   });
 });
 
@@ -306,12 +322,14 @@ describe('addDirectoryToArchive', () => {
     const archive = makeArchive();
     const listDirectory = vi
       .fn()
-      .mockResolvedValueOnce([makeDirectoryEntry('a', { isDirectory: true, path: '/w/a' })])
-      .mockResolvedValueOnce([makeDirectoryEntry('b', { isDirectory: true, path: '/w/a/b' })])
-      .mockResolvedValueOnce([makeDirectoryEntry('c.txt', { path: '/w/a/b/c.txt' })]);
-    const readFiles = vi.fn().mockResolvedValue([makeReadResult('/w/a/b/c.txt', 'deep')]);
+      .mockResolvedValueOnce([makeDirectoryEntry('a', { isDirectory: true, path: '/workspace/a' })])
+      .mockResolvedValueOnce([
+        makeDirectoryEntry('b', { isDirectory: true, path: '/workspace/a/b' })
+      ])
+      .mockResolvedValueOnce([makeDirectoryEntry('c.txt', { path: '/workspace/a/b/c.txt' })]);
+    const readFiles = vi.fn().mockResolvedValue([makeReadResult('/workspace/a/b/c.txt', 'deep')]);
     const sandbox = makeSandbox({ listDirectory, readFiles });
-    await addDirectoryToArchive(sandbox, archive, '/w', '');
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
     expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'a/b/c.txt' });
   });
 
@@ -319,11 +337,29 @@ describe('addDirectoryToArchive', () => {
     const archive = makeArchive();
     const listDirectory = vi
       .fn()
-      .mockResolvedValue([makeDirectoryEntry('sub', { isDirectory: true, path: '/w/sub' })]);
+      .mockResolvedValue([
+        makeDirectoryEntry('sub', { isDirectory: true, path: '/workspace/sub' })
+      ]);
     const sandbox = makeSandbox({ listDirectory });
     // depth=21 超过 MAX_ARCHIVE_DEPTH(20)，应直接返回不做任何操作
-    await addDirectoryToArchive(sandbox, archive, '/w', '', 21);
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '', 21);
     expect(listDirectory).not.toHaveBeenCalled();
+    expect(archive.append).not.toHaveBeenCalled();
+  });
+
+  it('拒绝归档 provider 返回的 workspace 外绝对路径', async () => {
+    const archive = makeArchive();
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue([
+        makeDirectoryEntry('secret.txt', {
+          path: '/etc/secret.txt'
+        })
+      ])
+    });
+
+    await expect(addDirectoryToArchive(sandbox, archive, '/workspace', '')).rejects.toThrow(
+      'Sandbox path is outside workspace'
+    );
     expect(archive.append).not.toHaveBeenCalled();
   });
 });

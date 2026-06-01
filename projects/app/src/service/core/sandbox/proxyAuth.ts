@@ -1,5 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { serviceEnv } from '@fastgpt/service/env';
+import { timingSafeEqual } from 'crypto';
 
 export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';
 
@@ -14,7 +15,13 @@ export function authAgentSandboxProxy(req: ApiRequestProps): string {
   }
 
   const proxyToken = req.headers[AGENT_SANDBOX_PROXY_HEADER];
-  if (proxyToken !== secret) {
+  if (typeof proxyToken !== 'string') {
+    throw new Error('Unauthorized: Invalid or missing X-Proxy-Token header');
+  }
+
+  const expected = Buffer.from(secret);
+  const actual = Buffer.from(proxyToken);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
     throw new Error('Unauthorized: Invalid or missing X-Proxy-Token header');
   }
 

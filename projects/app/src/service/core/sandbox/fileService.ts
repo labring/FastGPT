@@ -12,17 +12,27 @@ export type SandboxFileContent = {
 const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
 
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const isWithinSandboxWorkspace = (path: string, workDirectory: string) => {
+  const workspace = trimSandboxPathRight(workDirectory);
+  return path === workspace || path.startsWith(`${workspace}/`);
+};
+
+type ResolveSandboxWorkspacePathOptions = {
+  allowAbsolutePath?: boolean;
+};
 
 /**
  * 将编辑器传入的相对路径锚定到 sandbox workspace。
  *
  * SandboxEditor 以 `.` 表示工作区根目录；Sealos provider 自身的 `.` 会落到
- * `/home/devbox`，因此 API 边界必须显式把相对路径解析到当前运行态 workDirectory。
- * 已经是绝对路径的历史节点路径保持原样，保证旧 UI 状态和下载/保存路径兼容。
+ * `/home/devbox`，因此 API 边界必须显式把相对路径解析到当前运行态 workDirectory。公开 API
+ * 的用户输入默认拒绝绝对路径，避免具备 sandbox 权限的用户读取 workspace 外文件；provider 返回的
+ * 内部路径可通过 allowAbsolutePath 显式放行。
  */
 export function resolveSandboxWorkspacePath(
   path: string | undefined,
-  workDirectory = getSandboxWorkDirectory()
+  workDirectory = getSandboxWorkDirectory(),
+  options: ResolveSandboxWorkspacePathOptions = {}
 ) {
   const rawPath = path || '.';
   if (rawPath === '.' || rawPath === './' || rawPath === '') {
@@ -33,7 +43,15 @@ export function resolveSandboxWorkspacePath(
     throw new Error('Path traversal detected');
   }
 
-  if (rawPath.startsWith('/')) return rawPath;
+  if (rawPath.startsWith('/')) {
+    if (!options.allowAbsolutePath) {
+      throw new Error('Absolute sandbox paths are not allowed');
+    }
+    if (!isWithinSandboxWorkspace(rawPath, workDirectory)) {
+      throw new Error('Sandbox path is outside workspace');
+    }
+    return rawPath;
+  }
 
   const relativePath = rawPath.replace(/^\.\//, '');
   return `${trimSandboxPathRight(workDirectory)}/${relativePath}`;
@@ -102,7 +120,9 @@ export async function addDirectoryToArchive(
 ): Promise<void> {
   if (depth > MAX_ARCHIVE_DEPTH) return;
 
-  const providerDirPath = resolveSandboxWorkspacePath(dirPath);
+  const providerDirPath = resolveSandboxWorkspacePath(dirPath, getSandboxWorkDirectory(), {
+    allowAbsolutePath: true
+  });
   const entries = await sandbox.provider.listDirectory(providerDirPath);
 
   for (const entry of entries) {
@@ -111,7 +131,10 @@ export async function addDirectoryToArchive(
     if (entry.isDirectory) {
       await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
     } else {
-      const results = await sandbox.provider.readFiles([entry.path]);
+      const providerFilePath = resolveSandboxWorkspacePath(entry.path, getSandboxWorkDirectory(), {
+        allowAbsolutePath: true
+      });
+      const results = await sandbox.provider.readFiles([providerFilePath]);
       const result = results[0];
 
       if (!result.error) {

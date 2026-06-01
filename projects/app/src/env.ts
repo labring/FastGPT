@@ -1,27 +1,11 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { hasAgentSandboxConfig } from '@fastgpt/global/core/ai/sandbox/env';
 
-const hasAgentSandboxConfig = () => {
-  // 与 serviceEnv.hasAgentSandboxConfig 保持一致；show_agent_sandbox 由这组原始 env 推导。
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-
-  if (provider === 'sealosdevbox') {
-    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
-  }
-
-  if (provider === 'opensandbox') {
-    return !!(
-      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
-  }
-
-  if (provider === 'e2b') {
-    return !!process.env.AGENT_SANDBOX_E2B_API_KEY;
-  }
-
-  return false;
-};
+const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
+  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
+});
 
 export const appEnv = createEnv({
   server: {
@@ -41,7 +25,8 @@ export const appEnv = createEnv({
     // 临时
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
     PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
-    AGENT_SANDBOX_PROXY_URL: z.string().optional()
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
+    AGENT_SANDBOX_PROXY_SECRET: z.string().min(32).optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
@@ -51,8 +36,16 @@ export const appEnv = createEnv({
   }
 });
 
-if (hasAgentSandboxConfig() && !appEnv.AGENT_SANDBOX_PROXY_URL) {
-  throw new Error(
-    'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
-  );
+if (hasAgentSandboxConfig(process.env)) {
+  if (!appEnv.AGENT_SANDBOX_PROXY_URL) {
+    throw new Error(
+      'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
+    );
+  }
+
+  if (!appEnv.AGENT_SANDBOX_PROXY_SECRET) {
+    throw new Error(
+      'AGENT_SANDBOX_PROXY_SECRET is required when Agent Sandbox is enabled. Please configure a strong shared secret for the sandbox proxy.'
+    );
+  }
 }

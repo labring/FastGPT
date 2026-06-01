@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import { useCallback, useEffect, useRef } from 'react';
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
 import { getSandboxProxyWsUrl, getSandboxTicket } from '../api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { parseAuthFromStableString, stableStringifyAuth } from '../utils';
 
 type UseTerminalProps = {
   appId: string;
@@ -15,8 +14,6 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const outLinkAuthDataStr = stableStringifyAuth(outLinkAuthData);
 
   // 清理屏幕内容
   const handleClear = useCallback(() => {
@@ -70,6 +67,10 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
 
     // 自适应尺寸变化信号器 (发送符合 Rust Agent 契约的 13 字节大端协议数据)
     const sendResize = (cols: number, rows: number) => {
+      if (cols <= 0 || rows <= 0 || !cols || !rows || isNaN(cols) || isNaN(rows)) {
+        console.warn('[SandboxTerminal] Ignored invalid resize dimensions:', cols, rows);
+        return;
+      }
       if (ws && ws.readyState === WebSocket.OPEN) {
         const buf = new ArrayBuffer(13);
         const view = new DataView(buf);
@@ -86,7 +87,7 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
         const res = await getSandboxTicket({
           appId,
           chatId,
-          outLinkAuthData: parseAuthFromStableString(outLinkAuthDataStr),
+          outLinkAuthData,
           channel: 'terminal',
           permission: 'write'
         });
@@ -108,7 +109,6 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
             ws?.close();
             return;
           }
-          setIsConnected(true);
           term.write(
             '\r\n\x1b[1;36m💡 System: Connected to Sandbox Terminal Session\x1b[0m\r\n\r\n'
           );
@@ -129,14 +129,13 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           if (wsRef.current !== ws) return;
 
-          setIsConnected(false);
           wsRef.current = null;
           if (!isDestroyed) {
             term.write(
-              '\r\n\x1b[1;33m⚠️ Terminal: Connection lost. Reconnecting in 3s...\x1b[0m\r\n'
+              `\r\n\x1b[1;33m⚠️ Terminal: Connection lost (code: ${event.code}, reason: ${event.reason || 'none'}). Reconnecting in 3s...\x1b[0m\r\n`
             );
             reconnectTimer = setTimeout(connect, 3000);
           }
@@ -195,12 +194,17 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
       }
       term.dispose();
     };
-  }, [appId, chatId, outLinkAuthDataStr]);
+  }, [
+    appId,
+    chatId,
+    outLinkAuthData?.shareId,
+    outLinkAuthData?.outLinkUid,
+    outLinkAuthData?.teamId,
+    outLinkAuthData?.teamToken
+  ]);
 
   return {
     containerRef,
-    termRef,
-    handleClear,
-    isConnected
+    handleClear
   };
 };

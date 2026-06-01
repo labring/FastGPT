@@ -9,11 +9,15 @@ import SkillPreview from './preview/SkillPreview';
 
 const Content = () => {
   const { t } = useTranslation();
-  const { currentTab, sandboxState, skillId } = useContextSelector(SkillDetailContext, (v) => ({
-    currentTab: v.currentTab,
-    sandboxState: v.sandboxState,
-    skillId: v.skillId
-  }));
+  const { currentTab, sandboxState, skillId, handleSandboxError } = useContextSelector(
+    SkillDetailContext,
+    (v) => ({
+      currentTab: v.currentTab,
+      sandboxState: v.sandboxState,
+      skillId: v.skillId,
+      handleSandboxError: v.handleSandboxError
+    })
+  );
 
   return (
     <Box
@@ -46,6 +50,7 @@ const Content = () => {
             isPreparing={sandboxState !== 'ready'}
             preparingText={t('skill:generating')}
             showTerminal={true}
+            onError={(err) => handleSandboxError(err.message)}
           />
         )}
       </Box>

@@ -259,9 +259,6 @@ export async function createEditDebugSandbox(
 
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
 
-    const runtimeEnv = {
-      IDE_AGENT_ENABLED: 'true'
-    };
     const runtimeMetadata = {
       skillId,
       teamId,
@@ -272,10 +269,8 @@ export async function createEditDebugSandbox(
       sessionId,
       image: sandboxImage,
       entrypoint: entrypoint ?? runtimeProfile.entrypoint,
-      env: runtimeEnv,
       metadata: runtimeMetadata
     }) ?? {
-      env: runtimeEnv,
       metadata: runtimeMetadata
     };
     const client = await getSandboxClient(
@@ -405,17 +400,13 @@ export async function createEditDebugSandbox(
 export async function packageSkillInSandbox(params: {
   sandboxId: string;
   workDirectory?: string;
-  fallbackDirectory?: {
-    rootDirectory: string;
-    suffix: string;
-  };
 }): Promise<Buffer> {
-  const { sandboxId, workDirectory, fallbackDirectory } = params;
+  const { sandboxId, workDirectory } = params;
   const { maxSandboxPackageBytes: maxBytes } = getSkillSizeLimits();
 
   const providerConfig = getSandboxProviderConfig();
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
-  const preferredTargetDir = workDirectory || runtimeProfile.workDirectory;
+  const targetDir = workDirectory || runtimeProfile.workDirectory;
 
   let sandbox: ISandbox | null = null;
 
@@ -423,19 +414,10 @@ export async function packageSkillInSandbox(params: {
     const newSandbox = await connectToSandbox(providerConfig, sandboxId);
     sandbox = newSandbox;
 
-    const preferredDirExists = await newSandbox.execute(`[ -d ${shellQuote(preferredTargetDir)} ]`);
-    const targetDir = await (async () => {
-      if (preferredDirExists.exitCode === 0) return preferredTargetDir;
-      if (!fallbackDirectory) return preferredTargetDir;
-
-      const fallbackResult = await newSandbox.execute(
-        `find ${shellQuote(fallbackDirectory.rootDirectory)} -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(
-          `*${fallbackDirectory.suffix}`
-        )} -print | head -n 1`
-      );
-      const fallbackDir = fallbackResult.stdout.trim().split('\n').filter(Boolean)[0];
-      return fallbackResult.exitCode === 0 && fallbackDir ? fallbackDir : preferredTargetDir;
-    })();
+    const targetDirExists = await newSandbox.execute(`[ -d ${shellQuote(targetDir)} ]`);
+    if (targetDirExists.exitCode !== 0) {
+      throw new Error(`Skill directory does not exist: ${targetDir}`);
+    }
     const quotedTargetDir = shellQuote(targetDir);
 
     let gitignoreContents: string[] = [];

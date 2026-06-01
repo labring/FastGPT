@@ -24,7 +24,6 @@ export type CreateSkillPackageParams = {
   name: string;
   skillMd: string;
   assets?: Record<string, Buffer | string>;
-  additionalFiles?: Record<string, Buffer | string>;
 };
 
 /**
@@ -67,7 +66,7 @@ export type NormalizedSkillPackageFile = {
  * 输出结构固定为 `{name}/SKILL.md` 加可选资源文件，便于后续版本存储和导出保持一致。
  */
 export async function createSkillPackage(params: CreateSkillPackageParams): Promise<Buffer> {
-  const { name, skillMd, assets, additionalFiles } = params;
+  const { name, skillMd, assets } = params;
   const zip = new JSZip();
 
   // 根目录名直接来自 skill name，前面流程已经做过合法性约束。
@@ -79,26 +78,22 @@ export async function createSkillPackage(params: CreateSkillPackageParams): Prom
   // SKILL.md 是 skill 包的必需入口文件。
   zip.file(`${rootDir}/SKILL.md`, skillMd);
 
-  // Auto-generate a comprehensive default .gitignore if not present
-  const hasGitignore =
-    (assets && (assets['.gitignore'] || assets['/.gitignore'])) ||
-    (additionalFiles && (additionalFiles['.gitignore'] || additionalFiles['/.gitignore']));
+  // 只有根目录下显式声明了 /.gitignore，才不覆盖生成默认的
+  const hasRootGitignore = assets && assets['/.gitignore'];
 
-  if (!hasGitignore) {
-    zip.file(`${rootDir}/.gitignore`, DEFAULT_GITIGNORE_CONTENT);
+  if (!hasRootGitignore) {
+    zip.file(`.gitignore`, DEFAULT_GITIGNORE_CONTENT);
   }
 
   // Add assets (optional)
   if (assets) {
     Object.entries(assets).forEach(([path, content]) => {
-      addFileToZip(zip, `${rootDir}/${path}`, content);
-    });
-  }
-
-  // Add additional files (optional)
-  if (additionalFiles) {
-    Object.entries(additionalFiles).forEach(([path, content]) => {
-      addFileToZip(zip, `${rootDir}/${path}`, content);
+      // 以 / 开头的代表强制放在压缩包根目录；否则照常放进资源包(技能)目录下
+      if (path.startsWith('/')) {
+        addFileToZip(zip, path.slice(1), content);
+      } else {
+        addFileToZip(zip, `${rootDir}/${path}`, content);
+      }
     });
   }
 

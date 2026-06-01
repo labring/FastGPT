@@ -1,9 +1,9 @@
 use axum::{
-    extract::{ws::WebSocketUpgrade, Query},
+    Router,
+    extract::{Query, ws::WebSocketUpgrade},
     http::StatusCode,
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -14,6 +14,9 @@ mod relay;
 
 use auth::resolve_sandbox_address;
 use relay::handle_relay;
+
+const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
+const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
 
 #[derive(Deserialize)]
 struct WsQuery {
@@ -35,9 +38,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health_check))
         .route("/fs", get(fs_handler))
-        .route("/terminal", get(terminal_handler))
-        .route("/api/core/ai/sandbox/fs", get(fs_handler))
-        .route("/api/core/ai/sandbox/terminal", get(terminal_handler));
+        .route("/terminal", get(terminal_handler));
 
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -70,7 +71,7 @@ async fn health_check() -> &'static str {
 async fn verify_and_resolve_auth(
     ticket_opt: Option<String>,
     expected_channel: &'static str,
-) -> Result<(auth::SandboxAddress, auth::Claims, String), (StatusCode, String)> {
+) -> Result<(auth::SandboxAddress, auth::Claims), (StatusCode, String)> {
     let ticket = match ticket_opt {
         Some(t) if !t.is_empty() => t,
         _ => {
@@ -114,14 +115,18 @@ async fn verify_and_resolve_auth(
         (StatusCode::FORBIDDEN, format!("Forbidden: {}", err))
     })?;
 
-    Ok((address, claims, ticket))
+    Ok((address, claims))
 }
 
 async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
     match verify_and_resolve_auth(query.ticket, "fs").await {
-        Ok((address, claims, ticket)) => {
-            info!("[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (FS)...");
-            ws.on_upgrade(move |socket| handle_relay(socket, address, claims, ticket, false))
+        Ok((address, claims)) => {
+            info!(
+                "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (FS)..."
+            );
+            ws.max_message_size(MAX_WS_MESSAGE_SIZE)
+                .max_frame_size(MAX_WS_FRAME_SIZE)
+                .on_upgrade(move |socket| handle_relay(socket, address, claims, false))
                 .into_response()
         }
         Err((status, err_msg)) => (status, err_msg).into_response(),
@@ -130,9 +135,13 @@ async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl 
 
 async fn terminal_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
     match verify_and_resolve_auth(query.ticket, "terminal").await {
-        Ok((address, claims, ticket)) => {
-            info!("[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (TERMINAL)...");
-            ws.on_upgrade(move |socket| handle_relay(socket, address, claims, ticket, true))
+        Ok((address, claims)) => {
+            info!(
+                "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (TERMINAL)..."
+            );
+            ws.max_message_size(MAX_WS_MESSAGE_SIZE)
+                .max_frame_size(MAX_WS_FRAME_SIZE)
+                .on_upgrade(move |socket| handle_relay(socket, address, claims, true))
                 .into_response()
         }
         Err((status, err_msg)) => (status, err_msg).into_response(),

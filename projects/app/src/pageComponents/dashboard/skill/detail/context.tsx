@@ -40,6 +40,7 @@ type SkillDetailContextType = {
   startSandbox: () => void;
   restartSandbox: () => void;
   saveAllRef: React.MutableRefObject<(() => Promise<void>) | undefined>;
+  handleSandboxError: (err: string) => void;
 };
 
 export const SkillDetailContext = createContext<SkillDetailContextType>({
@@ -57,7 +58,8 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {},
-  saveAllRef: { current: undefined }
+  saveAllRef: { current: undefined },
+  handleSandboxError: () => {}
 });
 
 const formatTimestamp = () => {
@@ -159,6 +161,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     startSandbox();
   }, [startSandbox]);
 
+  const handleSandboxError = useCallback((err: string) => {
+    setSandboxError(err);
+    setSandboxState('failed');
+  }, []);
+
   // Skill detail fetch
   const {
     data: skillDetail,
@@ -258,7 +265,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       isSkillReady,
       startSandbox,
       restartSandbox,
-      saveAllRef
+      saveAllRef,
+      handleSandboxError
     }),
     [
       skillId,
@@ -272,7 +280,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       visibleSandboxError,
       isSkillReady,
       startSandbox,
-      restartSandbox
+      restartSandbox,
+      handleSandboxError
     ]
   );
 

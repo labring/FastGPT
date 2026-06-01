@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  getWriteEntryByteLength,
   isUploadFalseNegativeCandidate,
   toOpenSandboxWriteData,
   verifyCommittedUpload
 } from '@/adapters/OpenSandboxAdapter/uploadRecovery';
+import { getWriteEntryByteLength } from '@/utils/files';
 
 const makeUploadError = (statusCode = 500) =>
   Object.assign(new Error(`Upload failed (status=${statusCode})`), { statusCode });

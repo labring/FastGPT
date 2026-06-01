@@ -1,7 +1,7 @@
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
 use tracing::{debug, error};
 
@@ -11,6 +11,7 @@ pub struct SandboxAddress {
     pub sandbox_port: Option<u16>,
     pub sandbox_id: String,
     pub sandbox_url: Option<String>,
+    pub agent_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,30 +34,52 @@ pub struct AppResponse<T> {
     pub data: T,
 }
 
-// 全局静态唯一的 HTTP 客户端连接池单例
-static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+// 全局静态唯一的 HTTP 客户端连接池单例与共享秘钥
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(get_app_request_timeout()) // 覆盖主站冷启动校验、读取 agent password 与 endpoint 查询。
+        .pool_idle_timeout(Duration::from_secs(90)) // 空闲连接在池中保留 90 秒
+        .build()
+        .expect("Failed to initialize global high-performance HTTP shared client pool")
+});
 
-/// 获取或惰性初始化全局共享的 reqwest Client (支持 HTTP Keep-Alive 与严格的 3s 超时机制)
+static PROXY_SECRET: OnceLock<String> = OnceLock::new();
+
+const DEFAULT_APP_REQUEST_TIMEOUT_SECS: u64 = 10;
+const MIN_PROXY_SECRET_BYTES: usize = 32;
+
+fn get_app_request_timeout() -> Duration {
+    let seconds = env::var("FASTGPT_APP_REQUEST_TIMEOUT_SECS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_APP_REQUEST_TIMEOUT_SECS);
+
+    Duration::from_secs(seconds)
+}
+
+/// 获取全局共享的 reqwest Client，复用连接池并统一请求超时。
 pub fn get_http_client() -> &'static reqwest::Client {
-    HTTP_CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .timeout(Duration::from_secs(3)) // 配置严格的 3 秒超防护机制，防止 NextJS 侧卡死导致代理挂起
-            .pool_idle_timeout(Duration::from_secs(90)) // 空闲连接在池中保留 90 秒
-            .build()
-            .expect("Failed to initialize global high-performance HTTP shared client pool")
+    &HTTP_CLIENT
+}
+
+pub fn get_proxy_secret() -> &'static str {
+    PROXY_SECRET.get_or_init(|| {
+        let secret = env::var("AGENT_SANDBOX_PROXY_SECRET")
+            .expect("Missing AGENT_SANDBOX_PROXY_SECRET environment variable");
+        if secret.len() < MIN_PROXY_SECRET_BYTES {
+            panic!(
+                "AGENT_SANDBOX_PROXY_SECRET must be at least {} bytes",
+                MIN_PROXY_SECRET_BYTES
+            );
+        }
+        secret
     })
 }
 
 /// 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求
 pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
-    let secret = env::var("AGENT_SANDBOX_PROXY_SECRET").map_err(|_| {
-        "Missing AGENT_SANDBOX_PROXY_SECRET environment variable in Proxy environment".to_string()
-    })?;
-
-    if secret.trim().is_empty() {
-        return Err("AGENT_SANDBOX_PROXY_SECRET environment variable is empty".to_string());
-    }
-
+    let secret = get_proxy_secret();
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
     // JWT 默认使用 HS256 算法，配合 5 秒的时钟容差 (leeway)
@@ -88,12 +111,7 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
     let mut request = client.get(&request_url).query(&[("ticket", ticket)]);
 
     // 3. 安全二次加固：必须携带正确的 AGENT_SANDBOX_PROXY_SECRET，在 Header 中注入安全防刷握手 Token
-    if let Ok(proxy_secret) = env::var("AGENT_SANDBOX_PROXY_SECRET") {
-        if !proxy_secret.trim().is_empty() {
-            request = request.header("X-Proxy-Token", proxy_secret);
-            debug!("[Auth] Proxy-Token handshake credentials injected to verify request.");
-        }
-    }
+    request = request.header("X-Proxy-Token", get_proxy_secret());
 
     let response = request
         .send()
@@ -141,13 +159,16 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{encode, EncodingKey, Header};
+    use jsonwebtoken::{EncodingKey, Header, encode};
     use std::time::{SystemTime, UNIX_EPOCH};
+    fn init_test_secret(secret: &str) {
+        let _ = PROXY_SECRET.set(secret.to_string());
+    }
 
     #[test]
     fn test_verify_jwt_ticket_success() {
-        let secret = "test-secret-key-1234567890-very-long";
-        std::env::set_var("AGENT_SANDBOX_PROXY_SECRET", secret);
+        let secret = "test-secret-key-1234567890-very-long-32";
+        init_test_secret(secret);
 
         let exp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -183,9 +204,9 @@ mod tests {
 
     #[test]
     fn test_verify_jwt_ticket_wrong_secret() {
-        let secret = "test-secret-key-1234567890-very-long";
-        let wrong_secret = "wrong-secret-key-1234567890-very-long";
-        std::env::set_var("AGENT_SANDBOX_PROXY_SECRET", secret);
+        let secret = "test-secret-key-1234567890-very-long-32";
+        let wrong_secret = "wrong-secret-key-1234567890-very-long-32";
+        init_test_secret(secret);
 
         let exp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -217,8 +238,8 @@ mod tests {
 
     #[test]
     fn test_verify_jwt_ticket_expired() {
-        let secret = "test-secret-key-1234567890-very-long";
-        std::env::set_var("AGENT_SANDBOX_PROXY_SECRET", secret);
+        let secret = "test-secret-key-1234567890-very-long-32";
+        init_test_secret(secret);
 
         let exp = SystemTime::now()
             .duration_since(UNIX_EPOCH)

@@ -143,6 +143,13 @@ describe('sandbox runtime service', () => {
     });
 
     expect(client.getSandboxId()).toBe(generateSandboxId('app-1', 'user-1', 'normal-chat'));
+    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
+      'sealosdevbox',
+      client.getSandboxId(),
+      expect.not.objectContaining({
+        createConfig: expect.anything()
+      })
+    );
   });
 
   it('passes resource limits into running instance records and command timeout into exec', async () => {

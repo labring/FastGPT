@@ -177,26 +177,18 @@ function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
  */
 export const getSandboxClient = async (
   props: ExplicitSandboxIdType | UnionIdType,
-  opts: {
-    providerName?: SandboxProviderType;
-    resourceLimits?: ResourceLimits;
-    createConfig?: SandboxCreateSpec;
-  } = {}
+  opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
   const sandboxId = resolveSandboxId(props);
 
   const vmConfig = await getSessionVolumeConfig(sandboxId);
-
-  if ('chatId' in props && props.chatId === 'edit-debug') {
-    const createConfig = opts.createConfig ?? {};
-    createConfig.env = {
-      ...createConfig.env,
-      IDE_AGENT_ENABLED: 'true'
-    };
-    opts.createConfig = createConfig;
-  }
-
-  const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });
+  const sandbox = new SandboxClient(
+    { ...props, sandboxId },
+    {
+      ...opts,
+      vmConfig
+    }
+  );
   await sandbox.ensureAvailable();
   return sandbox;
 };

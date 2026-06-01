@@ -100,8 +100,8 @@
     "use-context-selector": "^1.4.4",
     "vaul": "catalog:",
     "zod": "catalog:",
-    "xterm": "catalog:",
-    "xterm-addon-fit": "catalog:"
+    "@xterm/addon-fit": "catalog:",
+    "@xterm/xterm": "catalog:"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "16.1.6",

@@ -57,9 +57,6 @@ describe('sandbox runtime profile', () => {
 
     expect(runtimeProfile).toMatchObject({
       provider: 'sealosdevbox',
-      defaultImage: {
-        repository: ''
-      },
       workDirectory: '/home/devbox/workspace',
       entrypoint: ''
     });
@@ -74,9 +71,6 @@ describe('sandbox runtime profile', () => {
 
     expect(getSandboxRuntimeProfile()).toMatchObject({
       provider: 'sealosdevbox',
-      defaultImage: {
-        repository: ''
-      },
       workDirectory: '/custom/devbox/workspace',
       entrypoint: ''
     });
@@ -93,13 +87,19 @@ describe('sandbox runtime profile', () => {
       runtimeProfile.buildConfig({
         scenario: 'session-runtime',
         sessionId: 'session-1',
-        env: buildBaseSandboxRuntimeEnv('session-1', runtimeProfile.workDirectory),
+        env: buildBaseSandboxRuntimeEnv({
+          sessionId: 'session-1',
+          workDirectory: runtimeProfile.workDirectory,
+          ideAgentBindAddr: '0.0.0.0:1318'
+        }),
         metadata: { teamId: 'team-1' }
       })
-    ).toEqual({
+    ).toMatchObject({
       env: {
         FASTGPT_SESSION_ID: 'session-1',
-        FASTGPT_WORKDIR: '/custom/devbox/workspace'
+        FASTGPT_WORKDIR: '/custom/devbox/workspace',
+        IDE_AGENT_ENABLED: 'true',
+        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318'
       },
       metadata: {
         teamId: 'team-1'

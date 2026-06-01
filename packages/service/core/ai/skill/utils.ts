@@ -144,35 +144,6 @@ function generateFrontmatter(name: string, description: string): string {
 }
 
 /**
- * 解析由本模板工具生成或兼容的简单 frontmatter。
- *
- * 这里只服务模板构造相关的轻量读取；导入/部署时的正式 SKILL.md 元数据解析
- * 仍应使用 `parseSkillMarkdown`，避免业务校验规则分散。
- */
-function parseFrontmatter(content: string): {
-  name: string;
-  description: string;
-  body: string;
-} {
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
-
-  if (!frontmatterMatch) {
-    throw new Error('Invalid SKILL.md format: missing frontmatter');
-  }
-
-  const frontmatterText = frontmatterMatch[1];
-  const body = frontmatterMatch[2];
-
-  const nameMatch = frontmatterText.match(/^name:\s*(.+)$/m);
-  const name = nameMatch ? unescapeYaml(nameMatch[1].trim()) : '';
-
-  const descMatch = frontmatterText.match(/^description:\s*(.+)$/m);
-  const description = descMatch ? unescapeYaml(descMatch[1].trim()) : '';
-
-  return { name, description, body };
-}
-
-/**
  * 将字符串转成适合写入简单 YAML 标量的形式。
  */
 function escapeYaml(value: string): string {
@@ -200,41 +171,16 @@ function escapeYaml(value: string): string {
   return `"${escaped}"`;
 }
 
-/**
- * 反解析 `escapeYaml` 支持的简单 quoted scalar。
- */
-function unescapeYaml(value: string): string {
-  if (value.startsWith('"') && value.endsWith('"')) {
-    return value.slice(1, -1).replace(/\\"/g, '"');
-  }
-  if (value.startsWith("'") && value.endsWith("'")) {
-    return value.slice(1, -1).replace(/\\'/g, "'");
-  }
-  return value;
-}
-
-/**
- * 校验 skill name 是否满足 Agent Skills 的 kebab-case 约束。
- */
-function sanitizeSkillNameForFile(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/_/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 64);
-}
-
 export function extractSkillNameFromSkillMd(content: string): string {
   try {
-    const { name } = parseFrontmatter(content);
-    return name;
-  } catch {
-    const headerMatch = content.match(/^#\s+(.+)$/m);
-    return headerMatch ? sanitizeSkillNameForFile(headerMatch[1]) : 'unnamed-skill';
-  }
+    const { frontmatter } = parseSkillMarkdown(content);
+    if (frontmatter.name) {
+      return getSafeSkillDirectoryName(String(frontmatter.name)).toLowerCase();
+    }
+  } catch {}
+
+  const headerMatch = content.match(/^#\s+(.+)$/m);
+  return headerMatch ? getSafeSkillDirectoryName(headerMatch[1]).toLowerCase() : 'unnamed-skill';
 }
 
 /* ==================== Shell 安全辅助 (原 shell.ts) ==================== */

@@ -34,11 +34,8 @@ import { BoundedOutputBuffer } from '@/utils/outputBuffer';
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@/constants';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
 import type { OpenSandboxConfigType } from './type';
-import {
-  getWriteEntryByteLength,
-  toOpenSandboxWriteData,
-  verifyCommittedUpload
-} from './uploadRecovery';
+import { toOpenSandboxWriteData, verifyCommittedUpload } from './uploadRecovery';
+import { getWriteEntryByteLength } from '@/utils/files';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
 export type { OpenSandboxConfigType } from './type';

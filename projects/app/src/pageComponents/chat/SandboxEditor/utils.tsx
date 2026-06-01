@@ -1,18 +1,4 @@
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-
-export const stableStringifyAuth = (authData?: OutLinkChatAuthProps) =>
-  authData
-    ? JSON.stringify({
-        shareId: authData.shareId,
-        outLinkUid: authData.outLinkUid,
-        teamId: authData.teamId,
-        teamToken: authData.teamToken
-      })
-    : '';
-
-export const parseAuthFromStableString = (authDataStr: string): OutLinkChatAuthProps | undefined =>
-  authDataStr ? JSON.parse(authDataStr) : undefined;
 
 // Get icon by filename
 export const getIconByFilename = (filename: string): IconNameType => {

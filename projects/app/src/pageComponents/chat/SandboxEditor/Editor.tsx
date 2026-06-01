@@ -30,6 +30,7 @@ export type Props = {
   isPreparing?: boolean;
   preparingText?: string;
   showTerminal?: boolean;
+  onError?: (err: Error) => void;
 };
 
 const SandboxEditor = ({
@@ -41,7 +42,8 @@ const SandboxEditor = ({
   defaultViewMode,
   isPreparing = false,
   preparingText,
-  showTerminal = false
+  showTerminal = false,
+  onError
 }: Props) => {
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
@@ -85,7 +87,8 @@ const SandboxEditor = ({
     chatId,
     outLinkAuthData,
     isPreparing,
-    canWrite: showFileOps || showTerminal
+    canWrite: showFileOps,
+    onError
   });
 
   // 绑定全部保存方法到 Context 引用上
@@ -247,7 +250,7 @@ const SandboxEditor = ({
             filteredTree={filteredTree}
             loadingFile={loadingFile}
             showTerminalBtn={showTerminal}
-            canWrite={showFileOps || showTerminal}
+            canWrite={showFileOps}
           />
         </MyBox>
       </>

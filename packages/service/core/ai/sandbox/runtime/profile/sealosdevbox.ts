@@ -1,4 +1,5 @@
 import { serviceEnv } from '../../../../../env';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
 
@@ -23,9 +24,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
     skillsRootPath: getSandboxSkillsRootPath(workDirectory),
     buildConfig(input = {}) {
       const createConfig = input.createConfig ?? {};
-      // edit-debug 复用 Devbox 模板环境，不允许用编辑态镜像覆盖；普通运行态仍可显式指定镜像。
-      const image =
-        createConfig.image ?? (input.scenario === 'edit-debug' ? undefined : input.image);
+      const image = createConfig.image ?? input.image;
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。

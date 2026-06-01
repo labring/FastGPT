@@ -13,11 +13,11 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 
-const SECRET = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
 const TICKET_EXPIRES_IN = '1m';
 
 async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> {
-  if (!SECRET) {
+  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+  if (!secret) {
     throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
   }
   const { appId, chatId, outLinkAuthData, channel, permission } = parseApiInput({
@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
       channel,
       permission: ticketPermission
     },
-    SECRET,
+    secret,
     { expiresIn: TICKET_EXPIRES_IN }
   );
 

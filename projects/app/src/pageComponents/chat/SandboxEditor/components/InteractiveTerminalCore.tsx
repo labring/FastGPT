@@ -5,7 +5,7 @@ import { useInteractiveTerminal } from './useInteractiveTerminal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-import 'xterm/css/xterm.css';
+import '@xterm/xterm/css/xterm.css';
 
 type Props = {
   appId: string;

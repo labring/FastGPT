@@ -117,25 +117,26 @@ describe('sandbox provider config', () => {
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
-    expect(
-      getSandboxAdapterConfig({
-        provider: 'sealosdevbox',
-        runtime: true,
-        sessionId: 'session-1'
-      })
-    ).toEqual({
-      providerConfig: {
-        provider: 'sealosdevbox',
-        baseUrl: 'https://devbox.example.com',
-        token: 'sealos-token'
-      },
-      createConfig: {
-        workingDir: '/home/devbox/workspace',
-        upstreamID: 'session-1',
-        env: {
-          FASTGPT_SESSION_ID: 'session-1',
-          FASTGPT_WORKDIR: '/home/devbox/workspace'
-        }
+    const result = getSandboxAdapterConfig({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1'
+    });
+
+    expect(result.providerConfig).toEqual({
+      provider: 'sealosdevbox',
+      baseUrl: 'https://devbox.example.com',
+      token: 'sealos-token'
+    });
+
+    expect(result.createConfig).toMatchObject({
+      workingDir: '/home/devbox/workspace',
+      upstreamID: 'session-1',
+      env: {
+        FASTGPT_SESSION_ID: 'session-1',
+        FASTGPT_WORKDIR: '/home/devbox/workspace',
+        IDE_AGENT_ENABLED: 'true',
+        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318'
       }
     });
   });
