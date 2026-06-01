@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -11,20 +11,20 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateMcpToolsBodySchema,
-  CreateMcpToolsResponseSchema,
-  type CreateMcpToolsBodyType,
-  type CreateMcpToolsResponseType
+  type CreateMcpToolsBodyType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import {
+  CreateAppResponseSchema,
+  type CreateAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
 
-export type createMCPToolsQuery = {};
-
 async function handler(
-  req: ApiRequestProps<CreateMcpToolsBodyType>,
-  res: ApiResponseType
-): Promise<CreateMcpToolsResponseType> {
+  req: ApiRequestProps<CreateMcpToolsBodyType>
+): Promise<CreateAppResponseType> {
   const {
     name,
     avatar,
@@ -32,7 +32,10 @@ async function handler(
     url,
     headerSecret = {},
     parentId
-  } = CreateMcpToolsBodySchema.parse(req.body);
+  } = parseApiInput({
+    req,
+    bodySchema: CreateMcpToolsBodySchema
+  }).body;
 
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
@@ -75,7 +78,7 @@ async function handler(
     tmbId
   });
 
-  return CreateMcpToolsResponseSchema.parse(mcpToolsId);
+  return CreateAppResponseSchema.parse(mcpToolsId);
 }
 
 export default NextAPI(handler);

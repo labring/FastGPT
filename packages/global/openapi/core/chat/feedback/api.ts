@@ -64,7 +64,7 @@ export const AdminUpdateFeedbackBodySchema = z.object({
 });
 export type AdminUpdateFeedbackBodyType = z.infer<typeof AdminUpdateFeedbackBodySchema>;
 
-export const AdminUpdateFeedbackResponseSchema = z.object({});
+export const AdminUpdateFeedbackResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type AdminUpdateFeedbackResponseType = z.infer<typeof AdminUpdateFeedbackResponseSchema>;
 
 /* =============== closeCustom =============== */
@@ -88,7 +88,7 @@ export const CloseCustomFeedbackBodySchema = z.object({
 });
 export type CloseCustomFeedbackBodyType = z.infer<typeof CloseCustomFeedbackBodySchema>;
 
-export const CloseCustomFeedbackResponseSchema = z.object({});
+export const CloseCustomFeedbackResponseSchema = z.undefined().meta({ description: '关闭成功' });
 export type CloseCustomFeedbackResponseType = z.infer<typeof CloseCustomFeedbackResponseSchema>;
 
 /* =============== updateUserFeedback =============== */
@@ -116,7 +116,7 @@ export const UpdateUserFeedbackBodySchema = z.object({
 });
 export type UpdateUserFeedbackBodyType = z.infer<typeof UpdateUserFeedbackBodySchema>;
 
-export const UpdateUserFeedbackResponseSchema = z.object({});
+export const UpdateUserFeedbackResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateUserFeedbackResponseType = z.infer<typeof UpdateUserFeedbackResponseSchema>;
 
 /* =============== getFeedbackRecordIds =============== */

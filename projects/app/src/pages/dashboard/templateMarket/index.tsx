@@ -7,11 +7,9 @@ import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  type AppTemplateSchemaType,
-  type TemplateTypeSchemaType
-} from '@fastgpt/global/core/app/type';
+import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppTemplateListItemType } from '@fastgpt/global/openapi/core/app/template/api';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -37,7 +35,7 @@ const TemplateMarket = ({
   templateTags,
   MenuIcon
 }: {
-  templateList: AppTemplateSchemaType[];
+  templateList: AppTemplateListItemType[];
   templateTags: TemplateTypeSchemaType[];
   MenuIcon: JSX.Element;
 }) => {
@@ -66,7 +64,7 @@ const TemplateMarket = ({
   }, [templateList, templateTags]);
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest(
-    async (template: AppTemplateSchemaType) => {
+    async (template: AppTemplateListItemType) => {
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
 
       if (template.type === AppTypeEnum.simple) {
@@ -106,7 +104,7 @@ const TemplateMarket = ({
   );
 
   const TemplateCard = useCallback(
-    ({ item }: { item: AppTemplateSchemaType }) => {
+    ({ item }: { item: AppTemplateListItemType }) => {
       const { t } = useTranslation();
       const icon = appTypeTagMap[item.type as keyof typeof appTypeTagMap]?.icon;
 
@@ -378,7 +376,7 @@ const TemplateMarket = ({
   );
 };
 
-const TemplateMarketContainer = ({ children }: { children: React.ReactNode }) => {
+const TemplateMarketContainer = () => {
   return (
     <DashboardContainer>
       {({ templateTags, templateList, MenuIcon }) => (

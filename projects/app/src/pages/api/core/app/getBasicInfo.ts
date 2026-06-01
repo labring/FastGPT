@@ -1,25 +1,22 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getAppBasicInfoByIds } from '@fastgpt/service/core/app/controller';
-
-export type getBasicInfoQuery = {};
-
-export type getBasicInfoBody = {
-  ids: string[];
-};
-
-export type getBasicInfoResponse = {
-  id: string;
-  name: string;
-  avatar: string;
-}[];
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  GetAppBasicInfoBodySchema,
+  GetAppBasicInfoResponseSchema,
+  type GetAppBasicInfoBodyType,
+  type GetAppBasicInfoResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 async function handler(
-  req: ApiRequestProps<getBasicInfoBody, getBasicInfoQuery>,
-  res: ApiResponseType<any>
-): Promise<getBasicInfoResponse> {
-  const { ids } = req.body;
+  req: ApiRequestProps<GetAppBasicInfoBodyType>
+): Promise<GetAppBasicInfoResponseType> {
+  const { ids } = parseApiInput({
+    req,
+    bodySchema: GetAppBasicInfoBodySchema
+  }).body;
   const { teamId } = await authCert({ req, authToken: true });
 
   const apps = await getAppBasicInfoByIds({
@@ -27,7 +24,7 @@ async function handler(
     ids
   });
 
-  return apps;
+  return GetAppBasicInfoResponseSchema.parse(apps);
 }
 
 export default NextAPI(handler);

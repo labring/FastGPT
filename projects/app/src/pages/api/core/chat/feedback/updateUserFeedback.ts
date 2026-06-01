@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
@@ -14,10 +13,7 @@ import {
   type UpdateUserFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 
-async function handler(
-  req: ApiRequestProps,
-  res: NextApiResponse
-): Promise<UpdateUserFeedbackResponseType> {
+async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponseType> {
   const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } = parseApiInput({
     req,
     bodySchema: UpdateUserFeedbackBodySchema
@@ -98,7 +94,7 @@ async function handler(
     }
   });
 
-  return UpdateUserFeedbackResponseSchema.parse({});
+  return UpdateUserFeedbackResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

@@ -30,7 +30,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     _id: dataId
   });
 
-  return DeleteTrainingDataResponseSchema.parse({});
+  return DeleteTrainingDataResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

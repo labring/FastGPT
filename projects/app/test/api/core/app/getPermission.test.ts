@@ -1,15 +1,12 @@
 import * as getPermissionApi from '@/pages/api/core/app/getPermission';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
-import type {
-  GetAppPermissionQueryType,
-  GetAppPermissionResponseType
-} from '@fastgpt/global/openapi/core/app/common/api';
-import { ZodError } from 'zod';
+import type { GetAppPermissionQueryType } from '@fastgpt/global/openapi/core/app/permission/api';
+import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller.schema';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('get app permission api', () => {
   it('should return permission when user has access', async () => {
@@ -26,15 +23,16 @@ describe('get app permission api', () => {
       tmbId: user.tmbId
     });
 
-    const res = await Call<{}, GetAppPermissionQueryType, GetAppPermissionResponseType>(
-      getPermissionApi.default,
-      {
-        auth: user,
-        query: {
-          appId: String(app._id)
-        }
+    const res = await Call<
+      Record<string, never>,
+      GetAppPermissionQueryType,
+      AppPermissionCheckType
+    >(getPermissionApi.default, {
+      auth: user,
+      query: {
+        appId: String(app._id)
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data).toBeDefined();
@@ -48,17 +46,17 @@ describe('get app permission api', () => {
     const users = await getFakeUsers(1);
     const user = users.members[0];
 
-    const res = await Call<{}, GetAppPermissionQueryType, GetAppPermissionResponseType>(
-      getPermissionApi.default,
-      {
-        auth: user,
-        query: {
-          appId: ''
-        }
+    const res = await Call<
+      Record<string, never>,
+      GetAppPermissionQueryType,
+      AppPermissionCheckType
+    >(getPermissionApi.default, {
+      auth: user,
+      query: {
+        appId: ''
       }
-    );
-    console.log(res.error, 232);
-    expect(res.error instanceof ZodError).toBe(true);
+    });
+    expect(res.error instanceof ApiRequestInputParseError).toBe(true);
     expect(res.code).toBe(500);
   });
 
@@ -78,15 +76,16 @@ describe('get app permission api', () => {
     });
 
     // Try to get permission as user2 (different team)
-    const res = await Call<{}, GetAppPermissionQueryType, GetAppPermissionResponseType>(
-      getPermissionApi.default,
-      {
-        auth: user2,
-        query: {
-          appId: String(app._id)
-        }
+    const res = await Call<
+      Record<string, never>,
+      GetAppPermissionQueryType,
+      AppPermissionCheckType
+    >(getPermissionApi.default, {
+      auth: user2,
+      query: {
+        appId: String(app._id)
       }
-    );
+    });
 
     expect(res.data.isOwner).toBe(false);
     expect(res.data.hasReadPer).toBe(false);
@@ -100,15 +99,16 @@ describe('get app permission api', () => {
     const users = await getFakeUsers(1);
     const user = users.members[0];
 
-    const res = await Call<{}, GetAppPermissionQueryType, GetAppPermissionResponseType>(
-      getPermissionApi.default,
-      {
-        auth: user,
-        query: {
-          appId: '507f1f77bcf86cd799439011' // Non-existent appId
-        }
+    const res = await Call<
+      Record<string, never>,
+      GetAppPermissionQueryType,
+      AppPermissionCheckType
+    >(getPermissionApi.default, {
+      auth: user,
+      query: {
+        appId: '507f1f77bcf86cd799439011' // Non-existent appId
       }
-    );
+    });
 
     expect(res.data.isOwner).toBe(false);
     expect(res.data.hasReadPer).toBe(false);

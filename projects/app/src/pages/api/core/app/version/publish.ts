@@ -15,7 +15,11 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
-import { PublishAppQuerySchema, PublishAppBodySchema } from '@fastgpt/global/core/app/version/type';
+import {
+  PublishAppBodySchema,
+  PublishAppQuerySchema,
+  PublishAppResponseSchema
+} from '@fastgpt/global/openapi/core/app/version/api';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -89,7 +93,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       }
     });
 
-    return;
+    return PublishAppResponseSchema.parse(undefined);
   }
 
   await mongoSessionRun(async (session) => {
@@ -157,6 +161,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       }
     });
   })();
+
+  return PublishAppResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

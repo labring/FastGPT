@@ -1,11 +1,12 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { CreateAppResponseSchema } from '../common/api';
 import {
   CreateMcpToolsBodySchema,
-  CreateMcpToolsResponseSchema,
   GetMcpChildrenQuerySchema,
   GetMcpChildrenResponseSchema,
   UpdateMcpToolsBodySchema,
+  UpdateMcpToolsResponseSchema,
   GetMcpToolsBodySchema,
   GetMcpToolsResponseSchema,
   RunMcpToolBodySchema,
@@ -78,7 +79,7 @@ export const McpToolsPath: OpenAPIPath = {
           description: '成功创建 MCP 工具集',
           content: {
             'application/json': {
-              schema: CreateMcpToolsResponseSchema
+              schema: CreateAppResponseSchema
             }
           }
         }
@@ -86,7 +87,7 @@ export const McpToolsPath: OpenAPIPath = {
     }
   },
   '/core/app/mcpTools/update': {
-    post: {
+    put: {
       summary: '更新 MCP 工具集',
       description: '更新 MCP 工具集配置',
       tags: [TagsMap.mcpTools],
@@ -99,7 +100,12 @@ export const McpToolsPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新 MCP 工具集'
+          description: '成功更新 MCP 工具集',
+          content: {
+            'application/json': {
+              schema: UpdateMcpToolsResponseSchema
+            }
+          }
         }
       }
     }

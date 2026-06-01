@@ -17,6 +17,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import {
   InsertImagesBodySchema,
+  InsertImagesResponseSchema,
   type InsertImagesResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
@@ -110,7 +111,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       });
     });
 
-    return {};
+    return InsertImagesResponseSchema.parse(undefined);
   } catch (error) {
     return Promise.reject(error);
   } finally {

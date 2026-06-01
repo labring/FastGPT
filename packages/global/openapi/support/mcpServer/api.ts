@@ -61,7 +61,7 @@ export const McpCreateBodySchema = z.object({
 });
 export type McpCreateBodyType = z.infer<typeof McpCreateBodySchema>;
 
-export const McpCreateResponseSchema = z.object({}).meta({ description: '创建成功' });
+export const McpCreateResponseSchema = z.undefined().meta({ description: '创建成功' });
 export type McpCreateResponseType = z.infer<typeof McpCreateResponseSchema>;
 
 /* ============================================================================
@@ -76,7 +76,7 @@ export const McpUpdateBodySchema = z.object({
 });
 export type McpUpdateBodyType = z.infer<typeof McpUpdateBodySchema>;
 
-export const McpUpdateResponseSchema = z.object({}).meta({ description: '更新成功' });
+export const McpUpdateResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type McpUpdateResponseType = z.infer<typeof McpUpdateResponseSchema>;
 
 /* ============================================================================
@@ -89,5 +89,5 @@ export const McpDeleteQuerySchema = z.object({
 });
 export type McpDeleteQueryType = z.infer<typeof McpDeleteQuerySchema>;
 
-export const McpDeleteResponseSchema = z.object({}).meta({ description: '删除成功' });
+export const McpDeleteResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type McpDeleteResponseType = z.infer<typeof McpDeleteResponseSchema>;

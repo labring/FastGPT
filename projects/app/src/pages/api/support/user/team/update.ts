@@ -16,7 +16,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTeamResponseType> {
 
   await updateTeam({ teamId, ...body });
 
-  return UpdateTeamResponseSchema.parse({});
+  return UpdateTeamResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

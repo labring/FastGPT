@@ -1,9 +1,10 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { CreateAppResponseSchema } from '../common/api';
 import {
   CreateHttpToolsBodySchema,
-  CreateHttpToolsResponseSchema,
   UpdateHttpToolsBodySchema,
+  UpdateHttpToolsResponseSchema,
   GetApiSchemaByUrlBodySchema,
   GetApiSchemaByUrlResponseSchema,
   RunHttpToolBodySchema,
@@ -28,7 +29,7 @@ export const HttpToolsPath: OpenAPIPath = {
           description: '成功创建 HTTP 工具集',
           content: {
             'application/json': {
-              schema: CreateHttpToolsResponseSchema
+              schema: CreateAppResponseSchema
             }
           }
         }
@@ -36,7 +37,7 @@ export const HttpToolsPath: OpenAPIPath = {
     }
   },
   '/core/app/httpTools/update': {
-    post: {
+    put: {
       summary: '更新 HTTP 工具集',
       description: '更新 HTTP 工具集配置',
       tags: [TagsMap.httpTools],
@@ -49,7 +50,12 @@ export const HttpToolsPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新 HTTP 工具集'
+          description: '成功更新 HTTP 工具集',
+          content: {
+            'application/json': {
+              schema: UpdateHttpToolsResponseSchema
+            }
+          }
         }
       }
     }

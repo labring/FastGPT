@@ -1,19 +1,25 @@
 import { loadOpenAPISchemaFromUrl } from '@fastgpt/global/common/string/swagger';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetApiSchemaByUrlBodySchema,
+  GetApiSchemaByUrlResponseSchema,
   type GetApiSchemaByUrlBodyType,
   type GetApiSchemaByUrlResponseType
 } from '@fastgpt/global/openapi/core/app/httpTools/api';
 
 async function handler(
-  req: ApiRequestProps<GetApiSchemaByUrlBodyType>,
-  res: ApiResponseType
+  req: ApiRequestProps<GetApiSchemaByUrlBodyType>
 ): Promise<GetApiSchemaByUrlResponseType> {
-  const { url } = GetApiSchemaByUrlBodySchema.parse(req.body);
+  const {
+    body: { url }
+  } = parseApiInput({
+    req,
+    bodySchema: GetApiSchemaByUrlBodySchema
+  });
 
   await authCert({ req, authToken: true });
 
@@ -21,7 +27,7 @@ async function handler(
     return Promise.reject('Invalid url');
   }
 
-  return await loadOpenAPISchemaFromUrl(url);
+  return GetApiSchemaByUrlResponseSchema.parse(await loadOpenAPISchemaFromUrl(url));
 }
 
 export default NextAPI(handler);

@@ -1,4 +1,4 @@
-import type { PlaygroundVisibilityConfigResponse } from '@fastgpt/global/support/outLink/api';
+import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
@@ -37,7 +37,7 @@ describe('Playground Visibility Config API', () => {
   });
 
   it('should return default config values when no existing config found', async () => {
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       auth: rootUser,
       query: {
         appId: testApp._id
@@ -79,7 +79,7 @@ describe('Playground Visibility Config API', () => {
       lastTime: new Date()
     });
 
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       auth: rootUser,
       query: {
         appId: testApp._id
@@ -105,7 +105,7 @@ describe('Playground Visibility Config API', () => {
   });
 
   it('should return 500 when appId is missing', async () => {
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       auth: rootUser,
       query: {}
     });
@@ -115,7 +115,7 @@ describe('Playground Visibility Config API', () => {
   });
 
   it('should return 500 when appId is empty string', async () => {
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       auth: rootUser,
       query: {
         appId: ''
@@ -143,7 +143,7 @@ describe('Playground Visibility Config API', () => {
       lastTime: new Date()
     });
 
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       auth: rootUser,
       query: {
         appId: testApp._id
@@ -169,7 +169,7 @@ describe('Playground Visibility Config API', () => {
   });
 
   it('should return error when user is not authenticated', async () => {
-    const res = await Call<PlaygroundVisibilityConfigResponse>(configApi.default, {
+    const res = await Call<PlaygroundVisibilityConfigType>(configApi.default, {
       query: {
         appId: testApp._id
       }

@@ -2,8 +2,12 @@ import z from 'zod';
 
 export const SecretValueTypeSchema = z
   .object({
-    value: z.string().optional(),
-    secret: z.string().optional()
+    value: z.string().optional().meta({
+      description: '密钥明文值；提交明文时会优先使用该值'
+    }),
+    secret: z.string().optional().meta({
+      description: '已加密或脱敏后的密钥值'
+    })
   })
   .meta({
     description: '密钥值类型，value 为明文，secret 为密文，如果了 value 则优先使用 value。',

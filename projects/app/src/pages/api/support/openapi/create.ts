@@ -1,5 +1,4 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -10,8 +9,21 @@ import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
-  const { appId, name, limit } = req.body;
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  CreateApiKeyBodySchema,
+  CreateApiKeyResponseSchema,
+  type CreateApiKeyBodyType,
+  type CreateApiKeyResponseType
+} from '@fastgpt/global/openapi/support/openapi/api';
+
+async function handler(
+  req: ApiRequestProps<CreateApiKeyBodyType>
+): Promise<CreateApiKeyResponseType> {
+  const { appId, name, limit } = parseApiInput({
+    req,
+    bodySchema: CreateApiKeyBodySchema
+  }).body;
   const { tmbId, teamId } = await (async () => {
     if (!appId) {
       // global apikey is being created, auth the tmb
@@ -61,7 +73,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
     });
   })();
 
-  return apiKey;
+  return CreateApiKeyResponseSchema.parse(apiKey);
 }
 
 export default NextAPI(handler);

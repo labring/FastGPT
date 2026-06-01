@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -12,10 +12,7 @@ import {
   type McpCreateResponseType
 } from '@fastgpt/global/openapi/support/mcpServer/api';
 
-async function handler(
-  req: ApiRequestProps,
-  res: ApiResponseType<any>
-): Promise<McpCreateResponseType> {
+async function handler(req: ApiRequestProps): Promise<McpCreateResponseType> {
   const { teamId, tmbId, permission } = await authUserPer({
     req,
     authToken: true,
@@ -62,7 +59,7 @@ async function handler(
     apps: uniqueApps
   });
 
-  return McpCreateResponseSchema.parse({});
+  return McpCreateResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

@@ -69,7 +69,7 @@ const EditFolderModal = ({
       isOpen
       onClose={onClose}
       title={typeMap.title}
-      size={'md'}
+      size={'sm'}
       isCentered
       borderRadius={'10px'}
       closeOnOverlayClick={false}

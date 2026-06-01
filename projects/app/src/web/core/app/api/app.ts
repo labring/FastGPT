@@ -1,27 +1,30 @@
-import { DELETE, GET, POST } from '@/web/common/api/request';
-import type { CreateAppFolderBody } from '@/pages/api/core/app/folder/create';
+import { GET, POST } from '@/web/common/api/request';
 import type {
-  GetPathProps,
-  ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type';
+  CopyAppBodyType,
+  CopyAppResponseType,
+  TransitionWorkflowBodyType,
+  TransitionWorkflowResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import type {
-  transitionWorkflowBody,
-  transitionWorkflowResponse
-} from '@/pages/api/core/app/transitionWorkflow';
-import type { copyAppQuery, copyAppResponse } from '@/pages/api/core/app/copy';
+  CreateAppFolderBodyType,
+  CreateAppFolderResponseType,
+  GetAppFolderPathQueryType,
+  GetAppFolderPathResponseType
+} from '@fastgpt/global/openapi/core/app/folder/api';
 
 /* folder */
-export const postCreateAppFolder = (data: CreateAppFolderBody) =>
-  POST('/core/app/folder/create', data);
+export const postCreateAppFolder = (data: CreateAppFolderBodyType) =>
+  POST<CreateAppFolderResponseType>('/core/app/folder/create', data);
 
-export const getAppFolderPath = (data: GetPathProps) => {
-  if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
+export const getAppFolderPath = (data: GetAppFolderPathQueryType) => {
+  if (!data.sourceId) return Promise.resolve<GetAppFolderPathResponseType>([]);
 
-  return GET<ParentTreePathItemType[]>(`/core/app/folder/path`, data);
+  return GET<GetAppFolderPathResponseType>(`/core/app/folder/path`, data);
 };
 
 /* detail */
-export const postTransition2Workflow = (data: transitionWorkflowBody) =>
-  POST<transitionWorkflowResponse>('/core/app/transitionWorkflow', data);
+export const postTransition2Workflow = (data: TransitionWorkflowBodyType) =>
+  POST<TransitionWorkflowResponseType>('/core/app/transitionWorkflow', data);
 
-export const postCopyApp = (data: copyAppQuery) => POST<copyAppResponse>('/core/app/copy', data);
+export const postCopyApp = (data: CopyAppBodyType) =>
+  POST<CopyAppResponseType>('/core/app/copy', data);

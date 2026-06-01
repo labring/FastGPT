@@ -695,8 +695,10 @@ describe('getTeamStandPlan', () => {
       currentExtraDatasetSize: 0
     };
 
-    // getTeamStandPlan 不使用 .lean()，直接返回数组
-    vi.spyOn(MongoTeamSub, 'find').mockResolvedValue([mockPlan] as any);
+    const mockQuery = {
+      lean: vi.fn().mockResolvedValue([mockPlan])
+    };
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
 
     (global as any).subPlans = {
       standard: {

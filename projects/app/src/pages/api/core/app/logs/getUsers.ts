@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -11,13 +10,20 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
   GetLogUsersBodySchema,
+  GetLogUsersResponseSchema,
   type LogUserType,
   type GetLogUsersResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<GetLogUsersResponse> {
-  const { appId, dateStart, dateEnd, searchKey, sources } = GetLogUsersBodySchema.parse(req.body);
+async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
+  const {
+    body: { appId, dateStart, dateEnd, searchKey, sources }
+  } = parseApiInput({
+    req,
+    bodySchema: GetLogUsersBodySchema
+  });
 
   if (!appId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -94,11 +100,11 @@ async function handler(req: ApiRequestProps, _res: NextApiResponse): Promise<Get
     return { outLinkUid, tmbId, name, avatar, count: item.count };
   });
 
-  return {
+  return GetLogUsersResponseSchema.parse({
     list: searchPattern
       ? list.filter((item) => !searchPattern || searchPattern.test(item.name)).slice(0, 50)
       : list.slice(0, 50)
-  };
+  });
 }
 
 export default NextAPI(handler);

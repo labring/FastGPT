@@ -169,17 +169,21 @@ export const DatasetDataIndexItemSchema = z.object({
     .enum(DatasetDataIndexTypeEnum)
     .optional()
     .default(DatasetDataIndexTypeEnum.custom)
-    .meta({ description: '索引类型' }),
-  dataId: z.string().meta({ description: 'vectorDB ID' }),
+    .meta({ description: '索引类型, 外部接口不需要传，都 custom，其他 type 是系统自动生成的' }),
+  dataId: z
+    .string()
+    .meta({ description: '向量库里数据 ID（可选），可用于相同索引不重复创建，节省一次向量更新' }),
   text: z.string().meta({
     description: `默认就是索引的文本内容，特殊的：
 imageEmbedding - 图片的 objectKey/url`
   })
 });
-const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({ dataId: true }).extend({
+const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({
+  dataId: true
+}).extend({
   dataId: z.string().optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: 'PG 数据 ID（可选）'
+    description: '向量库里数据 ID（可选），可用于相同索引不重复创建，节省一次向量更新'
   })
 });
 export type DatasetDataIndexItemType = z.infer<typeof DatasetDataIndexItemSchema>;

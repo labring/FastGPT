@@ -1,5 +1,4 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { AppUpdateParams } from '@/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
@@ -28,12 +27,14 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-
-export type AppUpdateQuery = {
-  appId: string;
-};
-
-export type AppUpdateBody = AppUpdateParams;
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  UpdateAppBodySchema,
+  UpdateAppQuerySchema,
+  UpdateAppResponseSchema,
+  type UpdateAppBodyType,
+  type UpdateAppQueryType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 // 更新应用接口
 // 包括如下功能：
@@ -46,10 +47,15 @@ export type AppUpdateBody = AppUpdateParams;
 //  (1) 父目录的管理权限
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
-async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
-  const { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags } = req.body;
-
-  const { appId } = req.query;
+async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
+  const {
+    query: { appId },
+    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags }
+  } = parseApiInput({
+    req,
+    querySchema: UpdateAppQuerySchema,
+    bodySchema: UpdateAppBodySchema
+  });
 
   if (!appId) {
     Promise.reject(CommonErrEnum.missingParams);
@@ -186,12 +192,12 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         session
       });
       logAppMove({ tmbId, teamId, app, targetName });
-      return onUpdate(session);
+      return UpdateAppResponseSchema.parse(await onUpdate(session));
     });
   } else {
     logAppUpdate({ tmbId, teamId, app, name, intro });
 
-    return onUpdate();
+    return UpdateAppResponseSchema.parse(await onUpdate());
   }
 }
 

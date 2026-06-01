@@ -1,10 +1,18 @@
 import z from 'zod';
 
 export const StoreEdgeItemTypeSchema = z.object({
-  source: z.string(),
-  sourceHandle: z.string(),
-  target: z.string(),
-  targetHandle: z.string()
+  source: z.string().meta({
+    description: '连线起点节点 ID'
+  }),
+  sourceHandle: z.string().meta({
+    description: '连线起点输出桩 ID'
+  }),
+  target: z.string().meta({
+    description: '连线终点节点 ID'
+  }),
+  targetHandle: z.string().meta({
+    description: '连线终点输入桩 ID'
+  })
 });
 export type StoreEdgeItemType = z.infer<typeof StoreEdgeItemTypeSchema>;
 

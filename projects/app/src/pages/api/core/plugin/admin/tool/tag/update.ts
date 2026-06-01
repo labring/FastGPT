@@ -1,13 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { UpdatePluginToolTagBody } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 
-async function handler(
-  req: ApiRequestProps<UpdatePluginToolTagBody>,
-  res: ApiResponseType<any>
-): Promise<{}> {
+async function handler(req: ApiRequestProps<UpdatePluginToolTagBody>): Promise<void> {
   await authSystemAdmin({ req });
 
   const { tagId, tagName } = req.body;
@@ -30,8 +27,6 @@ async function handler(
       }
     }
   );
-
-  return {};
 }
 
 export default NextAPI(handler);

@@ -46,7 +46,7 @@ export const ResetExpiredPswBodySchema = z
   });
 export type ResetExpiredPswBodyType = z.infer<typeof ResetExpiredPswBodySchema>;
 
-export const ResetExpiredPswResponseSchema = z.object({}).meta({
+export const ResetExpiredPswResponseSchema = z.undefined().meta({
   description: '重置成功'
 });
 export type ResetExpiredPswResponseType = z.infer<typeof ResetExpiredPswResponseSchema>;

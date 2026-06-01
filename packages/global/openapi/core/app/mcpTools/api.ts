@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
-import { CreateAppBodySchema, CreateAppResponseSchema } from '../common/api';
+import { CreateAppBodySchema } from '../common/api';
 import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
 
 // Create mcp tool
@@ -41,9 +41,6 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
   });
 export type CreateMcpToolsBodyType = z.infer<typeof CreateMcpToolsBodySchema>;
 
-export const CreateMcpToolsResponseSchema = CreateAppResponseSchema;
-export type CreateMcpToolsResponseType = z.infer<typeof CreateMcpToolsResponseSchema>;
-
 // Update mcp tool
 export const UpdateMcpToolsBodySchema = z
   .object({
@@ -64,6 +61,11 @@ export const UpdateMcpToolsBodySchema = z
     }
   });
 export type UpdateMcpToolsBodyType = z.infer<typeof UpdateMcpToolsBodySchema>;
+
+export const UpdateMcpToolsResponseSchema = z.undefined().meta({
+  description: '更新成功'
+});
+export type UpdateMcpToolsResponseType = z.infer<typeof UpdateMcpToolsResponseSchema>;
 
 // Get mcp children
 export const GetMcpChildrenQuerySchema = z.object({

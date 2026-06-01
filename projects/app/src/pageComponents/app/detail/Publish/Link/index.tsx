@@ -278,7 +278,7 @@ function EditLinkModal({
     setValue,
     watch,
     handleSubmit: submitShareChat
-  } = useForm({
+  } = useForm<OutLinkEditType>({
     defaultValues: defaultData
   });
 
@@ -503,7 +503,9 @@ function EditLinkModal({
         </Button>
         <Button
           isLoading={creating || updating}
-          onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
+          onClick={submitShareChat((data) =>
+            isEdit && data._id ? onclickUpdate({ ...data, _id: data._id }) : onclickCreate(data)
+          )}
         >
           {t('common:Confirm')}
         </Button>

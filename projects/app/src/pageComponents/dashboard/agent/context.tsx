@@ -10,7 +10,7 @@ import {
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { type AppUpdateParams } from '@/global/core/app/api';
+import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -25,7 +25,7 @@ type AppListContextType = {
   isFetchingApps: boolean;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
-  onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
+  onUpdateApp: (id: string, data: UpdateAppBodyType) => Promise<any>;
   setMoveAppId: React.Dispatch<React.SetStateAction<string | undefined>>;
   refetchFolderDetail: () => Promise<AppDetailType | null>;
   searchKey: string;
@@ -41,7 +41,7 @@ export const AppListContext = createContext<AppListContextType>({
   isFetchingApps: false,
   folderDetail: undefined,
   paths: [],
-  onUpdateApp: function (id: string, data: AppUpdateParams): Promise<any> {
+  onUpdateApp: function (id: string, data: UpdateAppBodyType): Promise<any> {
     throw new Error('Function not implemented.');
   },
   setMoveAppId: function (value: React.SetStateAction<string | undefined>): void {
@@ -131,7 +131,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { runAsync: onUpdateApp } = useRequest((id: string, data: AppUpdateParams) =>
+  const { runAsync: onUpdateApp } = useRequest((id: string, data: UpdateAppBodyType) =>
     putAppById(id, data).then(async (res) => {
       await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
       return res;

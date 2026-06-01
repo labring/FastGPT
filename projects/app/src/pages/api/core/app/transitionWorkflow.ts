@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -8,23 +8,21 @@ import { onCreateApp } from './create';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-
-export type transitionWorkflowQuery = {};
-
-export type transitionWorkflowBody = {
-  appId: string;
-  createNew?: boolean;
-};
-
-export type transitionWorkflowResponse = {
-  id?: string;
-};
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  TransitionWorkflowBodySchema,
+  TransitionWorkflowResponseSchema,
+  type TransitionWorkflowBodyType,
+  type TransitionWorkflowResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 async function handler(
-  req: ApiRequestProps<transitionWorkflowBody, transitionWorkflowQuery>,
-  res: ApiResponseType<any>
-): Promise<transitionWorkflowResponse> {
-  const { appId, createNew } = req.body;
+  req: ApiRequestProps<TransitionWorkflowBodyType>
+): Promise<TransitionWorkflowResponseType> {
+  const { appId, createNew } = parseApiInput({
+    req,
+    bodySchema: TransitionWorkflowBodySchema
+  }).body;
 
   const { app, teamId, tmbId } = await authApp({
     req,
@@ -61,12 +59,12 @@ async function handler(
       };
     });
 
-    return { id: appId };
+    return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
   await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
 
-  return {};
+  return TransitionWorkflowResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

@@ -4,12 +4,17 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  type UpdatePlaygroundVisibilityConfigBody,
-  UpdatePlaygroundVisibilityConfigBodySchema
-} from '@fastgpt/global/support/outLink/api';
+  PlaygroundUpdateResponseSchema,
+  UpdatePlaygroundVisibilityConfigParamsSchema,
+  type UpdatePlaygroundVisibilityConfigParamsType,
+  type PlaygroundUpdateResponseType
+} from '@fastgpt/global/openapi/core/app/publishChannel/playground/api';
 
-async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody, {}>) {
+async function handler(
+  req: ApiRequestProps<UpdatePlaygroundVisibilityConfigParamsType, Record<string, never>>
+): Promise<PlaygroundUpdateResponseType> {
   const {
     appId,
     showRunningStatus,
@@ -18,7 +23,10 @@ async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody
     showFullText,
     canDownloadSource,
     showWholeResponse
-  } = UpdatePlaygroundVisibilityConfigBodySchema.parse(req.body);
+  } = parseApiInput({
+    req,
+    bodySchema: UpdatePlaygroundVisibilityConfigParamsSchema
+  }).body;
 
   const { teamId, tmbId } = await authApp({
     req,
@@ -49,6 +57,8 @@ async function handler(req: ApiRequestProps<UpdatePlaygroundVisibilityConfigBody
     },
     { upsert: true }
   );
+
+  return PlaygroundUpdateResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

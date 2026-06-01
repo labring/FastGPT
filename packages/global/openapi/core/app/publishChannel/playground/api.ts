@@ -1,25 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
-
-// Playground Visibility Config Fields
-const PlaygroundVisibilityConfigFieldsSchema = z.object({
-  showRunningStatus: z.boolean().meta({
-    example: true,
-    description: '是否显示运行状态'
-  }),
-  showCite: z.boolean().meta({
-    example: true,
-    description: '是否显示引用'
-  }),
-  showFullText: z.boolean().meta({
-    example: true,
-    description: '是否显示全文'
-  }),
-  canDownloadSource: z.boolean().meta({
-    example: true,
-    description: '是否可下载来源'
-  })
-});
+import { PlaygroundVisibilityConfigSchema } from '../../../../../support/outLink/type';
 
 // Get Playground Visibility Config Parameters
 export const GetPlaygroundVisibilityConfigParamsSchema = z.object({
@@ -32,12 +13,6 @@ export type GetPlaygroundVisibilityConfigParamsType = z.infer<
   typeof GetPlaygroundVisibilityConfigParamsSchema
 >;
 
-// Playground Visibility Config Response
-export const PlaygroundVisibilityConfigResponseSchema = PlaygroundVisibilityConfigFieldsSchema;
-export type PlaygroundVisibilityConfigResponseType = z.infer<
-  typeof PlaygroundVisibilityConfigResponseSchema
->;
-
 // Update Playground Visibility Config Parameters
 export const UpdatePlaygroundVisibilityConfigParamsSchema = z
   .object({
@@ -46,7 +21,12 @@ export const UpdatePlaygroundVisibilityConfigParamsSchema = z
       description: '应用 ID'
     })
   })
-  .extend(PlaygroundVisibilityConfigFieldsSchema.shape);
+  .extend(PlaygroundVisibilityConfigSchema.shape);
 export type UpdatePlaygroundVisibilityConfigParamsType = z.infer<
   typeof UpdatePlaygroundVisibilityConfigParamsSchema
 >;
+
+export const PlaygroundUpdateResponseSchema = z.undefined().meta({
+  description: '更新成功'
+});
+export type PlaygroundUpdateResponseType = z.infer<typeof PlaygroundUpdateResponseSchema>;

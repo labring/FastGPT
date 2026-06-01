@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
-import { CreateAppBodySchema, CreateAppResponseSchema } from '../common/api';
+import { CreateAppBodySchema } from '../common/api';
 import { HttpToolConfigTypeSchema } from '../../../../core/app/tool/httpTool/type';
 import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
 
@@ -30,12 +30,9 @@ export const CreateHttpToolsBodySchema = CreateAppBodySchema.omit({
   });
 export type CreateHttpToolsBodyType = z.infer<typeof CreateHttpToolsBodySchema>;
 
-export const CreateHttpToolsResponseSchema = CreateAppResponseSchema;
-export type CreateHttpToolsResponseType = z.infer<typeof CreateHttpToolsResponseSchema>;
-
 /* ============================================================================
  * API: 更新 HTTP 工具集
- * Route: POST /core/app/httpTools/update
+ * Route: PUT /core/app/httpTools/update
  * ============================================================================ */
 export const UpdateHttpToolsBodySchema = z
   .object({
@@ -71,6 +68,11 @@ export const UpdateHttpToolsBodySchema = z
     }
   });
 export type UpdateHttpToolsBodyType = z.infer<typeof UpdateHttpToolsBodySchema>;
+
+export const UpdateHttpToolsResponseSchema = z.undefined().meta({
+  description: '更新成功'
+});
+export type UpdateHttpToolsResponseType = z.infer<typeof UpdateHttpToolsResponseSchema>;
 
 /* ============================================================================
  * API: 通过 URL 解析 OpenAPI Schema
@@ -113,14 +115,17 @@ export const RunHttpToolBodySchema = z
       example: '/search',
       description: '工具路径'
     }),
-    method: z.string().meta({
+    method: z.string().optional().default('POST').meta({
       example: 'POST',
-      description: 'HTTP 请求方法'
+      description: 'HTTP 请求方法；未传时默认 POST'
     }),
-    customHeaders: z.record(z.string(), z.string()).optional().meta({
-      example: {},
-      description: '自定义请求头'
-    }),
+    customHeaders: z
+      .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+      .optional()
+      .meta({
+        example: {},
+        description: '自定义请求头'
+      }),
     headerSecret: StoreSecretValueTypeSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'

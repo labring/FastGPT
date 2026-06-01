@@ -67,11 +67,11 @@ const AppCard = ({
       return postTransition2Workflow({ appId, createNew: transitionCreateNew });
     },
     {
-      onSuccess: ({ id }) => {
-        if (id) {
+      onSuccess: (response) => {
+        if (response?.id) {
           router.replace({
             query: {
-              appId: id
+              appId: response.id
             }
           });
         } else {

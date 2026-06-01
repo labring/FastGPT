@@ -1,18 +1,4 @@
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
-
-export type AppUpdateParams = {
-  parentId?: ParentIdType;
-  name?: string;
-  type?: AppTypeEnum;
-  avatar?: string;
-  intro?: string;
-  nodes?: AppSchemaType['modules'];
-  edges?: AppSchemaType['edges'];
-  chatConfig?: AppSchemaType['chatConfig'];
-  teamTags?: AppSchemaType['teamTags'];
-};
 
 export type PostPublishAppProps = {
   nodes: AppSchemaType['modules'];

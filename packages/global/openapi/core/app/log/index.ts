@@ -1,11 +1,11 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import { ApiKeyTagMap } from '../../../apikey/tag';
-import z from 'zod';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
   ExportChatLogsBodySchema,
+  ExportChatLogsResponseSchema,
   GetChartDataBodySchema,
   GetChartDataResponseSchema,
   GetTotalDataQuerySchema,
@@ -13,6 +13,7 @@ import {
   GetLogKeysQuerySchema,
   GetLogKeysResponseSchema,
   UpdateLogKeysBodySchema,
+  UpdateLogKeysResponseSchema,
   GetLogUsersBodySchema,
   GetLogUsersResponseSchema
 } from './api';
@@ -39,7 +40,7 @@ export const AppLogPath: OpenAPIPath = {
     }
   },
   '/core/app/logs/updateLogKeys': {
-    post: {
+    put: {
       summary: '更新应用日志键',
       description: '更新应用的日志键列表',
       tags: [TagsMap.appLog],
@@ -55,7 +56,7 @@ export const AppLogPath: OpenAPIPath = {
           description: '成功更新应用日志键',
           content: {
             'application/json': {
-              schema: z.object({})
+              schema: UpdateLogKeysResponseSchema
             }
           }
         }
@@ -103,7 +104,7 @@ export const AppLogPath: OpenAPIPath = {
           description: '成功导出应用日志，返回 CSV 文件',
           content: {
             'text/csv': {
-              schema: z.string()
+              schema: ExportChatLogsResponseSchema
             }
           }
         }

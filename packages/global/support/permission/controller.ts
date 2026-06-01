@@ -137,7 +137,17 @@ export class Permission {
   }
 }
 
-// 仅用于 TypeScript 类型推导，运行时不做实例验证
+// HTTP 响应会把 Permission 类实例序列化为普通对象，OpenAPI 需要声明前端实际依赖的 JSON 字段。
 export const PermissionSchema = z
-  .custom<Permission>(() => true)
-  .meta({ description: '权限对象（Permission 类实例）' });
+  .object({
+    role: z.number().int().meta({ description: '权限角色值' }),
+    isOwner: z.boolean().meta({ description: '是否为所有者' }),
+    hasManagePer: z.boolean().meta({ description: '是否拥有管理权限' }),
+    hasWritePer: z.boolean().meta({ description: '是否拥有写权限' }),
+    hasReadPer: z.boolean().meta({ description: '是否拥有读权限' }),
+    hasManageRole: z.boolean().meta({ description: '是否包含管理角色' }),
+    hasWriteRole: z.boolean().meta({ description: '是否包含写角色' }),
+    hasReadRole: z.boolean().meta({ description: '是否包含读角色' })
+  })
+  .passthrough()
+  .meta({ description: '权限对象序列化后的 JSON 结构' }) as unknown as z.ZodType<Permission>;

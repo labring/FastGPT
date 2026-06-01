@@ -3,7 +3,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -11,24 +11,25 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  CopyAppBodySchema,
+  CopyAppResponseSchema,
+  type CopyAppBodyType,
+  type CopyAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
-export type copyAppQuery = {};
+async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppResponseType> {
+  const { appId: sourceAppId } = parseApiInput({
+    req,
+    bodySchema: CopyAppBodySchema
+  }).body;
 
-export type copyAppBody = { appId: string };
-
-export type copyAppResponse = {
-  appId: string;
-};
-
-async function handler(
-  req: ApiRequestProps<copyAppBody, copyAppQuery>,
-  res: ApiResponseType<any>
-): Promise<copyAppResponse> {
   const { app, teamId } = await authApp({
     req,
     authToken: true,
     per: WritePermissionVal,
-    appId: req.body.appId
+    appId: sourceAppId
   });
 
   const { tmbId } = app.parentId
@@ -76,7 +77,7 @@ async function handler(
     });
   })();
 
-  return { appId };
+  return CopyAppResponseSchema.parse({ appId });
 }
 
 export default NextAPI(handler);

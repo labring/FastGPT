@@ -144,6 +144,37 @@ export type MessageParam = z.infer<typeof MessageParamSchema>;
 
 ---
 
+### Zod Schema 与 OpenAPI 风格
+
+Zod schema 同时承担运行时校验、TypeScript 类型推导和 OpenAPI 生成来源。新增或调整 API 时，按下面规则组织：
+
+- 业务通用结构放在业务归属目录，例如 `packages/global/core/app/type.ts`、`packages/global/core/workflow/type/node.ts`、`packages/global/support/permission/**/controller.ts`。`packages/global/openapi/**` 只声明接口 query/body/response/path、接口专用兼容处理和 OpenAPI 文档信息，不把通用配置类型、权限对象、工具配置等只为文档复制到 openapi 目录。
+- OpenAPI schema 优先复用业务 schema。需要字段说明时，优先在业务 schema 上补齐 `meta`；只属于某个接口视角的说明，可以在 openapi schema 里用 `SomeSchema.shape.field.meta(...)` 补充。不要重复建立同构 schema，也不要用 `export const A = B` 这种重命名 alias 当作新 schema 导出。
+- 只有接口边界确实需要特殊兼容时，才在 openapi 目录定义专用 wrapper，例如把 `{}` 兼容为 `undefined`、或去掉 JSON Schema 不支持的 function 字段。此类 wrapper 附近要写清楚原因。
+- API response schema 默认声明业务 `data` 结构，不重复声明统一响应 envelope，例如 `code`、`statusText`。只有路由实际直接返回这些字段时，才把它们写进 schema。
+- 没有业务返回数据的成功响应，schema 用 `z.undefined().meta({ description: '操作成功' })`，handler 里返回 `SomeResponseSchema.parse(undefined)`，或在没有 response schema 的旧路由里直接不写 `return`。不要再写 `z.null()`、`z.object({})`、`return null`、`return {}` 或 `return 'success'` 表示空成功响应；统一响应中间件会把 `undefined` 包成 `data: null`。
+- 每个对外字段补齐 `description`，关键入参和返回值补 `example`。如果字段语义属于业务通用结构，优先把 `meta` 写到通用 schema；如果只是某接口视角，写到 openapi schema。
+- API 入参、客户端传输结构和需要容错解析的配置字段，优先使用 `packages/global/common/zod` 里的 `BoolSchema`、`NumSchema`、`IntSchema`。不要直接写 `z.coerce.number()`；普通数值用 `NumSchema`，非负整数、数量、分页、limit 用 `IntSchema`，布尔配置和查询参数用 `BoolSchema`。只有明确需要严格拒绝字符串/数字形式时，才保留 `z.number()` 或 `z.boolean()`。
+- 废弃字段用 `.meta({ deprecated: true })` 标记，可同时保留业务说明，例如 `description: '旧版团队标签'`。不要只写 `/** @deprecated */`，也不要只把“已废弃”写进 `description`。
+- Tag 归属按能力复用判断：通用模块接口被业务模块使用时，同时加通用模块 tag 和业务模块 tag；业务模块自己的状态查询或状态操作，只加业务模块 tag。API key 文档只给实际开放接口加 apikey 专用 tag，不开放的接口不要为了分类加 tag。
+- 仅客户端使用的 API 也要以客户端实际传参为准定义 schema，避免 `schema.parse` 因 `number`、`boolean` 的字符串形态导致业务不可用。
+
+```typescript
+import { BoolSchema, IntSchema, NumSchema } from '@fastgpt/global/common/zod';
+
+export const UpdateConfigSchema = z.object({
+  enabled: BoolSchema.meta({ description: '是否启用' }),
+  limit: IntSchema.optional().meta({ description: '最大数量' }),
+  temperature: NumSchema.optional().meta({ description: '温度参数' }),
+  teamTags: z.array(z.string()).optional().meta({
+    description: '旧版团队标签',
+    deprecated: true
+  })
+});
+```
+
+---
+
 ## 可选链调用回调
 
 用 `?.()` 调用可选回调，取代 `if (fn) fn()` 的冗余写法。

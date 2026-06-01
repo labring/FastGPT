@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -12,10 +12,7 @@ import {
   type CloseCustomFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: ApiResponseType<any>
-): Promise<CloseCustomFeedbackResponseType> {
+async function handler(req: ApiRequestProps): Promise<CloseCustomFeedbackResponseType> {
   const { appId, chatId, dataId, index } = parseApiInput({
     req,
     bodySchema: CloseCustomFeedbackBodySchema
@@ -53,7 +50,7 @@ async function handler(
     });
   });
 
-  return CloseCustomFeedbackResponseSchema.parse({});
+  return CloseCustomFeedbackResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

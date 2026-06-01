@@ -193,7 +193,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     } catch {}
   }
 
-  return RebuildEmbeddingResponseSchema.parse({});
+  return RebuildEmbeddingResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

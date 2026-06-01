@@ -1,25 +1,34 @@
-import type { PostPublishAppProps } from '@/global/core/app/api';
-import { GET, POST } from '@/web/common/api/request';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import type { PaginationProps } from '@fastgpt/global/openapi/api';
+import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
-  getLatestVersionQuery,
-  getLatestVersionResponse
-} from '@/pages/api/core/app/version/latest';
-import type { UpdateAppVersionBody } from '@/pages/api/core/app/version/update';
-import type { versionListResponse } from '@/pages/api/core/app/version/list';
+  AppVersionListBodyType,
+  AppVersionListResponseType,
+  GetAppVersionDetailQueryType,
+  GetAppVersionDetailResponseType,
+  GetLatestAppVersionQueryType,
+  GetLatestAppVersionResponseType,
+  PublishAppBodyType,
+  PublishAppQueryType,
+  PublishAppResponseType,
+  UpdateAppVersionBodyType,
+  UpdateAppVersionResponseType
+} from '@fastgpt/global/openapi/core/app/version/api';
 
-export const getAppLatestVersion = (data: getLatestVersionQuery) =>
-  GET<getLatestVersionResponse>('/core/app/version/latest', data);
+export const getAppLatestVersion = (data: GetLatestAppVersionQueryType) =>
+  GET<GetLatestAppVersionResponseType>('/core/app/version/latest', data);
 
-export const postPublishApp = (appId: string, data: PostPublishAppProps) =>
-  POST(`/core/app/version/publish?appId=${appId}`, data);
+export const postPublishApp = (appId: PublishAppQueryType['appId'], data: PublishAppBodyType) =>
+  POST<PublishAppResponseType>(`/core/app/version/publish?appId=${appId}`, data);
 
-export const getAppVersionList = (data: PaginationProps<{ appId: string }>) =>
-  POST<versionListResponse>('/core/app/version/list', data);
+export const getAppVersionList = (data: AppVersionListBodyType) =>
+  POST<AppVersionListResponseType>('/core/app/version/list', data);
 
-export const getAppVersionDetail = (versionId: string, appId: string) =>
-  GET<AppVersionSchemaType>(`/core/app/version/detail?versionId=${versionId}&appId=${appId}`);
+export const getAppVersionDetail = (
+  versionId: GetAppVersionDetailQueryType['versionId'],
+  appId: GetAppVersionDetailQueryType['appId']
+) =>
+  GET<GetAppVersionDetailResponseType>(
+    `/core/app/version/detail?versionId=${versionId}&appId=${appId}`
+  );
 
-export const updateAppVersion = (data: UpdateAppVersionBody) =>
-  POST(`/core/app/version/update`, data);
+export const updateAppVersion = (data: UpdateAppVersionBodyType) =>
+  PUT<UpdateAppVersionResponseType>(`/core/app/version/update`, data);

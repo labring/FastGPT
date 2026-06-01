@@ -1,7 +1,5 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
-import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
@@ -9,19 +7,21 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-
-export type OutLinkCreateQuery = {};
-export type OutLinkCreateBody = OutLinkEditType &
-  OutLinkEditType & {
-    appId: string;
-    type: PublishChannelEnum;
-  };
-export type OutLinkCreateResponse = string;
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  OutLinkCreateBodySchema,
+  OutLinkCreateResponseSchema,
+  type OutLinkCreateBodyType,
+  type OutLinkCreateResponseType
+} from '@fastgpt/global/openapi/support/outLink/api';
 
 async function handler(
-  req: ApiRequestProps<OutLinkCreateBody, OutLinkCreateQuery>
-): Promise<OutLinkCreateResponse> {
-  const { appId, ...props } = req.body;
+  req: ApiRequestProps<OutLinkCreateBodyType>
+): Promise<OutLinkCreateResponseType> {
+  const { appId, ...props } = parseApiInput({
+    req,
+    bodySchema: OutLinkCreateBodySchema
+  }).body;
 
   const { teamId, tmbId, app } = await authApp({
     req,
@@ -52,7 +52,7 @@ async function handler(
     });
   })();
 
-  return shareId;
+  return OutLinkCreateResponseSchema.parse(shareId);
 }
 
 export default NextAPI(handler);

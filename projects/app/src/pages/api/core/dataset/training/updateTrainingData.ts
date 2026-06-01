@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         lockTime: new Date('2000')
       }
     );
-    return UpdateTrainingDataResponseSchema.parse({});
+    return UpdateTrainingDataResponseSchema.parse(undefined);
   }
 
   // Single data retry logic
@@ -84,7 +84,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     );
   }
 
-  return UpdateTrainingDataResponseSchema.parse({});
+  return UpdateTrainingDataResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

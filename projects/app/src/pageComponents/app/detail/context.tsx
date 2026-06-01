@@ -12,7 +12,8 @@ import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { type AppUpdateParams, type PostPublishAppProps } from '@/global/core/app/api';
+import { type PostPublishAppProps } from '@/global/core/app/api';
+import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
@@ -40,7 +41,7 @@ type AppContextType = {
   appDetail: AppDetailType;
   setAppDetail: Dispatch<SetStateAction<AppDetailType>>;
   loadingApp: boolean;
-  updateAppDetail: (data: AppUpdateParams) => Promise<void>;
+  updateAppDetail: (data: UpdateAppBodyType) => Promise<void>;
   onOpenInfoEdit: () => void;
   onOpenTeamTagModal: () => void;
   onDelApp: () => void;
@@ -64,7 +65,7 @@ export const AppContext = createContext<AppContextType>({
   },
   appDetail: defaultApp,
   loadingApp: false,
-  updateAppDetail: function (data: AppUpdateParams): Promise<void> {
+  updateAppDetail: function (data: UpdateAppBodyType): Promise<void> {
     throw new Error('Function not implemented.');
   },
   setAppDetail: function (value: SetStateAction<AppDetailType>): void {
@@ -152,7 +153,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { runAsync: updateAppDetail } = useRequest(async (data: AppUpdateParams) => {
+  const { runAsync: updateAppDetail } = useRequest(async (data: UpdateAppBodyType) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
       ...state,

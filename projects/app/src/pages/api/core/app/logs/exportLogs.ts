@@ -28,6 +28,7 @@ import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const formatJsonString = (data: any) => {
@@ -39,7 +40,7 @@ const formatJsonString = (data: any) => {
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  let {
+  const {
     appId,
     dateStart,
     dateEnd,
@@ -53,7 +54,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     feedbackType,
     unreadOnly,
     errorFilter
-  } = ExportChatLogsBodySchema.parse(req.body);
+  } = parseApiInput({
+    req,
+    bodySchema: ExportChatLogsBodySchema
+  }).body;
 
   const locale = getLocale(req);
   const timezoneCode = getTimezoneCodeFromStr(dateStart);
