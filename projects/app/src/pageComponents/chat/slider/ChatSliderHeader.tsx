@@ -15,7 +15,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { LOGO_ICON, DEFAULT_SYSTEM_SHORT_NAME } from '@fastgpt/global/common/system/constants';
 
 type Props = {
   title?: string;
@@ -68,7 +68,7 @@ const ChatSliderHeader = ({ title }: Props) => {
           borderRadius="8px"
         />
         <Text ml="8px" fontSize="18px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
-          {feConfigs?.systemTitle}
+          {feConfigs?.systemShortName || DEFAULT_SYSTEM_SHORT_NAME}
         </Text>
       </Flex>
 

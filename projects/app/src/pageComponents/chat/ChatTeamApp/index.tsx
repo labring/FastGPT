@@ -7,6 +7,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import List from '@/pageComponents/chat/ChatTeamApp/List';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -57,7 +58,7 @@ const MyApps = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE} />
 
       {!isPc && (
         <Flex

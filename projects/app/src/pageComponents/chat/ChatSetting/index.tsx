@@ -8,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import NextHead from '@/components/common/NextHead';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useTranslation } from 'react-i18next';
@@ -67,7 +68,7 @@ const ChatSetting = () => {
 
   return (
     <>
-      <NextHead title={feConfigs?.systemTitle || 'FastGPT'} />
+      <NextHead title={feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE} />
 
       <Flex flexDir="column" h="100%">
         {!isPc && (

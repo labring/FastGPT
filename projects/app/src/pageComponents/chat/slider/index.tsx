@@ -12,7 +12,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { LOGO_ICON, DEFAULT_SYSTEM_SHORT_NAME } from '@fastgpt/global/common/system/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
@@ -176,7 +176,7 @@ const LogoSection = () => {
             loading="eager"
           />
           <Text fontSize="18px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
-            {feConfigs?.systemTitle}
+            {feConfigs?.systemShortName || DEFAULT_SYSTEM_SHORT_NAME}
           </Text>
         </Flex>
       </AnimatedSection>

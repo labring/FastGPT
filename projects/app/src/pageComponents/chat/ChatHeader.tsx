@@ -5,6 +5,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
@@ -86,7 +87,7 @@ const ChatHeader = ({
           appId={chatData.appId}
           name={
             pane === ChatSidebarPaneEnum.HOME && !isShare
-              ? feConfigs?.systemTitle || 'FastGPT'
+              ? feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE
               : chatData.app.name
           }
           avatar={
