@@ -3,7 +3,7 @@ import { ObjectIdSchema } from '../../../common/type/mongo';
 import {
   CollaboratorItemSchema,
   CollaboratorListSchema
-} from '../../../support/permission/collaborator';
+} from '../../../support/permission/collaborator.schema';
 
 const AppIdSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',

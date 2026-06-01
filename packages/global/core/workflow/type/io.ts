@@ -174,7 +174,6 @@ export const InputComponentPropsTypeSchema = z.object({
     description: '变量在编辑器中的自定义输入配置'
   }),
 
-  /** @deprecated */
   enums: z
     .array(
       z.object({
@@ -188,7 +187,8 @@ export const InputComponentPropsTypeSchema = z.object({
     )
     .optional()
     .meta({
-      description: '已废弃：旧版枚举变量选项'
+      description: '已废弃：旧版枚举变量选项',
+      deprecated: true
     })
 });
 export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;

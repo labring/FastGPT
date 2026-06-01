@@ -1,6 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppChangeOwnerBody } from '@/global/core/app/api';
-import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller';
+import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller.schema';
 
 import type {
   CreateAppBodyType,

@@ -11,7 +11,7 @@ import {
   type AppListItemType
 } from '../../../../core/app/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
-import { AppPermissionSchema } from '../../../../support/permission/app/controller';
+import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { BoolSchema, NumSchema } from '../../../../common/zod';

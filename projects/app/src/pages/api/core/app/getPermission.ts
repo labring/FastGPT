@@ -6,7 +6,7 @@ import { GetAppPermissionQuerySchema } from '@fastgpt/global/openapi/core/app/pe
 import {
   AppPermissionCheckSchema,
   type AppPermissionCheckType
-} from '@fastgpt/global/support/permission/app/controller';
+} from '@fastgpt/global/support/permission/app/controller.schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* Get app permission */

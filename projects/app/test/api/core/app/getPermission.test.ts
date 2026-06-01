@@ -5,7 +5,7 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 import type { GetAppPermissionQueryType } from '@fastgpt/global/openapi/core/app/permission/api';
-import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller';
+import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller.schema';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('get app permission api', () => {

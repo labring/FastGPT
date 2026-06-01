@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
-import { AppPermissionCheckSchema } from '../../../../support/permission/app/controller';
+import { AppPermissionCheckSchema } from '../../../../support/permission/app/controller.schema';
 import {
   GetAppPermissionQuerySchema,
   ResumeInheritPermissionQuerySchema,
