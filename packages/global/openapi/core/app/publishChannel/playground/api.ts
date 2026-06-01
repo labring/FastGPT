@@ -11,8 +11,8 @@ const PlaygroundVisibilityConfigFieldsSchema = z.object({
     example: true,
     description: '是否显示引用'
   }),
-  showSkillReferences: z.boolean().optional().default(true).meta({
-    example: true,
+  showSkillReferences: z.boolean().optional().default(false).meta({
+    example: false,
     description: '是否显示技能引用'
   }),
   showFullText: z.boolean().optional().default(true).meta({
@@ -62,7 +62,7 @@ export type UpdatePlaygroundVisibilityConfigParamsType = z.infer<
 export const PlaygroundConfigQuerySchema = GetPlaygroundVisibilityConfigParamsSchema;
 export const PlaygroundConfigResponseSchema = PlaygroundVisibilityConfigResponseSchema;
 export const PlaygroundUpdateBodySchema = UpdatePlaygroundVisibilityConfigParamsSchema;
-export const PlaygroundUpdateResponseSchema = z.void().meta({
+export const PlaygroundUpdateResponseSchema = z.null().meta({
   description: '更新成功'
 });
 export type PlaygroundUpdateResponseType = z.infer<typeof PlaygroundUpdateResponseSchema>;

@@ -151,7 +151,7 @@ export const UpdateHttpToolsBodySchema = z
   });
 export type UpdateHttpToolsBodyType = z.infer<typeof UpdateHttpToolsBodySchema>;
 
-export const UpdateHttpToolsResponseSchema = z.void().meta({
+export const UpdateHttpToolsResponseSchema = z.null().meta({
   description: '更新成功'
 });
 export type UpdateHttpToolsResponseType = z.infer<typeof UpdateHttpToolsResponseSchema>;
@@ -197,9 +197,9 @@ export const RunHttpToolBodySchema = z
       example: '/search',
       description: '工具路径'
     }),
-    method: z.string().meta({
+    method: z.string().optional().default('POST').meta({
       example: 'POST',
-      description: 'HTTP 请求方法'
+      description: 'HTTP 请求方法；未传时默认 POST'
     }),
     customHeaders: z
       .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))

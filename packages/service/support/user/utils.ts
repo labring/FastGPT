@@ -2,6 +2,7 @@ import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
 import { MongoTeamMember } from './team/teamMemberSchema';
 import { type ClientSession } from '../../common/mongo';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
@@ -9,7 +10,7 @@ export const updateExportDatasetLimit = async (teamId: string) => {
     await MongoTeam.findByIdAndUpdate(teamId, {
       'limit.lastExportDatasetTime': new Date()
     });
-  } catch (error) {}
+  } catch {}
 };
 export const checkExportDatasetLimit = async ({
   teamId,
@@ -43,7 +44,7 @@ export const updateWebSyncLimit = async (teamId: string) => {
     await MongoTeam.findByIdAndUpdate(teamId, {
       'limit.lastWebsiteSyncTime': new Date()
     });
-  } catch (error) {}
+  } catch {}
 };
 export const checkWebSyncLimit = async ({
   teamId,
@@ -109,7 +110,11 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
       return {
         ...formatItem,
-        sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status }
+        sourceMember: {
+          name: tmb.name,
+          avatar: tmb.avatar,
+          status: tmb.status ?? TeamMemberStatusEnum.active
+        }
       };
     })
     .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;

@@ -67,6 +67,8 @@ export const getAppBasicInfoByIds = (ids: GetAppBasicInfoBodyType['ids']) =>
   POST<GetAppBasicInfoResponseType>(`/core/app/getBasicInfo`, { ids });
 
 export const resumeInheritPer = (appId: ResumeInheritPermissionQueryType['appId']) =>
-  PUT<ResumeInheritPermissionResponseType>(`/core/app/resumeInheritPermission?appId=${appId}`);
+  PUT<ResumeInheritPermissionResponseType>(`/core/app/resumeInheritPermission?appId=${appId}`).then(
+    () => undefined
+  );
 
 export const changeOwner = (data: AppChangeOwnerBody) => POST(`/proApi/core/app/changeOwner`, data);

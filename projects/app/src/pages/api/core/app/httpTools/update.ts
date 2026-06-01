@@ -66,7 +66,7 @@ async function handler(
     parentId: app.parentId
   });
 
-  return UpdateHttpToolsResponseSchema.parse(undefined);
+  return UpdateHttpToolsResponseSchema.parse(null);
 }
 
 export default NextAPI(handler);

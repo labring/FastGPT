@@ -224,9 +224,9 @@ export const GetChartDataBodySchema = z.object({
       example: [ChatSourceEnum.api, ChatSourceEnum.online],
       description: '对话来源筛选'
     }),
-  offset: z.number().meta({
+  offset: z.coerce.number().optional().default(1).meta({
     example: 1,
-    description: '用户留存偏移量，单位随 userTimespan 变化'
+    description: '用户留存偏移量，单位随 userTimespan 变化；未传时默认 1'
   }),
   userTimespan: z.nativeEnum(AppLogTimespanEnum).meta({
     example: AppLogTimespanEnum.day,

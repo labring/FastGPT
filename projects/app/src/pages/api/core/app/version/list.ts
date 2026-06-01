@@ -6,6 +6,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   AppVersionListBodySchema,
   AppVersionListResponseSchema,
@@ -46,7 +47,8 @@ async function handler(req: ApiRequestProps<versionListBody>): Promise<versionLi
       }).then((list) =>
         list.map((item) => ({
           ...item,
-          isPublish: !!item.isPublish
+          isPublish: !!item.isPublish,
+          versionName: item.versionName || formatTime2YMDHM(item.time)
         }))
       );
     })(),

@@ -37,7 +37,7 @@ export const CreateAppFolderBodySchema = z
   });
 export type CreateAppFolderBodyType = z.infer<typeof CreateAppFolderBodySchema>;
 
-export const CreateAppFolderResponseSchema = z.void().meta({
+export const CreateAppFolderResponseSchema = z.null().meta({
   description: '创建成功'
 });
 export type CreateAppFolderResponseType = z.infer<typeof CreateAppFolderResponseSchema>;

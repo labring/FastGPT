@@ -1,5 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { getErrorResponse } from '../../type';
 
 const OptionalDateSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -10,7 +11,10 @@ const OptionalDateSchema = z.preprocess((value) => {
 export const ApiKeyLimitSchema = z
   .object({
     expiredTime: OptionalDateSchema.meta({ description: '过期时间' }),
-    maxUsagePoints: z.number().meta({ example: -1, description: '最大积分用量限制' })
+    maxUsagePoints: z.number().optional().default(-1).meta({
+      example: -1,
+      description: '最大积分用量限制'
+    })
   })
   .optional()
   .meta({ description: 'API Key 使用限制' });
@@ -22,9 +26,9 @@ export const OpenApiKeySchema = z.object({
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   apiKey: z.string().meta({ description: 'API Key，列表接口返回脱敏值' }),
-  appId: z.string().optional().meta({ description: '绑定应用 ID' }),
-  name: z.string().meta({ description: 'API Key 名称' }),
-  usagePoints: z.number().meta({ description: '累计使用积分' }),
+  appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID' }),
+  name: z.string().optional().default('Api Key').meta({ description: 'API Key 名称' }),
+  usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
   })
@@ -40,7 +44,7 @@ export type OpenApiKeySchemaType = z.infer<typeof OpenApiKeySchema>;
  * ============================================================================ */
 
 export const CreateApiKeyBodySchema = z.object({
-  appId: z.string().optional().meta({ description: '绑定应用 ID，不传则创建团队级 API Key' }),
+  appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID，不传则创建团队级 API Key' }),
   name: z.string().min(1).meta({ example: '生产环境 Key', description: 'API Key 名称' }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
@@ -62,7 +66,7 @@ export type CreateApiKeyResponseType = z.infer<typeof CreateApiKeyResponseSchema
  * ============================================================================ */
 
 export const GetApiKeyListQuerySchema = z.object({
-  appId: z.string().optional().meta({ description: '应用 ID，不传则查询团队级 API Key' })
+  appId: ObjectIdSchema.optional().meta({ description: '应用 ID，不传则查询团队级 API Key' })
 });
 export type GetApiKeyListQueryType = z.infer<typeof GetApiKeyListQuerySchema>;
 
@@ -88,7 +92,7 @@ export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
   });
 export type UpdateApiKeyBodyType = z.infer<typeof UpdateApiKeyBodySchema>;
 
-export const UpdateApiKeyResponseSchema = z.void().meta({
+export const UpdateApiKeyResponseSchema = z.null().meta({
   description: '更新成功'
 });
 export type UpdateApiKeyResponseType = z.infer<typeof UpdateApiKeyResponseSchema>;
@@ -125,16 +129,16 @@ export const ApiKeyHealthParamsSchema = z.object({
 export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
 
 export const ApiKeyHealthResponseSchema = z.object({
-  appId: z.string().optional().meta({
+  appId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a05',
     description: 'API Key 绑定的应用 ID；团队级 API Key 不返回'
   })
 });
 export type ApiKeyHealthResponseType = z.infer<typeof ApiKeyHealthResponseSchema>;
 
-export const ApiKeyHealthErrorResponseSchema = z.object({
-  message: z.literal('APIKey invalid').meta({
-    description: 'API Key 无效时返回的固定错误信息'
-  })
+export const ApiKeyHealthErrorResponseSchema = getErrorResponse({
+  message: 'APIKey invalid'
+}).meta({
+  description: 'API Key 无效时的统一错误响应'
 });
 export type ApiKeyHealthErrorResponseType = z.infer<typeof ApiKeyHealthErrorResponseSchema>;

@@ -93,7 +93,7 @@ export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;
  * Tags: ['版本管理']
  * ============================================================================ */
 
-export const PublishAppResponseSchema = z.void().meta({
+export const PublishAppResponseSchema = z.null().meta({
   description: '保存成功'
 });
 export type PublishAppResponseType = z.infer<typeof PublishAppResponseSchema>;

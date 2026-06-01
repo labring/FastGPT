@@ -93,7 +93,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       }
     });
 
-    return PublishAppResponseSchema.parse(undefined);
+    return PublishAppResponseSchema.parse(null);
   }
 
   await mongoSessionRun(async (session) => {
@@ -162,7 +162,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     });
   })();
 
-  return PublishAppResponseSchema.parse(undefined);
+  return PublishAppResponseSchema.parse(null);
 }
 
 export default NextAPI(handler);

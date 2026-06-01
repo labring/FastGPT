@@ -1,7 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
-import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
@@ -10,6 +9,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListAppTemplateQuerySchema,
   ListAppTemplateResponseSchema,
+  type AppTemplateListItemType,
   type ListAppTemplateQueryType,
   type ListAppTemplateResponseType
 } from '@fastgpt/global/openapi/core/app/template/api';
@@ -92,7 +92,7 @@ async function handler(req: ApiRequestProps<ListParams>): Promise<ListResponse> 
     filteredItems = shuffled.slice(0, randomNumber);
   }
 
-  const list = filteredItems.map<AppTemplateSchemaType>((item) => {
+  const list = filteredItems.map<AppTemplateListItemType>((item) => {
     // Check if this template should be promoted for current user
     const isPromotedForUser =
       item.promoteTags &&
@@ -118,7 +118,7 @@ async function handler(req: ApiRequestProps<ListParams>): Promise<ListResponse> 
       type: item.type,
       author: item.author,
       userGuide: item.userGuide,
-      workflow: {} as AppTemplateSchemaType['workflow']
+      workflow: {}
     };
   });
 

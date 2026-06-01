@@ -3,23 +3,12 @@ import { BoolSchema } from '../../../../common/zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import type { AppTemplateSchemaType as CoreAppTemplateSchemaType } from '../../../../core/app/type';
 import { UserTagsEnum } from '../../../../support/user/type';
-import { WorkflowTemplateBasicTypeSchema } from '../../../../core/workflow/type';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import { OpenAPIAppChatConfigSchema, OpenAPIAppEdgesSchema } from '../common/api';
 
-const OpenAPIWorkflowTemplateBasicTypeSchema = WorkflowTemplateBasicTypeSchema.omit({
-  nodes: true
-}).extend({
-  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
-    description: '模板内置的工作流节点配置'
-  }),
-  edges: OpenAPIAppEdgesSchema.meta({
-    description: '模板内置的工作流连线配置'
-  }),
-  chatConfig: OpenAPIAppChatConfigSchema.optional().meta({
-    description: '模板默认对话配置'
-  })
-});
+const AppTemplateWorkflowSchema = z
+  .custom<CoreAppTemplateSchemaType['workflow']>(() => true)
+  .meta({
+    description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
+  });
 
 export const AppTemplateSchema = z.object({
   templateId: z.string().meta({ example: 'template-simple-chat', description: '模板 ID' }),
@@ -51,9 +40,7 @@ export const AppTemplateSchema = z.object({
     .meta({ description: '用户指引' }),
   isQuickTemplate: z.boolean().optional().meta({ description: '是否快捷模板' }),
   order: z.number().optional().meta({ description: '排序值' }),
-  workflow: OpenAPIWorkflowTemplateBasicTypeSchema.meta({
-    description: '模板对应的应用编排配置'
-  })
+  workflow: AppTemplateWorkflowSchema
 });
 export type AppTemplateSchemaType = z.infer<typeof AppTemplateSchema>;
 
@@ -91,12 +78,12 @@ export type ListAppTemplateQueryType = z.infer<typeof ListAppTemplateQuerySchema
 export const AppTemplateListItemSchema = AppTemplateSchema.omit({
   workflow: true
 }).extend({
-  workflow: z
-    .custom<CoreAppTemplateSchemaType['workflow']>(() => true)
-    .meta({
-      description: '列表接口不返回完整 workflow，固定为空对象'
-    })
+  workflow: z.record(z.string(), z.never()).meta({
+    description: '列表接口不返回完整 workflow，固定为空对象'
+  })
 });
+export type AppTemplateListItemType = z.infer<typeof AppTemplateListItemSchema>;
+
 export const ListAppTemplateResponseSchema = z.object({
   list: z.array(AppTemplateListItemSchema).meta({
     description: '模板列表'
@@ -105,10 +92,7 @@ export const ListAppTemplateResponseSchema = z.object({
     example: 100,
     description: '模板总数'
   })
-}) as z.ZodType<{
-  list: CoreAppTemplateSchemaType[];
-  total: number;
-}>;
+});
 export type ListAppTemplateResponseType = z.infer<typeof ListAppTemplateResponseSchema>;
 
 /* ============================================================================

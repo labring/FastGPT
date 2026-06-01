@@ -11,8 +11,11 @@ const OptionalDateSchema = z.preprocess((value) => {
 const OutLinkLimitSchema = z
   .object({
     expiredTime: OptionalDateSchema.meta({ description: '过期时间' }),
-    QPM: z.number().meta({ example: 60, description: '每分钟问题数限制' }),
-    maxUsagePoints: z.number().meta({ example: -1, description: '最大积分用量限制' }),
+    QPM: z.number().optional().default(1000).meta({ example: 60, description: '每分钟问题数限制' }),
+    maxUsagePoints: z.number().optional().default(-1).meta({
+      example: -1,
+      description: '最大积分用量限制'
+    }),
     hookUrl: z.string().optional().meta({ description: '校验消息回调地址' })
   })
   .meta({ description: '发布渠道限制配置' });
@@ -45,15 +48,25 @@ export const OutLinkSchema = z.object({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   appId: ObjectIdSchema.meta({ description: '应用 ID' }),
   name: z.string().meta({ description: '发布渠道名称' }),
-  usagePoints: z.number().meta({ description: '累计使用积分' }),
+  usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
   lastTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   type: z.enum(PublishChannelEnum).meta({ description: '发布渠道类型' }),
-  showCite: z.boolean().meta({ description: '是否显示引用' }),
-  showRunningStatus: z.boolean().meta({ description: '是否显示运行状态' }),
-  showSkillReferences: z.boolean().meta({ description: '是否显示技能引用' }),
-  showFullText: z.boolean().meta({ description: '是否显示全文' }),
-  canDownloadSource: z.boolean().meta({ description: '是否允许下载来源文件' }),
-  showWholeResponse: z.boolean().meta({ description: '是否显示完整响应' }),
+  showCite: z.boolean().optional().default(false).meta({ description: '是否显示引用' }),
+  showRunningStatus: z
+    .boolean()
+    .optional()
+    .default(false)
+    .meta({ description: '是否显示运行状态' }),
+  showSkillReferences: z
+    .boolean()
+    .optional()
+    .default(false)
+    .meta({ description: '是否显示技能引用' }),
+  showFullText: z.boolean().optional().default(false).meta({ description: '是否显示全文' }),
+  canDownloadSource: z.boolean().optional().default(false).meta({
+    description: '是否允许下载来源文件'
+  }),
+  showWholeResponse: z.boolean().optional().default(true).meta({ description: '是否显示完整响应' }),
   immediateResponse: z.string().optional().meta({ description: '立即回复内容' }),
   defaultResponse: z.string().optional().meta({ description: '默认回复内容' }),
   limit: OutLinkLimitSchema.optional().meta({

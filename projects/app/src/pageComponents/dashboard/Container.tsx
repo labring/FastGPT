@@ -11,9 +11,10 @@ import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
-import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import type { TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import TeamPlanStatusCard from './TeamPlanStatusCard';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import type { AppTemplateListItemType } from '@fastgpt/global/openapi/core/app/template/api';
 
 export enum TabEnum {
   agent = 'agent',
@@ -31,7 +32,7 @@ const DashboardContainer = ({
 }: {
   children: (e: {
     templateTags: TemplateTypeSchemaType[];
-    templateList: AppTemplateSchemaType[];
+    templateList: AppTemplateListItemType[];
     MenuIcon: JSX.Element;
   }) => React.ReactNode;
 }) => {

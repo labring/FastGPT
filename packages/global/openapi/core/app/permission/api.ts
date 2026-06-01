@@ -57,7 +57,7 @@ export const ResumeInheritPermissionBodySchema = z.object({}).meta({
 });
 export type ResumeInheritPermissionBodyType = z.infer<typeof ResumeInheritPermissionBodySchema>;
 
-export const ResumeInheritPermissionResponseSchema = z.void().meta({
+export const ResumeInheritPermissionResponseSchema = z.null().meta({
   description: '恢复成功'
 });
 export type ResumeInheritPermissionResponseType = z.infer<

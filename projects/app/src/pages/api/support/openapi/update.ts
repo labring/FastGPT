@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps<OpenAPIUpdateBody>): Promise<OpenAPI
     ...(limit && { limit })
   });
 
-  return UpdateApiKeyResponseSchema.parse(undefined);
+  return UpdateApiKeyResponseSchema.parse(null);
 }
 
 export default NextAPI(handler);

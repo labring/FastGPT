@@ -81,7 +81,7 @@ export const UpdateMcpToolsBodySchema = z
   });
 export type UpdateMcpToolsBodyType = z.infer<typeof UpdateMcpToolsBodySchema>;
 
-export const UpdateMcpToolsResponseSchema = z.void().meta({
+export const UpdateMcpToolsResponseSchema = z.null().meta({
   description: '更新成功'
 });
 export type UpdateMcpToolsResponseType = z.infer<typeof UpdateMcpToolsResponseSchema>;

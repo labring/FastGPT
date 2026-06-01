@@ -14,7 +14,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
 
   if (version) {
     return {
-      versionId: version._id,
+      versionId: String(version._id),
       versionName: version.versionName,
       nodes: version.nodes,
       edges: version.edges,
@@ -48,7 +48,7 @@ export const getAppVersionById = async ({
 
     if (version) {
       return {
-        versionId: version._id,
+        versionId: String(version._id),
         versionName: version.versionName,
         nodes: version.nodes,
         edges: version.edges,

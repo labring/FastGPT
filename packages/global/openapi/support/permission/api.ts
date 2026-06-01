@@ -13,7 +13,7 @@ const AppIdSchema = ObjectIdSchema.meta({
 export const CollaboratorListResponseSchema = CollaboratorListSchema;
 export type CollaboratorListResponseType = z.infer<typeof CollaboratorListResponseSchema>;
 
-export const EmptyPermissionResponseSchema = z.void().meta({
+export const EmptyPermissionResponseSchema = z.null().meta({
   description: '操作成功'
 });
 
