@@ -17,10 +17,9 @@ import {
   type CreateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
 
-export type OpenAPICreateBody = CreateApiKeyBodyType;
-export type OpenAPICreateResponse = CreateApiKeyResponseType;
-
-async function handler(req: ApiRequestProps<OpenAPICreateBody>): Promise<OpenAPICreateResponse> {
+async function handler(
+  req: ApiRequestProps<CreateApiKeyBodyType>
+): Promise<CreateApiKeyResponseType> {
   const { appId, name, limit } = parseApiInput({
     req,
     bodySchema: CreateApiKeyBodySchema

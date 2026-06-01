@@ -13,10 +13,9 @@ import {
   type UpdateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
 
-export type OpenAPIUpdateBody = UpdateApiKeyBodyType;
-export type OpenAPIUpdateResponse = UpdateApiKeyResponseType;
-
-async function handler(req: ApiRequestProps<OpenAPIUpdateBody>): Promise<OpenAPIUpdateResponse> {
+async function handler(
+  req: ApiRequestProps<UpdateApiKeyBodyType>
+): Promise<UpdateApiKeyResponseType> {
   const { _id, name, limit } = parseApiInput({
     req,
     bodySchema: UpdateApiKeyBodySchema

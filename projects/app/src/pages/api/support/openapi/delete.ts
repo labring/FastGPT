@@ -10,18 +10,13 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteApiKeyQuerySchema,
   DeleteApiKeyResponseSchema,
-  type DeleteApiKeyBodyType,
   type DeleteApiKeyQueryType,
   type DeleteApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
 
-export type OpenAPIDeleteQuery = DeleteApiKeyQueryType;
-export type OpenAPIDeleteBody = DeleteApiKeyBodyType;
-export type OpenAPIDeleteResponse = DeleteApiKeyResponseType;
-
 async function handler(
-  req: ApiRequestProps<OpenAPIDeleteBody, OpenAPIDeleteQuery>
-): Promise<OpenAPIDeleteResponse> {
+  req: ApiRequestProps<Record<string, never>, DeleteApiKeyQueryType>
+): Promise<DeleteApiKeyResponseType> {
   const { id } = parseApiInput({
     req,
     querySchema: DeleteApiKeyQuerySchema
