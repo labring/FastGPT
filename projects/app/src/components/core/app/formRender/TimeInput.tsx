@@ -82,7 +82,18 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const enableSecond = timeGranularity === 'second';
 
   return (
-    <Flex alignItems={'center'} gap={2} w={'100%'} overflowX={['auto', 'visible']}>
+    <Flex
+      alignItems={'center'}
+      gap={2}
+      w={'100%'}
+      overflowX={['auto', 'visible']}
+      css={{
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': {
+          display: 'none'
+        }
+      }}
+    >
       <Box flex={'1 1 0'} minW={['144px', 0]}>
         <DateTimePicker
           selectedDateTime={formatValue}

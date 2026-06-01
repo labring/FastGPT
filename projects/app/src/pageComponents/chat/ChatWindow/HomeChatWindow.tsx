@@ -249,6 +249,7 @@ const HomeChatWindow = () => {
 
       const formData = getDefaultAppForm();
       formData.aiSettings.model = selectedModel;
+      formData.aiSettings.aiChatReasoning = true;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
 
@@ -415,7 +416,11 @@ const HomeChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          <ChatWindowHeader title={chatBoxData?.title} history={chatRecords} />
+          <ChatWindowHeader
+            title={chatBoxData?.title}
+            history={chatRecords}
+            chatType={ChatTypeEnum.home}
+          />
         ) : (
           <Flex
             h="46px"
@@ -439,7 +444,9 @@ const HomeChatWindow = () => {
               </Box>
               <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.700" ml={1} />
             </Flex>
-            {chatRecords.length > 0 ? <ToolMenu history={chatRecords} /> : <Box w="32px" />}
+            <Box minW="32px">
+              <ToolMenu history={chatRecords} chatType={ChatTypeEnum.home} />
+            </Box>
           </Flex>
         )}
 

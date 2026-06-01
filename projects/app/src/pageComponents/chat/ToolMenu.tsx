@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { Box, IconButton } from '@chakra-ui/react';
@@ -11,24 +11,45 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useSandboxEditor, useSandboxStatus } from './SandboxEditor/hook';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import type { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { getChatVariableGroups } from '@/components/core/chat/ChatContainer/ChatBox/components/ChatVariableForm';
+import { ChatVariableDrawer } from './ChatWindow/ChatVariableButton';
 
 const ToolMenu = ({
   history,
-  reserveSpace
+  reserveSpace,
+  chatType
 }: {
   history: ChatItemMiniType[];
   reserveSpace?: boolean;
+  chatType?: ChatTypeEnum;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { onExportChat } = useChatBox();
+  const [isVariableDrawerOpen, setIsVariableDrawerOpen] = useState(false);
 
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const variables = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
+  );
   const { chatId, outLinkAuthData, appId, source } = useChatStore();
   const currentAppId = chatData.appId || appId;
   const isShareAuthReady =
     source !== 'share' || (!!outLinkAuthData.shareId && !!outLinkAuthData.outLinkUid);
+  const hasVariables = useMemo(() => {
+    if (!chatType) return false;
+    const { commonVariableList, externalVariableList, internalVariableList } =
+      getChatVariableGroups({
+        variables,
+        chatType
+      });
+    return (
+      commonVariableList.length + externalVariableList.length + internalVariableList.length > 0
+    );
+  }, [chatType, variables]);
 
   // Status Hook: 顶层单例，负责网络同步与入口图标显示
   const { sandboxExists, setSandboxExists, SandboxEntryIcon } = useSandboxStatus({
@@ -43,6 +64,12 @@ const ToolMenu = ({
     chatId,
     outLinkAuthData
   });
+
+  const showMenu = history.length > 0 || (!isPc && (hasVariables || sandboxExists));
+
+  if (!showMenu && !isPc) {
+    return null;
+  }
 
   return (
     <>
@@ -78,11 +105,24 @@ const ToolMenu = ({
               //   label: `HTML ${t('common:Export')}`,
               //   onClick: () => onExportChat({ type: 'html', history })
               // },
-              {
-                icon: 'file/markdown',
-                label: `Markdown ${t('common:Export')}`,
-                onClick: () => onExportChat({ type: 'md', history })
-              },
+              ...(history.length > 0
+                ? [
+                    {
+                      icon: 'file/markdown' as const,
+                      label: `Markdown ${t('common:Export')}`,
+                      onClick: () => onExportChat({ type: 'md', history })
+                    }
+                  ]
+                : []),
+              ...(!isPc && chatType && hasVariables
+                ? [
+                    {
+                      icon: 'core/chat/var' as const,
+                      label: t('common:core.module.Variable'),
+                      onClick: () => setIsVariableDrawerOpen(true)
+                    }
+                  ]
+                : []),
               ...(!isPc && sandboxExists
                 ? [
                     {
@@ -102,6 +142,13 @@ const ToolMenu = ({
         ]}
       />
       <SandboxEditorModal />
+      {!isPc && chatType && isVariableDrawerOpen && (
+        <ChatVariableDrawer
+          isOpen={isVariableDrawerOpen}
+          chatType={chatType}
+          onClose={() => setIsVariableDrawerOpen(false)}
+        />
+      )}
     </>
   );
 };

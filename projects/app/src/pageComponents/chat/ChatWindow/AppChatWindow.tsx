@@ -181,7 +181,11 @@ const AppChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          <ChatWindowHeader title={chatBoxData.title} history={chatRecords} />
+          <ChatWindowHeader
+            title={chatBoxData.title}
+            history={chatRecords}
+            chatType={ChatTypeEnum.chat}
+          />
         ) : (
           <Flex
             h="46px"
@@ -207,7 +211,9 @@ const AppChatWindow = () => {
               </Box>
             </Flex>
 
-            {chatRecords.length > 0 ? <ToolMenu history={chatRecords} /> : <Box w="32px" />}
+            <Box minW="32px">
+              <ToolMenu history={chatRecords} chatType={ChatTypeEnum.chat} />
+            </Box>
           </Flex>
         )}
 

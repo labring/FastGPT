@@ -10,7 +10,7 @@ import { variableInputTypeToInputType } from '@/components/core/app/formRender/u
 import type { ChatBoxInputFormType } from '../type';
 import { ChatTypeEnum } from '../constants';
 
-type VariableGroups = {
+export type VariableGroups = {
   commonVariableList: VariableItemType[];
   externalVariableList: VariableItemType[];
   internalVariableList: VariableItemType[];
@@ -62,7 +62,44 @@ const ChatVariableTip = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const ChatVariableFields = ({
+export const getChatVariableGroups = ({
+  variables,
+  chatType
+}: {
+  variables: VariableItemType[];
+  chatType: ChatTypeEnum;
+}): VariableGroups => {
+  const showExternalVariables = [
+    ChatTypeEnum.log,
+    ChatTypeEnum.test,
+    ChatTypeEnum.chat,
+    ChatTypeEnum.home
+  ].includes(chatType);
+  const showInternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test].includes(chatType);
+  const groups: VariableGroups = {
+    commonVariableList: [],
+    externalVariableList: [],
+    internalVariableList: []
+  };
+
+  variables.forEach((item) => {
+    if (item.type === VariableInputEnum.custom) {
+      groups.externalVariableList.push(item);
+    } else if (item.type === VariableInputEnum.internal) {
+      groups.internalVariableList.push(item);
+    } else {
+      groups.commonVariableList.push(item);
+    }
+  });
+
+  return {
+    externalVariableList: showExternalVariables ? groups.externalVariableList : [],
+    internalVariableList: showInternalVariables ? groups.internalVariableList : [],
+    commonVariableList: groups.commonVariableList
+  };
+};
+
+export const ChatVariableFields = ({
   variables,
   variablesForm,
   isUnChange
@@ -135,38 +172,10 @@ const ChatVariableForm = ({
 }: ChatVariableFormProps) => {
   const { t } = useTranslation();
 
-  const showExternalVariables = [
-    ChatTypeEnum.log,
-    ChatTypeEnum.test,
-    ChatTypeEnum.chat,
-    ChatTypeEnum.home
-  ].includes(chatType);
-  const showInternalVariables = [ChatTypeEnum.log, ChatTypeEnum.test].includes(chatType);
-
-  const { commonVariableList, externalVariableList, internalVariableList } =
-    useMemo<VariableGroups>(() => {
-      const groups: VariableGroups = {
-        commonVariableList: [],
-        externalVariableList: [],
-        internalVariableList: []
-      };
-
-      variables.forEach((item) => {
-        if (item.type === VariableInputEnum.custom) {
-          groups.externalVariableList.push(item);
-        } else if (item.type === VariableInputEnum.internal) {
-          groups.internalVariableList.push(item);
-        } else {
-          groups.commonVariableList.push(item);
-        }
-      });
-
-      return {
-        externalVariableList: showExternalVariables ? groups.externalVariableList : [],
-        internalVariableList: showInternalVariables ? groups.internalVariableList : [],
-        commonVariableList: groups.commonVariableList
-      };
-    }, [showExternalVariables, showInternalVariables, variables]);
+  const { commonVariableList, externalVariableList, internalVariableList } = useMemo(
+    () => getChatVariableGroups({ variables, chatType }),
+    [chatType, variables]
+  );
 
   const editableVariables = [...externalVariableList, ...commonVariableList];
   const visibleVariables = [...internalVariableList, ...editableVariables];
@@ -207,9 +216,7 @@ const ChatVariableForm = ({
   return showAvatar ? (
     <Box py={showAvatar ? 3 : 0}>
       <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
-        <Box textAlign={'left'}>
-          {renderFormCard()}
-        </Box>
+        <Box textAlign={'left'}>{renderFormCard()}</Box>
       </Box>
     </Box>
   ) : (

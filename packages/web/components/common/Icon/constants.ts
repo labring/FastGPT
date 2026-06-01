@@ -269,6 +269,7 @@ export const iconPaths = {
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
   'core/chat/terminal': () => import('./icons/core/chat/terminal.svg'),
   'core/chat/think': () => import('./icons/core/chat/think.svg'),
+  'core/chat/var': () => import('./icons/core/chat/var.svg'),
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/commonDatasetColor': () => import('./icons/core/dataset/commonDatasetColor.svg'),
   'core/dataset/commonDatasetOutline': () =>
