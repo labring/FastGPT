@@ -183,6 +183,7 @@ const DefaultModelModal = ({
           <Box flex={1}>
             <AIModelSelector
               bg="myGray.50"
+              clearable
               value={defaultData.datasetImageLLM?.id}
               list={vlmModelList.map((item) => ({
                 value: item.id,
