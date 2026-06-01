@@ -66,9 +66,15 @@ const InputDataModal = ({
       borderRadius={'10px'}
       bg={'white'}
       boxShadow={'3.5'}
-      px={[5, '32px']}
-      py={[5, '32px']}
-      headerStyles={{ px: 0 }}
+      headerStyles={{
+        px: [5, '32px']
+      }}
+      bodyStyles={{
+        h: 'auto',
+        flex: '1 1 0',
+        minH: 0,
+        px: [5, '32px']
+      }}
       title={
         <Box
           className={'textEllipsis'}
