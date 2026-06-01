@@ -13,15 +13,9 @@ import {
   type GetLatestAppVersionResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 
-export type getLatestVersionQuery = GetLatestAppVersionQueryType;
-
-export type getLatestVersionBody = GetLatestAppVersionBodyType;
-
-export type getLatestVersionResponse = GetLatestAppVersionResponseType;
-
 async function handler(
-  req: ApiRequestProps<getLatestVersionBody, getLatestVersionQuery>
-): Promise<getLatestVersionResponse> {
+  req: ApiRequestProps<GetLatestAppVersionBodyType, GetLatestAppVersionQueryType>
+): Promise<GetLatestAppVersionResponseType> {
   const { appId } = parseApiInput({
     req,
     querySchema: GetLatestAppVersionQuerySchema

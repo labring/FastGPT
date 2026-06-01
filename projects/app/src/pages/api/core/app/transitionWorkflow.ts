@@ -16,15 +16,9 @@ import {
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 
-export type transitionWorkflowQuery = Record<string, never>;
-
-export type transitionWorkflowBody = TransitionWorkflowBodyType;
-
-export type transitionWorkflowResponse = TransitionWorkflowResponseType;
-
 async function handler(
-  req: ApiRequestProps<transitionWorkflowBody, transitionWorkflowQuery>
-): Promise<transitionWorkflowResponse> {
+  req: ApiRequestProps<TransitionWorkflowBodyType>
+): Promise<TransitionWorkflowResponseType> {
   const { appId, createNew } = parseApiInput({
     req,
     bodySchema: TransitionWorkflowBodySchema

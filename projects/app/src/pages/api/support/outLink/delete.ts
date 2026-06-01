@@ -16,14 +16,10 @@ import {
   type OutLinkDeleteResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
 
-export type OutLinkDeleteQuery = OutLinkDeleteQueryType;
-export type OutLinkDeleteBody = OutLinkDeleteBodyType;
-export type OutLinkDeleteResponse = OutLinkDeleteResponseType;
-
 /* delete a shareChat by shareChatId */
 async function handler(
-  req: ApiRequestProps<OutLinkDeleteBody, OutLinkDeleteQuery>
-): Promise<OutLinkDeleteResponse> {
+  req: ApiRequestProps<OutLinkDeleteBodyType, OutLinkDeleteQueryType>
+): Promise<OutLinkDeleteResponseType> {
   const { id } = parseApiInput({
     req,
     querySchema: OutLinkDeleteQuerySchema

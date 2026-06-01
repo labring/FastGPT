@@ -15,11 +15,9 @@ import {
 } from '@fastgpt/global/openapi/core/app/template/api';
 const logger = getLogger(LogCategories.MODULE.APP.TEMPLATE);
 
-export type ListParams = ListAppTemplateQueryType;
-
-export type ListResponse = ListAppTemplateResponseType;
-
-async function handler(req: ApiRequestProps<ListParams>): Promise<ListResponse> {
+async function handler(
+  req: ApiRequestProps<unknown, ListAppTemplateQueryType>
+): Promise<ListAppTemplateResponseType> {
   const { tmbId } = await authCert({ req, authToken: true });
 
   // Get user tags for filtering

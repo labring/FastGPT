@@ -2,10 +2,17 @@ import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatSourceEnum } from '../../chat/constants';
 import { AppLogKeysEnum } from './constants';
 import z from 'zod';
+import { BoolSchema, NumSchema } from '../../../common/zod';
 
 export const AppLogKeysSchema = z.object({
-  key: z.enum(AppLogKeysEnum),
-  enable: z.boolean()
+  key: z.enum(AppLogKeysEnum).meta({
+    example: AppLogKeysEnum.SOURCE,
+    description: '日志列标识，对应导出和列表中可展示的日志字段'
+  }),
+  enable: BoolSchema.meta({
+    example: true,
+    description: '该日志列是否在当前应用中启用'
+  })
 });
 export type AppLogKeysType = z.infer<typeof AppLogKeysSchema>;
 
@@ -27,13 +34,13 @@ export const AppChatLogSchema = z.object({
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
 
-  chatItemCount: z.number(),
-  errorCount: z.number(),
-  totalPoints: z.number(),
-  goodFeedbackCount: z.number(),
-  badFeedbackCount: z.number(),
-  totalResponseTime: z.number(),
+  chatItemCount: NumSchema,
+  errorCount: NumSchema,
+  totalPoints: NumSchema,
+  goodFeedbackCount: NumSchema,
+  badFeedbackCount: NumSchema,
+  totalResponseTime: NumSchema,
 
-  isFirstChat: z.boolean() // whether this is the user's first session in the app
+  isFirstChat: BoolSchema // whether this is the user's first session in the app
 });
 export type AppChatLogSchema = z.infer<typeof AppChatLogSchema>;

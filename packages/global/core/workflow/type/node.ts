@@ -8,68 +8,139 @@ import { StoreSecretValueTypeSchema } from '../../../common/secret/type';
 import { PluginStatusSchema } from '../../plugin/type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
+import { BoolSchema, NumSchema } from '../../../common/zod';
 
 export const NodeToolConfigTypeSchema = z.object({
   mcpToolSet: z
     .object({
-      url: z.string(),
-      headerSecret: StoreSecretValueTypeSchema.nullish(),
-      toolList: z.array(McpToolConfigSchema)
-    })
-    .optional(),
-  mcpTool: z
-    .object({
-      toolId: z.string() // mcp-appId/oolname
-    })
-    .optional(),
-  systemTool: z
-    .object({
-      toolId: z.string()
-    })
-    .optional(),
-  systemToolSet: z
-    .object({
-      toolId: z.string(),
-      toolList: z.array(
-        z.object({
-          toolId: z.string(),
-          name: z.string(),
-          description: z.string()
-        })
-      )
-    })
-    .optional(),
-  httpToolSet: z
-    .object({
-      toolList: z.array(HttpToolConfigTypeSchema),
-      baseUrl: z.string().optional(),
-      apiSchemaStr: z.string().optional(),
-      customHeaders: z.string().optional(),
-      headerSecret: StoreSecretValueTypeSchema.nullish()
-    })
-    .optional(),
-  httpTool: z
-    .object({
-      toolId: z.string() // http-appId/oolname
+      url: z.string().meta({
+        description: 'MCP 服务地址'
+      }),
+      headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+        description: 'MCP 服务请求头密钥配置'
+      }),
+      toolList: z.array(McpToolConfigSchema).meta({
+        description: 'MCP 工具集包含的工具列表'
+      })
     })
     .optional()
+    .meta({
+      description: '节点绑定的 MCP 工具集配置'
+    }),
+  mcpTool: z
+    .object({
+      toolId: z.string().meta({
+        description: '节点引用的 MCP 工具 ID'
+      }) // mcp-appId/oolname
+    })
+    .optional()
+    .meta({
+      description: '节点绑定的 MCP 单工具配置'
+    }),
+  systemTool: z
+    .object({
+      toolId: z.string().meta({
+        description: '节点引用的系统工具 ID'
+      })
+    })
+    .optional()
+    .meta({
+      description: '节点绑定的系统单工具配置'
+    }),
+  systemToolSet: z
+    .object({
+      toolId: z.string().meta({
+        description: '系统工具集 ID'
+      }),
+      toolList: z
+        .array(
+          z
+            .object({
+              toolId: z.string().meta({
+                description: '系统工具 ID'
+              }),
+              name: z.string().meta({
+                description: '系统工具名称'
+              }),
+              description: z.string().meta({
+                description: '系统工具能力说明'
+              })
+            })
+            .meta({
+              description: '系统工具配置项'
+            })
+        )
+        .meta({
+          description: '系统工具集包含的工具列表'
+        })
+    })
+    .optional()
+    .meta({
+      description: '节点绑定的系统工具集配置'
+    }),
+  httpToolSet: z
+    .object({
+      toolList: z.array(HttpToolConfigTypeSchema).meta({
+        description: 'HTTP 工具集包含的工具列表'
+      }),
+      baseUrl: z.string().optional().meta({
+        description: 'HTTP 工具集请求基础地址'
+      }),
+      apiSchemaStr: z.string().optional().meta({
+        description: 'HTTP 工具集导入的 OpenAPI Schema 原始内容'
+      }),
+      customHeaders: z.string().optional().meta({
+        description: 'HTTP 工具集公共请求头 JSON 字符串'
+      }),
+      headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+        description: 'HTTP 工具集请求头密钥配置'
+      })
+    })
+    .optional()
+    .meta({
+      description: '节点绑定的 HTTP 工具集配置'
+    }),
+  httpTool: z
+    .object({
+      toolId: z.string().meta({
+        description: '节点引用的 HTTP 工具 ID'
+      }) // http-appId/oolname
+    })
+    .optional()
+    .meta({
+      description: '节点绑定的 HTTP 单工具配置'
+    })
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;
 
 export const ToolDataSchema = z.object({
-  diagram: z.string().optional(),
-  userGuide: z.string().optional(),
-  courseUrl: z.string().optional(),
-  name: z.string().optional(),
-  avatar: z.string().optional(),
-  error: z.string().optional(),
-  status: PluginStatusSchema.optional()
+  diagram: z.string().optional().meta({
+    description: '工具说明图地址'
+  }),
+  userGuide: z.string().optional().meta({
+    description: '工具使用指引'
+  }),
+  courseUrl: z.string().optional().meta({
+    description: '工具教程地址'
+  }),
+  name: z.string().optional().meta({
+    description: '工具展示名称'
+  }),
+  avatar: z.string().optional().meta({
+    description: '工具头像'
+  }),
+  error: z.string().optional().meta({
+    description: '工具配置错误说明'
+  }),
+  status: PluginStatusSchema.optional().meta({
+    description: '工具当前状态'
+  })
 });
 
 export const FlowNodeCommonTypeSchema = z.object({
   parentNodeId: z.string().optional(),
   flowNodeType: z.enum(FlowNodeTypeEnum), // render node card
-  abandon: z.boolean().optional(), // abandon node
+  abandon: BoolSchema.optional(), // abandon node
 
   avatar: z.string().optional(), // avatar
   avatarLinear: z.string().optional(), // avatar linear
@@ -77,38 +148,38 @@ export const FlowNodeCommonTypeSchema = z.object({
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
   toolDescription: z.string().optional(), // tool description
-  showStatus: z.boolean().optional(), // chatting response step status
+  showStatus: BoolSchema.optional(), // chatting response step status
 
   version: z.string().optional(), // version
   versionLabel: z.string().optional(), // Just ui show
-  isLatestVersion: z.boolean().optional(), // Just ui show
+  isLatestVersion: BoolSchema.optional(), // Just ui show
 
   // data
-  catchError: z.boolean().optional(),
+  catchError: BoolSchema.optional(),
   inputs: z.array(FlowNodeInputItemTypeSchema), // inputs
   outputs: z.array(FlowNodeOutputItemTypeSchema), // outputs
 
   // plugin data
   pluginId: z.string().optional(), // plugin id
-  isFolder: z.boolean().optional(),
+  isFolder: BoolSchema.optional(),
   pluginData: ToolDataSchema.optional(),
 
   // tool data
   toolConfig: NodeToolConfigTypeSchema.optional(),
 
   // Not store, just computed
-  currentCost: z.number().optional(),
-  systemKeyCost: z.number().optional(),
-  hasTokenFee: z.boolean().optional(),
-  hasSystemSecret: z.boolean().optional()
+  currentCost: NumSchema.optional(),
+  systemKeyCost: NumSchema.optional(),
+  hasTokenFee: BoolSchema.optional(),
+  hasSystemSecret: BoolSchema.optional()
 });
 export type FlowNodeCommonType = z.infer<typeof FlowNodeCommonTypeSchema>;
 
 const HandleTypeSchema = z.object({
-  left: z.boolean(),
-  right: z.boolean(),
-  top: z.boolean(),
-  bottom: z.boolean()
+  left: BoolSchema,
+  right: BoolSchema,
+  top: BoolSchema,
+  bottom: BoolSchema
 });
 
 // system template
@@ -117,15 +188,15 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   templateType: z.string(),
   status: PluginStatusSchema.optional(),
 
-  showSourceHandle: z.boolean().optional(),
-  showTargetHandle: z.boolean().optional(),
+  showSourceHandle: BoolSchema.optional(),
+  showTargetHandle: BoolSchema.optional(),
 
   // Info
-  isTool: z.boolean().optional(), // can be connected by tool
+  isTool: BoolSchema.optional(), // can be connected by tool
 
   // Action
-  forbidDelete: z.boolean().optional(), // forbid delete
-  unique: z.boolean().optional(),
+  forbidDelete: BoolSchema.optional(), // forbid delete
+  unique: BoolSchema.optional(),
 
   diagram: z.string().optional(),
   courseUrl: z.string().optional(),
@@ -144,22 +215,22 @@ export const NodeTemplateListItemTypeSchema = z.object({
   id: z.string(), // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
   flowNodeType: z.enum(FlowNodeTypeEnum), // render node card
   parentId: ParentIdSchema.optional(),
-  isFolder: z.boolean().optional(),
+  isFolder: BoolSchema.optional(),
   templateType: z.string().optional(),
   tags: z.array(z.string()).nullish(),
   avatar: z.string().optional(),
   name: z.string(),
   intro: z.string().optional(), // template list intro
-  isTool: z.boolean().optional(),
+  isTool: BoolSchema.optional(),
 
   authorAvatar: z.string().optional(),
   author: z.string().optional(),
 
-  unique: z.boolean().optional(),
+  unique: BoolSchema.optional(),
 
-  currentCost: z.number().optional(), // 当前积分消耗
-  systemKeyCost: z.number().optional(), // 系统密钥费用，统一为数字
-  hasTokenFee: z.boolean().optional(),
+  currentCost: NumSchema.optional(), // 当前积分消耗
+  systemKeyCost: NumSchema.optional(), // 系统密钥费用，统一为数字
+  hasTokenFee: BoolSchema.optional(),
   instructions: z.string().optional(), // 使用说明
   courseUrl: z.string().optional(),
   sourceMember: SourceMemberSchema.optional(),
@@ -179,19 +250,19 @@ export type NodeTemplateListType = z.infer<typeof NodeTemplateListTypeSchema>;
 export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
   parentNodeId: z.string().optional(),
-  isError: z.boolean().optional(),
+  isError: BoolSchema.optional(),
   searchedText: z.string().optional(),
   debugResult: z
     .object({
       status: z.enum(['running', 'success', 'skipped', 'failed']),
       message: z.string().optional(),
-      showResult: z.boolean().optional(),
+      showResult: BoolSchema.optional(),
       response: z.any().optional(),
-      isExpired: z.boolean().optional(),
+      isExpired: BoolSchema.optional(),
       interactiveResponse: InteractiveNodeResponseTypeSchema.optional()
     })
     .optional(),
-  isFolded: z.boolean().optional()
+  isFolded: BoolSchema.optional()
 });
 export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 
@@ -200,8 +271,8 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
   position: z
     .object({
-      x: z.number(),
-      y: z.number()
+      x: NumSchema,
+      y: NumSchema
     })
     .optional()
 });

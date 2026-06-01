@@ -6,8 +6,8 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  PlaygroundUpdateBodySchema,
   PlaygroundUpdateResponseSchema,
+  UpdatePlaygroundVisibilityConfigParamsSchema,
   type UpdatePlaygroundVisibilityConfigParamsType,
   type PlaygroundUpdateResponseType
 } from '@fastgpt/global/openapi/core/app/publishChannel/playground/api';
@@ -25,7 +25,7 @@ async function handler(
     showWholeResponse
   } = parseApiInput({
     req,
-    bodySchema: PlaygroundUpdateBodySchema
+    bodySchema: UpdatePlaygroundVisibilityConfigParamsSchema
   }).body;
 
   const { teamId, tmbId } = await authApp({

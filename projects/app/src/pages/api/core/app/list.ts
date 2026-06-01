@@ -25,8 +25,6 @@ import {
   type ListAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 
-export type ListAppBody = ListAppBodyType;
-
 /*
   获取 APP 列表权限
   1. 校验 folder 权限和获取 team 权限（owner 单独处理）
@@ -37,7 +35,7 @@ export type ListAppBody = ListAppBodyType;
   6. 再根据 read 权限进行一次过滤。
 */
 
-async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppResponseType> {
+async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppResponseType> {
   const { parentId, type, searchKey } = parseApiInput({
     req,
     bodySchema: ListAppBodySchema

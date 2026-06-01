@@ -13,15 +13,17 @@ import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpToo
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateHttpToolsBodySchema,
-  CreateHttpToolsResponseSchema,
-  type CreateHttpToolsBodyType,
-  type CreateHttpToolsResponseType
+  type CreateHttpToolsBodyType
 } from '@fastgpt/global/openapi/core/app/httpTools/api';
+import {
+  CreateAppResponseSchema,
+  type CreateAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import { HttpToolTypeEnum } from '@fastgpt/global/core/app/tool/httpTool/constants';
 
 async function handler(
   req: ApiRequestProps<CreateHttpToolsBodyType>
-): Promise<CreateHttpToolsResponseType> {
+): Promise<CreateAppResponseType> {
   const {
     body: { name, avatar, intro, parentId, createType }
   } = parseApiInput({
@@ -71,7 +73,7 @@ async function handler(
     tmbId
   });
 
-  return CreateHttpToolsResponseSchema.parse(httpToolsetId);
+  return CreateAppResponseSchema.parse(httpToolsetId);
 }
 
 export default NextAPI(handler);

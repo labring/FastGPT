@@ -1,8 +1,8 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { CreateAppResponseSchema } from '../common/api';
 import {
   CreateHttpToolsBodySchema,
-  CreateHttpToolsResponseSchema,
   UpdateHttpToolsBodySchema,
   UpdateHttpToolsResponseSchema,
   GetApiSchemaByUrlBodySchema,
@@ -29,7 +29,7 @@ export const HttpToolsPath: OpenAPIPath = {
           description: '成功创建 HTTP 工具集',
           content: {
             'application/json': {
-              schema: CreateHttpToolsResponseSchema
+              schema: CreateAppResponseSchema
             }
           }
         }

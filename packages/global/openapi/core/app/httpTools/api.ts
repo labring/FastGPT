@@ -1,88 +1,9 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
-import { CreateAppBodySchema, CreateAppResponseSchema } from '../common/api';
+import { CreateAppBodySchema } from '../common/api';
 import { HttpToolConfigTypeSchema } from '../../../../core/app/tool/httpTool/type';
 import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
-import { ContentTypes } from '../../../../core/workflow/constants';
-
-const HttpToolStaticKeyValueSchema = z
-  .object({
-    key: z.string().meta({
-      example: 'Authorization',
-      description: '固定参数或请求头名称'
-    }),
-    value: z.string().meta({
-      example: 'Bearer token',
-      description: '固定参数或请求头值'
-    })
-  })
-  .meta({
-    description: 'HTTP 工具固定键值配置'
-  });
-
-const HttpToolStaticParamsSchema = z.array(HttpToolStaticKeyValueSchema).optional().meta({
-  description: '手动配置工具时固定追加到 Query 的参数'
-});
-
-const HttpToolStaticHeadersSchema = z.array(HttpToolStaticKeyValueSchema).optional().meta({
-  description: '手动配置工具时固定追加到请求头的参数'
-});
-
-const HttpToolStaticBodySchema = z
-  .object({
-    type: z.enum(ContentTypes).meta({
-      example: ContentTypes.json,
-      description: '静态请求体内容类型'
-    }),
-    content: z.string().optional().meta({
-      example: '{"keyword":"hello"}',
-      description: '静态请求体文本内容，适用于 JSON、XML 或 Raw 文本'
-    }),
-    formData: z.array(HttpToolStaticKeyValueSchema).optional().meta({
-      description: '表单类型请求体的固定字段列表'
-    })
-  })
-  .optional()
-  .meta({
-    description: '手动配置工具时固定发送的请求体'
-  });
-
-const OpenAPIHttpToolConfigTypeSchema = HttpToolConfigTypeSchema.extend({
-  name: z.string().meta({
-    example: 'search',
-    description: '工具名称，用于工作流节点选择和调用'
-  }),
-  description: z.string().meta({
-    example: 'Search public documents',
-    description: '工具能力说明，会作为调用工具时的语义描述'
-  }),
-  inputSchema: HttpToolConfigTypeSchema.shape.inputSchema.meta({
-    description: '工具入参 JSON Schema，由 OpenAPI 参数或手动配置生成'
-  }),
-  outputSchema: HttpToolConfigTypeSchema.shape.outputSchema.meta({
-    description: '工具出参 JSON Schema，用于描述远端接口返回结构'
-  }),
-  path: z.string().meta({
-    example: '/search',
-    description: '远端接口路径'
-  }),
-  method: z.string().meta({
-    example: 'POST',
-    description: '远端接口 HTTP 方法'
-  }),
-  requestSchema: HttpToolConfigTypeSchema.shape.requestSchema.meta({
-    description: '原始请求参数 JSON Schema，用于还原远端接口请求结构'
-  }),
-  staticParams: HttpToolStaticParamsSchema,
-  staticHeaders: HttpToolStaticHeadersSchema,
-  staticBody: HttpToolStaticBodySchema,
-  headerSecret: StoreSecretValueTypeSchema.nullish().meta({
-    description: '工具级请求头密钥配置，会在运行工具时合并到请求头'
-  })
-}).meta({
-  description: 'HTTP 工具配置'
-});
 
 /* ============================================================================
  * API: 创建 HTTP 工具集
@@ -109,9 +30,6 @@ export const CreateHttpToolsBodySchema = CreateAppBodySchema.omit({
   });
 export type CreateHttpToolsBodyType = z.infer<typeof CreateHttpToolsBodySchema>;
 
-export const CreateHttpToolsResponseSchema = CreateAppResponseSchema;
-export type CreateHttpToolsResponseType = z.infer<typeof CreateHttpToolsResponseSchema>;
-
 /* ============================================================================
  * API: 更新 HTTP 工具集
  * Route: PUT /core/app/httpTools/update
@@ -122,7 +40,7 @@ export const UpdateHttpToolsBodySchema = z
       example: '68ad85a7463006c963799a05',
       description: 'HTTP 工具集 ID'
     }),
-    toolList: z.array(OpenAPIHttpToolConfigTypeSchema).meta({
+    toolList: z.array(HttpToolConfigTypeSchema).meta({
       example: [],
       description: 'HTTP 工具列表'
     }),
@@ -212,13 +130,13 @@ export const RunHttpToolBodySchema = z
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),
-    staticParams: HttpToolStaticParamsSchema.meta({
+    staticParams: HttpToolConfigTypeSchema.shape.staticParams.meta({
       description: '静态请求参数（Query）'
     }),
-    staticHeaders: HttpToolStaticHeadersSchema.meta({
+    staticHeaders: HttpToolConfigTypeSchema.shape.staticHeaders.meta({
       description: '静态请求头'
     }),
-    staticBody: HttpToolStaticBodySchema.meta({
+    staticBody: HttpToolConfigTypeSchema.shape.staticBody.meta({
       description: '静态请求体'
     })
   })

@@ -2,15 +2,15 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { GetAppPermissionQuerySchema } from '@fastgpt/global/openapi/core/app/permission/api';
 import {
-  GetAppPermissionQuerySchema,
-  GetAppPermissionResponseSchema,
-  type GetAppPermissionResponseType
-} from '@fastgpt/global/openapi/core/app/permission/api';
+  AppPermissionCheckSchema,
+  type AppPermissionCheckType
+} from '@fastgpt/global/support/permission/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* Get app permission */
-async function handler(req: ApiRequestProps): Promise<GetAppPermissionResponseType> {
+async function handler(req: ApiRequestProps): Promise<AppPermissionCheckType> {
   const { appId } = parseApiInput({
     req,
     querySchema: GetAppPermissionQuerySchema
@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps): Promise<GetAppPermissionResponseTy
       per: ReadPermissionVal
     });
 
-    return GetAppPermissionResponseSchema.parse({
+    return AppPermissionCheckSchema.parse({
       hasReadPer: app.permission.hasReadPer,
       hasWritePer: app.permission.hasWritePer,
       hasManagePer: app.permission.hasManagePer,
@@ -33,7 +33,7 @@ async function handler(req: ApiRequestProps): Promise<GetAppPermissionResponseTy
       isOwner: app.permission.isOwner
     });
   } catch {
-    return GetAppPermissionResponseSchema.parse({
+    return AppPermissionCheckSchema.parse({
       hasReadPer: false,
       hasWritePer: false,
       hasManagePer: false,

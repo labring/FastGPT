@@ -2,6 +2,11 @@ import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type {
+  CopyAppBodyType,
+  CreateAppBodyType,
+  CreateAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -20,37 +25,46 @@ describe('Copy', () => {
       permission: TeamAppCreatePermissionVal
     });
 
-    const res = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
-      auth: users.members[0],
-      body: {
-        modules: [],
-        name: 'testfolder',
-        type: AppTypeEnum.folder
+    const res = await Call<CreateAppBodyType, Record<string, never>, CreateAppResponseType>(
+      createapi.default,
+      {
+        auth: users.members[0],
+        body: {
+          modules: [],
+          name: 'testfolder',
+          type: AppTypeEnum.folder
+        }
       }
-    });
+    );
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
     const folderId = res.data as string;
 
-    const res2 = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
-      auth: users.members[0],
-      body: {
-        modules: [],
-        parentId: folderId,
-        name: 'simple app',
-        type: AppTypeEnum.simple
+    const res2 = await Call<CreateAppBodyType, Record<string, never>, CreateAppResponseType>(
+      createapi.default,
+      {
+        auth: users.members[0],
+        body: {
+          modules: [],
+          parentId: folderId,
+          name: 'simple app',
+          type: AppTypeEnum.simple
+        }
       }
-    });
+    );
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
 
-    const res3 = await Call<copyapi.copyAppBody, {}, {}>(copyapi.default, {
-      auth: users.members[1],
-      body: {
-        appId
+    const res3 = await Call<CopyAppBodyType, Record<string, never>, CreateAppResponseType>(
+      copyapi.default,
+      {
+        auth: users.members[1],
+        body: {
+          appId
+        }
       }
-    });
+    );
     expect(res3.error).toBe(AppErrEnum.unAuthApp);
     expect(res3.code).toBe(500);
 
@@ -62,12 +76,15 @@ describe('Copy', () => {
       permission: WritePermissionVal
     });
 
-    const res4 = await Call<copyapi.copyAppBody, {}, {}>(copyapi.default, {
-      auth: users.members[1],
-      body: {
-        appId
+    const res4 = await Call<CopyAppBodyType, Record<string, never>, CreateAppResponseType>(
+      copyapi.default,
+      {
+        auth: users.members[1],
+        body: {
+          appId
+        }
       }
-    });
+    );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
   });

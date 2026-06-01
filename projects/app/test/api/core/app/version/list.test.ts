@@ -3,10 +3,11 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
-import handler, {
-  type versionListBody,
-  type versionListResponse
-} from '@/pages/api/core/app/version/list';
+import handler from '@/pages/api/core/app/version/list';
+import type {
+  AppVersionListBodyType,
+  AppVersionListResponseType
+} from '@fastgpt/global/openapi/core/app/version/api';
 
 describe('app version list test', () => {
   it('should return app version list', async () => {
@@ -23,7 +24,11 @@ describe('app version list test', () => {
         versionName: `v${i}`
       }))
     );
-    const res = await Call<versionListBody, {}, versionListResponse>(handler, {
+    const res = await Call<
+      AppVersionListBodyType,
+      Record<string, never>,
+      AppVersionListResponseType
+    >(handler, {
       auth: root,
       body: {
         pageSize: 10,

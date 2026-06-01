@@ -1,5 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppChangeOwnerBody } from '@/global/core/app/api';
+import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller';
 
 import type {
   CreateAppBodyType,
@@ -18,7 +19,6 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import type {
   GetAppPermissionQueryType,
-  GetAppPermissionResponseType,
   ResumeInheritPermissionQueryType,
   ResumeInheritPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/permission/api';
@@ -58,7 +58,7 @@ export const putAppById = (id: UpdateAppQueryType['appId'], data: UpdateAppBodyT
   PUT<UpdateAppResponseType>(`/core/app/update?appId=${id}`, data);
 
 export const getAppPermission = (appId: GetAppPermissionQueryType['appId']) =>
-  GET<GetAppPermissionResponseType>(`/core/app/getPermission?appId=${appId}`);
+  GET<AppPermissionCheckType>(`/core/app/getPermission?appId=${appId}`);
 
 /**
  * Get app basic info by ids

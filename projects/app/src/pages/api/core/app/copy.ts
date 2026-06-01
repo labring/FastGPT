@@ -19,13 +19,7 @@ import {
   type CopyAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 
-export type copyAppQuery = Record<string, never>;
-
-export type copyAppBody = CopyAppBodyType;
-
-export type copyAppResponse = CopyAppResponseType;
-
-async function handler(req: ApiRequestProps<copyAppBody, copyAppQuery>): Promise<copyAppResponse> {
+async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppResponseType> {
   const { appId: sourceAppId } = parseApiInput({
     req,
     bodySchema: CopyAppBodySchema

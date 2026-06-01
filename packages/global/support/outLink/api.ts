@@ -1,6 +1,5 @@
 import z from 'zod';
-import type { HistoryItemType } from '../../core/chat/type';
-import type { OutLinkSchemaType, PlaygroundVisibilityConfigType } from './type';
+import type { OutLinkSchemaType } from './type';
 import { PlaygroundVisibilityConfigSchema } from './type';
 
 export type AuthOutLinkInitProps = {
@@ -24,8 +23,3 @@ export const PlaygroundVisibilityConfigQuerySchema = z.object({
   appId: z.string().min(1, 'App ID is required')
 });
 export type PlaygroundVisibilityConfigQuery = z.infer<typeof PlaygroundVisibilityConfigQuerySchema>;
-
-export const PlaygroundVisibilityConfigResponseSchema = PlaygroundVisibilityConfigSchema;
-export type PlaygroundVisibilityConfigResponse = z.infer<
-  typeof PlaygroundVisibilityConfigResponseSchema
->;

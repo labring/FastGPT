@@ -17,25 +17,6 @@ export const GetAppPermissionQuerySchema = z.object({
 });
 export type GetAppPermissionQueryType = z.infer<typeof GetAppPermissionQuerySchema>;
 
-export const GetAppPermissionResponseSchema = z.object({
-  hasReadPer: z.boolean().meta({
-    description: '是否有读权限'
-  }),
-  hasWritePer: z.boolean().meta({
-    description: '是否有写权限'
-  }),
-  hasManagePer: z.boolean().meta({
-    description: '是否有管理权限'
-  }),
-  hasReadChatLogPer: z.boolean().meta({
-    description: '是否有读取对话日志权限'
-  }),
-  isOwner: z.boolean().meta({
-    description: '是否为所有者'
-  })
-});
-export type GetAppPermissionResponseType = z.infer<typeof GetAppPermissionResponseSchema>;
-
 /* ============================================================================
  * API: 恢复继承权限
  * Route: PUT /api/core/app/resumeInheritPermission

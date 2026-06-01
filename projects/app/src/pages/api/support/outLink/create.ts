@@ -15,13 +15,9 @@ import {
   type OutLinkCreateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
 
-export type OutLinkCreateQuery = Record<string, never>;
-export type OutLinkCreateBody = OutLinkCreateBodyType;
-export type OutLinkCreateResponse = OutLinkCreateResponseType;
-
 async function handler(
-  req: ApiRequestProps<OutLinkCreateBody, OutLinkCreateQuery>
-): Promise<OutLinkCreateResponse> {
+  req: ApiRequestProps<OutLinkCreateBodyType>
+): Promise<OutLinkCreateResponseType> {
   const { appId, ...props } = parseApiInput({
     req,
     bodySchema: OutLinkCreateBodySchema

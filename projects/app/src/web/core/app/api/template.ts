@@ -1,9 +1,8 @@
 import { GET } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import type {
-  AppTemplateSchemaType as OpenAPIAppTemplateSchemaType,
   GetAppTemplateDetailQueryType,
   GetAppTemplateDetailResponseType,
   ListAppTemplateQueryType,
@@ -17,7 +16,7 @@ export const getTemplateMarketItemDetail = (
   templateId: GetAppTemplateDetailQueryType['templateId']
 ) =>
   GET<GetAppTemplateDetailResponseType>(`/core/app/template/detail?templateId=${templateId}`).then(
-    (template): OpenAPIAppTemplateSchemaType => {
+    (template): AppTemplateSchemaType => {
       if (!template) {
         throw new Error(`Template not found: ${templateId}`);
       }

@@ -14,17 +14,17 @@ import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateMcpToolsBodySchema,
-  CreateMcpToolsResponseSchema,
-  type CreateMcpToolsBodyType,
-  type CreateMcpToolsResponseType
+  type CreateMcpToolsBodyType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import {
+  CreateAppResponseSchema,
+  type CreateAppResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
-
-export type createMCPToolsQuery = Record<string, never>;
 
 async function handler(
   req: ApiRequestProps<CreateMcpToolsBodyType>
-): Promise<CreateMcpToolsResponseType> {
+): Promise<CreateAppResponseType> {
   const {
     name,
     avatar,
@@ -78,7 +78,7 @@ async function handler(
     tmbId
   });
 
-  return CreateMcpToolsResponseSchema.parse(mcpToolsId);
+  return CreateAppResponseSchema.parse(mcpToolsId);
 }
 
 export default NextAPI(handler);

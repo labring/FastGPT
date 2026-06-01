@@ -11,11 +11,8 @@ import {
   type UpdateAppVersionResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 
-export type UpdateAppVersionBody = UpdateAppVersionBodyType;
-export type UpdateAppVersionResponse = UpdateAppVersionResponseType;
-
 async function handler(
-  req: ApiRequestProps<UpdateAppVersionBody>
+  req: ApiRequestProps<UpdateAppVersionBodyType>
 ): Promise<UpdateAppVersionResponseType> {
   const { appId, versionId, versionName } = parseApiInput({
     req,

@@ -1,5 +1,4 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { AppUpdateParams } from '@/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
@@ -33,12 +32,9 @@ import {
   UpdateAppBodySchema,
   UpdateAppQuerySchema,
   UpdateAppResponseSchema,
+  type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
-
-export type AppUpdateQuery = UpdateAppQueryType;
-
-export type AppUpdateBody = AppUpdateParams;
 
 // 更新应用接口
 // 包括如下功能：
@@ -51,7 +47,7 @@ export type AppUpdateBody = AppUpdateParams;
 //  (1) 父目录的管理权限
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
-async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
+async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
   const {
     query: { appId },
     body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags }

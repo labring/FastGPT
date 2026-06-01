@@ -10,15 +10,9 @@ import {
   type GetAppBasicInfoResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 
-export type getBasicInfoQuery = Record<string, never>;
-
-export type getBasicInfoBody = GetAppBasicInfoBodyType;
-
-export type getBasicInfoResponse = GetAppBasicInfoResponseType;
-
 async function handler(
-  req: ApiRequestProps<getBasicInfoBody, getBasicInfoQuery>
-): Promise<getBasicInfoResponse> {
+  req: ApiRequestProps<GetAppBasicInfoBodyType>
+): Promise<GetAppBasicInfoResponseType> {
   const { ids } = parseApiInput({
     req,
     bodySchema: GetAppBasicInfoBodySchema

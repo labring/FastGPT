@@ -1,8 +1,8 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
+import { AppPermissionCheckSchema } from '../../../../support/permission/app/controller';
 import {
   GetAppPermissionQuerySchema,
-  GetAppPermissionResponseSchema,
   ResumeInheritPermissionQuerySchema,
   ResumeInheritPermissionResponseSchema
 } from './api';
@@ -21,7 +21,7 @@ export const AppPermissionPath: OpenAPIPath = {
           description: '成功获取应用权限',
           content: {
             'application/json': {
-              schema: GetAppPermissionResponseSchema
+              schema: AppPermissionCheckSchema
             }
           }
         }

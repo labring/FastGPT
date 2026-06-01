@@ -10,10 +10,6 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type getLogKeysQuery = Record<string, never>;
-
-export type getLogKeysBody = Record<string, never>;
-
 async function handler(req: ApiRequestProps): Promise<getLogKeysResponseType> {
   const {
     query: { appId }

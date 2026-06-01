@@ -8,13 +8,13 @@ import type {
   GetMcpToolsResponseType,
   RunMcpToolBodyType,
   RunMcpToolResponseType,
-  CreateMcpToolsResponseType,
   UpdateMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import type { CreateAppResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
 /* ============ mcp tools ============== */
 export const postCreateMCPTools = (data: CreateMcpToolsBodyType) =>
-  POST<CreateMcpToolsResponseType>('/core/app/mcpTools/create', data);
+  POST<CreateAppResponseType>('/core/app/mcpTools/create', data);
 
 export const postUpdateMCPTools = (data: UpdateMcpToolsBodyType) =>
   PUT<UpdateMcpToolsResponseType>('/core/app/mcpTools/update', data);

@@ -1,7 +1,6 @@
 import { POST, PUT } from '@/web/common/api/request';
 import type {
   CreateHttpToolsBodyType,
-  CreateHttpToolsResponseType,
   GetApiSchemaByUrlBodyType,
   GetApiSchemaByUrlResponseType,
   RunHttpToolBodyType,
@@ -9,6 +8,7 @@ import type {
   UpdateHttpToolsBodyType,
   UpdateHttpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/httpTools/api';
+import type { CreateAppResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
 /* ============ http tools ============== */
 export const getApiSchemaByUrl = (url: GetApiSchemaByUrlBodyType['url']) =>
@@ -21,7 +21,7 @@ export const getApiSchemaByUrl = (url: GetApiSchemaByUrlBodyType['url']) =>
   );
 
 export const postCreateHttpTools = (data: CreateHttpToolsBodyType) =>
-  POST<CreateHttpToolsResponseType>('/core/app/httpTools/create', data);
+  POST<CreateAppResponseType>('/core/app/httpTools/create', data);
 
 export const putUpdateHttpTool = (data: UpdateHttpToolsBodyType) =>
   PUT<UpdateHttpToolsResponseType>('/core/app/httpTools/update', data);

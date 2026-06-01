@@ -4,10 +4,8 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
-import type {
-  GetAppPermissionQueryType,
-  GetAppPermissionResponseType
-} from '@fastgpt/global/openapi/core/app/permission/api';
+import type { GetAppPermissionQueryType } from '@fastgpt/global/openapi/core/app/permission/api';
+import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('get app permission api', () => {
@@ -28,7 +26,7 @@ describe('get app permission api', () => {
     const res = await Call<
       Record<string, never>,
       GetAppPermissionQueryType,
-      GetAppPermissionResponseType
+      AppPermissionCheckType
     >(getPermissionApi.default, {
       auth: user,
       query: {
@@ -51,7 +49,7 @@ describe('get app permission api', () => {
     const res = await Call<
       Record<string, never>,
       GetAppPermissionQueryType,
-      GetAppPermissionResponseType
+      AppPermissionCheckType
     >(getPermissionApi.default, {
       auth: user,
       query: {
@@ -81,7 +79,7 @@ describe('get app permission api', () => {
     const res = await Call<
       Record<string, never>,
       GetAppPermissionQueryType,
-      GetAppPermissionResponseType
+      AppPermissionCheckType
     >(getPermissionApi.default, {
       auth: user2,
       query: {
@@ -104,7 +102,7 @@ describe('get app permission api', () => {
     const res = await Call<
       Record<string, never>,
       GetAppPermissionQueryType,
-      GetAppPermissionResponseType
+      AppPermissionCheckType
     >(getPermissionApi.default, {
       auth: user,
       query: {

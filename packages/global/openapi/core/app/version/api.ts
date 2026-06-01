@@ -3,11 +3,9 @@ import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import {
-  OpenAPIAppChatConfigSchema,
-  OpenAPIAppEdgesSchema,
-  OpenAPIAppResourceRefsSchema
-} from '../common/api';
+import { AppResourceRefsSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
+import { OpenAPIAppChatConfigSchema } from '../common/api';
+import { BoolSchema, NumSchema } from '../../../../common/zod';
 
 export const PublishAppQuerySchema = z.object({
   appId: ObjectIdSchema.meta({
@@ -21,7 +19,7 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const AppVersionEdgesSchema = OpenAPIAppEdgesSchema.default([]).meta({
+const AppVersionEdgesSchema = AppSchemaTypeSchema.shape.edges.default([]).meta({
   description: '版本内保存的应用连线配置'
 });
 
@@ -29,7 +27,7 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
   description: '版本内保存的应用对话配置'
 });
 
-const AppVersionResourceRefsSchema = OpenAPIAppResourceRefsSchema.meta({
+const AppVersionResourceRefsSchema = AppResourceRefsSchema.optional().meta({
   description: '该版本引用的外部资源集合'
 });
 
@@ -47,7 +45,7 @@ const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
   time: z.coerce.date().meta({
     description: '版本创建时间'
   }),
-  isPublish: z.boolean().optional().meta({
+  isPublish: BoolSchema.optional().meta({
     description: '是否为已发布版本'
   }),
   tmbId: ObjectIdSchema.meta({
@@ -70,7 +68,7 @@ export const PublishAppBodySchema = z.object({
   chatConfig: AppVersionChatConfigSchema.optional().meta({
     description: '本次保存的应用对话配置'
   }),
-  isPublish: z.boolean().optional().meta({
+  isPublish: BoolSchema.optional().meta({
     example: true,
     description: '是否将该版本发布为线上运行版本'
   }),
@@ -78,7 +76,7 @@ export const PublishAppBodySchema = z.object({
     example: '正式发布版',
     description: '版本名称；自动保存时服务端会使用自动保存文案'
   }),
-  autoSave: z.boolean().optional().meta({
+  autoSave: BoolSchema.optional().meta({
     example: false,
     description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
   })
@@ -111,7 +109,7 @@ export const AppVersionListBodySchema = PaginationSchema.extend({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  isPublish: z.boolean().optional().meta({
+  isPublish: BoolSchema.optional().meta({
     example: true,
     description: '是否只查询发布版本'
   })
@@ -119,7 +117,7 @@ export const AppVersionListBodySchema = PaginationSchema.extend({
 export type AppVersionListBodyType = z.infer<typeof AppVersionListBodySchema>;
 
 export const AppVersionListResponseSchema = z.object({
-  total: z.number().optional().default(0).meta({
+  total: NumSchema.optional().default(0).meta({
     example: 100,
     description: '版本总数'
   }),
@@ -167,10 +165,10 @@ export const GetAppVersionDetailResponseSchema = z.object({
   }),
   edges: AppVersionEdgesSchema,
   chatConfig: AppVersionChatConfigSchema,
-  isPublish: z.boolean().optional().meta({
+  isPublish: BoolSchema.optional().meta({
     description: '是否为已发布版本'
   }),
-  isAutoSave: z.boolean().optional().meta({
+  isAutoSave: BoolSchema.optional().meta({
     description: '是否为编辑器自动保存版本'
   }),
   versionName: z.string().meta({

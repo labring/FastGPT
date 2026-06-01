@@ -25,10 +25,8 @@ import {
   type CreateAppFolderResponseType
 } from '@fastgpt/global/openapi/core/app/folder/api';
 
-export type CreateAppFolderBody = CreateAppFolderBodyType;
-
 async function handler(
-  req: ApiRequestProps<CreateAppFolderBody>
+  req: ApiRequestProps<CreateAppFolderBodyType>
 ): Promise<CreateAppFolderResponseType> {
   const { name, intro, parentId, type } = parseApiInput({
     req,

@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { PublishChannelEnum } from './constant';
+import { BoolSchema } from '../../common/zod';
 
 // Feishu Config interface
 export interface FeishuAppType {
@@ -126,12 +127,30 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = OutLinkSchemaType<T>;
 
 export const PlaygroundVisibilityConfigSchema = z.object({
-  showRunningStatus: z.boolean(),
-  showSkillReferences: z.boolean().optional().default(true),
-  showCite: z.boolean().optional().default(true),
-  showFullText: z.boolean().optional().default(true),
-  canDownloadSource: z.boolean().optional().default(true),
-  showWholeResponse: z.boolean().optional().default(true)
+  showRunningStatus: BoolSchema.meta({
+    example: true,
+    description: '是否显示运行状态'
+  }),
+  showSkillReferences: BoolSchema.optional().default(false).meta({
+    example: false,
+    description: '是否显示技能引用'
+  }),
+  showCite: BoolSchema.optional().default(true).meta({
+    example: true,
+    description: '是否显示引用'
+  }),
+  showFullText: BoolSchema.optional().default(true).meta({
+    example: true,
+    description: '是否显示全文'
+  }),
+  canDownloadSource: BoolSchema.optional().default(true).meta({
+    example: true,
+    description: '是否可下载来源'
+  }),
+  showWholeResponse: BoolSchema.optional().default(true).meta({
+    example: true,
+    description: '是否显示完整响应按钮'
+  })
 });
 
 export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

@@ -1,33 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
-
-// Playground Visibility Config Fields
-const PlaygroundVisibilityConfigFieldsSchema = z.object({
-  showRunningStatus: z.boolean().meta({
-    example: true,
-    description: '是否显示运行状态'
-  }),
-  showCite: z.boolean().optional().default(true).meta({
-    example: true,
-    description: '是否显示引用'
-  }),
-  showSkillReferences: z.boolean().optional().default(false).meta({
-    example: false,
-    description: '是否显示技能引用'
-  }),
-  showFullText: z.boolean().optional().default(true).meta({
-    example: true,
-    description: '是否显示全文'
-  }),
-  canDownloadSource: z.boolean().optional().default(true).meta({
-    example: true,
-    description: '是否可下载来源'
-  }),
-  showWholeResponse: z.boolean().optional().default(true).meta({
-    example: true,
-    description: '是否显示完整响应按钮'
-  })
-});
+import { PlaygroundVisibilityConfigSchema } from '../../../../../support/outLink/type';
 
 // Get Playground Visibility Config Parameters
 export const GetPlaygroundVisibilityConfigParamsSchema = z.object({
@@ -40,12 +13,6 @@ export type GetPlaygroundVisibilityConfigParamsType = z.infer<
   typeof GetPlaygroundVisibilityConfigParamsSchema
 >;
 
-// Playground Visibility Config Response
-export const PlaygroundVisibilityConfigResponseSchema = PlaygroundVisibilityConfigFieldsSchema;
-export type PlaygroundVisibilityConfigResponseType = z.infer<
-  typeof PlaygroundVisibilityConfigResponseSchema
->;
-
 // Update Playground Visibility Config Parameters
 export const UpdatePlaygroundVisibilityConfigParamsSchema = z
   .object({
@@ -54,14 +21,11 @@ export const UpdatePlaygroundVisibilityConfigParamsSchema = z
       description: '应用 ID'
     })
   })
-  .extend(PlaygroundVisibilityConfigFieldsSchema.shape);
+  .extend(PlaygroundVisibilityConfigSchema.shape);
 export type UpdatePlaygroundVisibilityConfigParamsType = z.infer<
   typeof UpdatePlaygroundVisibilityConfigParamsSchema
 >;
 
-export const PlaygroundConfigQuerySchema = GetPlaygroundVisibilityConfigParamsSchema;
-export const PlaygroundConfigResponseSchema = PlaygroundVisibilityConfigResponseSchema;
-export const PlaygroundUpdateBodySchema = UpdatePlaygroundVisibilityConfigParamsSchema;
 export const PlaygroundUpdateResponseSchema = z.null().meta({
   description: '更新成功'
 });

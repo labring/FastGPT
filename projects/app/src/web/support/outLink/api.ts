@@ -1,12 +1,12 @@
 import type {
   GetPlaygroundVisibilityConfigParamsType,
   PlaygroundUpdateResponseType,
-  PlaygroundVisibilityConfigResponseType,
   UpdatePlaygroundVisibilityConfigParamsType
 } from '@fastgpt/global/openapi/core/app/publishChannel/playground/api';
 import type {
   OutLinkSchemaType as CoreOutLinkSchemaType,
-  OutlinkAppType
+  OutlinkAppType,
+  PlaygroundVisibilityConfigType
 } from '@fastgpt/global/support/outLink/type';
 import type {
   OutLinkCreateBodyType,
@@ -48,7 +48,7 @@ export function updateShareChat(data: OutLinkUpdateBodyType) {
 }
 
 export function getPlaygroundVisibilityConfig(data: GetPlaygroundVisibilityConfigParamsType) {
-  return GET<PlaygroundVisibilityConfigResponseType>('/support/outLink/playground/config', data);
+  return GET<PlaygroundVisibilityConfigType>('/support/outLink/playground/config', data);
 }
 
 export function updatePlaygroundVisibilityConfig(data: UpdatePlaygroundVisibilityConfigParamsType) {

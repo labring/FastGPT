@@ -1,24 +1,8 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
-import { CreateAppBodySchema, CreateAppResponseSchema } from '../common/api';
+import { CreateAppBodySchema } from '../common/api';
 import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
-
-const OpenAPIMcpToolConfigSchema = McpToolConfigSchema.extend({
-  name: z.string().meta({
-    example: 'search',
-    description: 'MCP 工具名称，用于工作流节点选择和远端调用'
-  }),
-  description: z.string().meta({
-    example: 'Search tool',
-    description: 'MCP 工具能力说明，会用于工具选择和调用提示'
-  }),
-  inputSchema: McpToolConfigSchema.shape.inputSchema.meta({
-    description: 'MCP 工具入参 JSON Schema'
-  })
-}).meta({
-  description: 'MCP 工具配置'
-});
 
 // Create mcp tool
 export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
@@ -36,7 +20,7 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
       example: { Authorization: { value: 'token', secret: '********' } },
       description: '请求头密钥'
     }),
-    toolList: z.array(OpenAPIMcpToolConfigSchema).meta({
+    toolList: z.array(McpToolConfigSchema).meta({
       example: [
         {
           name: 'search',
@@ -56,9 +40,6 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
     }
   });
 export type CreateMcpToolsBodyType = z.infer<typeof CreateMcpToolsBodySchema>;
-
-export const CreateMcpToolsResponseSchema = CreateAppResponseSchema;
-export type CreateMcpToolsResponseType = z.infer<typeof CreateMcpToolsResponseSchema>;
 
 // Update mcp tool
 export const UpdateMcpToolsBodySchema = z
@@ -99,7 +80,7 @@ export const GetMcpChildrenQuerySchema = z.object({
 });
 export type GetMcpChildrenQueryType = z.infer<typeof GetMcpChildrenQuerySchema>;
 
-export const McpChildrenItemSchema = OpenAPIMcpToolConfigSchema.extend({
+export const McpChildrenItemSchema = McpToolConfigSchema.extend({
   id: z.string().meta({
     example: 'mcp-68ad85a7463006c963799a05/search',
     description: '工具 ID'
@@ -137,7 +118,7 @@ export const GetMcpToolsBodySchema = z
   });
 export type GetMcpToolsBodyType = z.infer<typeof GetMcpToolsBodySchema>;
 
-export const GetMcpToolsResponseSchema = z.array(OpenAPIMcpToolConfigSchema).meta({
+export const GetMcpToolsResponseSchema = z.array(McpToolConfigSchema).meta({
   example: [],
   description: 'MCP 工具配置列表'
 });

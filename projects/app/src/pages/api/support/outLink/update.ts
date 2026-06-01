@@ -14,7 +14,6 @@ import {
   type OutLinkUpdateBodyType,
   type OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
-export type OutLinkUpdateQuery = Record<string, never>;
 
 // {
 // _id?: string; // Outlink 的 ID
@@ -25,13 +24,10 @@ export type OutLinkUpdateQuery = Record<string, never>;
 // limit?: OutLinkSchemaType<T>['limit']; // 限制
 // app?: T; // 平台的配置
 // }
-export type OutLinkUpdateBody = OutLinkUpdateBodyType;
-
-export type OutLinkUpdateResponse = OutLinkUpdateResponseType;
 
 async function handler(
-  req: ApiRequestProps<OutLinkUpdateBody, OutLinkUpdateQuery>
-): Promise<OutLinkUpdateResponse> {
+  req: ApiRequestProps<OutLinkUpdateBodyType>
+): Promise<OutLinkUpdateResponseType> {
   const {
     _id,
     name,

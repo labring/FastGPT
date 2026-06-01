@@ -14,11 +14,9 @@ import {
   type AppVersionListResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 
-export type versionListBody = AppVersionListBodyType;
-
-export type versionListResponse = AppVersionListResponseType;
-
-async function handler(req: ApiRequestProps<versionListBody>): Promise<versionListResponse> {
+async function handler(
+  req: ApiRequestProps<AppVersionListBodyType>
+): Promise<AppVersionListResponseType> {
   const { appId, isPublish } = parseApiInput({
     req,
     bodySchema: AppVersionListBodySchema

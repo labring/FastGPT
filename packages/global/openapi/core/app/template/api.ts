@@ -1,48 +1,7 @@
 import z from 'zod';
-import { BoolSchema } from '../../../../common/zod';
+import { BoolSchema, NumSchema } from '../../../../common/zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
-import type { AppTemplateSchemaType as CoreAppTemplateSchemaType } from '../../../../core/app/type';
-import { UserTagsEnum } from '../../../../support/user/type';
-
-const AppTemplateWorkflowSchema = z
-  .custom<CoreAppTemplateSchemaType['workflow']>(() => true)
-  .meta({
-    description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
-  });
-
-export const AppTemplateSchema = z.object({
-  templateId: z.string().meta({ example: 'template-simple-chat', description: '模板 ID' }),
-  name: z.string().meta({ example: '客服助手', description: '模板名称' }),
-  intro: z.string().meta({ description: '模板介绍' }),
-  avatar: z.string().meta({ description: '模板头像' }),
-  tags: z.array(z.string()).meta({ description: '模板标签' }),
-  type: z.string().meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
-  author: z.string().optional().meta({ description: '作者' }),
-  isActive: z.boolean().optional().meta({ description: '是否启用' }),
-  isPromoted: z.boolean().optional().meta({ description: '是否推荐' }),
-  promoteTags: z.array(UserTagsEnum).optional().meta({ description: '推荐用户标签' }),
-  hideTags: z.array(UserTagsEnum).optional().meta({ description: '隐藏用户标签' }),
-  recommendText: z.string().optional().meta({ description: '推荐文案' }),
-  userGuide: z
-    .object({
-      type: z.enum(['markdown', 'link']).meta({
-        example: 'markdown',
-        description: '用户指引展示方式'
-      }),
-      content: z.string().optional().meta({
-        description: 'Markdown 类型用户指引内容'
-      }),
-      link: z.string().optional().meta({
-        description: '外链类型用户指引地址'
-      })
-    })
-    .optional()
-    .meta({ description: '用户指引' }),
-  isQuickTemplate: z.boolean().optional().meta({ description: '是否快捷模板' }),
-  order: z.number().optional().meta({ description: '排序值' }),
-  workflow: AppTemplateWorkflowSchema
-});
-export type AppTemplateSchemaType = z.infer<typeof AppTemplateSchema>;
+import { AppTemplateSchema } from '../../../../core/app/type';
 
 /* ============================================================================
  * API: 获取应用模板列表
@@ -57,7 +16,7 @@ export const ListAppTemplateQuerySchema = z.object({
     example: false,
     description: '是否只查询快捷模板'
   }),
-  randomNumber: z.coerce.number().optional().meta({
+  randomNumber: NumSchema.optional().meta({
     example: 6,
     description: '随机返回数量'
   }),
@@ -88,7 +47,7 @@ export const ListAppTemplateResponseSchema = z.object({
   list: z.array(AppTemplateListItemSchema).meta({
     description: '模板列表'
   }),
-  total: z.number().meta({
+  total: NumSchema.meta({
     example: 100,
     description: '模板总数'
   })

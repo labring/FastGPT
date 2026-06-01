@@ -17,11 +17,9 @@ import {
   type ResumeInheritPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/permission/api';
 
-export type ResumeInheritPermissionQuery = ResumeInheritPermissionQueryType;
-export type ResumeInheritPermissionBody = ResumeInheritPermissionBodyType;
 // resume the app's inherit permission.
 async function handler(
-  req: ApiRequestProps<ResumeInheritPermissionBody, ResumeInheritPermissionQuery>
+  req: ApiRequestProps<ResumeInheritPermissionBodyType, ResumeInheritPermissionQueryType>
 ): Promise<ResumeInheritPermissionResponseType> {
   const { appId } = parseApiInput({
     req,
