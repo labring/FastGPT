@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.15.0-2",
+  "version": "4.15.0-4",
   "private": false,
   "browserslist": [
     "Chrome >= 80",

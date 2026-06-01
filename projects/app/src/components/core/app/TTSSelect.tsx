@@ -1,6 +1,6 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Button, Flex, ModalBody, useDisclosure, Image, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, ModalBody, useDisclosure, HStack } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
@@ -18,6 +18,17 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 
+type TTSSelectorItemType = {
+  alias: string;
+  avatar?: string;
+  label: string | React.ReactNode;
+  value: string;
+  children: {
+    label: string;
+    value: string;
+  }[];
+};
+
 const TTSSelect = ({
   value = defaultTTSConfig,
   onChange
@@ -32,16 +43,29 @@ const TTSSelect = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectorList = useMemo(
-    () => [
-      { label: t('app:tts_close'), value: TTSTypeEnum.none, children: [] },
-      { label: t('app:tts_browser'), value: TTSTypeEnum.web, children: [] },
+    (): TTSSelectorItemType[] => [
+      {
+        alias: t('app:tts_close'),
+        label: t('app:tts_close'),
+        value: TTSTypeEnum.none,
+        children: []
+      },
+      {
+        alias: t('app:tts_browser'),
+        label: t('app:tts_browser'),
+        value: TTSTypeEnum.web,
+        children: []
+      },
       ...ttsModelList.map((model) => {
         const providerData = getModelProvider(model.provider, i18n.language);
+        const modelName = t(model.name as any);
         return {
+          alias: modelName,
+          avatar: providerData.avatar,
           label: (
-            <HStack>
+            <HStack minW={0} maxW={'100%'} spacing={2}>
               <Avatar borderRadius={'0'} w={'1.25rem'} src={providerData.avatar} />
-              <Box>{t(model.name as any)}</Box>
+              <Box noOfLines={1}>{modelName}</Box>
             </HStack>
           ),
           value: model.model,
@@ -53,7 +77,7 @@ const TTSSelect = ({
         };
       })
     ],
-    [ttsModelList, t]
+    [getModelProvider, i18n.language, t, ttsModelList]
   );
 
   const formatValue = useMemo(() => {
@@ -69,17 +93,21 @@ const TTSSelect = ({
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
     const voice = provider.children.find((item) => item.value === formatValue[1]);
+    const providerText =
+      provider.alias ||
+      (typeof provider.label === 'string' ? provider.label : String(provider.value));
+    const selectedText = voice ? `${providerText} / ${voice.label}` : providerText;
+
     return (
-      <Box>
-        {voice ? (
-          <Flex maxW={['200px', '250px']} overflow={'hidden'} alignItems={'center'}>
-            <Box>{provider.label}</Box>
-            <Box>/</Box>
-            <Box>{voice.label}</Box>
-          </Flex>
-        ) : (
-          provider.label
-        )}
+      <Box minW={0} maxW={'100%'}>
+        <Flex maxW={['200px', '250px']} minW={0} alignItems={'center'}>
+          {provider.avatar && (
+            <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} mr={2} src={provider.avatar} />
+          )}
+          <Box minW={0} noOfLines={1}>
+            {selectedText}
+          </Box>
+        </Flex>
       </Box>
     );
   }, [formatValue, selectorList]);
@@ -103,7 +131,7 @@ const TTSSelect = ({
         });
       }
     },
-    [ttsModelList, onChange, value]
+    [onChange, value]
   );
 
   const onCloseTTSModal = useCallback(() => {
