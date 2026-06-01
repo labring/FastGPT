@@ -58,14 +58,15 @@ const MyNumberInput = (props: Props) => {
           const event = {
             target: {
               name,
-              value: numE
+              value: numE,
+              valueAsNumber: numE === '' ? undefined : numE
             }
           };
           register(name).onBlur(event);
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : Number(e);
+        const numE = e === '' ? '' : Number(e);
         if (onChange) {
           if (numE === '') {
             // @ts-ignore
@@ -79,7 +80,8 @@ const MyNumberInput = (props: Props) => {
           const event = {
             target: {
               name,
-              value: numE
+              value: numE,
+              valueAsNumber: numE === '' ? undefined : numE
             }
           };
 
