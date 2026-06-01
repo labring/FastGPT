@@ -149,7 +149,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
   it('should upload images with chunk mode when only native image embedding is available', async () => {
     const result = await handler({} as any);
 
-    expect(result).toEqual({});
+    expect(result).toBeUndefined();
     expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         vectorModel: 'vision-embedding',
