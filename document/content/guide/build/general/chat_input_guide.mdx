@@ -13,7 +13,7 @@ description: FastGPT 对话问题引导
 
 ## 自定义词库接口
 
-需要保证这个接口可以被用户浏览器访问。
+需要保证这个接口可以被用户浏览器访问，需要注意允许跨域。
 
 **请求：**
 
@@ -21,7 +21,7 @@ description: FastGPT 对话问题引导
 curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=你'
 ```
 
-其中 `appId` 为应用ID，`searchKey` 为搜索关键字，最多是50个字符。
+其中 `appId` 为应用 ID，`searchKey` 为搜索关键字，最多是 50 个字符。
 
 **响应**
 
@@ -30,21 +30,13 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/qu
   "code": 200,
   "statusText": "",
   "message": "",
-  "data": [
-    "是你",
-    "你是谁呀",
-    "你好好呀",
-    "你好呀",
-    "你是谁！",
-    "你好"
-  ]
+  "data": ["是你", "你是谁呀", "你好好呀", "你好呀", "你是谁！", "你好"]
 }
 ```
 
-data是一个数组，包含了搜索到的问题，最多只需要返回5个问题。
-
+data 是一个数组，包含了搜索到的问题，最多只需要返回 5 个问题。
 
 **参数说明：**
 
-- appId - 应用ID
+- appId - 应用 ID
 - searchKey - 搜索关键字
