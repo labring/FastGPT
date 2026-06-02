@@ -42,6 +42,8 @@
   "config_input_guide_lexicon": "Set Up Lexicon",
   "config_input_guide_lexicon_title": "Set Up Lexicon",
   "confirm_clear_input_value": "Are you sure to clear the form content? \nDefault values ​​will be restored!",
+  "mobile_clear_history_confirm_title": "Clear history?",
+  "mobile_clear_history_confirm_tip": "This action cannot be undone",
   "confirm_plan": "Confirm plan",
   "confirm_to_clear_share_chat_history": "Are you sure you want to clear all chat history?",
   "content_empty": "No Content",

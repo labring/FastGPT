@@ -42,6 +42,8 @@
   "config_input_guide_lexicon": "配置词库",
   "config_input_guide_lexicon_title": "配置词库",
   "confirm_clear_input_value": "确认清空表单内容？将会恢复默认值！",
+  "mobile_clear_history_confirm_title": "确定清空历史记录？",
+  "mobile_clear_history_confirm_tip": "此操作不可撤销",
   "confirm_plan": "确认计划",
   "confirm_to_clear_share_chat_history": "确认清空所有聊天记录？",
   "content_empty": "内容为空",

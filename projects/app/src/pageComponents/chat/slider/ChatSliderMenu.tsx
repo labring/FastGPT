@@ -1,14 +1,127 @@
 import { useContextSelector } from 'use-context-selector';
+import type { ReactNode } from 'react';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  IconButton,
+  Modal,
+  ModalContent,
+  ModalOverlay,
+  useDisclosure
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 type Props = {
   menuConfirmButtonText?: string;
+};
+
+const MobileClearHistoryConfirm = ({
+  Trigger,
+  onConfirm
+}: {
+  Trigger: ReactNode;
+  onConfirm: () => Promise<unknown> | unknown;
+}) => {
+  const { t } = useTranslation();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { runAsync: confirmClearHistory, loading } = useRequest(async () => onConfirm(), {
+    onSuccess: onClose
+  });
+
+  return (
+    <>
+      <Box onClick={onOpen}>{Trigger}</Box>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        isCentered
+        autoFocus={false}
+        blockScrollOnMount={false}
+        returnFocusOnClose={false}
+      >
+        <ModalOverlay bg="rgba(0, 0, 0, 0.16)" zIndex={1500} />
+        <ModalContent
+          w="328px"
+          maxW="calc(100vw - 48px)"
+          mx="24px"
+          p="32px"
+          borderRadius="10px"
+          boxShadow="0 8px 24px rgba(19, 51, 107, 0.16)"
+          containerProps={{ zIndex: 1501 }}
+        >
+          <IconButton
+            aria-label={t('common:Close')}
+            icon={<MyIcon name="common/closeLight" w="18px" h="18px" color="myGray.900" />}
+            variant="unstyled"
+            position="absolute"
+            top="14px"
+            right="14px"
+            minW="28px"
+            h="28px"
+            color="myGray.900"
+            onClick={onClose}
+          />
+
+          <HStack alignItems="center" spacing="14px" pr="32px">
+            <Flex
+              w="24px"
+              h="24px"
+              borderRadius="full"
+              bg="#FFE9A8"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <MyIcon name="common/exclamationMark" w="14px" h="14px" color="#D96A00" />
+            </Flex>
+            <Box fontSize="20px" lineHeight="28px" fontWeight={600} color="myGray.900">
+              {t('chat:mobile_clear_history_confirm_title')}
+            </Box>
+          </HStack>
+
+          <Box mt="24px" fontSize="14px" lineHeight="22px" color="myGray.900">
+            {t('chat:mobile_clear_history_confirm_tip')}
+          </Box>
+
+          <HStack mt="24px" justifyContent="flex-end" spacing="12px">
+            <Button
+              minH="32px"
+              px="14px"
+              py="8px"
+              variant="whiteBase"
+              fontSize="12px"
+              borderRadius="7px"
+              onClick={onClose}
+              isDisabled={loading}
+            >
+              {t('common:Cancel')}
+            </Button>
+            <Button
+              minH="32px"
+              px="14px"
+              py="8px"
+              variant="dangerFill"
+              fontSize="12px"
+              borderRadius="7px"
+              isLoading={loading}
+              onClick={() => void confirmClearHistory()}
+            >
+              {t('common:Clear')}
+            </Button>
+          </HStack>
+        </ModalContent>
+      </Modal>
+    </>
+  );
 };
 
 const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
@@ -58,9 +171,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
     >
       {!isPc && (
         <Flex height={'100%'} align={'center'} justify={'center'}>
-          <Box fontWeight={'bold'}>
-            {t('common:core.chat.History')}
-          </Box>
+          <Box fontWeight={'bold'}>{t('common:core.chat.History')}</Box>
         </Flex>
       )}
 
@@ -97,10 +208,8 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
         </Button>
       ) : (
         histories.length > 0 && (
-          <PopoverConfirm
+          <MobileClearHistoryConfirm
             Trigger={ClearHistoryTrigger}
-            type="delete"
-            content={menuConfirmButtonText || t('common:Delete')}
             onConfirm={() => onClearHistory()}
           />
         )
