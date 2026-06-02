@@ -1,11 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Portal
+} from '@chakra-ui/react';
 import { Drawer } from 'vaul';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import {
@@ -18,7 +26,15 @@ type ChatVariableButtonProps = {
   chatType: ChatTypeEnum;
 };
 
-const ChatVariableContent = ({ chatType }: ChatVariableButtonProps) => {
+const ChatVariableContent = ({
+  chatType,
+  showSubmitButton = false,
+  onSubmit
+}: ChatVariableButtonProps & {
+  showSubmitButton?: boolean;
+  onSubmit?: () => void;
+}) => {
+  const { t } = useTranslation();
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variables = useContextSelector(
     ChatItemContext,
@@ -35,11 +51,28 @@ const ChatVariableContent = ({ chatType }: ChatVariableButtonProps) => {
   ];
 
   return (
-    <ChatVariableFields
-      variables={visibleVariables}
-      variablesForm={variablesForm}
-      isUnChange={chatType === ChatTypeEnum.log}
-    />
+    <>
+      <ChatVariableFields
+        variables={visibleVariables}
+        variablesForm={variablesForm}
+        isUnChange={chatType === ChatTypeEnum.log}
+      />
+      {showSubmitButton && (
+        <Flex justifyContent="flex-end" mt={8}>
+          <Button
+            w="69px"
+            h="32px"
+            px="20px"
+            borderRadius="8px"
+            fontSize="14px"
+            variant="primary"
+            onClick={variablesForm.handleSubmit(() => onSubmit?.())}
+          >
+            {t('common:Confirm')}
+          </Button>
+        </Flex>
+      )}
+    </>
   );
 };
 
@@ -107,6 +140,9 @@ const ChatVariableButton = ({ chatType }: ChatVariableButtonProps) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const [isOpen, setIsOpen] = useState(false);
+  const [popoverMaxHeight, setPopoverMaxHeight] = useState('72vh');
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverContentRef = useRef<HTMLDivElement>(null);
   const variables = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
@@ -122,33 +158,106 @@ const ChatVariableButton = ({ chatType }: ChatVariableButtonProps) => {
     );
   }, [chatType, variables]);
 
+  const updatePopoverMaxHeight = useCallback(() => {
+    const bottomGap = 12;
+    const contentTop = popoverContentRef.current?.getBoundingClientRect().top;
+    const buttonBottom = buttonRef.current?.getBoundingClientRect().bottom;
+    const top = contentTop ?? buttonBottom;
+
+    if (top === undefined) return;
+
+    setPopoverMaxHeight(`${Math.max(window.innerHeight - top - bottomGap, 120)}px`);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !isPc) return;
+
+    updatePopoverMaxHeight();
+    const rafId = window.requestAnimationFrame(updatePopoverMaxHeight);
+    window.addEventListener('resize', updatePopoverMaxHeight);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updatePopoverMaxHeight);
+    };
+  }, [isOpen, isPc, updatePopoverMaxHeight]);
+
   if (!hasVariables) return null;
 
   const label = t('common:core.module.Variable');
-  const button = (
-    <MyTooltip label={label}>
-      <IconButton
-        icon={<MyIcon name="core/chat/var" w="16px" />}
-        aria-label={label}
-        size="sm"
-        variant="whitePrimary"
-        onClick={() => setIsOpen(true)}
-      />
-    </MyTooltip>
+  const iconButton = (
+    <IconButton
+      ref={buttonRef}
+      icon={
+        <MyIcon
+          name="core/chat/var"
+          w="16px"
+          color={isOpen ? 'primary.600' : 'myGray.600'}
+          sx={{
+            '& path': {
+              fill: 'currentColor'
+            }
+          }}
+        />
+      }
+      aria-label={label}
+      size="sm"
+      variant="whitePrimary"
+      onClick={() => {
+        updatePopoverMaxHeight();
+        setIsOpen(true);
+      }}
+    />
   );
 
   return (
     <>
       {isPc ? (
-        <MyPopover placement="bottom-end" trigger="click" closeOnBlur Trigger={button}>
-          {() => (
-            <Box p={4} w="360px" maxH="60vh" overflowY="auto" overflowX="hidden">
-              <ChatVariableContent chatType={chatType} />
-            </Box>
-          )}
-        </MyPopover>
+        <Popover
+          isOpen={isOpen}
+          onOpen={() => {
+            updatePopoverMaxHeight();
+            setIsOpen(true);
+          }}
+          onClose={() => setIsOpen(false)}
+          placement="bottom-end"
+          trigger="click"
+          closeOnBlur
+          isLazy
+          lazyBehavior="unmount"
+          autoFocus={false}
+        >
+          <PopoverTrigger>{iconButton}</PopoverTrigger>
+          <Portal>
+            <PopoverContent
+              ref={popoverContentRef}
+              zIndex={1001}
+              border="1px solid"
+              borderColor="myGray.100"
+              borderRadius="12px"
+              boxShadow="0 12px 32px rgba(19, 51, 107, 0.12), 0 0 1px rgba(19, 51, 107, 0.08)"
+              overflow="hidden"
+              w="368px"
+              maxW="calc(100vw - 48px)"
+              maxH={popoverMaxHeight}
+            >
+              <Box bg="white" p="24px" h="100%" overflowY="auto" overflowX="hidden">
+                <Box fontSize="16px" lineHeight="24px" fontWeight={600} color="myGray.900" mb={6}>
+                  {label}
+                </Box>
+                <ChatVariableContent
+                  chatType={chatType}
+                  showSubmitButton
+                  onSubmit={() => {
+                    setIsOpen(false);
+                  }}
+                />
+              </Box>
+            </PopoverContent>
+          </Portal>
+        </Popover>
       ) : (
-        button
+        <MyTooltip label={label}>{iconButton}</MyTooltip>
       )}
       {!isPc && isOpen && (
         <ChatVariableDrawer isOpen={isOpen} chatType={chatType} onClose={() => setIsOpen(false)} />
