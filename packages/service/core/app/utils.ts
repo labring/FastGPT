@@ -1,6 +1,10 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getChildAppPreviewNode } from './tool/controller';
@@ -10,8 +14,12 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  AppFormEditFormType,
+  SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -29,10 +37,14 @@ export async function listAppDatasetDataByTeamIdAndDatasetIds({
     datasetId: String(item._id),
     avatar: item.avatar,
     name: item.name,
-    vectorModel: getEmbeddingModel(item.vectorModel)
+    vectorModel: getEmbeddingModel(item.vectorModel),
+    isDeleted: !!item.deleteTime
   }));
 }
 
+/**
+ * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
+ */
 export async function rewriteAppWorkflowToDetail({
   nodes,
   teamId,
@@ -47,6 +59,31 @@ export async function rewriteAppWorkflowToDetail({
   lang?: localeType;
 }) {
   const datasetIdSet = new Set<string>();
+  const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) => {
+    return input.renderTypeList?.[input.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference;
+  };
+  const isSelectedDatasetItem = (item: unknown): item is SelectedDatasetType => {
+    return (
+      !!item &&
+      typeof item === 'object' &&
+      typeof (item as { datasetId?: unknown }).datasetId === 'string'
+    );
+  };
+  const getSelectedDatasetIds = (value: unknown) => {
+    if (!value) return [];
+
+    const list = Array.isArray(value) ? value : [value];
+    return list
+      .map((item) => {
+        if (!item || typeof item !== 'object') return;
+        const datasetId = (item as { datasetId?: unknown }).datasetId;
+        return typeof datasetId === 'string' && datasetId ? datasetId : undefined;
+      })
+      .filter((id): id is string => !!id);
+  };
+  const collectSelectedDatasetIds = (value: unknown) => {
+    getSelectedDatasetIds(value).forEach((id) => datasetIdSet.add(id));
+  };
 
   const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
     const { authAppId } = splitCombineToolId(id);
@@ -237,21 +274,22 @@ export async function rewriteAppWorkflowToDetail({
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
+    if (
+      node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode &&
+      node.flowNodeType !== FlowNodeTypeEnum.agent
+    )
+      return;
 
-    const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.datasetSelectList);
-    if (!input) return;
-
-    const rawValue = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-    if (!rawValue) return;
-
-    const datasetIds = Array.isArray(rawValue)
-      ? rawValue.map((v) => v?.datasetId).filter((id) => !!id && typeof id === 'string')
-      : rawValue?.datasetId
-        ? [String(rawValue.datasetId)]
-        : [];
-
-    datasetIds.forEach((id) => datasetIdSet.add(id));
+    node.inputs.forEach((input) => {
+      if (input.key === NodeInputKeyEnum.datasetSelectList && !isReferenceInput(input)) {
+        collectSelectedDatasetIds(input.value);
+      }
+      if (input.key === NodeInputKeyEnum.datasetParams) {
+        collectSelectedDatasetIds(
+          (input.value as AppFormEditFormType['dataset'] | undefined)?.datasets
+        );
+      }
+    });
   });
 
   if (datasetIdSet.size === 0) return;
@@ -262,61 +300,80 @@ export async function rewriteAppWorkflowToDetail({
     datasetIdList: Array.from(datasetIdSet)
   });
   const datasetMap = new Map(datasetList.map((ds) => [String(ds.datasetId), ds]));
+  const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
+
+  /**
+   * 格式化选中的数据集信息，补充元数据并标记删除状态
+   * @param item - 待格式化的数据集选择项
+   * @returns 包含完整信息（头像、名称、向量模型）及删除状态的数据集对象
+   */
+  const formatSelectedDataset = (item: SelectedDatasetType): SelectedDatasetType => {
+    const data = datasetMap.get(String(item.datasetId));
+    if (!data || data.isDeleted) {
+      return {
+        ...item,
+        avatar: defaultDeletedDatasetAvatar,
+        isDeleted: true
+      };
+    }
+
+    return {
+      datasetId: data.datasetId,
+      avatar: data.avatar,
+      name: data.name,
+      vectorModel: data.vectorModel,
+      isDeleted: false
+    };
+  };
+
+  /**
+   * 标准化并格式化数据集选择值，过滤无效项并补充元数据
+   * @param value - 原始数据集选择值（可能为单个或多个）
+   * @returns 格式化后的数据集列表，包含完整信息及删除状态标记；非知识库选择值返回 undefined 以保持原值
+   */
+  const formatSelectedDatasetValue = (value: unknown): SelectedDatasetType[] | undefined => {
+    if (!value) return [];
+
+    const list = Array.isArray(value) ? value : [value];
+
+    // 引用变量也是数组结构（如 [nodeId, outputKey]），不能按知识库列表格式化。
+    if (!list.every(isSelectedDatasetItem)) {
+      return;
+    }
+
+    return list.map(formatSelectedDataset);
+  };
 
   // Rewrite dataset ids, add dataset info to nodes
-  if (datasetList.length > 0) {
-    nodes.forEach((node) => {
-      if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
+  nodes.forEach((node) => {
+    if (
+      node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode &&
+      node.flowNodeType !== FlowNodeTypeEnum.agent
+    ) {
+      return;
+    }
 
-      node.inputs.forEach((item) => {
-        if (item.key !== NodeInputKeyEnum.datasetSelectList) return;
-
-        const val = item.value as undefined | { datasetId: string }[] | { datasetId: string };
-
-        if (Array.isArray(val)) {
-          item.value = val
-            .map((v) => {
-              const data = datasetMap.get(String(v.datasetId));
-              if (!data)
-                return {
-                  datasetId: v.datasetId,
-                  avatar: '',
-                  name: 'Dataset not found',
-                  vectorModel: ''
-                };
-              return {
-                datasetId: data.datasetId,
-                avatar: data.avatar,
-                name: data.name,
-                vectorModel: data.vectorModel
-              };
-            })
-            .filter(Boolean);
-        } else if (typeof val === 'object' && val !== null) {
-          const data = datasetMap.get(String(val.datasetId));
-          if (!data) {
-            item.value = [
-              {
-                datasetId: val.datasetId,
-                avatar: '',
-                name: 'Dataset not found',
-                vectorModel: ''
-              }
-            ];
-          } else {
-            item.value = [
-              {
-                datasetId: data.datasetId,
-                avatar: data.avatar,
-                name: data.name,
-                vectorModel: data.vectorModel
-              }
-            ];
-          }
+    node.inputs.forEach((item) => {
+      if (item.key === NodeInputKeyEnum.datasetSelectList && !isReferenceInput(item)) {
+        const value = formatSelectedDatasetValue(item.value);
+        if (value) {
+          item.value = value;
         }
-      });
+      }
+      if (item.key === NodeInputKeyEnum.datasetParams) {
+        const datasetParams = item.value as AppFormEditFormType['dataset'] | undefined;
+        if (datasetParams?.datasets) {
+          const datasets = formatSelectedDatasetValue(datasetParams.datasets);
+          if (!datasets) return;
+
+          item.value = {
+            ...datasetParams,
+            datasets
+          };
+        }
+      }
     });
-  }
+  });
 
   return nodes;
 }

@@ -1162,6 +1162,7 @@
   "test_model_tip": "This model is a test model and does not support high concurrency use.",
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
   "to_dataset": "To dataset",
+  "dataset_deleted": "Dataset has been deleted",
   "tool_invalid": "Tool has expired",
   "tool_invalid_click_delete_tip": "Click delete",
   "total_num": "Total: {{num}}",

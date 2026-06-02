@@ -68,30 +68,39 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
           >
             {t('common:Choose')}
           </Button>
-          {selectedDatasets.map((item) => (
-            <Flex
-              key={item.datasetId}
-              alignItems={'center'}
-              h={10}
-              boxShadow={'sm'}
-              bg={'white'}
-              border={'base'}
-              px={2}
-              borderRadius={'md'}
-            >
-              <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-              <Box
-                ml={1.5}
-                flex={'1 0 0'}
-                w={0}
-                className="textEllipsis"
-                fontWeight={'bold'}
-                fontSize={['sm', 'sm']}
+          {selectedDatasets.map((item) => {
+            const isDeleted = !!item.isDeleted;
+
+            return (
+              <Flex
+                key={item.datasetId}
+                alignItems={'center'}
+                h={10}
+                boxShadow={'sm'}
+                bg={'white'}
+                border={'base'}
+                borderColor={isDeleted ? 'red.600' : undefined}
+                px={2}
+                borderRadius={'md'}
+                _hover={{
+                  borderColor: isDeleted ? 'red.600' : 'primary.300'
+                }}
               >
-                {item.name}
-              </Box>
-            </Flex>
-          ))}
+                <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
+                <Box
+                  ml={1.5}
+                  flex={'1 0 0'}
+                  w={0}
+                  className="textEllipsis"
+                  fontWeight={'bold'}
+                  fontSize={['sm', 'sm']}
+                  color={isDeleted ? 'red.600' : undefined}
+                >
+                  {isDeleted ? t('common:dataset_deleted') : item.name}
+                </Box>
+              </Flex>
+            );
+          })}
         </Grid>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
@@ -99,7 +108,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               datasetId: item.datasetId,
               name: item.name,
               avatar: item.avatar,
-              vectorModel: item.vectorModel
+              vectorModel: item.vectorModel,
+              isDeleted: item.isDeleted
             }))}
             onChange={(e) => {
               onChangeNode({

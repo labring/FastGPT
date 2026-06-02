@@ -43,8 +43,9 @@ export const DatasetSelectModal = ({
   // Translation function
   const { t } = useTranslation();
   // Current selected datasets, initialized with defaultSelectedDatasets
-  const [selectedDatasets, setSelectedDatasets] =
-    useState<SelectedDatasetType[]>(defaultSelectedDatasets);
+  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType[]>(
+    defaultSelectedDatasets.filter((dataset) => !dataset.isDeleted)
+  );
   const { toast } = useToast();
   const { userInfo } = useUserStore();
 
@@ -118,7 +119,8 @@ export const DatasetSelectModal = ({
           datasetId: item._id,
           avatar: item.avatar,
           name: item.name,
-          vectorModel: item.vectorModel
+          vectorModel: item.vectorModel,
+          isDeleted: false
         }
       ]);
     } else {
@@ -343,7 +345,8 @@ export const DatasetSelectModal = ({
                                 datasetId: item._id,
                                 avatar: item.avatar,
                                 name: item.name,
-                                vectorModel: item.vectorModel
+                                vectorModel: item.vectorModel,
+                                isDeleted: false
                               })
                             );
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);

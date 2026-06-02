@@ -866,30 +866,39 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     >
                       {t('common:Choose')}
                     </Button>
-                    {selectedDatasets.map((dataset) => (
-                      <Flex
-                        key={dataset.datasetId}
-                        alignItems={'center'}
-                        h={10}
-                        boxShadow={'sm'}
-                        bg={'white'}
-                        border={'base'}
-                        px={2}
-                        borderRadius={'md'}
-                      >
-                        <Avatar src={dataset.avatar} w={'18px'} borderRadius={'xs'} />
-                        <Box
-                          ml={1.5}
-                          flex={'1 0 0'}
-                          w={0}
-                          className="textEllipsis"
-                          fontWeight={'bold'}
-                          fontSize={['sm', 'sm']}
+                    {selectedDatasets.map((dataset) => {
+                      const isDeleted = !!dataset.isDeleted;
+
+                      return (
+                        <Flex
+                          key={dataset.datasetId}
+                          alignItems={'center'}
+                          h={10}
+                          boxShadow={'sm'}
+                          bg={'white'}
+                          border={'base'}
+                          borderColor={isDeleted ? 'red.600' : undefined}
+                          px={2}
+                          borderRadius={'md'}
+                          _hover={{
+                            borderColor: isDeleted ? 'red.600' : 'primary.300'
+                          }}
                         >
-                          {dataset.name}
-                        </Box>
-                      </Flex>
-                    ))}
+                          <Avatar src={dataset.avatar} w={'18px'} borderRadius={'xs'} />
+                          <Box
+                            ml={1.5}
+                            flex={'1 0 0'}
+                            w={0}
+                            className="textEllipsis"
+                            fontWeight={'bold'}
+                            fontSize={['sm', 'sm']}
+                            color={isDeleted ? 'red.600' : undefined}
+                          >
+                            {isDeleted ? t('common:dataset_deleted') : dataset.name}
+                          </Box>
+                        </Flex>
+                      );
+                    })}
                   </Grid>
                   {isOpenDatasetSelect && (
                     <DatasetSelectModal
@@ -897,7 +906,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         datasetId: d.datasetId,
                         name: d.name,
                         avatar: d.avatar,
-                        vectorModel: d.vectorModel
+                        vectorModel: d.vectorModel,
+                        isDeleted: d.isDeleted
                       }))}
                       onChange={(e) => {
                         if (!datasetSelectInput) return;

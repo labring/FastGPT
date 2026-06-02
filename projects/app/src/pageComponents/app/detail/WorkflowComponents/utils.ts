@@ -2,6 +2,7 @@ import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { type AppDetailType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -11,6 +12,8 @@ import {
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -21,24 +24,71 @@ export const uiWorkflow2StoreWorkflow = ({
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }) => {
+  const stripDatasetDeletedState = ({
+    datasetId,
+    avatar,
+    name,
+    vectorModel
+  }: SelectedDatasetType) => ({
+    datasetId,
+    avatar,
+    name,
+    vectorModel
+  });
+  const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) => {
+    return input.renderTypeList?.[input.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference;
+  };
+  const isSelectedDatasetItem = (item: unknown): item is SelectedDatasetType => {
+    return (
+      !!item &&
+      typeof item === 'object' &&
+      typeof (item as { datasetId?: unknown }).datasetId === 'string'
+    );
+  };
   const formatInputs = (inputs: StoreNodeItemType['inputs']) =>
     inputs.map((input) => {
-      if (input.key !== NodeInputKeyEnum.skills || !Array.isArray(input.value)) {
-        return input;
+      if (input.key === NodeInputKeyEnum.skills && Array.isArray(input.value)) {
+        // isDeleted 只用于编辑页提示，保存时不能写回应用配置。
+        return {
+          ...input,
+          value: (input.value as SelectedAgentSkillItemType[]).map(
+            ({ skillId, name, description, avatar }) => ({
+              skillId,
+              name,
+              description,
+              ...(avatar === undefined ? {} : { avatar })
+            })
+          )
+        };
       }
 
-      // isDeleted 只用于编辑页提示，保存时不能写回应用配置。
-      return {
-        ...input,
-        value: (input.value as SelectedAgentSkillItemType[]).map(
-          ({ skillId, name, description, avatar }) => ({
-            skillId,
-            name,
-            description,
-            ...(avatar === undefined ? {} : { avatar })
-          })
-        )
-      };
+      if (
+        input.key === NodeInputKeyEnum.datasetSelectList &&
+        Array.isArray(input.value) &&
+        !isReferenceInput(input) &&
+        input.value.every(isSelectedDatasetItem)
+      ) {
+        // 知识库删除态只用于搭建页提示，保存时保留原始引用快照即可。
+        return {
+          ...input,
+          value: (input.value as SelectedDatasetType[]).map(stripDatasetDeletedState)
+        };
+      }
+
+      if (input.key === NodeInputKeyEnum.datasetParams) {
+        const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+        if (Array.isArray(datasetParams?.datasets)) {
+          return {
+            ...input,
+            value: {
+              ...datasetParams,
+              datasets: datasetParams.datasets.map(stripDatasetDeletedState)
+            }
+          };
+        }
+      }
+
+      return input;
     });
 
   const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({

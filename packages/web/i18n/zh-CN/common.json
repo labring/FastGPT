@@ -1163,6 +1163,7 @@
   "test_model_tip": "该模型为测试模型，不支持高并发使用。",
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "to_dataset": "前往知识库",
+  "dataset_deleted": "知识库已被删除",
   "tool_invalid": "工具已失效",
   "tool_invalid_click_delete_tip": "点击删除",
   "total_num": "总数: {{num}}",

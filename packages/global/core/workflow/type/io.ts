@@ -20,7 +20,8 @@ export const SelectedDatasetSchema = z.object({
     model: z.string().meta({
       description: '知识库使用的向量模型'
     })
-  })
+  }),
+  isDeleted: BoolSchema.optional()
 });
 export type SelectedDatasetType = z.infer<typeof SelectedDatasetSchema>;
 

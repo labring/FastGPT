@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -189,5 +191,120 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         { label: '2', value: '2' }
       ]
     });
+  });
+
+  it('保留 Agent 知识库选择输入的引用模式值，不按知识库列表重写', async () => {
+    const user = await getUser(`agent-dataset-reference-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Reference Trigger Dataset',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    const referenceValue = ['source-node', 'datasets'];
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+      selectedTypeIndex: 1,
+      value: referenceValue
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: []
+          },
+          datasetSelectInput,
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: {
+              datasets: [
+                {
+                  datasetId: String(dataset._id),
+                  avatar: 'old-avatar',
+                  name: 'Old Name',
+                  vectorModel: {
+                    model: 'old-model'
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(datasetSelectInput.value).toEqual(referenceValue);
+  });
+
+  it('已删除知识库在 app detail 改写阶段使用通用知识库默认头像', async () => {
+    const user = await getUser(`deleted-dataset-detail-${getNanoid(6)}`);
+    const deletedDataset = await MongoDataset.create({
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      type: DatasetTypeEnum.dataset,
+      name: 'Deleted Dataset',
+      avatar: '/icon/logo.svg',
+      vectorModel: 'text-embedding-3-small',
+      agentModel: 'gpt-4o-mini',
+      deleteTime: new Date()
+    });
+    const deletedDatasetId = String(deletedDataset._id);
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      value: [
+        {
+          datasetId: deletedDatasetId,
+          name: 'Deleted Dataset Snapshot',
+          avatar: '/icon/logo.svg',
+          vectorModel: {
+            model: 'text-embedding-3-small'
+          }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: []
+          },
+          datasetSelectInput
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(datasetSelectInput.value).toEqual([
+      {
+        datasetId: deletedDatasetId,
+        name: 'Deleted Dataset Snapshot',
+        avatar: DatasetTypeMap[DatasetTypeEnum.dataset].avatar,
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        },
+        isDeleted: true
+      }
+    ]);
   });
 });

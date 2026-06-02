@@ -360,64 +360,72 @@ const EditForm = ({
             </Box>
           )}
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
-            {selectDatasets.map((item) => (
-              <Flex
-                key={item.datasetId}
-                overflow={'hidden'}
-                alignItems={'center'}
-                p={2}
-                bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
-                border={'base'}
-                _hover={{
-                  '& .controler': {
-                    display: 'flex'
-                  }
-                }}
-              >
-                <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
-                <Box
-                  ml={2}
-                  flex={'1 0 0'}
-                  w={0}
-                  className={'textEllipsis'}
-                  fontSize={'sm'}
-                  color={'myGray.900'}
-                >
-                  {item.name}
-                </Box>
+            {selectDatasets.map((item) => {
+              const isDeleted = !!item.isDeleted;
 
-                {/* Icon */}
-                <Box className="controler" display={['flex', 'none']} alignItems={'center'}>
-                  <MyIconButton
-                    icon={'common/viewLight'}
-                    onClick={() =>
-                      router.push({
-                        pathname: '/dataset/detail',
-                        query: {
-                          datasetId: item.datasetId
-                        }
-                      })
+              return (
+                <Flex
+                  key={item.datasetId}
+                  overflow={'hidden'}
+                  alignItems={'center'}
+                  p={2}
+                  bg={'white'}
+                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                  borderRadius={'md'}
+                  border={'base'}
+                  borderColor={isDeleted ? 'red.600' : undefined}
+                  _hover={{
+                    borderColor: isDeleted ? 'red.600' : 'primary.300',
+                    '& .controler': {
+                      display: 'flex'
                     }
-                  />
-                  <MyDeleteIconButton
-                    onClick={() => {
-                      setAppForm((state) => ({
-                        ...state,
-                        dataset: {
-                          ...state.dataset,
-                          datasets:
-                            state.dataset.datasets?.filter(
-                              (pre) => pre.datasetId !== item.datasetId
-                            ) || []
+                  }}
+                >
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={isDeleted ? 'red.600' : 'myGray.900'}
+                  >
+                    {isDeleted ? t('common:dataset_deleted') : item.name}
+                  </Box>
+
+                  {/* Icon */}
+                  <Box className="controler" display={['flex', 'none']} alignItems={'center'}>
+                    {!isDeleted && (
+                      <MyIconButton
+                        icon={'common/viewLight'}
+                        onClick={() =>
+                          router.push({
+                            pathname: '/dataset/detail',
+                            query: {
+                              datasetId: item.datasetId
+                            }
+                          })
                         }
-                      }));
-                    }}
-                  />
-                </Box>
-              </Flex>
-            ))}
+                      />
+                    )}
+                    <MyDeleteIconButton
+                      onClick={() => {
+                        setAppForm((state) => ({
+                          ...state,
+                          dataset: {
+                            ...state.dataset,
+                            datasets:
+                              state.dataset.datasets?.filter(
+                                (pre) => pre.datasetId !== item.datasetId
+                              ) || []
+                          }
+                        }));
+                      }}
+                    />
+                  </Box>
+                </Flex>
+              );
+            })}
           </Grid>
         </Box>
 
@@ -543,7 +551,8 @@ const EditForm = ({
             datasetId: item.datasetId,
             name: item.name,
             avatar: item.avatar,
-            vectorModel: item.vectorModel
+            vectorModel: item.vectorModel,
+            isDeleted: item.isDeleted
           }))}
           onClose={onCloseDatasetSelect}
           onChange={(e) => {
