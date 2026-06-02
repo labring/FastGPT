@@ -18,6 +18,7 @@
   "permission_settings": "Permission Settings",
   "export_config": "Export Config",
   "create_folder": "New Folder",
+  "unnamed_skill": "Unnamed",
   "skill_name_placeholder": "Enter skill name",
   "skill_avatar_and_name": "Avatar & Name",
   "skill_intro_label": "App Introduction",

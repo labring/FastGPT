@@ -573,5 +573,9 @@
   "workflow.user_file_input": "File Link",
   "workflow.user_file_input_desc": "Links to documents and images uploaded by users.",
   "workflow.user_select": "User Select",
-  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches."
+  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches.",
+  "avatar_and_name": "Avatar & Name",
+  "app_intro": "App Introduction",
+  "app_intro_placeholder": "Describe use cases and access paths",
+  "app_intro_too_long": "App introduction cannot exceed 500 characters"
 }

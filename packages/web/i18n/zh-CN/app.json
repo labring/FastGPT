@@ -573,5 +573,9 @@
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",
-  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线",
+  "avatar_and_name": "头像 & 名称",
+  "app_intro": "应用介绍",
+  "app_intro_placeholder": "介绍使用场景及途径",
+  "app_intro_too_long": "应用介绍不能超过 500 字符"
 }

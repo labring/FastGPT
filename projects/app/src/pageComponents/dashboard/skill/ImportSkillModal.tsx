@@ -83,7 +83,9 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     ({ name, avatar, file }: ValidImportSkillFormType) => {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('name', name);
+      if (name.trim()) {
+        formData.append('name', name.trim());
+      }
       formData.append('avatar', avatar);
       if (parentId) formData.append('parentId', parentId);
       return importSkill(formData);
@@ -102,6 +104,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     if (!data.file) return;
     await onImport({
       ...data,
+      name: data.name.trim(),
       file: data.file
     });
   };
@@ -173,24 +176,110 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
         closeOnOverlayClick={false}
         footer={
           <>
-            <Button variant={'whiteBase'} onClick={onClose}>
+            <Button h={'32px'} variant={'whiteBase'} onClick={onClose}>
               {t('common:Cancel')}
             </Button>
-            <Button isLoading={isImporting} onClick={handleSubmit(handleImport, handleInvalid)}>
+            <Button
+              h={'32px'}
+              isLoading={isImporting}
+              onClick={handleSubmit(handleImport, handleInvalid)}
+            >
               {t('common:Confirm')}
             </Button>
           </>
         }
       >
-        <Flex flexDirection={'column'} gap={6}>
+        <Flex flexDirection={'column'} gap={4}>
           <Box>
-            <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
+            <FormLabel mb={2}>{t('skill:import_skill_select_file')}</FormLabel>
+            {selectedFile ? (
+              <Flex
+                h={'220px'}
+                alignItems={'center'}
+                justifyContent={'center'}
+                gap={2}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                p={3}
+              >
+                <MyIcon
+                  name={'common/importLight'}
+                  w={'24px'}
+                  flexShrink={0}
+                  color={'myGray.500'}
+                />
+                <Box maxW={'260px'} fontSize={'sm'} color={'myGray.700'} isTruncated>
+                  {selectedFile.name}
+                </Box>
+                <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
+                  {formatFileSize(selectedFile.size)}
+                </Box>
+                <Box
+                  cursor={'pointer'}
+                  color={'myGray.400'}
+                  _hover={{ color: 'myGray.700' }}
+                  onClick={() =>
+                    setValue('file', undefined, {
+                      shouldDirty: true,
+                      shouldValidate: true
+                    })
+                  }
+                  flexShrink={0}
+                >
+                  <MyIcon name={'common/closeLight'} w={'16px'} />
+                </Box>
+              </Flex>
+            ) : (
+              <Flex
+                h={'220px'}
+                flexDirection={'column'}
+                alignItems={'center'}
+                justifyContent={'center'}
+                px={3}
+                borderWidth={'1.5px'}
+                borderStyle={'dashed'}
+                borderRadius={'md'}
+                cursor={'pointer'}
+                borderColor={isDragging ? 'primary.600' : 'borderColor.high'}
+                _hover={{ bg: 'primary.50', borderColor: 'primary.600' }}
+                onDragEnter={handleDragEnter}
+                onDragOver={(e) => e.preventDefault()}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={onOpen}
+              >
+                <MyIcon name={'common/uploadFileFill'} w={'32px'} color={'primary.600'} />
+                <Box fontWeight={'bold'} mt={2}>
+                  {isDragging
+                    ? t('file:release_the_mouse_to_upload_the_file')
+                    : t('file:select_and_drag_file_tip')}
+                </Box>
+                <Box color={'myGray.500'} fontSize={'xs'} mt={1}>
+                  {t('skill:import_skill_file_type_tip', {
+                    ext: ACCEPT_TYPES.split(',').join(' ')
+                  })}
+                </Box>
+                {typeof maxUploadBytes === 'number' && (
+                  <Box color={'myGray.500'} fontSize={'xs'}>
+                    {t('skill:import_skill_max_size_tip', {
+                      maxCount: 1,
+                      maxSize: formatFileSize(maxUploadBytes)
+                    })}
+                  </Box>
+                )}
+              </Flex>
+            )}
+          </Box>
+
+          <Box>
+            <FormLabel mb={2}>{t('skill:skill_avatar_and_name')}</FormLabel>
             <Flex alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>
                 <Flex
-                  borderRadius={'6px'}
-                  w={'34px'}
-                  h={'34px'}
+                  borderRadius={'4px'}
+                  w={'32px'}
+                  h={'32px'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                   justifyContent={'center'}
@@ -200,91 +289,20 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
                   cursor={'pointer'}
                   onClick={handleAvatarSelectorOpen}
                 >
-                  <Avatar src={avatar} w={'24px'} borderRadius={'6px'} />
+                  <Avatar src={avatar} w={'24px'} borderRadius={'4px'} />
                 </Flex>
               </MyTooltip>
               <Input
                 flex={1}
-                size={'sm'}
-                autoFocus
-                placeholder={t('skill:skill_name_placeholder')}
+                h={'32px'}
+                placeholder={t('skill:unnamed_skill')}
                 {...register('name', {
-                  required: true,
                   setValueAs: (value: string) => value.trim()
                 })}
               />
             </Flex>
           </Box>
 
-          {selectedFile ? (
-            <Flex
-              alignItems={'center'}
-              gap={2}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              borderRadius={'md'}
-              p={3}
-            >
-              <MyIcon name={'common/importLight'} w={'24px'} flexShrink={0} color={'myGray.500'} />
-              <Box flex={1} fontSize={'sm'} color={'myGray.700'} isTruncated>
-                {selectedFile.name}
-              </Box>
-              <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
-                {formatFileSize(selectedFile.size)}
-              </Box>
-              <Box
-                cursor={'pointer'}
-                color={'myGray.400'}
-                _hover={{ color: 'myGray.700' }}
-                onClick={() =>
-                  setValue('file', undefined, {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  })
-                }
-                flexShrink={0}
-              >
-                <MyIcon name={'common/closeLight'} w={'16px'} />
-              </Box>
-            </Flex>
-          ) : (
-            <Flex
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              px={3}
-              py={7}
-              borderWidth={'1.5px'}
-              borderStyle={'dashed'}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              borderColor={isDragging ? 'primary.600' : 'borderColor.high'}
-              _hover={{ bg: 'primary.50', borderColor: 'primary.600' }}
-              onDragEnter={handleDragEnter}
-              onDragOver={(e) => e.preventDefault()}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={onOpen}
-            >
-              <MyIcon name={'common/uploadFileFill'} w={'32px'} />
-              <Box fontWeight={'bold'} mt={2}>
-                {isDragging
-                  ? t('file:release_the_mouse_to_upload_the_file')
-                  : t('file:select_and_drag_file_tip')}
-              </Box>
-              <Box color={'myGray.500'} fontSize={'xs'} mt={1}>
-                {t('skill:import_skill_file_type_tip', { ext: ACCEPT_TYPES.split(',').join(' ') })}
-              </Box>
-              {typeof maxUploadBytes === 'number' && (
-                <Box color={'myGray.500'} fontSize={'xs'}>
-                  {t('skill:import_skill_max_size_tip', {
-                    maxCount: 1,
-                    maxSize: formatFileSize(maxUploadBytes)
-                  })}
-                </Box>
-              )}
-            </Flex>
-          )}
           <FileInput onSelect={(files) => files[0] && handleFile(files[0])} />
         </Flex>
       </MyModal>

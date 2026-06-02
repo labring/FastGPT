@@ -51,15 +51,19 @@ const ImportSettings = ({ onClose }: Props) => {
               return onClose();
             }
             try {
-              const data = JSON.parse(value);
-              removeUnauthModels({ modules: data.nodes, allowedModels: myModels });
-              await initData(data);
+              const workflowConfig = JSON.parse(value) as Parameters<typeof initData>[0] & {
+                type?: unknown;
+                name?: unknown;
+                intro?: unknown;
+              };
+              await removeUnauthModels({ modules: workflowConfig.nodes, allowedModels: myModels });
+              await initData(workflowConfig);
               toast({
                 title: t('app:import_configs_success'),
                 status: 'success'
               });
               onClose();
-            } catch (error) {
+            } catch {
               toast({
                 title: t('app:import_configs_failed')
               });

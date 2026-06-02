@@ -1,19 +1,17 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useMemo } from 'react';
-import { getAppType } from '@fastgpt/global/core/app/utils';
+import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
-import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
 import { postFetchWorkflow } from '@/web/support/marketing/api';
 import {
@@ -24,26 +22,62 @@ import {
 } from '@/web/support/marketing/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import {
+  type JsonImportModalScene,
+  parseDashboardImportConfig,
+  resolveImportAppType
+} from '@/pageComponents/dashboard/agent/utils/importJson';
 
 type FormType = {
   avatar: string;
   name: string;
+  intro: string;
   workflowStr: string;
 };
 
-const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
+type JsonImportModalProps = {
+  scene: JsonImportModalScene;
+  onClose: () => void;
+};
+
+const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
 
-  const { register, setValue, watch, handleSubmit } = useForm<FormType>({
+  const { register, setValue, getValues, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '',
       name: '',
+      intro: '',
       workflowStr: ''
     }
   });
   const workflowStr = watch('workflowStr');
+
+  const syncImportMetaToForm = useCallback(
+    (value: string) => {
+      try {
+        const config = JSON.parse(value);
+        const { name, intro } =
+          config && typeof config === 'object'
+            ? (config as { name?: unknown; intro?: unknown })
+            : {};
+        const { name: currentName, intro: currentIntro } = getValues();
+
+        // 名称和介绍需要独立判断，避免其中一个已有输入时阻止另一个自动回填。
+        if (!currentName.trim() && typeof name === 'string' && name.trim()) {
+          setValue('name', name);
+        }
+        if (!currentIntro.trim() && typeof intro === 'string') {
+          setValue('intro', intro);
+        }
+      } catch {
+        // JSON 编辑器负责展示格式错误；自动回填只在配置可解析时执行。
+      }
+    },
+    [getValues, setValue]
+  );
 
   const { loading: isFetching } = useRequest(
     async () => {
@@ -51,11 +85,15 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       if (!url) return;
 
       const workflowData = await postFetchWorkflow({ url });
+      const workflowStr = JSON.stringify(workflowData, null, 2);
 
-      setValue('workflowStr', JSON.stringify(workflowData, null, 2));
+      setValue('workflowStr', workflowStr);
 
       const utmParams = getUtmParams();
-      if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
+      if (utmParams.shortUrlContent && !getValues('name').trim()) {
+        setValue('name', utmParams.shortUrlContent);
+      }
+      syncImportMetaToForm(workflowStr);
     },
     { manual: false }
   );
@@ -79,53 +117,46 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const selectedAvatar = useMemo(() => {
     if (avatar) return avatar;
 
-    const defaultVal = createAppTypeMap[AppTypeEnum.simple].icon;
+    const defaultType = scene === 'tool' ? AppTypeEnum.workflowTool : AppTypeEnum.simple;
+    const defaultVal = createAppTypeMap[defaultType].icon;
     if (!workflowStr) return defaultVal;
 
     try {
       const workflow = JSON.parse(workflowStr);
-      const type = getAppType(workflow);
+      const type = resolveImportAppType(workflow);
       if (type) return createAppTypeMap[type].icon;
       return defaultVal;
-    } catch (err) {
+    } catch {
       return defaultVal;
     }
-  }, [avatar, workflowStr]);
+  }, [avatar, scene, workflowStr]);
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest(
-    async ({ name, workflowStr }: FormType) => {
-      const { workflow, appType } = await (async () => {
-        try {
-          const workflow = JSON.parse(workflowStr);
-          const appType = getAppType(workflow);
+    async ({ name, intro, workflowStr }: FormType) => {
+      if ((intro || '').length > 500) {
+        throw new Error(t('app:app_intro_too_long'));
+      }
 
-          if (!appType) {
-            return Promise.reject(t('app:type_not_recognized'));
-          }
+      let config: unknown;
+      try {
+        config = JSON.parse(workflowStr);
+      } catch {
+        throw new Error(t('app:invalid_json_format'));
+      }
 
-          if (appType === AppTypeEnum.simple) {
-            return {
-              workflow: form2AppWorkflow(workflow, t),
-              appType
-            };
-          }
-
-          return {
-            workflow,
-            appType
-          };
-        } catch (err) {
-          return Promise.reject(t('app:invalid_json_format'));
-        }
-      })();
+      const { workflow, appType } = parseDashboardImportConfig({
+        config,
+        t
+      });
 
       return postCreateApp({
         parentId,
         avatar: selectedAvatar,
-        name,
+        name: (name || '').trim() || t('app:unnamed_app'),
+        intro: (intro || '').trim(),
         type: appType,
         modules: workflow.nodes,
-        edges: workflow.edges,
+        edges: workflow.edges || [],
         chatConfig: workflow.chatConfig,
         utmParams: getUtmParams()
       });
@@ -145,51 +176,80 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     <>
       <MyModal
         isOpen
+        onClose={handleCloseJsonImportModal}
         isLoading={isCreating || isFetching}
         title={t('app:type.Import from json')}
-        iconSrc="common/importLight"
-        iconColor={'primary.600'}
+        size={'md'}
+        isCentered
+        closeOnOverlayClick={false}
+        footer={
+          <>
+            <Button size={'md'} variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
+              {t('common:Cancel')}
+            </Button>
+            <Button size={'md'} onClick={handleSubmit(onSubmit)}>
+              {t('common:Confirm')}
+            </Button>
+          </>
+        }
       >
-        <ModalBody>
-          <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common:input_name')}
-          </Box>
-          <Flex mt={2} alignItems={'center'}>
-            <MyTooltip label={t('common:set_avatar')}>
-              <Avatar
-                flexShrink={0}
-                src={selectedAvatar}
-                w={['1.75rem', '2.25rem']}
-                h={['1.75rem', '2.25rem']}
-                cursor={'pointer'}
-                borderRadius={'md'}
-                onClick={handleAvatarSelectorOpen}
+        <Flex flexDirection={'column'} gap={4}>
+          <ImportAppConfigEditor
+            value={workflowStr}
+            onChange={(value) => setValue('workflowStr', value)}
+            onBlur={syncImportMetaToForm}
+            onFileChange={syncImportMetaToForm}
+            rows={12}
+            textareaHeight={'150px'}
+          />
+
+          <Box>
+            <Box mb={2} fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
+              {t('app:avatar_and_name')}
+            </Box>
+            <Flex alignItems={'center'}>
+              <MyTooltip label={t('common:set_avatar')}>
+                <Flex
+                  flexShrink={0}
+                  w={'32px'}
+                  h={'32px'}
+                  border={'1px solid'}
+                  borderColor={'myGray.200'}
+                  justifyContent={'center'}
+                  alignItems={'center'}
+                  p={'4px'}
+                  cursor={'pointer'}
+                  borderRadius={'4px'}
+                  onClick={handleAvatarSelectorOpen}
+                >
+                  <Avatar src={selectedAvatar} w={'24px'} borderRadius={'4px'} />
+                </Flex>
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                h={'32px'}
+                bg={'white'}
+                placeholder={t('app:unnamed_app')}
+                {...register('name')}
               />
-            </MyTooltip>
-            <Input
-              flex={1}
-              ml={3}
-              autoFocus
-              bg={'myWhite.600'}
-              {...register('name', {
-                required: t('common:core.app.error.App name can not be empty')
-              })}
-            />
-          </Flex>
-          <Box mt={5}>
-            <ImportAppConfigEditor
-              value={workflowStr}
-              onChange={(e) => setValue('workflowStr', e)}
-              rows={10}
+            </Flex>
+          </Box>
+
+          <Box>
+            <Box mb={2} fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
+              {t('app:app_intro')}
+            </Box>
+            <Textarea
+              h={'60px'}
+              minH={'60px'}
+              resize={'none'}
+              bg={'white'}
+              placeholder={t('app:app_intro_placeholder')}
+              {...register('intro')}
             />
           </Box>
-        </ModalBody>
-        <ModalFooter gap={4}>
-          <Button variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
-            {t('common:Cancel')}
-          </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
-        </ModalFooter>
+        </Flex>
       </MyModal>
       <AvatarUploader />
     </>
