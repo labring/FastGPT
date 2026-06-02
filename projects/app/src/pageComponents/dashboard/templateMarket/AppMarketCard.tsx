@@ -32,7 +32,6 @@ const AppMarketCard = ({ item, templateTags, onClick }: AppMarketCardProps) => {
       tags={visibleTags}
       isMarketFeatured={item.isMarketFeatured}
       experienceUrl={item.experienceUrl}
-      onClick={() => onClick(item)}
       hoverAction={
         <Button
           height="24px"

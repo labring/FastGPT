@@ -38,6 +38,8 @@ type EllipsisTooltipProps = {
   lineClamp?: number;
   /** 透传给 Tooltip 的额外属性 */
   tooltipProps?: Omit<TooltipProps, 'label' | 'isDisabled' | 'children'>;
+  /** 溢出状态变化时的回调 */
+  onOverflowChange?: (isOverflowed: boolean) => void;
 } & Omit<BoxProps, 'children'>;
 
 const EllipsisTooltip = ({
@@ -46,21 +48,29 @@ const EllipsisTooltip = ({
   lineClamp = 1,
   tooltipProps,
   forceShow,
+  onOverflowChange,
   ...boxProps
 }: EllipsisTooltipProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isOverflowed, setIsOverflowed] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  
+  const updateOverflow = (el: HTMLElement) => {
+    const overflow = isOverflow(el);
+    setIsOverflowed(overflow);
+    onOverflowChange?.(overflow);
+  };
 
   useLayoutEffect(() => {
-    if (ref.current) setIsOverflowed(isOverflow(ref.current));
+    if (ref.current) updateOverflow(ref.current);
   }, [label, lineClamp]);
 
   const handleMouseEnter = () => {
     if (ref.current) {
       const overflow = isOverflow(ref.current);
       setIsOverflowed(overflow);
-      if (overflow) setIsOpen(true);
+      onOverflowChange?.(overflow);
+      setIsOpen(overflow || !!forceShow);
     }
   };
 
