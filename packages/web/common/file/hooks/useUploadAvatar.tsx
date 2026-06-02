@@ -7,17 +7,19 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
 export const useUploadAvatar = (
-  api: (params: { filename: string }) => Promise<CreatePostPresignedUrlResponseType>,
+  api: (params: { filename: string; autoExpired?: boolean }) => Promise<CreatePostPresignedUrlResponseType>,
   {
     onSuccess,
     maxW = 300,
     maxH = 300,
-    maxSize = 1024 * 500 // 500KB
+    maxSize = 1024 * 500, // 500KB
+    autoExpired
   }: {
     onSuccess?: (avatar: string) => void;
     maxW?: number;
     maxH?: number;
     maxSize?: number;
+    autoExpired?: boolean;
   } = {}
 ) => {
   const { toast } = useToast();
@@ -48,7 +50,7 @@ export const useUploadAvatar = (
           }),
           file.name
         );
-        const { url, key, headers } = await api({ filename: file.name });
+        const { url, key, headers } = await api({ filename: file.name, autoExpired });
 
         await putFileToS3({
           url,
