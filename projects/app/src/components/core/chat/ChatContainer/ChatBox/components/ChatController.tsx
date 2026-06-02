@@ -189,7 +189,7 @@ const ChatController = ({
                 </MyTooltip>
               );
             })()}
-          {!!onMark && !isAssistantType && (
+          {/* {!!onMark && !isAssistantType && (
             <MyTooltip label={t('common:core.chat.Mark')}>
               <MyIcon
                 {...controlIconStyle}
@@ -198,7 +198,7 @@ const ChatController = ({
                 onClick={onMark}
               />
             </MyTooltip>
-          )}
+          )} */}
           {chat.obj === ChatRoleEnum.AI && (
             <>
               {/* 日志模式下，始终展示赞/踩 */}
