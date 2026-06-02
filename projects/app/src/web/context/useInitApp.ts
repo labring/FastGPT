@@ -63,7 +63,7 @@ export const useInitApp = () => {
     couponCode
   } = router.query as MarketingQueryParams;
 
-  const { loadGitStar, setInitd, feConfigs } = useSystemStore();
+  const { setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
@@ -103,8 +103,6 @@ export const useInitApp = () => {
         `GitHub：https://github.com/labring/FastGPT`
       );
     }
-
-    loadGitStar();
 
     setScripts(scripts || []);
     setInitd();
