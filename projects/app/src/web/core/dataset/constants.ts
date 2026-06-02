@@ -3,7 +3,6 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
-  DatasetTypeMap,
   DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetCollectionItemType, DatasetItemType } from '@fastgpt/global/core/dataset/type';
@@ -18,7 +17,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   tmbId: '',
   updateTime: new Date(),
   type: DatasetTypeEnum.dataset,
-  avatar: DatasetTypeMap[DatasetTypeEnum.dataset].avatar,
+  avatar: '/icon/logo.svg',
   name: '',
   intro: '',
   status: DatasetStatusEnum.active,
@@ -42,7 +41,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     tmbId: '',
     updateTime: new Date(),
     type: DatasetTypeEnum.dataset,
-    avatar: DatasetTypeMap[DatasetTypeEnum.dataset].avatar,
+    avatar: '/icon/logo.svg',
     name: '',
     intro: '',
     vectorModel: defaultVectorModels[0].model,

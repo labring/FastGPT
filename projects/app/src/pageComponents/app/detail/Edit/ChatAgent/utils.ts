@@ -40,23 +40,6 @@ import {
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-
-/**
- * 提取数据集核心配置，过滤掉已删除状态等无关字段。
- * 用于在保存工作流时精简数据集参数结构。
- */
-const stripDatasetDeletedState = ({
-  datasetId,
-  avatar,
-  name,
-  vectorModel
-}: SelectedDatasetType) => ({
-  datasetId,
-  avatar,
-  name,
-  vectorModel
-});
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -340,7 +323,7 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.object,
               value: AppFormEditFormV1TypeSchema.shape.dataset.parse({
-                datasets: data.dataset.datasets.map(stripDatasetDeletedState),
+                datasets: data.dataset.datasets,
                 similarity: data.dataset.similarity,
                 limit: data.dataset.limit,
                 searchMode: data.dataset.searchMode,

@@ -86,7 +86,7 @@ const DatasetSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: () => DatasetTypeMap[DatasetTypeEnum.dataset].avatar
+    default: '/icon/logo.svg'
   },
   name: {
     type: String,

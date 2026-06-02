@@ -219,7 +219,7 @@ describe('WorkflowComponents utils', () => {
       ]);
     });
 
-    it('should strip skill deleted marker when saving workflow', () => {
+    it('should keep selected skill snapshot for later server-side save formatting', () => {
       const nodes = [
         {
           data: {
@@ -259,7 +259,8 @@ describe('WorkflowComponents utils', () => {
         {
           skillId: 'skill-1',
           name: 'Deleted Skill',
-          description: ''
+          description: '',
+          isDeleted: true
         },
         {
           skillId: 'skill-2',
@@ -302,7 +303,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(referenceValue);
     });
 
-    it('should strip dataset deleted marker when saving selected datasets', () => {
+    it('should keep selected dataset snapshot for later server-side save formatting', () => {
       const nodes = [
         {
           data: {
@@ -348,7 +349,8 @@ describe('WorkflowComponents utils', () => {
           name: 'Deleted Dataset',
           vectorModel: {
             model: 'text-embedding'
-          }
+          },
+          isDeleted: true
         }
       ]);
     });

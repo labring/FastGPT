@@ -41,20 +41,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
-
-const stripDatasetDeletedState = ({
-  datasetId,
-  avatar,
-  name,
-  vectorModel
-}: SelectedDatasetType) => ({
-  datasetId,
-  avatar,
-  name,
-  vectorModel
-});
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({
@@ -217,7 +204,7 @@ export function form2AppWorkflow(
 } {
   const datasetNodeId = 'iKBoX2vIzETU';
   const aiChatNodeId = '7BdojPlukIQw';
-  const selectedDatasets = data.dataset.datasets.map(stripDatasetDeletedState);
+  const selectedDatasets = data.dataset.datasets;
   const modelData = getWebLLMModel(data.aiSettings.model);
   const modelMultimodal = {
     vision: !!modelData?.vision,

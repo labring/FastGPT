@@ -1,12 +1,10 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { getChildAppPreviewNode } from './tool/controller';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -59,30 +57,24 @@ export async function rewriteAppWorkflowToDetail({
   lang?: localeType;
 }) {
   const datasetIdSet = new Set<string>();
-  const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) => {
-    return input.renderTypeList?.[input.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference;
-  };
-  const isSelectedDatasetItem = (item: unknown): item is SelectedDatasetType => {
-    return (
-      !!item &&
-      typeof item === 'object' &&
-      typeof (item as { datasetId?: unknown }).datasetId === 'string'
-    );
-  };
-  const getSelectedDatasetIds = (value: unknown) => {
-    if (!value) return [];
+  type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
+    Partial<SelectedDatasetType>;
 
-    const list = Array.isArray(value) ? value : [value];
-    return list
-      .map((item) => {
-        if (!item || typeof item !== 'object') return;
-        const datasetId = (item as { datasetId?: unknown }).datasetId;
-        return typeof datasetId === 'string' && datasetId ? datasetId : undefined;
-      })
-      .filter((id): id is string => !!id);
-  };
-  const collectSelectedDatasetIds = (value: unknown) => {
-    getSelectedDatasetIds(value).forEach((id) => datasetIdSet.add(id));
+  /**
+   * 收集输入值中的数据集 ID 并添加到全局集合中。
+   * 用于后续批量查询数据集元数据。
+   * @param value - 保存阶段已压缩好的知识库选择数组，兼容历史单对象格式
+   */
+  const collectSelectedDatasetIds = (
+    value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
+  ) => {
+    const datasetIds = Array.isArray(value)
+      ? value.map((v) => v?.datasetId).filter((id) => !!id && typeof id === 'string')
+      : value?.datasetId
+        ? [String(value.datasetId)]
+        : [];
+
+    datasetIds.forEach((id) => datasetIdSet.add(id));
   };
 
   const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
@@ -281,7 +273,7 @@ export async function rewriteAppWorkflowToDetail({
       return;
 
     node.inputs.forEach((input) => {
-      if (input.key === NodeInputKeyEnum.datasetSelectList && !isReferenceInput(input)) {
+      if (input.key === NodeInputKeyEnum.datasetSelectList && !checkInputIsReference(input)) {
         collectSelectedDatasetIds(input.value);
       }
       if (input.key === NodeInputKeyEnum.datasetParams) {
@@ -307,12 +299,15 @@ export async function rewriteAppWorkflowToDetail({
    * @param item - 待格式化的数据集选择项
    * @returns 包含完整信息（头像、名称、向量模型）及删除状态的数据集对象
    */
-  const formatSelectedDataset = (item: SelectedDatasetType): SelectedDatasetType => {
+  const formatSelectedDataset = (item: SelectedDatasetSnapshot): SelectedDatasetType => {
     const data = datasetMap.get(String(item.datasetId));
     if (!data || data.isDeleted) {
+      // 保存前会压缩成 { datasetId }，物理删除后没有快照时需要补齐合法占位。
       return {
-        ...item,
+        datasetId: item.datasetId,
         avatar: defaultDeletedDatasetAvatar,
+        name: item.name || '',
+        vectorModel: item.vectorModel || getEmbeddingModel(),
         isDeleted: true
       };
     }
@@ -327,21 +322,16 @@ export async function rewriteAppWorkflowToDetail({
   };
 
   /**
-   * 标准化并格式化数据集选择值，过滤无效项并补充元数据
-   * @param value - 原始数据集选择值（可能为单个或多个）
-   * @returns 格式化后的数据集列表，包含完整信息及删除状态标记；非知识库选择值返回 undefined 以保持原值
+   * 标准化并格式化数据集选择值，补充元数据
+   * @param value - 保存阶段已压缩好的知识库选择数组，兼容历史单对象格式
+   * @returns 格式化后的数据集列表，包含完整信息及删除状态标记
    */
-  const formatSelectedDatasetValue = (value: unknown): SelectedDatasetType[] | undefined => {
-    if (!value) return [];
+  const formatSelectedDatasetValue = (
+    value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
+  ): SelectedDatasetType[] | undefined => {
+    if (!value) return;
 
-    const list = Array.isArray(value) ? value : [value];
-
-    // 引用变量也是数组结构（如 [nodeId, outputKey]），不能按知识库列表格式化。
-    if (!list.every(isSelectedDatasetItem)) {
-      return;
-    }
-
-    return list.map(formatSelectedDataset);
+    return Array.isArray(value) ? value.map(formatSelectedDataset) : [formatSelectedDataset(value)];
   };
 
   // Rewrite dataset ids, add dataset info to nodes
@@ -354,7 +344,7 @@ export async function rewriteAppWorkflowToDetail({
     }
 
     node.inputs.forEach((item) => {
-      if (item.key === NodeInputKeyEnum.datasetSelectList && !isReferenceInput(item)) {
+      if (item.key === NodeInputKeyEnum.datasetSelectList && !checkInputIsReference(item)) {
         const value = formatSelectedDatasetValue(item.value);
         if (value) {
           item.value = value;

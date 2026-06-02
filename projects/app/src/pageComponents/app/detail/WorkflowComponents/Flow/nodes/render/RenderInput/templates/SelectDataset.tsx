@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure } from '@chakra-ui/react';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
@@ -11,6 +10,7 @@ import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import DatasetCard from '@/components/core/app/DatasetCard';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -52,6 +52,21 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     });
   }, [inputs]);
 
+  const onDeleteDataset = useCallback(
+    (datasetId: string) => {
+      onChangeNode({
+        nodeId,
+        key: item.key,
+        type: 'updateInput',
+        value: {
+          ...item,
+          value: selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId)
+        }
+      });
+    },
+    [item, nodeId, onChangeNode, selectedDatasets]
+  );
+
   const Render = useMemo(() => {
     return (
       <>
@@ -68,39 +83,9 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
           >
             {t('common:Choose')}
           </Button>
-          {selectedDatasets.map((item) => {
-            const isDeleted = !!item.isDeleted;
-
-            return (
-              <Flex
-                key={item.datasetId}
-                alignItems={'center'}
-                h={10}
-                boxShadow={'sm'}
-                bg={'white'}
-                border={'base'}
-                borderColor={isDeleted ? 'red.600' : undefined}
-                px={2}
-                borderRadius={'md'}
-                _hover={{
-                  borderColor: isDeleted ? 'red.600' : 'primary.300'
-                }}
-              >
-                <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                <Box
-                  ml={1.5}
-                  flex={'1 0 0'}
-                  w={0}
-                  className="textEllipsis"
-                  fontWeight={'bold'}
-                  fontSize={['sm', 'sm']}
-                  color={isDeleted ? 'red.600' : undefined}
-                >
-                  {isDeleted ? t('common:dataset_deleted') : item.name}
-                </Box>
-              </Flex>
-            );
-          })}
+          {selectedDatasets.map((dataset) => (
+            <DatasetCard key={dataset.datasetId} dataset={dataset} onDelete={onDeleteDataset} />
+          ))}
         </Grid>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
@@ -134,6 +119,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     onChangeNode,
     onCloseDatasetSelect,
     onOpenDatasetSelect,
+    onDeleteDataset,
     selectedDatasets,
     t
   ]);

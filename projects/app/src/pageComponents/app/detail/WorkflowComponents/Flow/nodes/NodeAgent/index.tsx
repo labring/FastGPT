@@ -46,6 +46,7 @@ import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag'
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import DatasetCard from '@/components/core/app/DatasetCard';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -866,39 +867,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     >
                       {t('common:Choose')}
                     </Button>
-                    {selectedDatasets.map((dataset) => {
-                      const isDeleted = !!dataset.isDeleted;
-
-                      return (
-                        <Flex
-                          key={dataset.datasetId}
-                          alignItems={'center'}
-                          h={10}
-                          boxShadow={'sm'}
-                          bg={'white'}
-                          border={'base'}
-                          borderColor={isDeleted ? 'red.600' : undefined}
-                          px={2}
-                          borderRadius={'md'}
-                          _hover={{
-                            borderColor: isDeleted ? 'red.600' : 'primary.300'
-                          }}
-                        >
-                          <Avatar src={dataset.avatar} w={'18px'} borderRadius={'xs'} />
-                          <Box
-                            ml={1.5}
-                            flex={'1 0 0'}
-                            w={0}
-                            className="textEllipsis"
-                            fontWeight={'bold'}
-                            fontSize={['sm', 'sm']}
-                            color={isDeleted ? 'red.600' : undefined}
-                          >
-                            {isDeleted ? t('common:dataset_deleted') : dataset.name}
-                          </Box>
-                        </Flex>
-                      );
-                    })}
+                    {selectedDatasets.map((dataset) => (
+                      <DatasetCard key={dataset.datasetId} dataset={dataset} />
+                    ))}
                   </Grid>
                   {isOpenDatasetSelect && (
                     <DatasetSelectModal

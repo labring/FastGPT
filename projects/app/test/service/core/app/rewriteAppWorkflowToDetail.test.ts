@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -10,7 +11,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  AppFormEditFormType,
+  SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 
@@ -247,6 +251,107 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(datasetSelectInput.value).toEqual(referenceValue);
   });
 
+  it('刷新 ChatAgent 的知识库参数快照信息', async () => {
+    const user = await getUser(`agent-dataset-params-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Current Dataset Name',
+      avatar: '/icon/current-dataset.svg',
+      vectorModel: 'text-embedding-3-small',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    const datasetParamsInput = {
+      key: NodeInputKeyEnum.datasetParams,
+      value: {
+        datasets: [
+          {
+            datasetId: String(dataset._id),
+            avatar: 'old-avatar',
+            name: 'Old Dataset Name',
+            vectorModel: {
+              model: 'old-model'
+            }
+          }
+        ]
+      }
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: []
+          },
+          datasetParamsInput
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    const rewrittenDatasetParams = datasetParamsInput.value as AppFormEditFormType['dataset'];
+
+    expect(rewrittenDatasetParams.datasets).toEqual([
+      {
+        datasetId: String(dataset._id),
+        name: 'Current Dataset Name',
+        avatar: '/icon/current-dataset.svg',
+        vectorModel: getEmbeddingModel('text-embedding-3-small'),
+        isDeleted: false
+      }
+    ]);
+  });
+
+  it('兼容旧版单对象知识库选择项并补齐详情快照', async () => {
+    const user = await getUser(`legacy-single-dataset-detail-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Legacy Dataset Name',
+      avatar: '/icon/legacy-dataset.svg',
+      vectorModel: 'text-embedding-3-small',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      value: {
+        datasetId: String(dataset._id)
+      }
+    };
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [datasetSelectInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(datasetSelectInput.value).toEqual([
+      {
+        datasetId: String(dataset._id),
+        name: 'Legacy Dataset Name',
+        avatar: '/icon/legacy-dataset.svg',
+        vectorModel: getEmbeddingModel('text-embedding-3-small'),
+        isDeleted: false
+      }
+    ]);
+  });
+
   it('已删除知识库在 app detail 改写阶段使用通用知识库默认头像', async () => {
     const user = await getUser(`deleted-dataset-detail-${getNanoid(6)}`);
     const deletedDataset = await MongoDataset.create({
@@ -299,6 +404,57 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       {
         datasetId: deletedDatasetId,
         name: 'Deleted Dataset Snapshot',
+        avatar: DatasetTypeMap[DatasetTypeEnum.dataset].avatar,
+        vectorModel: {
+          model: 'text-embedding-3-small'
+        },
+        isDeleted: true
+      }
+    ]);
+  });
+
+  it('缺失知识库在 app detail 改写阶段保留合法快照并标记删除态', async () => {
+    const user = await getUser(`missing-dataset-detail-${getNanoid(6)}`);
+    const missingDataset = await MongoDataset.create({
+      name: 'Missing Dataset',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    const missingDatasetId = String(missingDataset._id);
+    await MongoDataset.deleteOne({ _id: missingDataset._id });
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      value: [
+        {
+          datasetId: missingDatasetId,
+          name: 'Missing Dataset Snapshot',
+          avatar: '/icon/snapshot.svg',
+          vectorModel: {
+            model: 'text-embedding-3-small'
+          }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [datasetSelectInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(datasetSelectInput.value).toEqual([
+      {
+        datasetId: missingDatasetId,
+        name: 'Missing Dataset Snapshot',
         avatar: DatasetTypeMap[DatasetTypeEnum.dataset].avatar,
         vectorModel: {
           model: 'text-embedding-3-small'
