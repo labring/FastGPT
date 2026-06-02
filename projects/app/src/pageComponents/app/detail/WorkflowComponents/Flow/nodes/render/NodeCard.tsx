@@ -382,8 +382,6 @@ const NodeCard = (props: Props) => {
 
                     {childAppId && (
                       <Button
-                        className="node-hover-controller"
-                        visibility={'hidden'}
                         mr={2}
                         variant={'whiteBase'}
                         size={'sm'}
