@@ -333,7 +333,7 @@ const HomeChatWindow = () => {
                 ? selectedTools.length > 0
                   ? t('chat:home.tools', { num: selectedTools.length })
                   : t('chat:home.select_tools')
-                : `：${selectedTools.length}`}
+                : t('chat:home.tools', { num: selectedTools.length })}
             </MenuButton>
             <MenuList px={2}>
               {availableTools.map((tool) => {
