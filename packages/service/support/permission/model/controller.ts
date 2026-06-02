@@ -86,12 +86,6 @@ const getModelPermissionFromRole = ({
     return new ModelPermission({ isOwner: true });
   }
 
-  if (!model.isCustom) {
-    return new ModelPermission({
-      role: model.isShared ? ReadRoleVal : NullRoleVal
-    });
-  }
-
   const isOwner =
     String(model.tmbId) === String(tmbId) ||
     (teamPer?.isOwner && model.teamId && String(model.teamId) === String(teamId));
@@ -124,7 +118,6 @@ export const getModelPermission = async ({
 }) => {
   if (
     isRoot ||
-    !model.isCustom ||
     String(model.tmbId) === String(tmbId) ||
     (teamPer?.isOwner && model.teamId && String(model.teamId) === String(teamId))
   ) {
