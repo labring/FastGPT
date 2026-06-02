@@ -63,9 +63,11 @@ const TTSSelect = ({
           alias: modelName,
           avatar: providerData.avatar,
           label: (
-            <HStack minW={0} maxW={'100%'} spacing={2}>
-              <Avatar borderRadius={'0'} w={'1.25rem'} src={providerData.avatar} />
-              <Box noOfLines={1}>{modelName}</Box>
+            <HStack minW={0} maxW={'100%'}>
+              <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} src={providerData.avatar} />
+              <Box minW={0} className={'textEllipsis'}>
+                {modelName}
+              </Box>
             </HStack>
           ),
           value: model.model,
@@ -93,21 +95,24 @@ const TTSSelect = ({
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
     const voice = provider.children.find((item) => item.value === formatValue[1]);
-    const providerText =
-      provider.alias ||
-      (typeof provider.label === 'string' ? provider.label : String(provider.value));
-    const selectedText = voice ? `${providerText} / ${voice.label}` : providerText;
 
     return (
-      <Box minW={0} maxW={'100%'}>
-        <Flex maxW={['200px', '250px']} minW={0} alignItems={'center'}>
-          {provider.avatar && (
-            <Avatar borderRadius={'0'} w={'1.25rem'} flexShrink={0} mr={2} src={provider.avatar} />
-          )}
-          <Box minW={0} noOfLines={1}>
-            {selectedText}
-          </Box>
-        </Flex>
+      <Box w={'100%'} minW={0}>
+        {voice ? (
+          <Flex maxW={['180px', '250px']} minW={0} overflow={'hidden'} alignItems={'center'}>
+            <Box minW={0} flex={'1 1 auto'} overflow={'hidden'}>
+              {provider.label}
+            </Box>
+            <Box px={1} flexShrink={0}>
+              /
+            </Box>
+            <Box minW={0} flex={'1 1 auto'} className={'textEllipsis'}>
+              {voice.label}
+            </Box>
+          </Flex>
+        ) : (
+          provider.label
+        )}
       </Box>
     );
   }, [formatValue, selectorList]);
@@ -140,17 +145,19 @@ const TTSSelect = ({
   }, [cancelAudio, onClose]);
 
   return (
-    <Flex alignItems={'center'}>
+    <Flex alignItems={'center'} w={'100%'} minW={0}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
       <FormLabel>{t('common:core.app.TTS')}</FormLabel>
       <ChatFunctionTip type={'tts'} />
-      <Box flex={1} />
+      <Box flex={'1 1 0'} minW={3} />
       <MyTooltip label={t('common:core.app.Select TTS')}>
         <Button
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
+          minW={0}
+          maxW={['180px', '260px']}
           onClick={onOpen}
           color={'myGray.600'}
         >
