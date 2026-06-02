@@ -86,7 +86,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       tmbId: runningAppInfo.tmbId,
       per: ReadPermissionVal
     });
-    const { nodes, edges, chatConfig } = await getAppVersionById({
+    const {
+      nodes,
+      edges,
+      chatConfig,
+      versionId: resolvedVersionId
+    } = await getAppVersionById({
       appId,
       versionId: version,
       app: appData
@@ -208,7 +213,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       tmbId: String(appData.tmbId),
       nodes,
       appChatConfig: chatConfig,
-      versionId: version,
+      versionId: resolvedVersionId,
       variables: childrenRunVariables,
       newTitle: (typeof userChatInput === 'string' ? userChatInput : '').slice(0, 8),
       source: ChatSourceEnum.workflow,
