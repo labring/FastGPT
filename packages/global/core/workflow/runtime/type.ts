@@ -236,7 +236,21 @@ export const DispatchNodeResponseSchema = z
     // text2sql result
     sqlResult: z.array(z.any()).optional().meta({ description: 'SQL 检索结果' }),
     // agentic search result
-    agenticSearchResult: z.any().optional().meta({ description: '智能检索结果' }),
+    agenticSearchResult: z
+      .object({
+        reasoningText: z.string().meta({ description: '思考过程文本' }),
+        searchCount: z.number().meta({ description: '实际检索轮次' }),
+        toolCallCount: z.number().meta({ description: 'Tool 调用总次数' }),
+        llmModelId: z.string().optional().meta({ description: '使用的 LLM 模型 ID' }),
+        llmInputTokens: z.number().optional().meta({ description: 'LLM 输入 token 数' }),
+        llmOutputTokens: z.number().optional().meta({ description: 'LLM 输出 token 数' }),
+        playbook: z.any().optional().meta({ description: '检索策略描述（来自 diting-rag-ts）' }),
+        executionPath: z.any().optional().meta({ description: '执行路径（来自 diting-rag-ts）' }),
+        confidence: z.any().optional().meta({ description: '置信度（来自 diting-rag-ts）' }),
+        queryLanguage: z.string().optional().meta({ description: '用户查询语言（ISO 639-1）' })
+      })
+      .optional()
+      .meta({ description: '智能检索结果' }),
     retrievalMode: z.enum(DatasetRetrievalModeEnum).optional().meta({ description: '检索模式' }),
     queryLanguage: z
       .string()
