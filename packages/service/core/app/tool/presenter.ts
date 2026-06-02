@@ -45,11 +45,16 @@ export async function getToolPreviewNode({
       : []),
     ...(toolDetail.inputs ?? [])
   ];
+  const isWorkflowTool = !!toolDetail.associatedPluginId;
 
   return {
     id: getNanoid(),
     pluginId: pluginId,
-    flowNodeType: toolDetail.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+    flowNodeType: isWorkflowTool
+      ? FlowNodeTypeEnum.pluginModule
+      : toolDetail.isToolSet
+        ? FlowNodeTypeEnum.toolSet
+        : FlowNodeTypeEnum.tool,
     avatar: toolDetail.avatar,
     name: toolDetail.name,
     intro: toolDetail.intro,
@@ -70,7 +75,7 @@ export async function getToolPreviewNode({
     systemKeyCost: toolDetail.systemKeyCost,
     hasTokenFee: toolDetail.hasTokenFee,
     hasSystemSecret: toolDetail.hasSystemSecret,
-    isFolder: toolDetail.isToolSet,
+    isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: toolDetail.status,
     inputs,
 
@@ -80,24 +85,28 @@ export async function getToolPreviewNode({
         : [...toolDetail.outputs, Output_Template_Error_Message]
       : [],
 
-    toolConfig: {
-      ...(toolDetail.isToolSet
-        ? {
-            systemToolSet: {
-              toolId: pluginId,
-              toolList:
-                toolDetail.children?.map((child) => ({
-                  description: child.description ?? '',
-                  name: child.name,
-                  toolId: child.id
-                })) ?? []
-            }
+    ...(isWorkflowTool
+      ? {}
+      : {
+          toolConfig: {
+            ...(toolDetail.isToolSet
+              ? {
+                  systemToolSet: {
+                    toolId: pluginId,
+                    toolList:
+                      toolDetail.children?.map((child) => ({
+                        description: child.description ?? '',
+                        name: child.name,
+                        toolId: child.id
+                      })) ?? []
+                  }
+                }
+              : {
+                  systemTool: {
+                    toolId: pluginId
+                  }
+                })
           }
-        : {
-            systemTool: {
-              toolId: pluginId
-            }
-          })
-    }
+        })
   } satisfies FlowNodeTemplateType;
 }

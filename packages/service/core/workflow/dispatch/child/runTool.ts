@@ -72,6 +72,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         source: 'system', // TODO : 后续用户调用时传 teamId
         version
       });
+
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
@@ -135,7 +136,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         }
       });
 
-      let result = res.output || {};
+      const result = (res.output as any) || {};
 
       if (res.error) {
         // 适配旧版：旧版本没有catchError，部分工具会正常返回 error 字段作为响应。

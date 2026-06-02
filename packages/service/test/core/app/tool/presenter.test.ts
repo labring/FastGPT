@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   getSystemToolDetail: vi.fn(),
@@ -113,5 +116,48 @@ describe('getToolPreviewNode', () => {
 
     expect(result.inputs).toHaveLength(1);
     expect(result.inputs[0]?.key).toBe('city');
+  });
+
+  it('returns plugin module preview for commercial workflow tools', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'commercial-workflow-tool',
+      version: 'workflow-version',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      avatar: 'workflow.svg',
+      name: 'Workflow Tool',
+      intro: 'Workflow tool intro',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Run workflow tool',
+      currentCost: 1,
+      systemKeyCost: 0,
+      hasTokenFee: true,
+      hasSystemSecret: false,
+      associatedPluginId: 'app-id',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: 'string',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          required: true
+        }
+      ],
+      outputs: []
+    });
+
+    const result = await getToolPreviewNode({
+      pluginId: 'commercial-workflow-tool',
+      versionId: 'workflow-version',
+      lang: 'en'
+    });
+
+    expect(result.flowNodeType).toBe(FlowNodeTypeEnum.pluginModule);
+    expect(result.pluginId).toBe('commercial-workflow-tool');
+    expect(result.toolConfig).toBeUndefined();
+    expect(result.isFolder).toBe(false);
+    expect(result.inputs[0]?.key).toBe('query');
   });
 });
