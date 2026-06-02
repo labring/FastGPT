@@ -41,7 +41,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
-  const { gitStar, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { lastChatAppId, lastPane } = useChatStore();
 
   const navbarList = useMemo(
@@ -236,23 +236,6 @@ const Navbar = ({ unread }: { unread: number }) => {
             </Link>
           </MyTooltip>
         ))}
-
-      {feConfigs?.show_git && (
-        <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
-          <Link
-            as={NextLink}
-            href="https://github.com/labring/FastGPT"
-            target={'_blank'}
-            {...itemStyles}
-            {...hoverStyle}
-            mt={0}
-            color={'myGray.400'}
-            height={'48px'}
-          >
-            <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
-          </Link>
-        </MyTooltip>
-      )}
 
       <Box flex={'0 0 auto'} mb={4} cursor={'pointer'} onClick={() => router.push('/account/info')}>
         <Avatar w={9} src={userInfo?.avatar} borderRadius={'50%'} />
