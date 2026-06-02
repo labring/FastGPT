@@ -1,6 +1,7 @@
 import type { UserSelectInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import React from 'react';
 import { SelectOptionsComponent } from '../Interactive/InteractiveComponents';
+import InteractiveCard from './InteractiveCard';
 import { onSendPrompt } from './utils';
 
 const RenderUserSelectInteractive = React.memo(function RenderUserSelectInteractive({
@@ -9,12 +10,14 @@ const RenderUserSelectInteractive = React.memo(function RenderUserSelectInteract
   interactive: UserSelectInteractive;
 }) {
   return (
-    <SelectOptionsComponent
-      interactiveParams={interactive.params}
-      onSelect={(value) => {
-        onSendPrompt(value);
-      }}
-    />
+    <InteractiveCard>
+      <SelectOptionsComponent
+        interactiveParams={interactive.params}
+        onSelect={(value) => {
+          onSendPrompt(value);
+        }}
+      />
+    </InteractiveCard>
   );
 });
 

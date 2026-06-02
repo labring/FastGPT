@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import { normalizeFormInputResultFile } from '../FormInputResult';
 import { FormInputComponent } from '../Interactive/InteractiveComponents';
+import InteractiveCard from './InteractiveCard';
 import { onSendPrompt } from './utils';
 
 /** 恢复/渲染表单时，把 fileSelect 字段值归一化为 `{ name, url }[]`，与流恢复逻辑保持一致。 */
@@ -115,25 +116,27 @@ const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive(
   );
 
   return (
-    <Flex flexDirection={'column'} gap={2} minW={'250px'}>
-      <FormInputComponent
-        interactiveParams={{
-          ...interactive.params,
-          // 如果不是最后一条消息，此时不能再提交了。
-          submitted: interactive.params.submitted || !isLastChild
-        }}
-        defaultValues={defaultValues}
-        SubmitButton={({ onSubmit, isFileUploading }) => (
-          <Button
-            onClick={() => onSubmit(handleFormSubmit)()}
-            isDisabled={isFileUploading}
-            isLoading={isFileUploading}
-          >
-            {t('common:Submit')}
-          </Button>
-        )}
-      />
-    </Flex>
+    <InteractiveCard>
+      <Flex flexDirection={'column'} gap={2}>
+        <FormInputComponent
+          interactiveParams={{
+            ...interactive.params,
+            // 如果不是最后一条消息，此时不能再提交了。
+            submitted: interactive.params.submitted || !isLastChild
+          }}
+          defaultValues={defaultValues}
+          SubmitButton={({ onSubmit, isFileUploading }) => (
+            <Button
+              onClick={() => onSubmit(handleFormSubmit)()}
+              isDisabled={isFileUploading}
+              isLoading={isFileUploading}
+            >
+              {t('common:Submit')}
+            </Button>
+          )}
+        />
+      </Flex>
+    </InteractiveCard>
   );
 });
 
