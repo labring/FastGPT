@@ -215,11 +215,10 @@ enum RuntimeEdgeStatusEnum {
 
 ```typescript
 interface DispatchFlowResponse {
-  flowResponses: ChatHistoryItemResType[];
   flowUsages: ChatNodeUsageType[];
   debugResponse: WorkflowDebugResponse;
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
-  toolResponses: ToolRunResponseItemType;
+  toolResponse: ToolRunResponseItemType;
   assistantResponses: AIChatItemValueItemType[];
   runTimes: number;
   newVariables: Record<string, string>;

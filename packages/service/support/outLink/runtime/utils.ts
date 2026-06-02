@@ -1,6 +1,5 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -13,7 +12,6 @@ import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import { pushChatRecords } from '../../../core/chat/saveChat';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { getUserChatInfo } from '../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { NextApiResponse } from 'next';
@@ -105,10 +103,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
   try {
     // Get app workflow config
-    const [app, { nodes, chatConfig, edges }, { timezone, externalProvider }] = await Promise.all([
+    const [app, { nodes, chatConfig, edges }] = await Promise.all([
       MongoApp.findById(outLinkConfig.appId).lean(),
-      getAppLatestVersion(outLinkConfig.appId),
-      getUserChatInfo(outLinkConfig.tmbId)
+      getAppLatestVersion(outLinkConfig.appId)
     ]);
 
     if (!nodes || !chatConfig || !app) {
@@ -155,7 +152,6 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     const workflowStreamResponse = enableStreaming
       ? async ({
-          write,
           event,
           data
         }: {
@@ -194,14 +190,15 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Merge global variables from database
     const variables = chatDetail?.variables ?? {};
+    const responseChatItemId = getNanoid(24);
 
     const {
       assistantResponses,
       newVariables,
-      flowResponses,
       flowUsages,
       durationSeconds,
-      system_memories
+      system_memories,
+      nodeResponseSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -216,6 +213,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
       uid: chatUserId || outLinkConfig.tmbId,
       chatId,
+      responseChatItemId,
       variables,
       histories,
       query: query,
@@ -225,7 +223,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      retainDatasetCite: false
+      retainDatasetCite: false,
+      nodeResponseWriteConfig: {
+        persistToDb: true,
+        retainInMemory: false
+      }
     });
 
     // Format results
@@ -278,14 +280,15 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
         value: query
       },
       aiContent: {
+        dataId: responseChatItemId,
         obj: ChatRoleEnum.AI,
         value: assistantResponses,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
         memories: system_memories
       },
       metadata: {},
       durationSeconds,
-      errorMsg: replyResult?.success ? undefined : replyResult?.errmsg
+      errorMsg: replyResult?.success ? undefined : replyResult?.errmsg,
+      nodeResponseSummary
     });
 
     const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);

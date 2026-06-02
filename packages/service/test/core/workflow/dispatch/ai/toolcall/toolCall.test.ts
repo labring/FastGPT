@@ -1,6 +1,7 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { runToolCall } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { runAgentLoopMock, runWorkflowMock } = vi.hoisted(() => ({
@@ -104,28 +105,52 @@ const createLoopResult = () => ({
   requestIds: ['req_main']
 });
 
+const createWriter = () => {
+  return {
+    record: vi.fn(async (responses = []) => responses),
+    recordWithParent: vi.fn(async (responses = [], parentId?: string) => {
+      return responses.map((response) => ({
+        ...response,
+        parentId: response.parentId || parentId
+      }));
+    })
+  };
+};
+
 describe('runToolCall compression node responses', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runWorkflowMock.mockResolvedValue({
-      toolResponses: {
-        result: 'search result'
-      },
-      assistantResponses: [],
-      flowUsages: [],
-      flowResponses: [
-        {
-          id: 'search',
-          nodeId: 'search',
-          moduleType: FlowNodeTypeEnum.tool,
-          moduleName: 'Search'
-        }
-      ],
-      workflowInteractiveResponse: undefined
+    const toolResponses = [
+      {
+        id: 'search',
+        nodeId: 'search',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Search'
+      }
+    ];
+    runWorkflowMock.mockImplementation(async (props) => {
+      const persistedToolResponses = toolResponses.map((response) => ({
+        ...response,
+        ...(props.nodeResponseParentId ? { parentId: props.nodeResponseParentId } : {})
+      }));
+      await props.nodeResponseWriter?.record(persistedToolResponses);
+
+      return {
+        toolResponse: {
+          result: 'search result'
+        },
+        assistantResponses: [],
+        flowUsages: [],
+        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(
+          undefined,
+          persistedToolResponses
+        ),
+        workflowInteractiveResponse: undefined
+      };
     });
   });
 
-  it('records context compression as ToolCall child node response and tool-response compression under the tool node', async () => {
+  it('records context compression and tool-response compression as ToolCall child node responses', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
       model: 'GPT-4',
@@ -172,10 +197,13 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
     const workflowStreamResponse = vi.fn();
+    const nodeResponseWriter = createWriter();
 
     const result = await runToolCall(
       createProps({
         workflowStreamResponse,
+        nodeResponseParentId: 'toolcall_parent',
+        nodeResponseWriter,
         toolNodes: [
           {
             nodeId: 'search',
@@ -188,16 +216,21 @@ describe('runToolCall compression node responses', () => {
         ]
       })
     );
-    const flowResponses = result.toolDispatchFlowResponses.flatMap((item) => item.flowResponses);
+    await Promise.resolve();
+    const flowResponses = nodeResponseWriter.recordWithParent.mock.calls.flatMap(
+      ([responses]) => responses
+    );
 
     expect(result.requestIds).toEqual(['req_main']);
     expect(flowResponses[0].id).toBe('req_context_compress');
     expect(flowResponses[0].nodeId).toBe(flowResponses[0].id);
-    expect(flowResponses[1].childrenResponses?.[0].id).toBe('req_tool_response_compress');
-    expect(flowResponses[1].childrenResponses?.[0].nodeId).toBe(
-      flowResponses[1].childrenResponses?.[0].id
-    );
-    expect(flowResponses[1].childrenResponses?.[0].compressTextAgent).toBeUndefined();
+    expect(flowResponses[1].id).toBe('req_tool_response_compress');
+    expect(flowResponses[1].parentId).toBeUndefined();
+    const [toolResponseCompress] = flowResponses.slice(1);
+    expect(toolResponseCompress.id).toBe('req_tool_response_compress');
+    expect(toolResponseCompress.nodeId).toBe(toolResponseCompress.id);
+    expect(toolResponseCompress.parentId).toBeUndefined();
+    expect(toolResponseCompress.compressTextAgent).toBeUndefined();
     expect(flowResponses).toEqual([
       expect.objectContaining({
         moduleName: 'chat:compress_llm_messages',
@@ -216,27 +249,28 @@ describe('runToolCall compression node responses', () => {
         }
       }),
       expect.objectContaining({
-        nodeId: 'search',
-        childrenResponses: [
-          expect.objectContaining({
-            moduleName: 'chat:tool_response_compress',
-            moduleType: FlowNodeTypeEnum.toolCall,
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            runningTime: 0.34,
-            model: 'GPT-4',
-            llmRequestIds: ['req_tool_response_compress'],
-            inputTokens: 30,
-            outputTokens: 6,
-            totalPoints: 0.3,
-            textOutput: 'compressed tool response'
-          })
-        ]
+        id: 'req_tool_response_compress',
+        moduleName: 'chat:tool_response_compress',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        runningTime: 0.34,
+        model: 'GPT-4',
+        llmRequestIds: ['req_tool_response_compress'],
+        inputTokens: 30,
+        outputTokens: 6,
+        totalPoints: 0.3,
+        textOutput: 'compressed tool response'
       })
     ]);
-    expect(result.toolDispatchFlowResponses.map((item) => item.flowUsages)).toEqual([
-      [contextCompressUsage],
-      expect.arrayContaining([toolResponseCompressUsage])
-    ]);
+    expect(nodeResponseWriter.recordWithParent.mock.calls[1][1]).toBe('toolcall_parent');
+    expect(result.toolTotalPoints).toBe(0.5);
+    expect(result.runtimeNodeResponseSummary).toEqual(
+      expect.objectContaining({
+        responseIds: ['req_context_compress', 'search', 'req_tool_response_compress'],
+        childResponseCount: 3,
+        childTotalPoints: 0.5
+      })
+    );
     expect(
       workflowStreamResponse.mock.calls.filter(
         ([event]) => event.event === 'toolResponse' && event.id === 'call_search'
@@ -277,8 +311,12 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
 
-    const result = await runToolCall(createProps());
-    const [flowResponse] = result.toolDispatchFlowResponses.flatMap((item) => item.flowResponses);
+    const nodeResponseWriter = createWriter();
+    const result = await runToolCall(createProps({ nodeResponseWriter }));
+    await Promise.resolve();
+    const [flowResponse] = nodeResponseWriter.recordWithParent.mock.calls.flatMap(
+      ([responses]) => responses
+    );
 
     expect(result.requestIds).toEqual(['req_main']);
     expect(flowResponse).toEqual(
@@ -295,7 +333,7 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('records the completed tool flow response after onAfterToolCall with compression child response', async () => {
+  it('records only the compression child after onAfterToolCall when the tool workflow wrote details', async () => {
     const toolResponseCompressUsage = {
       moduleName: 'account_usage:tool_response_compress',
       model: 'GPT-4',
@@ -330,8 +368,11 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
 
+    const nodeResponseWriter = createWriter();
     const result = await runToolCall(
       createProps({
+        nodeResponseParentId: 'toolcall_parent',
+        nodeResponseWriter,
         toolNodes: [
           {
             nodeId: 'search',
@@ -344,21 +385,31 @@ describe('runToolCall compression node responses', () => {
         ]
       })
     );
-    const [toolFlowResponse] = result.toolDispatchFlowResponses;
-    const [toolNodeResponse] = toolFlowResponse.flowResponses;
+    await Promise.resolve();
+    const toolResponseCompress = nodeResponseWriter.recordWithParent.mock.calls
+      .flatMap(([responses]) => responses)
+      .find((response) => response.id === 'req_tool_response_compress');
 
-    expect(toolNodeResponse.childrenResponses).toEqual([
+    expect(toolResponseCompress).toEqual(
       expect.objectContaining({
+        id: 'req_tool_response_compress',
         moduleName: 'chat:tool_response_compress',
         textOutput: 'compressed tool response',
         llmRequestIds: ['req_tool_response_compress']
       })
-    ]);
-    expect(toolNodeResponse.childrenResponses?.[0].compressTextAgent).toBeUndefined();
-    expect(toolFlowResponse.flowUsages).toContain(toolResponseCompressUsage);
+    );
+    expect(toolResponseCompress.parentId).toBeUndefined();
+    expect(toolResponseCompress.compressTextAgent).toBeUndefined();
+    expect(
+      nodeResponseWriter.recordWithParent.mock.calls
+        .flatMap(([responses]) => responses)
+        .some((response) => response.id === 'call_search')
+    ).toBe(false);
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('toolcall_parent');
+    expect(result.toolTotalPoints).toBe(0.3);
   });
 
-  it('records a fallback failed tool node response when tool execution throws before returning flowResponse', async () => {
+  it('does not record fallback tool node response when tool execution throws before returning flowResponse', async () => {
     runWorkflowMock.mockRejectedValueOnce(new Error('network failed'));
     runAgentLoopMock.mockImplementation(async (options) => {
       const call = {
@@ -384,8 +435,10 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
 
+    const nodeResponseWriter = createWriter();
     const result = await runToolCall(
       createProps({
+        nodeResponseWriter,
         toolNodes: [
           {
             nodeId: 'search',
@@ -398,27 +451,16 @@ describe('runToolCall compression node responses', () => {
         ]
       })
     );
+    await Promise.resolve();
 
-    expect(result.toolDispatchFlowResponses).toEqual([
+    expect(
+      nodeResponseWriter.recordWithParent.mock.calls.flatMap(([responses]) => responses)
+    ).toEqual([]);
+    expect(result.runtimeNodeResponseSummary).toEqual(
       expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            id: 'call_search',
-            nodeId: 'call_search',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'Search',
-            moduleLogo: 'tool-avatar',
-            toolId: 'search',
-            toolInput: {
-              query: 'FastGPT'
-            },
-            toolRes: 'Tool error: network failed',
-            errorText: 'Tool error: network failed',
-            runningTime: 0.56,
-            totalPoints: 0
-          })
-        ]
+        hasError: false,
+        responseIds: []
       })
-    ]);
+    );
   });
 });

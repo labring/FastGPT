@@ -86,8 +86,11 @@ const ChatItemSchema = new Schema({
     default: null
   },
 
-  /** @deprecated */
-  [DispatchNodeResponseKeyEnum.nodeResponse]: Array
+  /** @deprecated nodeResponses 已迁移到 chat_item_responses；保留 schema path 仅避免历史数据被误清理。 */
+  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+    type: Array,
+    default: undefined
+  }
 });
 
 /*

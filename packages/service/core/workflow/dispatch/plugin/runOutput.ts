@@ -5,12 +5,13 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 export type PluginOutputProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
-export type PluginOutputResponse = DispatchNodeResultType<{}>;
+export type PluginOutputResponse = DispatchNodeResultType<Record<string, any>>;
 
 export const dispatchPluginOutput = (props: PluginOutputProps): PluginOutputResponse => {
   const { params } = props;
 
   return {
+    [DispatchNodeResponseKeyEnum.toolResponse]: params,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       pluginOutput: params
     }

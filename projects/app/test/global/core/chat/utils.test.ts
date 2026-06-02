@@ -38,6 +38,80 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(true);
   });
 
+  it('marks sandbox usage when a childrenResponses item calls any sandbox tool', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'sandbox-response',
+              nodeId: 'sandbox-node',
+              moduleName: 'Read file',
+              moduleType: FlowNodeTypeEnum.tool,
+              toolId: SANDBOX_READ_FILE_TOOL_NAME
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(true);
+  });
+
+  it('includes dataset quote tags from childrenResponses', () => {
+    const quoteId = '507f1f77bcf86cd799439011';
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: `done [${quoteId}](QUOTE)`
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'dataset-response',
+              nodeId: 'dataset-node',
+              moduleName: 'Dataset Search',
+              moduleType: FlowNodeTypeEnum.datasetSearchNode,
+              quoteList: [
+                {
+                  id: quoteId,
+                  chunkIndex: 0,
+                  datasetId: 'dataset-1',
+                  collectionId: 'collection-1',
+                  sourceName: 'doc.pdf',
+                  score: [{ type: 'embedding', value: 0.9, index: 0 }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).totalQuoteList).toHaveLength(1);
+  });
+
   it('does not mark non-sandbox tools as sandbox usage', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -278,42 +275,51 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     logger.debug('Dispatching skill debug workflow', { skillId, chatId, model });
 
     // Execute workflow
-    const { flowResponses, assistantResponses, system_memories, durationSeconds, customFeedbacks } =
-      await dispatchWorkFlow({
-        apiVersion: 'v2',
-        res,
-        lang: getLocale(req),
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        usageSource: UsageSourceEnum.fastgpt,
+    const {
+      assistantResponses,
+      system_memories,
+      durationSeconds,
+      customFeedbacks,
+      nodeResponseSummary
+    } = await dispatchWorkFlow({
+      apiVersion: 'v2',
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      usageSource: UsageSourceEnum.fastgpt,
 
-        // Agent sandbox routing always uses appId/userId/chatId. Edit-debug sandboxes are
-        // created with userId='' and the fixed edit-debug chatId, while chat records still
-        // use the request chatId below.
-        uid: '',
+      // Agent sandbox routing always uses appId/userId/chatId. Edit-debug sandboxes are
+      // created with userId='' and the fixed edit-debug chatId, while chat records still
+      // use the request chatId below.
+      uid: '',
 
-        runningAppInfo: {
-          id: skillId,
-          name: skill.name,
-          teamId,
-          tmbId
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+      runningAppInfo: {
+        id: skillId,
+        name: skill.name,
+        teamId,
+        tmbId
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges,
-        variables: {},
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig: {},
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        responseDetail: true
-      });
+      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges,
+      variables: {},
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig: {},
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      responseDetail: true,
+      nodeResponseWriteConfig: {
+        persistToDb: false,
+        retainInMemory: false
+      }
+    });
 
     logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
 
@@ -334,7 +340,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       customFeedbacks
     };
 
@@ -351,6 +356,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: userQuestion,
       aiContent: aiResponse,
       durationSeconds,
+      nodeResponseSummary,
       metadata: { originIp }
     };
 

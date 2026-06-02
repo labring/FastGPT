@@ -73,7 +73,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         })),
         readFilesResult: getPreviewResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: {
+      [DispatchNodeResponseKeyEnum.toolResponse]: {
         fileContent: text
       }
     };

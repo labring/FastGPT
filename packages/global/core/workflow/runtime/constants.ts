@@ -52,7 +52,7 @@ export enum DispatchNodeResponseKeyEnum {
   nodeResponse = 'responseData', // run node response
   nodeResponses = 'nodeResponses', // node responses
   childrenResponses = 'childrenResponses', // Some nodes make recursive calls that need to be returned
-  toolResponses = 'toolResponses', // The result is passed back to the tool node for use
+  toolResponse = 'toolResponse', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
   rewriteHistories = 'rewriteHistories', // If have the response, workflow histories will be rewrite
   interactive = 'INTERACTIVE', // is interactive

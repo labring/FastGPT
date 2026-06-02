@@ -9,11 +9,13 @@ import type { AgentLoopChildrenInteractiveParams } from '../../../../../ai/llm/a
 import { runSandboxTools } from '../../../../../ai/sandbox/toolCall';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { runWorkflow } from '../../../index';
+import { getRuntimeNodeResponseSummary } from '../../../utils';
 import type { DispatchFlowResponse } from '../../../type';
+import { formatToolResponse } from '../../utils';
 import { getSandboxToolWorkflowResponse } from '../constants';
 import type { ChildResponseItemType, DispatchToolModuleProps, FileInputType } from '../type';
 import { dispatchReadFileTool, ReadFileToolParamsSchema } from '../tools/file';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
+import { initToolCallEdges, initToolNodes } from '../utils';
 import type { ToolInfo } from './useToolCatalog';
 import { checkTeamSandboxPermission } from '../../../../../../support/permission/teamLimit';
 
@@ -85,7 +87,7 @@ export const useToolRunner = ({
   fileUrls = [],
   getToolInfo,
   cacheToolFlowResponse,
-  appendToolFlowResponse,
+  appendInteractiveToolSummary,
   streamToolResponse
 }: {
   workflowProps: WorkflowProps;
@@ -98,7 +100,7 @@ export const useToolRunner = ({
     call: ChatCompletionMessageToolCall;
     flowResponse?: ChildResponseItemType;
   }) => void;
-  appendToolFlowResponse: (flowResponse: ChildResponseItemType) => void;
+  appendInteractiveToolSummary: (flowResponse: ChildResponseItemType) => void;
   streamToolResponse: (args: { toolCallId: string; response?: string }) => void;
 }) => {
   const runTool = async ({ call }: { call: ChatCompletionMessageToolCall }) => {
@@ -127,7 +129,7 @@ export const useToolRunner = ({
       if (toolInfo.type === 'sandbox') {
         try {
           await checkTeamSandboxPermission(workflowProps.runningUserInfo.teamId);
-        } catch (err) {
+        } catch {
           throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
         }
 
@@ -188,16 +190,21 @@ export const useToolRunner = ({
         runtimeNodes,
         isToolCall: true
       });
+      const toolRuntimeSummary = getRuntimeNodeResponseSummary(toolRunResponse);
 
-      const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+      const stringToolResponse = formatToolResponse(toolRunResponse.toolResponse);
 
       return {
         response: stringToolResponse,
-        flowResponse: toolRunResponse,
+        flowResponse: {
+          runtimeNodeResponseSummary: toolRuntimeSummary,
+          flowUsages: toolRunResponse.flowUsages,
+          runTimes: toolRunResponse.runTimes
+        },
         assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
         usages: toolRunResponse.flowUsages,
         interactive: toolRunResponse.workflowInteractiveResponse,
-        stop: toolRunResponse.flowResponses?.some((item) => item.toolStop)
+        stop: toolRuntimeSummary.hasToolStop
       };
     })();
 
@@ -237,21 +244,26 @@ export const useToolRunner = ({
       runtimeEdges,
       isToolCall: true
     });
-    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+    const toolRuntimeSummary = getRuntimeNodeResponseSummary(toolRunResponse);
+    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponse);
 
     streamToolResponse({
       toolCallId: toolParams.toolCallId,
       response: stringToolResponse
     });
 
-    appendToolFlowResponse(toolRunResponse);
+    appendInteractiveToolSummary({
+      runtimeNodeResponseSummary: toolRuntimeSummary,
+      flowUsages: toolRunResponse.flowUsages,
+      runTimes: toolRunResponse.runTimes
+    });
 
     return {
       response: stringToolResponse,
       assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
       usages: toolRunResponse.flowUsages,
       interactive: toolRunResponse.workflowInteractiveResponse,
-      stop: toolRunResponse.flowResponses?.some((item) => item.toolStop)
+      stop: toolRuntimeSummary.hasToolStop
     };
   };
 

@@ -226,7 +226,7 @@ export const dispatchYourNode = async (props: Props): Promise<YourNodeResponse> 
     },
     // 移除当前交互的历史记录(最后2条)
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2),
-    [DispatchNodeResponseKeyEnum.toolResponses]: userInputVal,
+    [DispatchNodeResponseKeyEnum.toolResponse]: userInputVal,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       yourResult: userInputVal
     }

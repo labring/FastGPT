@@ -3,9 +3,12 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   hasMeaningfulAiOutput,
+  mergeResumeCompletedChatRecords,
   shouldCreateResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =>
   ({
@@ -16,6 +19,15 @@ const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =
     status: ChatStatusEnum.loading,
     ...override
   }) as ChatSiteItemType;
+
+const createNodeResponse = (
+  override: Partial<ChatHistoryItemResType> & { id: string }
+): ChatHistoryItemResType => ({
+  nodeId: override.id,
+  moduleName: override.id,
+  moduleType: FlowNodeTypeEnum.agent,
+  ...override
+});
 
 describe('shouldCreateResumeAiPlaceholder', () => {
   it('returns true for visible resume stream events', () => {
@@ -157,5 +169,43 @@ describe('hasMeaningfulAiOutput', () => {
         })
       )
     ).toBe(true);
+  });
+});
+
+describe('mergeResumeCompletedChatRecords', () => {
+  it('merges replayed children into matching completed responseData nodes', () => {
+    const completed = createAiRecord({
+      dataId: 'response-ai',
+      responseData: [
+        createNodeResponse({
+          id: 'root-response'
+        })
+      ]
+    });
+    const current = createAiRecord({
+      dataId: 'response-ai',
+      responseData: [
+        createNodeResponse({
+          id: 'root-response',
+          childrenResponses: [
+            createNodeResponse({
+              id: 'child-response',
+              parentId: 'root-response'
+            })
+          ]
+        })
+      ]
+    });
+
+    const result = mergeResumeCompletedChatRecords({
+      currentRecords: [current],
+      completedRecords: [completed],
+      responseChatId: 'response-ai'
+    });
+
+    const aiRecord = result[0] as Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }>;
+    expect(aiRecord.responseData?.[0].childrenResponses?.map((item) => item.id)).toEqual([
+      'child-response'
+    ]);
   });
 });

@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSseErrorResponse, sseErrRes } from '@fastgpt/service/common/response';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -63,12 +60,13 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
 import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: Awaited<ReturnType<typeof getStreamResumeMirror>>;
   let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
   let usePreparedRound = false;
-  const chatTestProps = ChatTestPropsSchema.parse(req.body);
+  const chatTestProps = parseApiInput({ req, bodySchema: ChatTestPropsSchema }).body;
   const {
     nodes = [],
     edges = [],
@@ -216,12 +214,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     /* start process */
     const {
-      flowResponses,
       assistantResponses,
       system_memories,
       newVariables,
       durationSeconds,
-      customFeedbacks
+      customFeedbacks,
+      nodeResponseSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -253,7 +251,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: workflowResponseWrite,
       responseDetail: true,
-      showSkillReferences: true
+      showSkillReferences: true,
+      nodeResponseWriteConfig: {
+        persistToDb: true,
+        retainInMemory: false
+      }
     });
 
     workflowResponseWrite({
@@ -278,7 +280,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       customFeedbacks
     };
     const params = {
@@ -297,7 +298,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       metadata: {
         originIp
-      }
+      },
+      nodeResponseSummary
     };
 
     if (interactive) {

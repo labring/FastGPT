@@ -270,6 +270,9 @@ export type PiAgentWorkflowRuntimeArtifacts = {
 export const createPiAgentWorkflowRuntime = ({
   props,
   nodeResponses,
+  appendNodeResponse = (nodeResponse) => {
+    nodeResponses.push(nodeResponse);
+  },
   workflowStreamResponse,
   usagePush,
   completionTools,
@@ -277,6 +280,7 @@ export const createPiAgentWorkflowRuntime = ({
 }: {
   props: DispatchAgentModuleProps;
   nodeResponses: ChatHistoryItemResType[];
+  appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
   workflowStreamResponse?: WorkflowResponseType;
   usagePush: DispatchAgentModuleProps['usagePush'];
   completionTools?: ChatCompletionTool[];
@@ -291,7 +295,7 @@ export const createPiAgentWorkflowRuntime = ({
   const usedUserOpenAIKey = !!props.externalProvider.openaiAccount?.key;
 
   const appendChildNodeResponse = (nodeResponse: ChatHistoryItemResType) => {
-    nodeResponses.push(nodeResponse);
+    appendNodeResponse(nodeResponse);
   };
 
   const saveRequestRecord = ({
@@ -379,7 +383,7 @@ export const createPiAgentWorkflowRuntime = ({
       ...(errorText ? { errorText: getErrText(errorText) } : {})
     };
 
-    nodeResponses.push(agentResponse);
+    appendNodeResponse(agentResponse);
   };
 
   return {

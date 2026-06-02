@@ -62,7 +62,7 @@ type HttpResponse = DispatchNodeResultType<
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
-  let {
+  const {
     runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
@@ -71,21 +71,21 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     runtimeNodesMap,
     histories,
     params: {
-      system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
       system_httpHeader: httpHeader = [],
       system_httpParams: httpParams = [],
       system_httpJsonBody: httpJsonBody = '',
       system_httpFormBody: httpFormBody = [],
-      system_httpContentType: httpContentType = ContentTypes.json,
-      system_httpTimeout: httpTimeout = 60,
-      system_header_secret: headerSecret,
-      [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
   } = props;
+  const httpMethod = props.params.system_httpMethod || 'POST';
+  const httpContentType = props.params.system_httpContentType || ContentTypes.json;
+  const httpTimeout = props.params.system_httpTimeout || 60;
+  const headerSecret = props.params.system_header_secret;
+  let requestUrl = httpReqUrl;
 
-  if (!httpReqUrl) {
+  if (!requestUrl) {
     return Promise.reject('Http url is empty');
   }
 
@@ -101,8 +101,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     ...systemVariables
   };
   const allVariables: Record<string, any> = {
-    [NodeInputKeyEnum.addInputParam]: concatVariables,
-    ...concatVariables
+    ...concatVariables,
+    [NodeInputKeyEnum.addInputParam]: concatVariables
   };
 
   // General data for variable substitution（Exclude: json body)
@@ -114,22 +114,22 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     });
   };
 
-  httpReqUrl = replaceStringVariables(httpReqUrl);
+  requestUrl = replaceStringVariables(requestUrl);
 
   const publicHeaders = await (async () => {
     try {
       const contentType = contentTypeMap[httpContentType];
-      if (contentType) {
-        httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
-      }
+      const requestHeaders = contentType
+        ? [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader]
+        : httpHeader;
 
-      return httpHeader.reduce((acc: Record<string, string>, item) => {
+      return requestHeaders.reduce((acc: Record<string, string>, item) => {
         const key = replaceStringVariables(item.key);
         const value = replaceStringVariables(item.value);
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
         return acc;
       }, {});
-    } catch (error) {
+    } catch {
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
@@ -149,46 +149,46 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     try {
       if (httpContentType === ContentTypes.formData) {
         if (!Array.isArray(httpFormBody)) return {};
-        httpFormBody = httpFormBody.map((item) => ({
+        const formBody = httpFormBody.map((item) => ({
           key: replaceStringVariables(item.key),
           type: item.type,
           value: replaceStringVariables(item.value)
         }));
         const formData = new FormData();
-        for (const { key, value } of httpFormBody) {
+        for (const { key, value } of formBody) {
           formData.append(key, value);
         }
         return formData;
       }
       if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
         if (!Array.isArray(httpFormBody)) return {};
-        httpFormBody = httpFormBody.map((item) => ({
+        const formBody = httpFormBody.map((item) => ({
           key: replaceStringVariables(item.key),
           type: item.type,
           value: replaceStringVariables(item.value)
         }));
         const urlSearchParams = new URLSearchParams();
-        for (const { key, value } of httpFormBody) {
+        for (const { key, value } of formBody) {
           urlSearchParams.append(key, value);
         }
         return urlSearchParams;
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        httpJsonBody = replaceJsonBodyString(
+        const jsonBody = replaceJsonBodyString(
           { text: httpJsonBody },
           {
             allVariables,
             runtimeNodesMap
           }
         );
-        return json5.parse(httpJsonBody);
+        return json5.parse(jsonBody);
       }
 
       // Raw text, xml
-      httpJsonBody = replaceStringVariables(httpJsonBody);
-      return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
-    } catch (error) {
+      const rawBody = replaceStringVariables(httpJsonBody);
+      return rawBody.replaceAll(UNDEFINED_SIGN, 'null');
+    } catch {
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
@@ -213,7 +213,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     const { formatResponse, rawResponse } = await (async () => {
       return fetchData({
         method: httpMethod,
-        url: httpReqUrl,
+        url: requestUrl,
         headers: { ...sensitiveHeaders, ...publicHeaders },
         body: requestBody,
         params,
@@ -264,11 +264,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
         httpResult: rawResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]:
+      [DispatchNodeResponseKeyEnum.toolResponse]:
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    logger.warn('HTTP tool request failed', { error, httpReqUrl });
+    logger.warn('HTTP tool request failed', { error, httpReqUrl: requestUrl });
 
     // @adapt
     if (node.catchError === undefined) {
@@ -356,7 +356,7 @@ export const replaceJsonBodyString = (
       try {
         JSON.parse(val);
         return val;
-      } catch (error) {
+      } catch {
         const str = JSON.stringify(val);
         return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
       }

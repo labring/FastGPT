@@ -59,7 +59,7 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
         customOutputs: codeReturn,
         codeLog: log
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: codeReturn
+      [DispatchNodeResponseKeyEnum.toolResponse]: codeReturn
     };
   } catch (error) {
     const text = getErrText(error, 'Request code sandbox failed');

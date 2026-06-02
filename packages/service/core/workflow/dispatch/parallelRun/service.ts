@@ -1,7 +1,11 @@
 import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
-import { collectResponseFeedbacks, injectNestedStartInputs, safePoints } from '../utils';
+import {
+  collectResponseFeedbacks,
+  getRuntimeNodeResponseSummary,
+  injectNestedStartInputs
+} from '../utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -101,13 +105,21 @@ export const buildTaskRuntimeContext = (
 // ─── 4. parseTaskResponse & parseTaskError ────────────────────────────────────
 
 export type ParallelTaskResult =
-  | { success: true; index: number; data: any; response: DispatchFlowResponse; totalPoints: number }
+  | {
+      success: true;
+      index: number;
+      data: any;
+      response: DispatchFlowResponse;
+      totalPoints: number;
+      taskResponseId?: string;
+    }
   | {
       success: false;
       index: number;
       error?: string;
       response?: DispatchFlowResponse;
       totalPoints: number;
+      taskResponseId?: string;
     };
 
 /**
@@ -116,8 +128,7 @@ export type ParallelTaskResult =
  *
  * Note: runWorkflow always resolves (never rejects), so node-level errors are
  * detected here by checking whether the nestedEnd node was actually reached.
- * If nestedEnd is absent from flowResponses, the sub-workflow terminated early
- * (e.g. a node threw an error), and the task is considered failed.
+ * 新 writer 链路不会再返回完整 nodeResponse 列表，因此运行判断只读 runtimeNodeResponseSummary。
  */
 export const parseTaskResponse = (params: {
   index: number;
@@ -136,25 +147,28 @@ export const parseTaskResponse = (params: {
     };
   }
 
-  const loopEndResponse = response.flowResponses.find(
-    (r) => r.moduleType === FlowNodeTypeEnum.nestedEnd
-  );
+  const runtimeNodeResponseSummary = getRuntimeNodeResponseSummary(response);
+  const hasNestedEnd = runtimeNodeResponseSummary.hasNestedEnd;
+  const nestedEndOutput = runtimeNodeResponseSummary.nestedEndOutput;
 
   // nestedEnd was not reached → sub-workflow terminated with an error
-  if (!loopEndResponse) {
-    const errorResponse = response.flowResponses.find((r) => r.error);
-    const err = errorResponse?.error;
+  if (!hasNestedEnd) {
     return {
       success: false,
       index,
-      error: getErrText(err, i18nT('workflow:parallel_task_not_reach_end')),
+      error: getErrText(
+        runtimeNodeResponseSummary.errorText,
+        i18nT('workflow:parallel_task_not_reach_end')
+      ),
       response,
       totalPoints: 0
     };
   }
 
-  const totalPoints = response.flowResponses.reduce((acc, r) => acc + safePoints(r.totalPoints), 0);
-  return { success: true, index, data: loopEndResponse.loopOutputValue, response, totalPoints };
+  // 保持 main 分支旧口径：成功任务的 totalPoints 是子流程各 nodeResponse.totalPoints 之和，
+  // 不包含这些节点已聚合的 childTotalPoints；child 统计只用于 wrapper 展示。
+  const totalPoints = runtimeNodeResponseSummary.totalPoints ?? 0;
+  return { success: true, index, data: nestedEndOutput, response, totalPoints };
 };
 
 /**
@@ -194,8 +208,41 @@ export type AggregatedParallelResults = {
   status: ParallelRunStatusEnum;
   totalPoints: number;
   responseDetails: ChatHistoryItemResType[];
+  /** 每次 attempt 的展示 wrapper，包含失败重试记录；业务输出仍只使用每个 input 的最终结果。 */
+  attemptResponseDetails: ChatHistoryItemResType[];
   assistantResponses: AIChatItemValueItemType[];
   customFeedbacks: string[];
+};
+
+const buildParallelTaskWrapper = ({
+  result,
+  input,
+  parentNodeId
+}: {
+  result: ParallelTaskResult;
+  input: any;
+  parentNodeId: string;
+}): ChatHistoryItemResType => {
+  const runtimeSummary = result.response
+    ? getRuntimeNodeResponseSummary(result.response)
+    : undefined;
+  const runningTime = runtimeSummary?.runningTime || 0;
+  const taskNodeId = result.taskResponseId || `${parentNodeId}_task_${result.index}`;
+
+  return {
+    id: taskNodeId,
+    nodeId: taskNodeId,
+    moduleType: FlowNodeTypeEnum.parallelRun,
+    moduleName: i18nT('workflow:parallel_task'),
+    moduleNameArgs: { index: result.index + 1 },
+    runningTime: Math.round(runningTime * 100) / 100,
+    totalPoints: result.totalPoints,
+    loopInputValue: input,
+    loopOutputValue: result.success ? result.data : undefined,
+    error: result.success ? undefined : result.error,
+    childResponseCount: runtimeSummary?.childResponseCount,
+    childTotalPoints: runtimeSummary?.childTotalPoints
+  };
 };
 
 /**
@@ -205,8 +252,8 @@ export type AggregatedParallelResults = {
  * - totalPoints, responseDetails, assistantResponses, customFeedbacks: merged from successful tasks
  *
  * responseDetails 返回"按任务聚合"的虚拟节点列表：每次任务包装成一个
- * ChatHistoryItemResType，子工作流节点挂在 childrenResponses 下，
- * 方便 UI 按任务维度折叠展示（而非平铺所有子节点）。
+ * ChatHistoryItemResType，并只保留 childResponseCount/childTotalPoints 等轻量统计。
+ * 完整子节点详情由 writer 写入 DB，详情接口再按 parentId 拼回 childrenResponses。
  */
 export const aggregateParallelResults = (
   taskResults: ParallelTaskResult[],
@@ -215,6 +262,8 @@ export const aggregateParallelResults = (
     taskInputs: any[];
     /** 并行节点 nodeId，用于生成任务虚拟节点的唯一 id */
     parentNodeId: string;
+    /** 所有 attempt 的运行结果；传入时用于展示失败重试记录，业务输出仍只看 taskResults。 */
+    attemptResults?: ParallelTaskResult[];
   }
 ): AggregatedParallelResults => {
   // Sort by input index so all output arrays are in input order
@@ -226,6 +275,18 @@ export const aggregateParallelResults = (
   let totalPoints = 0;
   let successCount = 0;
   const responseDetails: ChatHistoryItemResType[] = [];
+  const attemptResponseDetails = [...(opts.attemptResults || taskResults)]
+    .sort((a, b) => {
+      if (a.index !== b.index) return a.index - b.index;
+      return (a.taskResponseId || '').localeCompare(b.taskResponseId || '');
+    })
+    .map((result) =>
+      buildParallelTaskWrapper({
+        result,
+        input: opts.taskInputs[result.index],
+        parentNodeId: opts.parentNodeId
+      })
+    );
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
 
@@ -243,27 +304,13 @@ export const aggregateParallelResults = (
     // totalPoints is pre-accumulated across all retry attempts in the caller
     totalPoints += result.totalPoints;
 
-    const childrenResponses: ChatHistoryItemResType[] = result.response?.flowResponses ?? [];
-    const runningTime = childrenResponses.reduce(
-      (acc, r) => acc + (typeof r.runningTime === 'number' ? r.runningTime : 0),
-      0
+    responseDetails.push(
+      buildParallelTaskWrapper({
+        result,
+        input: opts.taskInputs[result.index],
+        parentNodeId: opts.parentNodeId
+      })
     );
-
-    const taskNodeId = `${opts.parentNodeId}_task_${result.index}`;
-    const taskWrapper: ChatHistoryItemResType = {
-      id: taskNodeId,
-      nodeId: taskNodeId,
-      moduleType: FlowNodeTypeEnum.parallelRun,
-      moduleName: i18nT('workflow:parallel_task'),
-      moduleNameArgs: { index: result.index + 1 },
-      runningTime: Math.round(runningTime * 100) / 100,
-      totalPoints: result.totalPoints,
-      loopInputValue: opts.taskInputs[result.index],
-      loopOutputValue: result.success ? result.data : undefined,
-      error: result.success ? undefined : result.error,
-      childrenResponses
-    };
-    responseDetails.push(taskWrapper);
 
     if (result.response) {
       const response = result.response;
@@ -287,6 +334,7 @@ export const aggregateParallelResults = (
     status,
     totalPoints,
     responseDetails,
+    attemptResponseDetails,
     assistantResponses,
     customFeedbacks
   };

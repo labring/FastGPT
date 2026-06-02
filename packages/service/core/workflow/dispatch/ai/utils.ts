@@ -41,12 +41,12 @@ export const filterMemoryMessages = (messages: ChatCompletionMessageParam[]) => 
   return messages.filter((item) => item.role !== ChatCompletionRequestMessageRoleEnum.System);
 };
 
-export const formatToolResponse = (toolResponses: any) => {
-  if (typeof toolResponses === 'object') {
-    return JSON.stringify(toolResponses, null, 2);
+export const formatToolResponse = (toolResponse: any) => {
+  if (typeof toolResponse === 'object') {
+    return JSON.stringify(toolResponse, null, 2);
   }
 
-  return toolResponses ? String(toolResponses) : 'none';
+  return toolResponse ? String(toolResponse) : 'none';
 };
 
 /*

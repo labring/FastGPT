@@ -25,7 +25,7 @@ const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafResponse> => {
-  let {
+  const {
     runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
@@ -39,8 +39,9 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     }
   } = props;
   const variables = variableState.toRuntimeRecord();
+  let requestUrl = httpReqUrl;
 
-  if (!httpReqUrl) {
+  if (!requestUrl) {
     return Promise.reject('Http url is empty');
   }
 
@@ -54,7 +55,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     histories: histories?.slice(-10) || []
   };
 
-  httpReqUrl = replaceVariable(httpReqUrl, concatVariables);
+  requestUrl = replaceVariable(requestUrl, concatVariables);
 
   const requestBody = {
     systemParams: {
@@ -71,7 +72,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
   try {
     const { formatResponse, rawResponse } = await fetchData({
       method: 'POST',
-      url: httpReqUrl,
+      url: requestUrl,
       body: requestBody
     });
 
@@ -94,7 +95,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         httpResult: rawResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: rawResponse
+      [DispatchNodeResponseKeyEnum.toolResponse]: rawResponse
     };
   } catch (error) {
     logger.warn('Laf tool request failed', { error });
@@ -190,25 +191,6 @@ function replaceVariable(text: string, obj: Record<string, any>) {
     }
   }
   return text || '';
-}
-function removeUndefinedSign(obj: Record<string, any>) {
-  for (const key in obj) {
-    if (obj[key] === UNDEFINED_SIGN) {
-      obj[key] = undefined;
-    } else if (Array.isArray(obj[key])) {
-      obj[key] = obj[key].map((item: any) => {
-        if (item === UNDEFINED_SIGN) {
-          return undefined;
-        } else if (typeof item === 'object') {
-          removeUndefinedSign(item);
-        }
-        return item;
-      });
-    } else if (typeof obj[key] === 'object') {
-      removeUndefinedSign(obj[key]);
-    }
-  }
-  return obj;
 }
 function formatHttpError(error: any) {
   return {

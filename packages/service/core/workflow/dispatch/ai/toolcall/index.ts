@@ -47,7 +47,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     try {
       await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch (err) {
+    } catch {
       throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
     }
   }
@@ -108,7 +108,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      toolDispatchFlowResponses, // 工具子流程运行详情
+      runtimeNodeResponseSummary: toolRuntimeSummary, // 工具子流程运行期摘要；完整详情由 writer 持久化。
+      toolTotalPoints,
+      runTimes,
       toolCallInputTokens,
       toolCallOutputTokens,
       toolCallTotalPoints,
@@ -138,8 +140,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     })();
 
-    const runTimes = toolDispatchFlowResponses.reduce((sum, item) => sum + item.runTimes, 0);
-    const toolDetail = toolDispatchFlowResponses.map((item) => item.flowResponses).flat();
     const historyPreview = getHistoryPreview(
       GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
       10000,
@@ -148,21 +148,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
-    const toolTotalPoints = toolDispatchFlowResponses
-      .map((item) => item.flowUsages)
-      .flat()
-      .reduce((sum, item) => sum + item.totalPoints, 0);
     const totalPointsUsage = modelTotalPoints + toolTotalPoints;
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
     const nodeResponse: Record<string, any> = {
       totalPoints: totalPointsUsage,
       toolCallInputTokens,
       toolCallOutputTokens,
-      childTotalPoints: toolTotalPoints,
+      childTotalPoints: toolRuntimeSummary.childTotalPoints ?? toolTotalPoints,
+      childResponseCount: toolRuntimeSummary.childResponseCount,
       model: modelName,
       query: userChatInput,
       historyPreview,
-      toolDetail,
       mergeSignId: nodeId,
       finishReason: finish_reason,
       llmRequestIds: requestIds

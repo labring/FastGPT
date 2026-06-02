@@ -9,6 +9,8 @@ import {
 
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
   clampParallelRetryTimes,
@@ -16,6 +18,7 @@ import {
   parseTaskResponse,
   parseTaskError,
   aggregateParallelResults,
+  type ParallelTaskResult,
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
@@ -25,7 +28,10 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
   [NodeInputKeyEnum.parallelRunMaxConcurrency]?: number;
   [NodeInputKeyEnum.parallelRunMaxRetryTimes]?: number;
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+  nodeResponseParentId?: string;
+};
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.parallelSuccessResults]: Array<any>;
@@ -59,6 +65,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   );
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
+  const attemptResults: ParallelTaskResult[] = [];
 
   const taskResults = await batchRun(
     loopInputArray,
@@ -79,33 +86,57 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           item,
           index
         });
+        const taskResponseId =
+          maxRetryAttempts > 0
+            ? `${node.nodeId}_task_${index}_attempt_${attempt}`
+            : `${node.nodeId}_task_${index}`;
 
         try {
           const response = await runWorkflow({
             ...props,
             variableState: props.variableState.clone(),
+            nodeResponseParentId: taskResponseId,
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });
 
           // Push usage per attempt (resources were consumed regardless of success)
-          accumulatedPoints += pushSubWorkflowUsage({
+          const attemptPoints = pushSubWorkflowUsage({
             usagePush: props.usagePush,
             response,
             name,
             iteration: index
           });
+          accumulatedPoints += attemptPoints;
 
           const result = parseTaskResponse({ index, response });
-          if (result.success) return { ...result, totalPoints: accumulatedPoints };
+          const attemptResult = {
+            ...result,
+            taskResponseId,
+            totalPoints: attemptPoints
+          };
+          attemptResults.push(attemptResult);
+          if (result.success) {
+            return {
+              ...result,
+              taskResponseId,
+              totalPoints: accumulatedPoints
+            };
+          }
 
           // Non-retryable: interactive response will never succeed on retry
           if (response.workflowInteractiveResponse)
-            return { ...result, totalPoints: accumulatedPoints };
+            return { ...result, taskResponseId, totalPoints: accumulatedPoints };
 
-          lastResult = { ...result, totalPoints: accumulatedPoints };
+          lastResult = { ...result, taskResponseId, totalPoints: accumulatedPoints };
         } catch (err) {
-          lastResult = { ...parseTaskError(index, err), totalPoints: accumulatedPoints };
+          const attemptResult = {
+            ...parseTaskError(index, err),
+            taskResponseId,
+            totalPoints: 0
+          };
+          attemptResults.push(attemptResult);
+          lastResult = { ...attemptResult, totalPoints: accumulatedPoints };
         }
         // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
       }
@@ -121,16 +152,32 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     fullDetail,
     status,
     totalPoints,
-    responseDetails,
+    attemptResponseDetails,
     assistantResponses,
     customFeedbacks
   } = aggregateParallelResults(
     taskResults.filter((item) => item !== undefined),
     {
       taskInputs: loopInputArray,
-      parentNodeId: node.nodeId
+      parentNodeId: node.nodeId,
+      attemptResults
     }
   );
+  // 任务包装节点只通过 writer/event 输出；父 parallelRun 只保留轻量统计和业务摘要。
+  const rootChildStats = getNodeResponseChildStats(attemptResponseDetails);
+  if (props.nodeResponseWriter) {
+    for (const detail of attemptResponseDetails) {
+      await props.nodeResponseWriter.recordWithParent(
+        [
+          {
+            ...detail,
+            childrenResponses: undefined
+          }
+        ],
+        props.nodeResponseParentId
+      );
+    }
+  }
 
   return {
     data: {
@@ -144,7 +191,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       parallelInput: loopInputArray,
       parallelResult: filteredArray,
       parallelRunDetail: fullDetail,
-      parallelDetail: responseDetails,
+      childResponseCount: rootChildStats.childResponseCount,
+      childTotalPoints: rootChildStats.childTotalPoints,
       mergeSignId: node.nodeId
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:

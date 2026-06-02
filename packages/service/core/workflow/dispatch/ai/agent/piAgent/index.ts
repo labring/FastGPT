@@ -24,10 +24,14 @@ import {
 } from './adapter/runtime';
 import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge';
 import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
+import type { RuntimeNodeResponseSummary } from '../../../type';
+import { createAgentNodeResponseCollector } from '../nodeResponseCollector';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-}>;
+}> & {
+  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
+};
 
 export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   const {
@@ -67,6 +71,13 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
+  const piToolResponseIds = new Set<string>();
+  const nodeResponseCollector = createAgentNodeResponseCollector({
+    nodeResponseWriter: props.nodeResponseWriter,
+    // Pi Agent 与 unified Agent 一样没有当前节点 wrapper，内部详情保持 root 语义。
+    nodeResponseParentId: undefined,
+    nodeResponses
+  });
   let agent: InstanceType<typeof Agent> | undefined;
   let piRuntime: PiAgentWorkflowRuntimeArtifacts | undefined;
   let stopPoller: ReturnType<typeof setInterval> | undefined;
@@ -179,6 +190,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     piRuntime = createPiAgentWorkflowRuntime({
       props,
       nodeResponses,
+      appendNodeResponse: nodeResponseCollector.appendNodeResponse,
       workflowStreamResponse,
       usagePush,
       completionTools: agentCompletionTools
@@ -201,14 +213,19 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const piTools = await buildAgentTools({
       ctx: toolCtx,
       assistantResponses,
-      appendChildNodeResponse: piRuntime.appendChildNodeResponse,
+      appendChildNodeResponse: (nodeResponse) => {
+        if (nodeResponse.id) {
+          piToolResponseIds.add(nodeResponse.id);
+        }
+        piRuntime?.appendChildNodeResponse(nodeResponse);
+      },
       usagePush
     });
     const handlePiToolEvent = createPiAgentToolEventHandler({
       ctx: toolCtx,
       assistantResponses,
       appendChildNodeResponse: piRuntime.appendChildNodeResponse,
-      nodeResponses
+      appendedNodeResponseIds: piToolResponseIds
     });
 
     // 6. 恢复上一轮 PiAgent messages。只从当前节点 memory 恢复，保持 PiAgent 独立 loop 的连续性。
@@ -276,7 +293,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         [piMessagesKey]: agent.state.messages
       },
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
     };
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] dispatchPiAgent error`, { error });
@@ -297,7 +315,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       error: {
         [NodeOutputKeyEnum.errorText]: errorText
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: {
+      [DispatchNodeResponseKeyEnum.toolResponse]: {
         error: errorText
       },
       ...(memories
@@ -306,9 +324,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           }
         : {}),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
     };
   } finally {
     if (stopPoller) clearInterval(stopPoller);
+    await nodeResponseCollector.flush();
   }
 };

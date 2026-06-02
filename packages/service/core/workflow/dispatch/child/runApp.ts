@@ -23,6 +23,8 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getRuntimeNodeResponseSummary } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -30,7 +32,9 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+};
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemMiniType[];
@@ -140,13 +144,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
 
     const {
-      flowResponses,
       flowUsages,
       assistantResponses,
       runTimes,
       workflowInteractiveResponse,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      runtimeNodeResponseSummary
     } = await runWorkflow({
       ...props,
       lastInteractive: childrenInteractive,
@@ -193,6 +197,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints
       }
     ]);
+    const runtimeSummary = getRuntimeNodeResponseSummary({
+      runtimeNodeResponseSummary
+    });
+    const childTotalPoints = runtimeSummary.childTotalPoints;
+    const childResponseCount = runtimeSummary.childResponseCount;
 
     return {
       data: {
@@ -216,10 +225,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
-        pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
+        childTotalPoints,
+        childResponseCount,
         mergeSignId: props.node.nodeId
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: text,
+      [DispatchNodeResponseKeyEnum.toolResponse]: text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

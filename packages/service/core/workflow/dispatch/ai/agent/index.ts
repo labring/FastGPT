@@ -34,6 +34,9 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useSandbox } from './sub/sandbox';
+import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
+import type { RuntimeNodeResponseSummary } from '../../type';
+import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -55,11 +58,15 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+};
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-}>;
+}> & {
+  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
+};
 
 /**
  * 将主 loop 的 ask_agent 追问转换成 workflow interactive 响应，交给前端展示并等待用户回答。
@@ -91,10 +98,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     return dispatchPiAgent(props);
   }
 
-  // 这些数组会贯穿整轮 dispatch，并由 adapter 持续写入。
-  // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
+  // assistantResponses 仍按原逻辑累计给 chat.value；nodeResponses 在 writer 模式下不再累计，
+  // 由 collector 即时写库并只向外返回 runtimeNodeResponseSummary。
   const assistantResponses: AIChatItemValueItemType[] = [];
-  const childNodeResponses: ChatHistoryItemResType[] = [];
+  const childResponses: ChatHistoryItemResType[] = [];
+  const nodeResponseCollector = createAgentNodeResponseCollector({
+    nodeResponseWriter: props.nodeResponseWriter,
+    // Agent 节点本身不返回当前节点 nodeResponse；内部模型/工具详情按旧语义作为 root 展示。
+    nodeResponseParentId: undefined,
+    nodeResponses: childResponses
+  });
 
   const {
     node: { nodeId, inputs },
@@ -249,7 +262,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       usagePush,
       workflowStreamResponse,
       assistantResponses,
-      nodeResponses: childNodeResponses
+      nodeResponses: childResponses,
+      appendNodeResponse: nodeResponseCollector.appendNodeResponse
     });
 
     // ask_agent 追问会把 pendingMainContext 写入 memory。
@@ -296,7 +310,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
 
       return {
-        [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses,
+        [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+        runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
         [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
         [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
           nodeId,
@@ -355,7 +370,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory，并把已有 assistantResponses/nodeResponses 返回给前端恢复。
@@ -363,11 +379,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       error
     });
     const errorText = getErrText(error);
+
     return {
       error: {
         [NodeOutputKeyEnum.errorText]: errorText
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: {
+      [DispatchNodeResponseKeyEnum.toolResponse]: {
         error: errorText
       },
       [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
@@ -375,7 +392,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         memory: {}
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: childNodeResponses
+      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
     };
+  } finally {
+    await nodeResponseCollector.flush();
   }
 };

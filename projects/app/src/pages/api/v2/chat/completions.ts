@@ -30,7 +30,6 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
   concatHistories,
-  filterPublicNodeResponseData,
   getChatTitleFromChatMessage,
   removeAIResponseCite,
   removeEmptyUserInput
@@ -43,7 +42,6 @@ import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -76,6 +74,10 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
+import {
+  filterWorkflowFinalResponseData,
+  getWorkflowFinalResponseData
+} from '@/service/core/workflow/nodeResponse';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -331,16 +333,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: showRunningStatus,
       streamResumeMirror: mirror
     });
+    const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
 
     /* start flow controller */
     const {
-      flowResponses,
       flowUsages,
       assistantResponses,
       newVariables,
       durationSeconds,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      nodeResponseSummary,
+      flatNodeResponses
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -375,7 +379,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
           responseAllData,
-          responseDetail: showCite
+          responseDetail: showCite,
+          nodeResponseWriteConfig: {
+            persistToDb: true,
+            retainInMemory: shouldCollectFinalResponseData
+          }
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
@@ -390,7 +398,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       memories: system_memories,
       customFeedbacks
     };
@@ -415,6 +422,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp,
         ...metadata
       },
+      nodeResponseSummary,
       durationSeconds
     };
     if (interactive) {
@@ -443,9 +451,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     logger.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = responseAllData
-      ? flowResponses
-      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showCite });
+    const finalResponseData = getWorkflowFinalResponseData({
+      flatNodeResponses,
+      shouldCollect: shouldCollectFinalResponseData
+    });
+    const finalError =
+      nodeResponseSummary?.lastError ||
+      finalResponseData[finalResponseData.length - 1]?.error ||
+      finalResponseData[finalResponseData.length - 1]?.errorText;
+    const feResponseData = filterWorkflowFinalResponseData({
+      responseData: finalResponseData,
+      responseAllData,
+      responseDetail: showCite
+    });
 
     if (stream) {
       workflowResponseWrite({
@@ -495,13 +513,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return formatResponseContent;
       })();
 
-      const error =
-        flowResponses[flowResponses.length - 1]?.error ||
-        flowResponses[flowResponses.length - 1]?.errorText;
-
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
-        error,
+        error: finalError,
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -531,7 +545,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid,
         shareId,
         appName: app.name,
-        flowResponses,
+        flowResponses: finalResponseData,
         chatId: saveChatId
       });
       addOutLinkUsage({

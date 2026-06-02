@@ -137,8 +137,7 @@ describe('PiAgent tool adapter', () => {
     const handler = createPiAgentToolEventHandler({
       ctx,
       assistantResponses,
-      appendChildNodeResponse,
-      nodeResponses: []
+      appendChildNodeResponse
     });
 
     handler({
@@ -208,8 +207,7 @@ describe('PiAgent tool adapter', () => {
     const handler = createPiAgentToolEventHandler({
       ctx,
       assistantResponses,
-      appendChildNodeResponse: vi.fn(),
-      nodeResponses: []
+      appendChildNodeResponse: vi.fn()
     });
 
     handler({
@@ -241,5 +239,38 @@ describe('PiAgent tool adapter', () => {
         response: 'tool result'
       })
     );
+  });
+
+  it('deduplicates fallback node responses without relying on retained nodeResponses', () => {
+    const ctx = createContext();
+    const assistantResponses: any[] = [];
+    const appendChildNodeResponse = vi.fn();
+    const appendedNodeResponseIds = new Set<string>(['call_search']);
+    const handler = createPiAgentToolEventHandler({
+      ctx,
+      assistantResponses,
+      appendChildNodeResponse,
+      appendedNodeResponseIds
+    });
+
+    handler({
+      type: 'tool_execution_start',
+      toolCallId: 'call_search',
+      toolName: 'search',
+      args: {
+        q: 'FastGPT'
+      }
+    } as any);
+    handler({
+      type: 'tool_execution_end',
+      toolCallId: 'call_search',
+      toolName: 'search',
+      result: {
+        content: [{ type: 'text', text: 'Validation failed' }]
+      },
+      isError: true
+    } as any);
+
+    expect(appendChildNodeResponse).not.toHaveBeenCalled();
   });
 });

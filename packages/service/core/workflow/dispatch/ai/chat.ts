@@ -293,7 +293,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         finishReason: finish_reason,
         llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: answerText
+      [DispatchNodeResponseKeyEnum.toolResponse]: answerText
     };
   } catch (error) {
     return getNodeErrResponse({ error });

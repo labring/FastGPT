@@ -105,7 +105,7 @@ export async function dispatchDatasetSearch(
       limit,
       searchMode
     },
-    [DispatchNodeResponseKeyEnum.toolResponses]: []
+    [DispatchNodeResponseKeyEnum.toolResponse]: []
   };
 
   const searchQueries = userChatInput ? [userChatInput] : datasetSearchInput;
@@ -322,7 +322,7 @@ export async function dispatchDatasetSearch(
         // Results
         quoteList: searchRes
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]:
+      [DispatchNodeResponseKeyEnum.toolResponse]:
         searchRes.length > 0
           ? {
               prompt: getDatasetSearchToolResponsePrompt(),

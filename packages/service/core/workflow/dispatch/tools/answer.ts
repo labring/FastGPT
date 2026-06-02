@@ -37,6 +37,6 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: formatText
     },
-    [DispatchNodeResponseKeyEnum.toolResponses]: responseText
+    [DispatchNodeResponseKeyEnum.toolResponse]: responseText
   };
 };

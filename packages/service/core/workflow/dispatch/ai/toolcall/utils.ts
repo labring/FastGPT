@@ -43,17 +43,6 @@ export const filterToolResponseToPreview = (response: AIChatItemValueItemType[])
   });
 };
 
-export const formatToolResponse = (toolResponses: any) => {
-  if (typeof toolResponses === 'object') {
-    return JSON.stringify(toolResponses, null, 2);
-  }
-
-  /**
-   * 非对象的空结果给 LLM 一个稳定字符串，避免 undefined 被拼进上下文后语义不清。
-   */
-  return toolResponses ? String(toolResponses) : 'none';
-};
-
 /**
  * 这些 runtime edge/node 是为一次 tool workflow 派生出的副本。
  * 初始化阶段直接在副本上标记入口状态，避免后续调度还要维护额外的 entry 集合。

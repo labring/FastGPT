@@ -81,7 +81,7 @@ describe('dispatchFormInput', () => {
         'https://legacy.example.com/file.txt'
       ]
     });
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       upload: [
         'https://preview.example.com/upload.png',
         'https://external.example.com/file.pdf',

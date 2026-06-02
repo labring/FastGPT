@@ -2,7 +2,6 @@ import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { type PluginRunBoxProps } from './type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { type FieldValues } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -15,7 +14,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { appendNodeResponseByParent, mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
@@ -29,7 +28,7 @@ export const PluginRunContext = createContext<
   Omit<PluginRunContextType, 'appId' | 'chatId' | 'outLinkAuthData'>
 >({
   isChatting: false,
-  onSubmit: function (e: FieldValues): Promise<any> {
+  onSubmit: function (): Promise<any> {
     throw new Error('Function not implemented.');
   },
   instruction: ''
@@ -72,9 +71,7 @@ const PluginRunContextProvider = ({
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
               ...item,
-              responseData: item.responseData
-                ? [...item.responseData, nodeResponse]
-                : [nodeResponse]
+              responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
             };
           } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {

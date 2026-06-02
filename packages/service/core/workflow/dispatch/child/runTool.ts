@@ -150,13 +150,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
               toolRes: res.error,
               moduleLogo: avatar
             },
-            [DispatchNodeResponseKeyEnum.toolResponses]: res.error
+            [DispatchNodeResponseKeyEnum.toolResponse]: res.error
           };
         }
 
-        logger.error('Tool Run Error', { error: res.error });
-        throw res.error;
-      }
+        // String error(Common error, not custom)
+        if (typeof res.error === 'string') {
+          logger.error('Tool Run Error', { error: res.error });
+          throw new Error(res.error);
+        }
+
+        // Custom error field
+        return {
+          error: res.error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            toolInput,
+            error: res.error,
+            moduleLogo: avatar
+          },
+            [DispatchNodeResponseKeyEnum.toolResponse]: res.error
+          };
+        }
 
       const usagePoints = (() => {
         if (
@@ -193,7 +207,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: result
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       // pluginId: toolSetAppId/toolsetName/toolName
@@ -229,7 +243,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: result
       };
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
@@ -275,7 +289,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
               toolRes: errorMsg,
               moduleLogo: avatar
             },
-            [DispatchNodeResponseKeyEnum.toolResponses]: errorMsg
+            [DispatchNodeResponseKeyEnum.toolResponse]: errorMsg
           };
         }
         throw new Error(errorMsg);
@@ -288,7 +302,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           toolRes: data,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: data
+        [DispatchNodeResponseKeyEnum.toolResponse]: data
       };
     } else {
       // mcp tool (old version compatible)
@@ -315,7 +329,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           toolRes: result,
           moduleLogo: avatar
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: result
       };
     }
   } catch (error) {

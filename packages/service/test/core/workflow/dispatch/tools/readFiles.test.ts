@@ -73,7 +73,7 @@ describe('dispatchReadFiles', () => {
     expect(nodeResponse.readFilesResult).toContain('## b.pdf');
     expect(nodeResponse.readFilesResult).toContain('Beta');
 
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       fileContent: text
     });
   });
@@ -206,7 +206,7 @@ describe('dispatchReadFiles', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse] as any;
     expect(nodeResponse.readFiles).toEqual([]);
     expect(nodeResponse.readFilesResult).toBe('');
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({ fileContent: '' });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({ fileContent: '' });
   });
 
   it('超大内容下预览仍按 sliceStrStartEnd 截断 (start/end 各 1000)', async () => {
@@ -238,7 +238,7 @@ describe('dispatchReadFiles', () => {
 
     expect((result as any).error?.[NodeOutputKeyEnum.errorText]).toBe('boom');
     expect((result[DispatchNodeResponseKeyEnum.nodeResponse] as any).errorText).toBe('boom');
-    expect((result[DispatchNodeResponseKeyEnum.toolResponses] as any).error).toBe('boom');
+    expect((result[DispatchNodeResponseKeyEnum.toolResponse] as any).error).toBe('boom');
   });
 });
 

@@ -54,7 +54,7 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
         </Box>
       }
       isLoading={loading}
-      w={['90vw', '1080px']}
+      w={'100%'}
       maxW={['90vw', '1080px']}
       h={['90vh', '80vh']}
       maxH={['90vh', '700px']}

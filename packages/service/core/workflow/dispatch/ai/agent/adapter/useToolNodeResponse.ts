@@ -29,6 +29,9 @@ const getChildrenTotalPoints = (childrenResponses: ChatHistoryItemResType[] = []
 export const useToolNodeResponse = ({
   node,
   nodeResponses,
+  appendNodeResponse = (nodeResponse) => {
+    nodeResponses.push(nodeResponse);
+  },
   toolCatalog,
   getSubAppInfo
 }: {
@@ -37,6 +40,7 @@ export const useToolNodeResponse = ({
     flowNodeType: FlowNodeTypeEnum;
   };
   nodeResponses: ChatHistoryItemResType[];
+  appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
   toolCatalog: AgentLoopToolCatalog;
   getSubAppInfo: GetSubAppInfoFnType;
 }) => {
@@ -190,7 +194,7 @@ export const useToolNodeResponse = ({
       : undefined;
     const childrenResponses = compressNodeResponse ? [compressNodeResponse] : [];
 
-    nodeResponses.push(
+    appendNodeResponse(
       withChildTotalPoints({
         id: `${node.nodeId}-plan-${call.id}`,
         nodeId: `${node.nodeId}-plan-${call.id}`,
@@ -259,7 +263,7 @@ export const useToolNodeResponse = ({
     }
 
     const toolNodeResponse = createToolNodeResponse(event);
-    nodeResponses.push(toolNodeResponse);
+    appendNodeResponse(toolNodeResponse);
     pendingToolResultMap.delete(event.call.id);
   };
 

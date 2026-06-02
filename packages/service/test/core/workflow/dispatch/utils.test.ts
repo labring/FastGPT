@@ -11,7 +11,8 @@ import {
   formatHttpError,
   rewriteRuntimeWorkFlow,
   getNodeErrResponse,
-  safePoints
+  safePoints,
+  summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -1103,10 +1104,10 @@ describe('getNodeErrResponse', () => {
       'errorText',
       'test error'
     );
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toHaveProperty('error', 'test error');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toHaveProperty('error', 'test error');
   });
 
-  it('should include customErr in error and toolResponses', () => {
+  it('should include customErr in error and toolResponse', () => {
     const result = getNodeErrResponse({
       error: 'fail',
       customErr: { code: 500, detail: 'internal' }
@@ -1116,7 +1117,7 @@ describe('getNodeErrResponse', () => {
       code: 500,
       detail: 'internal'
     });
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       error: 'fail',
       code: 500,
       detail: 'internal'
@@ -1153,6 +1154,87 @@ describe('getNodeErrResponse', () => {
     expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
+  });
+});
+
+describe('summarizeRuntimeNodeResponses', () => {
+  it('deduplicates flattened child rows that are already included in parent child stats', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'parent',
+        nodeId: 'parent-node',
+        moduleName: 'Parent',
+        totalPoints: 1,
+        childTotalPoints: 2,
+        childResponseCount: 1
+      },
+      {
+        id: 'child',
+        parentId: 'parent',
+        nodeId: 'child-node',
+        moduleName: 'Child',
+        totalPoints: 2
+      }
+    ]);
+
+    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.childResponseCount).toBe(2);
+  });
+
+  it('counts nested children when only an in-memory child tree is available', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'parent',
+        nodeId: 'parent-node',
+        moduleName: 'Parent',
+        totalPoints: 1,
+        childrenResponses: [
+          {
+            id: 'child',
+            nodeId: 'child-node',
+            moduleName: 'Child',
+            totalPoints: 2
+          }
+        ]
+      }
+    ]);
+
+    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.childResponseCount).toBe(2);
+  });
+
+  it('does not count the same response id again across incremental summaries', () => {
+    const firstSummary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'repeat',
+        nodeId: 'repeat-node',
+        moduleName: 'Repeat',
+        runningTime: 1,
+        totalPoints: 2
+      }
+    ]);
+    const nextSummary = summarizeRuntimeNodeResponses(firstSummary, [
+      {
+        id: 'repeat',
+        nodeId: 'repeat-node',
+        moduleName: 'Repeat',
+        runningTime: 1,
+        totalPoints: 2
+      },
+      {
+        id: 'next',
+        nodeId: 'next-node',
+        moduleName: 'Next',
+        runningTime: 3,
+        totalPoints: 4
+      }
+    ]);
+
+    expect(nextSummary.responseIds).toEqual(['repeat', 'next']);
+    expect(nextSummary.finishedNodeIds).toEqual(['repeat-node', 'next-node']);
+    expect(nextSummary.runningTime).toBe(4);
+    expect(nextSummary.childTotalPoints).toBe(6);
+    expect(nextSummary.childResponseCount).toBe(2);
   });
 });
 
