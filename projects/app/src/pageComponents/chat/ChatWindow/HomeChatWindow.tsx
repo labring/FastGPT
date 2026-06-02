@@ -95,6 +95,7 @@ const HomeChatWindow = () => {
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
+  const collapseSidebar = useContextSelector(ChatPageContext, (v) => v.collapseSidebar);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
@@ -227,6 +228,8 @@ const HomeChatWindow = () => {
       if (!appId) {
         return Promise.reject('appId is empty');
       }
+
+      collapseSidebar();
 
       const histories = messages.slice(-1);
 

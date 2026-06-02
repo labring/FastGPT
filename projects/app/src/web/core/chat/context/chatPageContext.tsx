@@ -29,6 +29,8 @@ export type ChatPageContextValue = {
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
+  /** 收起 /chat 页面左侧应用侧边栏；用于会话生成等需要扩大对话区域的场景。 */
+  collapseSidebar: () => void;
   // Chat settings
   chatSettings: ChatSettingType | undefined;
   refreshChatSetting: () => Promise<ChatSettingType | undefined>;
@@ -46,6 +48,7 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   handlePaneChange: () => {},
   collapse: defaultCollapseStatus,
   onTriggerCollapse: () => {},
+  collapseSidebar: () => {},
   chatSettings: undefined,
   logos: { wideLogoUrl: '', squareLogoUrl: '' },
   refreshChatSetting: function (): Promise<ChatSettingType | undefined> {
@@ -182,6 +185,9 @@ export const ChatPageContextProvider = ({
   const onTriggerCollapse = useCallback(() => {
     setCollapse(collapse === 0 ? 1 : 0);
   }, [collapse]);
+  const collapseSidebar = useCallback(() => {
+    setCollapse(1);
+  }, []);
 
   const value: ChatPageContextValue = useMemoEnhance(
     () => ({
@@ -189,6 +195,7 @@ export const ChatPageContextProvider = ({
       handlePaneChange,
       collapse,
       onTriggerCollapse,
+      collapseSidebar,
       chatSettings,
       refreshChatSetting,
       logos,
@@ -202,6 +209,7 @@ export const ChatPageContextProvider = ({
       handlePaneChange,
       collapse,
       onTriggerCollapse,
+      collapseSidebar,
       chatSettings,
       refreshChatSetting,
       logos,

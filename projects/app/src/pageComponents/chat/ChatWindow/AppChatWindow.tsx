@@ -62,6 +62,7 @@ const AppChatWindow = () => {
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
+  const collapseSidebar = useContextSelector(ChatPageContext, (v) => v.collapseSidebar);
 
   const { loading } = useRequest(
     async () => {
@@ -111,6 +112,8 @@ const AppChatWindow = () => {
         return Promise.reject('appId is empty');
       }
 
+      collapseSidebar();
+
       const histories = messages.slice(-1);
       const { responseText } = await streamFetch({
         data: {
@@ -146,7 +149,8 @@ const AppChatWindow = () => {
       forbidLoadChatRef,
       isShowCite,
       showSkillReferences,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      collapseSidebar
     ]
   );
 
