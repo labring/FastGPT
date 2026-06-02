@@ -3,6 +3,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
   ManagePermissionVal,
+  OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal,
   ReadRoleVal,
@@ -106,7 +107,9 @@ describe('service/support/permission/model', () => {
       id: modelIds.system,
       requestUrl: 'url1',
       isShared: true,
-      isCustom: false
+      isCustom: false,
+      tmbId: root.tmbId,
+      teamId: root.teamId
     });
     const modelA = createLLMModel({
       id: modelIds.a,
@@ -176,9 +179,10 @@ describe('service/support/permission/model', () => {
     ).resolves.toEqual([modelIds.system, modelIds.a, modelIds.b]);
   });
 
-  it('authorizes single models by id and does not grant write/manage on shared system models', async () => {
+  it('authorizes single models by id and does not grant write/manage through sharing alone', async () => {
     const users = await getFakeUsers(2);
     const [userA, userB] = users.members;
+    const root = await getRootUser();
     const modelIds = {
       system: '000000000000000000000011',
       a: '000000000000000000000012'
@@ -187,7 +191,9 @@ describe('service/support/permission/model', () => {
       id: modelIds.system,
       requestUrl: 'url1',
       isShared: true,
-      isCustom: false
+      isCustom: false,
+      tmbId: root.tmbId,
+      teamId: root.teamId
     });
     const modelA = createLLMModel({
       id: modelIds.a,
@@ -257,19 +263,21 @@ describe('service/support/permission/model', () => {
     const [userA] = users.members;
     const root = await getRootUser();
     const systemModel = createLLMModel({
-      id: 'system-model-from-config',
+      id: '000000000000000000000061',
       requestUrl: 'url1',
       isShared: true,
-      isCustom: false
+      isCustom: false,
+      tmbId: root.tmbId,
+      teamId: root.teamId
     });
     const ownedModel = createLLMModel({
-      id: 'owned-model-from-config',
+      id: '000000000000000000000062',
       requestUrl: 'url2',
       tmbId: userA.tmbId,
       teamId: userA.teamId
     });
     const privateOtherModel = createLLMModel({
-      id: 'private-other-model-from-config',
+      id: '000000000000000000000063',
       requestUrl: 'url3',
       tmbId: root.tmbId,
       teamId: root.teamId
@@ -368,7 +376,7 @@ describe('service/support/permission/model', () => {
     expect(() => assertModelAvailable(models[0])).toThrow(ModelErrEnum.modelNotActive);
   });
 
-  it('hides system models from non-root users when isShared is false', async () => {
+  it('uses isShared as extra read permission for managed system models', async () => {
     const users = await getFakeUsers(2);
     const [userA, userB] = users.members;
     const root = await getRootUser();
@@ -382,14 +390,18 @@ describe('service/support/permission/model', () => {
       id: modelIds.sharedSystem,
       requestUrl: 'url-shared',
       isShared: true,
-      isCustom: false
+      isCustom: false,
+      tmbId: root.tmbId,
+      teamId: root.teamId
     });
     // Private system model — only root can see
     const privateSystem = createLLMModel({
       id: modelIds.privateSystem,
       requestUrl: 'url-private',
       isShared: false,
-      isCustom: false
+      isCustom: false,
+      tmbId: root.tmbId,
+      teamId: root.teamId
     });
     // User A's custom model
     const ownedByA = createLLMModel({
@@ -438,6 +450,75 @@ describe('service/support/permission/model', () => {
     expect(sharedPerm.hasReadPer).toBe(true);
   });
 
+  it('allows collaborator management for system models assigned to a team owner', async () => {
+    const users = await getFakeUsers(2);
+    const [userA, userB] = users.members;
+    const modelId = '000000000000000000000051';
+    const managedSystemModel = createLLMModel({
+      id: modelId,
+      requestUrl: 'url-managed-system',
+      isCustom: false,
+      isShared: false,
+      tmbId: userA.tmbId,
+      teamId: userA.teamId
+    });
+    installModels([managedSystemModel]);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.model,
+      teamId: userA.teamId,
+      resourceId: modelId,
+      tmbId: userA.tmbId,
+      permission: OwnerRoleVal
+    });
+
+    await expect(
+      authModel({
+        req: { auth: userA } as any,
+        authToken: true,
+        modelId,
+        per: ManagePermissionVal
+      })
+    ).resolves.toMatchObject({
+      model: {
+        id: modelId,
+        permission: {
+          isOwner: true
+        }
+      }
+    });
+
+    await expect(
+      authModel({
+        req: { auth: userB } as any,
+        authToken: true,
+        modelId,
+        per: ReadPermissionVal
+      })
+    ).rejects.toBeTruthy();
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.model,
+      teamId: userB.teamId,
+      resourceId: modelId,
+      tmbId: userB.tmbId,
+      permission: ReadRoleVal
+    });
+
+    await expect(
+      authModel({
+        req: { auth: userB } as any,
+        authToken: true,
+        modelId,
+        per: ReadPermissionVal
+      })
+    ).resolves.toMatchObject({
+      model: {
+        id: modelId
+      }
+    });
+  });
+
   it('keeps duplicate model/name configurations separated by id for authModels', async () => {
     const users = await getFakeUsers(2);
     const [userA, userB] = users.members;
@@ -450,7 +531,9 @@ describe('service/support/permission/model', () => {
       id: modelIds.system,
       requestUrl: 'url1',
       isShared: true,
-      isCustom: false
+      isCustom: false,
+      tmbId: userA.tmbId,
+      teamId: userA.teamId
     });
     const modelA = createLLMModel({
       id: modelIds.a,

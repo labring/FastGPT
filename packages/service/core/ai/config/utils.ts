@@ -33,6 +33,11 @@ import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import type { ZodObject } from 'zod';
+import { MongoUser } from '../../../support/user/schema';
+import { MongoTeamMember } from '../../../support/user/team/teamMemberSchema';
+import { MongoResourcePermission } from '../../../support/permission/schema';
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 
 const leanToModelItem = (doc: any): SystemModelItemType => {
   const { _id, __v, ...rest } = doc;
@@ -77,6 +82,19 @@ const normalizeSystemModel = (model: any): any => {
 
   const result = schema.safeParse(cleaned);
   return result.success ? result.data : cleaned;
+};
+
+const getRootMemberForSystemModelOwner = async () => {
+  const rootUser = await MongoUser.findOne({ username: 'root' }, '_id').lean();
+  if (!rootUser) return;
+
+  const rootMember = await MongoTeamMember.findOne({ userId: rootUser._id }, '_id teamId').lean();
+  if (!rootMember) return;
+
+  return {
+    rootTmbId: rootMember._id,
+    rootTeamId: rootMember.teamId
+  };
 };
 
 export const loadSystemModels = async (init = false, language = 'en') => {
@@ -182,29 +200,71 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       );
 
       if (pluginModelsWithoutDB.length > 0) {
+        const rootMember = await getRootMemberForSystemModelOwner();
         const modelNames = pluginModelsWithoutDB.map((m) => m.model);
-        // Use bulkWrite + upsert to safely handle concurrent startup across nodes
-        await MongoSystemModel.bulkWrite(
-          pluginModelsWithoutDB.map((model) => ({
-            updateOne: {
-              filter: { model: model.model, isCustom: false },
-              update: {
-                $setOnInsert: {
-                  ...normalizeSystemModel(model),
-                  isCustom: false,
-                  isShared: false
-                }
-              },
-              upsert: true
-            }
-          })) as any,
-          { ordered: false }
-        );
-        // Re-fetch to get _id values for both pre-existing and newly inserted records
-        const refreshedDocs = await MongoSystemModel.find({
-          model: { $in: modelNames },
-          isCustom: false
-        }).lean();
+        const refreshedDocs = await mongoSessionRun(async (session) => {
+          // Use bulkWrite + upsert to safely handle concurrent startup across nodes
+          await MongoSystemModel.bulkWrite(
+            pluginModelsWithoutDB.map((model) => ({
+              updateOne: {
+                filter: { model: model.model, isCustom: false },
+                update: {
+                  $setOnInsert: {
+                    ...normalizeSystemModel(model),
+                    isCustom: false,
+                    isShared: false,
+                    ...(rootMember
+                      ? {
+                          teamId: rootMember.rootTeamId,
+                          tmbId: rootMember.rootTmbId
+                        }
+                      : {})
+                  }
+                },
+                upsert: true
+              }
+            })) as any,
+            { ordered: false, session }
+          );
+          // Re-fetch to get _id values for both pre-existing and newly inserted records
+          const refreshedDocs = await MongoSystemModel.find({
+            model: { $in: modelNames },
+            isCustom: false
+          })
+            .lean()
+            .session(session);
+
+          if (rootMember && refreshedDocs.length > 0) {
+            await MongoResourcePermission.bulkWrite(
+              refreshedDocs.map((doc) => {
+                const resourceId = String(doc._id);
+                return {
+                  updateOne: {
+                    filter: {
+                      teamId: rootMember.rootTeamId,
+                      tmbId: rootMember.rootTmbId,
+                      resourceType: PerResourceTypeEnum.model,
+                      resourceId
+                    },
+                    update: {
+                      $setOnInsert: {
+                        teamId: rootMember.rootTeamId,
+                        tmbId: rootMember.rootTmbId,
+                        resourceType: PerResourceTypeEnum.model,
+                        resourceId,
+                        permission: OwnerRoleVal
+                      }
+                    },
+                    upsert: true
+                  }
+                };
+              }),
+              { ordered: false, session }
+            );
+          }
+
+          return refreshedDocs;
+        });
         dbModels = dbModels.filter((db) => !modelNames.includes(db.model) || db.isCustom !== false);
         dbModels.push(...refreshedDocs);
         addLog.info(`Persisted ${refreshedDocs.length} system models to MongoDB`);

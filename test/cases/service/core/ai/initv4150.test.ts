@@ -557,7 +557,7 @@ describe('migrateModelData', () => {
       } as any);
 
     const result = await migrateModelData({ rootTmbId, rootTeamId });
-    expect(result.orphanAssigned).toBeGreaterThanOrEqual(1);
+    expect(result.orphanAssigned).toBe(1);
 
     const doc = await db().collection('system_models').findOne({ model: 'orphan-custom-model' });
     expect(doc!.isCustom).toBe(true);
@@ -575,7 +575,7 @@ describe('migrateModelData', () => {
     expect(perm!.permission).toBe(OwnerRoleVal);
   });
 
-  it('does not assign root tmbId/teamId to system models (isCustom=false)', async () => {
+  it('assigns root tmbId/teamId to system models so root can manage collaborators', async () => {
     global.systemModelList = [{ model: 'gpt-4o', isCustom: false, type: 'llm' }] as any;
 
     const rootTmbId = 'cccccc333333333333333333';
@@ -598,12 +598,21 @@ describe('migrateModelData', () => {
       } as any);
 
     const result = await migrateModelData({ rootTmbId, rootTeamId });
+    expect(result.orphanAssigned).toBe(1);
 
     const doc = await db().collection('system_models').findOne({ model: 'gpt-4o' });
     expect(doc!.isCustom).toBe(false);
-    // System models should NOT get root tmbId/teamId
-    expect(doc!.tmbId).toBeUndefined();
-    expect(doc!.teamId).toBeUndefined();
+    expect(String(doc!.tmbId)).toBe(rootTmbId);
+    expect(String(doc!.teamId)).toBe(rootTeamId);
+
+    const perm = await MongoResourcePermission.findOne({
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: doc!._id
+    }).lean();
+    expect(perm).toBeTruthy();
+    expect(String(perm!.tmbId)).toBe(rootTmbId);
+    expect(String(perm!.teamId)).toBe(rootTeamId);
+    expect(perm!.permission).toBe(OwnerRoleVal);
   });
 
   it('preserves existing tmbId/teamId on custom models', async () => {

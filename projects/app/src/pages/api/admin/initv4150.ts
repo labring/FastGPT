@@ -9,6 +9,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 const logger = getLogger(['initv4150']);
 
@@ -147,6 +148,13 @@ export async function migrateModelData(options?: {
   orphanAssigned: number;
 }> {
   const { rootTmbId, rootTeamId } = options || {};
+  const rootOwner =
+    rootTmbId && rootTeamId
+      ? {
+          tmbId: new Types.ObjectId(rootTmbId),
+          teamId: new Types.ObjectId(rootTeamId)
+        }
+      : undefined;
   const db = connectionMongo.connection.db;
   if (!db) {
     logger.warn('MongoDB connection not available, skipping data migration');
@@ -154,6 +162,9 @@ export async function migrateModelData(options?: {
   }
   const models = (await db.collection('system_models').find({}).toArray()) as any[];
   logger.info(`Found ${models.length} models`);
+  const pluginModelNames = new Set(
+    (global.systemModelList || []).filter((m: any) => m.isCustom !== true).map((m: any) => m.model)
+  );
 
   let flattened = 0;
   let isSharedSet = 0;
@@ -187,38 +198,23 @@ export async function migrateModelData(options?: {
     //   - model name matches a loaded plugin system model → edited system model
     //   - model name has no plugin match → user-created custom model
     if (model.isCustom === undefined) {
-      const pluginModelNames = new Set(
-        (global.systemModelList || [])
-          .filter((m: any) => m.isCustom !== true)
-          .map((m: any) => m.model)
-      );
       $set.isCustom = pluginModelNames.has($set.model ?? model.model) ? false : true;
     }
 
-    // Assign orphan custom models to root user when tmbId/teamId are missing
-    const effectiveIsCustom = $set.isCustom ?? model.isCustom;
-    if (effectiveIsCustom === true) {
-      const needsTmbId = rootTmbId && ($set.tmbId ?? model.tmbId) === undefined;
-      const needsTeamId = rootTeamId && ($set.teamId ?? model.teamId) === undefined;
-
-      if (needsTmbId) {
-        $set.tmbId = new Types.ObjectId(rootTmbId);
-        orphanAssigned++;
+    // Assign models without an owner to root user when tmbId/teamId are missing.
+    // System built-in models are also assigned so root can manage model collaborators.
+    let ownerPermissionUpsert = false;
+    if (rootOwner) {
+      if (($set.tmbId ?? model.tmbId) === undefined) {
+        $set.tmbId = rootOwner.tmbId;
+        ownerPermissionUpsert = true;
       }
-      if (needsTeamId) {
-        $set.teamId = new Types.ObjectId(rootTeamId);
-        orphanAssigned++;
+      if (($set.teamId ?? model.teamId) === undefined) {
+        $set.teamId = rootOwner.teamId;
+        ownerPermissionUpsert = true;
       }
-
-      // Create corresponding resource permission for the root owner
-      if (needsTmbId || needsTeamId) {
-        await MongoResourcePermission.create({
-          teamId: $set.teamId ?? model.teamId,
-          tmbId: $set.tmbId ?? model.tmbId,
-          resourceType: PerResourceTypeEnum.model,
-          resourceId: model._id,
-          permission: OwnerRoleVal
-        });
+      if (ownerPermissionUpsert) {
+        orphanAssigned++;
       }
     }
 
@@ -333,9 +329,30 @@ export async function migrateModelData(options?: {
     if (Object.keys($set).length > 0) updateOp.$set = $set;
     if (Object.keys($unset).length > 0) updateOp.$unset = $unset;
 
-    if (Object.keys(updateOp).length > 0) {
-      // Use native driver to bypass Mongoose schema filtering on $unset
-      await db.collection('system_models').updateOne({ _id: model._id }, updateOp);
+    if (Object.keys(updateOp).length > 0 || ownerPermissionUpsert) {
+      await mongoSessionRun(async (session) => {
+        if (Object.keys(updateOp).length > 0) {
+          // Use native driver to bypass Mongoose schema filtering on $unset
+          await db.collection('system_models').updateOne({ _id: model._id }, updateOp, { session });
+        }
+
+        if (ownerPermissionUpsert) {
+          await MongoResourcePermission.updateOne(
+            {
+              teamId: $set.teamId ?? model.teamId,
+              tmbId: $set.tmbId ?? model.tmbId,
+              resourceType: PerResourceTypeEnum.model,
+              resourceId: model._id
+            },
+            {
+              $set: {
+                permission: OwnerRoleVal
+              }
+            },
+            { upsert: true, session }
+          );
+        }
+      });
     }
   }
 
