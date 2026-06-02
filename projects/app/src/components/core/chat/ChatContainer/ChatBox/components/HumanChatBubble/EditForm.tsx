@@ -109,20 +109,42 @@ const HumanChatBubbleEditForm = ({
     textarea.selectionEnd = textarea.value.length;
   }, []);
 
+  const renderVoiceInput = () => (
+    <VoiceInput
+      ref={VoiceInputRef}
+      handleSend={(text) => {
+        onSubmit?.({
+          text: text.trim(),
+          files: fileList
+        });
+        replaceFiles([]);
+      }}
+      resetInputVal={(text) => {
+        setMobilePreSpeak(false);
+        setValue(text);
+      }}
+      mobilePreSpeak={mobilePreSpeak}
+      setMobilePreSpeak={setMobilePreSpeak}
+    />
+  );
+
   return (
-    <Box w={'100%'} maxW={'100%'}>
+    <Box w={'100%'} maxW={'100%'} pt={mobilePreSpeak ? '48px' : 0}>
       <Box
         position={'relative'}
+        h={mobilePreSpeak ? '48px' : 'auto'}
         borderRadius={'12px'}
-        border={'2px solid'}
-        borderColor={'primary.600'}
-        boxShadow={'0 0 0 3px rgba(51, 112, 255, 0.16)'}
-        bg={'white'}
+        border={mobilePreSpeak ? 'none' : '2px solid'}
+        borderColor={mobilePreSpeak ? 'transparent' : 'primary.600'}
+        boxShadow={mobilePreSpeak ? 'none' : '0 0 0 3px rgba(51, 112, 255, 0.16)'}
+        bg={mobilePreSpeak ? 'transparent' : 'white'}
         overflow={'hidden'}
       >
-        <Box px={'12px'}>
-          <FilePreview fileList={fileList} removeFiles={removeFiles} />
-        </Box>
+        {!mobilePreSpeak && (
+          <Box px={'12px'}>
+            <FilePreview fileList={fileList} removeFiles={removeFiles} />
+          </Box>
+        )}
         <Textarea
           ref={textareaRef}
           value={value}
@@ -144,107 +166,94 @@ const HumanChatBubbleEditForm = ({
             boxShadow: 'none'
           }}
         />
-        <VoiceInput
-          ref={VoiceInputRef}
-          handleSend={(text) => {
-            onSubmit?.({
-              text: text.trim(),
-              files: fileList
-            });
-            replaceFiles([]);
-          }}
-          resetInputVal={(text) => {
-            setMobilePreSpeak(false);
-            setValue(text);
-          }}
-          mobilePreSpeak={mobilePreSpeak}
-          setMobilePreSpeak={setMobilePreSpeak}
-        />
+        {renderVoiceInput()}
       </Box>
 
-      <Flex
-        pt={'8px'}
-        alignItems={'center'}
-        justifyContent={showCancel ? 'flex-end' : 'space-between'}
-        gap={'8px'}
-      >
-        <Flex alignItems={'center'} gap={'8px'} color={'myGray.500'}>
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            w={'36px'}
-            h={'36px'}
-            p={'8px'}
-            borderRadius={'sm'}
-            cursor={canUploadFile ? 'pointer' : 'not-allowed'}
-            opacity={canUploadFile ? 1 : 0.4}
-            _hover={canUploadFile ? { bg: 'rgba(0, 0, 0, 0.04)' } : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canUploadFile) {
-                onOpenSelectFile();
-              }
-            }}
-          >
-            <MyTooltip label={t('chat:select_file')}>
-              <MyIcon name={'core/chat/fileSelect'} w={'20px'} h={'20px'} color={'#707070'} />
-            </MyTooltip>
+      {!mobilePreSpeak && (
+        <Flex
+          pt={'8px'}
+          alignItems={'center'}
+          justifyContent={showCancel ? 'flex-end' : 'space-between'}
+          gap={'8px'}
+        >
+          <Flex alignItems={'center'} gap={'8px'} color={'myGray.500'}>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={'36px'}
+              h={'36px'}
+              p={'8px'}
+              borderRadius={'sm'}
+              cursor={canUploadFile ? 'pointer' : 'not-allowed'}
+              opacity={canUploadFile ? 1 : 0.4}
+              _hover={canUploadFile ? { bg: 'rgba(0, 0, 0, 0.04)' } : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canUploadFile) {
+                  onOpenSelectFile();
+                }
+              }}
+            >
+              <MyTooltip label={t('chat:select_file')}>
+                <MyIcon name={'core/chat/fileSelect'} w={'20px'} h={'20px'} color={'#707070'} />
+              </MyTooltip>
+            </Flex>
+            <File onSelect={(files) => onSelectFile({ files })} />
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              w={'36px'}
+              h={'36px'}
+              p={'8px'}
+              borderRadius={'sm'}
+              cursor={whisperConfig?.open ? 'pointer' : 'not-allowed'}
+              opacity={whisperConfig?.open ? 1 : 0.4}
+              _hover={whisperConfig?.open ? { bg: 'rgba(0, 0, 0, 0.04)' } : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                VoiceInputRef.current?.onSpeak?.();
+              }}
+            >
+              <MyTooltip label={t('common:core.chat.Record')}>
+                <MyIcon name={'core/chat/recordFill'} w={'20px'} h={'20px'} color={'#707070'} />
+              </MyTooltip>
+            </Flex>
           </Flex>
-          <File onSelect={(files) => onSelectFile({ files })} />
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            w={'36px'}
-            h={'36px'}
-            p={'8px'}
-            borderRadius={'sm'}
-            cursor={whisperConfig?.open ? 'pointer' : 'not-allowed'}
-            opacity={whisperConfig?.open ? 1 : 0.4}
-            _hover={whisperConfig?.open ? { bg: 'rgba(0, 0, 0, 0.04)' } : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              VoiceInputRef.current?.onSpeak?.();
-            }}
-          >
-            <MyTooltip label={t('common:core.chat.Record')}>
-              <MyIcon name={'core/chat/recordFill'} w={'20px'} h={'20px'} color={'#707070'} />
-            </MyTooltip>
-          </Flex>
-        </Flex>
 
-        {showCancel && <Box h={'22px'} w={'1px'} bg={'myGray.200'} />}
+          {showCancel && <Box h={'22px'} w={'1px'} bg={'myGray.200'} />}
 
-        {showCancel && (
+          {showCancel && (
+            <Button
+              variant={'unstyled'}
+              w={'69px'}
+              h={'36px'}
+              color={'primary.600'}
+              fontSize={'14px'}
+              fontWeight={500}
+              onClick={onCancel}
+            >
+              {t('common:Cancel')}
+            </Button>
+          )}
           <Button
-            variant={'unstyled'}
             w={'69px'}
             h={'36px'}
-            color={'primary.600'}
+            borderRadius={'8px'}
+            variant={'primary'}
             fontSize={'14px'}
-            fontWeight={500}
-            onClick={onCancel}
+            isDisabled={!canSubmit}
+            onClick={() => {
+              if (!canSubmit) return;
+              onSubmit?.({
+                text: trimmedValue,
+                files: fileList
+              });
+            }}
           >
-            {t('common:Cancel')}
+            {t('common:Update')}
           </Button>
-        )}
-        <Button
-          w={'69px'}
-          h={'36px'}
-          borderRadius={'8px'}
-          variant={'primary'}
-          fontSize={'14px'}
-          isDisabled={!canSubmit}
-          onClick={() => {
-            if (!canSubmit) return;
-            onSubmit?.({
-              text: trimmedValue,
-              files: fileList
-            });
-          }}
-        >
-          {t('common:Update')}
-        </Button>
-      </Flex>
+        </Flex>
+      )}
     </Box>
   );
 };
