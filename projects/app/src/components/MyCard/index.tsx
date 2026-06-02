@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
-import React from 'react';
+import React, { useState } from 'react';
 
 type MyCardProps = {
   avatar: string;
@@ -32,16 +32,17 @@ const MyCard = ({
   onClick
 }: MyCardProps) => {
   const { t } = useTranslation();
+  const [introOverflowed, setIntroOverflowed] = useState(false);
 
   const handleClick = () => {
-    if (isMarketFeatured) {
-      if (experienceUrl) {
-        window.open(experienceUrl, '_blank');
-      }
+    if (experienceUrl) {
+      window.open(experienceUrl, '_blank');
       return;
     }
     onClick?.();
   };
+
+  const isClickable = !!(experienceUrl || onClick);
 
   const hasHoverAction = !!hoverAction;
 
@@ -56,7 +57,7 @@ const MyCard = ({
       borderRadius="8px"
       position="relative"
       overflow="hidden"
-      cursor="pointer"
+      cursor={isClickable ? 'pointer' : 'default'}
       transition="border-color 0.15s"
       _hover={{ borderColor: '#91BBF2' }}
       onClick={handleClick}
@@ -138,9 +139,11 @@ const MyCard = ({
                   </Text>
                 </Flex>
               )}
-              <Text fontSize={'12px'} color={'myWhite.1000'}>
-                {intro}
-              </Text>
+              {introOverflowed && (
+                <Text fontSize={'12px'} color={'myWhite.1000'}>
+                  {intro}
+                </Text>
+              )}
             </Box>
           }
           flex="1"
@@ -150,6 +153,8 @@ const MyCard = ({
           lineHeight="20px"
           color="myWhite.900"
           tooltipProps={{ maxW: '350px' }}
+          forceShow={isMarketFeatured}
+          onOverflowChange={setIntroOverflowed}
         />
 
         {/* 底部：贡献者 */}
