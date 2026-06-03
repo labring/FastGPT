@@ -3,7 +3,6 @@ import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 
@@ -42,6 +41,8 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
+  const selectedTools = toolSetNode.toolConfig?.systemToolSet?.toolList ?? [];
+  if (!selectedTools.length) return [];
 
   const toolsetInputConfig = toolSetNode.inputs.find(
     (item) => item.key === NodeInputKeyEnum.systemInputConfig
@@ -56,27 +57,41 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     fallbackLatestVersion: true
   });
 
-  console.log(tool.children);
   if (!tool.children) return [];
 
   const runtimeVersion = tool.version || toolSetNode.version;
-  const nodes = tool.children?.map((child) => {
+  const childMap = new Map(
+    tool.children.map((child) => [`${systemToolId}/${child.id}`, child] as const)
+  );
+  tool.children.forEach((child) => {
+    childMap.set(child.id, child);
+  });
+
+  const nodes = selectedTools.flatMap((selectedTool) => {
+    const child = childMap.get(selectedTool.toolId);
+    if (!child) return [];
+
+    const pluginId = `${systemToolId}/${child.id}`;
+    const intro = selectedTool.description || child.description;
+    const toolDescription = selectedTool.description || child.toolDescription || child.description;
+
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
       inputs: toolsetInputConfig
         ? [toolsetInputConfig, ...(child.inputs ?? [])]
         : child.inputs ?? [],
       outputs: child.outputs ?? [],
-      name: child.name,
+      name: selectedTool.name || child.name,
+      intro,
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,
-      toolDescription: child.toolDescription,
+      toolDescription,
       toolConfig: {
         systemTool: {
-          toolId: `${systemToolId}/${child.id}`
+          toolId: pluginId
         }
       },
-      pluginId: `${systemToolId}/${child.id}`
+      pluginId
       // BUG: 不知道 catchError 从哪里拿，后续需要优化实现
       // catchError: toolSetNode.
     } satisfies RuntimeNodeItemType;

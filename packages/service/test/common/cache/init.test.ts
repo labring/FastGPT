@@ -1,12 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
-vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
-  refreshSystemTools: vi.fn().mockResolvedValue([])
-}));
-
 import { initCache } from '@fastgpt/service/common/cache/init';
-import { refreshSystemTools } from '@fastgpt/service/core/app/tool/controller';
 
 describe('initCache', () => {
   beforeEach(() => {
@@ -16,15 +11,6 @@ describe('initCache', () => {
   it('should initialize global.systemCache', () => {
     initCache();
     expect(global.systemCache).toBeDefined();
-  });
-
-  it('should set up systemTool cache entry', () => {
-    initCache();
-    const entry = global.systemCache[SystemCacheKeyEnum.systemTool];
-    expect(entry.versionKey).toBe('');
-    expect(entry.data).toEqual([]);
-    expect(entry.refreshFunc).toBe(refreshSystemTools);
-    expect(entry.devRefresh).toBe(true);
   });
 
   it('should set up modelPermission cache entry', () => {
@@ -43,8 +29,8 @@ describe('initCache', () => {
 
   it('should overwrite existing systemCache when called again', () => {
     initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].versionKey = 'old';
+    global.systemCache[SystemCacheKeyEnum.modelPermission].versionKey = 'old';
     initCache();
-    expect(global.systemCache[SystemCacheKeyEnum.systemTool].versionKey).toBe('');
+    expect(global.systemCache[SystemCacheKeyEnum.modelPermission].versionKey).toBe('');
   });
 });

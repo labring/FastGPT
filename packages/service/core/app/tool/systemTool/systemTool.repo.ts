@@ -306,7 +306,6 @@ export class SystemToolRepo {
       permissions: tool.permission
     };
 
-    console.log(toolDetail.secrets);
     return toolDetail;
   };
 
@@ -336,8 +335,6 @@ export class SystemToolRepo {
           versionName: 1
         }
       );
-
-      console.log(appVersions, associatedPluginId);
 
       return appVersions.map((item) => ({
         version: item.versionName

@@ -58,14 +58,7 @@ describe('InvokeProcessor.handleFileUpload', () => {
     });
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
     expect(result).toEqual({
-      prefix: 'chat/app-1/user-1/chat-1',
-      key: 'chat/app-1/user-1/chat-1/image.png',
-      url: 'https://example.com/api/system/file/download/token?filename=image.png',
-      accessUrl: {
-        bucket: 'fastgpt-private',
-        key: 'chat/app-1/user-1/chat-1/image.png',
-        url: 'https://example.com/api/system/file/download/token?filename=image.png'
-      }
+      url: 'https://example.com/api/system/file/download/token?filename=image.png'
     });
   });
 

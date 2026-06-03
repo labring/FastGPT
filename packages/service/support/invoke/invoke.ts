@@ -66,7 +66,7 @@ export class InvokeProcessor {
     return InvokeSessionSchema.parse(this._session);
   }
 
-  async handleFileUpload(params: InvokeFileUploadType) {
+  async handleFileUpload(params: InvokeFileUploadType): Promise<{ url: string }> {
     this.assertPermission(PluginPermissionEnum['file-upload:allow']);
 
     const { appId, chatId, uId } = InvokeSessionSchema.parse(this._session);
