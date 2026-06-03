@@ -87,7 +87,7 @@ const DashboardContainer = ({
   const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () =>
       currentTab === TabEnum.app_templates && hasAppCreatePer
-        ? getTemplateMarketItemList({ type: appType })
+        ? getTemplateMarketItemList({ type: appType || 'all' })
         : Promise.resolve({ list: [], total: 0 }),
     {
       manual: false,

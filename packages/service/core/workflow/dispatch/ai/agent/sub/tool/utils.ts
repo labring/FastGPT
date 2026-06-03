@@ -24,6 +24,7 @@ import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import type { SubAppInitType } from '../type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 export const getAgentRuntimeTools = async ({
   tools,
@@ -110,7 +111,7 @@ export const getAgentRuntimeTools = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        const { pluginId, authAppId } = splitCombineToolId(tool.id);
+        const { pluginId, authAppId, source } = splitCombineToolId(tool.id);
 
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
@@ -127,8 +128,6 @@ export const getAgentRuntimeTools = async ({
               ]
             : [])
         ]);
-        // console.log('toolNode', toolNode)
-        // Check if tool configuration is complete
         // 1. Add config value to toolNode.inputs
         toolNode.inputs.forEach((input) => {
           const value = tool.config[input.key];
@@ -149,6 +148,9 @@ export const getAgentRuntimeTools = async ({
         }
 
         const toolType = (() => {
+          if (source === AppToolSourceEnum.commercial) {
+            return 'commercialTool';
+          }
           if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {
             return 'workflow';
           }
@@ -260,7 +262,17 @@ export const getAgentRuntimeTools = async ({
           }
 
           return [];
-        } else {
+        }
+
+        // else if (source === AppToolSourceEnum.commercial) {
+        //   const systemToolRepo = SystemToolRepo.getInstance();
+
+        //   const detail = await systemToolRepo.getSystemToolDetail({
+        //     pluginId
+        //   })
+
+        // }
+        else {
           const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
 
           return [

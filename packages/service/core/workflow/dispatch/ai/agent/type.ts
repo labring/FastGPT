@@ -17,7 +17,7 @@ export type DispatchSubAppResponse = {
 };
 
 export const SubAppRuntimeSchema = z.object({
-  type: z.enum(['tool', 'workflow', 'toolWorkflow']),
+  type: z.enum(['tool', 'workflow', 'toolWorkflow', 'commercialTool']),
   id: z.string(),
   name: z.string(),
   avatar: z.string().optional(),

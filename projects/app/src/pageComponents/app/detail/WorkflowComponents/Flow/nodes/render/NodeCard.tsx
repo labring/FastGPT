@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
+import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import InlineEdit from './InlineEdit';
@@ -220,13 +220,10 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
-    // 1. MCP tool, HTTP tool set and system tool set do not have version
+    // 1. MCP tool and HTTP tool set do not have version
     if (
       isAppNode &&
-      (node.toolConfig?.mcpToolSet ||
-        node.toolConfig?.mcpTool ||
-        node?.toolConfig?.httpToolSet ||
-        node?.toolConfig?.systemToolSet)
+      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
     )
       return false;
     // 2. Team app/System commercial plugin

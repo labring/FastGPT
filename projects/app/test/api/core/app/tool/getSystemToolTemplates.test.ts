@@ -28,7 +28,10 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { handler, type GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
+import {
+  handler,
+  type GetSystemPluginTemplatesBody
+} from '@/pages/api/core/app/tool/getSystemToolTemplates';
 
 describe('get system tool templates handler', () => {
   beforeEach(() => {
@@ -75,15 +78,12 @@ describe('get system tool templates handler', () => {
       }
     ]);
 
-    const result = await handler(
-      {
-        body: {
-          searchKey: 'weather',
-          tags: ['life']
-        }
-      } as ApiRequestProps<GetSystemPluginTemplatesBody>,
-      {} as any
-    );
+    const result = await handler({
+      body: {
+        searchKey: 'weather',
+        tags: ['life']
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['weather']);
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
@@ -104,28 +104,35 @@ describe('get system tool templates handler', () => {
           id: 'plus',
           name: 'A+B Tool',
           description: 'Exact plus',
-          toolDescription: 'Use literal plus'
+          toolDescription: 'Use literal plus',
+          currentCost: 2,
+          systemKeyCost: 0.5
         },
         {
           id: 'regex-like',
           name: 'AxxB Tool',
           description: 'Would match an unescaped regex',
-          toolDescription: 'No literal plus'
+          toolDescription: 'No literal plus',
+          currentCost: 3,
+          systemKeyCost: 1
         }
-      ]
+      ],
+      hasTokenFee: true
     });
 
-    const result = await handler(
-      {
-        body: {
-          parentId: 'toolset',
-          searchKey: 'A+B'
-        }
-      } as ApiRequestProps<GetSystemPluginTemplatesBody>,
-      {} as any
-    );
+    const result = await handler({
+      body: {
+        parentId: 'toolset',
+        searchKey: 'A+B'
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['toolset/plus']);
+    expect(result[0]).toMatchObject({
+      currentCost: 2,
+      systemKeyCost: 0.5,
+      hasTokenFee: true
+    });
     expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
       pluginId: 'toolset',
       lang: 'zh',

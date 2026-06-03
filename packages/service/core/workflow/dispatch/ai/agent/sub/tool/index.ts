@@ -18,7 +18,6 @@ import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
 import { parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
@@ -116,8 +115,11 @@ export const dispatchTool = async ({
         tmbId: runningAppInfo.tmbId
       }).generateToken();
 
+      const childId = toolConfig.systemTool.toolId.split('/')[1];
+
       const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
+        ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
         source: 'system', // TODO: 后续 source 需要从节点配置中获取到
         input: Object.fromEntries(Object.entries(params)),
@@ -147,7 +149,7 @@ export const dispatchTool = async ({
         }
       });
 
-      let result: any = res.output || {};
+      const result: any = res.output || {};
 
       if (res.error) {
         return getErrResponse(res.error);

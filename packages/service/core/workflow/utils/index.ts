@@ -77,6 +77,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
 
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
+      avatar: tool.avatar,
       inputs: toolsetInputConfig
         ? [toolsetInputConfig, ...(child.inputs ?? [])]
         : (child.inputs ?? []),

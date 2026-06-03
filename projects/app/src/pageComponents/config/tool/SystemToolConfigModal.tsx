@@ -9,7 +9,6 @@ import {
   Switch,
   Flex,
   Text,
-  Textarea,
   Table,
   Thead,
   Tr,
@@ -163,22 +162,6 @@ const VerticalField = ({
     </Flex>
     {children}
   </Box>
-);
-
-const ReadonlyTextArea = ({ value, minH }: { value?: string; minH: string }) => (
-  <Textarea
-    value={value || ''}
-    isReadOnly
-    resize={'none'}
-    minH={minH}
-    bg={'myGray.25'}
-    borderColor={'myGray.100'}
-    color={'myGray.400'}
-    fontSize={'14px'}
-    lineHeight={'20px'}
-    px={3}
-    py={2}
-  />
 );
 
 const SystemToolConfigModal = ({
@@ -661,9 +644,11 @@ const SystemToolConfigModal = ({
         </Box>
       </ConfigRow>
 
-      <VerticalField label={t('app:toolkit_plugin_intro')}>
-        <ReadonlyTextArea value={tool?.intro} minH={'92px'} />
-      </VerticalField>
+      <ConfigRow label={t('app:toolkit_plugin_intro')} align={'flex-start'}>
+        <Text color={'#24282C'} fontSize={'14px'} lineHeight={'20px'} whiteSpace={'pre-wrap'}>
+          {tool?.intro || '-'}
+        </Text>
+      </ConfigRow>
       {toolListSection}
     </ConfigCard>
   );
@@ -694,7 +679,14 @@ const SystemToolConfigModal = ({
       </Box>
       <ModalBody flex={1} minH={0} overflowY={'auto'} px={8} pt={0} pb={0}>
         <Tabs variant={'unstyled'} index={tabIndex} onChange={setTabIndex}>
-          <TabList borderBottom={'1px solid'} borderColor={'myGray.200'}>
+          <TabList
+            position={'sticky'}
+            top={0}
+            zIndex={1}
+            bg={'white'}
+            borderBottom={'1px solid'}
+            borderColor={'myGray.200'}
+          >
             <Tab
               px={0}
               mr={8}

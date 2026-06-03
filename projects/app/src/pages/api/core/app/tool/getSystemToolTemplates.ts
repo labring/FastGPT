@@ -4,7 +4,6 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { NextApiResponse } from 'next';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
@@ -19,8 +18,7 @@ export type GetSystemPluginTemplatesBody = {
 };
 
 export async function handler(
-  req: ApiRequestProps<GetSystemPluginTemplatesBody>,
-  _res: NextApiResponse<any>
+  req: ApiRequestProps<GetSystemPluginTemplatesBody>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
   const { tags, parentId, searchKey } = req.body;
@@ -52,7 +50,10 @@ export async function handler(
         intro: child.description,
         toolDescription: child.toolDescription,
         id: `${parentId}/${child.id}`,
-        avatar: child.icon ?? parent.avatar
+        avatar: child.icon ?? parent.avatar,
+        currentCost: child.currentCost,
+        systemKeyCost: child.systemKeyCost,
+        hasTokenFee: parent.hasTokenFee
       })) ?? [];
 
     return filterTemplatesBySearchKey(childTemplates, searchRegex);
