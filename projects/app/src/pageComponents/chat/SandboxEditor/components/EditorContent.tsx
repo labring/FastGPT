@@ -32,9 +32,7 @@ type Props = {
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
-  showTerminal?: boolean;
   canWrite?: boolean;
-  onToggleTerminal?: () => void;
 };
 
 const EditorContent = ({
@@ -51,9 +49,7 @@ const EditorContent = ({
   outLinkAuthData,
   showDownload = true,
   defaultViewMode,
-  showTerminal,
-  canWrite = true,
-  onToggleTerminal
+  canWrite = true
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -252,10 +248,10 @@ const EditorContent = ({
   };
 
   return (
-    <Flex flex={'1 0 0'} flexDirection="column" bg={'white'} minH={0} h="100%">
-      <Flex align="center" justify="space-between" px={4} h={'44px'}>
+    <Flex flex={1} flexDirection="column" bg={'white'} minH={0}>
+      <Flex align="center" justify="space-between" px="16px" h={'44px'}>
         <Flex align="center" gap={2}>
-          <Box fontSize="14px" fontWeight="600" color="myGray.800">
+          <Box fontSize="14px" fontWeight={'semibold'} color={'myGray.800'}>
             {activeFile?.name || ''}
           </Box>
           {activeFile && (
@@ -316,15 +312,6 @@ const EditorContent = ({
               itemHeight="32px"
               fontSize="xs"
               iconSize="16px"
-            />
-          )}
-          {onToggleTerminal && (
-            <IconButton
-              size="sm"
-              icon={<MyIcon name="core/app/sandbox/sandbox" w="16px" />}
-              aria-label={t('chat:sandbox_toggle_terminal', 'Toggle Terminal Panel')}
-              onClick={onToggleTerminal}
-              variant={showTerminal ? 'primary' : 'whiteBase'}
             />
           )}
           {showDownload && activeFilePath && (

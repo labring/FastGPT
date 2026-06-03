@@ -149,6 +149,8 @@
   "sandbox_html_preview_failed": "Failed to generate preview link",
   "sandbox_load_failed": "Failed to load directory",
   "sandbox_loading_files": "Loading files...",
+  "sandbox_starting": "Starting sandbox (1/2)",
+  "sandbox_file_loading": "Loading files (2/2)",
   "sandbox_move_failed": "Move failed",
   "sandbox_move_into_self_forbidden": "Cannot move a directory into itself or one of its subdirectories",
   "sandbox_file_already_exists": "A file or folder with the same name already exists in the target directory",

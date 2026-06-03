@@ -42,6 +42,7 @@ pro/admin/worker/
 
 .turbo
 .antigravitycli
+.chrome-user-data
 
 # content_benchmark local secrets and generated artifacts
 /pro/llm_benchmark/content_benchmark/.env.local

@@ -149,6 +149,8 @@
   "sandbox_html_preview_failed": "预览链接生成失败",
   "sandbox_load_failed": "加载目录失败",
   "sandbox_loading_files": "文件加载中...",
+  "sandbox_starting": "沙盒启动中（1/2）",
+  "sandbox_file_loading": "文件加载中（2/2）",
   "sandbox_move_failed": "移动失败",
   "sandbox_move_into_self_forbidden": "不能将目录移入其自身或其子目录下",
   "sandbox_file_already_exists": "目标目录中已存在同名文件或文件夹",

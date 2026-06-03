@@ -373,6 +373,33 @@ export const useSandboxFileStore = ({
     [resetConnectPromise]
   );
 
+  // 读取文件内容 - 根据 language 决定解码策略
+  const loadFile = useCallback(
+    async (
+      filePath: string,
+      language: string
+    ): Promise<{ content: string; isUnknown: boolean; mtime?: number }> => {
+      setLoadingFile(true);
+      try {
+        const isBinary = getIsBinaryByLanguage(language);
+        const res = await rpcCall('fs/read_file', { path: filePath });
+        const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
+
+        if (!isBinary) {
+          const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+          return { content, isUnknown: false, mtime: res.mtime };
+        } else {
+          const mimeType = getMimeTypeByFileName(filePath.split('/').pop() || '');
+          const blob = new Blob([rawBytes], { type: mimeType });
+          return { content: URL.createObjectURL(blob), isUnknown: false, mtime: res.mtime };
+        }
+      } finally {
+        setLoadingFile(false);
+      }
+    },
+    [rpcCall]
+  );
+
   const refreshWorkspace = useCallback(
     async (options: RefreshWorkspaceOptions = {}) => {
       if (isRefreshingWorkspaceRef.current) {
@@ -410,11 +437,56 @@ export const useSandboxFileStore = ({
           // 并发文件事件只需要再补一次刷新，避免事件风暴触发多次全量扫描。
           refreshOptions = { preserveExpandedDirs: true };
         } while (hasPendingWorkspaceRefreshRef.current);
+
+        const filesToReload =
+          openedFilesRef.current?.filter((f) => !f.isDirty && !f.isBinary && !f.isUnknown) || [];
+
+        if (filesToReload.length > 0) {
+          const reloadResults = await Promise.allSettled(
+            filesToReload.map(async (f) => {
+              const { content, mtime } = await loadFile(f.path, f.language);
+              return { content, mtime };
+            })
+          );
+
+          const updates = new Map<string, { content: string; mtime?: number }>();
+          reloadResults.forEach((result, idx) => {
+            if (result.status === 'fulfilled') {
+              const f = filesToReload[idx];
+              updates.set(f.path, result.value);
+            }
+          });
+
+          if (updates.size > 0) {
+            setOpenedFiles((prev) =>
+              prev.map((item) => {
+                const update = updates.get(item.path);
+                if (update) {
+                  return {
+                    ...item,
+                    content: update.content,
+                    mtime: update.mtime,
+                    isDirty: false
+                  };
+                }
+                return item;
+              })
+            );
+          }
+        }
       } finally {
         isRefreshingWorkspaceRef.current = false;
       }
     },
-    [expandedDirsRef, rpcCall, setExpandedDirs, setFileTree, setLoadingRoot]
+    [
+      expandedDirsRef,
+      rpcCall,
+      setExpandedDirs,
+      setFileTree,
+      setLoadingRoot,
+      openedFilesRef,
+      loadFile
+    ]
   );
 
   const refreshWorkspaceRef = useLatest(refreshWorkspace);
@@ -703,30 +775,6 @@ export const useSandboxFileStore = ({
   );
 
   // refreshWorkspace 已提升至上层长连接前以供事件驱动调用
-
-  // 读取文件内容 - 根据 language 决定解码策略
-  const loadFile = async (
-    filePath: string,
-    language: string
-  ): Promise<{ content: string; isUnknown: boolean; mtime?: number }> => {
-    setLoadingFile(true);
-    try {
-      const isBinary = getIsBinaryByLanguage(language);
-      const res = await rpcCall('fs/read_file', { path: filePath });
-      const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
-
-      if (!isBinary) {
-        const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
-        return { content, isUnknown: false, mtime: res.mtime };
-      } else {
-        const mimeType = getMimeTypeByFileName(filePath.split('/').pop() || '');
-        const blob = new Blob([rawBytes], { type: mimeType });
-        return { content: URL.createObjectURL(blob), isUnknown: false, mtime: res.mtime };
-      }
-    } finally {
-      setLoadingFile(false);
-    }
-  };
 
   // 保存指定或当前文件
   const saveFile = useCallback(
@@ -1235,8 +1283,6 @@ export const useSandboxFileStore = ({
   // 展开折叠目录
   const toggleDirectory = async (node: TreeNode) => {
     if (node.type !== 'directory') return;
-
-    setSelectedPath(node.path);
 
     const isExpanded = expandedDirs.has(node.path);
 

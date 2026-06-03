@@ -11,7 +11,8 @@ import {
   HStack,
   Box,
   Button,
-  PopoverArrow
+  PopoverArrow,
+  Flex
 } from '@chakra-ui/react';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 
@@ -42,7 +43,7 @@ const PopoverConfirm = ({
     const map = {
       info: {
         variant: 'primary',
-        icon: 'common/confirm/commonTip'
+        icon: 'common/confirm/infoTipClean'
       },
       delete: {
         variant: 'dangerFill',
@@ -79,16 +80,39 @@ const PopoverConfirm = ({
       computePositionOnMount={true}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
-      <PopoverContent p={4}>
+      <PopoverContent p={'20px'} w={'304px'} borderRadius={'10px'}>
         <PopoverArrow />
 
-        <HStack alignItems={'flex-start'} color={'myGray.700'}>
-          <MyIcon name={map.icon as any} w={'1.5rem'} />
-          <Box fontSize={'sm'} whiteSpace={'pre-wrap'}>
+        <HStack alignItems={'flex-start'} color={'myGray.700'} spacing={'12px'}>
+          {!type || type === 'info' ? (
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              bg={'primary.100'}
+              borderRadius={'full'}
+              w={'24px'}
+              h={'24px'}
+              flexShrink={0}
+            >
+              <MyIcon
+                name={'common/confirm/infoTipClean'}
+                w={'16px'}
+                h={'16px'}
+                color={'myGray.400'}
+                fill={'myGray.400'}
+                verticalAlign={'middle'}
+              />
+            </Flex>
+          ) : (
+            <Box flexShrink={0}>
+              <MyIcon name={map.icon as any} w={'24px'} h={'24px'} verticalAlign={'middle'} />
+            </Box>
+          )}
+          <Box fontSize={'sm'} whiteSpace={'pre-wrap'} flex={'1'} lineHeight={'20px'}>
             {content}
           </Box>
         </HStack>
-        <HStack mt={2} justifyContent={'flex-end'}>
+        <HStack mt={'16px'} justifyContent={'flex-end'} spacing={'12px'}>
           {showCancel && (
             <Button
               variant={'whiteBase'}

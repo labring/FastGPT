@@ -49,7 +49,7 @@ const FileTreeNode = ({
 }: Props) => {
   const isExpanded = expandedDirs.has(node.path);
   const isLoading = loadingDirs.has(node.path);
-  const isActive = activeFilePath === node.path;
+  const isActive = node.type === 'file' && activeFilePath === node.path;
   const isSelected = selectedPath === node.path;
   const isRenaming = renamingPath === node.path;
   const shouldShowArrow = node.type === 'directory';
@@ -76,8 +76,16 @@ const FileTreeNode = ({
   // 完美VSCode拖放体验：只允许文件夹节点和根目录Box显示放置高亮
   const isOverNode = node.type === 'directory' && (isOver || realOverDestPath === node.path);
 
-  const iconColor = isSelected ? '#1E293B' : isActive ? '#388BFD' : '#64748B';
-  const textColor = isSelected ? '#1E293B' : isActive ? '#388BFD' : '#475569';
+  const iconColor = 'myGray.600';
+  const textColor = 'myGray.600';
+  const hoverBg = 'myGray.05';
+
+  const activeBg = isSelected ? 'primary.100' : isActive ? 'myGray.05' : 'transparent';
+
+  const bgValue = isOverNode ? 'rgba(56, 139, 253, 0.08)' : activeBg;
+
+  const nodeBorderRadius = 'xs';
+  const nodeBorder = isOverNode ? '1px dashed #2B5FD9' : '1px solid transparent';
 
   return (
     <Box>
@@ -86,27 +94,19 @@ const FileTreeNode = ({
           setDragRef(el);
           setDropRef(el);
         }}
-        pl={`${node.level * 16 + 8}px`}
+        pl={`${node.level * 16 + 4}px`}
         pr={2}
-        h="32px"
+        h="28px"
         cursor="pointer"
         opacity={isDragging ? 0.4 : 1}
-        _hover={{ bg: 'rgba(15, 23, 42, 0.04)' }}
-        bg={
-          isSelected
-            ? 'rgba(56, 139, 253, 0.12)'
-            : isActive
-              ? 'rgba(56, 139, 253, 0.04)'
-              : isOverNode
-                ? 'rgba(56, 139, 253, 0.15)'
-                : 'transparent'
-        }
-        border={isOverNode ? '1px dashed #388BFD' : '1px solid transparent'}
-        borderRadius="6px"
+        _hover={{ bg: hoverBg }}
+        bg={bgValue}
+        border={nodeBorder}
+        borderRadius={nodeBorderRadius}
         onClick={() => {
           if (!node || !node.path) return;
-          setSelectedPath(node.path);
           if (node.type === 'file') {
+            setSelectedPath(node.path);
             openFile(node.path);
           } else {
             toggleDirectory(node);
@@ -128,9 +128,8 @@ const FileTreeNode = ({
         <Flex
           justify="center"
           align="center"
-          w="12px"
-          h="12px"
-          mr="6px"
+          w="16px"
+          h="16px"
           flexShrink={0}
           onClick={(e) => {
             if (shouldShowArrow) {
@@ -141,11 +140,12 @@ const FileTreeNode = ({
         >
           {shouldShowArrow &&
             (isLoading ? (
-              <Spinner size="xs" color="myGray.400" w="8px" h="8px" />
+              <Spinner size="xs" color="myGray.400" />
             ) : (
               <MyIcon
                 name="core/chat/chevronRight"
-                w="12px"
+                w="16px"
+                h="16px"
                 transition="transform 0.15s ease"
                 transform={isExpanded ? 'rotate(90deg)' : 'none'}
                 color={iconColor}
@@ -156,9 +156,10 @@ const FileTreeNode = ({
         {/* 匹配图标 */}
         {node.type === 'directory' ? (
           <MyIcon
-            name="core/app/sandbox/folderLine"
+            name="common/folderFill"
             w="16px"
-            color={iconColor}
+            h="16px"
+            color="#EF7623"
             mr="8px"
             flexShrink={0}
           />
@@ -188,7 +189,7 @@ const FileTreeNode = ({
             noOfLines={1}
             overflow="hidden"
             textOverflow="ellipsis"
-            fontWeight={isSelected || isActive ? '500' : '400'}
+            fontWeight={isSelected || isActive ? 'medium' : '400'}
           >
             {node.name}
           </Text>
@@ -315,20 +316,21 @@ export const InlineCreateNode = ({
 
   return (
     <Flex
-      pl={`${level * 16 + 8}px`}
+      pl={`${level * 16 + 4}px`}
       pr={2}
-      h="32px"
+      h="28px"
       align="center"
       fontSize="13px"
       bg="transparent"
       border="1px solid transparent"
       borderRadius="6px"
     >
-      <Flex justify="center" align="center" w="12px" h="12px" mr="6px" flexShrink={0} />
+      <Flex justify="center" align="center" w="16px" h="16px" flexShrink={0} />
       {type === 'directory' ? (
         <MyIcon
           name="core/app/sandbox/folderLine"
           w="16px"
+          h="16px"
           color="#64748B"
           mr="8px"
           flexShrink={0}
@@ -338,6 +340,7 @@ export const InlineCreateNode = ({
           name="core/app/sandbox/fileGenericLine"
           fill="none"
           w="16px"
+          h="16px"
           color="#64748B"
           mr="8px"
           flexShrink={0}

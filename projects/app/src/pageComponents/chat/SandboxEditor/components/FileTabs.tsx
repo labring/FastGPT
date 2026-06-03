@@ -26,10 +26,11 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
   return (
     <Box
       flexShrink={0}
-      bg="white"
-      h={'36px'}
-      borderBottom={'1px solid'}
-      borderColor={'myGray.200'}
+      bg="transparent"
+      h="40px"
+      py="4px"
+      px="4px"
+      w="100%"
       overflowX="auto"
       overflowY="hidden"
       flexWrap="nowrap"
@@ -46,65 +47,61 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
         }
       }}
     >
-      <Flex h="full" gap={0} alignItems={'stretch'}>
+      <Flex h="full" gap="8px" alignItems={'center'}>
         {openedFiles.map((file) => {
           const active = activeFilePath === file.path;
           return (
             <Flex
               key={file.path}
               title={file.path}
-              px={4}
-              bg={'white'}
-              borderRight={'1px solid'}
+              px={3}
+              bg={active ? 'white' : 'transparent'}
               borderColor={'myGray.200'}
               align="center"
-              gap={2}
+              gap="4px"
               fontSize="12px"
               cursor="pointer"
               onClick={() => setActiveFilePath(file.path)}
               maxW="160px"
               flexShrink={0}
               position="relative"
-              h="full"
+              h="32px"
+              borderRadius="4px"
+              boxShadow={
+                active
+                  ? '0px 0px 1px rgba(19, 51, 107, 0.15), 0px 1px 2px rgba(19, 51, 107, 0.1)'
+                  : 'none'
+              }
               _hover={{
-                bg: 'myGray.50'
+                bg: active ? 'white' : 'rgba(17, 24, 36, 0.05)'
               }}
               userSelect={'none'}
             >
-              {active && (
-                <Box
-                  position={'absolute'}
-                  top={0}
-                  left={0}
-                  right={0}
-                  h={'2px'}
-                  bg={'primary.600'}
-                />
-              )}
               <MyIcon
                 name={getIconByFilename(file.name)}
                 fill="none"
                 w="16px"
                 h="16px"
-                color={active ? 'myGray.800' : 'myGray.500'}
+                color={active ? 'primary.700' : 'myGray.500'}
               />
 
               <Text
                 flex={1}
                 noOfLines={1}
-                fontWeight={active ? '500' : '400'}
-                color={active ? 'myGray.900' : 'myGray.500'}
+                fontWeight="medium"
+                color={active ? 'primary.700' : 'myGray.500'}
               >
                 {file.name}
               </Text>
               <MyIcon
                 name="common/closeLight"
-                w="14px"
+                w="16px"
+                h="16px"
                 color="myGray.400"
-                p={'2px'}
+                p="3px"
                 _hover={{
                   color: 'myGray.700',
-                  bg: 'myGray.200',
+                  bg: 'myGray.100',
                   borderRadius: 'sm'
                 }}
                 onClick={(e) => {

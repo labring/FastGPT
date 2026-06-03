@@ -366,6 +366,7 @@
   "core.chat.Recent use": "最近使用",
   "core.chat.Record": "語音輸入",
   "core.chat.Restart": "重新開始對話",
+  "core.chat.Restart Confirm": "確定重新開始對話嗎？目前記錄將不會被儲存",
   "core.chat.Run test": "執行預覽",
   "core.chat.Select dataset": "選擇知識庫",
   "core.chat.Select dataset Desc": "選擇一個知識庫來儲存預期回答",

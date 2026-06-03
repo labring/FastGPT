@@ -15,30 +15,31 @@ import React from 'react';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 
+const fileSelectConfig: AppFileSelectConfigType = {
+  maxFiles: 10,
+  canSelectFile: false,
+  canSelectImg: false,
+  customPdfParse: false,
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: []
+};
+
 export const useSkillChatTest = ({
   skillId,
   model,
   chatId,
-  isReady
+  isReady,
+  InputLeftComponent
 }: {
   skillId: string;
   model: string;
   chatId: string;
   isReady: boolean;
+  InputLeftComponent?: React.ReactNode;
 }) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-
-  // TODO: 暂时隐藏文件上传按钮，后续需要放开 canSelectFile 和 canSelectImg
-  const fileSelectConfig: AppFileSelectConfigType = {
-    maxFiles: 10,
-    canSelectFile: false,
-    canSelectImg: false,
-    customPdfParse: false,
-    canSelectVideo: false,
-    canSelectAudio: false,
-    canSelectCustomFileExtension: false,
-    customFileExtensionList: []
-  };
 
   // Set chat box data
   useEffect(() => {
@@ -52,7 +53,6 @@ export const useSkillChatTest = ({
         pluginInputs: []
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skillId, setChatBoxData]);
 
   const startChat = useMemoizedFn(
@@ -99,9 +99,10 @@ export const useSkillChatTest = ({
         onStartChat={startChat}
         onDeleteChatItem={handleDeleteChatItem}
         onStopChat={handleStopChat}
+        InputLeftComponent={InputLeftComponent}
       />
     ),
-    [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat]
+    [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat, InputLeftComponent]
   );
 
   return {

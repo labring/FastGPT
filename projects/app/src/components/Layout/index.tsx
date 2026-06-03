@@ -53,7 +53,8 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/app/edit': true,
   '/chat': true,
   '/tools/price': true,
-  '/price': true
+  '/price': true,
+  '/skill/detail': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -63,7 +64,8 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/chat': true,
   '/chat/share': true,
   '/tools/price': true,
-  '/price': true
+  '/price': true,
+  '/skill/detail': true
 };
 
 export const navbarWidth = '64px';

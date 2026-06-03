@@ -22,19 +22,7 @@ const SandboxEditorModal = ({ onClose, ...props }: Props) => {
       h={'85vh'}
       closeOnOverlayClick={false}
     >
-      <Box
-        flex={1}
-        minH={0}
-        display={'flex'}
-        flexDirection={'column'}
-        bg={'white'}
-        borderRadius={'md'}
-        border={'1px solid'}
-        borderColor={'myGray.200'}
-        overflow={'hidden'}
-      >
-        <SandboxEditor {...props} />
-      </Box>
+      <SandboxEditor {...props} bg="white" />
     </MyModal>
   );
 };

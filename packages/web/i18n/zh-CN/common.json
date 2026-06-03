@@ -370,6 +370,7 @@
   "core.chat.Recent use": "最近使用",
   "core.chat.Record": "语音输入",
   "core.chat.Restart": "重开对话",
+  "core.chat.Restart Confirm": "确定重开对话吗？当前记录将不会被保存",
   "core.chat.Run test": "运行预览",
   "core.chat.Select dataset": "选择知识库",
   "core.chat.Select dataset Desc": "选择一个知识库存储预期答案",

@@ -21,6 +21,17 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
     termRef.current?.focus();
   }, []);
 
+  // 监听全局清空终端事件
+  useEffect(() => {
+    const handleClearTerminal = () => {
+      handleClear();
+    };
+    window.addEventListener('clear-sandbox-terminal', handleClearTerminal);
+    return () => {
+      window.removeEventListener('clear-sandbox-terminal', handleClearTerminal);
+    };
+  }, [handleClear]);
+
   // 1. 初始化 Terminal 终端与 WebSocket 数据通信流
   useEffect(() => {
     if (!containerRef.current || !appId || !chatId) return;
@@ -36,11 +47,11 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
       fontFamily: '"JetBrains Mono", Menlo, Monaco, Consolas, "Courier New", monospace',
       lineHeight: 1.3,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#ffffff',
-        cursorAccent: '#1e1e1e',
-        selectionBackground: 'rgba(255, 255, 255, 0.15)',
+        background: '#ffffff',
+        foreground: '#1d2532',
+        cursor: '#485264',
+        cursorAccent: '#ffffff',
+        selectionBackground: 'rgba(29, 37, 50, 0.15)',
         black: '#000000',
         red: '#cd3131',
         green: '#0dbc79',

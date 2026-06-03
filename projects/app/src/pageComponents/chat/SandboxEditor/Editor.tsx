@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Center, VStack } from '@chakra-ui/react';
+import { Box, Center, VStack, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
 import { useContextSelector } from 'use-context-selector';
@@ -15,8 +15,8 @@ import { useSandboxFileStore } from './hook';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
-const FILE_TREE_DEFAULT_WIDTH = 230;
-const FILE_TREE_MIN_WIDTH = 230;
+const FILE_TREE_DEFAULT_WIDTH = 260;
+const FILE_TREE_MIN_WIDTH = 260;
 const FILE_TREE_MAX_WIDTH = 600;
 const EDITOR_MIN_WIDTH = 360;
 
@@ -31,6 +31,8 @@ export type Props = {
   preparingText?: string;
   showTerminal?: boolean;
   onError?: (err: Error) => void;
+  headerRight?: React.ReactNode;
+  bg?: string;
 };
 
 const SandboxEditor = ({
@@ -41,9 +43,10 @@ const SandboxEditor = ({
   showDownload = true,
   defaultViewMode,
   isPreparing = false,
-  preparingText,
   showTerminal = false,
-  onError
+  onError,
+  headerRight,
+  bg
 }: Props) => {
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
@@ -160,9 +163,10 @@ const SandboxEditor = ({
   );
 
   const renderContent = () => {
-    if (fileTree.length === 0) {
-      if (loadingRoot || !isWsConnected) return null;
+    const isInitialLoading =
+      isPreparing || ((!isWsConnected || loadingRoot) && fileTree.length === 0);
 
+    if (fileTree.length === 0 && !isInitialLoading) {
       return (
         <Center h="full" w={'full'}>
           <VStack spacing={3}>
@@ -172,103 +176,129 @@ const SandboxEditor = ({
       );
     }
 
+    const fileTreeComponent = (
+      <FileTree
+        width={fileTreeWidth}
+        filteredTree={filteredTree}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        expandedDirs={expandedDirs}
+        loadingDirs={loadingDirs}
+        activeFilePath={activeFilePath}
+        selectedPath={selectedPath}
+        setSelectedPath={setSelectedPath}
+        openFile={openFile}
+        toggleDirectory={toggleDirectory}
+        onCreateNode={onCreateNode}
+        onRenameComplete={onRenameComplete}
+        onMoveFile={onMoveFile}
+        onDeleteFile={onDeleteFile}
+        onUploadFiles={onUploadFiles}
+        setExpandedDirs={setExpandedDirs}
+        appId={appId}
+        chatId={chatId}
+        outLinkAuthData={outLinkAuthData}
+        showFileOps={showFileOps}
+        isLoading={isInitialLoading}
+      />
+    );
+
+    const resizeSeparatorComponent = (
+      <Box
+        role="separator"
+        aria-label="Resize file tree"
+        aria-orientation="vertical"
+        flex="none"
+        w={'8px'}
+        h="full"
+        ml="0"
+        mr="0"
+        cursor="col-resize"
+        position="absolute"
+        left={`${fileTreeWidth + 4}px`}
+        transform="translateX(-50%)"
+        zIndex={3}
+        onMouseDown={handleFileTreeResizeStart}
+        _before={{
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          w: '1px',
+          bg: isFileTreeResizing ? 'primary.600' : 'transparent',
+          transition: 'background 0.15s'
+        }}
+        _hover={{
+          _before: {
+            bg: 'primary.600'
+          }
+        }}
+      />
+    );
+
+    const workspaceComponent = (
+      <EditorWorkspace
+        appId={appId}
+        chatId={chatId}
+        outLinkAuthData={outLinkAuthData}
+        showDownload={showDownload}
+        defaultViewMode={defaultViewMode}
+        openedFiles={openedFiles}
+        setOpenedFiles={setOpenedFiles}
+        activeFilePath={activeFilePath}
+        setActiveFilePath={setActiveFilePath}
+        closeFile={closeFile}
+        activeFile={activeFile}
+        downloadingFile={downloadingFile}
+        downloadCurrentFile={downloadCurrentFile}
+        saveFile={saveFile}
+        editorRef={editorRef}
+        filteredTree={filteredTree}
+        loadingFile={loadingFile}
+        showTerminalBtn={showTerminal}
+        canWrite={showFileOps}
+        headerRight={headerRight}
+        isPreparing={isPreparing}
+        isWsConnected={isWsConnected}
+        loadingRoot={loadingRoot}
+      />
+    );
+
     return (
-      <>
-        <FileTree
-          width={fileTreeWidth}
-          filteredTree={filteredTree}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          expandedDirs={expandedDirs}
-          loadingDirs={loadingDirs}
-          activeFilePath={activeFilePath}
-          selectedPath={selectedPath}
-          setSelectedPath={setSelectedPath}
-          openFile={openFile}
-          toggleDirectory={toggleDirectory}
-          onCreateNode={onCreateNode}
-          onRenameComplete={onRenameComplete}
-          onMoveFile={onMoveFile}
-          onDeleteFile={onDeleteFile}
-          onUploadFiles={onUploadFiles}
-          setExpandedDirs={setExpandedDirs}
-          appId={appId}
-          chatId={chatId}
-          outLinkAuthData={outLinkAuthData}
-          showFileOps={showFileOps}
-        />
-
+      <Flex w="100%" h="100%" position="relative">
+        {/* 左侧：文件配置卡片 */}
         <Box
-          role="separator"
-          aria-label="Resize file tree"
-          aria-orientation="vertical"
-          flex="0 0 8px"
-          w="8px"
-          h="full"
-          ml="-4px"
-          mr="-4px"
-          cursor="col-resize"
-          position="relative"
-          zIndex={3}
-          onMouseDown={handleFileTreeResizeStart}
-          _before={{
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            w: '1px',
-            bg: isFileTreeResizing ? 'primary.600' : 'myGray.200',
-            transition: 'background 0.15s'
-          }}
-          _hover={{
-            _before: {
-              bg: 'primary.600'
-            }
-          }}
-        />
+          w={`${fileTreeWidth}px`}
+          flexShrink={0}
+          h="100%"
+          bg="white"
+          border="1px solid"
+          borderColor="myGray.200"
+          borderRadius="lg"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+          p={3}
+          mr={'8px'}
+        >
+          {fileTreeComponent}
+        </Box>
 
-        {/* 右侧: 工作区面板（已高度内聚封装，包含多标签页编辑器与交互式终端布局） */}
-        <MyBox display={'flex'} flex={1} w={0} minH={0} flexDirection="column" bg="myGray.25">
-          <EditorWorkspace
-            appId={appId}
-            chatId={chatId}
-            outLinkAuthData={outLinkAuthData}
-            showDownload={showDownload}
-            defaultViewMode={defaultViewMode}
-            openedFiles={openedFiles}
-            setOpenedFiles={setOpenedFiles}
-            activeFilePath={activeFilePath}
-            setActiveFilePath={setActiveFilePath}
-            closeFile={closeFile}
-            activeFile={activeFile}
-            downloadingFile={downloadingFile}
-            downloadCurrentFile={downloadCurrentFile}
-            saveFile={saveFile}
-            editorRef={editorRef}
-            filteredTree={filteredTree}
-            loadingFile={loadingFile}
-            showTerminalBtn={showTerminal}
-            canWrite={showFileOps}
-          />
-        </MyBox>
-      </>
+        {resizeSeparatorComponent}
+
+        {/* 右侧：工作区卡片及上方页签行 */}
+        <Box flex={1} w={0} h="100%" display="flex" flexDirection="column">
+          {workspaceComponent}
+        </Box>
+      </Flex>
     );
   };
 
   return (
-    <MyBox
-      isLoading={isPreparing || ((!isWsConnected || loadingRoot) && fileTree.length === 0)}
-      text={isPreparing ? preparingText : t('chat:sandbox_loading_files')}
-      loadingVariant="particle"
-      ref={editorLayoutRef}
-      display={'flex'}
-      h="full"
-      w="full"
-      bg="myGray.25"
-    >
-      {!isPreparing && renderContent()}
+    <MyBox ref={editorLayoutRef} display={'flex'} h="full" w="full" bg={bg ?? 'myGray.25'}>
+      {renderContent()}
     </MyBox>
   );
 };

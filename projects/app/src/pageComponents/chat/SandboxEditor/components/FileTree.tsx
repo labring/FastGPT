@@ -7,7 +7,8 @@ import {
   InputGroup,
   InputLeftElement,
   Text,
-  Spinner
+  Spinner,
+  Skeleton
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -90,6 +91,22 @@ type Props = {
   chatId: string;
   outLinkAuthData?: any;
   showFileOps?: boolean;
+  isLoading?: boolean;
+};
+
+const FileTreeSkeleton = () => {
+  return (
+    <VStack align="stretch" spacing="16px" w="full">
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="100%" borderRadius="4px" />
+      <Skeleton h="16px" w="50%" borderRadius="4px" />
+      <Skeleton h="16px" w="50%" borderRadius="4px" />
+    </VStack>
+  );
 };
 
 const DroppableRootBox = ({
@@ -114,8 +131,8 @@ const DroppableRootBox = ({
       minH="0"
       overflowY="auto"
       overflowX="hidden"
-      px={2}
-      py={1}
+      px={0}
+      py={0}
       bg={
         isOver || (activeNode && realOverDestPath === '.')
           ? 'rgba(56, 139, 253, 0.04)'
@@ -155,7 +172,8 @@ const FileTree = ({
   appId,
   chatId,
   outLinkAuthData,
-  showFileOps = true
+  showFileOps = true,
+  isLoading = false
 }: Props) => {
   const { t } = useTranslation(['chat', 'common']);
   const { toast } = useToast();
@@ -577,13 +595,14 @@ const FileTree = ({
 
   return (
     <Box
-      flex="0 0 auto"
-      w={`${width}px`}
+      flex="1"
+      w="100%"
       h="full"
-      bg="white"
+      bg="transparent"
       display="flex"
       flexDirection="column"
       position="relative"
+      gap="12px"
     >
       {/* 隐藏的文件上传 Input */}
       <input
@@ -595,11 +614,17 @@ const FileTree = ({
       />
 
       {/* 顶部标题与快捷操作区 */}
-      <Flex px={4} pt={4} pb={2} align="center" justify="space-between">
+      <Flex px={0} pt={0} pb={0} align="center" justify="space-between">
         <Text fontSize="14px" fontWeight="600" color="myGray.800">
           {t('chat:sandbox_file_config')}
         </Text>
-        <Flex gap="2px" align="center">
+        <Flex
+          gap="2px"
+          align="center"
+          pointerEvents={isLoading ? 'none' : 'auto'}
+          opacity={isLoading ? 0.4 : 1}
+          transition="all 0.2s"
+        >
           {showFileOps && (
             <>
               <MyTooltip label={t('chat:sandbox_new_file')}>
@@ -698,22 +723,24 @@ const FileTree = ({
       </Flex>
 
       {/* 搜索框 */}
-      <Box px={3} py={2}>
+      <Box px={0} py={0}>
         <InputGroup size="sm">
           <InputLeftElement h="32px">
             <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
           </InputLeftElement>
           <Input
-            placeholder={t('chat:sandbox_search_workspace_files')}
+            placeholder={t('chat:sandbox_search_files', '搜索文件')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            bg="myGray.50"
+            bg="white"
             fontSize="12px"
             h="32px"
-            borderRadius="6px"
-            border="none"
-            _focus={{ bg: 'white', boxShadow: '0 0 0 1px #CBD5E1' }}
+            borderRadius="sm"
+            border="1px solid"
+            borderColor="myGray.200"
+            _focus={{ bg: 'white', borderColor: 'primary.500', boxShadow: 'none' }}
             _placeholder={{ color: 'myGray.500' }}
+            isDisabled={isLoading}
           />
         </InputGroup>
       </Box>
@@ -737,17 +764,21 @@ const FileTree = ({
           realOverDestPath={realOverDestPath}
           onContextMenu={handleBlankContextMenu}
         >
-          <VStack align="stretch" spacing="2px" pb={2}>
-            {renderTreeNodes(filteredTree)}
-            {creatingNode && creatingNode.parentPath === '.' && (
-              <InlineCreateNode
-                level={0}
-                type={creatingNode.type}
-                onConfirm={handleConfirmCreate}
-                onCancel={() => setCreatingNode(null)}
-              />
-            )}
-          </VStack>
+          {isLoading ? (
+            <FileTreeSkeleton />
+          ) : (
+            <VStack align="stretch" spacing={0} pb={2}>
+              {renderTreeNodes(filteredTree)}
+              {creatingNode && creatingNode.parentPath === '.' && (
+                <InlineCreateNode
+                  level={0}
+                  type={creatingNode.type}
+                  onConfirm={handleConfirmCreate}
+                  onCancel={() => setCreatingNode(null)}
+                />
+              )}
+            </VStack>
+          )}
         </DroppableRootBox>
 
         <DragOverlay>
@@ -769,7 +800,13 @@ const FileTree = ({
               w="180px"
             >
               {activeNode.type === 'directory' ? (
-                <MyIcon name="core/app/sandbox/folderLine" w="16px" color="#64748B" mr="8px" />
+                <MyIcon
+                  name="core/app/sandbox/folderLine"
+                  w="16px"
+                  h="16px"
+                  color="#64748B"
+                  mr="8px"
+                />
               ) : (
                 <MyIcon
                   name={getIconByFilename(activeNode.name)}

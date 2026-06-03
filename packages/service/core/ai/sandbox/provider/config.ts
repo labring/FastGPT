@@ -128,6 +128,7 @@ export function getSandboxAdapterConfig({
               resourceLimits,
               vmConfig,
               createConfig,
+              entrypoint: createConfig?.entrypoint ?? (profile.entrypoint || undefined),
               env: {
                 ...baseEnv,
                 ...createConfig?.env

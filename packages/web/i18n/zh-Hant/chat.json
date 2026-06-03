@@ -146,6 +146,8 @@
   "sandbox_html_preview_failed": "預覽連結產生失敗",
   "sandbox_load_failed": "載入目錄失敗",
   "sandbox_loading_files": "文件載入中...",
+  "sandbox_starting": "沙盒啟動中（1/2）",
+  "sandbox_file_loading": "文件載入中（2/2）",
   "sandbox_move_failed": "移動失敗",
   "sandbox_move_into_self_forbidden": "不能將目錄移入其自身或其子目錄下",
   "sandbox_file_already_exists": "目標目錄中已存在同名文件或資料夾",
