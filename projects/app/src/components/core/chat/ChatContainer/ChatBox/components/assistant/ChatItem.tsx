@@ -1,7 +1,7 @@
 import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import ChatItemController, { type ChatItemControllerProps } from './ChatItemController';
-import { MessageCardStyle } from '../../constants';
+import { MessageCardStyle, ChatTypeEnum } from '../../constants';
 import { formatChatValue2InputType } from '../../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../../index.module.scss';
@@ -61,10 +61,22 @@ type Props = BasicProps & {
 export const SimpleCitationDisplay = React.memo(
   function SimpleCitationDisplay({
     historyItem,
-    datasetReadPerMap
+    datasetReadPerMap,
+    onOpenCiteModal,
+    isShowFullText,
+    chatType
   }: {
     historyItem: ChatSiteItemType;
     datasetReadPerMap: Record<string, boolean>;
+    onOpenCiteModal?: (e?: {
+      collectionId?: string;
+      sourceId?: string;
+      sourceName?: string;
+      datasetId?: string;
+      quoteId?: string;
+    }) => void;
+    isShowFullText?: boolean;
+    chatType?: ChatTypeEnum;
   }) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = React.useState(false);
@@ -97,7 +109,11 @@ export const SimpleCitationDisplay = React.memo(
               : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
             index: index + 1,
             url: `/dataset/detail?datasetId=${item.datasetId}&collectionId=${item.collectionId}&currentTab=dataCard`,
-            noPermission: !isDbSource && !hasReadPer
+            noPermission: !isDbSource && !hasReadPer,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId,
+            sourceId: item.sourceId,
+            quoteId: item.id
           };
         });
 
@@ -163,6 +179,16 @@ export const SimpleCitationDisplay = React.memo(
                   opacity={item.noPermission ? 0.5 : 1}
                   onClick={() => {
                     if (item.noPermission) return;
+                    if (onOpenCiteModal && isShowFullText && 'collectionId' in item && chatType === ChatTypeEnum.share) {
+                      onOpenCiteModal({
+                        collectionId: item.collectionId,
+                        sourceId: item.sourceId,
+                        sourceName: item.displayText,
+                        datasetId: item.datasetId,
+                        quoteId: item.quoteId
+                      });
+                      return;
+                    }
                     item.url && window.open(item.url, '_blank');
                   }}
                   _hover={

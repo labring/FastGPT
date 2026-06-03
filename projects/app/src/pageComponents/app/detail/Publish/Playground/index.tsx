@@ -12,7 +12,7 @@ import {
 import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/outLink/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { ChatSidebarPaneEnum, FROM_PUBLISH_QUERY_VALUE } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
@@ -42,7 +42,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`;
+      return `${window.location.origin}/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}&fromPublish=${FROM_PUBLISH_QUERY_VALUE}`;
     }
     return '';
   }, [appId]);
@@ -146,6 +146,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex gap={4} flexWrap={'wrap'}>
+          {/*
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
               <FormLabel fontSize={'12px'}>
@@ -166,6 +167,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
               isChecked={showCite}
             />
           </Flex>
+          */}
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
               <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>

@@ -11,6 +11,7 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { type ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -21,6 +22,7 @@ type ContextProps = {
   showSkillReferences: boolean;
   showWholeResponse: boolean;
   showAvatar?: boolean;
+  chatType?: ChatTypeEnum;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -144,7 +146,8 @@ const ChatItemContextProvider = ({
   showRunningStatus,
   showSkillReferences,
   showWholeResponse,
-  showAvatar = true
+  showAvatar = true,
+  chatType
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -237,6 +240,7 @@ const ChatItemContextProvider = ({
       showSkillReferences,
       showWholeResponse,
       showAvatar,
+      chatType,
 
       datasetCiteData,
       setCiteModalData,
@@ -259,6 +263,7 @@ const ChatItemContextProvider = ({
     isShowFullText,
     showWholeResponse,
     showAvatar,
+    chatType,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

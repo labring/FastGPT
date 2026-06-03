@@ -434,6 +434,7 @@ function EditLinkModal({
             <FormLabel>{t('publish:show_node')}</FormLabel>
             <Switch {...register('showRunningStatus')} />
           </Flex>
+          {/*
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.Response Quote')}</FormLabel>
@@ -454,6 +455,7 @@ function EditLinkModal({
               isChecked={showCite}
             />
           </Flex>
+          */}
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:core.app.share.Show full text')}</FormLabel>

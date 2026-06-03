@@ -89,7 +89,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       // 没选择知识库时展示通用知识库配置
       hasOtherKnowledge:
         knowledgeInfoList.some(
-          (item) => item.datasetTypde && !isDatabaseDataset(item.datasetType)
+          (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
         ) || knowledgeInfoList.length === 0,
       // 优先取有向量模型的知识库，避免数据库类型排在首位时取到空值
       datasetVectorModelId: knowledgeInfoList.find((d) => d.vectorModel?.id)?.vectorModel?.id

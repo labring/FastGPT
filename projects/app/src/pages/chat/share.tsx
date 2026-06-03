@@ -36,7 +36,9 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
-import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import QuoteReader from '@/pageComponents/chat/ChatQuoteList/QuoteReader';
+import ReferencePanel from '@/pageComponents/chat/ChatQuoteList/ReferencePanel';
+import ResizableDivider from '@/components/common/ResizableDivider';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
@@ -94,6 +96,9 @@ const OutLink = (props: Props) => {
   const { isPc } = useSystem();
   const { outLinkAuthData, appId, chatId } = useChatStore();
 
+  const [referencePanelWidth, setReferencePanelWidth] = useState(580);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+
   // Remove empty value field
   const formatedCustomVariables = useMemo(() => {
     return Object.fromEntries(Object.entries(customVariables).filter(([_, value]) => value !== ''));
@@ -110,6 +115,7 @@ const OutLink = (props: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const handleCloseCiteModal = useCallback(() => setCiteModalData(undefined), [setCiteModalData]);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const isNoneWelcomeAndVariable = useContextSelector(
     ChatItemContext,
@@ -270,26 +276,27 @@ const OutLink = (props: Props) => {
     setIdEmbed(window !== top);
   });
 
-  const RenderHistoryList = useMemo(() => {
-    const Children = (
+  const historySidebarChildren = useMemo(
+    () => (
       <ChatHistorySidebar
         menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')}
         isShareMode={true}
       />
-    );
+    ),
+    [t]
+  );
 
+  const RenderHistoryList = useMemo(() => {
     if (showHistory !== '1') return null;
 
-    return isPc ? (
-      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
-    ) : (
+    return !isPc ? (
       <ChatSliderMobileDrawer
         showHeader={false}
         showFooter={false}
         menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
       />
-    );
-  }, [isPc, datasetCiteData, showHistory, t]);
+    ) : null;
+  }, [isPc, showHistory, t]);
 
   return (
     <>
@@ -298,7 +305,32 @@ const OutLink = (props: Props) => {
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <Flex h={'full'} gap={4} p={'0 !important'} borderRadius={'0'} boxShadow={'none'}>
+      <Flex h={'full'} p={'0 !important'} borderRadius={'0'} boxShadow={'none'}>
+        {/* PC Sidebar with resizable divider */}
+        {isPc && showHistory === '1' && (
+          <>
+            <SideBar
+              w={[
+                '100%',
+                `0 0 ${sidebarWidth}px`,
+                `0 0 ${sidebarWidth}px`,
+                `0 0 ${sidebarWidth}px`,
+                `0 0 ${sidebarWidth}px`
+              ]}
+              externalTrigger={!!datasetCiteData}
+            >
+              {historySidebarChildren}
+            </SideBar>
+            <ResizableDivider
+              minWidth={180}
+              maxWidth={350}
+              defaultWidth={250}
+              direction="left"
+              onResize={setSidebarWidth}
+            />
+          </>
+        )}
+
         {(!datasetCiteData || isPc) && (
           <PageContainer
             flex={'1 0 0'}
@@ -358,13 +390,46 @@ const OutLink = (props: Props) => {
           </PageContainer>
         )}
 
-        {datasetCiteData && (
-          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
-            <ChatQuoteList
-              rawSearch={datasetCiteData.rawSearch}
-              metadata={datasetCiteData.metadata}
-              onClose={() => setCiteModalData(undefined)}
+        {datasetCiteData && isPc && (
+          <>
+            <ResizableDivider
+              minWidth={400}
+              maxWidth={900}
+              defaultWidth={580}
+              onResize={setReferencePanelWidth}
             />
+            <Box w={`${referencePanelWidth}px`} flexShrink={0} h={'full'} overflow={'hidden'}>
+              {'collectionId' in datasetCiteData.metadata ? (
+                <ReferencePanel
+                  rawSearch={datasetCiteData.rawSearch}
+                  metadata={datasetCiteData.metadata}
+                  onClose={handleCloseCiteModal}
+                />
+              ) : (
+                <QuoteReader
+                  rawSearch={datasetCiteData.rawSearch}
+                  metadata={datasetCiteData.metadata}
+                  onClose={handleCloseCiteModal}
+                />
+              )}
+            </Box>
+          </>
+        )}
+        {datasetCiteData && !isPc && (
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
+            {'collectionId' in datasetCiteData.metadata ? (
+              <ReferencePanel
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={handleCloseCiteModal}
+              />
+            ) : (
+              <QuoteReader
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={handleCloseCiteModal}
+              />
+            )}
           </PageContainer>
         )}
       </Flex>
@@ -527,6 +592,7 @@ const Render = (props: Props) => {
         isShowFullText={props.isShowFullText}
         showRunningStatus={props.showRunningStatus}
         showSkillReferences={props.showSkillReferences}
+        chatType={ChatTypeEnum.share}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <OutLink {...props} />
@@ -570,7 +636,7 @@ export async function getServerSideProps(context: any) {
       appName: app?.associatedApp?.name ?? 'AI',
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
-      canDownloadSource: app?.canDownloadSource ?? false,
+      canDownloadSource: app?.canDownloadSource ?? true,
       isShowCite: app?.showCite ?? false,
       isShowFullText: app?.showFullText ?? false,
       showRunningStatus: app?.showRunningStatus ?? false,

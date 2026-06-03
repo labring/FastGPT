@@ -24,3 +24,6 @@ export enum ChatSettingTabOptionEnum {
 
 export const DEFAULT_LOGO_BANNER_URL = '/imgs/chat/fastgpt_banner.svg';
 export const DEFAULT_LOGO_BANNER_COLLAPSED_URL = '/imgs/chat/fastgpt_banner_fold.svg';
+
+/** 发布渠道门户链接的 URL 参数值 */
+export const FROM_PUBLISH_QUERY_VALUE = '1';

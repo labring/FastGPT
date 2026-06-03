@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -10,9 +10,13 @@ import ChatContextProvider from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { GetChatTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import QuoteReader from '@/pageComponents/chat/ChatQuoteList/QuoteReader';
+import ReferencePanel from '@/pageComponents/chat/ChatQuoteList/ReferencePanel';
+import ResizableDivider from '@/components/common/ResizableDivider';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatSetting from '@/pageComponents/chat/ChatSetting';
@@ -37,28 +41,58 @@ const Chat = () => {
 
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const chatType = useContextSelector(ChatItemContext, (v) => v.chatType);
 
   const collapse = useContextSelector(ChatPageContext, (v) => v.collapse);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+
+  const [referencePanelWidth, setReferencePanelWidth] = useState(580);
+  const [sidebarWidth, setSidebarWidth] = useState(226);
+
+  const isFromPublish = chatType === ChatTypeEnum.share;
+  const showReferencePanel = datasetCiteData && isFromPublish && isPc;
+
+  const handleCloseCiteModal = useCallback(() => setCiteModalData(undefined), [setCiteModalData]);
 
   return (
     <Flex h={'100%'} background={'linear-gradient(180deg, #F2F8FF 0%, #F5F8FC 10%)'}>
       {/* Side bar */}
       {isPc && (
-        <Box
-          flexGrow={0}
-          flexShrink={0}
-          w={collapse ? '72px' : '226px'}
-          overflow={'hidden'}
-          py={[6, 0]}
-          transition={'width 0.1s ease-in-out'}
-        >
-          <ChatSlider activeAppId={appId} />
-        </Box>
+        <>
+          <Box
+            flexGrow={0}
+            flexShrink={0}
+            w={collapse ? '72px' : `${sidebarWidth}px`}
+            overflow={'hidden'}
+            py={[6, 0]}
+            transition={'width 0.1s ease-in-out'}
+          >
+            <ChatSlider activeAppId={appId} />
+          </Box>
+          {!collapse && (
+            <ResizableDivider
+              minWidth={180}
+              maxWidth={350}
+              defaultWidth={226}
+              direction="left"
+              onResize={setSidebarWidth}
+            />
+          )}
+        </>
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex="1 0 0" w={0} position="relative" insertProps={{ borderRadius: '8px' }}>
+        <PageContainer
+          flex="1 0 0"
+          w={0}
+          position="relative"
+          pr={showReferencePanel ? 0 : undefined}
+          insertProps={
+            showReferencePanel
+              ? { borderRadius: '0', borderWidth: '0' }
+              : { borderRadius: '8px' }
+          }
+        >
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
@@ -76,7 +110,49 @@ const Chat = () => {
         </PageContainer>
       )}
 
-      {datasetCiteData && (
+      {datasetCiteData && isFromPublish && isPc && (
+        <>
+          <ResizableDivider
+            minWidth={400}
+            maxWidth={900}
+            defaultWidth={580}
+            onResize={setReferencePanelWidth}
+          />
+          <Box w={`${referencePanelWidth}px`} flexShrink={0} h={'full'} overflow={'hidden'}>
+            {'collectionId' in datasetCiteData.metadata ? (
+              <ReferencePanel
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={handleCloseCiteModal}
+              />
+            ) : (
+              <QuoteReader
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={handleCloseCiteModal}
+              />
+            )}
+          </Box>
+        </>
+      )}
+      {datasetCiteData && isFromPublish && !isPc && (
+        <PageContainer flex="1 0 0" w={0} maxW="560px">
+          {'collectionId' in datasetCiteData.metadata ? (
+            <ReferencePanel
+              rawSearch={datasetCiteData.rawSearch}
+              metadata={datasetCiteData.metadata}
+              onClose={handleCloseCiteModal}
+            />
+          ) : (
+            <QuoteReader
+              rawSearch={datasetCiteData.rawSearch}
+              metadata={datasetCiteData.metadata}
+              onClose={handleCloseCiteModal}
+            />
+          )}
+        </PageContainer>
+      )}
+      {datasetCiteData && !isFromPublish && (
         <PageContainer flex="1 0 0" w={0} maxW="560px">
           <ChatQuoteList
             metadata={datasetCiteData.metadata}
@@ -93,6 +169,7 @@ type ChatPageProps = {
   appId: string;
   teamId: string;
   isStandalone?: string;
+  fromPublish?: string;
   showRunningStatus: boolean;
   showSkillReferences: boolean;
   showCite: boolean;
@@ -102,7 +179,7 @@ type ChatPageProps = {
 };
 
 const ChatContent = (props: ChatPageProps) => {
-  const { appId, isStandalone, teamId } = props;
+  const { appId, isStandalone, teamId, fromPublish } = props;
   const { chatId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -161,6 +238,7 @@ const ChatContent = (props: ChatPageProps) => {
         isShowCite={props.showCite}
         isShowFullText={props.showFullText}
         showWholeResponse={props.showWholeResponse}
+        chatType={fromPublish ? ChatTypeEnum.share : undefined}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <Chat />
@@ -182,6 +260,7 @@ export default Render;
 
 export async function getServerSideProps(context: any) {
   const appId = context?.query?.appId || '';
+  const fromPublish = context?.query?.fromPublish || '';
 
   const chatQuoteReaderConfig = await (async () => {
     try {
@@ -217,6 +296,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId,
       teamId,
+      fromPublish,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
       showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
       showCite: chatQuoteReaderConfig?.showCite ?? true,

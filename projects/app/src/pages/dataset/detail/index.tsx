@@ -68,9 +68,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 
       {isPc ? (
         (() => {
-          const showNavBar = ![TabEnum.import, TabEnum.dataCard, TabEnum.fileDataCard].includes(
-            currentTab
-          );
+          const showNavBar = currentTab !== TabEnum.import;
           const layout = (
             <Flex h={'100%'} pb={3} pl={4} pr={3} flexDir={'column'}>
               {showNavBar && <NavBar currentTab={currentTab} />}

@@ -11,7 +11,6 @@ import {
   Th,
   Td,
   Tbody,
-  MenuButton,
   Switch,
   Checkbox,
   HStack,
@@ -296,7 +295,11 @@ const CollectionCard = () => {
         const { value } = await getCollectionSource({ collectionId });
 
         if (!value) {
-          throw new Error('No file found');
+          toast({
+            title: t('common:error.fileNotFound'),
+            status: 'error'
+          });
+          return;
         }
 
         if (isApiDataset) {
@@ -792,10 +795,11 @@ const CollectionCard = () => {
                           width={100}
                           offset={[-70, 5]}
                           Button={
-                            <MenuButton
+                            <Box
                               w={'1.5rem'}
                               h={'1.5rem'}
                               borderRadius={'md'}
+                              cursor={'pointer'}
                               _hover={{
                                 color: 'primary.500',
                                 '& .icon': {
@@ -806,14 +810,13 @@ const CollectionCard = () => {
                               <MyIcon
                                 className="icon"
                                 name={'more'}
-                                h={'1rem'}
                                 w={'1rem'}
+                                h={'1rem'}
                                 px={1}
                                 py={1}
                                 borderRadius={'md'}
-                                cursor={'pointer'}
                               />
-                            </MenuButton>
+                            </Box>
                           }
                           menuList={(() => {
                             const isFolder = collection.type === DatasetCollectionTypeEnum.folder;

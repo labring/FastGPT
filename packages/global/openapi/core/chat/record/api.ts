@@ -110,7 +110,10 @@ export const GetCollectionQuoteResSchema = z.object({
     })
   ),
   hasMorePrev: z.boolean().describe('是否还有更多前置数据'),
-  hasMoreNext: z.boolean().describe('是否还有更多后置数据')
+  hasMoreNext: z.boolean().describe('是否还有更多后置数据'),
+  collectionType: z.string().optional().describe('集合类型（DatasetCollectionTypeEnum）'),
+  datasetType: z.string().optional().describe('所属知识库类型'),
+  fileName: z.string().optional().describe('文件名')
 });
 export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSchema>;
 
