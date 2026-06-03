@@ -26,7 +26,8 @@ import {
   putDatasetCollectionById,
   postLinkCollectionSync,
   getCollectionSource,
-  postCheckDuplicateCollection
+  postCheckDuplicateCollection,
+  downloadCollectionsAsZip
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -355,6 +356,27 @@ const CollectionCard = () => {
     }
   );
 
+  const { runAsync: onBatchDownload, loading: isDownloading } = useRequest(
+    (collectionIds: string[]) => downloadCollectionsAsZip(collectionIds),
+    {
+      onSuccess(blob: Blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date()
+          .toISOString()
+          .replace(/[-:T]/g, '')
+          .slice(0, 14);
+        a.download = `collections-${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      },
+      errorToast: t('common:error.unKnow')
+    }
+  );
+
   const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('dataset:collection_sync_confirm_tip')
   });
@@ -424,7 +446,8 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || (isGetting && !isPollingRef.current) || isDropping;
+  const isLoading =
+    isUpdating || isSyncing || isDownloading || (isGetting && !isPollingRef.current) || isDropping;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
@@ -1036,6 +1059,12 @@ const CollectionCard = () => {
                   {t('dataset:batch_sync')}
                 </Button>
               )}
+              <Button
+                variant={'whiteBase'}
+                onClick={() => onBatchDownload(selectedItems.map((e) => e._id))}
+              >
+                {t('dataset:batch_download')}
+              </Button>
               <Button
                 variant={'whiteBase'}
                 onClick={() =>

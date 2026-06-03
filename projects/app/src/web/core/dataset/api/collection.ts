@@ -1,4 +1,5 @@
-import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { GET, POST, PUT, DELETE, instance } from '@/web/common/api/request';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type {
   ParentTreePathItemType,
   ParentIdType
@@ -156,3 +157,16 @@ export const getAllTags = (datasetId: string) =>
 /* ================== read source ======================== */
 export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>
   POST<ReadCollectionSourceResponseType>('/core/dataset/collection/read', data);
+
+/* ================== batch download ======================== */
+export const downloadCollectionsAsZip = async (collectionIds: string[]): Promise<Blob> => {
+  const response = await instance.request({
+    baseURL: getWebReqUrl('/api'),
+    url: '/core/dataset/collection/batchDownload',
+    method: 'POST',
+    data: { collectionIds },
+    responseType: 'blob',
+    timeout: 600000
+  });
+  return response.data as Blob;
+};

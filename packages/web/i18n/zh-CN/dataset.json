@@ -17,6 +17,7 @@
   "backup_mode": "备份导入",
   "backup_template_invalid": "备份文件格式不正确，应该是首列为 q,a,indexes 的 csv 文件",
   "batch_delete": "批量删除",
+  "batch_download": "批量下载",
   "batch_sync": "批量同步",
   "chunk_max_tokens": "分块上限",
   "chunk_process_params": "分块处理参数",
