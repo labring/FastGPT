@@ -17,6 +17,7 @@
   "backup_mode": "Import from backup",
   "backup_template_invalid": "Invalid backup file. It must be a CSV file with the first row containing \"q\" in the first column, \"a\" in the second, and \"indexes\" in the third.",
   "batch_delete": "Delete",
+  "batch_download": "Batch Download",
   "batch_sync": "Batch Sync",
   "chunk_max_tokens": "Max chunks",
   "chunk_process_params": "Chunk settings",

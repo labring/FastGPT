@@ -640,7 +640,7 @@ export const getAppsByDatasetId = (datasetId: string) =>
   );
 
 /* ======================== Re-exports from sub-modules (not already defined above) ======================= */
-export { getCollectionSource } from './api/collection';
+export { getCollectionSource, downloadCollectionsAsZip } from './api/collection';
 
 export { getUploadDatasetFilePresignedUrl } from './api/file';
 export {
