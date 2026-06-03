@@ -5,6 +5,8 @@ import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import React, { useState } from 'react';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { DEFAULT_SYSTEM_TITLE } from '@fastgpt/global/common/system/constants';
 
 type MyCardProps = {
   avatar: string;
@@ -32,6 +34,7 @@ const MyCard = ({
   onClick
 }: MyCardProps) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const [introOverflowed, setIntroOverflowed] = useState(false);
 
   const handleClick = () => {
@@ -162,7 +165,7 @@ const MyCard = ({
         <Flex align="center" gap="4px" position="absolute" bottom="16px" left="20px">
           <MyIcon name="common/user" w="16px" color="myGray.400" />
           <Box fontSize="12px" color="myGray.500" whiteSpace="nowrap">
-            {author || 'SF-FastGPT'}
+            {author || feConfigs?.systemTitle || DEFAULT_SYSTEM_TITLE}
           </Box>
         </Flex>
       </Flex>
