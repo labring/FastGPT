@@ -54,7 +54,7 @@ const TagFilterSection = ({
 }: Props) => {
   const { t } = useTranslation();
 
-  const datasetIds = useMemo(() => datasets.map((d) => d.datasetId), [datasets]);
+  const datasetIds = useMemo(() => (datasets || []).map((d) => d.datasetId), [datasets]);
 
   const [mode, setMode] = useState<FilterMode>(() => (value ? 'manual' : 'closed'));
   const [rows, setRows] = useState<ConditionRow[]>(() => deserializeFilter(value));

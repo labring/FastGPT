@@ -103,11 +103,8 @@ const EditForm = ({
   const { teamPlanStatus } = useUserStore();
 
   // ===== 数据集 =====
-  const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const datasetIds = useMemo(
-    () => appForm.dataset.datasets.map((d) => d.datasetId),
-    [appForm.dataset.datasets]
-  );
+  const selectDatasets = useMemo(() => appForm?.dataset?.datasets || [], [appForm]);
+  const datasetIds = useMemo(() => selectDatasets.map((d) => d.datasetId), [selectDatasets]);
   // 从选中知识库中获取向量模型 ID（优先取有向量模型的知识库，避免数据库类型排在首位时取到空值）
   const datasetVectorModelId = useMemo(
     () => selectDatasets.find((d) => d.vectorModel?.id)?.vectorModel?.id,
@@ -186,7 +183,10 @@ const EditForm = ({
   // ===== AI 模型 =====
   const selectedModel = getWebLLMModel(appForm.aiSettings.modelId);
   const isReasoningSupported = useMemo(() => selectedModel?.reasoning ?? false, [selectedModel]);
-  const tokenLimit = useMemo(() => selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT, [selectedModel?.quoteMaxToken]);
+  const tokenLimit = useMemo(
+    () => selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT,
+    [selectedModel?.quoteMaxToken]
+  );
 
   useEffect(() => {
     if (!isReasoningSupported) {
@@ -198,7 +198,7 @@ const EditForm = ({
   }, [isReasoningSupported, setAppForm]);
 
   useEffect(() => {
-    if (!selectedModel.vision) {
+    if (!selectedModel?.vision) {
       setAppForm((state) => ({
         ...state,
         chatConfig: {
@@ -688,6 +688,13 @@ const EditForm = ({
           <TagFilterSection
             datasets={selectDatasets}
             value={appForm.dataset.collectionFilterMatch}
+            authTmbId={appForm.dataset?.authTmbId ?? false}
+            onAuthTmbIdChange={(v) =>
+              setAppForm((state) => ({
+                ...state,
+                dataset: { ...state.dataset, authTmbId: v }
+              }))
+            }
             onChange={(v) =>
               setAppForm((state) => ({
                 ...state,

@@ -36,6 +36,7 @@ export const resolveDatasetParams = (
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
     datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
-    collectionFilterMatch: params[NodeInputKeyEnum.collectionFilterMatch]
+    collectionFilterMatch: params[NodeInputKeyEnum.collectionFilterMatch],
+    authTmbId: params[NodeInputKeyEnum.authTmbId]
   } as AppFormEditFormType['dataset'];
 };
