@@ -3,7 +3,6 @@ import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/co
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
-import { EmbeddingModelItemSchema } from '../../../core/ai/model.schema';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
@@ -132,9 +131,16 @@ export const CreateDatasetWithFilesResponseSchema = z.object({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),
-  vectorModel: EmbeddingModelItemSchema.meta({
-    description: '向量模型信息'
-  })
+  vectorModel: z
+    .object({
+      model: z.string().meta({
+        example: 'text-embedding-3-small',
+        description: '向量模型名称'
+      })
+    })
+    .meta({
+      description: '向量模型选择信息'
+    })
 });
 
 export type CreateDatasetWithFilesResponse = z.infer<typeof CreateDatasetWithFilesResponseSchema>;

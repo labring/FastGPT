@@ -154,7 +154,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         datasetId: dataset._id,
         name: dataset.name,
         avatar: dataset.avatar,
-        vectorModel: getEmbeddingModel(dataset.vectorModel)
+        vectorModel: {
+          model: getEmbeddingModel(dataset.vectorModel)?.model || dataset.vectorModel
+        }
       };
     });
 
