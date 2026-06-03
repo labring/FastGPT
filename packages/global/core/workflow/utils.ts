@@ -408,8 +408,20 @@ export const formatEditorVariablePickerIcon = (
 };
 
 // Check the value is a valid reference value format: [variableId, outputId]
-export const isValidReferenceValueFormat = (value: any): value is ReferenceItemValueType => {
-  return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
+export const isValidReferenceValueFormat = (
+  value: any,
+  nodesMap?: Record<string, Pick<StoreNodeItemType, 'nodeId'>> | Map<string, Pick<StoreNodeItemType, 'nodeId'>>
+): value is ReferenceItemValueType => {
+  if (!(Array.isArray(value) && value.length === 2 && typeof value[0] === 'string')) {
+    return false;
+  }
+
+  if (!nodesMap) return true;
+
+  const sourceNodeId = value[0];
+  if (sourceNodeId === VARIABLE_NODE_ID) return true;
+
+  return nodesMap instanceof Map ? nodesMap.has(sourceNodeId) : !!nodesMap[sourceNodeId];
 };
 /*
   Check whether the value([variableId, outputId]) value is a valid reference value:
