@@ -240,7 +240,7 @@ export class BuiltInLLMAdapter implements LLMProvider {
       const msg = choice?.message;
       const rawContent = msg?.content ?? '';
       const finishReason = choice?.finish_reason;
-      const reasoningContent = msg?.reasoning_content;
+      const reasoningContent = msg?.reasoning_content || (msg as any)?.reasoning;
 
       // 从 content 中提取 <think> 思考内容（kimi-k2.5 等模型将思考输出在 content 中）
       const extractedReasoning = extractThinkContent(rawContent);
@@ -288,7 +288,7 @@ export class BuiltInLLMAdapter implements LLMProvider {
               type: 'function' as const,
               function: { name: tc.function.name, arguments: tc.function.arguments }
             })),
-            reasoning: msg?.reasoning_content,
+            reasoning: msg?.reasoning_content || (msg as any)?.reasoning,
             usage: {
               inputTokens: data.usage?.prompt_tokens,
               outputTokens: data.usage?.completion_tokens
@@ -305,7 +305,10 @@ export class BuiltInLLMAdapter implements LLMProvider {
         const retryExtractedReasoning = extractThinkContent(retryRawContent);
         const retryContent = stripThinkBlocks(retryRawContent);
         const retryFinalReasoning =
-          retryMsg?.reasoning_content || retryExtractedReasoning || undefined;
+          retryMsg?.reasoning_content ||
+          (retryMsg as any)?.reasoning ||
+          retryExtractedReasoning ||
+          undefined;
 
         return {
           content: retryContent,
@@ -427,7 +430,7 @@ export class BuiltInLLMAdapter implements LLMProvider {
             const delta = data.choices?.[0]?.delta;
             if (delta) {
               const rawContent = delta.content || '';
-              const reasoningContent = delta.reasoning_content;
+              const reasoningContent = delta.reasoning_content || (delta as any)?.reasoning;
               // 流式响应中，thinking 内容可能通过 content 中的 <think> 标签传输（如 kimi-k2.5）
               const extractedReasoning = extractThinkContent(rawContent);
               const content = stripThinkBlocks(rawContent);
