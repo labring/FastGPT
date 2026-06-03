@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jsonRes } from '@fastgpt/service/common/response';
 
@@ -36,16 +35,17 @@ import handler from '@/pages/api/core/plugin/admin/pkg/upload';
 
 const mockJsonRes = vi.mocked(jsonRes);
 
-const tempDir = path.join('/private/tmp', 'fastgpt-plugin-upload-test');
-const pkgPath = path.join(tempDir, 'tool-a.pkg');
-const zipPath = path.join(tempDir, 'tools.zip');
+const pkgPath = '/virtual-fastgpt-plugin-upload-test/tool-a.pkg';
+const zipPath = '/virtual-fastgpt-plugin-upload-test/tools.zip';
 
 describe('POST /api/core/plugin/admin/pkg/upload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    fs.mkdirSync(tempDir, { recursive: true });
-    fs.writeFileSync(pkgPath, 'pkg-a');
-    fs.writeFileSync(zipPath, 'zip-content');
+    vi.spyOn(fs, 'readFileSync').mockImplementation((filePath) => {
+      if (filePath === pkgPath) return Buffer.from('pkg-a');
+      if (filePath === zipPath) return Buffer.from('zip-content');
+      return Buffer.from('');
+    });
 
     mocks.authSystemAdmin.mockResolvedValue(undefined);
     mocks.getLocale.mockReturnValue('zh-CN');
@@ -109,7 +109,7 @@ describe('POST /api/core/plugin/admin/pkg/upload', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   it('批量读取 .pkg 和 .zip，并一次性调用新版 SDK uploadPlugin', async () => {
