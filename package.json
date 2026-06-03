@@ -6,6 +6,7 @@
     "dev:pro": "turbo run dev:pro --filter=@fastgpt/app",
     "prepare": "husky install",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
+    "gen:deploy": "node ./deploy/init.mjs",
     "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
