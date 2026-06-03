@@ -127,10 +127,10 @@ jobs:
           echo "$KUBE_CONFIG" > "$KUBECONFIG_FILE"
           chmod 600 "$KUBECONFIG_FILE"
 
-          kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-docs-preview \
-            fastgpt-docs-preview=ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
+          kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-doc-preview \
+            fastgpt-doc-preview=ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
 
-          kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-docs-preview \
+          kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-doc-preview \
             originImageName="ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}" --overwrite
 
       - name: Format preview timestamp
@@ -144,7 +144,7 @@ jobs:
         with:
           script: |
             const prNumber = parseInt('${{ needs.check_pr_author.outputs.number }}');
-            const marker = '<!-- fastgpt-docs-preview -->';
+            const marker = '<!-- fastgpt-doc-preview -->';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -159,7 +159,7 @@ jobs:
             const commentBody = `${marker}
             ✅ **Docs Preview Deployed!**
 
-            🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
+            🔗 [👀 Click here to visit preview](https://xcldnthwehkh.sealoshzh.site)
 
             \`\`\`
             ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.check_pr_author.outputs.sha }}
