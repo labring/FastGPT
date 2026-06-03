@@ -23,6 +23,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { detectLang } from 'diting-rag-ts';
+import { filterDatasetsByTmbId, filterCollectionsByTmbId } from '../../../../../../dataset/utils';
 
 type DatasetSearchParams = {
   teamId: string;
@@ -43,6 +44,7 @@ type DatasetSearchParams = {
     extensionModelId?: string;
     extensionBg?: string;
     collectionFilterMatch?: string;
+    authTmbId?: boolean;
   };
 };
 
@@ -181,13 +183,35 @@ export const dispatchAgentDatasetSearch = async ({
   });
 
   try {
-    const datasetIds = await Promise.resolve(config.datasets.map((item) => item.datasetId));
+    const datasetIds = config.authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: config.datasets.map((item) => item.datasetId),
+          tmbId
+        })
+      : await Promise.resolve(config.datasets.map((item) => item.datasetId));
 
     if (datasetIds.length === 0) {
       return {
         response: 'No dataset selected',
         usages: []
       };
+    }
+
+    // Collection-level permission filtering
+    let authForbidCollectionIds: string[] | undefined;
+    if (config.authTmbId) {
+      const collectionFilterResult = await filterCollectionsByTmbId({
+        datasetIds,
+        tmbId,
+        teamId
+      });
+      if (!collectionFilterResult.allPass) {
+        if (collectionFilterResult.forbiddenIds.length === 0) {
+          // Safety: allPass=false but empty forbiddenIds shouldn't happen, treat as all pass
+        } else {
+          authForbidCollectionIds = collectionFilterResult.forbiddenIds;
+        }
+      }
     }
 
     // Get vector model
@@ -215,6 +239,7 @@ export const dispatchAgentDatasetSearch = async ({
       datasetSearchExtensionModelId: config.extensionModelId,
       datasetSearchExtensionBg: config.extensionBg,
       collectionFilterMatch: config.collectionFilterMatch,
+      authForbidCollectionIds,
       lang: lang ?? detectLang(query)
     };
     const {

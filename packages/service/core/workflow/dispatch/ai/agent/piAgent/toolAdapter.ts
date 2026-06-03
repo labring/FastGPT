@@ -151,7 +151,8 @@ export async function buildAgentTools({
                 usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
                 extensionModelId: datasetParams.datasetSearchExtensionModelId,
                 extensionBg: datasetParams.datasetSearchExtensionBg,
-                collectionFilterMatch: datasetParams.collectionFilterMatch
+                collectionFilterMatch: datasetParams.collectionFilterMatch,
+                authTmbId: datasetParams.authTmbId
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
