@@ -9,7 +9,7 @@ import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type';
-import { UserTagsEnum, type SourceMemberType } from '../../support/user/type';
+import { UserTagsSchema, type SourceMemberType } from '../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
@@ -302,10 +302,10 @@ export const AppTemplateSchema = z.object({
   isPromoted: BoolSchema.optional().meta({
     description: '是否推荐'
   }),
-  promoteTags: z.array(UserTagsEnum).optional().meta({
+  promoteTags: z.array(UserTagsSchema).optional().meta({
     description: '推荐用户标签'
   }),
-  hideTags: z.array(UserTagsEnum).optional().meta({
+  hideTags: z.array(UserTagsSchema).optional().meta({
     description: '隐藏用户标签'
   }),
   recommendText: z.string().optional().meta({

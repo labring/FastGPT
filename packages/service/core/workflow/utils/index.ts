@@ -60,8 +60,8 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   if (!tool.children) return [];
 
   const runtimeVersion = tool.version || toolSetNode.version;
-  const childMap = new Map(
-    tool.children.map((child) => [`${systemToolId}/${child.id}`, child] as const)
+  const childMap = new Map<string, (typeof tool.children)[number]>(
+    tool.children.map((child) => [`${systemToolId}/${child.id}`, child])
   );
   tool.children.forEach((child) => {
     childMap.set(child.id, child);
@@ -79,7 +79,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       flowNodeType: FlowNodeTypeEnum.tool,
       inputs: toolsetInputConfig
         ? [toolsetInputConfig, ...(child.inputs ?? [])]
-        : child.inputs ?? [],
+        : (child.inputs ?? []),
       outputs: child.outputs ?? [],
       name: selectedTool.name || child.name,
       intro,
