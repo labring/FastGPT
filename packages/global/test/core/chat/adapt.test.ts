@@ -836,13 +836,13 @@ describe('chats2GPTMessages', () => {
     expect(result[0].content).toBe('Hello');
   });
 
-  it('should skip agent ask answers marked with planId', () => {
+  it('should skip agent ask answers marked with askId', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [
           { text: { content: 'public follow-up' } },
-          { text: { content: 'private ask answer' }, planId: 'agentLoopMemory-node_1' }
+          { text: { content: 'private ask answer' }, askId: 'call_ask' }
         ]
       }
     ];
@@ -1937,8 +1937,7 @@ describe('chats2GPTMessages', () => {
               id: 'call_plan',
               functionName: 'update_plan',
               params: '{"updates":[]}',
-              response: 'Plan updated.',
-              assistantText: 'updating plan'
+              response: 'Plan updated.'
             },
             text: {
               content: 'continuing after plan'
@@ -1954,7 +1953,6 @@ describe('chats2GPTMessages', () => {
       {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'updating plan',
         tool_calls: [
           {
             id: 'call_plan',
@@ -1980,7 +1978,7 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
-  it('should keep control assistant text and reasoning when control tool metadata is invalid', () => {
+  it('should drop invalid control tool metadata', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -1990,22 +1988,14 @@ describe('chats2GPTMessages', () => {
               id: '',
               functionName: '',
               params: '{}',
-              response: 'Plan updated.',
-              assistantText: 'draft before invalid control tool',
-              reasoningText: 'planning'
+              response: 'Plan updated.'
             }
           }
         ]
       }
     ];
 
-    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        reasoning_content: 'planning',
-        content: 'draft before invalid control tool'
-      }
-    ]);
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([]);
   });
 
   it('should restore agent loop control fields from chat value when reserving tools', () => {
@@ -2062,22 +2052,34 @@ describe('chats2GPTMessages', () => {
             }
           },
           {
+            text: {
+              content: 'draft before plan'
+            },
+            reasoning: {
+              content: 'planning'
+            }
+          },
+          {
             agentPlanUpdate: {
               id: 'call_plan',
               functionName: 'update_plan',
               params: '{"updates":[]}',
-              response: 'Plan updated.',
-              assistantText: 'draft before plan',
-              reasoningText: 'planning'
+              response: 'Plan updated.'
+            }
+          },
+          {
+            text: {
+              content: 'too early'
+            },
+            reasoning: {
+              content: 'checking'
             }
           },
           {
             agentStopGate: {
               id: 'stop_gate_1',
               reason: 'Active plan is not complete.',
-              feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>',
-              assistantText: 'too early',
-              reasoningText: 'checking'
+              feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>'
             }
           },
           {
@@ -2094,7 +2096,8 @@ describe('chats2GPTMessages', () => {
       {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'final answer'
+        content: 'draft before plantoo earlyfinal answer',
+        reasoning_content: 'planningchecking'
       }
     ]);
   });
@@ -2105,19 +2108,25 @@ describe('chats2GPTMessages', () => {
         obj: ChatRoleEnum.AI,
         value: [
           {
+            reasoning: {
+              content: 'The plan needs user input.'
+            },
+            text: {
+              content: 'Need confirmation.'
+            }
+          },
+          {
             agentAsk: {
               id: 'call_ask',
-              planId: 'plan_1',
+              askId: 'call_ask',
               functionName: 'ask_agent',
-              params: '{"question":"Need confirmation?"}',
-              assistantText: 'Need confirmation.',
-              reasoningText: 'The plan needs user input.'
+              params: '{"question":"Need confirmation?"}'
             }
           },
           {
             interactive: {
               type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              askId: 'call_ask',
               params: {
                 content: 'Need confirmation?',
                 answer: 'Confirmed.'
@@ -2150,6 +2159,103 @@ describe('chats2GPTMessages', () => {
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask',
         content: 'Confirmed.'
+      }
+    ]);
+  });
+
+  it('should restore multiple ask_agent responses by askId without sharing plan context', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            plan: {
+              planId: 'plan_1',
+              task: 'Task',
+              description: 'Task description',
+              steps: []
+            }
+          },
+          {
+            agentAsk: {
+              id: 'call_ask_1',
+              askId: 'call_ask_1',
+              functionName: 'ask_agent',
+              params: '{"question":"First question?"}'
+            }
+          },
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              askId: 'call_ask_1',
+              params: {
+                content: 'First question?',
+                answer: 'First answer.'
+              }
+            }
+          },
+          {
+            agentAsk: {
+              id: 'call_ask_2',
+              askId: 'call_ask_2',
+              functionName: 'ask_agent',
+              params: '{"question":"Second question?"}'
+            }
+          },
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              askId: 'call_ask_2',
+              params: {
+                content: 'Second question?',
+                answer: 'Second answer.'
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_ask_1',
+            type: 'function',
+            function: {
+              name: 'ask_agent',
+              arguments: '{"question":"First question?"}'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask_1',
+        content: 'First answer.'
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_ask_2',
+            type: 'function',
+            function: {
+              name: 'ask_agent',
+              arguments: '{"question":"Second question?"}'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask_2',
+        content: 'Second answer.'
       }
     ]);
   });

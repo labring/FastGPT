@@ -367,8 +367,14 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'history_1-0': '/old.pdf',
-          'current_chat_item-0': '/current.pdf'
+          'history_1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          },
+          'current_chat_item-0': {
+            name: 'current.pdf',
+            url: '/current.pdf'
+          }
         });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -579,7 +585,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'history_human_1-0': '/old.pdf'
+          'history_human_1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          }
         });
       }
     );
@@ -617,7 +626,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'current_chat_item-0': '/current.pdf'
+          'current_chat_item-0': {
+            name: 'current.pdf',
+            url: '/current.pdf'
+          }
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -656,7 +668,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          '1-0': '/old.pdf'
+          '1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          }
         });
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
         expect(text).toContain('<id>1-0</id>');
@@ -700,8 +715,14 @@ describe('useUserContext', () => {
 
         expect(result.chatHistories).toBe(explicitHistory);
         expect(result.filesMap).toEqual({
-          'history_human-0': '/a.pdf',
-          'current_ai-0': '/c.pdf'
+          'history_human-0': {
+            name: 'a.pdf',
+            url: '/a.pdf'
+          },
+          'current_ai-0': {
+            name: 'c.pdf',
+            url: '/c.pdf'
+          }
         });
       }
     );
@@ -738,7 +759,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'current_ai-2': '/doc.pdf'
+          'current_ai-2': {
+            name: 'doc.pdf',
+            url: '/doc.pdf'
+          }
         });
         expect(result.currentFiles).toEqual([
           {
@@ -825,7 +849,10 @@ describe('useUserContext', () => {
 
         expect(result.queryInput).toBe('原始问题');
         expect(result.filesMap).toEqual({
-          'current_ai-0': '/uploads/report%20v1.pdf'
+          'current_ai-0': {
+            name: 'report v1.pdf',
+            url: '/uploads/report%20v1.pdf'
+          }
         });
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>report v1.pdf</name>');

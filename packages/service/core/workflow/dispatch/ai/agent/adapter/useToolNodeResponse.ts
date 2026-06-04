@@ -2,13 +2,16 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { AgentLoopEvent, AgentLoopToolCatalog } from '../../../../../ai/llm/agentLoop';
+import type { AgentLoopEvent } from '../../../../../ai/llm/agentLoop';
 import { AgentNodeResponseDisplay } from '../../../../../ai/llm/agentLoop/constants';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import type { GetSubAppInfoFnType } from '../type';
+import type { WorkflowAgentLoopToolCatalog } from './toolCatalog';
 
-type ToolResponseEvent = Extract<AgentLoopEvent, { type: 'tool_response' }>;
-type ToolResponseCompressEvent = NonNullable<ToolResponseEvent['toolResponseCompress']>;
+type ToolRunEndEvent = Extract<AgentLoopEvent, { type: 'tool_run_end' }>;
+type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
+type AskStartEvent = Extract<AgentLoopEvent, { type: 'ask_start' }>;
+type ToolResponseCompressEvent = NonNullable<ToolRunEndEvent['toolResponseCompress']>;
 type AgentPlanStatus = NonNullable<ChatHistoryItemResType['agentPlanStatus']>;
 
 type PendingToolResult = {
@@ -37,17 +40,17 @@ export const useToolNodeResponse = ({
     flowNodeType: FlowNodeTypeEnum;
   };
   nodeResponses: ChatHistoryItemResType[];
-  toolCatalog: AgentLoopToolCatalog;
+  toolCatalog: WorkflowAgentLoopToolCatalog;
   getSubAppInfo: GetSubAppInfoFnType;
 }) => {
   /**
-   * tool_response 是工具 nodeResponse 的统一落点；同一个 callId 重复事件只保留第一次。
+   * tool_run_end 是工具 nodeResponse 的统一落点；同一个 callId 重复事件只保留第一次。
    * 这主要防御流恢复、异常重放或未来事件扩展导致同一次工具调用重复写入。
    */
   const appendedCallIds = new Set<string>();
   /**
    * executeTool 返回的是工具调度阶段的数据；真正可展示的工具响应文本和压缩结果要等
-   * agentLoop 发出 tool_response 后才能确定，所以这里先按 callId 缓存工具运行结果。
+   * agentLoop 发出 tool_run_end 后才能确定，所以这里先按 callId 缓存工具运行结果。
    */
   const pendingToolResultMap = new Map<string, PendingToolResult>();
 
@@ -105,22 +108,21 @@ export const useToolNodeResponse = ({
     };
   };
 
-  const getUpdatePlanStatus = (call: ToolResponseEvent['call']): AgentPlanStatus => {
+  const getUpdatePlanStatus = (call: ToolRunEndEvent['call']): AgentPlanStatus => {
     /**
-     * update_plan 既可能是首次设置/替换计划，也可能是状态更新。
+     * update_plan 的 set_plan 会创建或重置 active plan，其余 action 都按更新展示。
      * 前端依赖 agentPlanStatus 决定展示文案，因此需要从工具参数里区分。
      */
-    const args = parseJsonArgs<{ updates?: Array<{ action?: string }> }>(call.function.arguments);
-    const updates = Array.isArray(args?.updates) ? args.updates : [];
+    const args = parseJsonArgs<{ action?: string }>(call.function.arguments);
 
-    if (updates.some((item) => item?.action === 'set_plan' || item?.action === 'replace_plan')) {
+    if (args?.action === 'set_plan') {
       return 'set_plan';
     }
 
     return 'update_plan';
   };
 
-  const getPlanToolStatus = (call: ToolResponseEvent['call']): AgentPlanStatus | undefined => {
+  const getPlanToolStatus = (call: ToolRunEndEvent['call']): AgentPlanStatus | undefined => {
     const askToolName = toolCatalog.askTool?.function.name;
     const updatePlanToolName = toolCatalog.updatePlanTool?.function.name;
 
@@ -133,13 +135,21 @@ export const useToolNodeResponse = ({
     }
   };
 
+  const getPlanOperationStatus = (event: PlanOperationEvent): AgentPlanStatus => {
+    if (event.operation === 'set_plan') {
+      return 'set_plan';
+    }
+
+    return 'update_plan';
+  };
+
   const createFallbackToolNodeResponse = ({
     call,
     response,
     usages,
     seconds
   }: {
-    call: ToolResponseEvent['call'];
+    call: ToolRunEndEvent['call'];
     response: string;
     usages?: ChatNodeUsageType[];
     seconds: number;
@@ -170,17 +180,26 @@ export const useToolNodeResponse = ({
     seconds,
     toolResponseCompress
   }: {
-    call: ToolResponseEvent['call'];
+    call: ToolRunEndEvent['call'];
     response?: string;
     seconds: number;
     toolResponseCompress?: ToolResponseCompressEvent;
   }) => {
     /**
-     * ask/update_plan 是 agent-loop 的系统工具，不按普通 FlowNodeTypeEnum.tool 展示。
-     * 统一映射成“规划 Agent”节点，避免前端运行详情出现内部函数名。
+     * ask_user/update_plan 是 agent-loop 的内置工具，不按普通 FlowNodeTypeEnum.tool 展示。
+     * 根据内部工具语义映射成独立节点，避免前端运行详情出现内部函数名。
      */
     const agentPlanStatus = getPlanToolStatus(call);
     if (!agentPlanStatus) return;
+    const display =
+      agentPlanStatus === 'ask_question'
+        ? AgentNodeResponseDisplay.ask
+        : AgentNodeResponseDisplay.plan;
+    const nodeResponseId =
+      agentPlanStatus === 'ask_question'
+        ? `${node.nodeId}-ask-${call.id}`
+        : `${node.nodeId}-plan-${call.id}`;
+    const nodeResponsePlanStatus = agentPlanStatus === 'ask_question' ? undefined : agentPlanStatus;
 
     /**
      * 如果 plan/ask 的响应也被压缩，压缩消耗仍挂到这个 plan 节点下。
@@ -192,26 +211,64 @@ export const useToolNodeResponse = ({
 
     nodeResponses.push(
       withChildTotalPoints({
-        id: `${node.nodeId}-plan-${call.id}`,
-        nodeId: `${node.nodeId}-plan-${call.id}`,
-        moduleName: AgentNodeResponseDisplay.plan.moduleName,
+        id: nodeResponseId,
+        nodeId: nodeResponseId,
+        moduleName: display.moduleName,
         moduleType: node.flowNodeType,
-        moduleLogo: AgentNodeResponseDisplay.plan.moduleLogo,
+        moduleLogo: display.moduleLogo,
         runningTime: seconds,
         textOutput: response,
-        agentPlanStatus,
+        ...(nodeResponsePlanStatus ? { agentPlanStatus: nodeResponsePlanStatus } : {}),
         ...(childrenResponses.length > 0 ? { childrenResponses } : {})
       })
     );
   };
 
-  const createToolNodeResponse = (event: ToolResponseEvent): ChatHistoryItemResType => {
+  const appendPlanOperationNodeResponse = (event: PlanOperationEvent) => {
+    if (!event.id) return;
+    if (appendedCallIds.has(event.id)) return;
+    appendedCallIds.add(event.id);
+
+    nodeResponses.push(
+      withChildTotalPoints({
+        id: `${node.nodeId}-plan-${event.id}`,
+        nodeId: `${node.nodeId}-plan-${event.id}`,
+        moduleName: AgentNodeResponseDisplay.plan.moduleName,
+        moduleType: node.flowNodeType,
+        moduleLogo: AgentNodeResponseDisplay.plan.moduleLogo,
+        runningTime: event.seconds,
+        textOutput: event.message,
+        agentPlanStatus: getPlanOperationStatus(event)
+      })
+    );
+  };
+
+  const appendAskNodeResponse = (event: AskStartEvent) => {
+    if (!event.id) return;
+    if (appendedCallIds.has(event.id)) return;
+    appendedCallIds.add(event.id);
+
+    nodeResponses.push(
+      withChildTotalPoints({
+        id: `${node.nodeId}-ask-${event.id}`,
+        nodeId: `${node.nodeId}-ask-${event.id}`,
+        moduleName: AgentNodeResponseDisplay.ask.moduleName,
+        moduleType: node.flowNodeType,
+        moduleLogo: AgentNodeResponseDisplay.ask.moduleLogo,
+        runningTime: event.seconds,
+        textOutput: event.ask.question
+      })
+    );
+  };
+
+  const createToolNodeResponse = (event: ToolRunEndEvent): ChatHistoryItemResType => {
     const pendingResult = pendingToolResultMap.get(event.call.id);
     /**
      * 优先使用工具调度器返回的完整 nodeResponse；没有时再使用 fallback。
      * fallback 只保证基本输入、输出和计费信息可见，不承载子流程详情。
      */
     const toolNodeResponse =
+      event.nodeResponse ||
       pendingResult?.nodeResponse ||
       createFallbackToolNodeResponse({
         call: event.call,
@@ -241,9 +298,9 @@ export const useToolNodeResponse = ({
   };
 
   /**
-   * 推送一个 tool response, 只在 tool_response 阶段真正写入 nodeResponse，确保工具文本、错误和压缩 child 都已齐全。
+   * 推送一个工具完成响应，只在 tool_run_end 阶段真正写入 nodeResponse，确保工具文本、错误和压缩 child 都已齐全。
    */
-  const appendToolNodeResponse = (event: ToolResponseEvent) => {
+  const appendToolNodeResponse = (event: ToolRunEndEvent) => {
     if (appendedCallIds.has(event.call.id)) return;
     appendedCallIds.add(event.call.id);
 
@@ -265,6 +322,8 @@ export const useToolNodeResponse = ({
 
   return {
     cacheToolResult,
-    appendToolNodeResponse
+    appendToolNodeResponse,
+    appendPlanOperationNodeResponse,
+    appendAskNodeResponse
   };
 };

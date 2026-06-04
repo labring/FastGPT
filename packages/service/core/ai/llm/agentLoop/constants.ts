@@ -9,14 +9,14 @@ export const AgentUsageModuleName = {
 export const AgentNodeResponseDisplay = {
   master: {
     moduleName: i18nT('chat:master_agent_call'),
-    moduleLogo: 'core/workflow/template/agent'
-  },
-  piMaster: {
-    moduleName: i18nT('chat:master_agent_call'),
     moduleLogo: 'core/app/type/agentFill'
   },
   plan: {
     moduleName: i18nT('chat:plan_agent'),
+    moduleLogo: 'core/app/agent/child/plan'
+  },
+  ask: {
+    moduleName: i18nT('chat:collect_questions'),
     moduleLogo: 'core/app/agent/child/plan'
   },
   contextCompress: {
@@ -26,5 +26,9 @@ export const AgentNodeResponseDisplay = {
   toolResponseCompress: {
     moduleName: i18nT('chat:tool_response_compress'),
     moduleLogo: 'core/app/agent/child/contextCompress'
+  },
+  readFile: {
+    moduleName: i18nT('chat:read_file'),
+    moduleLogo: 'core/workflow/template/readFiles'
   }
 } as const;

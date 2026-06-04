@@ -31,23 +31,17 @@ export type SandboxToolCallResult = {
 /**
  * 执行一次 sandbox 工具调用。
  *
- * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用已有 SandboxClient；
- * 未传入 client 时会按 app/user/chat 获取运行态 sandbox。
+ * 这里只负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并使用业务层提前
+ * 初始化好的 SandboxClient 执行工具。sandbox 生命周期和上下文初始化不在工具执行层处理。
  */
 export const runSandboxTools = async ({
-  appId,
-  userId,
-  chatId,
   toolName,
   args,
   sandboxClient
 }: {
-  appId: string;
-  userId: string;
-  chatId: string;
   toolName: string;
   args: string;
-  sandboxClient?: SandboxClient;
+  sandboxClient: SandboxClient;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -73,12 +67,8 @@ export const runSandboxTools = async ({
     };
   }
 
-  const instance = sandboxClient ?? (await getSandboxClient({ appId, userId, chatId }));
   const result = await tool.execute({
-    appId,
-    userId,
-    chatId,
-    sandboxInstance: instance,
+    sandboxInstance: sandboxClient,
     params: parsedArgs.data as any
   });
 

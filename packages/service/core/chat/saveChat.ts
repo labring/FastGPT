@@ -909,9 +909,9 @@ export const updateInteractiveChat = async ({
         chatItem.markModified('value');
         await chatItem.save();
 
-        // 追加 PlanId 给 userItem(便于适配器会跳过转化该条消息)
+        // 追加 askId 给 userItem，便于适配器跳过这条 UI-only 用户回答。
         props.userContent.value.forEach((item) => {
-          item.planId = finalInteractive.planId;
+          item.askId = finalInteractive.askId;
         });
       }
     }

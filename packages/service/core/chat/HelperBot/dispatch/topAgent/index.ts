@@ -88,175 +88,148 @@ export const dispatchTopAgent = async (
   const answerText = llmResponse.answerText;
   const reasoningText = llmResponse.reasoningText;
   // console.log('Top agent response:', answerText);
-  try {
-    const parseAnswer = (text: string) => {
-      return TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(text));
-    };
-    let result = await parseAnswer(answerText);
-    // console.dir({ label: 'Top agent parsed result', result }, {
-    //   depth: null,
-    //   maxArrayLength: null
-    // });
-    if (!result.success) {
-      getLogger(LogCategories.MODULE.AI.HELPERBOT).warn(
-        '[Top agent] JSON parse failed, try repair',
-        { text: answerText }
-      );
+  const parseAnswer = (text: string) => {
+    return TopAgentAnswerSchema.safeParseAsync(parseJsonArgs(text));
+  };
+  let result = await parseAnswer(answerText);
+  // console.dir({ label: 'Top agent parsed result', result }, {
+  //   depth: null,
+  //   maxArrayLength: null
+  // });
+  if (!result.success) {
+    getLogger(LogCategories.MODULE.AI.HELPERBOT).warn('[Top agent] JSON parse failed, try repair', {
+      text: answerText
+    });
 
-      const repairPrompt = `当前查询的用户问题：${query} \n辅助助手上一次的输出:\n${answerText}，\nJSON 解析的报错信息：\n${result.error} \n
+    const repairPrompt = `当前查询的用户问题：${query} \n辅助助手上一次的输出:\n${answerText}，\nJSON 解析的报错信息：\n${result.error} \n
          查看JSON 的报错信息来修正 JSON 格式错误，并仅返回正确的 JSON，确保 JSON 格式正确无误且可以被解析。不要包含任何多余的信息。`;
-      const repairResponse = await createLLMResponse({
-        body: {
-          messages: [
-            { role: 'system' as const, content: systemPrompt },
-            ...historyMessages,
-            {
-              role: 'user' as const,
-              content: repairPrompt
-            }
-          ],
-          model: modelData,
-          stream: true
-        }
-      });
-      usage.inputTokens += repairResponse.usage.inputTokens;
-      usage.outputTokens += repairResponse.usage.outputTokens;
-
-      result = await parseAnswer(repairResponse.answerText);
-      console.dir(
-        { label: 'Top agent parsed result', result },
-        {
-          depth: null,
-          maxArrayLength: null
-        }
-      );
-      if (!result.success) {
-        getLogger(LogCategories.MODULE.AI.HELPERBOT).warn('[Top agent] JSON repair failed', {
-          text: repairResponse.answerText
-        });
-        return {
-          aiResponse: formatAIResponse({
-            text: answerText,
-            reasoning: reasoningText
-          }),
-          usage
-        };
+    const repairResponse = await createLLMResponse({
+      body: {
+        messages: [
+          { role: 'system' as const, content: systemPrompt },
+          ...historyMessages,
+          {
+            role: 'user' as const,
+            content: repairPrompt
+          }
+        ],
+        model: modelData,
+        stream: true
       }
+    });
+    usage.inputTokens += repairResponse.usage.inputTokens;
+    usage.outputTokens += repairResponse.usage.outputTokens;
+
+    result = await parseAnswer(repairResponse.answerText);
+
+    if (!result.success) {
+      getLogger(LogCategories.MODULE.AI.HELPERBOT).warn('[Top agent] JSON repair failed', {
+        text: repairResponse.answerText
+      });
+      // 交给 API 层写 SSE error，避免客户端继续等待普通 answer 或展示错误格式的模型原文。
+      throw new Error('Model outout invalid');
+    }
+  }
+
+  const responseJson = result.data;
+
+  if (responseJson.phase === 'generation') {
+    getLogger(LogCategories.MODULE.AI.HELPERBOT).debug(
+      '🔄 TopAgent: Configuration generation phase'
+    );
+
+    const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
+    const filterDatasets = await filterValidDatasets({
+      teamId: user.teamId,
+      datasetIds: knowledges
+    });
+    const enableSandboxEnabled =
+      responseJson.resources?.system_features?.sandbox?.enabled ||
+      tools.includes(AGENT_SANDBOX_TOOLSET_ID);
+    const formData = TopAgentFormDataSchema.parse({
+      systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
+      tools, // 从 execution_plan 提取
+      datasets: filterDatasets,
+      fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
+      enableSandboxEnabled,
+      executionPlan: responseJson.execution_plan // 保存原始 execution_plan
+    });
+
+    if (formData) {
+      workflowResponseWrite?.({
+        event: SseResponseEventEnum.topAgentConfig,
+        data: formData
+      });
     }
 
-    const responseJson = result.data;
-
-    if (responseJson.phase === 'generation') {
-      getLogger(LogCategories.MODULE.AI.HELPERBOT).debug(
-        '🔄 TopAgent: Configuration generation phase'
-      );
-
-      const { tools, knowledges } = extractResourcesFromPlan(responseJson.execution_plan);
-      const filterDatasets = await filterValidDatasets({
-        teamId: user.teamId,
-        datasetIds: knowledges
-      });
-      const enableSandboxEnabled =
-        responseJson.resources?.system_features?.sandbox?.enabled ||
-        tools.includes(AGENT_SANDBOX_TOOLSET_ID);
-      const formData = TopAgentFormDataSchema.parse({
-        systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
-        tools, // 从 execution_plan 提取
-        datasets: filterDatasets,
-        fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
-        enableSandboxEnabled,
-        executionPlan: responseJson.execution_plan // 保存原始 execution_plan
-      });
-
-      if (formData) {
-        workflowResponseWrite?.({
-          event: SseResponseEventEnum.topAgentConfig,
-          data: formData
-        });
+    workflowResponseWrite?.({
+      event: SseResponseEventEnum.plan,
+      data: {
+        type: 'generation'
       }
+    });
 
-      workflowResponseWrite?.({
-        event: SseResponseEventEnum.plan,
-        data: {
+    return {
+      aiResponse: formatAIResponse({
+        text: buildDisplayText(responseJson), // 构建显示文本
+        reasoning: reasoningText,
+        planHint: {
           type: 'generation'
         }
-      });
+      }),
+      usage
+    };
+  } else {
+    getLogger(LogCategories.MODULE.AI.HELPERBOT).debug('📝 TopAgent: Information collection phase');
 
-      return {
-        aiResponse: formatAIResponse({
-          text: buildDisplayText(responseJson), // 构建显示文本
-          reasoning: reasoningText,
-          planHint: {
-            type: 'generation'
-          }
-        }),
-        usage
-      };
-    } else {
-      getLogger(LogCategories.MODULE.AI.HELPERBOT).debug(
-        '📝 TopAgent: Information collection phase'
-      );
-
-      const formDeata = responseJson.form;
-      if (formDeata) {
-        const inputForm: UserInputInteractive = {
-          type: 'userInput',
-          params: {
-            inputForm: formDeata.map((item) => {
-              return {
-                type: item.type as FlowNodeInputTypeEnum,
-                key: getNanoid(6),
-                label: item.label,
-                value: '',
-                required: false,
-                valueType:
-                  item.type === FlowNodeInputTypeEnum.numberInput
-                    ? WorkflowIOValueTypeEnum.number
-                    : WorkflowIOValueTypeEnum.string,
-                list:
-                  'options' in item
-                    ? item.options?.map((option) => ({ label: option, value: option }))
-                    : undefined
-              };
-            }),
-            description: responseJson.question
-          }
-        };
-        workflowResponseWrite?.({
-          event: SseResponseEventEnum.collectionForm,
-          data: inputForm
-        });
-
-        return {
-          aiResponse: formatAIResponse({
-            text: responseJson.question,
-            reasoning: reasoningText,
-            collectionForm: inputForm
+    const formDeata = responseJson.form;
+    if (formDeata) {
+      const inputForm: UserInputInteractive = {
+        type: 'userInput',
+        params: {
+          inputForm: formDeata.map((item) => {
+            return {
+              type: item.type as FlowNodeInputTypeEnum,
+              key: getNanoid(6),
+              label: item.label,
+              value: '',
+              required: false,
+              valueType:
+                item.type === FlowNodeInputTypeEnum.numberInput
+                  ? WorkflowIOValueTypeEnum.number
+                  : WorkflowIOValueTypeEnum.string,
+              list:
+                'options' in item
+                  ? item.options?.map((option) => ({ label: option, value: option }))
+                  : undefined
+            };
           }),
-          usage
-        };
-      }
-
+          description: responseJson.question
+        }
+      };
       workflowResponseWrite?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({ text: responseJson.question })
+        event: SseResponseEventEnum.collectionForm,
+        data: inputForm
       });
 
       return {
         aiResponse: formatAIResponse({
           text: responseJson.question,
-          reasoning: reasoningText
+          reasoning: reasoningText,
+          collectionForm: inputForm
         }),
         usage
       };
     }
-  } catch (e) {
-    getLogger(LogCategories.MODULE.AI.HELPERBOT).warn(`[Top agent] Failed to parse JSON response`, {
-      text: answerText
+
+    workflowResponseWrite?.({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({ text: responseJson.question })
     });
+
     return {
       aiResponse: formatAIResponse({
-        text: answerText,
+        text: responseJson.question,
         reasoning: reasoningText
       }),
       usage

@@ -1,15 +1,19 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export type ToolCallEventType = {
   onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
   onToolParam?: (e: { call: ChatCompletionMessageToolCall; argsDelta: string }) => void;
-  // 工具执行完成后的生命周期钩子（含未找到 / parseParams 失败 / execute 抛错的兜底）
-  onAfterToolCall?: (e: {
+  onToolRunStart?: (e: { call: ChatCompletionMessageToolCall }) => void;
+  onToolRunEnd?: (e: {
     call: ChatCompletionMessageToolCall;
-    response?: string;
+    rawResponse: string;
+    response: string;
     errorMessage?: string;
     seconds: number;
+    usages?: ChatNodeUsageType[];
+    nodeResponse?: ChatHistoryItemResType;
     toolResponseCompress?: {
       response: string;
       usage: ChatNodeUsageType;

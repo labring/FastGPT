@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentPlanSchema } from '@fastgpt/global/core/ai/agent/type';
-import { runStopGate } from '@fastgpt/service/core/ai/llm/agentLoop/stop';
+import { runStopGate } from '@fastgpt/service/core/ai/llm/agentLoop/providers/fastAgent/stop';
 
 describe('runStopGate', () => {
   it('allows stop when there is no active plan', () => {
@@ -22,16 +22,14 @@ describe('runStopGate', () => {
   it('rejects stop when active plan has pending steps', () => {
     const plan = AgentPlanSchema.parse({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Read docs',
+          name: 'Read docs',
           description: 'Read docs',
-          acceptanceCriteria: ['Read'],
-          status: 'pending',
-          evidence: []
+          status: 'pending'
         }
       ]
     });
@@ -45,57 +43,25 @@ describe('runStopGate', () => {
     }
   });
 
-  it('rejects blocked steps without blocker and includes runtime tool hint', () => {
-    const plan = AgentPlanSchema.parse({
-      planId: 'plan_1',
-      task: 'Task',
-      description: 'Description',
-      steps: [
-        {
-          id: 's1',
-          title: 'Blocked step',
-          description: 'Blocked',
-          acceptanceCriteria: ['Resolved'],
-          status: 'blocked',
-          evidence: []
-        }
-      ]
-    });
-
-    const result = runStopGate({
-      activePlan: plan,
-      runtimeToolCalledSinceLastPlanUpdate: true
-    });
-
-    expect(result.allowStop).toBe(false);
-    if (!result.allowStop) {
-      expect(result.feedbackMessage.content).toContain('blocked without blocker');
-      expect(result.feedbackMessage.content).toContain('runtime tools');
-    }
-  });
-
   it('allows stop when all steps are resolved', () => {
     const plan = AgentPlanSchema.parse({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Done step',
+          name: 'Done step',
           description: 'Done',
-          acceptanceCriteria: ['Done'],
           status: 'done',
-          evidence: []
+          note: 'Completed'
         },
         {
           id: 's2',
-          title: 'Blocked with reason',
+          name: 'Blocked step',
           description: 'Blocked',
-          acceptanceCriteria: ['Blocked'],
           status: 'blocked',
-          blocker: 'User input unavailable',
-          evidence: []
+          note: 'User input unavailable'
         }
       ]
     });
@@ -106,16 +72,14 @@ describe('runStopGate', () => {
   it('rejects stop when runtime tools were used after the last plan update', () => {
     const plan = AgentPlanSchema.parse({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Done step',
+          name: 'Done step',
           description: 'Done',
-          acceptanceCriteria: ['Done'],
-          status: 'done',
-          evidence: []
+          status: 'done'
         }
       ]
     });

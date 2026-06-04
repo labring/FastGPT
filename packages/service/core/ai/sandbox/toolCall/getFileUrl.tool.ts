@@ -13,7 +13,13 @@ const SandboxGetFileUrlToolSchema = z.object({
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
-  execute: async ({ appId, userId, chatId, sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params }) => {
+    const { appId, userId, chatId } = sandboxInstance.getContext();
+
+    if (!appId || !userId || !chatId) {
+      return { response: 'Sandbox file export context is not available.' };
+    }
+
     const result = await Promise.all(
       params.paths.map(async (filePath) => {
         const filename = path.basename(filePath);

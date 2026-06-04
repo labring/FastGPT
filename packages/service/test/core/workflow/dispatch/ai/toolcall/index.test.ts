@@ -5,14 +5,21 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 
-const { getLLMModelMock, runToolCallMock, useToolMessagesMock, useToolNodeListMock } = vi.hoisted(
-  () => ({
-    getLLMModelMock: vi.fn(),
-    runToolCallMock: vi.fn(),
-    useToolMessagesMock: vi.fn(),
-    useToolNodeListMock: vi.fn()
-  })
-);
+const {
+  getLLMModelMock,
+  getSandboxClientMock,
+  injectSandboxFilesMock,
+  runToolCallMock,
+  useToolMessagesMock,
+  useToolNodeListMock
+} = vi.hoisted(() => ({
+  getLLMModelMock: vi.fn(),
+  getSandboxClientMock: vi.fn(),
+  injectSandboxFilesMock: vi.fn(),
+  runToolCallMock: vi.fn(),
+  useToolMessagesMock: vi.fn(),
+  useToolNodeListMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getLLMModel: getLLMModelMock
@@ -32,6 +39,14 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeLi
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
+  getSandboxClient: getSandboxClientMock
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', () => ({
+  injectSandboxFiles: injectSandboxFilesMock
 }));
 
 const createProps = (overrides: Record<string, any> = {}) =>
@@ -98,6 +113,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
 describe('dispatchRunTools file context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     getLLMModelMock.mockReturnValue({
       model: 'gpt-5',
       name: 'GPT-5',
@@ -111,6 +127,10 @@ describe('dispatchRunTools file context', () => {
       messages: [],
       allFiles: new Map(),
       currentInputFiles: []
+    });
+    getSandboxClientMock.mockResolvedValue({
+      provider: {},
+      exec: vi.fn()
     });
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
@@ -196,5 +216,58 @@ describe('dispatchRunTools file context', () => {
     );
     expect(useToolMessagesMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();
+  });
+
+  it('initializes sandbox client and injects input files before running toolcall', async () => {
+    global.feConfigs = { show_agent_sandbox: true };
+    const sandboxClient = {
+      provider: {},
+      exec: vi.fn()
+    };
+    getSandboxClientMock.mockResolvedValueOnce(sandboxClient);
+    useToolMessagesMock.mockResolvedValueOnce({
+      messages: [],
+      allFiles: new Map(),
+      currentInputFiles: [
+        {
+          id: 'file_1',
+          name: 'a.pdf',
+          url: 'https://files/a.pdf',
+          sandboxPath: '/workspace/a.pdf'
+        }
+      ]
+    });
+
+    await dispatchRunTools(
+      createProps({
+        params: {
+          ...createProps().params,
+          useAgentSandbox: true
+        }
+      })
+    );
+
+    expect(checkTeamSandboxPermission).toHaveBeenCalledWith('team_1');
+    expect(getSandboxClientMock).toHaveBeenCalledWith({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
+    expect(injectSandboxFilesMock).toHaveBeenCalledWith({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      files: [
+        {
+          path: '/workspace/a.pdf',
+          url: 'https://files/a.pdf'
+        }
+      ]
+    });
+    expect(runToolCallMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxClient
+      })
+    );
   });
 });

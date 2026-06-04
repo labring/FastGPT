@@ -14,6 +14,7 @@ export enum SubAppIds {
   datasetSearch = 'dataset_search'
 }
 
+// TODO: 移除部分
 export const systemSubInfo: Record<
   string,
   { name: I18nStringType; avatar: string; toolDescription: string }

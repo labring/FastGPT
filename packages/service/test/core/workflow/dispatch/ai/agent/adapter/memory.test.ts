@@ -11,9 +11,11 @@ describe('workflow agent loop memory adapter', () => {
   it('reads memory only from the last AI history item', () => {
     const keys = getWorkflowAgentLoopMemoryKeys('node_1');
     const memory = {
-      pendingMainContext: {
-        askToolCallId: 'call_ask',
-        messages: [{ role: 'assistant' as const, content: 'question' }]
+      providerState: {
+        pendingMainContext: {
+          askToolCallId: 'call_ask',
+          messages: [{ role: 'assistant' as const, content: 'question' }]
+        }
       }
     };
     const histories = [
@@ -40,9 +42,11 @@ describe('workflow agent loop memory adapter', () => {
         value: [],
         memories: {
           'agentLoopMemory-node_1': {
-            pendingMainContext: {
-              askToolCallId: 'old_call',
-              messages: [{ role: 'assistant', content: 'old' }]
+            providerState: {
+              pendingMainContext: {
+                askToolCallId: 'old_call',
+                messages: [{ role: 'assistant', content: 'old' }]
+              }
             }
           }
         }
@@ -57,7 +61,7 @@ describe('workflow agent loop memory adapter', () => {
   });
 
   it('builds stable memory keys for the current node', () => {
-    const pendingMainContext = {
+    const providerState = {
       askToolCallId: 'call_ask',
       messages: [{ role: 'assistant' as const, content: 'question' }]
     };
@@ -66,12 +70,12 @@ describe('workflow agent loop memory adapter', () => {
       buildWorkflowAgentLoopMemories({
         nodeId: 'node_1',
         memory: {
-          pendingMainContext
+          providerState
         }
       })
     ).toEqual({
       'agentLoopMemory-node_1': {
-        pendingMainContext
+        providerState
       }
     });
   });

@@ -29,6 +29,7 @@ describe('dispatchFileRead', () => {
       files: [
         {
           id: 'file_0',
+          name: 'input-doc.txt',
           url: 'file_raw_text_id'
         }
       ],
@@ -40,7 +41,7 @@ describe('dispatchFileRead', () => {
       JSON.stringify([
         {
           id: 'file_0',
-          name: 'doc.txt',
+          name: 'input-doc.txt',
           content: 'large file content'
         }
       ])
@@ -48,7 +49,14 @@ describe('dispatchFileRead', () => {
     expect(result.usages).toEqual([]);
     expect(result.nodeResponse).toEqual({
       moduleType: FlowNodeTypeEnum.readFiles,
-      moduleName: 'chat:read_file'
+      moduleName: 'chat:read_file',
+      readFiles: [
+        {
+          name: 'input-doc.txt',
+          url: 'file_raw_text_id'
+        }
+      ]
     });
+    expect(result.nodeResponse).not.toHaveProperty('readFilesResult');
   });
 });

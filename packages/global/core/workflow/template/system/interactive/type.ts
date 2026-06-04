@@ -170,7 +170,7 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     AgentPlanAskQueryInteractiveSchema
   ]),
   z.object({
-    planId: z.string().optional()
+    askId: z.string().nullish()
   })
 );
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;

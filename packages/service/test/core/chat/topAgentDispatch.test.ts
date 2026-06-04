@@ -69,6 +69,20 @@ describe('dispatchTopAgent', () => {
     vi.clearAllMocks();
   });
 
+  const baseDispatchParams = {
+    query: 'build an agent that can run commands',
+    files: [],
+    data: {},
+    histories: [],
+    user: {
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      userId: 'user_1',
+      isRoot: false,
+      lang: 'zh-CN' as const
+    }
+  };
+
   it('enables sandbox when generated plan selects the agent sandbox toolset', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: JSON.stringify({
@@ -116,18 +130,8 @@ describe('dispatchTopAgent', () => {
     const workflowResponseWrite = vi.fn();
 
     await dispatchTopAgent({
-      query: 'build an agent that can run commands',
-      files: [],
-      data: {},
-      histories: [],
-      workflowResponseWrite,
-      user: {
-        teamId: 'team_1',
-        tmbId: 'tmb_1',
-        userId: 'user_1',
-        isRoot: false,
-        lang: 'zh-CN'
-      }
+      ...baseDispatchParams,
+      workflowResponseWrite
     });
 
     expect(workflowResponseWrite).toHaveBeenCalledWith({
@@ -137,5 +141,39 @@ describe('dispatchTopAgent', () => {
         enableSandboxEnabled: true
       })
     });
+  });
+
+  it('rejects when JSON repair still cannot produce a valid top agent response', async () => {
+    createLLMResponseMock
+      .mockResolvedValueOnce({
+        answerText: '不是合法的 top agent JSON',
+        reasoningText: '',
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5
+        }
+      })
+      .mockResolvedValueOnce({
+        answerText: '{"phase":"generation","task_analysis":{}}',
+        reasoningText: '',
+        usage: {
+          inputTokens: 3,
+          outputTokens: 2
+        }
+      });
+
+    const workflowResponseWrite = vi.fn();
+
+    await expect(
+      dispatchTopAgent({
+        ...baseDispatchParams,
+        workflowResponseWrite
+      })
+    ).rejects.toThrow('模型输出 JSON 解析失败');
+
+    const streamedAnswerTexts = workflowResponseWrite.mock.calls
+      .filter(([data]) => data.event === SseResponseEventEnum.answer)
+      .map(([data]) => data.data?.choices?.[0]?.delta?.content);
+    expect(streamedAnswerTexts).not.toContain('不是合法的 top agent JSON');
   });
 });

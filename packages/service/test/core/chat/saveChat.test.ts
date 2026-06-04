@@ -214,24 +214,18 @@ describe('pushChatRecords', () => {
         id: 'call_update_plan',
         functionName: 'update_plan',
         params: '{"updates":[]}',
-        response: 'ok',
-        assistantText: 'draft while updating plan',
-        reasoningText: 'planning'
+        response: 'ok'
       };
       const agentAsk = {
         id: 'call_ask_agent',
         functionName: 'ask_agent',
         params: '{"question":"请补充目标"}',
-        planId: 'plan_1',
-        assistantText: 'need more input',
-        reasoningText: 'asking'
+        askId: 'call_ask_agent'
       };
       const agentStopGate = {
         id: 'stop_gate_2_req_too_early',
         reason: 'Active plan is not complete.',
-        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>',
-        assistantText: 'too early',
-        reasoningText: 'checking'
+        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>'
       };
       const props = createMockProps(
         {
@@ -1219,7 +1213,7 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              askId: 'call_ask_agent',
               params: {
                 content: '请补充目标',
                 reason: '需要用户明确任务目标',
@@ -1247,7 +1241,7 @@ describe('pushChatRecords', () => {
 
       const interactive = {
         type: 'agentPlanAskQuery' as const,
-        planId: 'plan_1',
+        askId: 'call_ask_agent',
         params: {
           content: '请补充目标',
           reason: '需要用户明确任务目标',

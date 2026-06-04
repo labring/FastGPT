@@ -2,9 +2,6 @@ import type { z } from 'zod';
 import type { SandboxClient } from '../service/runtime';
 
 type ToolExecuteContext<P> = {
-  appId: string;
-  userId: string;
-  chatId: string;
   sandboxInstance: SandboxClient;
   params: P;
 };

@@ -3,44 +3,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolRunner';
 
-const { dispatchReadFileToolMock, runSandboxToolsMock, runWorkflowMock } = vi.hoisted(() => ({
-  dispatchReadFileToolMock: vi.fn(),
-  runSandboxToolsMock: vi.fn(),
+const { runWorkflowMock } = vi.hoisted(() => ({
   runWorkflowMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: runWorkflowMock
 }));
-
-vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamSandboxPermission: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/toolCall')>();
-
-  return {
-    ...original,
-    runSandboxTools: runSandboxToolsMock
-  };
-});
-
-vi.mock(
-  '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file',
-  async (importOriginal) => {
-    const original =
-      await importOriginal<
-        typeof import('@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file')
-      >();
-
-    return {
-      ...original,
-      dispatchReadFileTool: dispatchReadFileToolMock
-    };
-  }
-);
 
 const createCall = ({
   id = 'call_1',
@@ -62,6 +31,13 @@ const createCall = ({
 
 const createWorkflowProps = () =>
   ({
+    sandboxClient: {
+      getContext: vi.fn(() => ({
+        appId: 'app_1',
+        userId: 'user_1',
+        chatId: 'chat_1'
+      }))
+    },
     runningAppInfo: {
       id: 'app_1'
     },
@@ -83,13 +59,11 @@ const createRunner = ({
   getToolInfo,
   runtimeNodes = [],
   runtimeEdges = [],
-  allFiles = new Map(),
   fileUrls = []
 }: {
   getToolInfo: (name: string) => any;
   runtimeNodes?: any[];
   runtimeEdges?: any[];
-  allFiles?: Map<string, any>;
   fileUrls?: string[];
 }) => {
   const cacheToolFlowResponse = vi.fn();
@@ -99,7 +73,6 @@ const createRunner = ({
     workflowProps: createWorkflowProps(),
     runtimeNodes,
     runtimeEdges,
-    allFiles,
     fileUrls,
     getToolInfo,
     cacheToolFlowResponse,
@@ -139,14 +112,7 @@ describe('useToolRunner', () => {
     expect(cacheToolFlowResponse).not.toHaveBeenCalled();
   });
 
-  it('runs sandbox tools and caches sandbox workflow response', async () => {
-    runSandboxToolsMock.mockResolvedValue({
-      input: {
-        cmd: 'ls'
-      },
-      response: 'sandbox ok',
-      durationSeconds: 0.5
-    });
+  it('does not execute sandbox internal tools through the runtime tool runner', async () => {
     const { runTool, cacheToolFlowResponse } = createRunner({
       getToolInfo: () => ({
         type: 'sandbox',
@@ -162,62 +128,19 @@ describe('useToolRunner', () => {
 
     const result = await runTool({ call });
 
-    expect(runSandboxToolsMock).toHaveBeenCalledWith({
-      toolName: 'sandbox_shell',
-      args: '{"cmd":"ls"}',
-      appId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
-    });
     expect(result).toEqual({
-      response: 'sandbox ok',
+      response:
+        'sandbox_shell is an agent-loop internal tool and cannot be executed as a runtime tool.',
       assistantMessages: [],
       usages: [],
       interactive: undefined,
-      stop: undefined
+      stop: false
     });
-    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
-      call,
-      flowResponse: expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            moduleName: 'Run shell',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleLogo: 'sandbox-avatar',
-            toolId: 'sandbox_shell',
-            toolInput: {
-              cmd: 'ls'
-            },
-            toolRes: 'sandbox ok',
-            runningTime: 0.5
-          })
-        ]
-      })
-    });
+    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
   });
 
-  it('runs read-file tool with urls from allFiles', async () => {
-    const usage = {
-      moduleName: 'read_file',
-      totalPoints: 0.2
-    };
-    const flowResponse = {
-      flowResponses: [
-        {
-          id: 'call_read',
-          moduleName: 'Read file'
-        }
-      ],
-      flowUsages: [usage],
-      runTimes: 0
-    };
-    dispatchReadFileToolMock.mockResolvedValue({
-      response: '<file>content</file>',
-      usages: [usage],
-      flowResponse
-    });
+  it('does not execute read-file internal tools through the runtime tool runner', async () => {
     const { runTool, cacheToolFlowResponse } = createRunner({
-      allFiles: new Map([['file_1', { id: 'file_1', url: 'https://files/a.pdf' }]]),
       getToolInfo: () => ({
         type: 'file',
         name: 'File parse',
@@ -232,34 +155,15 @@ describe('useToolRunner', () => {
 
     const result = await runTool({ call });
 
-    expect(dispatchReadFileToolMock).toHaveBeenCalledWith({
-      files: [
-        {
-          id: 'file_1',
-          url: 'https://files/a.pdf'
-        },
-        {
-          id: 'missing',
-          url: ''
-        }
-      ],
-      toolCallId: 'call_read',
-      teamId: 'team_1',
-      tmbId: 'tmb_1',
-      customPdfParse: true,
-      usageId: 'usage_1'
-    });
     expect(result).toEqual({
-      response: '<file>content</file>',
+      response:
+        'read_files is an agent-loop internal tool and cannot be executed as a runtime tool.',
       assistantMessages: [],
-      usages: [usage],
+      usages: [],
       interactive: undefined,
-      stop: undefined
+      stop: false
     });
-    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
-      call,
-      flowResponse
-    });
+    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
   });
 
   it('injects parent file urls into dataset search tool calls', async () => {
@@ -477,24 +381,5 @@ describe('useToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-  });
-
-  it('should throw error when checkTeamSandboxPermission fails for sandbox tool', async () => {
-    const { checkTeamSandboxPermission } =
-      await import('@fastgpt/service/support/permission/teamLimit');
-    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
-
-    const { runTool } = createRunner({
-      getToolInfo: () => ({
-        type: 'sandbox',
-        name: 'shell',
-        avatar: 'avatar'
-      })
-    });
-
-    const promise = runTool({ call: createCall({ name: 'shell' }) });
-    await expect(promise).rejects.toThrow(
-      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
-    );
   });
 });

@@ -105,6 +105,11 @@ describe('sandbox runtime service', () => {
     const client = await getSandboxClient({ sandboxId: 'sandbox-ready-check' });
 
     expect(client.getSandboxId()).toBe('sandbox-ready-check');
+    expect(client.getContext()).toEqual({
+      appId: undefined,
+      userId: undefined,
+      chatId: undefined
+    });
     expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('sandbox-ready-check');
     expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
       'sealosdevbox',
@@ -143,6 +148,11 @@ describe('sandbox runtime service', () => {
     });
 
     expect(client.getSandboxId()).toBe(generateSandboxId('app-1', 'user-1', 'normal-chat'));
+    expect(client.getContext()).toEqual({
+      appId: 'app-1',
+      userId: 'user-1',
+      chatId: 'normal-chat'
+    });
   });
 
   it('passes resource limits into running instance records and command timeout into exec', async () => {

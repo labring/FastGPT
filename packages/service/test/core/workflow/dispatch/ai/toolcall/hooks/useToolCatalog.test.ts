@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
-import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
+import { ReadFileToolDisplay } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
+import { READ_FILES_TOOL_NAME } from '@fastgpt/service/core/ai/llm/agentLoop/systemTools/readFile';
 
-const { getSandboxToolInfoMock, injectSandboxFilesMock } = vi.hoisted(() => ({
-  getSandboxToolInfoMock: vi.fn(),
-  injectSandboxFilesMock: vi.fn()
+const { getSandboxToolInfoMock } = vi.hoisted(() => ({
+  getSandboxToolInfoMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
@@ -17,8 +16,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
 
   return {
     ...original,
-    getSandboxToolInfo: getSandboxToolInfoMock,
-    injectSandboxFiles: injectSandboxFilesMock
+    getSandboxToolInfo: getSandboxToolInfoMock
   };
 });
 
@@ -37,7 +35,6 @@ describe('useToolCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSandboxToolInfoMock.mockReturnValue(undefined);
-    injectSandboxFilesMock.mockResolvedValue(undefined);
     (global as any).feConfigs = {};
   });
 
@@ -86,13 +83,8 @@ describe('useToolCatalog', () => {
           ]
         })
       ],
-      allFiles: new Map([['file_1', { id: 'file_1', url: 'https://files/a.pdf' } as any]]),
-      currentInputFiles: [],
       useAgentSandbox: false,
-      lang: 'en' as any,
-      appId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      lang: 'en' as any
     });
 
     expect(result.finalMessages).toEqual([
@@ -132,12 +124,7 @@ describe('useToolCatalog', () => {
             required: ['city']
           }
         }
-      },
-      expect.objectContaining({
-        function: expect.objectContaining({
-          name: ReadFileTooData.id
-        })
-      })
+      }
     ]);
     expect(result.getToolInfo('search')).toEqual({
       type: 'user',
@@ -147,15 +134,15 @@ describe('useToolCatalog', () => {
         nodeId: 'search'
       })
     });
-    expect(result.getToolInfo(ReadFileTooData.id)).toEqual({
+    expect(result.getToolInfo(READ_FILES_TOOL_NAME)).toEqual({
       type: 'file',
       name: 'File parse',
-      avatar: ReadFileTooData.avatar
+      avatar: ReadFileToolDisplay.avatar
     });
     expect(result.getToolInfo('missing')).toBeUndefined();
   });
 
-  it('injects sandbox files and appends sandbox prompt when sandbox is enabled', async () => {
+  it('appends sandbox prompt when sandbox is enabled', async () => {
     (global as any).feConfigs = {
       show_agent_sandbox: true
     };
@@ -176,37 +163,14 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      allFiles: new Map(),
-      currentInputFiles: [
-        {
-          id: 'file_1',
-          name: 'a.pdf',
-          url: 'https://files/a.pdf',
-          sandboxPath: '/workspace/a.pdf'
-        } as any
-      ],
       useAgentSandbox: true,
-      lang: 'en' as any,
-      appId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      lang: 'en' as any
     });
 
-    expect(result.tools).toEqual(expect.arrayContaining(SANDBOX_TOOLS));
+    expect(result.tools).toEqual([]);
     expect(result.finalMessages[0]).toEqual({
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: `system prompt\n\n${SANDBOX_SYSTEM_PROMPT}`
-    });
-    expect(injectSandboxFilesMock).toHaveBeenCalledWith({
-      appId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1',
-      files: [
-        {
-          path: '/workspace/a.pdf',
-          url: 'https://files/a.pdf'
-        }
-      ]
     });
     expect(result.getToolInfo('sandbox_shell')).toEqual({
       type: 'sandbox',
@@ -228,12 +192,7 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      allFiles: new Map(),
-      currentInputFiles: [],
-      useAgentSandbox: true,
-      appId: 'app_1',
-      userId: 'user_1',
-      chatId: 'chat_1'
+      useAgentSandbox: true
     });
 
     expect(result.finalMessages).toEqual([
@@ -246,6 +205,5 @@ describe('useToolCatalog', () => {
         content: 'hello'
       }
     ]);
-    expect(injectSandboxFilesMock).not.toHaveBeenCalled();
   });
 });

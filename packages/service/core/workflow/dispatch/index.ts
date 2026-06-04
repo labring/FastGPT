@@ -1472,7 +1472,7 @@ export class WorkflowQueue {
     }
 
     return {
-      planId: interactiveResult.planId,
+      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }
@@ -1659,7 +1659,7 @@ export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemTy
   const isPlainTextValue = (item: AIChatItemValueItemType) =>
     !!item.text &&
     !item.id &&
-    !item.planId &&
+    !item.askId &&
     !item.reasoning &&
     !item.tools &&
     !item.skills &&

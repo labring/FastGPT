@@ -27,6 +27,8 @@ type LLMQueueItem = {
   usedUserOpenAIKey?: boolean;
 };
 
+type LLMQueueEntry = LLMQueueItem | ((args: CreateLLMResponseArgs) => LLMQueueItem);
+
 const stringifyArgs = (args: string | Record<string, unknown>) =>
   typeof args === 'string' ? args : JSON.stringify(args);
 
@@ -72,15 +74,16 @@ export const text = ({
   outputTokens: 30
 });
 
-export const mockCreateLLMResponseQueue = (createLLMResponseMock: Mock, queue: LLMQueueItem[]) => {
+export const mockCreateLLMResponseQueue = (createLLMResponseMock: Mock, queue: LLMQueueEntry[]) => {
   const items = [...queue];
 
   createLLMResponseMock.mockImplementation(async (args: CreateLLMResponseArgs) => {
-    const item = items.shift();
+    const nextItem = items.shift();
 
-    if (!item) {
+    if (!nextItem) {
       throw new Error('No mock LLM response left in queue');
     }
+    const item = typeof nextItem === 'function' ? nextItem(args) : nextItem;
 
     if (item.reasoningText) {
       args.onReasoning?.({ text: item.reasoningText });

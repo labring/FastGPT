@@ -207,7 +207,7 @@ const appendToolResponseCompressRecord = ({
 
 /**
  * 维护 ToolCall 节点内普通工具调用产生的 nodeResponse。
- * onRunTool 阶段只暂存工具 flowResponse，onAfterToolCall 再统一写入并挂载工具响应压缩 child。
+ * onRunTool 阶段只暂存工具 flowResponse，onToolRunEnd 再统一写入并挂载工具响应压缩 child。
  */
 export const useToolNodeResponse = ({
   moduleType,
@@ -223,14 +223,14 @@ export const useToolNodeResponse = ({
   const toolRunResponses: ChildResponseItemType[] = [];
 
   /**
-   * onRunTool 与 onAfterToolCall 分阶段触发：前者先拿到工具 workflow 响应，
+   * onRunTool 与 onToolRunEnd 分阶段触发：前者先拿到工具 workflow 响应，
    * 后者才拿到最终 tool response 和可能存在的压缩结果。这里用 call.id 暂存中间态。
    */
   const pendingToolFlowResponseMap = new Map<string, ChildResponseItemType>();
 
   /**
    * onRunTool 只能拿到工具 workflow 的执行结果，拿不到压缩后的最终 tool response。
-   * 所以先按 call.id 暂存，等 onAfterToolCall 再统一落 nodeResponse。
+   * 所以先按 call.id 暂存，等 onToolRunEnd 再统一落 nodeResponse。
    */
   const cacheToolFlowResponse = ({
     call,
@@ -245,7 +245,7 @@ export const useToolNodeResponse = ({
   };
 
   /**
-   * 推送一个 tool response，只在 tool_response/afterToolCall 阶段真正写入 nodeResponse，
+   * 推送一个 tool response，只在 onToolRunEnd 阶段真正写入 nodeResponse，
    * 确保工具文本、错误信息和 tool response compress child 都已经齐全。
    */
   const appendToolNodeResponse = ({
@@ -253,12 +253,16 @@ export const useToolNodeResponse = ({
     response,
     errorMessage,
     seconds,
+    usages,
+    nodeResponse,
     toolResponseCompress
   }: {
     call: ChatCompletionMessageToolCall;
     response?: string;
     errorMessage?: string;
     seconds: number;
+    usages?: ChatNodeUsageType[];
+    nodeResponse?: ChatHistoryItemResType;
     toolResponseCompress?: ToolResponseCompress;
   }) => {
     const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
@@ -268,6 +272,13 @@ export const useToolNodeResponse = ({
      * 缺失时补一个最小工具 nodeResponse，保证“每次 tool request 都有记录”。
      */
     const baseFlowResponse =
+      (nodeResponse
+        ? {
+            flowResponses: [nodeResponse],
+            flowUsages: usages || [],
+            runTimes: seconds
+          }
+        : undefined) ||
       pendingFlowResponse ||
       (() => {
         const toolNode = getToolInfo(call.function.name);

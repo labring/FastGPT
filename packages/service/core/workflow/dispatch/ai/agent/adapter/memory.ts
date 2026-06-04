@@ -1,13 +1,12 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { PendingMainContext } from '../../../../../ai/llm/agentLoop';
 
 export type WorkflowAgentLoopMemoryKeys = {
   memoryKey: string;
 };
 
 export type WorkflowAgentLoopMemory = {
-  pendingMainContext?: PendingMainContext;
+  providerState?: unknown;
 };
 
 /**
@@ -40,7 +39,7 @@ export const readWorkflowAgentLoopMemory = ({
 
 /**
  * 将本轮 loop 状态转换为 workflow memories。
- * ask 状态会保存 pendingMainContext；正常完成时写 undefined，清理未完成状态。
+ * ask 状态会保存 providerState；正常完成时写 undefined，清理未完成状态。
  */
 export const buildWorkflowAgentLoopMemories = ({
   nodeId,
@@ -50,7 +49,7 @@ export const buildWorkflowAgentLoopMemories = ({
   memory: WorkflowAgentLoopMemory;
 }) => {
   const keys = getWorkflowAgentLoopMemoryKeys(nodeId);
-  const hasMemory = !!memory.pendingMainContext;
+  const hasMemory = memory.providerState !== undefined;
 
   return {
     [keys.memoryKey]: hasMemory ? memory : undefined

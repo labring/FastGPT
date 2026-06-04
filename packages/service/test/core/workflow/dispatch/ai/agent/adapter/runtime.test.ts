@@ -3,6 +3,14 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentLoopRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
 
+const { dispatchFileReadMock } = vi.hoisted(() => ({
+  dispatchFileReadMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
+  dispatchFileRead: dispatchFileReadMock
+}));
+
 const tool = (name: string): ChatCompletionTool => ({
   type: 'function',
   function: {
@@ -21,6 +29,7 @@ const createContext = (overrides = {}) =>
     externalProvider: {
       openaiAccount: { key: 'user-key' }
     },
+    lang: 'zh-CN',
     stream: true,
     node: {
       nodeId: 'agent_node',
@@ -38,6 +47,16 @@ const createContext = (overrides = {}) =>
     }),
     getSubApp: vi.fn(),
     filesMap: {},
+    runningAppInfo: {
+      id: 'app_1'
+    },
+    uid: 'user_1',
+    chatId: 'chat_1',
+    runningUserInfo: {
+      teamId: 'team_1',
+      tmbId: 'tmb_1'
+    },
+    chatConfig: {},
     ...overrides
   }) as any;
 
@@ -59,13 +78,201 @@ describe('createWorkflowAgentLoopRuntime', () => {
       executeToolFactory: vi.fn()
     });
 
-    expect(runtime.model).toBe('gpt-4');
-    expect(runtime.batchToolSize).toBe(5);
-    expect(runtime.reasoningEffort).toBeUndefined();
-    expect(runtime.userKey).toEqual({ key: 'user-key' });
-    expect(runtime.useVision).toBe(true);
+    expect(runtime.llmParams.model).toBe('gpt-4');
+    expect(runtime.toolCatalog.batchToolSize).toBe(5);
+    expect(runtime.llmParams.reasoningEffort).toBeUndefined();
+    expect(runtime.llmParams.userKey).toEqual({ key: 'user-key' });
+    expect(runtime.llmParams.useVision).toBe(true);
+    expect(runtime.responseParams).toEqual({
+      retainDatasetCite: undefined
+    });
+    expect(runtime.lang).toBe('zh-CN');
+    expect(runtime.systemTools).toMatchObject({
+      plan: { enabled: true },
+      ask: { enabled: true }
+    });
+    expect(runtime.systemTools?.sandbox).toBeUndefined();
     expect(runtime.toolCatalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
-    expect(runtime.toolCatalog.updatePlanTool?.function.name).toBe('update_plan');
+  });
+
+  it('enables sandbox internal tool only when workflow prepared a sandbox client', () => {
+    const sandboxClient = {
+      provider: {},
+      exec: vi.fn()
+    };
+    const { runtime } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        sandboxClient
+      }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    expect(runtime.systemTools?.sandbox).toMatchObject({
+      enabled: true,
+      client: sandboxClient
+    });
+  });
+
+  it('records sandbox node responses from tool_run_end events', async () => {
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        sandboxClient: {
+          provider: {},
+          exec: vi.fn()
+        }
+      }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    expect(runtime.toolCatalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
+
+    const call = toolCall({
+      id: 'call_sandbox',
+      name: 'sandbox_shell',
+      args: '{"command":"pwd"}'
+    });
+
+    runtime.emitEvent?.({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'sandbox output',
+      response: 'sandbox output',
+      seconds: 0.2,
+      nodeResponse: {
+        id: 'call_sandbox',
+        nodeId: 'call_sandbox',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Sandbox',
+        toolRes: 'sandbox output'
+      }
+    });
+
+    expect(artifacts.nodeResponses).toEqual([
+      expect.objectContaining({
+        id: 'call_sandbox',
+        moduleName: 'Sandbox',
+        toolRes: 'sandbox output'
+      })
+    ]);
+  });
+
+  it('streams sandbox tools as assistant tool cards without duplicating node responses', async () => {
+    const workflowStreamResponse = vi.fn();
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        sandboxClient: {
+          provider: {},
+          exec: vi.fn()
+        }
+      }),
+      workflowStreamResponse,
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+    const call = toolCall({
+      id: 'call_sandbox',
+      name: 'sandbox_shell',
+      args: '{"command":"pwd"}'
+    });
+
+    runtime.emitEvent?.({
+      type: 'tool_call',
+      call
+    });
+    runtime.emitEvent?.({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'sandbox output',
+      response: 'sandbox output',
+      seconds: 0.2,
+      nodeResponse: {
+        id: 'call_sandbox',
+        nodeId: 'call_sandbox',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Sandbox',
+        toolRes: 'sandbox output'
+      }
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_sandbox',
+        event: expect.any(String)
+      })
+    );
+    expect(artifacts.assistantResponses).toEqual([
+      {
+        id: 'call_sandbox',
+        tools: [
+          {
+            id: 'call_sandbox',
+            toolName: 'sandbox_shell',
+            toolAvatar: '',
+            functionName: 'sandbox_shell',
+            params: '{"command":"pwd"}',
+            response: 'sandbox output'
+          }
+        ]
+      }
+    ]);
+    expect(artifacts.nodeResponses).toHaveLength(1);
+    expect(artifacts.nodeResponses[0]).toEqual(
+      expect.objectContaining({
+        id: 'call_sandbox',
+        moduleName: 'Sandbox',
+        toolRes: 'sandbox output'
+      })
+    );
+  });
+
+  it('exposes readFile as a internal tool executor when files are available', async () => {
+    dispatchFileReadMock.mockResolvedValue({
+      response: 'file content',
+      usages: [],
+      nodeResponse: {
+        id: 'call_read_file',
+        nodeId: 'call_read_file',
+        moduleType: FlowNodeTypeEnum.readFiles,
+        moduleName: 'Read file'
+      }
+    });
+    const { runtime } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        filesMap: {
+          file_1: {
+            name: 'a.pdf',
+            url: 'https://files/a.pdf'
+          }
+        }
+      }),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn()
+    });
+
+    const result = await runtime.systemTools?.readFile?.execute({
+      messages: [],
+      call: toolCall({
+        id: 'call_read_file',
+        name: 'read_files',
+        args: '{"ids":["file_1"]}'
+      })
+    });
+
+    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }]
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        response: 'file content',
+        nodeResponse: expect.objectContaining({
+          moduleName: 'Read file'
+        })
+      })
+    );
   });
 
   it('passes workflow reasoning effort into the generic agent runtime', () => {
@@ -80,7 +287,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       executeToolFactory: vi.fn()
     });
 
-    expect(runtime.reasoningEffort).toBe('none');
+    expect(runtime.llmParams.reasoningEffort).toBe('none');
   });
 
   it('wraps workflow tool execution and collects artifacts', async () => {
@@ -137,13 +344,20 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
     expect(artifacts.nodeResponses).toEqual([]);
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_search',
         name: 'search',
         args: '{"q":"FastGPT"}'
       }),
       response: 'tool response',
+      usages: [
+        {
+          moduleName: 'llm',
+          model: 'gpt-4',
+          totalPoints: 1
+        }
+      ],
       seconds: 0.45
     });
     expect(artifacts.nodeResponses).toEqual([
@@ -153,7 +367,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
         llmRequestIds: ['req_tool_node']
       })
     ]);
-    runtime.usageSink?.([
+    expect(usagePush).not.toHaveBeenCalled();
+    runtime.usagePush?.([
       {
         moduleName: 'llm',
         model: 'gpt-4',
@@ -169,11 +384,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
     ]);
     runtime.emitEvent?.({
       type: 'after_message_compress',
-      usage: {
-        moduleName: 'llm',
-        model: 'gpt-4',
-        totalPoints: 1
-      },
+      usages: [
+        {
+          moduleName: 'llm',
+          model: 'gpt-4',
+          totalPoints: 1
+        }
+      ],
       requestIds: ['req_compress'],
       seconds: 0.12
     });
@@ -214,11 +431,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       finishReason: 'stop',
       answerText: 'final answer',
       reasoningText: 'reasoning',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 5,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          inputTokens: 10,
+          outputTokens: 5,
+          totalPoints: 1
+        }
+      ],
       seconds: 0.3
     });
     runtime.emitEvent?.({
@@ -228,11 +447,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestId: 'req_2',
       finishReason: 'tool_calls',
       answerText: '',
-      usage: {
-        inputTokens: 6,
-        outputTokens: 4,
-        totalPoints: 0.5
-      },
+      usages: [
+        {
+          inputTokens: 6,
+          outputTokens: 4,
+          totalPoints: 0.5
+        }
+      ],
       seconds: 0.2
     });
     expect(artifacts.nodeResponses).toEqual([
@@ -241,7 +462,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         nodeId: 'agent_node-main_agent-1',
         moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         model: 'GPT-4',
         llmRequestIds: ['req_1'],
         inputTokens: 10,
@@ -257,7 +478,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         nodeId: 'agent_node-main_agent-2',
         moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         model: 'GPT-4',
         llmRequestIds: ['req_2'],
         inputTokens: 6,
@@ -290,11 +511,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestId: 'req_interrupted',
       finishReason: 'abnormal_close',
       answerText: 'partial answer',
-      usage: {
-        inputTokens: 8,
-        outputTokens: 3,
-        totalPoints: 0.4
-      },
+      usages: [
+        {
+          inputTokens: 8,
+          outputTokens: 3,
+          totalPoints: 0.4
+        }
+      ],
       seconds: 0.2
     });
 
@@ -325,22 +548,17 @@ describe('createWorkflowAgentLoopRuntime', () => {
       finishReason: 'stop',
       answerText: '',
       reasoningText: '',
-      usage: {
-        inputTokens: 1,
-        outputTokens: 0,
-        totalPoints: 0.1
-      },
+      usages: [
+        {
+          moduleName: 'account_usage:agent_call',
+          model: 'GPT-4',
+          totalPoints: 0.1,
+          inputTokens: 1,
+          outputTokens: 0
+        }
+      ],
       seconds: 0.1
     });
-    runtime.usageSink?.([
-      {
-        moduleName: 'account_usage:agent_call',
-        model: 'GPT-4',
-        totalPoints: 0.1,
-        inputTokens: 1,
-        outputTokens: 0
-      }
-    ]);
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 2,
@@ -348,22 +566,17 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestId: 'req_tool_round',
       finishReason: 'tool_calls',
       answerText: '',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 2,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          moduleName: 'account_usage:agent_call',
+          model: 'GPT-4',
+          totalPoints: 1,
+          inputTokens: 10,
+          outputTokens: 2
+        }
+      ],
       seconds: 0.2
     });
-    runtime.usageSink?.([
-      {
-        moduleName: 'account_usage:agent_call',
-        model: 'GPT-4',
-        totalPoints: 1,
-        inputTokens: 10,
-        outputTokens: 2
-      }
-    ]);
     runtime.emitEvent?.({
       type: 'llm_request_end',
       requestIndex: 3,
@@ -371,44 +584,39 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestId: 'req_empty_end',
       finishReason: 'close',
       answerText: '',
-      usage: {
-        inputTokens: 1,
-        outputTokens: 0,
-        totalPoints: 0.1
-      },
+      usages: [
+        {
+          moduleName: 'account_usage:agent_call',
+          model: 'GPT-4',
+          totalPoints: 0.1,
+          inputTokens: 1,
+          outputTokens: 0
+        }
+      ],
       seconds: 0.1
     });
-    runtime.usageSink?.([
-      {
-        moduleName: 'account_usage:agent_call',
-        model: 'GPT-4',
-        totalPoints: 0.1,
-        inputTokens: 1,
-        outputTokens: 0
-      }
-    ]);
 
     expect(artifacts.nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-1-req_empty_start',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_empty_start']
       }),
       expect.objectContaining({
         id: 'agent_node-2-req_tool_round',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_tool_round']
       }),
       expect.objectContaining({
         id: 'agent_node-3-req_empty_end',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_empty_end']
       })
     ]);
-    expect(usagePush).toHaveBeenCalledTimes(3);
+    expect(usagePush).not.toHaveBeenCalled();
   });
 
   it('records tool-call agent node responses even when provider finish reason is stop', () => {
@@ -435,16 +643,18 @@ describe('createWorkflowAgentLoopRuntime', () => {
           }
         }
       ],
-      usage: {
-        inputTokens: 10,
-        outputTokens: 2,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          inputTokens: 10,
+          outputTokens: 2,
+          totalPoints: 1
+        }
+      ],
       seconds: 0.2
     });
 
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_update_plan',
         name: 'update_plan'
@@ -478,7 +688,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     });
 
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_update_plan',
         name: 'update_plan'
@@ -541,11 +751,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       modelName: 'GPT-4',
       requestId: 'req_master',
       finishReason: 'tool_calls',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 2,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          inputTokens: 10,
+          outputTokens: 2,
+          totalPoints: 1
+        }
+      ],
       seconds: 0.2
     });
 
@@ -557,29 +769,22 @@ describe('createWorkflowAgentLoopRuntime', () => {
         args: '{"q":"FastGPT"}'
       })
     });
-    runtime.usageSink?.([
-      {
-        moduleName: 'Compress Agent',
-        model: 'GPT-4',
-        totalPoints: 0.1,
-        inputTokens: 3,
-        outputTokens: 1
-      }
-    ]);
     runtime.emitEvent?.({
       type: 'after_message_compress',
-      usage: {
-        moduleName: 'Compress Agent',
-        model: 'GPT-4',
-        totalPoints: 0.1,
-        inputTokens: 3,
-        outputTokens: 1
-      },
+      usages: [
+        {
+          moduleName: 'Compress Agent',
+          model: 'GPT-4',
+          totalPoints: 0.1,
+          inputTokens: 3,
+          outputTokens: 1
+        }
+      ],
       requestIds: ['req_compress'],
       seconds: 0.11
     });
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_search',
         name: 'search',
@@ -652,11 +857,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
           }
         }
       ],
-      usage: {
-        inputTokens: 10,
-        outputTokens: 2,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          inputTokens: 10,
+          outputTokens: 2,
+          totalPoints: 1
+        }
+      ],
       seconds: 0.2
     });
 
@@ -669,7 +876,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       })
     });
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_search',
         name: 'search',
@@ -686,7 +893,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       })
     });
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_time',
         name: 'time'
@@ -702,11 +909,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       requestId: 'req_after_tools',
       finishReason: 'stop',
       answerText: 'done',
-      usage: {
-        inputTokens: 12,
-        outputTokens: 3,
-        totalPoints: 1.2
-      },
+      usages: [
+        {
+          inputTokens: 12,
+          outputTokens: 3,
+          totalPoints: 1.2
+        }
+      ],
       seconds: 0.3
     });
 
@@ -750,28 +959,32 @@ describe('createWorkflowAgentLoopRuntime', () => {
       modelName: 'GPT-4',
       requestId: 'req_master',
       finishReason: 'tool_calls',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 2,
-        totalPoints: 1
-      },
+      usages: [
+        {
+          inputTokens: 10,
+          outputTokens: 2,
+          totalPoints: 1
+        }
+      ],
       seconds: 0.2
     });
 
     runtime.emitEvent?.({
       type: 'after_message_compress',
-      usage: {
-        moduleName: 'account_usage:compress_llm_messages',
-        model: 'GPT-4',
-        totalPoints: 0.1,
-        inputTokens: 3,
-        outputTokens: 1
-      },
+      usages: [
+        {
+          moduleName: 'account_usage:compress_llm_messages',
+          model: 'GPT-4',
+          totalPoints: 0.1,
+          inputTokens: 3,
+          outputTokens: 1
+        }
+      ],
       requestIds: ['req_compress'],
       seconds: 0.09
     });
     runtime.emitEvent?.({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: toolCall({
         id: 'call_search',
         name: 'search'
