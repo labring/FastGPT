@@ -66,7 +66,7 @@ export function reorderAIResponseValue(
     result.push(item);
 
     // Check if any tool in this item has a matching skill
-    const tools = item.tools;
+    const tools = item.tools || (item.tool ? [item.tool] : undefined);
     if (tools) {
       for (const tool of tools) {
         const matchingSkill = skillByToolCallId.get(tool.id);

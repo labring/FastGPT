@@ -502,6 +502,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 }))
               );
             }
+            // Persist tool calls so they survive page refresh (SSE only shows them live)
+            if (result.collectedTools?.length) {
+              assistantResponses.push(
+                ...result.collectedTools.map((item) => ({
+                  ...item,
+                  stepId: step.id
+                }))
+              );
+            }
 
             step.response = result.stepResponse?.rawResponse;
             step.summary = result.stepResponse?.summary;

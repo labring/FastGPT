@@ -69,6 +69,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
   const capabilities: AgentCapability[] = [];
+  const collectedTools: AIChatItemValueItemType[] = [];
 
   try {
     // Get files — check whether fileUrlList input has actual values
@@ -213,7 +214,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubApp,
       getSubAppInfo,
       capabilityToolCallHandler,
-      nodeResponses
+      nodeResponses,
+      collectedTools
     });
 
     /* ===== Restore session messages from last AI history ===== */
@@ -301,6 +303,10 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Build assistant responses
     if (answerText) {
       assistantResponses.push({ text: { content: answerText } });
+    }
+    // Persist tool calls so they survive page refresh (SSE only shows them live)
+    if (collectedTools.length > 0) {
+      assistantResponses.push(...collectedTools);
     }
 
     return {

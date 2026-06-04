@@ -55,6 +55,8 @@ type Response = {
   assistantMessages: ChatCompletionMessageParam[];
   masterMessages: ChatCompletionMessageParam[];
   capabilityAssistantResponses?: AIChatItemValueItemType[];
+  /** Tool calls collected from onToolCall for persisting to chat history */
+  collectedTools?: AIChatItemValueItemType[];
 
   nodeResponse: ChatHistoryItemResType;
 };
@@ -113,6 +115,7 @@ export const masterCall = async ({
   const startTime = Date.now();
   const childrenResponses: ChatHistoryItemResType[] = [];
   const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
+  const collectedTools: AIChatItemValueItemType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -265,6 +268,17 @@ export const masterCall = async ({
       if (call.function.name === SubAppIds.plan) {
         return;
       }
+
+      // Persist tool call to chat history (SSE also streams it for real-time display)
+      collectedTools.push({
+        tool: {
+          id: call.id,
+          toolName: subApp?.name || call.function.name,
+          toolAvatar: subApp?.avatar || '',
+          functionName: call.function.name,
+          params: call.function.arguments ?? ''
+        }
+      });
 
       stepStreamResponse?.({
         id: call.id,
@@ -766,7 +780,8 @@ export const masterCall = async ({
       assistantMessages,
       nodeResponse,
       masterMessages: masterMessages.concat(assistantMessages),
-      capabilityAssistantResponses
+      capabilityAssistantResponses,
+      collectedTools
     };
   }
 
@@ -778,6 +793,7 @@ export const masterCall = async ({
     assistantMessages,
     nodeResponse,
     masterMessages: filterMemoryMessages(completeMessages),
-    capabilityAssistantResponses
+    capabilityAssistantResponses,
+    collectedTools
   };
 };
