@@ -60,17 +60,29 @@ export const AppWhisperConfigTypeSchema = z.object({
 export type AppWhisperConfigType = z.infer<typeof AppWhisperConfigTypeSchema>;
 
 // question guide
-export const AppQGConfigTypeSchema = z.object({
-  open: BoolSchema.meta({
-    description: '是否开启问题引导'
-  }),
-  model: z.string().optional().meta({
-    description: '生成问题引导时使用的模型'
-  }),
-  customPrompt: z.string().optional().meta({
-    description: '生成问题引导时追加的自定义提示词'
+export const AppQGConfigTypeSchema = z.preprocess(
+  (val) => {
+    // 兼容旧版 chatConfig.questionGuide: boolean，schema 输出仍保持对象形态。
+    if (typeof val === 'boolean') {
+      return {
+        open: val
+      };
+    }
+
+    return val;
+  },
+  z.object({
+    open: BoolSchema.meta({
+      description: '是否开启问题引导'
+    }),
+    model: z.string().optional().meta({
+      description: '生成问题引导时使用的模型'
+    }),
+    customPrompt: z.string().optional().meta({
+      description: '生成问题引导时追加的自定义提示词'
+    })
   })
-});
+);
 export type AppQGConfigType = z.infer<typeof AppQGConfigTypeSchema>;
 
 // question guide text

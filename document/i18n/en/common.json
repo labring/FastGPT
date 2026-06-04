@@ -1,8 +1,8 @@
 {
   "guide": "Guide",
+  "pluginSystem": "Plugin System",
   "version": "Editions",
   "api_reference": "API Reference",
   "selfHost": "Self-Host",
-  "businessConsultation": "Business Inquiry",
-  "faq": "FAQ"
+  "businessConsultation": "Business Inquiry"
 }

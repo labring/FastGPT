@@ -12,7 +12,7 @@ import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
 import { normalizePageTreeSections } from '@/lib/page-tree';
-import { BookOpen, Code, CircleHelp, Handshake, Server } from 'lucide-react';
+import { BookOpen, Code, Handshake, Plug, Server } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -31,6 +31,11 @@ export default async function Layout({
       url: getLocalizedPath('/guide', lang)
     },
     {
+      icon: <Plug className={iconClass} />,
+      title: t('common:pluginSystem', lang),
+      url: getLocalizedPath('/plugin', lang)
+    },
+    {
       icon: <Server className={iconClass} />,
       title: t('common:selfHost', lang),
       url: getLocalizedPath('/self-host', lang)
@@ -39,11 +44,6 @@ export default async function Layout({
       icon: <Code className={iconClass} />,
       title: t('common:api_reference', lang),
       url: getLocalizedPath('/openapi', lang)
-    },
-    {
-      icon: <CircleHelp className={iconClass} />,
-      title: t('common:faq', lang),
-      url: getLocalizedPath('/faq', lang)
     },
     {
       icon: <Handshake className={iconClass} />,

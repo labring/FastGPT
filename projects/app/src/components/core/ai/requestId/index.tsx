@@ -58,9 +58,6 @@ export const RequestIdDetailModal = ({ onClose, requestId }: RequestIdDetailModa
       maxW={['90vw', '1080px']}
       h={['90vh', '80vh']}
       maxH={['90vh', '700px']}
-      py={8}
-      headerStyles={{ px: '32px' }}
-      bodyStyles={{ px: '32px' }}
     >
       {record && (
         <Flex height={'100%'} gap={4}>

@@ -9,6 +9,18 @@ vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
   getMyTools: vi.fn(async () => [])
 }));
 
+vi.mock('@fastgpt/service/core/app/tool/workflowTool', () => ({
+  getUserAvaliableWorkflowTools: vi.fn(async () => [])
+}));
+
+vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
+  SystemToolRepo: {
+    getInstance: vi.fn(() => ({
+      getSystemToolList: vi.fn(async () => [])
+    }))
+  }
+}));
+
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: {
     find: vi.fn(() => ({

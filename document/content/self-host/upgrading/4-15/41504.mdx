@@ -5,13 +5,14 @@ description: 'FastGPT V4.15.0-beta4 更新说明'
 
 ## 📦 升级指南
 
-‼️重要更新，插件服务更新到 v1.0.0-alpha1 版本，系统工具运行方式有较大调整。
+‼️重要更新，插件服务更新到 v1.0.0-beta1 版本，系统工具运行方式有较大调整。
 
 ### 镜像变更
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta4
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta4
-- 更新 fastgpt-plugin 镜像 tag: v1.0.0-alpha1
+- 更新 fastgpt-plugin 镜像 tag: v1.0.0-beta1
+- 更新 aiproxy 镜像 tag: v0.6.0
 
 ### 插件服务升级
 
@@ -46,6 +47,7 @@ fastgpt-plugin:
 2. 支持插件级 runtime config。
 3. 插件运行入口支持从对象存储拉取，并缓存到本地文件目录。
 4. 输入引导配置增加校验，避免错误配置了自定义词库地址。
+5. 工作流数组引用类型增强校验，避免刚好与二维数据冲突。
 
 ## 🐛 修复
 
