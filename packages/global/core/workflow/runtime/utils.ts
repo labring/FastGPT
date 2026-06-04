@@ -322,7 +322,7 @@ export const getReferenceVariableValue = ({
   if (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every((item) => isValidReferenceValueFormat(item))
+    value.every((item) => isValidReferenceValueFormat(item, nodesMap))
   ) {
     return value
       .map<any>((val) => {
