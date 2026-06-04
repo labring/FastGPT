@@ -15,11 +15,17 @@ import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/co
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { UploadPkgPluginResponseType } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  getUploadedPluginSourceName as getSourceName,
+  removeUploadedPluginFileByRow
+} from './ImportPluginModal.utils';
 
 type UploadPkgPluginItemType = UploadPkgPluginResponseType['plugins'][number];
 type UploadPkgPluginFailureType = NonNullable<UploadPkgPluginResponseType['failed']>[number];
 
 type UploadedPluginFile = SelectFileItemType & {
+  rowId: string;
   status: 'uploading' | 'parsing' | 'success' | 'error' | 'duplicate';
   sourceName?: string;
   errorMsg?: string;
@@ -35,9 +41,6 @@ type UploadedPluginFile = SelectFileItemType & {
 const isPluginDuplicated = (tools: GetAdminSystemToolsResponseType, pluginId: string) =>
   tools.some((tool) => tool.id === `${AppToolSourceEnum.systemTool}-${pluginId}`);
 
-const getSourceName = (file: Pick<UploadedPluginFile, 'name' | 'sourceName'>) =>
-  file.sourceName || file.name;
-
 const safeDecodeURIComponent = (value: string) => {
   try {
     return decodeURIComponent(value);
@@ -47,6 +50,8 @@ const safeDecodeURIComponent = (value: string) => {
 };
 
 const isZipFileName = (name: string) => name.toLowerCase().endsWith('.zip');
+
+const buildUploadRowId = (prefix: string) => `${prefix}-${getNanoid(8)}`;
 
 const resolveSuccessSourceFiles = ({
   files,
@@ -117,6 +122,7 @@ const ImportPluginModal = ({
 
       return {
         ...file,
+        rowId: buildUploadRowId(file.rowId),
         sourceName,
         status: isDuplicated ? 'duplicate' : 'success',
         toolId,
@@ -180,6 +186,7 @@ const ImportPluginModal = ({
 
       return {
         ...baseFile,
+        rowId: buildUploadRowId(baseFile.rowId),
         name: displayName,
         sourceName,
         status: 'error',
@@ -249,6 +256,7 @@ const ImportPluginModal = ({
             ? buildUploadedPluginFile(sourceFile, parseResult, nameSuffix)
             : ({
                 file: files[0].file,
+                rowId: buildUploadRowId(files[0].rowId),
                 icon: parseResult.icon || files[0].icon,
                 name:
                   parseI18nString(parseResult.name || '', i18n.language) || parseResult.pluginId,
@@ -312,6 +320,7 @@ const ImportPluginModal = ({
     async (files: SelectFileItemType[]) => {
       const newUploadedFiles: UploadedPluginFile[] = files.map((f) => ({
         ...f,
+        rowId: buildUploadRowId('upload'),
         status: 'uploading' as const
       }));
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
@@ -352,9 +361,15 @@ const ImportPluginModal = ({
   };
 
   const handleDelete = (file: UploadedPluginFile) => {
-    const sourceName = getSourceName(file);
-    setUploadedFiles((prev) => prev.filter((f) => (f.sourceName || f.name) !== sourceName));
-    setSelectFiles((prev) => prev.filter((f) => f.name !== sourceName));
+    const { nextUploadedFiles, sourceNameToRemove } = removeUploadedPluginFileByRow(
+      uploadedFiles,
+      file
+    );
+    setUploadedFiles(nextUploadedFiles);
+
+    if (sourceNameToRemove) {
+      setSelectFiles((prev) => prev.filter((f) => f.name !== sourceNameToRemove));
+    }
   };
 
   const { runAsync: handleConfirmImport, loading: confirmLoading } = useRequest(
@@ -440,8 +455,8 @@ const ImportPluginModal = ({
 
         {uploadedFiles.length > 0 && (
           <VStack mt={1} gap={1}>
-            {uploadedFiles.map((item, index) => (
-              <Flex key={index} w={'full'} fontSize={'12px'}>
+            {uploadedFiles.map((item) => (
+              <Flex key={item.rowId} w={'full'} fontSize={'12px'}>
                 <Flex w={'20%'} px={1} py={'15px'} align={'center'} gap={2}>
                   <Avatar src={item.icon} borderRadius={'xs'} w={'20px'} />
                   <Box
