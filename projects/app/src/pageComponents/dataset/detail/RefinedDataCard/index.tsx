@@ -25,10 +25,8 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { useMemoizedFn } from 'ahooks';
 import {
   delOneDatasetDataById,
-  getDatasetCollectionById,
-  getDatasetCollectionPathById
+  getDatasetCollectionById
 } from '@/web/core/dataset/api';
-import FolderPath from '@/components/common/folder/Path';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -133,15 +131,6 @@ const RefinedDataCard = () => {
     if (!activeDataDetail?.indexes) return [];
     return activeDataDetail.indexes.filter((index) => index.type !== 'default');
   }, [activeDataDetail?.indexes]);
-
-  // Get collection path for breadcrumb
-  const { data: collectionPaths = [] } = useRequest(
-    () => getDatasetCollectionPathById(collectionId),
-    {
-      refreshDeps: [collectionId],
-      manual: false
-    }
-  );
 
   // Get collection info
   const { data: collection, runAsync: reloadCollection } = useRequest(
@@ -510,36 +499,8 @@ const RefinedDataCard = () => {
   return (
     <MyBox py={4} pl={4} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
-        {/* Path breadcrumb */}
-        <Flex
-          alignItems={'center'}
-          py={'0.38rem'}
-          pr={2}
-          ml={0}
-          flex={'0 1 auto'}
-          minW={0}
-          overflow={'hidden'}
-          flexShrink={0}
-        >
-          <FolderPath
-            paths={collectionPaths}
-            rootName={datasetDetail.name}
-            showReturnIcon
-            forbidLastClick
-            onClick={(id) => {
-              router.replace({
-                query: {
-                  datasetId: router.query.datasetId,
-                  ...(id ? { parentId: id } : {}),
-                  currentTab: TabEnum.collectionCard
-                }
-              });
-            }}
-          />
-        </Flex>
-
         {/* Main Content Container */}
-        <Flex gap={0} alignItems={'stretch'} flex={1} overflow={'hidden'} minH={0} mt={4}>
+        <Flex gap={0} alignItems={'stretch'} flex={1} overflow={'hidden'} minH={0}>
           {/* Left Side - Data List */}
           <MyBox flex={1} display={'flex'} flexDirection={'column'} overflow={'hidden'} h={'100%'}>
             {/* Search Bar and Info */}

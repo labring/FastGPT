@@ -280,7 +280,6 @@ const DatasetParamsModal = ({
     <MyModal
       isOpen={true}
       onClose={onClose}
-      iconSrc="/imgs/modal/params.svg"
       title={t('common:core.dataset.search.Dataset Search Params')}
       w={['90vw', '550px']}
     >
@@ -589,7 +588,7 @@ const DatasetParamsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
+          {t('common:Cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -597,7 +596,7 @@ const DatasetParamsModal = ({
             handleSubmit(onSuccess)();
           }}
         >
-          {t('common:Done')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

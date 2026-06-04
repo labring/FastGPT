@@ -43,6 +43,7 @@ const AppChatWindow = () => {
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
+  const chatType = useContextSelector(ChatItemContext, (v) => v.chatType);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -194,7 +195,7 @@ const AppChatWindow = () => {
               isReady={!loading && !!appId}
               enableAutoResume
               feedbackType={'user'}
-              chatType={ChatTypeEnum.chat}
+              chatType={chatType || ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}
               onStartChat={onStartChat}
             />

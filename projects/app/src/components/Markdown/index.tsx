@@ -16,6 +16,7 @@ import { CodeClassNameEnum, mdTextFormat, convertMdImagesToHtml, resolveImgStrea
 import { useCreation } from 'ahooks';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
+import type { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -38,6 +39,8 @@ type Props = {
   forbidZhFormat?: boolean;
   hideCiteIcon?: boolean;
   citeStyle?: 'icon' | 'index';
+  chatType?: ChatTypeEnum;
+  isShowFullText?: boolean;
 } & AProps;
 
 const Markdown = (props: Props) => {
@@ -60,7 +63,9 @@ const MarkdownRender = ({
 
   chatAuthData,
   onOpenCiteModal,
-  citeSourceMap
+  citeSourceMap,
+  chatType,
+  isShowFullText
 }: Props) => {
   const citeIndexMap = useMemo(() => {
     if (citeStyle !== 'index') return undefined;
@@ -111,6 +116,8 @@ const MarkdownRender = ({
           citeStyle={citeStyle}
           citeIndexMap={citeIndexMap}
           citeSourceMap={citeSourceMap}
+          chatType={chatType}
+          isShowFullText={isShowFullText}
         />
       )
     };
@@ -121,7 +128,9 @@ const MarkdownRender = ({
     showAnimation,
     citeStyle,
     citeIndexMap,
-    citeSourceMap
+    citeSourceMap,
+    chatType,
+    isShowFullText
   ]);
 
   const formatSource = useMemo(() => {

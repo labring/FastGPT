@@ -24,7 +24,7 @@ export const ChatSettingModelSchema = z.object({
   slogan: z
     .string()
     .optional()
-    .meta({ example: '你好👋，我是 FastGPT ! 请问有什么可以帮你？', description: 'Slogan' }),
+    .meta({ example: '你好👋，请问有什么可以帮你？', description: 'Slogan' }),
   dialogTips: z
     .string()
     .optional()

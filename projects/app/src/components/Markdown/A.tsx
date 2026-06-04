@@ -26,6 +26,7 @@ import { isObjectId } from '@fastgpt/global/common/string/utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 export type CiteSourceInfo = { sourceName: string; datasetId: string; collectionId: string };
 
@@ -46,6 +47,8 @@ export type AProps = {
   citeStyle?: 'icon' | 'index';
   citeIndexMap?: Map<string, number>;
   citeSourceMap?: Map<string, CiteSourceInfo>;
+  chatType?: ChatTypeEnum;
+  isShowFullText?: boolean;
 };
 
 const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
@@ -68,11 +71,17 @@ const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
 const CiteLinkIndex = React.memo(function CiteLinkIndex({
   id,
   index,
-  citeSourceMap
+  citeSourceMap,
+  onOpenCiteModal,
+  chatType,
+  isShowFullText
 }: {
   id: string;
   index: number;
   citeSourceMap?: AProps['citeSourceMap'];
+  onOpenCiteModal?: AProps['onOpenCiteModal'];
+  chatType?: ChatTypeEnum;
+  isShowFullText?: boolean;
 }) {
   const sourceInfo = citeSourceMap?.get(id);
 
@@ -82,6 +91,18 @@ const CiteLinkIndex = React.memo(function CiteLinkIndex({
 
   const handleClick = () => {
     if (!sourceInfo?.datasetId || isDatabaseSource(id) || isCorrectionRecord(id)) return;
+
+    if (chatType === ChatTypeEnum.share && isShowFullText && onOpenCiteModal) {
+      onOpenCiteModal({
+        quoteId: id,
+        collectionId: sourceInfo.collectionId,
+        sourceId: '',
+        sourceName: sourceInfo.sourceName,
+        datasetId: sourceInfo.datasetId
+      });
+      return;
+    }
+
     window.open(
       `/dataset/detail?datasetId=${sourceInfo.datasetId}&collectionId=${sourceInfo.collectionId}&currentTab=dataCard&activeId=${id}`,
       '_blank'
@@ -235,6 +256,8 @@ const A = ({
   citeStyle,
   citeIndexMap,
   citeSourceMap,
+  chatType,
+  isShowFullText,
   ...props
 }: AProps & {
   children: any;
@@ -260,6 +283,9 @@ const A = ({
           id={content}
           index={citeIndexMap?.get(content) ?? 0}
           citeSourceMap={citeSourceMap}
+          onOpenCiteModal={onOpenCiteModal}
+          chatType={chatType}
+          isShowFullText={isShowFullText}
         />
       );
     }

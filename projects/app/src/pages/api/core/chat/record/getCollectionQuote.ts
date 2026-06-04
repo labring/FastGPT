@@ -68,17 +68,24 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
   };
 
   if (initialId) {
-    return await handleInitialLoad({
+    const result = await handleInitialLoad({
       initialId,
       initialIndex: initialAnchor,
       pageSize: limitedPageSize,
       chatTime: chatItem.time,
       baseMatch
     });
+
+    return {
+      ...result,
+      collectionType: collection.type,
+      datasetType: collection.dataset?.type,
+      fileName: collection.name
+    };
   }
 
   if (prevId || nextId) {
-    return await handlePaginatedLoad({
+    const result = await handlePaginatedLoad({
       prevId,
       nextId,
       nextAnchor: initialAnchor,
@@ -86,9 +93,23 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
       chatTime: chatItem.time,
       baseMatch
     });
+
+    return {
+      ...result,
+      collectionType: collection.type,
+      datasetType: collection.dataset?.type,
+      fileName: collection.name
+    };
   }
 
-  return { list: [], hasMorePrev: false, hasMoreNext: false };
+  return {
+    list: [],
+    hasMorePrev: false,
+    hasMoreNext: false,
+    collectionType: collection.type,
+    datasetType: collection.dataset?.type,
+    fileName: collection.name
+  };
 }
 
 export default NextAPI(handler);

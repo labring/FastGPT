@@ -157,6 +157,8 @@ const RenderText = React.memo(function RenderText({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const chatType = useContextSelector(ChatItemContext, (v) => v.chatType);
+  const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
 
   const source = useMemo(() => {
     if (!text) return '';
@@ -182,6 +184,8 @@ const RenderText = React.memo(function RenderText({
       hideCiteIcon={hideCiteIcon}
       isDisabled={isDisabled}
       citeSourceMap={citeSourceMap}
+      chatType={chatType}
+      isShowFullText={isShowFullText}
     />
   );
 });

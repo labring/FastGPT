@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, Grid, IconButton } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -9,9 +8,16 @@ import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FolderPath from '@/components/common/folder/Path';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getDatasetCollectionPathById } from '@/web/core/dataset/api';
+import {
+  DatasetTypeEnum,
+  DatasetCollectionTypeEnum,
+  ApiDatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
+import { getDatasetCollectionPathById, getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getCollectionSource } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { CollectionPageContext } from './CollectionCard/Context';
@@ -35,8 +41,12 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
+  const { toast } = useToast();
   const { datasetDetail, paths } = useContextSelector(DatasetPageContext, (v) => v);
-  const { parentId = '' } = router.query as { parentId: string };
+  const { parentId = '', collectionId = '' } = router.query as {
+    parentId: string;
+    collectionId: string;
+  };
 
   const { data: collectionPaths = [] } = useRequest(() => getDatasetCollectionPathById(parentId), {
     refreshDeps: [parentId],
@@ -44,10 +54,82 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     ready: currentTab === TabEnum.collectionCard
   });
 
+  const { data: dataCardCollectionPaths = [] } = useRequest(
+    () => getDatasetCollectionPathById(collectionId),
+    {
+      refreshDeps: [collectionId],
+      manual: false,
+      ready: [TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab)
+    }
+  );
+
   const combinedCollectionPaths = useMemo(
     () => [{ parentId: datasetDetail._id, parentName: datasetDetail.name }, ...collectionPaths],
     [datasetDetail._id, datasetDetail.name, collectionPaths]
   );
+
+  const dataCardPaths = useMemo(
+    () => [
+      { parentId: datasetDetail._id, parentName: datasetDetail.name },
+      ...dataCardCollectionPaths
+    ],
+    [datasetDetail._id, datasetDetail.name, dataCardCollectionPaths]
+  );
+
+  const isDataCardTab = [TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab);
+
+  const { data: collection } = useRequest(
+    () => getDatasetCollectionById(collectionId),
+    {
+      refreshDeps: [collectionId],
+      manual: false,
+      ready: isDataCardTab
+    }
+  );
+
+  const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
+  const isLink = collection?.type === DatasetCollectionTypeEnum.link;
+
+  const sourceLabel = useMemo(() => {
+    if (!collection) return '';
+    if (isApiDataset) return t('dataset:view_original');
+    if (isLink || collection.name?.toLowerCase().endsWith('.txt')) return t('dataset:view_original');
+    if (collection.type === DatasetCollectionTypeEnum.images) return t('dataset:view_image');
+    return t('dataset:download_file');
+  }, [collection, isApiDataset, isLink, t]);
+
+  const handleReadSource = useCallback(async () => {
+    if (!collectionId) return;
+    try {
+      const { value } = await getCollectionSource({ collectionId });
+
+      if (!value) {
+        toast({
+          title: t('common:error.fileNotFound'),
+          status: 'error'
+        });
+        return;
+      }
+
+      if (isApiDataset) {
+        const baseUrl = datasetDetail?.apiDatasetServer?.apiServer?.baseUrl || '';
+        const fullUrl = `${baseUrl.replace(/\/+$/, '')}${value}`;
+        window.open(fullUrl, '_blank');
+        return;
+      }
+
+      if (value.startsWith('/')) {
+        window.open(`${location.origin}${value}`, '_blank');
+      } else {
+        window.open(value, '_blank');
+      }
+    } catch (error) {
+      toast({
+        title: t('common:error.fileNotFound'),
+        status: 'error'
+      });
+    }
+  }, [collectionId, isApiDataset, datasetDetail?.apiDatasetServer?.apiServer?.baseUrl, t, toast]);
 
   const total = useContextSelector(CollectionPageContext, (v) => v.total);
 
@@ -88,16 +170,13 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     [query, router]
   );
 
-  const showNavTab = useMemo(
-    () => ![TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab),
-    [currentTab]
-  );
+  const showNavTab = useMemo(() => !isDataCardTab, [isDataCardTab]);
 
   return (
     <>
       {isPc ? (
         <Grid
-          h={'16'}
+          h={showNavTab ? '16' : '12'}
           alignItems={'center'}
           flexShrink={0}
           templateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
@@ -106,45 +185,31 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           <Flex
             alignItems={'center'}
             py={'0.38rem'}
-            pl={2}
             pr={4}
             h={10}
-            ml={0.5}
             minW={0}
             overflow={'hidden'}
           >
-            {currentTab === TabEnum.dataCard ? (
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                py={'0.38rem'}
-                px={2}
-                ml={0}
-                borderRadius={'md'}
-                _hover={{ bg: 'myGray.05' }}
-                fontSize={'sm'}
-                fontWeight={500}
-                onClick={() => {
-                  router.back();
+            {isDataCardTab ? (
+              <FolderPath
+                paths={dataCardPaths}
+                rootName={t('common:core.dataset.Dataset')}
+                showReturnIcon
+                forbidLastClick
+                onClick={(id) => {
+                  if (!id) {
+                    router.push('/dataset/list');
+                  } else if (id === datasetDetail._id) {
+                    router.replace({
+                      query: { datasetId: query.datasetId, currentTab: TabEnum.collectionCard }
+                    });
+                  } else {
+                    router.replace({
+                      query: { datasetId: query.datasetId, parentId: id, currentTab: TabEnum.collectionCard }
+                    });
+                  }
                 }}
-              >
-                <IconButton
-                  p={2}
-                  mr={2}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  boxShadow={'1'}
-                  icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
-                  bg={'white'}
-                  size={'xsSquare'}
-                  borderRadius={'50%'}
-                  aria-label={''}
-                  _hover={'none'}
-                />
-                <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
-                  {datasetDetail.name}
-                </Box>
-              </Flex>
+              />
             ) : currentTab === TabEnum.collectionCard ? (
               <FolderPath
                 paths={combinedCollectionPaths}
@@ -185,15 +250,36 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             )}
           </Flex>
 
-          {/* 右列：始终占位，不在 collectionCard tab 时隐藏 */}
+          {/* 右列：操作按钮 */}
           <Flex
             justifyContent={'flex-end'}
             alignItems={'center'}
             pl={4}
-            pr={2}
-            visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
+            pr={4}
+            visibility={
+              currentTab === TabEnum.collectionCard || (isDataCardTab && collection && sourceLabel)
+                ? 'visible'
+                : 'hidden'
+            }
           >
-            <CollectionNavActions />
+            {currentTab === TabEnum.collectionCard ? (
+              <CollectionNavActions />
+            ) : isDataCardTab && collection && sourceLabel ? (
+              <Button
+                variant={'whiteBase'}
+                size={'sm'}
+                flexShrink={0}
+                leftIcon={
+                  <MyIcon
+                    name={isLink ? 'common/routePushLight' : 'common/download'}
+                    w={'14px'}
+                  />
+                }
+                onClick={handleReadSource}
+              >
+                {sourceLabel}
+              </Button>
+            ) : null}
           </Flex>
         </Grid>
       ) : (
