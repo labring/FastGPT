@@ -5,6 +5,7 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
+  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
   AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
@@ -45,6 +46,7 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
     vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
@@ -117,6 +119,7 @@ describe('sandbox provider config', () => {
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
+    // 1. 无环境变量 Image 时，不携带 image 字段
     const result = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
@@ -129,7 +132,7 @@ describe('sandbox provider config', () => {
       token: 'sealos-token'
     });
 
-    expect(result.createConfig).toMatchObject({
+    expect(result.createConfig).toEqual({
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {
@@ -138,6 +141,35 @@ describe('sandbox provider config', () => {
         IDE_AGENT_ENABLED: 'true',
         IDE_AGENT_BIND_ADDR: '0.0.0.0:1318'
       }
+    });
+
+    // 2. 有环境变量 Image 时，携带 image 字段
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
+    vi.resetModules();
+    const { getSandboxAdapterConfig: getSandboxAdapterConfigWithImage } =
+      await loadSandboxConfigModule();
+    const resultWithEnvImage = getSandboxAdapterConfigWithImage({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1'
+    });
+    expect(resultWithEnvImage.createConfig?.image).toEqual({
+      repository: 'default-sealos-image',
+      tag: 'latest'
+    });
+
+    // 3. 显式传入镜像时，覆盖环境变量中的默认镜像
+    const resultWithExplicitImage = getSandboxAdapterConfigWithImage({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1',
+      createConfig: {
+        image: { repository: 'explicit-sealos-image', tag: 'v1' }
+      }
+    });
+    expect(resultWithExplicitImage.createConfig?.image).toEqual({
+      repository: 'explicit-sealos-image',
+      tag: 'v1'
     });
   });
 

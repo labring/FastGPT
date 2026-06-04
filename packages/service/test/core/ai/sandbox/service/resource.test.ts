@@ -99,6 +99,17 @@ describe('sandbox resource service', () => {
     );
   });
 
+  it('deletes a resource and skips deleting the volume when keepVolume is true', async () => {
+    const resource = createResource();
+
+    await deleteSandboxResource(resource, { keepVolume: true });
+
+    const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
+    expect(adapter.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
+    expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
+  });
+
   it('returns early when chat or app cleanup finds no resources', async () => {
     await deleteSandboxesByChatIds({ appId: 'app-1', chatIds: ['chat-1'] });
     await deleteSandboxesByAppId('app-1');

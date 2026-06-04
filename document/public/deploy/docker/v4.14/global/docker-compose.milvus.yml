@@ -266,7 +266,6 @@ services:
       AGENT_SANDBOX_ENABLE_VOLUME: true
       AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
       AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
-      AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: /workspace
 
       # ==================== 日志与监控 ====================
       # 传递给 OTLP 收集器的服务名称

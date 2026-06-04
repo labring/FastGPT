@@ -30,6 +30,7 @@ fn spawn_pty() -> Result<
     let cmd_str = env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     let mut cmd = CommandBuilder::new(&cmd_str);
     cmd.cwd(get_workspace_root());
+    cmd.env("TERM", "xterm-256color");
 
     let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;

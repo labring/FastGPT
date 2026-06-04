@@ -182,7 +182,6 @@
   "sandbox_status_ready_warm": "Sandbox connected",
   "sandbox_status_uploadingPackage": "Uploading {{skillName}} package...",
   "sandbox_terminal": "Terminal",
-  "sandbox_terminal_clear": "Clear terminal",
   "sandbox_toggle_terminal": "Toggle terminal panel",
   "sandbox_upload_failed": "Upload failed",
   "sandbox_upload_file": "Upload file",

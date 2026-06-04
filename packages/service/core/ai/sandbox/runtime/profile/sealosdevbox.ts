@@ -2,8 +2,7 @@ import { serviceEnv } from '../../../../../env';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
-
-const SEALOS_DEFAULT_WORK_DIRECTORY = '/home/devbox/workspace';
+import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
 /**
  * 构建 Sealos Devbox 的 FastGPT 运行态 profile。
@@ -11,20 +10,20 @@ const SEALOS_DEFAULT_WORK_DIRECTORY = '/home/devbox/workspace';
  * Devbox 的工作目录通过 CODEX_GATEWAY_CWD 间接生效，adapter 会把 workingDir 映射过去。
  */
 export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
-  const workDirectory =
-    serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY ?? SEALOS_DEFAULT_WORK_DIRECTORY;
+  const workDirectory = serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY || '/home/devbox/workspace';
+
+  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
 
   return {
     provider: 'sealosdevbox',
-    defaultImage: {
-      repository: ''
-    },
+    defaultImage,
     workDirectory,
     entrypoint: '',
     skillsRootPath: getSandboxSkillsRootPath(workDirectory),
     buildConfig(input = {}) {
       const createConfig = input.createConfig ?? {};
-      const image = createConfig.image ?? input.image;
+      const image =
+        input.image ?? createConfig.image ?? (defaultImage.repository ? defaultImage : undefined);
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。

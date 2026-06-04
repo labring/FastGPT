@@ -52,7 +52,6 @@
   "copy_skill_confirm": "系统将为您创建一个相同配置技能，但权限不会进行复制，请确认！",
   "detail_tab_config": "Skill 配置",
   "detail_tab_preview": "运行预览",
-  "generating": "Skill 加载中...",
   "history_versions": "历史版本",
   "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
   "select_skill": "选择 Skill",

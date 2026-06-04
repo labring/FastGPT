@@ -28,7 +28,6 @@ export type Props = {
   showDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
   isPreparing?: boolean;
-  preparingText?: string;
   showTerminal?: boolean;
   onError?: (err: Error) => void;
   headerRight?: React.ReactNode;
@@ -166,16 +165,6 @@ const SandboxEditor = ({
     const isInitialLoading =
       isPreparing || ((!isWsConnected || loadingRoot) && fileTree.length === 0);
 
-    if (fileTree.length === 0 && !isInitialLoading) {
-      return (
-        <Center h="full" w={'full'}>
-          <VStack spacing={3}>
-            <EmptyTip text={t('chat:sandbox_no_file')} mt={0} />
-          </VStack>
-        </Center>
-      );
-    }
-
     const fileTreeComponent = (
       <FileTree
         width={fileTreeWidth}
@@ -263,6 +252,7 @@ const SandboxEditor = ({
         isPreparing={isPreparing}
         isWsConnected={isWsConnected}
         loadingRoot={loadingRoot}
+        hasFiles={fileTree.length > 0}
       />
     );
 

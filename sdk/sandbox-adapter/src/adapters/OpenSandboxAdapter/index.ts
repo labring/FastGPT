@@ -622,7 +622,15 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
 
   async getInfo(): Promise<SandboxInfo | null> {
     if (!this._sandbox) {
-      return null;
+      const existing = await this.getSandboxBySessionId();
+      if (!existing) {
+        return null;
+      }
+      try {
+        await this.connect(existing.id);
+      } catch (error) {
+        return null;
+      }
     }
     try {
       const info = await this.sandbox.getInfo();

@@ -182,7 +182,6 @@
   "sandbox_status_ready_warm": "沙箱已连接",
   "sandbox_status_uploadingPackage": "上传技能包 {{skillName}}...",
   "sandbox_terminal": "终端",
-  "sandbox_terminal_clear": "清空终端",
   "sandbox_toggle_terminal": "切换终端面板",
   "sandbox_upload_failed": "上传失败",
   "sandbox_upload_file": "上传文件",

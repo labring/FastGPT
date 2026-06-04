@@ -35,6 +35,7 @@ type Props = {
   isPreparing?: boolean;
   isWsConnected?: boolean;
   loadingRoot?: boolean;
+  hasFiles: boolean;
 };
 
 const EditorWorkspace = ({
@@ -60,7 +61,8 @@ const EditorWorkspace = ({
   headerRight,
   isPreparing = false,
   isWsConnected = false,
-  loadingRoot = false
+  loadingRoot = false,
+  hasFiles
 }: Props) => {
   const { t } = useTranslation();
 
@@ -224,12 +226,14 @@ const EditorWorkspace = ({
           defaultViewMode={defaultViewMode}
           canWrite={canWrite}
         />
+      ) : hasFiles ? (
+        <Center h="full">
+          <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
+        </Center>
       ) : (
-        filteredTree.length > 0 && (
-          <Center h="full">
-            <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
-          </Center>
-        )
+        <Center h="full">
+          <EmptyTip text={t('chat:sandbox_no_file')} mt={0} />
+        </Center>
       )}
     </MyBox>
   );
@@ -325,24 +329,6 @@ const EditorWorkspace = ({
                 </Text>
               </Flex>
               <Flex alignItems="center" gap={2}>
-                {showTerminal && (
-                  <Tooltip label={t('chat:sandbox_terminal_clear', '清空终端')}>
-                    <IconButton
-                      size="xs"
-                      variant="unstyled"
-                      aria-label="Clear Terminal"
-                      icon={<MyIcon name="delete" w="14px" color="myGray.500" />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('clear-sandbox-terminal'));
-                      }}
-                      _hover={{ bg: 'myGray.100', color: 'myGray.800' }}
-                      display="inline-flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    />
-                  </Tooltip>
-                )}
                 <IconButton
                   size="xs"
                   variant="unstyled"

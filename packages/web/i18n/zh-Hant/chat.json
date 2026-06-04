@@ -179,7 +179,6 @@
   "sandbox_status_ready_warm": "沙箱已連接",
   "sandbox_status_uploadingPackage": "上傳技能套件 {{skillName}}...",
   "sandbox_terminal": "終端機",
-  "sandbox_terminal_clear": "清空終端機",
   "sandbox_toggle_terminal": "切換終端機面板",
   "sandbox_upload_failed": "上傳失敗",
   "sandbox_upload_file": "上傳文件",

@@ -509,6 +509,7 @@ describe('OpenSandboxAdapter', () => {
   describe('getInfo', () => {
     it('should return null when sandbox not initialized', async () => {
       const adapter = makeAdapter();
+      vi.spyOn(adapter as any, 'getSandboxBySessionId').mockResolvedValue(undefined);
       const info = await adapter.getInfo();
       expect(info).toBeNull();
     });

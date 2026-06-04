@@ -1,5 +1,9 @@
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { type ISandbox, type OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  type ISandbox,
+  type OpenSandboxAdapter,
+  type SandboxCreateSpec
+} from '@fastgpt-sdk/sandbox-adapter';
 import { buildSandboxAdapter } from './adapter';
 import type { SandboxProviderConfig } from './config';
 
@@ -92,10 +96,12 @@ async function waitUntilSandboxCommandReady(
  */
 export async function connectToSandbox(
   providerConfig: SandboxProviderConfig,
-  sandboxId: string
+  sandboxId: string,
+  createConfig?: SandboxCreateSpec
 ): Promise<ISandbox> {
   const sandbox = buildSandboxAdapter(providerConfig, {
-    sandboxId
+    sandboxId,
+    createConfig
   });
 
   await ensureConnectedSandboxRunning(sandbox);
@@ -163,12 +169,13 @@ export async function connectReadySandboxByInstance(
   providerConfig: SandboxProviderConfig,
   instance: {
     sandboxId: string;
-  }
+  },
+  createConfig?: SandboxCreateSpec
 ): Promise<{
   sandbox: ISandbox;
   sandboxInfo: SandboxInfo;
 }> {
-  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
+  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId, createConfig);
 
   try {
     const sandboxInfo = await getReadySandboxInfo(sandbox, {

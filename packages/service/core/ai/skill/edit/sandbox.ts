@@ -5,7 +5,11 @@ import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
 import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT } from '../package';
 import { getSkillSizeLimits } from '../sandbox/config';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
-import { getSandboxProviderConfig, validateSandboxConfig } from '../../sandbox/provider/config';
+import {
+  getSandboxProviderConfig,
+  validateSandboxConfig,
+  getSandboxAdapterConfig
+} from '../../sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -15,6 +19,7 @@ import {
   disconnectSandbox,
   getReadySandboxInfo
 } from '../../sandbox/provider/lifecycle';
+import { buildSandboxAdapter } from '../../sandbox/provider/adapter';
 import type { SandboxClient } from '../../sandbox/service/runtime';
 import { getSandboxClient } from '../../sandbox/service/runtime';
 import { deleteSandboxResource } from '../../sandbox/service/resource';
@@ -37,7 +42,7 @@ export type CreateEditDebugSandboxParams = {
   teamId: string;
   tmbId: string;
   image?: SandboxImageConfigType;
-  entrypoint?: string;
+  entrypoint?: SandboxCreateSpec['entrypoint'];
   onProgress?: (status: SandboxStatusItemType) => void;
 };
 
@@ -104,6 +109,29 @@ export async function createEditDebugSandbox(
 
   const sessionId = getEditDebugSandboxId(skillId);
 
+  // 提前构造 runtimeMetadata 与 createConfig，以便 reload 流程和全新创建流程共同访问并进行热连接/热拉起
+  const runtimeMetadata = {
+    skillId,
+    teamId,
+    sessionId,
+    scenario: SandboxTypeEnum.editDebug
+  };
+
+  const { createConfig } = getSandboxAdapterConfig({
+    provider: providerConfig.provider,
+    runtime: true,
+    sessionId,
+    createConfig: {
+      image: sandboxImage,
+      entrypoint,
+      metadata: runtimeMetadata
+    }
+  });
+
+  if (!createConfig) {
+    throw new Error('Failed to build sandbox create config');
+  }
+
   /**
    * 复用编辑沙盒时只保证 sandbox 工作目录下的 skills 存在。
    *
@@ -118,6 +146,22 @@ export async function createEditDebugSandbox(
     type: SandboxTypeEnum.editDebug
   });
 
+  const targetVersionId = currentVersion._id.toString();
+  const shouldUnzipFromS3 =
+    !existingInstance || existingInstance.metadata?.versionId !== targetVersionId;
+
+  const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
+    try {
+      await deleteSandboxResource(instance, { keepVolume: true });
+    } catch (deleteError) {
+      addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
+        sandboxId: instance.sandboxId,
+        error: deleteError
+      });
+    }
+    await deleteSandboxInstanceRecord(instance._id);
+  };
+
   const reuseExistingEditDebugSandbox = async (
     instance: NonNullable<typeof existingInstance>
   ): Promise<CreateEditDebugSandboxResult | null> => {
@@ -129,9 +173,18 @@ export async function createEditDebugSandbox(
     let sandbox: ISandbox | null = null;
 
     try {
+      // 在连接前先校验物理容器是否存在。如果已被物理删除，则不应复用，应直接走重建流程以恢复文件。
+      const preCheckSandbox = buildSandboxAdapter(providerConfig, {
+        sandboxId: instance.sandboxId
+      });
+      const info = await preCheckSandbox.getInfo().catch(() => null);
+      if (!info || info.status.state === 'UnExist' || info.status.state === 'Deleting') {
+        throw new Error('Sandbox container does not exist physically');
+      }
+
       onProgress?.({ sandboxId: instance.sandboxId, phase: 'creatingContainer' });
 
-      const connected = await connectReadySandboxByInstance(providerConfig, instance);
+      const connected = await connectReadySandboxByInstance(providerConfig, instance, createConfig);
       sandbox = connected.sandbox;
 
       const existingMetadata = instance.metadata || {};
@@ -154,20 +207,13 @@ export async function createEditDebugSandbox(
         status: { state: 'Running' }
       };
     } catch (error) {
-      addLog.info('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
+      addLog.error('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
         sandboxId: instance.sandboxId,
-        error
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
 
-      try {
-        await deleteSandboxResource(instance);
-      } catch (deleteError) {
-        addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
-          sandboxId: instance.sandboxId,
-          error: deleteError
-        });
-        await deleteSandboxInstanceRecord(instance._id);
-      }
+      await forceCleanupStaleSandbox(instance);
       return null;
     } finally {
       if (sandbox) {
@@ -176,31 +222,135 @@ export async function createEditDebugSandbox(
     }
   };
 
+  const uploadAndDecompressPackage = async (
+    sandbox: ISandbox,
+    sandboxId: string,
+    packageBuffer: Buffer
+  ) => {
+    onProgress?.({ sandboxId, phase: 'uploadingPackage' });
+    const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
+
+    const writeResults = await sandbox.writeFiles([
+      {
+        path: zipPath,
+        data: packageBuffer
+      }
+    ]);
+    const failedWrite = writeResults.find((result) => result.error);
+    if (failedWrite) {
+      throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);
+    }
+
+    onProgress?.({ sandboxId, phase: 'extractingPackage' });
+
+    const unzipCmd = [
+      `cd ${shellQuote(runtimeProfile.workDirectory)}`,
+      `unzip -o -q ${shellQuote(zipPath)} -d .`,
+      `rm -f ${shellQuote(zipPath)}`,
+      `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
+    ].join(' && ');
+
+    const extractResult = await sandbox.execute(unzipCmd);
+    if (extractResult.exitCode !== 0) {
+      throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
+    }
+  };
+
+  const reloadExistingEditDebugSandbox = async (
+    instance: NonNullable<typeof existingInstance>,
+    sandbox: ISandbox
+  ): Promise<CreateEditDebugSandboxResult> => {
+    addLog.info('[Sandbox] Reloading mismatched sandbox workspace with new version', {
+      instanceId: instance._id,
+      sandboxId: instance.sandboxId,
+      targetVersionId: currentVersion._id.toString()
+    });
+
+    onProgress?.({ sandboxId: instance.sandboxId, phase: 'downloadingPackage' });
+    const packageBuffer = await downloadSkillPackage({
+      storageKey: currentVersion.storageKey
+    });
+
+    onProgress?.({ sandboxId: instance.sandboxId, phase: 'deployingSkills' });
+
+    // 清空工作区目录，但不删除挂载点本身以防 Permission denied
+    const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
+
+    const cleanResult = await sandbox.execute(cleanCmd);
+    if (cleanResult.exitCode !== 0) {
+      throw new Error(`Failed to clean workspace processes and files: ${cleanResult.stderr}`);
+    }
+
+    await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
+
+    const existingMetadata = instance.metadata || {};
+    const newMetadata = {
+      ...existingMetadata,
+      versionId: currentVersion._id.toString(),
+      storage: {
+        key: currentVersion.storageKey,
+        uploadedAt: new Date()
+      }
+    };
+
+    await updateSandboxInstanceRecordBySandboxId({
+      provider: providerConfig.provider,
+      sandboxId: instance.sandboxId,
+      appId: skillId,
+      userId: '',
+      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      metadata: newMetadata
+    });
+
+    onProgress?.({
+      sandboxId: instance.sandboxId,
+      phase: 'ready'
+    });
+
+    return {
+      sandboxId: instance.sandboxId,
+      status: { state: 'Running' }
+    };
+  };
+
   if (existingInstance) {
-    // 切换历史版本或还原草稿时，如果版本不一致，强制销毁重建容器以同步最新文件包
+    // 切换历史版本或还原草稿时，如果版本不一致，且容器可用，直接在现有实例中执行热更新（清理 workspace 文件并重新 unzip）
     const existingVersionId = existingInstance.metadata?.versionId;
-    const targetVersionId = currentVersion._id.toString();
 
     if (!existingVersionId || existingVersionId !== targetVersionId) {
-      addLog.info(
-        '[Sandbox] Sandbox version mismatched or not found, forcing recreating edit-debug sandbox',
-        {
-          sandboxId: existingInstance.sandboxId,
-          existingVersionId,
-          targetVersionId
-        }
-      );
+      addLog.info('[Sandbox] Sandbox version mismatched, checking online status for hot reload', {
+        sandboxId: existingInstance.sandboxId,
+        existingVersionId,
+        targetVersionId
+      });
+
+      let connectedSandbox: ISandbox | null = null;
       try {
-        await deleteSandboxResource(existingInstance);
-      } catch (deleteError) {
+        const connected = await connectReadySandboxByInstance(
+          providerConfig,
+          existingInstance,
+          createConfig
+        );
+        connectedSandbox = connected.sandbox;
+
+        return await reloadExistingEditDebugSandbox(existingInstance, connectedSandbox);
+      } catch (error) {
         addLog.error(
-          '[Sandbox] Failed to delete mismatched sandbox resource, cleaning record anyway',
+          '[Sandbox] Mismatched sandbox is offline or unavailable, falling back to full recreation',
           {
             sandboxId: existingInstance.sandboxId,
-            error: deleteError
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
           }
         );
-        await deleteSandboxInstanceRecord(existingInstance._id);
+        await forceCleanupStaleSandbox(existingInstance);
+        // 让流程继续往下走全新创建流程
+      } finally {
+        if (connectedSandbox) {
+          try {
+            await disconnectSandbox(connectedSandbox);
+          } catch (e) {}
+        }
       }
     } else {
       const reusedSandbox = await reuseExistingEditDebugSandbox(existingInstance);
@@ -252,27 +402,7 @@ export async function createEditDebugSandbox(
   let sandboxClient: SandboxClient | null = null;
 
   try {
-    onProgress?.({ sandboxId: sessionId, phase: 'downloadingPackage' });
-    const packageBuffer = await downloadSkillPackage({
-      storageKey: currentVersion.storageKey
-    });
-
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
-
-    const runtimeMetadata = {
-      skillId,
-      teamId,
-      sessionId
-    };
-    const createConfig: SandboxCreateSpec = runtimeProfile.buildConfig({
-      scenario: 'edit-debug',
-      sessionId,
-      image: sandboxImage,
-      entrypoint: entrypoint ?? runtimeProfile.entrypoint,
-      metadata: runtimeMetadata
-    }) ?? {
-      metadata: runtimeMetadata
-    };
     const client = await getSandboxClient(
       {
         appId: skillId,
@@ -302,32 +432,19 @@ export async function createEditDebugSandbox(
       );
     }
 
-    onProgress?.({ sandboxId: sessionId, phase: 'uploadingPackage' });
-    const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
-
-    const writeResults = await client.provider.writeFiles([
-      {
-        path: zipPath,
-        data: packageBuffer
-      }
-    ]);
-    const failedWrite = writeResults.find((result) => result.error);
-    if (failedWrite) {
-      throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);
-    }
-
-    onProgress?.({ sandboxId: sessionId, phase: 'extractingPackage' });
-
-    const unzipCmd = [
-      `cd ${shellQuote(runtimeProfile.workDirectory)}`,
-      `unzip -o -q ${shellQuote(zipPath)} -d .`,
-      `rm -f ${shellQuote(zipPath)}`,
-      `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
-    ].join(' && ');
-
-    const extractResult = await client.provider.execute(unzipCmd);
-    if (extractResult.exitCode !== 0) {
-      throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
+    if (shouldUnzipFromS3) {
+      onProgress?.({ sandboxId: sessionId, phase: 'downloadingPackage' });
+      const packageBuffer = await downloadSkillPackage({
+        storageKey: currentVersion.storageKey
+      });
+      await uploadAndDecompressPackage(client.provider, sessionId, packageBuffer);
+    } else {
+      addLog.info(
+        '[Sandbox] Skill sandbox resumed with existing volume, skip initial S3 download/unzip',
+        {
+          sandboxId: sessionId
+        }
+      );
     }
 
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({

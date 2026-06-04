@@ -15,23 +15,6 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // 清理屏幕内容
-  const handleClear = useCallback(() => {
-    termRef.current?.clear();
-    termRef.current?.focus();
-  }, []);
-
-  // 监听全局清空终端事件
-  useEffect(() => {
-    const handleClearTerminal = () => {
-      handleClear();
-    };
-    window.addEventListener('clear-sandbox-terminal', handleClearTerminal);
-    return () => {
-      window.removeEventListener('clear-sandbox-terminal', handleClearTerminal);
-    };
-  }, [handleClear]);
-
   // 1. 初始化 Terminal 终端与 WebSocket 数据通信流
   useEffect(() => {
     if (!containerRef.current || !appId || !chatId) return;
@@ -215,7 +198,6 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
   ]);
 
   return {
-    containerRef,
-    handleClear
+    containerRef
   };
 };

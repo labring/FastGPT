@@ -40,7 +40,6 @@ const Content = () => {
           showDownload={false}
           defaultViewMode={'source'}
           isPreparing={sandboxState !== 'ready'}
-          preparingText={t('skill:generating')}
           showTerminal={true}
           onError={(err) => handleSandboxError(err.message)}
           headerRight={<RightHeader />}

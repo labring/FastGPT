@@ -28,16 +28,21 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
 /**
  * 删除一条已存在的 sandbox 资源记录，并尽力清理关联 volume。
  */
-export async function deleteSandboxResource(resource: SandboxResourceRef): Promise<void> {
+export async function deleteSandboxResource(
+  resource: SandboxResourceRef,
+  opts: { keepVolume?: boolean } = {}
+): Promise<void> {
   const sandbox = buildSandboxResourceAdapter(resource);
 
   await sandbox.delete();
-  await deleteSessionVolume(resource.sandboxId).catch((err) => {
-    logger.error('Failed to delete sandbox volume', {
-      sandboxId: resource.sandboxId,
-      error: err
+  if (!opts.keepVolume) {
+    await deleteSessionVolume(resource.sandboxId).catch((err) => {
+      logger.error('Failed to delete sandbox volume', {
+        sandboxId: resource.sandboxId,
+        error: err
+      });
     });
-  });
+  }
   await deleteSandboxResourceRecord(resource);
 }
 

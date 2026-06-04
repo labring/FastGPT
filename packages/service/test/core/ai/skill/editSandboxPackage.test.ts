@@ -45,7 +45,13 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
   getSandboxProviderConfig: () => ({
     provider: 'test-provider'
   }),
-  validateSandboxConfig: vi.fn()
+  validateSandboxConfig: vi.fn(),
+  getSandboxAdapterConfig: vi.fn((opts) => ({
+    providerConfig: {
+      provider: opts.provider || 'test-provider'
+    },
+    createConfig: opts.createConfig
+  }))
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
@@ -347,5 +353,178 @@ describe('createEditDebugSandbox', () => {
     ]);
     expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
+  });
+
+  it('performs hot reload when existingInstance with mismatched version is found', async () => {
+    const packageBuffer = Buffer.from('zip');
+    const skillId = 'skill-1';
+    const provider = {
+      status: { state: 'Running' },
+      execute: vi.fn(async (command: string) => {
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        entries.map((entry) => ({
+          path: entry.path,
+          bytesWritten: entry.data.length,
+          error: null
+        }))
+      )
+    };
+
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-new'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-new',
+      storageKey: 'storage-key-new'
+    } as any);
+
+    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce({
+      _id: 'instance-1',
+      sandboxId: 'sandbox-1',
+      metadata: {
+        versionId: 'version-old',
+        storage: {
+          key: 'storage-key-old'
+        }
+      }
+    } as any);
+
+    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
+
+    const { connectReadySandboxByInstance } =
+      await import('@fastgpt/service/core/ai/sandbox/provider/lifecycle');
+    vi.mocked(connectReadySandboxByInstance).mockResolvedValueOnce({
+      sandbox: provider
+    } as any);
+
+    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
+      _id: 'instance-1'
+    } as any);
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: 'sandbox-1',
+      status: { state: 'Running' }
+    });
+
+    expect(provider.execute).toHaveBeenCalledWith(
+      expect.stringContaining("find '/workspace' -mindepth 1")
+    );
+
+    expect(provider.writeFiles).toHaveBeenCalledWith([
+      {
+        path: '/workspace/skills/package.zip',
+        data: packageBuffer
+      }
+    ]);
+
+    expect(provider.execute).toHaveBeenCalledWith(
+      expect.stringContaining("unzip -o -q '/workspace/skills/package.zip' -d .")
+    );
+
+    expect(updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          versionId: 'version-new',
+          storage: expect.objectContaining({
+            key: 'storage-key-new'
+          })
+        })
+      })
+    );
+
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
+  });
+
+  it('falls back to full container recreation when mismatched instance is offline', async () => {
+    const packageBuffer = Buffer.from('zip');
+    const skillId = 'skill-1';
+    const newProvider = {
+      status: { state: 'Running' },
+      execute: vi.fn(async (command: string) => {
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        entries.map((entry) => ({
+          path: entry.path,
+          bytesWritten: entry.data.length,
+          error: null
+        }))
+      )
+    };
+
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-new'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-new',
+      storageKey: 'storage-key-new'
+    } as any);
+
+    const existingInstance = {
+      _id: 'instance-old',
+      sandboxId: 'sandbox-old',
+      metadata: {
+        versionId: 'version-old',
+        storage: {
+          key: 'storage-key-old'
+        }
+      }
+    };
+    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(existingInstance as any);
+
+    const { connectReadySandboxByInstance } =
+      await import('@fastgpt/service/core/ai/sandbox/provider/lifecycle');
+    vi.mocked(connectReadySandboxByInstance).mockRejectedValueOnce(new Error('connection failed'));
+
+    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
+    vi.mocked(getSandboxClient).mockResolvedValueOnce({
+      provider: newProvider,
+      delete: vi.fn()
+    } as any);
+    vi.mocked(getReadySandboxInfo).mockResolvedValueOnce({
+      image: 'test-image',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      status: { state: 'Running' }
+    } as any);
+    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
+      _id: 'doc-new'
+    } as any);
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: 'edit-debug-skill-1',
+      status: { state: 'Running' }
+    });
+
+    const { deleteSandboxResource } =
+      await import('@fastgpt/service/core/ai/sandbox/service/resource');
+    expect(deleteSandboxResource).toHaveBeenCalledWith(existingInstance, { keepVolume: true });
+
+    const { deleteSandboxInstanceRecord } =
+      await import('@fastgpt/service/core/ai/sandbox/instance/repository');
+    expect(deleteSandboxInstanceRecord).toHaveBeenCalledWith('instance-old');
+
+    expect(newProvider.execute).toHaveBeenCalledWith(expect.stringContaining('mkdir -p'));
+    expect(newProvider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(newProvider);
   });
 });
