@@ -60,7 +60,6 @@ export const ResponseBox = React.memo(function ResponseBox({
         <Flex
           overflow={'hidden'}
           height={'100%'}
-          mx={'32px'}
           bg={'myGray.25'}
           border={'1px solid'}
           borderColor={'myGray.200'}

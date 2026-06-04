@@ -37,6 +37,9 @@ const sizeMap = {
   },
   lg: {
     w: '800px'
+  },
+  xl: {
+    w: '900px'
   }
 };
 
