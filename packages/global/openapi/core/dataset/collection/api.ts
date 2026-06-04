@@ -7,12 +7,11 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import {
   DatasetCollectionSyncResultEnum,
-  DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '../../../../core/dataset/constants';
 import {
-  ChunkSettingsSchema,
+  CollectionTrainingStatusSchema,
   DatasetCollectionItemSchema,
   DatasetCollectionSchema
 } from '../../../../core/dataset/type';
@@ -21,6 +20,9 @@ import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
 
 // ============= Scroll Collections =============
+/**
+ * @deprecated Use ListCollectionV2BodySchema and /core/dataset/collection/listV2 instead.
+ */
 export const ScrollCollectionsBodySchema = z.object({
   datasetId: z.string(),
   parentId: z.string().nullable().optional().default(null),
@@ -114,27 +116,27 @@ export const ListCollectionV2BodySchema = PaginationSchema.extend({
 export type ListCollectionV2BodyType = z.infer<typeof ListCollectionV2BodySchema>;
 
 // ============= List Collections V2 Response =============
-export const DatasetCollectionsListItemSchema = z.object({
-  _id: ObjectIdSchema.meta({ description: '集合 ID' }),
-  parentId: DatasetCollectionSchema.shape.parentId,
-  tmbId: DatasetCollectionSchema.shape.tmbId,
-  name: DatasetCollectionSchema.shape.name,
-  type: DatasetCollectionSchema.shape.type,
-  createTime: DatasetCollectionSchema.shape.createTime,
-  updateTime: DatasetCollectionSchema.shape.updateTime,
-  forbid: DatasetCollectionSchema.shape.forbid,
-  trainingType: DatasetCollectionSchema.shape.trainingType,
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+export const DatasetCollectionsListItemSchema = z
+  .object({
+    _id: ObjectIdSchema.meta({ description: '集合 ID' }),
+    parentId: DatasetCollectionSchema.shape.parentId,
+    tmbId: DatasetCollectionSchema.shape.tmbId,
+    name: DatasetCollectionSchema.shape.name,
+    type: DatasetCollectionSchema.shape.type,
+    createTime: DatasetCollectionSchema.shape.createTime,
+    updateTime: DatasetCollectionSchema.shape.updateTime,
+    forbid: DatasetCollectionSchema.shape.forbid,
+    trainingType: DatasetCollectionSchema.shape.trainingType,
+    tags: z.array(z.string()).optional().meta({ description: '标签' }),
 
-  externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
+    externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
 
-  fileId: z.string().optional().meta({ description: '文件 ID' }),
-  rawLink: z.string().optional().meta({ description: '原始链接' }),
-  permission: PermissionSchema,
-  dataAmount: z.number().meta({ description: '数据数量' }),
-  trainingAmount: z.number().meta({ description: '训练数量' }),
-  hasError: z.boolean().optional().meta({ description: '是否错误' })
-});
+    fileId: z.string().optional().meta({ description: '文件 ID' }),
+    rawLink: z.string().optional().meta({ description: '原始链接' }),
+    permission: PermissionSchema,
+    dataAmount: z.number().meta({ description: '数据数量' })
+  })
+  .merge(CollectionTrainingStatusSchema);
 export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;
 export const ListCollectionV2ResponseSchema = PaginationResponseSchema(
   DatasetCollectionsListItemSchema

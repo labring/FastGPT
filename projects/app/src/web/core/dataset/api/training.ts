@@ -7,7 +7,10 @@ import type {
   GetTrainingDataDetailBody,
   GetTrainingDataDetailResponse,
   GetTrainingErrorBody,
-  GetTrainingErrorResponse
+  GetTrainingErrorResponse,
+  GetDatasetTrainingErrorBody,
+  GetDatasetTrainingErrorResponse,
+  HasDatasetTrainingErrorResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 export const postRebuildEmbedding = (data: RebuildEmbeddingBody) =>
@@ -29,3 +32,11 @@ export const getTrainingDataDetail = (data: GetTrainingDataDetailBody) =>
 
 export const getTrainingError = (data: GetTrainingErrorBody) =>
   POST<GetTrainingErrorResponse>(`/core/dataset/training/getTrainingError`, data);
+
+export const getDatasetTrainingError = (data: GetDatasetTrainingErrorBody) =>
+  POST<GetDatasetTrainingErrorResponse>(`/core/dataset/training/getDatasetTrainingError`, data);
+
+export const hasDatasetTrainingError = (datasetId: string) =>
+  GET<HasDatasetTrainingErrorResponse>(`/core/dataset/training/hasDatasetTrainingError`, {
+    datasetId
+  });

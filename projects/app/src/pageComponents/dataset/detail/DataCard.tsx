@@ -36,6 +36,10 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
 import { downloadFetch } from '@/web/common/system/utils';
+import {
+  getCollectionTrainingStatusColorSchema,
+  getCollectionTrainingStatusText
+} from '@/web/core/dataset/trainingStatus';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -101,6 +105,13 @@ const DataCard = () => {
   );
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
+  const collectionTrainingStatus = useMemo(() => {
+    if (!collection) return;
+    return {
+      text: getCollectionTrainingStatusText(collection),
+      colorSchema: getCollectionTrainingStatusColorSchema(collection)
+    };
+  }, [collection]);
 
   const [
     isInsertImagesModalOpen,
@@ -240,21 +251,19 @@ const DataCard = () => {
                 indexAmount: collection?.indexAmount ?? '-'
               })}
             </Box>
-            {!!collection?.errorCount && (
+            {!!collectionTrainingStatus && (
               <MyTag
-                colorSchema={'red'}
                 type={'fill'}
                 cursor={'pointer'}
                 rounded={'full'}
                 ml={2}
+                colorSchema={collectionTrainingStatus.colorSchema}
                 onClick={() => {
-                  setErrorModalId(collection._id);
+                  setErrorModalId(collection?._id || '');
                 }}
               >
                 <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                  {t('dataset:data_error_amount', {
-                    errorAmount: collection?.errorCount
-                  })}
+                  {t(collectionTrainingStatus.text as any)}
                   <MyIcon name={'common/maximize'} w={'11px'} />
                 </Flex>
               </MyTag>
@@ -462,10 +471,11 @@ const DataCard = () => {
           }}
         />
       )}
-      {errorModalId && (
+      {errorModalId && collection && (
         <TrainingStates
-          defaultTab={'errors'}
+          defaultTab={collection?.hasError ? 'errors' : 'states'}
           collectionId={errorModalId}
+          permission={collection.permission}
           onClose={() => {
             setErrorModalId('');
             refreshList();

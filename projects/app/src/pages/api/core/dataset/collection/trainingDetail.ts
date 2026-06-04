@@ -1,8 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  type TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -15,6 +12,11 @@ import {
   GetCollectionTrainingDetailResponseSchema,
   type GetCollectionTrainingDetailResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  BLOCKED_LOCK_TIME,
+  activeTrainingMatch,
+  finalErrorTrainingMatch
+} from '@fastgpt/service/core/dataset/training/query';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
@@ -57,7 +59,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
             $match: {
               _id: { $lt: new Types.ObjectId(minId) },
               retryCount: { $gt: 0 },
-              lockTime: { $lt: new Date('2050/1/1') }
+              lockTime: { $lt: BLOCKED_LOCK_TIME }
             }
           },
           {
@@ -72,8 +74,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          retryCount: { $gt: 0 },
-          lockTime: { $lt: new Date('2050/1/1') }
+          ...activeTrainingMatch
         }
       },
       {
@@ -87,8 +88,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          // retryCount: { $lte: 0 },
-          errorMsg: { $exists: true }
+          ...finalErrorTrainingMatch
         }
       },
       {

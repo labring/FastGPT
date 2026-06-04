@@ -1,11 +1,12 @@
-import handler, {
-  type getTrainingDataDetailBody,
-  type getTrainingDataDetailResponse
-} from '@/pages/api/core/dataset/training/getTrainingDataDetail';
+import handler from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import type {
+  GetTrainingDataDetailBody,
+  GetTrainingDataDetailResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -41,7 +42,11 @@ describe('get training data detail test', () => {
       a: 'test'
     });
 
-    const res = await Call<getTrainingDataDetailBody, {}, getTrainingDataDetailResponse>(handler, {
+    const res = await Call<
+      GetTrainingDataDetailBody,
+      Record<string, never>,
+      GetTrainingDataDetailResponse
+    >(handler, {
       auth: root,
       body: {
         collectionId: collection._id,
@@ -103,7 +108,11 @@ describe('get training data detail test', () => {
       a: 'foreign'
     });
 
-    const res = await Call<getTrainingDataDetailBody, {}, getTrainingDataDetailResponse>(handler, {
+    const res = await Call<
+      GetTrainingDataDetailBody,
+      Record<string, never>,
+      GetTrainingDataDetailResponse
+    >(handler, {
       auth: root,
       body: {
         datasetId: foreignDataset._id,

@@ -52,6 +52,13 @@ import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import {
+  getCollectionTrainingStatusColorSchema,
+  getCollectionTrainingStatusText
+} from '@/web/core/dataset/trainingStatus';
+import TrainingErrorModal from './TrainingErrorModal';
+import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -66,7 +73,10 @@ const CollectionCard = () => {
 
   const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
     collectionId: string;
+    permission: DatasetCollectionsListItemType['permission'];
   }>();
+  const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
+  const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
     useContextSelector(CollectionPageContext, (v) => v);
@@ -76,34 +86,17 @@ const CollectionCard = () => {
     () =>
       collections.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
-        const status = (() => {
-          if (collection.hasError) {
-            return {
-              statusText: t('common:core.dataset.collection.status.error'),
-              colorSchema: 'red'
-            };
-          }
-          if (collection.trainingAmount > 0) {
-            return {
-              statusText: t('common:dataset.collections.Collection Embedding', {
-                total: collection.trainingAmount
-              }),
-              colorSchema: 'gray'
-            };
-          }
-          return {
-            statusText: t('common:core.dataset.collection.status.active'),
-            colorSchema: 'green'
-          };
-        })();
+        const statusColorSchema = getCollectionTrainingStatusColorSchema(collection);
+        const statusText = getCollectionTrainingStatusText(collection);
 
         return {
           ...collection,
           icon,
-          ...status
+          statusText,
+          statusColorSchema
         };
       }),
-    [collections, t]
+    [collections]
   );
 
   const {
@@ -124,6 +117,22 @@ const CollectionCard = () => {
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:Rename')
   });
+
+  const { runAsync: refreshDatasetTrainingError } = useRequest(
+    async () => {
+      const res = await checkDatasetTrainingError(datasetDetail._id);
+      return res.hasError;
+    },
+    {
+      manual: false,
+      refreshDeps: [datasetDetail._id],
+      errorToast: '',
+      onSuccess(hasError) {
+        setHasDatasetTrainingError(hasError);
+      }
+    }
+  );
+
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
     {
@@ -147,6 +156,7 @@ const CollectionCard = () => {
     {
       onSuccess() {
         getData(pageNum);
+        refreshDatasetTrainingError().catch(() => undefined);
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')
@@ -174,11 +184,17 @@ const CollectionCard = () => {
 
   useRequest(
     async () => {
+      const shouldRefreshTrainingError =
+        hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active;
+
       if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
       }
       if (hasTrainingData) {
         getData(pageNum);
+      }
+      if (shouldRefreshTrainingError) {
+        await refreshDatasetTrainingError().catch(() => undefined);
       }
     },
     {
@@ -198,7 +214,9 @@ const CollectionCard = () => {
           parentId: targetId
         });
         getData(pageNum);
-      } catch {}
+      } catch {
+        // Drag failures are handled by the request layer toast; keep the list state unchanged here.
+      }
     }
   });
 
@@ -208,7 +226,11 @@ const CollectionCard = () => {
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
-        <Header hasTrainingData={hasTrainingData} />
+        <Header
+          hasTrainingData={hasTrainingData}
+          hasTrainingError={hasDatasetTrainingError}
+          onOpenTrainingErrorModal={() => setIsTrainingErrorModalOpen(true)}
+        />
 
         {/* collection table */}
         <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
@@ -297,9 +319,9 @@ const CollectionCard = () => {
                   <Td py={2}>
                     {collection.trainingType
                       ? t(
-                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                            '-') as any
-                        )
+                        (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                          '-') as any
+                      )
                       : '-'}
                   </Td>
                   <Td py={2}>{collection.dataAmount || '-'}</Td>
@@ -311,16 +333,21 @@ const CollectionCard = () => {
                     <MyTooltip label={t('common:Click_to_expand')}>
                       <MyTag
                         showDot
-                        colorSchema={collection.colorSchema as any}
+                        colorSchema={collection.statusColorSchema}
                         type={'fill'}
+                        fontSize={'mini'}
+                        letterSpacing={'0.5px'}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setTrainingStatesCollection({ collectionId: collection._id });
+                          setTrainingStatesCollection({
+                            collectionId: collection._id,
+                            permission: collection.permission
+                          });
                         }}
                       >
                         <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                           {t(collection.statusText as any)}
-                          <MyIcon name={'common/maximize'} w={'11px'} />
+                          <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
                         </Flex>
                       </MyTag>
                     </MyTooltip>
@@ -371,25 +398,25 @@ const CollectionCard = () => {
                             children: [
                               ...(collectionCanSync(collection.type)
                                 ? [
-                                    {
-                                      label: (
-                                        <Flex alignItems={'center'}>
-                                          <MyIcon
-                                            name={'common/refreshLight'}
-                                            w={'0.9rem'}
-                                            mr={2}
-                                          />
-                                          {t('dataset:collection_sync')}
-                                        </Flex>
-                                      ),
-                                      onClick: () =>
-                                        openSyncConfirm({
-                                          onConfirm: () => {
-                                            onclickStartSync(collection._id);
-                                          }
-                                        })()
-                                    }
-                                  ]
+                                  {
+                                    label: (
+                                      <Flex alignItems={'center'}>
+                                        <MyIcon
+                                          name={'common/refreshLight'}
+                                          w={'0.9rem'}
+                                          mr={2}
+                                        />
+                                        {t('dataset:collection_sync')}
+                                      </Flex>
+                                    ),
+                                    onClick: () =>
+                                      openSyncConfirm({
+                                        onConfirm: () => {
+                                          onclickStartSync(collection._id);
+                                        }
+                                      })()
+                                  }
+                                ]
                                 : []),
                               {
                                 label: (
@@ -441,8 +468,8 @@ const CollectionCard = () => {
                                     customContent:
                                       collection.type === DatasetCollectionTypeEnum.folder
                                         ? t(
-                                            'common:dataset.collections.Confirm to delete the folder'
-                                          )
+                                          'common:dataset.collections.Confirm to delete the folder'
+                                        )
                                         : t('common:dataset.Confirm to delete the file')
                                   })()
                               }
@@ -497,7 +524,20 @@ const CollectionCard = () => {
         {!!trainingStatesCollection && (
           <TrainingStates
             collectionId={trainingStatesCollection.collectionId}
+            permission={trainingStatesCollection.permission}
             onClose={() => setTrainingStatesCollection(undefined)}
+          />
+        )}
+
+        {isTrainingErrorModalOpen && (
+          <TrainingErrorModal
+            datasetId={datasetDetail._id}
+            permission={datasetDetail.permission}
+            onClose={() => setIsTrainingErrorModalOpen(false)}
+            onRefresh={() => {
+              getData(pageNum);
+              refreshDatasetTrainingError().catch(() => undefined);
+            }}
           />
         )}
 

@@ -6,7 +6,7 @@ import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
-export const checkTeamAiPointsAndLock = async (teamId: string) => {
+export const checkTeamAiPointsAndLock = async (teamId: string, currentTrainingId?: string) => {
   try {
     await checkTeamAIPoints(teamId);
     return true;
@@ -21,7 +21,7 @@ export const checkTeamAiPointsAndLock = async (teamId: string) => {
           teamId
         });
         logger.info('余额不足，暂停知识库处理');
-        await lockTrainingDataByTeamId(teamId);
+        await lockTrainingDataByTeamId(teamId, currentTrainingId);
       } catch (error) {}
     }
     return false;

@@ -245,6 +245,12 @@ export enum TrainingModeEnum {
   imageParse = 'imageParse'
 }
 
+export enum CollectionTrainingStatusEnum {
+  running = 'running',
+  error = 'error',
+  ready = 'ready'
+}
+
 /* ------------ search -------------- */
 export enum DatasetSearchModeEnum {
   embedding = 'embedding',

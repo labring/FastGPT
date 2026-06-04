@@ -201,5 +201,9 @@
   "website_info": "網站資訊",
   "yuque_dataset": "語雀知識庫",
   "yuque_dataset_config": "設定語雀知識庫",
-  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存"
+  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存",
+  "training.stage_error": "{{stage}}異常",
+  "training.status_error": "訓練異常",
+  "training_error_list": "異常列表",
+  "training_error_empty": "暫無訓練異常"
 }

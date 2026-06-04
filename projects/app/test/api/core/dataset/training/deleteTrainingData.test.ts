@@ -39,7 +39,11 @@ describe('delete training data test', () => {
       mode: TrainingModeEnum.chunk
     });
 
-    const res = await Call<deleteTrainingDataBody, {}, deleteTrainingDataResponse>(handler, {
+    const res = await Call<
+      deleteTrainingDataBody,
+      Record<string, never>,
+      deleteTrainingDataResponse
+    >(handler, {
       auth: root,
       body: {
         collectionId: collection._id,
@@ -100,7 +104,11 @@ describe('delete training data test', () => {
       mode: TrainingModeEnum.chunk
     });
 
-    const res = await Call<deleteTrainingDataBody, {}, deleteTrainingDataResponse>(handler, {
+    const res = await Call<
+      deleteTrainingDataBody,
+      Record<string, never>,
+      deleteTrainingDataResponse
+    >(handler, {
       auth: root,
       body: {
         datasetId: foreignDataset._id,

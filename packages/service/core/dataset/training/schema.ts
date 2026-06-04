@@ -11,7 +11,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetDataCollectionName } from '../data/schema';
-import { getLogger, LogCategories } from '../../../common/logger';
 
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
@@ -121,6 +120,12 @@ TrainingDataSchema.virtual('data', {
 
 // lock training data(teamId); delete training data
 TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
+// collection 级状态、错误列表、删除、详情
+TrainingDataSchema.index({
+  teamId: 1,
+  datasetId: 1,
+  collectionId: 1
+});
 // get training data and sort
 TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
 TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days

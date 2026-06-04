@@ -1,4 +1,4 @@
-import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, type RefObject, useRef, useState } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -190,6 +190,7 @@ export function useScrollPagination<
     EmptyTip,
     showErrorToast = true,
     disabled = false,
+    showNoMoreTip = true,
 
     ...props
   }: {
@@ -200,6 +201,7 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
+    showNoMoreTip?: boolean;
   } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
@@ -286,7 +288,7 @@ export function useScrollPagination<
     }
   );
 
-  let ScrollRef = useRef<HTMLDivElement>(null);
+  const ScrollRef = useRef<HTMLDivElement>(null);
   const ScrollData = useMemoizedFn(
     ({
       children,
@@ -299,11 +301,11 @@ export function useScrollPagination<
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
       const ref = ScrollContainerRef || ScrollRef;
-      const loadText = useMemo(() => {
+      const loadText = (() => {
         if (isLoading || isLoadingProp) return t('common:is_requesting');
         if (noMore) return t('common:request_end');
         return t('common:request_more');
-      }, [isLoading, noMore]);
+      })();
 
       const scroll = useScroll(ref);
 
@@ -339,7 +341,7 @@ export function useScrollPagination<
             </Box>
           )}
           {children}
-          {scrollLoadType === 'bottom' && !isEmpty && (
+          {scrollLoadType === 'bottom' && !isEmpty && (showNoMoreTip || !noMore) && (
             <Box
               mt={2}
               fontSize={'xs'}

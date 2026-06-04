@@ -167,7 +167,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         continue;
       }
       // Check team points and lock(No mistakes will be thrown here)
-      if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
         continue;
       }
 

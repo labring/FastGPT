@@ -35,3 +35,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
 }
 
 export default NextAPI(handler);
+export type deleteTrainingDataBody =
+  import('@fastgpt/global/openapi/core/dataset/training/api').DeleteTrainingDataBody;
+export type deleteTrainingDataResponse = DeleteTrainingDataResponse;

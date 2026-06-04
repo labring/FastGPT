@@ -41,6 +41,7 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
   return GetTrainingDataDetailResponseSchema.parse({
     _id: data._id,
     datasetId: data.datasetId,
+    collectionId: data.collectionId,
     mode: data.mode,
     imagePreviewUrl:
       data.imageId && isS3ObjectKey(data.imageId, 'dataset')
