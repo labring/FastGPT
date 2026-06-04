@@ -130,8 +130,8 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
       w={'600px'}
       isCentered
     >
-      <MyBox isLoading={loading} position="relative" h={fileMode === FileSelectMode.Partial ? 'full' : undefined} minH={fileMode === FileSelectMode.Partial ? '400px' : undefined}>
-        <Flex flexDirection={'column'} h={fileMode === FileSelectMode.Partial ? 'full' : undefined} py={2} px={4}>
+      <MyBox isLoading={loading} position="relative" minH={fileMode === FileSelectMode.Partial ? '400px' : undefined}>
+        <Flex flexDirection={'column'} py={2} px={4}>
           {/* 全部文件 / 部分文件 切换卡片 */}
           <SimpleGrid columns={2} spacing={4} mb={4}>
             <Box
@@ -212,8 +212,8 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
                 )}
               </Flex>
 
-              <Box flex={1} overflowY="auto" mb={16} userSelect={'none'}>
-                <Box mt={3}>
+              <Box overflowY="auto" maxH={'350px'} mb={16} userSelect={'none'}>
+                <Box>
                   <Flex
                     alignItems={'center'}
                     py={3}
@@ -319,6 +319,9 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
             right={0}
             p={4}
           >
+            <Button variant="outline" mr={3} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
             <Button
               isDisabled={fileMode === FileSelectMode.Partial && selectFiles.length === 0 && !isSelectAll}
               isLoading={onSubmitLoading}
