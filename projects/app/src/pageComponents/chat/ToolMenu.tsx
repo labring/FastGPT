@@ -14,6 +14,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import type { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { getChatVariableGroups } from '@/components/core/chat/ChatContainer/ChatBox/components/ChatVariableForm';
 import { ChatVariableDrawer } from './ChatWindow/ChatVariableButton';
+import { chatHeaderIconButtonStyle } from './ChatWindow/headerIconButtonStyle';
 
 const ToolMenu = ({
   history,
@@ -78,10 +79,22 @@ const ToolMenu = ({
         Button={
           <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>
             <IconButton
-              icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+              icon={
+                <MyIcon
+                  name={'more'}
+                  w={'14px'}
+                  color="currentColor"
+                  sx={{
+                    '& path': {
+                      fill: 'currentColor'
+                    }
+                  }}
+                />
+              }
               aria-label={''}
               size={'sm'}
-              variant={reserveSpace ? 'transparentBase' : 'whitePrimary'}
+              variant="unstyled"
+              {...chatHeaderIconButtonStyle}
             />
           </Box>
         }

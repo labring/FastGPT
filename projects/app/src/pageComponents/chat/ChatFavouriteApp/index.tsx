@@ -246,7 +246,6 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
                 px={5}
                 cursor={'pointer'}
                 border={'base'}
-                boxShadow={'2'}
                 bg={'white'}
                 borderRadius={'lg'}
                 position={'relative'}
@@ -254,8 +253,7 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
                 flexDirection={'column'}
                 minW={0}
                 _hover={{
-                  borderColor: 'primary.300',
-                  boxShadow: '1.5'
+                  borderColor: 'primary.300'
                 }}
                 onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
               >

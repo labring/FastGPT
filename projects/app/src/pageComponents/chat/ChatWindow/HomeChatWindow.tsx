@@ -51,6 +51,7 @@ import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/uti
 import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
+import { chatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -435,10 +436,12 @@ const HomeChatWindow = () => {
           >
             <IconButton
               aria-label="Open history"
-              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="myGray.900" />}
+              icon={
+                <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
+              }
               variant="unstyled"
-              minW="32px"
-              h="32px"
+              {...chatHeaderIconButtonStyle}
+              color="myGray.900"
               onClick={onOpenSlider}
             />
             <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>

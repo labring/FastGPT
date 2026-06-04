@@ -65,7 +65,6 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                 px={5}
                 cursor={'pointer'}
                 border={'base'}
-                boxShadow={'2'}
                 bg={'white'}
                 borderRadius={'lg'}
                 position={'relative'}
@@ -74,7 +73,6 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                 minW={0}
                 _hover={{
                   borderColor: 'primary.300',
-                  boxShadow: '1.5',
                   '& .more': {
                     display: 'flex'
                   },

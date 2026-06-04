@@ -32,6 +32,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
+import { chatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -201,10 +202,12 @@ const AppChatWindow = () => {
           >
             <IconButton
               aria-label="Open history"
-              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="myGray.900" />}
+              icon={
+                <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
+              }
               variant="unstyled"
-              minW="32px"
-              h="32px"
+              {...chatHeaderIconButtonStyle}
+              color="myGray.900"
               onClick={onOpenSlider}
             />
 

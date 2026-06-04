@@ -88,16 +88,11 @@ export const useChatFeedbackActions = ({
   /**
    * 生成用户点赞回调。
    *
-   * 点赞只在 user feedback 模式、AI 消息、且当前没有点踩内容时可用。再次点击已点赞消息会取消
-   * `userGoodFeedback`，本地和服务端都写入 undefined，保留原有“点击切换”语义。
+   * 点赞只在 user feedback 模式和 AI 消息下可用。点赞与点踩互不隐藏、互不清空；
+   * 再次点击已点赞消息会取消 `userGoodFeedback`，保留原有“点击切换”语义。
    */
   const onAddUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (
-      feedbackType !== FeedbackTypeEnum.user ||
-      chat.obj !== ChatRoleEnum.AI ||
-      chat.userBadFeedback
-    )
-      return;
+    if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
 
     return () => {
       if (!chat.dataId || !chatId || !appId) return;
@@ -130,16 +125,10 @@ export const useChatFeedbackActions = ({
    * 生成用户点踩回调。
    *
    * 没有点踩内容时返回打开 `FeedbackModal` 的回调，由弹窗收集具体原因；已有点踩内容时返回
-   * 取消点踩回调，清空本地 `userBadFeedback` 并同步服务端。存在点赞时不允许点踩，保持互斥。
+   * 取消点踩回调，清空本地 `userBadFeedback` 并同步服务端。点赞与点踩互不隐藏、互不清空。
    */
   const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
-    if (
-      feedbackType !== FeedbackTypeEnum.user ||
-      chat.obj !== ChatRoleEnum.AI ||
-      chat.userGoodFeedback
-    ) {
-      return;
-    }
+    if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
 
     if (chat.userBadFeedback) {
       return () => {

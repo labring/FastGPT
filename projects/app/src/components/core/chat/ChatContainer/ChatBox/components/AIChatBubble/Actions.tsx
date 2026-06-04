@@ -24,7 +24,7 @@ const AIChatBubbleActions = ({
   const { onRetry } = chatControllerProps;
 
   return (
-    <Box mt={'10px'} maxW={'100%'}>
+    <Box mt={4} maxW={'100%'}>
       <Flex
         alignItems={'center'}
         flexWrap={'wrap'}

@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Flex,
   HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -53,12 +54,13 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
           _hover={{ color: 'myGray.600', bg: 'transparent' }}
           _expanded={{ color: 'myGray.600' }}
         >
-          <HStack mr={1} spacing={'8px'}>
-            <MyIcon name={'core/chat/deepThinking'} fill={'myGray.600'} />
+          <HStack mr={1} spacing="0">
+            <Flex w="24px" h="24px" alignItems="center" justifyContent="flex-start">
+              <MyIcon name={'core/chat/deepThinking'} fill={'myGray.600'} />
+            </Flex>
             <Box fontSize={'16px'}>{t('chat:ai_reasoning')}</Box>
           </HStack>
 
-          {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
           <AccordionIcon ml={1} />
         </AccordionButton>
         <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
@@ -102,8 +104,8 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
             <Box
               as={'button'}
               type="button"
+              mt={2}
               ml={1.5}
-              py={'4px'}
               px={'8px'}
               color={'primary.600'}
               fontSize={'14px'}

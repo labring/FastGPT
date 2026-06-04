@@ -21,6 +21,7 @@ import {
   getChatVariableGroups
 } from '@/components/core/chat/ChatContainer/ChatBox/components/ChatVariableForm';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { chatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
 type ChatVariableButtonProps = {
   chatType: ChatTypeEnum;
@@ -192,7 +193,7 @@ const ChatVariableButton = ({ chatType }: ChatVariableButtonProps) => {
         <MyIcon
           name="core/chat/var"
           w="16px"
-          color={isOpen ? 'primary.600' : 'myGray.600'}
+          color="currentColor"
           sx={{
             '& path': {
               fill: 'currentColor'
@@ -202,7 +203,9 @@ const ChatVariableButton = ({ chatType }: ChatVariableButtonProps) => {
       }
       aria-label={label}
       size="sm"
-      variant="whitePrimary"
+      variant="unstyled"
+      {...chatHeaderIconButtonStyle}
+      color={isOpen ? 'primary.600' : chatHeaderIconButtonStyle.color}
       onClick={() => {
         updatePopoverMaxHeight();
         setIsOpen(true);

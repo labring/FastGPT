@@ -142,14 +142,10 @@ const ChatSliderList = () => {
                   }
                 })}
             {...(i !== concatHistory.length - 1 && {
-              mb: '8px'
+              mb: '4px'
             })}
           >
-            <MyIcon
-              name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
-              w={'16px'}
-            />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
+            <Box flex={'1 0 0'} className="textEllipsis">
               {item.customTitle || item.title}
             </Box>
             {!!item.id && (

@@ -94,7 +94,14 @@ const ChatRecordsList = ({
                   itemRefs.current.set(item.dataId, e);
                 }}
               >
-                <Box py={item.hideInUI ? 0 : 6}>
+                <Box
+                  pt={
+                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? 0 : '20px'
+                  }
+                  pb={
+                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '20px' : '40px'
+                  }
+                >
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       chat={item}

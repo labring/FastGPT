@@ -146,7 +146,7 @@ const AIResponseBox = ({
 
   if (responseBlocks.length > 1) {
     return (
-      <Flex flexDirection={'column'} gap={2}>
+      <Flex flexDirection={'column'} gap={4}>
         {responseBlocks}
       </Flex>
     );

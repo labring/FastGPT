@@ -164,8 +164,8 @@ const ChatInput = ({
           <Textarea
             ref={TextareaDom}
             py={0}
-            mx={[2, 4]}
-            px={2}
+            mx={0}
+            px={0}
             border={'none'}
             _focusVisible={{
               border: 'none'
@@ -292,8 +292,6 @@ const ChatInput = ({
         justifyContent={'space-between'}
         w={'100%'}
         mt={0}
-        pr={[3, 4]}
-        pl={[3, 4]}
         h={[8, 9]}
         gap={[0, 1]}
       >
@@ -424,6 +422,9 @@ const ChatInput = ({
 
   return (
     <Box
+      w={'100%'}
+      maxW={['100%', '780px']}
+      mx={'auto'}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -454,8 +455,8 @@ const ChatInput = ({
         direction={'column'}
         h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
         minH={mobilePreSpeak ? '48px' : ChatInputDefaultHeight}
-        pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : 4}
-        pb={mobilePreSpeak ? [0, 4] : 4}
+        p={mobilePreSpeak ? [0, 4] : 4}
+        mb={4}
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}
@@ -485,7 +486,7 @@ const ChatInput = ({
           )}
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
-            <Box px={[2, 3]}>
+            <Box>
               <FilePreview fileList={fileList} removeFiles={removeFiles} />
             </Box>
           )}
@@ -519,7 +520,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} />
+      <ComplianceTip type={'chat'} pt={0} pb={6} />
     </Box>
   );
 };

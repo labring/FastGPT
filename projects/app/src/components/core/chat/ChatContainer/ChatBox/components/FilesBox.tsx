@@ -57,7 +57,7 @@ const FilesBlock = ({
     <Grid
       ref={chartRef}
       gridTemplateColumns={gridColumns}
-      gap={4}
+      gap={2}
       alignItems={'flex-start'}
       justifyItems={singleColumn ? 'start' : undefined}
       w={singleColumn ? 'fit-content' : undefined}

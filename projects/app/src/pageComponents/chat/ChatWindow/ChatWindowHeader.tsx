@@ -18,7 +18,7 @@ const ChatWindowHeader = ({
 
   return (
     <Flex
-      minH="60px"
+      minH="56px"
       px={5}
       bg="white"
       fontWeight={500}

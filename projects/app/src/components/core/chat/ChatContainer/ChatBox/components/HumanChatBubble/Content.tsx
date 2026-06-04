@@ -15,7 +15,7 @@ const HumanChatBubbleContent = ({ chatValue }: HumanChatBubbleContentProps) => {
   return (
     <Flex
       flexDirection={'column'}
-      gap={4}
+      gap={2}
       alignItems={'flex-start'}
       w={'fit-content'}
       maxW={'100%'}
