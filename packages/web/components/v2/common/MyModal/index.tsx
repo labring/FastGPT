@@ -20,7 +20,7 @@ export interface MyModalProps extends ModalContentProps {
   isOpen?: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
   footer?: React.ReactNode;
   headerStyles?: FlexProps;
