@@ -24,7 +24,7 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from './writeFile';
 
-export { SANDBOX_ICON, SANDBOX_NAME } from './common';
+export { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON, SANDBOX_NAME } from './common';
 export {
   SANDBOX_EDIT_FILE_NAME,
   SANDBOX_EDIT_FILE_TOOL,

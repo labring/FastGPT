@@ -97,8 +97,6 @@ function SkillLabelPlugin({
   // Update existing SkillNode properties when selectedSkills change
   // Sync tool name, avatar, status and configure handler for each skill node
   useEffect(() => {
-    if (selectedSkills.length === 0) return;
-
     // Wrapped click handler: delete if invalid, otherwise call original onClickSkill
     const handleClick = (id: string, status: SkillLabelItemType['configStatus']) => {
       if (status === 'invalid') {
@@ -126,14 +124,21 @@ function SkillLabelPlugin({
         if (node instanceof SkillNode) {
           const id = node.getSkillKey();
           const tool = selectedSkills.find((t) => t.id === id);
+          const writableNode = node.getWritable();
+
           if (tool) {
-            const writableNode = node.getWritable();
             writableNode.__id = tool.id;
             writableNode.__name = tool.name;
             writableNode.__icon = tool.avatar;
             writableNode.__skillType = tool.flowNodeType;
             writableNode.__status = tool.configStatus;
             writableNode.__onClick = (id) => handleClick(id, tool.configStatus);
+          } else {
+            writableNode.__name = id;
+            writableNode.__icon = undefined;
+            writableNode.__skillType = FlowNodeTypeEnum.tool;
+            writableNode.__status = 'invalid';
+            writableNode.__onClick = (id) => handleClick(id, 'invalid');
           }
         }
       });

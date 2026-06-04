@@ -1,5 +1,10 @@
 import type { I18nStringType, localeType } from '../../../../common/i18n/type';
-import { sandboxToolMap } from '../../../ai/sandbox/tools';
+import {
+  AGENT_SANDBOX_TOOLSET_ID,
+  SANDBOX_ICON,
+  SANDBOX_NAME,
+  sandboxToolMap
+} from '../../../ai/sandbox/tools';
 import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SubAppIds {
@@ -49,6 +54,12 @@ export const systemSubInfo: Record<
     },
     avatar: 'core/workflow/template/agent',
     toolDescription: '调用 LLM 模型完成一些通用任务。'
+  },
+  [AGENT_SANDBOX_TOOLSET_ID]: {
+    name: SANDBOX_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription:
+      '提供完整虚拟机能力，包括命令执行、文件读写、文件编辑、文件搜索和文件链接生成。'
   },
   ...sandboxToolMap
 };

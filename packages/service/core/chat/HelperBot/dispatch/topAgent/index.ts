@@ -23,6 +23,7 @@ import { MongoDataset } from '../../../../dataset/schema';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { getLogger, LogCategories } from '../../../../../common/logger';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const dispatchTopAgent = async (
   props: HelperBotDispatchParamsType<TopAgentParamsType>
@@ -155,12 +156,15 @@ export const dispatchTopAgent = async (
         teamId: user.teamId,
         datasetIds: knowledges
       });
+      const enableSandboxEnabled =
+        responseJson.resources?.system_features?.sandbox?.enabled ||
+        tools.includes(AGENT_SANDBOX_TOOLSET_ID);
       const formData = TopAgentFormDataSchema.parse({
         systemPrompt: buildSystemPrompt(responseJson), // 构建 system prompt
         tools, // 从 execution_plan 提取
         datasets: filterDatasets,
         fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
-        enableSandboxEnabled: responseJson.resources?.system_features?.sandbox?.enabled || false,
+        enableSandboxEnabled,
         executionPlan: responseJson.execution_plan // 保存原始 execution_plan
       });
 

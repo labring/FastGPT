@@ -7,9 +7,9 @@ import { MongoResourcePermission } from '../../../../../support/permission/schem
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
-import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getUserAvaliableWorkflowTools } from '../../../../app/tool/workflowTool';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -109,7 +109,7 @@ ${dataset}
     })
   ]);
 
-  const builtinTools = [SubAppIds.readFiles, SANDBOX_SHELL_TOOL_NAME].map((id) => {
+  const builtinTools = [SubAppIds.readFiles, AGENT_SANDBOX_TOOLSET_ID].map((id) => {
     const info = systemSubInfo[id];
     return `- **${id}** [工具]: ${parseI18nString(info.name, lang)} - ${info.toolDescription}`;
   });
