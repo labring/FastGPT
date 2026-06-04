@@ -88,9 +88,7 @@ const Chat = () => {
           position="relative"
           pr={showReferencePanel ? 0 : undefined}
           insertProps={
-            showReferencePanel
-              ? { borderRadius: '0', borderWidth: '0' }
-              : { borderRadius: '8px' }
+            showReferencePanel ? { borderRadius: '0', borderWidth: '0' } : { borderRadius: '8px' }
           }
         >
           {/* home chat window */}

@@ -3,7 +3,10 @@ import fs from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { DEFAULT_SYSTEM_TITLE, DEFAULT_SYSTEM_SHORT_NAME } from '@fastgpt/global/common/system/constants';
+import {
+  DEFAULT_SYSTEM_TITLE,
+  DEFAULT_SYSTEM_SHORT_NAME
+} from '@fastgpt/global/common/system/constants';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';

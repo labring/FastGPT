@@ -310,8 +310,7 @@ function getDefaultModelsByPermission(models: SystemModelItemType[]): SystemDefa
     [ModelTypeEnum.llm]:
       getVisibleModel(global.systemDefaultModel[ModelTypeEnum.llm]) || llmModels[0],
     datasetTextLLM: getVisibleModel(global.systemDefaultModel.datasetTextLLM) || llmModels[0],
-    datasetImageLLM:
-      getVisibleModel(global.systemDefaultModel.datasetImageLLM) || undefined,
+    datasetImageLLM: getVisibleModel(global.systemDefaultModel.datasetImageLLM) || undefined,
     evaluation:
       getVisibleModel(global.systemDefaultModel.evaluation) ||
       llmModels.find((model) => model.useInEvaluation),

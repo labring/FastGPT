@@ -1,5 +1,8 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { ReadFileToolSchema } from '../sub/file/utils';
 import { DatasetSearchToolSchema } from '../sub/dataset/utils';
@@ -58,7 +61,8 @@ export async function buildAgentTools({
   getSubApp,
   getSubAppInfo,
   capabilityToolCallHandler,
-  nodeResponses
+  nodeResponses,
+  assistantResponses
 }: {
   completionTools: ChatCompletionTool[];
   ctx: ToolDispatchContext;
@@ -67,6 +71,7 @@ export async function buildAgentTools({
   getSubAppInfo: GetSubAppInfoFnType;
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   nodeResponses: ChatHistoryItemResType[];
+  assistantResponses: AIChatItemValueItemType[];
 }): Promise<AgentTool[]> {
   const { Type } = await import('@mariozechner/pi-ai');
 
@@ -334,13 +339,24 @@ export async function buildAgentTools({
       }
     };
 
-    // Wrap execute to also emit SSE toolCall event before execution
+    // Wrap execute to emit SSE toolCall event and persist tool to chat history
+    // before execution. Pushing to assistantResponses here (during agent run)
+    // ensures tools are interleaved with text items in chronological order.
     const wrappedExecute = async (
       callId: string,
       args: Record<string, any>,
       signal?: AbortSignal
     ) => {
       const subAppInfo = getSubAppInfo(toolId);
+      assistantResponses.push({
+        tool: {
+          id: callId,
+          toolName: subAppInfo?.name || toolId,
+          toolAvatar: subAppInfo?.avatar || '',
+          functionName: toolId,
+          params: JSON.stringify(args)
+        }
+      });
       workflowStreamResponse?.({
         id: callId,
         event: SseResponseEventEnum.toolCall,
@@ -354,7 +370,14 @@ export async function buildAgentTools({
           }
         }
       });
-      return execute(callId, args, signal);
+      const result = await execute(callId, args, signal);
+      // Update tool item in assistantResponses with the response so the
+      // output is visible alongside the input when expanding the tool block.
+      const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
+      if (toolItem?.tool) {
+        toolItem.tool.response = result.content.map((c) => c.text).join('\n');
+      }
+      return result;
     };
 
     tools.push({

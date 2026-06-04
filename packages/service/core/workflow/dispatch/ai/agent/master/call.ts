@@ -687,6 +687,12 @@ export const masterCall = async ({
         }
       });
 
+      // Update collected tool item with response so it persists correctly
+      const collectedTool = collectedTools.find((item) => item.tool?.id === call.id);
+      if (collectedTool?.tool) {
+        collectedTool.tool.response = response;
+      }
+
       return {
         response,
         assistantMessages: [],

@@ -366,10 +366,7 @@ const CollectionCard = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[-:T]/g, '')
-          .slice(0, 14);
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
         a.download = `collections-${timestamp}.zip`;
         document.body.appendChild(a);
         a.click();

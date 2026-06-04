@@ -502,8 +502,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 }))
               );
             }
-            // Persist tool calls so they survive page refresh (SSE only shows them live)
-            if (result.collectedTools?.length) {
+            // Persist tool calls so they survive page refresh.
+            // GPTMessages2Chats already produces tools from LLM tool_calls when
+            // the model supports native function calling; collectedTools fills
+            // the gap for models that embed tool calls in text/thinking content.
+            const stepHasToolsFromGPT = assistantResponse.some(
+              (item: AIChatItemValueItemType) => (item.tools?.length ?? 0) > 0 || item.tool
+            );
+            if (!stepHasToolsFromGPT && result.collectedTools?.length) {
               assistantResponses.push(
                 ...result.collectedTools.map((item) => ({
                   ...item,
@@ -584,6 +590,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         assistantResponses.push(...assistantResponse);
         if (result.capabilityAssistantResponses?.length) {
           assistantResponses.push(...result.capabilityAssistantResponses);
+        }
+        // Persist tool calls so they survive page refresh.
+        // GPTMessages2Chats already produces tools from LLM tool_calls when
+        // the model supports native function calling; collectedTools fills
+        // the gap for models that embed tool calls in text/thinking content.
+        const masterHasToolsFromGPT = assistantResponse.some(
+          (item: AIChatItemValueItemType) => (item.tools?.length ?? 0) > 0 || item.tool
+        );
+        if (!masterHasToolsFromGPT && result.collectedTools?.length) {
+          assistantResponses.push(...result.collectedTools);
         }
 
         // 触发了 plan

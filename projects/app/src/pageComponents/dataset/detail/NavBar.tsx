@@ -78,14 +78,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
 
   const isDataCardTab = [TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab);
 
-  const { data: collection } = useRequest(
-    () => getDatasetCollectionById(collectionId),
-    {
-      refreshDeps: [collectionId],
-      manual: false,
-      ready: isDataCardTab
-    }
-  );
+  const { data: collection } = useRequest(() => getDatasetCollectionById(collectionId), {
+    refreshDeps: [collectionId],
+    manual: false,
+    ready: isDataCardTab
+  });
 
   const isApiDataset = !!(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
   const isLink = collection?.type === DatasetCollectionTypeEnum.link;
@@ -93,7 +90,8 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const sourceLabel = useMemo(() => {
     if (!collection) return '';
     if (isApiDataset) return t('dataset:view_original');
-    if (isLink || collection.name?.toLowerCase().endsWith('.txt')) return t('dataset:view_original');
+    if (isLink || collection.name?.toLowerCase().endsWith('.txt'))
+      return t('dataset:view_original');
     if (collection.type === DatasetCollectionTypeEnum.images) return t('dataset:view_image');
     return t('dataset:download_file');
   }, [collection, isApiDataset, isLink, t]);
@@ -182,14 +180,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           templateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
         >
           {/* 左列：面包屑路径 */}
-          <Flex
-            alignItems={'center'}
-            py={'0.38rem'}
-            pr={4}
-            h={10}
-            minW={0}
-            overflow={'hidden'}
-          >
+          <Flex alignItems={'center'} py={'0.38rem'} pr={4} h={10} minW={0} overflow={'hidden'}>
             {isDataCardTab ? (
               <FolderPath
                 paths={dataCardPaths}
@@ -205,7 +196,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     });
                   } else {
                     router.replace({
-                      query: { datasetId: query.datasetId, parentId: id, currentTab: TabEnum.collectionCard }
+                      query: {
+                        datasetId: query.datasetId,
+                        parentId: id,
+                        currentTab: TabEnum.collectionCard
+                      }
                     });
                   }
                 }}
@@ -270,10 +265,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 size={'sm'}
                 flexShrink={0}
                 leftIcon={
-                  <MyIcon
-                    name={isLink ? 'common/routePushLight' : 'common/download'}
-                    w={'14px'}
-                  />
+                  <MyIcon name={isLink ? 'common/routePushLight' : 'common/download'} w={'14px'} />
                 }
                 onClick={handleReadSource}
               >
