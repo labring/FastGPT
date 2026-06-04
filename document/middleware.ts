@@ -57,7 +57,7 @@ const exactMap: Record<string, string> = {
   '/use-cases': defaultHomePath,
   '/self-host': '/self-host/deploy/docker',
   '/openapi': '/openapi/intro',
-  '/faq': '/faq/app'
+  '/faq': '/faq/chat'
 };
 
 // Prefix redirects for groups that kept the same slug after moving.

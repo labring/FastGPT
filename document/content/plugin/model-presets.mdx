@@ -1,0 +1,301 @@
+---
+title: 增加模型预设
+description: FastGPT 插件系统中的模型预设说明
+---
+
+模型预设维护在 `fastgpt-plugin` 仓库中，用于向 FastGPT 提供内置模型供应商、模型列表、模型能力和默认参数。FastGPT 读取这些静态预设后，用户才能在模型配置、AIProxy 渠道和相关插件能力中选择对应模型。
+
+本文基于 1.0 版本以上的插件系统代码结构，旧版 `modules/model/*` 路径已经不再作为主要维护入口。
+
+## 相关目录
+
+```text
+packages/infrastructure/src/static-data/models/
+├── index.ts
+├── model.ts
+├── type.ts
+├── channel-avatar/
+└── provider/
+    └── {Provider}/
+        ├── index.ts
+        └── logo.svg
+```
+
+- `provider/{Provider}/index.ts`：单个模型供应商的模型预设列表。
+- `index.ts`：注册所有供应商，生成 `staticModelList` 和供应商列表。
+- `model.ts`：维护供应商显示名 `ModelProviderMap` 和 AIProxy 渠道 `aiproxyChannels`。
+- `type.ts`：定义供应商配置和模型预设的输入 schema。
+- `provider/{Provider}/logo.svg`：模型供应商 Logo。
+- `channel-avatar/`：AIProxy 渠道头像。
+
+## 给已有供应商增加模型
+
+### 1. 确认供应商已经注册
+
+先在 `packages/infrastructure/src/static-data/models/index.ts` 中确认供应商已经被引入，并存在于 `staticModelProviderConfigs`：
+
+```ts
+import openai from './provider/OpenAI';
+
+export const staticModelProviderConfigs = [openai];
+```
+
+如果只是给已有供应商增加模型，不需要修改 `index.ts`。
+
+### 2. 修改供应商模型列表
+
+进入对应供应商目录，例如：
+
+```text
+packages/infrastructure/src/static-data/models/provider/OpenAI/index.ts
+```
+
+在 `list` 数组中增加模型。优先复制同供应商、同类型、同模型家族中最接近的一项，再根据官方文档调整字段。
+
+五类模型示例：
+
+```ts
+import { ModelTypeEnum, type ProviderConfigType } from '../../type';
+
+const ttsVoices = [
+  {
+    label: '默认音色',
+    value: 'default'
+  }
+];
+
+const models: ProviderConfigType = {
+  provider: 'ExampleProvider',
+  list: [
+    {
+      type: ModelTypeEnum.llm,
+      model: 'example-chat',
+      maxContext: 128000,
+      maxTokens: 16384,
+      quoteMaxToken: 120000,
+      maxTemperature: 1,
+      responseFormatList: ['text', 'json_schema'],
+      vision: true,
+      reasoning: false,
+      reasoningEffort: false,
+      toolChoice: true
+    },
+    {
+      type: ModelTypeEnum.embedding,
+      model: 'example-embedding',
+      defaultToken: 512,
+      maxToken: 8192,
+      normalization: true
+    },
+    {
+      type: ModelTypeEnum.rerank,
+      model: 'example-rerank',
+      maxToken: 8192
+    },
+    {
+      type: ModelTypeEnum.tts,
+      model: 'example-tts',
+      voices: ttsVoices
+    },
+    {
+      type: ModelTypeEnum.stt,
+      model: 'example-stt'
+    }
+  ]
+};
+
+export default models;
+```
+
+常用字段说明：
+
+| 字段                 | 说明                                                                            |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `type`               | 模型类型，来自 `ModelTypeEnum`，可选 `llm`、`embedding`、`rerank`、`tts`、`stt` |
+| `model`              | 真实请求时使用的模型 ID                                                         |
+| `name`               | 可选显示名，不填时默认使用 `model`                                              |
+| `maxContext`         | LLM 最大上下文长度                                                              |
+| `maxTokens`          | LLM 最大输出长度                                                                |
+| `quoteMaxToken`      | FastGPT 引用知识库内容时可使用的最大 token                                      |
+| `maxTemperature`     | 最大温度；不支持温度时填 `null`                                                 |
+| `responseFormatList` | 支持的返回格式，如 `text`、`json_object`、`json_schema`                         |
+| `vision`             | 是否支持视觉输入                                                                |
+| `reasoning`          | 是否为推理模型                                                                  |
+| `reasoningEffort`    | 是否支持推理强度配置                                                            |
+| `toolChoice`         | 是否支持工具调用选择                                                            |
+| `fieldMap`           | 字段名映射，用于适配非标准 OpenAI 兼容接口                                      |
+| `defaultConfig`      | 请求默认参数，会随模型请求一起发送                                              |
+| `defaultToken`       | Embedding 默认分段 token 数                                                     |
+| `maxToken`           | Embedding/Rerank 最大输入 token 数                                              |
+| `normalization`      | Embedding 是否做归一化处理                                                      |
+| `voices`             | TTS 可选音色列表                                                                |
+
+`index.ts` 会在生成 `staticModelList` 时自动补充：
+
+- `provider`：来自当前供应商配置的 `provider`。
+- `name`：未显式填写时使用 `model`。
+- LLM 的部分默认能力开关，例如知识库处理、分类、内容提取、工具调用和评测。
+
+### 3. 不要只看模型名称
+
+新增或修改模型前，需要以官方模型文档、官方模型列表 API 或官方价格/模型页为依据。不要只根据搜索结果、第三方博客或聚合站判断模型是否存在。
+
+维护时建议遵守以下规则：
+
+- 模型预设支持 `llm`、`embedding`、`rerank`、`tts`、`stt` 五类模型。按模型真实能力选择对应类型，并补齐该类型 schema 要求的字段。
+- 不要仅因为存在稳定版名称就删除 preview、experimental 或 dated 模型；只有官方明确废弃、下线或不再推荐时再移除。
+- 对 OpenRouter、Ollama、HuggingFace、Other 这类开放目录，避免删除本地占位或用户可能自定义的模型。
+- 保持文件内原有排序风格，通常把更新或能力更强的模型放在前面。
+
+## 新增模型供应商
+
+只有在需要接入全新的模型供应商时才新增供应商目录。
+
+### 1. 创建供应商目录
+
+在 `provider/` 下新增目录，目录名使用供应商标识：
+
+```text
+packages/infrastructure/src/static-data/models/provider/NewProvider/
+├── index.ts
+└── logo.svg
+```
+
+`logo.svg` 是模型供应商头像。插件服务初始化静态模型资源时，会把 `provider/{Provider}/logo.svg` 上传为 `models/{Provider}/logo`，`/models/get-providers` 接口会把它作为该模型供应商的 `avatar` 返回。
+
+`index.ts` 基本结构：
+
+```ts
+import { ModelTypeEnum, type ProviderConfigType } from '../../type';
+
+const models: ProviderConfigType = {
+  provider: 'NewProvider',
+  list: [
+    {
+      type: ModelTypeEnum.llm,
+      model: 'new-provider-chat',
+      maxContext: 128000,
+      maxTokens: 8192,
+      quoteMaxToken: 120000,
+      maxTemperature: 1,
+      responseFormatList: ['text'],
+      vision: false,
+      reasoning: false,
+      reasoningEffort: false,
+      toolChoice: true
+    }
+  ]
+};
+
+export default models;
+```
+
+### 2. 注册供应商
+
+在 `packages/infrastructure/src/static-data/models/index.ts` 中引入并加入 `staticModelProviderConfigs`：
+
+```ts
+import newProvider from './provider/NewProvider';
+
+export const staticModelProviderConfigs: ProviderConfigType[] = [newProvider];
+```
+
+### 3. 增加供应商显示名
+
+在 `packages/infrastructure/src/static-data/models/model.ts` 的 `ModelProviderMap` 中增加多语言显示名：
+
+```ts
+NewProvider: {
+  en: 'NewProvider',
+  'zh-CN': '新供应商',
+  'zh-Hant': '新供應商'
+}
+```
+
+如果不增加 `ModelProviderMap`，系统会使用 `provider` 字符串作为兜底显示名，但正式供应商应补齐多语言显示名。
+
+## 增加 AIProxy 协议
+
+增加 AIProxy 协议不等于增加模型供应商：
+
+- 模型供应商：决定模型预设属于哪个 `provider`，维护模型列表和模型能力，使用 `provider/{Provider}/logo.svg` 作为头像。
+- AIProxy 协议：决定 AIProxy 渠道列表中是否出现该协议，最终由 AIProxy 根据 `channelId` 路由到对应 adaptor，使用 `channel-avatar/{avatar}.svg` 作为头像。
+
+如果只是新增模型预设，不一定要增加 AIProxy 协议。只有当 FastGPT 需要在 AIProxy 渠道列表中展示该协议时，才需要维护 `aiproxyChannels`。
+
+### 1. 查看 AIProxy 支持的协议并获取 channelId
+
+`channelId` 必须和 AIProxy 仓库中 [`core/model/chtype.go`](https://github.com/labring/aiproxy/blob/main/core/model/chtype.go) 定义的 `ChannelType` 数值一致。不要根据供应商名称猜测 `channelId`。
+
+在 AIProxy 仓库中执行：
+
+```bash
+rg -n "ChannelType.*=" core/model/chtype.go
+```
+
+例如：
+
+| AIProxy 类型              | ID   | FastGPT `channelId` |
+| ------------------------- | ---- | ------------------- |
+| `ChannelTypeOpenAI`       | `1`  | `1`                 |
+| `ChannelTypeAnthropic`    | `14` | `14`                |
+| `ChannelTypeAli`          | `17` | `17`                |
+| `ChannelTypeGoogleGemini` | `24` | `24`                |
+| `ChannelTypeDeepseek`     | `36` | `36`                |
+| `ChannelTypeDoubao`       | `40` | `40`                |
+| `ChannelTypeSiliconflow`  | `43` | `43`                |
+| `ChannelTypeAntLing`      | `54` | `54`                |
+
+完整列表以 AIProxy 主分支的 `core/model/chtype.go` 为准。
+
+### 2. 在 fastgpt-plugin 中增加协议声明
+
+确认 AIProxy 已经支持该协议后，在 `packages/infrastructure/src/static-data/models/model.ts` 的 `aiproxyChannels` 中增加声明：
+
+```ts
+export const aiproxyChannels: AIProxyChannelsType = [
+  {
+    channelId: 54,
+    name: {
+      en: 'Ant Ling',
+      'zh-CN': '蚂蚁百灵',
+      'zh-Hant': '螞蟻百靈'
+    },
+    avatar: 'antling'
+  }
+];
+```
+
+字段说明：
+
+| 字段        | 说明                                                                    |
+| ----------- | ----------------------------------------------------------------------- |
+| `channelId` | AIProxy `ChannelType` 对应的数字 ID，必须和 `core/model/chtype.go` 一致 |
+| `name`      | FastGPT 渠道列表中的多语言显示名                                        |
+| `avatar`    | 渠道头像文件名，不包含扩展名                                            |
+
+同时在 `channel-avatar/` 下增加头像文件：
+
+```text
+packages/infrastructure/src/static-data/models/channel-avatar/antling.svg
+```
+
+`avatar` 字段必须和 `channel-avatar/` 下的文件名一致。支持的头像扩展名包括 `svg`、`png`、`jpeg`、`webp`、`jpg`。
+
+如果 AIProxy 仓库还没有该协议，需要先在 AIProxy 中新增 `ChannelType` 和 adaptor，并确认 adaptor 已在 [`core/relay/adaptors/register.go`](https://github.com/labring/aiproxy/blob/main/core/relay/adaptors/register.go) 中被引入。FastGPT 插件侧只声明渠道展示信息，不负责实现 AIProxy 协议适配逻辑。
+
+## 校验
+
+修改完成后，至少运行：
+
+```bash
+pnpm typecheck
+```
+
+如果修改了较多供应商、模型 schema 或静态资源加载逻辑，再运行：
+
+```bash
+pnpm test
+```
+
+提交前检查 `packages/infrastructure/src/static-data/models/` 的 diff，确认没有误删其他供应商模型、没有填错模型类型，并且新增的 `provider` Logo 或 `channel-avatar` 头像文件已经提交。

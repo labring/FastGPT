@@ -21,6 +21,7 @@ We decided to extract system plugins into a separate repository:
 [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 
 Key goals of the split:
+
 1. Decoupling and modularization: not just system tools, but also other plugin types like Knowledge Base plugins, RAG, etc. can be hot-loaded modules.
 2. Independent versioning: FastGPT-plugin can release more frequently than FastGPT, and hot-swapping enables plugin updates without a full release.
 3. Lower development complexity: contributors only need to run the debug suite provided in FastGPT-plugin, without setting up the full FastGPT environment.
@@ -35,15 +36,14 @@ Key goals of the split:
 ## Project Structure
 
 - **modules**
-	- **tool** FastGPT system tools
-		- **api** API implementation logic
-		- **packages** System tool directory (each is a package)
-			- getTime
-			- dalle3
-			- ...
-		- **type** Type definitions
-		- **utils** Utilities
-	- **model** Model presets
+  - **tool** FastGPT system tools
+    - **api** API implementation logic
+    - **packages** System tool directory (each is a package)
+      - getTime
+      - dalle3
+      - ...
+    - **type** Type definitions
+    - **utils** Utilities
 - **scripts** Scripts (build, create new tools)
 - **sdk**: SDK definition for external consumers, published to npm
 - **runtime**: Runtime express service

@@ -1,0 +1,11 @@
+{
+  "title": "Plugin System",
+  "description": "FastGPT plugin system documentation",
+  "root": true,
+  "pages": [
+    "intro",
+    "model-presets",
+    "system-tool-development"
+  ],
+  "order": 2
+}

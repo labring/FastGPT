@@ -1,0 +1,301 @@
+---
+title: Add Model Presets
+description: Model preset notes for the FastGPT plugin system
+---
+
+Model presets are maintained in the `fastgpt-plugin` repository. They provide FastGPT with built-in model providers, model lists, model capabilities, and default request parameters. After FastGPT loads these static presets, users can select the corresponding models in model configuration, AIProxy channels, and plugin-related features.
+
+This page follows the plugin system code structure for version 1.0 and later. The old `modules/model/*` paths are no longer the primary maintenance entry point.
+
+## Related Directories
+
+```text
+packages/infrastructure/src/static-data/models/
+├── index.ts
+├── model.ts
+├── type.ts
+├── channel-avatar/
+└── provider/
+    └── {Provider}/
+        ├── index.ts
+        └── logo.svg
+```
+
+- `provider/{Provider}/index.ts`: model presets for one provider.
+- `index.ts`: registers all providers and generates `staticModelList` and provider lists.
+- `model.ts`: maintains provider display names in `ModelProviderMap` and AIProxy channels in `aiproxyChannels`.
+- `type.ts`: defines schemas for provider configs and model presets.
+- `provider/{Provider}/logo.svg`: provider logo.
+- `channel-avatar/`: AIProxy channel avatars.
+
+## Add a Model to an Existing Provider
+
+### 1. Confirm the provider is registered
+
+First check `packages/infrastructure/src/static-data/models/index.ts` and make sure the provider is imported and included in `staticModelProviderConfigs`:
+
+```ts
+import openai from './provider/OpenAI';
+
+export const staticModelProviderConfigs = [openai];
+```
+
+If you are only adding a model to an existing provider, you do not need to change `index.ts`.
+
+### 2. Update the provider model list
+
+Open the provider file, for example:
+
+```text
+packages/infrastructure/src/static-data/models/provider/OpenAI/index.ts
+```
+
+Add the model to the `list` array. Prefer cloning the closest model from the same provider, type, and family, then adjust the fields based on official documentation.
+
+Examples for all five model types:
+
+```ts
+import { ModelTypeEnum, type ProviderConfigType } from '../../type';
+
+const ttsVoices = [
+  {
+    label: 'Default voice',
+    value: 'default'
+  }
+];
+
+const models: ProviderConfigType = {
+  provider: 'ExampleProvider',
+  list: [
+    {
+      type: ModelTypeEnum.llm,
+      model: 'example-chat',
+      maxContext: 128000,
+      maxTokens: 16384,
+      quoteMaxToken: 120000,
+      maxTemperature: 1,
+      responseFormatList: ['text', 'json_schema'],
+      vision: true,
+      reasoning: false,
+      reasoningEffort: false,
+      toolChoice: true
+    },
+    {
+      type: ModelTypeEnum.embedding,
+      model: 'example-embedding',
+      defaultToken: 512,
+      maxToken: 8192,
+      normalization: true
+    },
+    {
+      type: ModelTypeEnum.rerank,
+      model: 'example-rerank',
+      maxToken: 8192
+    },
+    {
+      type: ModelTypeEnum.tts,
+      model: 'example-tts',
+      voices: ttsVoices
+    },
+    {
+      type: ModelTypeEnum.stt,
+      model: 'example-stt'
+    }
+  ]
+};
+
+export default models;
+```
+
+Common fields:
+
+| Field                | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `type`               | Model type from `ModelTypeEnum`: `llm`, `embedding`, `rerank`, `tts`, or `stt` |
+| `model`              | Actual model ID used in requests                                               |
+| `name`               | Optional display name; defaults to `model` when omitted                        |
+| `maxContext`         | Maximum LLM context length                                                     |
+| `maxTokens`          | Maximum LLM output length                                                      |
+| `quoteMaxToken`      | Maximum token budget FastGPT can use for quoted Knowledge Base content         |
+| `maxTemperature`     | Maximum temperature; use `null` when the model does not support temperature    |
+| `responseFormatList` | Supported response formats, such as `text`, `json_object`, and `json_schema`   |
+| `vision`             | Whether vision input is supported                                              |
+| `reasoning`          | Whether this is a reasoning model                                              |
+| `reasoningEffort`    | Whether reasoning effort can be configured                                     |
+| `toolChoice`         | Whether tool choice is supported                                               |
+| `fieldMap`           | Field-name mapping for non-standard OpenAI-compatible APIs                     |
+| `defaultConfig`      | Default request parameters sent with the model request                         |
+| `defaultToken`       | Default chunk token count for Embedding models                                 |
+| `maxToken`           | Maximum input token count for Embedding/Rerank models                          |
+| `normalization`      | Whether Embedding vectors should be normalized                                 |
+| `voices`             | Available voice list for TTS models                                            |
+
+`index.ts` automatically adds the following when building `staticModelList`:
+
+- `provider`: from the current provider config.
+- `name`: defaults to `model` when not explicitly set.
+- Some default LLM capability switches, such as Knowledge Base processing, classification, extraction, tool calling, and evaluation.
+
+### 3. Do not rely on model names alone
+
+Before adding or changing a model, verify it against official model docs, official model-list APIs, or official pricing/model pages. Do not rely on search results, third-party blogs, or aggregator pages as proof that a model exists.
+
+Recommended rules:
+
+- Model presets support five model types: `llm`, `embedding`, `rerank`, `tts`, and `stt`. Choose the type based on the model's real capabilities and fill in the fields required by that type's schema.
+- Do not remove preview, experimental, or dated models just because a stable-looking sibling exists. Remove them only when official docs mark them as deprecated, retired, unavailable, or no longer recommended.
+- For open catalogs such as OpenRouter, Ollama, HuggingFace, and Other, avoid deleting local placeholders or models users may customize.
+- Preserve the existing ordering style in each provider file. Newer or more capable models are usually placed first.
+
+## Add a New Model Provider
+
+Only add a provider directory when you need to support a completely new provider.
+
+### 1. Create the provider directory
+
+Create a directory under `provider/` using the provider identifier:
+
+```text
+packages/infrastructure/src/static-data/models/provider/NewProvider/
+├── index.ts
+└── logo.svg
+```
+
+`logo.svg` is the model provider avatar. When the plugin service initializes static model assets, it uploads `provider/{Provider}/logo.svg` as `models/{Provider}/logo`, and the `/models/get-providers` API returns that URL as the provider `avatar`.
+
+Basic `index.ts` structure:
+
+```ts
+import { ModelTypeEnum, type ProviderConfigType } from '../../type';
+
+const models: ProviderConfigType = {
+  provider: 'NewProvider',
+  list: [
+    {
+      type: ModelTypeEnum.llm,
+      model: 'new-provider-chat',
+      maxContext: 128000,
+      maxTokens: 8192,
+      quoteMaxToken: 120000,
+      maxTemperature: 1,
+      responseFormatList: ['text'],
+      vision: false,
+      reasoning: false,
+      reasoningEffort: false,
+      toolChoice: true
+    }
+  ]
+};
+
+export default models;
+```
+
+### 2. Register the provider
+
+Import it in `packages/infrastructure/src/static-data/models/index.ts` and add it to `staticModelProviderConfigs`:
+
+```ts
+import newProvider from './provider/NewProvider';
+
+export const staticModelProviderConfigs: ProviderConfigType[] = [newProvider];
+```
+
+### 3. Add provider display names
+
+Add multilingual display names to `ModelProviderMap` in `packages/infrastructure/src/static-data/models/model.ts`:
+
+```ts
+NewProvider: {
+  en: 'NewProvider',
+  'zh-CN': 'New Provider',
+  'zh-Hant': 'New Provider'
+}
+```
+
+If you do not add the provider to `ModelProviderMap`, the system falls back to the raw `provider` string as its display name. Formal providers should include multilingual display names.
+
+## Add an AIProxy Protocol
+
+Adding an AIProxy protocol is not the same as adding a model provider:
+
+- Model provider: decides which `provider` owns the model presets, maintains the model list and model capabilities, and uses `provider/{Provider}/logo.svg` as its avatar.
+- AIProxy protocol: decides whether the protocol appears in the AIProxy channel list. AIProxy routes requests to the corresponding adaptor by `channelId`, and FastGPT uses `channel-avatar/{avatar}.svg` as the channel avatar.
+
+If you are only adding model presets, you may not need to add an AIProxy protocol. Maintain `aiproxyChannels` only when FastGPT needs to display that protocol in the AIProxy channel list.
+
+### 1. Check AIProxy protocols and get channelId
+
+The `channelId` must match the `ChannelType` value defined in [`core/model/chtype.go`](https://github.com/labring/aiproxy/blob/main/core/model/chtype.go) in the AIProxy repository. Do not guess the `channelId` from the provider name.
+
+Run this in the AIProxy repository:
+
+```bash
+rg -n "ChannelType.*=" core/model/chtype.go
+```
+
+Examples:
+
+| AIProxy type              | ID   | FastGPT `channelId` |
+| ------------------------- | ---- | ------------------- |
+| `ChannelTypeOpenAI`       | `1`  | `1`                 |
+| `ChannelTypeAnthropic`    | `14` | `14`                |
+| `ChannelTypeAli`          | `17` | `17`                |
+| `ChannelTypeGoogleGemini` | `24` | `24`                |
+| `ChannelTypeDeepseek`     | `36` | `36`                |
+| `ChannelTypeDoubao`       | `40` | `40`                |
+| `ChannelTypeSiliconflow`  | `43` | `43`                |
+| `ChannelTypeAntLing`      | `54` | `54`                |
+
+Use the current `core/model/chtype.go` file on the AIProxy main branch as the source of truth.
+
+### 2. Add the protocol declaration in fastgpt-plugin
+
+After confirming AIProxy supports the protocol, add an entry to `aiproxyChannels` in `packages/infrastructure/src/static-data/models/model.ts`:
+
+```ts
+export const aiproxyChannels: AIProxyChannelsType = [
+  {
+    channelId: 54,
+    name: {
+      en: 'Ant Ling',
+      'zh-CN': '蚂蚁百灵',
+      'zh-Hant': '螞蟻百靈'
+    },
+    avatar: 'antling'
+  }
+];
+```
+
+Field reference:
+
+| Field       | Description                                                            |
+| ----------- | ---------------------------------------------------------------------- |
+| `channelId` | Numeric AIProxy `ChannelType` ID. It must match `core/model/chtype.go` |
+| `name`      | Multilingual display name in the FastGPT channel list                  |
+| `avatar`    | Channel avatar filename without the extension                          |
+
+Also add the avatar file under `channel-avatar/`:
+
+```text
+packages/infrastructure/src/static-data/models/channel-avatar/antling.svg
+```
+
+The `avatar` value must match the filename under `channel-avatar/`. Supported avatar extensions are `svg`, `png`, `jpeg`, `webp`, and `jpg`.
+
+If AIProxy does not support the protocol yet, add the `ChannelType` and adaptor in the AIProxy repository first, and confirm the adaptor is imported in [`core/relay/adaptors/register.go`](https://github.com/labring/aiproxy/blob/main/core/relay/adaptors/register.go). The FastGPT plugin side only declares channel display data; it does not implement AIProxy adaptor logic.
+
+## Validation
+
+After updating presets, run at least:
+
+```bash
+pnpm typecheck
+```
+
+If you changed many providers, model schemas, or static asset loading logic, also run:
+
+```bash
+pnpm test
+```
+
+Before submitting, review the diff under `packages/infrastructure/src/static-data/models/` and make sure no unrelated provider models were removed, model types are correct, and the new provider logo or `channel-avatar` file is included.
