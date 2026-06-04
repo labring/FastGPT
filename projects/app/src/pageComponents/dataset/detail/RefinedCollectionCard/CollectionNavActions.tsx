@@ -418,7 +418,7 @@ const CollectionNavActions = () => {
       {isApiDataset &&
         datasetDetail.permission.hasWritePer &&
         datasetDetail.status === DatasetStatusEnum.active && (
-          <Button onClick={() => setShowAPIFileSelectModal(true)}>{t('dataset:add')}</Button>
+          <Button onClick={() => setShowAPIFileSelectModal(true)}>{t('dataset:select')}</Button>
         )}
 
       {/* 配置按钮（database） */}
