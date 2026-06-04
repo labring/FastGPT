@@ -341,8 +341,10 @@ export class SystemToolRepo {
       }));
     }
 
+    const parentToolId = rawPluginId.split('/')[0];
+
     const versions = await pluginClient.listPluginVersions({
-      pluginId: rawPluginId,
+      pluginId: parentToolId,
       source
     });
 
