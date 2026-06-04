@@ -63,17 +63,34 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     }
   );
 
+  // dataset list folder ancestor IDs, used to distinguish list-folder clicks from collection-folder clicks
+  const datasetListFolderIds = useMemo(
+    () =>
+      new Set(
+        paths
+          .slice(0, -1)
+          .map((p) => p.parentId)
+          .filter(Boolean) as string[]
+      ),
+    [paths]
+  );
+
   const combinedCollectionPaths = useMemo(
-    () => [{ parentId: datasetDetail._id, parentName: datasetDetail.name }, ...collectionPaths],
-    [datasetDetail._id, datasetDetail.name, collectionPaths]
+    () => [
+      ...paths.slice(0, -1),
+      { parentId: datasetDetail._id, parentName: datasetDetail.name },
+      ...collectionPaths
+    ],
+    [paths, datasetDetail._id, datasetDetail.name, collectionPaths]
   );
 
   const dataCardPaths = useMemo(
     () => [
+      ...paths.slice(0, -1),
       { parentId: datasetDetail._id, parentName: datasetDetail.name },
       ...dataCardCollectionPaths
     ],
-    [datasetDetail._id, datasetDetail.name, dataCardCollectionPaths]
+    [paths, datasetDetail._id, datasetDetail.name, dataCardCollectionPaths]
   );
 
   const isDataCardTab = [TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab);
@@ -194,6 +211,8 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     router.replace({
                       query: { datasetId: query.datasetId, currentTab: TabEnum.collectionCard }
                     });
+                  } else if (datasetListFolderIds.has(id as string)) {
+                    router.push(`/dataset/list?parentId=${id}`);
                   } else {
                     router.replace({
                       query: {
@@ -217,6 +236,8 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     router.replace({
                       query: { datasetId: query.datasetId, currentTab: TabEnum.collectionCard }
                     });
+                  } else if (datasetListFolderIds.has(id as string)) {
+                    router.push(`/dataset/list?parentId=${id}`);
                   } else {
                     router.replace({ query: { ...router.query, parentId: id } });
                   }

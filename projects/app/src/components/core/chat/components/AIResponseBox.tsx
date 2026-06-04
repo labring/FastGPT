@@ -76,20 +76,22 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   isChatting,
   isLastResponseValue,
   isDisabled,
-  durationSeconds
+  durationSeconds,
+  defaultExpanded = false
 }: {
   content: string;
   isChatting: boolean;
   isLastResponseValue: boolean;
   isDisabled?: boolean;
   durationSeconds?: number;
+  defaultExpanded?: boolean;
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
   const isDone = !showAnimation;
 
   return (
-    <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
+    <Accordion allowToggle defaultIndex={defaultExpanded && isLastResponseValue ? 0 : undefined}>
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
         <AccordionButton {...reasoningAccordionButtonStyle}>
           <HStack spacing={2}>
@@ -536,7 +538,8 @@ const AIResponseBox = ({
   hideCiteIcon,
   hideCursor,
   durationSeconds,
-  citeSourceMap
+  citeSourceMap,
+  reasoningDefaultExpanded
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -548,6 +551,7 @@ const AIResponseBox = ({
   hideCursor?: boolean;
   durationSeconds?: number;
   citeSourceMap?: Map<string, CiteSourceInfo>;
+  reasoningDefaultExpanded?: boolean;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
@@ -577,6 +581,7 @@ const AIResponseBox = ({
         content={value.reasoning.content}
         isDisabled={disableStreamingInteraction}
         durationSeconds={durationSeconds}
+        defaultExpanded={reasoningDefaultExpanded}
       />
     );
   }
