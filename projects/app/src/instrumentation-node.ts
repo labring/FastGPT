@@ -24,7 +24,6 @@ export async function registerNodeInstrumentation() {
       { startTrainingQueue },
       { preLoadWorker },
       { loadSystemModels },
-      { getSystemTools },
       { trackTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
@@ -47,7 +46,6 @@ export async function registerNodeInstrumentation() {
       import('@/service/core/dataset/training/utils'),
       import('@fastgpt/service/worker/preload'),
       import('@fastgpt/service/core/ai/config/utils'),
-      import('@fastgpt/service/core/app/tool/controller'),
       import('@fastgpt/service/common/middle/tracks/processor'),
       import('@/service/common/bullmq'),
       import('@fastgpt/service/common/s3'),
@@ -160,13 +158,13 @@ export async function registerNodeInstrumentation() {
         logger,
         getErrText
       }),
-      runInitializationStep({
-        step: 'load-system-tools',
-        stage: InitialErrorEnum.PLUGIN_ERROR,
-        action: () => getSystemTools(),
-        logger,
-        getErrText
-      }),
+      // runInitializationStep({
+      //   step: 'load-system-tools',
+      //   stage: InitialErrorEnum.PLUGIN_ERROR,
+      //   action: () => getSystemTools(),
+      //   logger,
+      //   getErrText
+      // }),
       runInitializationStep({
         step: 'init-system-plugin-tags',
         stage: InitialErrorEnum.PLUGIN_ERROR,

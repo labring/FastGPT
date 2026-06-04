@@ -1,27 +1,21 @@
-import { getToolList } from '@/service/tool/data';
+import { getToolVersionList } from '@/service/tool/data';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 
-export type ToolListQuery = {};
+export type ToolListQuery = {
+  toolId?: string;
+};
 export type ToolListBody = {};
 
-export type ToolListResponse = { toolId: string; version: string }[];
+export type ToolListResponse = { toolId: string; version: string; etag?: string }[];
 
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
   res: ApiResponseType<any>
 ): Promise<ToolListResponse> {
-  const data = await getToolList();
+  const { toolId } = req.query;
 
-  return data
-    .filter((item) => {
-      if (item.parentId) return false;
-      return true;
-    })
-    .map(({ toolId, version }) => ({
-      toolId,
-      version: version ?? ''
-    }));
+  return getToolVersionList(toolId);
 }
 
 export default NextAPI(handler);

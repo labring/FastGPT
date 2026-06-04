@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type DefaultValues } from 'react-hook-form';
 import {
   Box,
   Button,
@@ -22,25 +22,28 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useTranslation } from 'next-i18next';
-import type { UpdateToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import type {
+  CreateAppToolBodyType,
+  UpdateWorkflowToolBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import {
   delAdminSystemTool,
   getAdminAllSystemAppTool,
   getAdminSystemToolDetail,
   postAdminCreateAppTypeTool,
-  putAdminUpdateTool
+  putAdminUpdateWorkflowTool
 } from '@/web/core/plugin/admin/tool/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
-export const defaultForm: UpdateToolBodyType = {
-  pluginId: '',
-  defaultInstalled: false,
+export const defaultForm: UpdateWorkflowToolBodyType = {
+  id: '',
   name: '',
   avatar: 'core/app/type/pluginFill',
   intro: '',
@@ -67,42 +70,41 @@ const WorkflowToolConfigModal = ({
 
   const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>([], false);
 
-  const { register, reset, setValue, watch, handleSubmit } = useForm<UpdateToolBodyType>({
-    defaultValues: defaultForm
+  const { register, reset, setValue, watch, handleSubmit } = useForm<UpdateWorkflowToolBodyType>({
+    defaultValues: defaultForm as DefaultValues<UpdateWorkflowToolBodyType>
   });
   const name = watch('name');
   const avatar = watch('avatar');
   const associatedPluginId = watch('associatedPluginId');
   const currentCost = watch('currentCost');
   const status = watch('status');
-  const defaultInstalled = watch('defaultInstalled');
+  const hasTokenFee = watch('hasTokenFee');
 
   React.useEffect(() => {
-    setValue('tagIds', selectedTags);
+    setValue('tags', selectedTags);
   }, [selectedTags, setValue]);
 
   useRequest(
     async () => {
       if (toolId) {
         const res = await getAdminSystemToolDetail({ toolId });
-        const form: UpdateToolBodyType = {
-          pluginId: res.id,
+        const form: UpdateWorkflowToolBodyType = {
+          id: res.id,
           status: res.status,
-          defaultInstalled: res.defaultInstalled,
           originCost: res.originCost,
           currentCost: res.currentCost,
           systemKeyCost: res.systemKeyCost,
           hasTokenFee: res.hasTokenFee,
-          inputListVal: res.inputListVal,
           name: res.name,
           avatar: res.avatar,
           intro: res.intro,
-          tagIds: res.tags || [],
-          associatedPluginId: res.associatedPluginId,
+          tags: res.tags || [],
           userGuide: res.userGuide || '',
-          author: res.author
+          author: res.author,
+          associatedPluginId: res.associatedPluginId
         };
         setSelectedTags(res.tags || []);
+        setSearchKey(res.associatedPluginId || '');
         return form;
       }
       return defaultForm;
@@ -161,21 +163,40 @@ const WorkflowToolConfigModal = ({
   });
 
   const { runAsync: onSubmit, loading: isSubmitting } = useRequest(
-    (data: UpdateToolBodyType) => {
-      if (!data.associatedPluginId) {
+    (data: UpdateWorkflowToolBodyType) => {
+      if (!isEdit && !data.associatedPluginId) {
         return Promise.reject(t('app:custom_plugin_associated_plugin_required'));
       }
+      const associatedPluginId = data.associatedPluginId;
 
-      const formatData: UpdateToolBodyType = {
+      const formatData: UpdateWorkflowToolBodyType = {
         ...data,
-        pluginId: toolId
+        id: toolId
       };
 
-      if (formatData.pluginId) {
-        return putAdminUpdateTool(formatData);
+      if (formatData.id) {
+        return putAdminUpdateWorkflowTool(formatData);
       }
 
-      return postAdminCreateAppTypeTool(formatData);
+      const createData: CreateAppToolBodyType = {
+        name: data.name || '',
+        avatar: data.avatar || '',
+        intro: data.intro || '',
+        status: data.status,
+        hasTokenFee: data.hasTokenFee,
+        originCost: data.originCost,
+        currentCost: data.currentCost,
+        systemKeyCost: data.systemKeyCost,
+        secretsVal: data.secretsVal,
+        tags: data.tags,
+        associatedPluginId: associatedPluginId!,
+        userGuide: data.userGuide,
+        author: data.author,
+        promoteTags: data.promoteTags,
+        hideTags: data.hideTags
+      };
+
+      return postAdminCreateAppTypeTool(createData);
     },
     {
       manual: true,
@@ -382,7 +403,7 @@ const WorkflowToolConfigModal = ({
                 {t('app:custom_plugin_plugin_status_label')}
               </Box>
               <Box flex={'1 0 0'}>
-                <MySelect<PluginStatusEnum>
+                <MySelect<PluginStatusType>
                   value={status}
                   w={'full'}
                   bg={'myGray.50'}
@@ -394,41 +415,24 @@ const WorkflowToolConfigModal = ({
                     },
                     { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
                   ]}
-                  onChange={(e) => {
-                    setValue('status', e);
-                    if (e !== PluginStatusEnum.Normal) {
-                      setValue('defaultInstalled', false);
-                    }
-                  }}
+                  onChange={(e) => setValue('status', e)}
                   fontWeight={'normal'}
                 />
               </Box>
             </HStack>
             <HStack mt={6}>
-              <Box flex={1} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-                {t('app:custom_plugin_default_installed_label')}
-              </Box>
-              <Switch
-                isChecked={defaultInstalled}
-                onChange={(e) => {
-                  const newDefaultInstalled = e.target.checked;
-                  setValue('defaultInstalled', newDefaultInstalled);
-                  if (newDefaultInstalled && status !== PluginStatusEnum.Normal) {
-                    setValue('status', PluginStatusEnum.Normal);
-                  }
-                }}
-              />
-            </HStack>
-            <HStack mt={6}>
-              <Box flex={1} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-                {t('app:custom_plugin_has_token_fee_label')}
-              </Box>
-              <Switch {...register('hasTokenFee')} />
-            </HStack>
-            <HStack mt={6}>
-              <Box flex={'0 0 160px'} color={'myGray.900'} fontWeight={'medium'} fontSize={'sm'}>
-                {t('app:custom_plugin_call_price_label')}
-              </Box>
+              <Flex
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                alignItems={'center'}
+              >
+                <Box as={'span'} lineHeight={'20px'}>
+                  {t('app:custom_plugin_call_price_label')}
+                </Box>
+                <QuestionTip ml={1} flexShrink={0} label={t('app:custom_plugin_call_price_tip')} />
+              </Flex>
               <Box flex={'1 0 0'}>
                 <MyNumberInput
                   value={currentCost ?? 0}
@@ -438,6 +442,26 @@ const WorkflowToolConfigModal = ({
                   step={0.1}
                   w={'full'}
                   h={9}
+                />
+              </Box>
+            </HStack>
+            <HStack mt={6}>
+              <Flex
+                flex={'0 0 160px'}
+                color={'myGray.900'}
+                fontWeight={'medium'}
+                fontSize={'sm'}
+                alignItems={'center'}
+              >
+                <Box as={'span'} lineHeight={'20px'}>
+                  {t('app:custom_plugin_has_token_fee_label')}
+                </Box>
+                <QuestionTip ml={1} flexShrink={0} label={t('app:toolkit_token_fee_tip')} />
+              </Flex>
+              <Box flex={'1 0 0'}>
+                <Switch
+                  isChecked={!!hasTokenFee}
+                  onChange={(e) => setValue('hasTokenFee', e.target.checked)}
                 />
               </Box>
             </HStack>

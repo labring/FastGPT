@@ -14,10 +14,6 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
-import type {
-  getToolVersionListProps,
-  getToolVersionResponse
-} from '@/pages/api/core/app/tool/getVersionList';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getMcpChildren } from './mcpTools';
 
@@ -97,6 +93,3 @@ export const getAppToolPaths = (data: GetPathProps) => {
 
 export const getToolPreviewNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
-
-export const getToolVersionList = (data: getToolVersionListProps) =>
-  POST<getToolVersionResponse>('/core/app/tool/getVersionList', data);

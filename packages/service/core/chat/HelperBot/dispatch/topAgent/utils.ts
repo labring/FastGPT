@@ -1,6 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getSystemToolsWithInstalled, getMyTools } from '../../../../app/tool/controller';
 import type { ExecutionPlanType, TopAgentGenerationAnswerType } from './type';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { MongoDataset } from '../../../../dataset/schema';
@@ -9,6 +8,8 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getUserAvaliableWorkflowTools } from '../../../../app/tool/workflowTool';
+import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 
 const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -71,31 +72,28 @@ ${dataset}
 `;
   };
 
+  const systemToolRepo = SystemToolRepo.getInstance();
+
   const [systemTools, myTools, myDatasets] = await Promise.all([
-    getSystemToolsWithInstalled({
-      teamId,
-      isRoot
-    }).then((res) =>
-      res
-        .filter((tool) => {
-          return tool.installed && !tool.parentId;
-        })
-        .map((tool) => {
+    systemToolRepo
+      .getSystemToolList({
+        sources: [
+          'system'
+          // teamId
+        ],
+        lang
+      })
+      .then((res) =>
+        res.map((tool) => {
           const toolId = tool.id;
-          const name =
-            typeof tool.name === 'string'
-              ? tool.name
-              : tool.name?.en || tool.name?.[lang] || '未命名';
-          const intro =
-            typeof tool.intro === 'string'
-              ? tool.intro
-              : tool.intro?.en || tool.intro?.[lang] || '';
+          const name = tool.name;
+          const intro = tool.intro;
           const description = tool.toolDescription || intro || '暂无描述';
 
           return `- **${toolId}** [工具]: ${name} - ${description}`;
         })
-    ),
-    getMyTools({ teamId, tmbId }).then((res) =>
+      ),
+    getUserAvaliableWorkflowTools({ teamId, tmbId }).then((res) =>
       res.map((tool) => {
         const toolId = tool._id;
         return `- **${toolId}** [工具]: ${tool.name} - ${tool.intro}`;

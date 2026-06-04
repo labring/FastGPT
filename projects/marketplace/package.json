@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit --pretty",
+    "test": "vitest run -c vitest.config.ts",
+    "test:watch": "vitest -c vitest.config.ts"
   },
   "engines": {
     "node": ">=20.19.0",
@@ -20,9 +24,10 @@
     "@chakra-ui/system": "catalog:",
     "@fastgpt/global": "workspace:*",
     "@fastgpt-sdk/otel": "workspace:*",
+    "@t3-oss/env-core": "catalog:",
+    "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
-    "@t3-oss/env-core": "catalog:",
     "axios": "catalog:",
     "i18next": "catalog:",
     "mongoose": "catalog:",

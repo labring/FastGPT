@@ -22,6 +22,7 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 
 // Mock dependencies for queue functionality
 vi.mock('@fastgpt/service/common/bullmq', () => ({
@@ -217,6 +218,45 @@ describe('App Delete API Integration', () => {
     });
   });
 
+  it('should immediately remove system tool association when deleting a workflow tool app', async () => {
+    const workflowToolApp = await MongoApp.create({
+      name: 'Workflow Tool App for API Delete',
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      type: AppTypeEnum.workflowTool,
+      modules: []
+    });
+    const pluginId = `commercial-api-delete-test-${Date.now()}`;
+
+    await MongoSystemTool.create({
+      pluginId,
+      customConfig: {
+        name: 'API Delete System Workflow Tool',
+        version: 'test-version',
+        associatedPluginId: String(workflowToolApp._id)
+      }
+    });
+
+    const mockQueue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-workflow-tool' })
+    };
+    mockGetQueue.mockReturnValue(mockQueue as any);
+
+    const result = await Call(handler, {
+      auth: rootUser,
+      query: { appId: String(workflowToolApp._id) }
+    });
+
+    expect(result.code).toBe(200);
+
+    const systemTool = await MongoSystemTool.findOne({ pluginId }).lean();
+    expect(systemTool).not.toBeNull();
+    expect(systemTool?.customConfig?.associatedPluginId).toBeUndefined();
+
+    await MongoSystemTool.deleteOne({ pluginId });
+    await MongoApp.deleteOne({ _id: workflowToolApp._id });
+  });
+
   it('should handle non-existent app gracefully', async () => {
     const nonExistentId = '507f1f77bcf86cd799439011';
 
@@ -376,6 +416,42 @@ describe('App Delete Data Cleanup Verification', () => {
       // 清理
       await cleanupTestData(app2Id, teamId);
       await MongoApp.deleteOne({ _id: app2Id });
+    });
+
+    it('should remove system tool association when deleting a workflow tool app', async () => {
+      const workflowToolApp = await MongoApp.create({
+        name: 'Workflow Tool App',
+        teamId,
+        tmbId: rootUser.tmbId,
+        type: AppTypeEnum.workflowTool,
+        modules: []
+      });
+      const workflowToolAppId = String(workflowToolApp._id);
+      const pluginId = `commercial-delete-test-${Date.now()}`;
+
+      await MongoSystemTool.create({
+        pluginId,
+        customConfig: {
+          name: 'System Workflow Tool',
+          version: 'test-version',
+          associatedPluginId: workflowToolAppId
+        }
+      });
+
+      await MongoApp.updateOne({ _id: workflowToolAppId }, { deleteTime: new Date() });
+
+      await appDeleteProcessor({
+        data: { teamId, appId: workflowToolAppId },
+        id: 'test-workflow-tool-cleanup-job'
+      });
+
+      const systemTool = await MongoSystemTool.findOne({ pluginId }).lean();
+      expect(systemTool).not.toBeNull();
+      expect(systemTool?.customConfig?.associatedPluginId).toBeUndefined();
+      expect(systemTool?.customConfig?.name).toBe('System Workflow Tool');
+      expect(await MongoApp.countDocuments({ _id: workflowToolAppId })).toBe(0);
+
+      await MongoSystemTool.deleteOne({ pluginId });
     });
   });
 
@@ -576,6 +652,7 @@ describe('App Delete Data Cleanup Verification', () => {
         { session }
       );
       await MongoAppLogKeys.deleteMany({ appId }, { session });
+      await MongoSystemTool.deleteMany({ 'customConfig.associatedPluginId': appId }, { session });
       await MongoChatSetting.deleteMany({ teamId }, { session });
     });
   }

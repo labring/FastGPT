@@ -4,32 +4,17 @@ import {
   GetMarketplaceToolsBodySchema,
   MarketplaceToolDetailSchema,
   MarketplaceToolsResponseSchema,
+  UploadMarketplacePkgBodySchema,
+  UploadMarketplacePkgResponseSchema,
+  DeleteMarketplacePkgBodySchema,
+  DeleteMarketplacePkgResponseSchema,
   GetMarketplaceToolTagsResponseSchema,
-  GetSystemInstalledPluginsQuerySchema,
-  GetSystemInstalledPluginsResponseSchema
+  GetMarketplaceToolVersionsQuerySchema,
+  GetMarketplaceToolVersionsResponseSchema
 } from './api';
 import { TagsMap } from '../../../tag';
 
 export const MarketplacePath: OpenAPIPath = {
-  '/core/plugin/admin/marketplace/installed': {
-    get: {
-      summary: '获取系统已安装插件的 ID 列表(管理员视角)',
-      tags: [TagsMap.pluginMarketplace],
-      requestParams: {
-        query: GetSystemInstalledPluginsQuerySchema
-      },
-      responses: {
-        200: {
-          description: '获取系统已安装插件的 ID 列表成功',
-          content: {
-            'application/json': {
-              schema: GetSystemInstalledPluginsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
   '/marketplace/api/tool/list': {
     get: {
       summary: '获取工具列表',
@@ -78,6 +63,75 @@ export const MarketplacePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetMarketplaceToolTagsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/tool/versions': {
+    get: {
+      summary: '获取工具版本列表',
+      tags: [TagsMap.pluginMarketplace],
+      requestParams: {
+        query: GetMarketplaceToolVersionsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '获取工具版本列表成功',
+          content: {
+            'application/json': {
+              schema: GetMarketplaceToolVersionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/admin/pkg/upload': {
+    post: {
+      summary: '上传 marketplace 插件 pkg',
+      tags: [TagsMap.pluginMarketplace],
+      requestBody: {
+        description: 'multipart/form-data, file 字段为 .pkg 文件',
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: UploadMarketplacePkgBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '上传 marketplace 插件 pkg 成功',
+          content: {
+            'application/json': {
+              schema: UploadMarketplacePkgResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/admin/pkg/delete': {
+    post: {
+      summary: '删除 marketplace 插件 pkg',
+      tags: [TagsMap.pluginMarketplace],
+      requestBody: {
+        description: '指定 pluginId、version 与来源删除某个插件版本',
+        required: true,
+        content: {
+          'application/json': {
+            schema: DeleteMarketplacePkgBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '删除 marketplace 插件 pkg 成功',
+          content: {
+            'application/json': {
+              schema: DeleteMarketplacePkgResponseSchema
             }
           }
         }

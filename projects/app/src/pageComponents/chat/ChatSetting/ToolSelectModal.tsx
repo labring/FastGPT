@@ -20,7 +20,10 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
@@ -30,6 +33,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
+import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
@@ -175,7 +179,7 @@ const RenderList = React.memo(function RenderList({
 }: Props & {
   templates: NodeTemplateListItemType[];
   setParentId: (parentId: ParentIdType) => any;
-  allTags: Array<{ tagId: string; tagName: any }>;
+  allTags: SystemPluginToolTagType[];
 }) {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -187,6 +191,7 @@ const RenderList = React.memo(function RenderList({
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
+      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       /* Invalid plugin check
         1. Reference type. but not tool description;
@@ -201,6 +206,7 @@ const RenderList = React.memo(function RenderList({
         chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
       const invalidFileInput = oneFileInput && !!canUploadFile;
       if (
+        !isToolSetTemplate &&
         res.inputs.some(
           (input) =>
             (input.renderTypeList.length === 1 &&

@@ -1,5 +1,6 @@
 import z from 'zod';
 import { i18nT } from '../../common/i18n/utils';
+import { I18nUnionStringSchema } from '../../common/i18n/type';
 
 export const I18nStringSchema = z.object({
   en: z.string(),
@@ -11,19 +12,17 @@ export const I18nUnioStringSchema = z.union([I18nStringSchema, z.string()]);
 
 export const PluginToolTagSchema = z.object({
   tagId: z.string(),
-  tagName: I18nUnioStringSchema,
+  tagName: I18nUnionStringSchema,
   tagOrder: z.number(),
   isSystem: z.boolean()
 });
+
 export type SystemPluginToolTagType = z.infer<typeof PluginToolTagSchema>;
 
-export const PluginStatusSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+export const PluginStatusSchema = z.enum(['Normal', 'SoonOffline', 'Offline']);
+export const PluginStatusEnum = PluginStatusSchema.enum;
 export type PluginStatusType = z.infer<typeof PluginStatusSchema>;
-export enum PluginStatusEnum {
-  Normal = 1,
-  SoonOffline = 2,
-  Offline = 3
-}
+
 export const PluginStatusMap = {
   [PluginStatusEnum.Normal]: {
     label: i18nT('app:toolkit_status_normal'),

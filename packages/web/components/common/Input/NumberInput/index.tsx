@@ -7,9 +7,10 @@ import {
   type NumberInputProps,
   type NumberInputFieldProps
 } from '@chakra-ui/react';
-import React from 'react';
+import React, { useRef } from 'react';
 import MyIcon from '../../Icon';
 import { type UseFormRegister } from 'react-hook-form';
+import { getNumberInputValue } from './utils';
 
 type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   onChange?: (e?: number) => any;
@@ -22,6 +23,7 @@ type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
 };
 
 const MyNumberInput = (props: Props) => {
+  const isBlurFormattingRef = useRef(false);
   const {
     register,
     name,
@@ -37,7 +39,12 @@ const MyNumberInput = (props: Props) => {
     <NumberInput
       {...restProps}
       onBlur={(e) => {
-        const numE = e.target.value === '' ? '' : Number(e.target.value);
+        isBlurFormattingRef.current = true;
+        setTimeout(() => {
+          isBlurFormattingRef.current = false;
+        });
+
+        const numE = getNumberInputValue(e.target.value, false);
         if (onBlur) {
           if (numE === '') {
             // @ts-ignore
@@ -65,7 +72,9 @@ const MyNumberInput = (props: Props) => {
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : Number(e);
+        const numE = getNumberInputValue(e, !isBlurFormattingRef.current);
+        isBlurFormattingRef.current = false;
+
         if (onChange) {
           if (numE === '') {
             // @ts-ignore

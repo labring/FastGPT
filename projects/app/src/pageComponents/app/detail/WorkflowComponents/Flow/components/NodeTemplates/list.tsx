@@ -26,7 +26,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
-  AppNodeFlowNodeTypeMap,
   isNestedParentNodeType,
   isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -81,6 +80,8 @@ const NodeTemplateListItem = ({
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
+  const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const showExpandArrow = template.isFolder || isSystemToolSet;
 
   return (
     <MyTooltip
@@ -178,8 +179,7 @@ const NodeTemplateListItem = ({
             {t(template.name as any)}
           </Box>
         </Box>
-        {/* Folder right arrow */}
-        {template.isFolder && (
+        {showExpandArrow && (
           <Box
             color={'myGray.500'}
             _hover={{
@@ -237,10 +237,22 @@ const NodeTemplateList = ({
       try {
         const templateNode = await (async () => {
           try {
-            if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
+            const shouldLoadPreviewNode = [
+              FlowNodeTypeEnum.tool,
+              FlowNodeTypeEnum.toolSet,
+              FlowNodeTypeEnum.appModule,
+              FlowNodeTypeEnum.pluginModule
+            ].includes(template.flowNodeType);
+
+            if (shouldLoadPreviewNode) {
               const node = await getToolPreviewNode({ appId: template.id });
               return {
                 ...node,
+                flowNodeType:
+                  template.flowNodeType === FlowNodeTypeEnum.toolSet
+                    ? FlowNodeTypeEnum.toolSet
+                    : node.flowNodeType,
+                isFolder: template.flowNodeType === FlowNodeTypeEnum.toolSet ? true : node.isFolder,
                 colorSchema: node.colorSchema ?? getColorSchemaByFlowNodeType(node.flowNodeType)
               };
             }

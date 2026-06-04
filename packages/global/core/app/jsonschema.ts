@@ -1,6 +1,11 @@
 import { WorkflowIOValueTypeEnum } from '../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../workflow/node/constant';
-import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../workflow/type/io';
+import type { InputConfigType } from '../workflow/type/io';
+import {
+  InputConfigInputTypeEnum,
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '../workflow/type/io';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -53,7 +58,9 @@ export const JsonSchemaPropertiesItemSchema = z.object({
   examples: z.array(z.any()).optional(), // 示例
 
   // 自定义扩展（FastGPT 专用）
-  'x-tool-description': z.string().optional() // 工具描述
+  'x-tool-description': z.string().optional(), // 工具描述
+  toolDescription: z.string().optional(), // 工具描述 for System Tool
+  isSecret: z.boolean().optional() // System Tool
 });
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
@@ -100,10 +107,18 @@ export const getNodeInputTypeFromSchemaInputType = ({
 };
 const getNodeInputRenderTypeFromSchemaInputType = ({
   type,
+  items,
   enum: enumList,
   minimum,
   maximum
 }: JsonSchemaPropertiesItemType) => {
+  if (type === 'array' && items?.enum && items.enum.length > 0) {
+    return {
+      value: [],
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+      list: items.enum.map((item: any) => ({ label: item, value: item }))
+    };
+  }
   if (enumList && enumList.length > 0) {
     return {
       value: enumList[0],
@@ -130,38 +145,46 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
 };
+
 export const jsonSchema2NodeInput = ({
-  jsonSchema,
+  jsonSchema = { type: 'Object' },
   schemaType
 }: {
   jsonSchema?: JSONSchemaInputType;
-  schemaType: 'mcp' | 'http';
+  schemaType: 'mcp' | 'http' | 'systemTool';
 }): FlowNodeInputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
-    label: key,
+    label: value.title || key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
-    toolDescription: schemaType === 'http' ? value['x-tool-description'] : value.description || key,
+    toolDescription:
+      schemaType === 'http'
+        ? value['x-tool-description']
+        : schemaType === 'systemTool'
+          ? value['toolDescription']
+          : value.description || key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)
   }));
 };
-export const jsonSchema2NodeOutput = (
-  jsonSchema?: JSONSchemaOutputType
-): FlowNodeOutputItemType[] => {
+
+export const jsonSchema2NodeOutput = ({
+  jsonSchema
+}: { jsonSchema?: JSONSchemaOutputType } = {}): FlowNodeOutputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     id: key,
     key,
-    label: key,
+    label: value.title || key,
     required: jsonSchema?.required?.includes(key),
     type: FlowNodeOutputTypeEnum.static,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description
   }));
 };
+
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
     const data = (() => {
@@ -258,4 +281,48 @@ export const getSchemaValueType = (schema: { type: string; items?: { type: strin
   }
 
   return schema?.type as WorkflowIOValueTypeEnum;
+};
+
+export const jsonSchema2SecretInput = ({
+  jsonSchema = { type: 'Object' }
+}: {
+  jsonSchema?: JSONSchemaInputType;
+}): InputConfigType[] | undefined => {
+  if (!jsonSchema) return undefined;
+  return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
+    const workflowInputType = getNodeInputTypeFromSchemaInputType({
+      type: value.type,
+      arrayItems: value.items
+    });
+    // inputType => inputConfig 里面的 inputType
+    const inputType = (() => {
+      if (value?.isSecret === true) return InputConfigInputTypeEnum.secret;
+      switch (workflowInputType) {
+        case WorkflowIOValueTypeEnum.string:
+          return InputConfigInputTypeEnum.input;
+        case WorkflowIOValueTypeEnum.number:
+          return InputConfigInputTypeEnum.numberInput;
+        case WorkflowIOValueTypeEnum.boolean:
+          return InputConfigInputTypeEnum.switch;
+        case WorkflowIOValueTypeEnum.object:
+          return InputConfigInputTypeEnum.input;
+        case WorkflowIOValueTypeEnum.arrayString:
+        case WorkflowIOValueTypeEnum.arrayNumber:
+        case WorkflowIOValueTypeEnum.arrayBoolean:
+        case WorkflowIOValueTypeEnum.arrayObject:
+        case WorkflowIOValueTypeEnum.arrayAny:
+          return InputConfigInputTypeEnum.select;
+        case WorkflowIOValueTypeEnum.any:
+          return InputConfigInputTypeEnum.input;
+      }
+    })();
+    return {
+      inputType,
+      key,
+      label: value.title ?? key,
+      description: value.description,
+      required: jsonSchema?.required?.includes(key),
+      ...(value.enum ? { list: value.enum.map((v) => ({ label: v, value: v })) } : {})
+    } satisfies InputConfigType;
+  });
 };

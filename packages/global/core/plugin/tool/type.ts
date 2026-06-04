@@ -1,10 +1,9 @@
 import z from 'zod';
 import { PluginStatusEnum, PluginStatusSchema } from '../type';
-import { UserTagsEnum } from '../../../support/user/type';
+import { UserTagsSchema } from '../../../support/user/type';
 
 // 无论哪种 Tool，都会有这一层配置
 export const SystemToolBasicConfigSchema = z.object({
-  defaultInstalled: z.boolean().optional(),
   status: PluginStatusSchema.optional().default(PluginStatusEnum.Normal),
   originCost: z.number().optional(),
   currentCost: z.number().optional(),
@@ -13,10 +12,11 @@ export const SystemToolBasicConfigSchema = z.object({
   pluginOrder: z.number().optional()
 });
 
+/** SystemTool 配置数据库里面的的存储结构 */
 export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.extend({
   pluginId: z.string(),
-  promoteTags: z.array(UserTagsEnum).nullish(),
-  hideTags: z.array(UserTagsEnum).nullish(),
+  promoteTags: z.array(UserTagsSchema).nullish(),
+  hideTags: z.array(UserTagsSchema).nullish(),
   customConfig: z
     .object({
       name: z.string(),
@@ -30,8 +30,10 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
       author: z.string().optional()
     })
     .optional(),
-  inputListVal: z.record(z.string(), z.any()).optional(),
+  secretsVal: z.record(z.string(), z.any()).nullish(),
 
+  /** @deprecated */
+  inputListVal: z.record(z.string(), z.any()).optional(),
   /** @deprecated */
   isActive: z.boolean().optional(),
   /** @deprecated */

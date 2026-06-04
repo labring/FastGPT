@@ -1,27 +1,47 @@
-import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { I18nStringType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 
-export type ToolDetailExtendedType = ToolDetailType & {
-  versionList?: Array<{
-    value: string;
-    description?: string;
-    inputs?: Array<FlowNodeInputItemType>;
-    outputs?: Array<FlowNodeOutputItemType>;
-  }>;
+export type ToolDetailVersionType = {
+  version: string;
+  versionDescription?: string;
+};
+
+export type ToolDetailExtendedType = {
+  pluginId: string;
+  id?: string;
+  toolId?: string;
+  parentId?: string;
+  version?: string;
+  name: I18nStringType | string;
+  intro?: I18nStringType | string;
+  description?: I18nStringType | string;
+  icon?: string;
+  avatar?: string;
+  author?: string;
+  tags?: string[];
+  currentCost?: number;
+  systemKeyCost?: number;
+  hasSystemSecret?: boolean;
+  secrets?: unknown[];
+  secretInputConfig?: unknown[];
+  inputList?: unknown[];
   courseUrl?: string;
   readme?: string;
-  userGuide?: string;
-  currentCost?: number;
-  hasSystemSecret?: boolean;
-  secretInputConfig?: Array<{}>;
-  inputList?: Array<FlowNodeInputItemType>;
-  intro?: string;
+  readmeUrl?: string;
+  userGuide?: string | null;
+  versionList: {
+    inputs: FlowNodeInputItemType[];
+    outputs: FlowNodeOutputItemType[];
+  }[];
 };
 
 export type ToolDetailResponseType = {
-  tools: Array<ToolDetailExtendedType & { readme: string }>;
-  downloadUrl: string;
+  tools: ToolDetailExtendedType[];
+  downloadUrl?: string;
+  downloadCount?: number;
 };
+
+export type ToolDetailFetchResponse = ToolDetailResponseType | Record<string, any>;

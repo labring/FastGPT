@@ -1,6 +1,6 @@
 import { getToolList } from '@/service/tool/data';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
-import { ToolSimpleSchema, type ToolSimpleType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { type ToolListItemType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
@@ -12,11 +12,16 @@ export type ToolListBody = PaginationProps<{
   tags?: string[];
 }>;
 
-export type ToolListItem = ToolSimpleType & {
+export type ToolListItem = ToolListItemType & {
   downloadCount: number;
+  downloadUrl: string;
+  toolId: string;
 };
 
 export type ToolListResponse = PaginationResponse<ToolListItem>;
+
+const getToolTags = (item: { tags?: readonly string[] | null }): readonly string[] =>
+  Array.isArray(item.tags) ? item.tags : [];
 
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
@@ -39,15 +44,16 @@ async function handler(
       ).includes(searchKey)
     )
       return false;
-    if (tags && !tags.some((tag) => (item.tags as string[]).includes(tag))) return false;
+    if (tags && !tags.some((tag) => getToolTags(item).includes(tag))) return false;
     return true;
   });
 
   return {
     list: filteredData.slice(offset, offset + pageSize).map((item) => ({
-      ...ToolSimpleSchema.parse(item),
+      ...item,
+      hasSecret: !!item?.secretSchema?.properties?.length,
       downloadCount: item.downloadCount,
-      downloadUrl: getPkgdownloadURL(item.toolId)
+      downloadUrl: item.downloadUrl || getPkgdownloadURL(item.toolId)
     })),
     total: filteredData.length
   };

@@ -5,7 +5,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 
 export type ToolCardItemType = {
   id: string;
@@ -15,10 +15,14 @@ export type ToolCardItemType = {
   author?: string;
   tags?: string[] | null;
   downloadUrl?: string;
-  status?: number;
+  status?: PluginStatusType;
   installed?: boolean;
   update?: boolean;
+  version?: string;
+  etag?: string;
   downloadCount?: number;
+  associatedPluginId?: string;
+  source?: string;
 };
 
 /**
@@ -36,17 +40,19 @@ const ToolCard = ({
   onInstall,
   onDelete,
   onUpdate,
-  onClickCard
+  onClickCard,
+  showActionButton = true
 }: {
   item: ToolCardItemType;
   systemTitle?: string;
   isInstallingOrDeleting?: boolean;
   isUpdating?: boolean;
   mode: 'admin' | 'team' | 'marketplace';
-  onInstall: () => Promise<void>;
+  onInstall?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   onUpdate?: () => Promise<void>;
   onClickCard?: () => void;
+  showActionButton?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
@@ -87,17 +93,18 @@ const ToolCard = ({
   const statusLabel = useMemo(() => {
     if (mode === 'marketplace') return null;
 
-    const pluginStatusMap: Record<number, { label: string; color: string; icon?: string } | null> =
-      {
-        [PluginStatusEnum.Offline]: {
-          label: t('app:toolkit_status_offline'),
-          color: 'red.600'
-        },
-        [PluginStatusEnum.SoonOffline]: {
-          label: t('app:toolkit_status_soon_offline'),
-          color: 'yellow.600'
-        }
-      };
+    const pluginStatusMap: Partial<
+      Record<PluginStatusType, { label: string; color: string; icon?: string } | null>
+    > = {
+      [PluginStatusEnum.Offline]: {
+        label: t('app:toolkit_status_offline'),
+        color: 'red.600'
+      },
+      [PluginStatusEnum.SoonOffline]: {
+        label: t('app:toolkit_status_soon_offline'),
+        color: 'yellow.600'
+      }
+    };
 
     if (mode === 'admin') {
       return item.installed
@@ -141,9 +148,13 @@ const ToolCard = ({
       }}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
-        '& .install-button': {
-          display: 'flex'
-        },
+        ...(showActionButton
+          ? {
+              '& .install-button': {
+                display: 'flex'
+              }
+            }
+          : {}),
         '& .update-button': {
           display: 'flex'
         },
@@ -276,21 +287,21 @@ const ToolCard = ({
         </Flex>*/}
 
         <Flex gap={2} alignItems={'center'} ml={'auto'}>
-          {mode === 'marketplace' ? (
+          {showActionButton && mode === 'marketplace' ? (
             <Button
               className="install-button"
               size={'sm'}
               variant={'primary'}
               onClick={(e) => {
                 e.stopPropagation();
-                onInstall();
+                onInstall?.();
               }}
               isLoading={isInstallingOrDeleting}
               {...(!isInstallingOrDeleting ? { display: 'none' } : {})}
             >
               {t('common:Download')}
             </Button>
-          ) : (
+          ) : showActionButton ? (
             <Button
               className="install-button"
               size={'sm'}
@@ -303,7 +314,7 @@ const ToolCard = ({
                     return onDelete();
                   }
                 } else {
-                  return onInstall();
+                  return onInstall?.();
                 }
               }}
               isLoading={isInstallingOrDeleting}
@@ -312,7 +323,7 @@ const ToolCard = ({
             >
               {item.installed ? t('app:toolkit_uninstall') : t('app:toolkit_install')}
             </Button>
-          )}
+          ) : null}
 
           {/* Update button for admin mode when update is available */}
           {item.update && mode === 'admin' && onUpdate && (

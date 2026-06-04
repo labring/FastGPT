@@ -20,13 +20,13 @@ import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
 import Markdown from '../../../common/Markdown';
-import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
 import { useTableMultipleSelect } from '../../../../hooks/useTableMultipleSelect';
 import {
   ParamSection,
   SubToolAccordionItem,
   useToolDetail,
-  drawerScrollbarStyles
+  drawerScrollbarStyles,
+  type ToolDetailFetchResponse
 } from './ToolDetail';
 
 type ViewMode = 'list' | 'detail';
@@ -37,7 +37,7 @@ interface BatchUpdateDrawerProps {
   updatableTools: ToolCardItemType[];
   onBatchUpdate: (toolIds: string[]) => Promise<void>;
   isBatchUpdating: boolean;
-  onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
+  onFetchDetail?: (toolId: string) => Promise<ToolDetailFetchResponse>;
 }
 
 const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({

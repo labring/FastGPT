@@ -1,67 +1,79 @@
-import type {
-  NodeToolConfigType,
-  FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import {
-  appData2FlowNodeIO,
-  pluginData2FlowNodeIO,
-  toolData2FlowNodeIO,
-  toolSetData2FlowNodeIO
-} from '@fastgpt/global/core/workflow/utils';
-import { MongoApp } from '../schema';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
-import {
-  checkIsLatestVersion,
-  getAppLatestVersion,
-  getAppVersionById
-} from '../version/controller';
-import type {
-  AppToolRuntimeType,
-  AppToolTemplateItemType
-} from '@fastgpt/global/core/app/tool/type';
-import { MongoSystemTool } from '../../plugin/tool/systemToolSchema';
-import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import {
-  FlowNodeTemplateTypeEnum,
-  NodeInputKeyEnum
-} from '@fastgpt/global/core/workflow/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { APIGetSystemToolList } from './api';
-import { Types } from '../../../common/mongo';
-import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type {
+  FlowNodeTemplateType,
+  NodeToolConfigType
+} from '@fastgpt/global/core/workflow/type/node';
+import {
+  pluginData2FlowNodeIO,
+  toolSetData2FlowNodeIO,
+  toolData2FlowNodeIO,
+  appData2FlowNodeIO
+} from '@fastgpt/global/core/workflow/utils';
+import { Types } from 'mongoose';
 import { getMCPChildren } from '../mcp';
-import { cloneDeep } from 'lodash';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { getCachedData } from '../../../common/cache';
-import { SystemCacheKeyEnum } from '../../../common/cache/type';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { MongoTeamInstalledPlugin } from '../../plugin/schema/teamInstalledPluginSchema';
-import { MongoResourcePermission } from '../../../support/permission/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { getGroupsByTmbId } from '../../../support/permission/memberGroup/controllers';
-import { getOrgIdSetWithParentByTmbId } from '../../../support/permission/org/controllers';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { MongoApp } from '../schema';
+import { getAppVersionById, checkIsLatestVersion } from '../version/controller';
+import { getToolPreviewNode } from './presenter';
+import type {
+  WorkflowTemplateBasicType,
+  WorkflowTemplateType
+} from '@fastgpt/global/core/workflow/type';
+import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import type { UserTagsType } from '@fastgpt/global/support/user/type';
 
-type ChildAppType = AppToolTemplateItemType & {
+type AppToolType = WorkflowTemplateType & {
+  status?: PluginStatusType;
+  // FastGPT-plugin tool
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+
+  // Admin workflow tool
+  associatedPluginId?: string;
+  userGuide?: string;
+  readmeUrl?: string;
+
+  // commercial plugin config
+  originCost?: number; // n points/one time
+  currentCost?: number;
+  systemKeyCost?: number;
+  hasTokenFee?: boolean;
+  pluginOrder?: number;
+
+  tags?: string[] | null;
+  isOfficial?: boolean;
+
+  // Admin config
+  inputList?: FlowNodeInputItemType['inputList'];
+  inputListVal?: Record<string, any>;
+  hasSystemSecret?: boolean;
+
+  // User tag filtering
+  hideTags?: UserTagsType[] | null;
+  promoteTags?: UserTagsType[] | null;
+
+  /** @deprecated */
+  isActive?: boolean; //use tags instead
+  /** @deprecated */
+  templateType?: string;
+} & {
   teamId?: string;
   tmbId?: string;
   workflow?: WorkflowTemplateBasicType;
@@ -69,283 +81,25 @@ type ChildAppType = AppToolTemplateItemType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
-export const getMyTools = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
-  // Get team all app permissions
-  const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    MongoResourcePermission.find({
-      resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: {
-        $exists: true
-      }
-    }).lean(),
-    getGroupsByTmbId({
-      tmbId,
-      teamId
-    }).then((item) => {
-      const map = new Map<string, 1>();
-      item.forEach((item) => {
-        map.set(String(item._id), 1);
-      });
-      return map;
-    }),
-    getOrgIdSetWithParentByTmbId({
-      teamId,
-      tmbId
-    })
-  ]);
-  // Get my permissions
-  const myPerList = roleList.filter(
-    (item) =>
-      String(item.tmbId) === String(tmbId) ||
-      myGroupMap.has(String(item.groupId)) ||
-      myOrgSet.has(String(item.orgId))
-  );
-
-  const myApps: {
-    _id: string;
-    name: string;
-    intro?: string;
-    tmbId: string;
-    type: AppTypeEnum;
-    parentId?: ParentIdType;
-    inheritPermission?: boolean;
-  }[] = await MongoApp.find(
-    { teamId, type: { $in: [AppTypeEnum.httpToolSet, AppTypeEnum.mcpToolSet] }, deleteTime: null },
-    '_id name intro tmbId type parentId inheritPermission'
-  ).lean();
-
-  // Add app permission and filter apps by read permission
-  const formatApps = myApps
-    .map((app) => {
-      const { Per, privateApp } = (() => {
-        const getPer = (appId: string) => {
-          const tmbRole = myPerList.find(
-            (item) => String(item.resourceId) === appId && !!item.tmbId
-          )?.permission;
-          const groupAndOrgRole = sumPer(
-            ...myPerList
-              .filter(
-                (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
-              )
-              .map((item) => item.permission)
-          );
-
-          return new AppPermission({
-            role: tmbRole ?? groupAndOrgRole,
-            isOwner: String(app.tmbId) === String(tmbId)
-          });
-        };
-
-        const getClbCount = (appId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
-        };
-
-        // Inherit app, check parent folder clb and it's own clb
-        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-          return {
-            Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
-            privateApp: getClbCount(String(app.parentId)) <= 1
-          };
-        }
-
-        return {
-          Per: getPer(String(app._id)),
-          privateApp: getClbCount(String(app._id)) <= 1
-        };
-      })();
-
-      return {
-        ...app,
-        parentId: app.parentId,
-        permission: Per,
-        private: privateApp
-      };
-    })
-    .filter((app) => app.permission.hasReadPer);
-
-  return formatApps;
-};
-
-export const getSystemTools = () => getCachedData(SystemCacheKeyEnum.systemTool);
-
-export const getSystemToolsWithInstalled = async ({
-  teamId,
-  isRoot,
-  userTags = []
-}: {
-  teamId: string;
-  isRoot: boolean;
-  userTags?: string[];
-}): Promise<(AppToolTemplateItemType & { installed: boolean })[]> => {
-  const [tools, { installedSet, uninstalledSet }] = await Promise.all([
-    getSystemTools(),
-    MongoTeamInstalledPlugin.find({ teamId, pluginType: 'tool' }, 'pluginId installed')
-      .lean()
-      .then((res) => {
-        const installedSet = new Set<string>();
-        const uninstalledSet = new Set<string>();
-        res.forEach((item) => {
-          if (item.installed) {
-            installedSet.add(item.pluginId);
-          } else {
-            uninstalledSet.add(item.pluginId);
-          }
-        });
-        return { installedSet, uninstalledSet };
-      })
-  ]);
-
-  return tools
-    .filter((tool) => {
-      // Filter out tools hidden by hideTags
-      if (userTags.length > 0 && tool.hideTags && tool.hideTags.length > 0) {
-        return !tool.hideTags.some((hideTag) => userTags.includes(hideTag));
-      }
-      return true;
-    })
-    .map((tool) => {
-      const installed = (() => {
-        // 优先级1: 明确记录
-        if (installedSet.has(tool.id)) {
-          return true;
-        }
-        // 优先级2: Root用户
-        if (isRoot && !uninstalledSet.has(tool.id)) {
-          return true;
-        }
-        // 优先级3: 基于 promoteTags 的自动预安装
-        if (
-          userTags.length > 0 &&
-          tool.promoteTags &&
-          tool.promoteTags.length > 0 &&
-          !uninstalledSet.has(tool.id)
-        ) {
-          const shouldAutoInstall = tool.promoteTags.some((tag) => userTags.includes(tag));
-          if (shouldAutoInstall) return true;
-        }
-        // 优先级4: 全局默认安装
-        if (tool.defaultInstalled && !uninstalledSet.has(tool.id)) {
-          return true;
-        }
-        return false;
-      })();
-
-      return {
-        ...tool,
-        installed
-      };
-    });
-};
-
-export const getSystemToolByIdAndVersionId = async (
-  toolId: string,
-  versionId?: string
-): Promise<ChildAppType> => {
-  const tool = await getSystemToolById(toolId);
-
-  // App type system tool
-  if (tool.associatedPluginId) {
-    // The verification tool is set as a system tool
-    const systemPlugin = await MongoSystemTool.findOne(
-      { pluginId: tool.id, 'customConfig.associatedPluginId': tool.associatedPluginId },
-      'associatedPluginId'
-    ).lean();
-    if (!systemPlugin) return Promise.reject(PluginErrEnum.unExist);
-
-    const app = await MongoApp.findById(tool.associatedPluginId).lean();
-    if (!app) return Promise.reject(PluginErrEnum.unExist);
-
-    const version = versionId
-      ? await getAppVersionById({
-          appId: tool.associatedPluginId,
-          versionId,
-          app
-        })
-      : await getAppLatestVersion(tool.associatedPluginId, app);
-    if (!version.versionId) return Promise.reject(new UserError('App version not found'));
-    const isLatest = version.versionId
-      ? await checkIsLatestVersion({
-          appId: tool.associatedPluginId,
-          versionId: version.versionId
-        })
-      : true;
-
-    return {
-      ...tool,
-      workflow: {
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig
-      },
-      version: versionId ? version?.versionId : '',
-      versionLabel: version?.versionName,
-      isLatestVersion: isLatest,
-      teamId: String(app.teamId),
-      tmbId: String(app.tmbId)
-    };
-  }
-
-  // System toolset
-  if (tool.isFolder) {
-    return {
-      ...tool,
-      inputs: [],
-      outputs: [],
-      inputList: tool.inputList,
-      version: '',
-      isLatestVersion: true
-    };
-  }
-
-  // System tool
-  const versionList = (tool.versionList as AppToolTemplateItemType['versionList']) || [];
-
-  if (versionList.length === 0) {
-    return Promise.reject(new UserError('Can not find tool version list'));
-  }
-
-  const version = versionId
-    ? versionList.find((item) => item.value === versionId) ?? versionList[0]
-    : versionList[0];
-  const lastVersion = versionList[0];
-
-  // concat parent (if exists) input config
-  const parent = tool.parentId ? await getSystemToolById(tool.parentId) : undefined;
-  if (parent?.inputList) {
-    version?.inputs?.unshift({
-      key: NodeInputKeyEnum.systemInputConfig,
-      label: '',
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      inputList: parent.inputList
-    });
-  }
-
-  return {
-    ...tool,
-    inputs: version.inputs ?? [],
-    outputs: version.outputs ?? [],
-    version: versionId ? version?.value : '',
-    versionLabel: versionId ? version?.value : '',
-    isLatestVersion: !version || !lastVersion || version.value === lastVersion?.value
-  };
-};
-
-/*
-  Format plugin to workflow preview node data
-*/
 export async function getChildAppPreviewNode({
   appId,
   versionId,
-  lang = 'en'
+  lang = 'en',
+  source: toolSource = 'system'
 }: {
   appId: string;
   versionId?: string;
   lang?: localeType;
+  source?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombineToolId(appId);
 
-  const app: ChildAppType = await (async () => {
+  if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
+    return getToolPreviewNode({ pluginId: appId, versionId, lang, source: toolSource });
+  }
+
+  // 存在 app 里面的插件的情况
+  const app: AppToolType = await (async () => {
     // App / Mcp toolset / Http toolset
     if (source === AppToolSourceEnum.personal) {
       const item = await MongoApp.findById(pluginId).lean();
@@ -400,13 +154,12 @@ export async function getChildAppPreviewNode({
     }
     // mcp tool
     else if (source === AppToolSourceEnum.mcp) {
-      const [parentId, ...rest] = pluginId.split('/');
-      const toolName = rest.join('/');
+      const [parentId, toolName] = pluginId.split('/');
       // 1. get parentApp
-      const toolset = await MongoApp.findById(parentId).lean();
-      if (!toolset) return Promise.reject(PluginErrEnum.unExist);
+      const item = await MongoApp.findById(parentId).lean();
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: toolset });
+      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
@@ -414,23 +167,21 @@ export async function getChildAppPreviewNode({
           return toolConfig.toolList.find((item) => item.name === toolName);
         }
         // old mcp toolset
-        return (await getMCPChildren(toolset)).find((item) => item.name === toolName);
+        return (await getMCPChildren(item)).find((item) => item.name === toolName);
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
-        avatar: toolset.avatar,
+        avatar: item.avatar,
         id: appId,
-        name: `${toolset.name}/${tool.name}`,
-        intro: tool.description,
+        name: tool.name,
         templateType: FlowNodeTemplateTypeEnum.tools,
-        // workflow 仅用于推断 IO
         workflow: {
           nodes: [
             getMCPToolRuntimeNode({
               nodeId: getNanoid(6),
-              toolSetId: toolset._id,
-              toolsetName: toolset.name,
-              avatar: toolset.avatar,
+              toolSetId: item._id,
+              toolsetName: item.name,
+              avatar: item.avatar,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
@@ -446,12 +197,11 @@ export async function getChildAppPreviewNode({
     }
     // http tool
     else if (source === AppToolSourceEnum.http) {
-      const [parentId, ...rest] = pluginId.split('/');
-      const toolName = rest.join('/');
-      const toolset = await MongoApp.findById(parentId).lean();
-      if (!toolset) return Promise.reject(PluginErrEnum.unExist);
+      const [parentId, toolName] = pluginId.split('/');
+      const item = await MongoApp.findById(parentId).lean();
+      if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: toolset });
+      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
       const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
@@ -461,24 +211,23 @@ export async function getChildAppPreviewNode({
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
-        avatar: toolset.avatar,
+        avatar: item.avatar,
         id: appId,
-        name: `${toolset.name}/${tool.name}`,
-        intro: tool.description,
+        name: tool.name,
         templateType: FlowNodeTemplateTypeEnum.tools,
         workflow: {
           nodes: [
             getHTTPToolRuntimeNode({
               nodeId: getNanoid(6),
-              toolSetId: toolset._id,
-              toolsetName: toolset.name,
+              toolSetId: item._id,
+              toolsetName: item.name,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
                 outputSchema: tool.outputSchema,
                 name: tool.name
               },
-              avatar: toolset.avatar
+              avatar: item.avatar
             })
           ],
           edges: []
@@ -489,7 +238,7 @@ export async function getChildAppPreviewNode({
     }
     // System Tools/ Commercial system tools
     else {
-      return getSystemToolByIdAndVersionId(appId, versionId);
+      return Promise.reject('unknown tool source');
     }
   })();
 
@@ -503,51 +252,6 @@ export async function getChildAppPreviewNode({
       showTargetHandle?: boolean;
     };
   }> => {
-    if (source === AppToolSourceEnum.systemTool) {
-      // system Tool or Toolsets
-      const children = app.isFolder
-        ? (await getSystemTools()).filter((item) => item.parentId === app.id)
-        : [];
-
-      return {
-        flowNodeType: app.isFolder ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-        nodeIOConfig: {
-          inputs: [
-            ...(app.inputList
-              ? [
-                  {
-                    key: NodeInputKeyEnum.systemInputConfig,
-                    label: '',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    inputList: app.inputList
-                  }
-                ]
-              : []),
-            ...(app.inputs ?? [])
-          ],
-          outputs: app.outputs ?? [],
-          toolConfig: {
-            ...(app.isFolder
-              ? {
-                  systemToolSet: {
-                    toolId: app.id,
-                    toolList: children
-                      .filter((item) => item.status === 1 || item.status === undefined)
-                      .map((item) => ({
-                        toolId: item.id,
-                        name: parseI18nString(item.name, lang),
-                        description: parseI18nString(item.intro, lang)
-                      }))
-                  }
-                }
-              : { systemTool: { toolId: app.id } })
-          },
-          showSourceHandle: app.isFolder ? false : true,
-          showTargetHandle: app.isFolder ? false : true
-        }
-      };
-    }
-
     // Plugin workflow
     if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
       // plugin app
@@ -557,11 +261,12 @@ export async function getChildAppPreviewNode({
       };
     }
 
-    // Mcp toolset/Http toolset
+    // Mcp
     if (
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1
     ) {
+      // mcp tools
       return {
         flowNodeType: FlowNodeTypeEnum.toolSet,
         nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
@@ -588,7 +293,6 @@ export async function getChildAppPreviewNode({
   return {
     id: getNanoid(),
     pluginId: app.id,
-    templateType: app.templateType ?? FlowNodeTemplateTypeEnum.tools,
     flowNodeType,
     avatar: app.avatar,
     name: parseI18nString(app.name, lang),
@@ -619,114 +323,3 @@ export async function getChildAppPreviewNode({
       : [...nodeIOConfig.outputs, Output_Template_Error_Message]
   };
 }
-
-/* FastsGPT-tool api: */
-export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> => {
-  const workflowToolFormat = (item: SystemPluginToolCollectionType): AppToolTemplateItemType => {
-    const {
-      name,
-      avatar,
-      intro,
-      toolDescription,
-      version,
-      associatedPluginId,
-      userGuide,
-      author = '',
-      tags
-    } = item.customConfig!;
-
-    return {
-      id: item.pluginId,
-      status: item.status ?? PluginStatusEnum.Normal,
-      defaultInstalled: item.defaultInstalled ?? false,
-      isFolder: false,
-      parentId: null,
-      author,
-      version,
-      name,
-      avatar,
-      intro,
-      toolDescription,
-      tags,
-      templateType: FlowNodeTemplateTypeEnum.tools,
-      originCost: item.originCost,
-      currentCost: item.currentCost,
-      hasTokenFee: item.hasTokenFee,
-      pluginOrder: item.pluginOrder,
-      systemKeyCost: item.systemKeyCost,
-      associatedPluginId,
-      userGuide,
-      workflow: {
-        nodes: [],
-        edges: []
-      }
-    };
-  };
-
-  const tools = await APIGetSystemToolList();
-
-  // 从数据库里加载插件配置进行替换
-  const systemToolsArray = await MongoSystemTool.find({}).lean();
-  const systemTools = new Map(systemToolsArray.map((plugin) => [plugin.pluginId, plugin]));
-
-  const formatTools = tools.map<AppToolTemplateItemType>((item) => {
-    const dbPluginConfig = systemTools.get(item.id);
-    const isFolder = tools.some((tool) => tool.parentId === item.id);
-
-    const versionList = (item.versionList as AppToolTemplateItemType['versionList']) || [];
-
-    return {
-      id: item.id,
-      parentId: item.parentId,
-      isFolder,
-      name: item.name,
-      avatar: item.avatar,
-      intro: item.description,
-      toolDescription: item.toolDescription,
-      author: item.author,
-      courseUrl: item.courseUrl,
-      instructions: dbPluginConfig?.customConfig?.userGuide,
-      tags: dbPluginConfig?.customConfig?.tags || item.tags,
-      workflow: {
-        nodes: [],
-        edges: []
-      },
-      versionList,
-      showStatus: true,
-      status: dbPluginConfig?.status ?? 1,
-      defaultInstalled: dbPluginConfig?.defaultInstalled ?? false,
-      inputList: item?.secretInputConfig,
-      hasSystemSecret: !!dbPluginConfig?.inputListVal,
-      originCost: dbPluginConfig?.originCost ?? 0,
-      currentCost: dbPluginConfig?.currentCost ?? 0,
-      systemKeyCost: dbPluginConfig?.systemKeyCost ?? 0,
-      hasTokenFee: dbPluginConfig?.hasTokenFee ?? false,
-      pluginOrder: dbPluginConfig?.pluginOrder,
-      hideTags: dbPluginConfig?.hideTags,
-      promoteTags: dbPluginConfig?.promoteTags
-    };
-  });
-
-  const dbPlugins = systemToolsArray
-    .filter((item) => item.customConfig?.associatedPluginId)
-    .map((item) => workflowToolFormat(item));
-
-  const concatTools = [...formatTools, ...dbPlugins];
-  concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
-
-  return concatTools;
-};
-
-// toolId: systemTool-id, commercial-id, community-id(deprecated, 映射为 systemTool-id)
-export const getSystemToolById = async (toolId: string): Promise<AppToolTemplateItemType> => {
-  const tools = await getSystemTools();
-  // 兼容旧的 community- 前缀,统一归一化为 systemTool-
-  const normalizedId = toolId.startsWith(`${AppToolSourceEnum.community}-`)
-    ? `${AppToolSourceEnum.systemTool}-${toolId.slice(AppToolSourceEnum.community.length + 1)}`
-    : toolId;
-  const tool = tools.find((item) => item.id === normalizedId);
-  if (tool) {
-    return cloneDeep(tool);
-  }
-  return Promise.reject(PluginErrEnum.unExist);
-};

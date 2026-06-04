@@ -6,6 +6,7 @@ import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -19,7 +20,8 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
+import { useDebounce } from 'ahooks';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
@@ -35,6 +37,9 @@ const ToolProvider = () => {
 
   const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);
   const [editingToolId, setEditingToolId] = useState<string>();
+  const [searchKey, setSearchKey] = useState('');
+  const debouncedSearchKey = useDebounce(searchKey, { wait: 300 });
+  const requestSearchKey = debouncedSearchKey.trim();
 
   const {
     isOpen: isOpenTagModal,
@@ -48,13 +53,14 @@ const ToolProvider = () => {
   } = useDisclosure();
 
   const { runAsync: refreshTools, loading: loadingTools } = useRequest(
-    () => getAdminSystemTools({ parentId: null }),
+    () => getAdminSystemTools({ searchKey: requestSearchKey || undefined }),
     {
       onSuccess: (data) => {
         if (data) {
           setLocalTools(data);
         }
       },
+      refreshDeps: [requestSearchKey],
       manual: false
     }
   );
@@ -65,6 +71,16 @@ const ToolProvider = () => {
       <Flex alignItems={'center'}>
         <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
           {t('common:navbar.plugin')}
+        </Box>
+        <Box mr={2}>
+          <SearchInput
+            maxW={['auto', '250px']}
+            value={searchKey}
+            onChange={(e) => setSearchKey(e.target.value)}
+            placeholder={t('app:toolkit_search_placeholder')}
+            bg={'white'}
+            maxLength={30}
+          />
         </Box>
         <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
           {t('app:toolkit_tags_manage')}
@@ -113,26 +129,15 @@ const ToolProvider = () => {
         fontWeight={'medium'}
         color={'myGray.600'}
       >
-        <Box w={2 / 10} pl={8}>
+        <Box w={2.2 / 10} pl={8}>
           {t('app:toolkit_name')}
         </Box>
         <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
-        <Box w={2.5 / 10}>{t('common:Intro')}</Box>
-        <Box w={1 / 10} pl={6}>
+        <Box w={4.1 / 10}>{t('common:Intro')}</Box>
+        <Box w={1.1 / 10} pl={6}>
           {t('app:toolkit_status')}
         </Box>
-        <Box w={1 / 10}>{t('app:toolkit_default_install')}</Box>
-        <Box w={1 / 10} display={'flex'} alignItems={'center'}>
-          {t('app:toolkit_token_fee')}
-          <QuestionTip
-            display={'flex'}
-            alignItems={'center'}
-            ml={1}
-            label={t('app:toolkit_token_fee_tip')}
-            color={'myGray.300'}
-          />
-        </Box>
-        <Box w={1 / 10} display={'flex'} alignItems={'center'}>
+        <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
           {t('app:toolkit_system_key')}
           <QuestionTip
             display={'flex'}
@@ -166,13 +171,17 @@ const ToolProvider = () => {
                 ref={provided.innerRef}
               >
                 {localTools.map((item, index) => (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                  <Draggable
+                    key={item.id}
+                    draggableId={item.id}
+                    index={index}
+                    isDragDisabled={!!searchKey.trim()}
+                  >
                     {(provided, snapshot) => (
                       <ToolRow
                         key={item.id}
                         tool={item}
                         setEditingToolId={setEditingToolId}
-                        setLocalTools={setLocalTools}
                         provided={provided}
                         snapshot={snapshot}
                       />

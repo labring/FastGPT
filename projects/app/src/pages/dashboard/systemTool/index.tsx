@@ -1,14 +1,17 @@
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plugin/team/api';
+import {
+  getTeamSystemPluginList,
+  getTeamToolDetail,
+  getTeamToolVersions
+} from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useMemo, useState, useReducer, useRef } from 'react';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -18,33 +21,10 @@ import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetai
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
-import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
+import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getTeamToolDetail } from '@/web/core/plugin/team/api';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-
-type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
-
-const loadingReducer = (state: Set<string>, action: LoadingAction): Set<string> => {
-  if (action.type === 'TRY_ADD') {
-    if (state.has(action.pluginId)) {
-      return state;
-    }
-    const newSet = new Set(state);
-    newSet.add(action.pluginId);
-    return newSet;
-  }
-  if (action.type === 'REMOVE') {
-    if (!state.has(action.pluginId)) {
-      return state;
-    }
-    const newSet = new Set(state);
-    newSet.delete(action.pluginId);
-    return newSet;
-  }
-  return state;
-};
 
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
@@ -53,15 +33,10 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
-  const [installedFilter, setInstalledFilter] = useState<'all' | 'installed' | 'uninstalled'>(
-    'all'
-  );
   const [searchText, setSearchText] = useState('');
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [loadingPluginIds, dispatchLoading] = useReducer(loadingReducer, new Set<string>());
-  const loadingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: tags = [] } = useRequest(getPluginToolTags, {
@@ -70,45 +45,12 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   // TODO: 把 filter 放到后端
   const [tools, setTools] = useState<GetTeamPluginListResponseType>([]);
-  const { loading: loadingTools } = useRequest(() => getTeamSystemPluginList({ type: 'tool' }), {
+  const { loading: loadingTools } = useRequest(() => getTeamSystemPluginList({}), {
     manual: false,
     onSuccess(data) {
       setTools(data);
     }
   });
-
-  const { runAsync: toggleInstall } = useRequest(
-    async (data: { pluginId: string; installed: boolean }) => {
-      const existingPromise = loadingPromisesRef.current.get(data.pluginId);
-      if (existingPromise) {
-        await existingPromise;
-        return;
-      }
-
-      const operationPromise = (async () => {
-        dispatchLoading({ type: 'TRY_ADD', pluginId: data.pluginId });
-
-        try {
-          await postToggleInstallPlugin({
-            ...data,
-            type: 'tool'
-          });
-          setTools((prev) =>
-            prev.map((t) => (t.id === data.pluginId ? { ...t, installed: data.installed } : t))
-          );
-        } finally {
-          dispatchLoading({ type: 'REMOVE', pluginId: data.pluginId });
-          loadingPromisesRef.current.delete(data.pluginId);
-        }
-      })();
-      loadingPromisesRef.current.set(data.pluginId, operationPromise);
-
-      await operationPromise;
-    },
-    {
-      manual: true
-    }
-  );
 
   const displayTools = useMemo(() => {
     return tools
@@ -123,13 +65,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         if (selectedTagIds.length === 0) return true;
         return tool.tags?.some((tagId) => selectedTagIds.includes(tagId));
       })
-      .filter((tool) => {
-        if (installedFilter === 'all') return true;
-        const isInstalled = tool.installed;
-        if (installedFilter === 'installed') return !!isInstalled;
-        if (installedFilter === 'uninstalled') return !isInstalled;
-        return true;
-      })
       .map<ToolCardItemType>((tool) => ({
         id: tool.id,
         name: tool.name,
@@ -140,10 +75,10 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           parseI18nString(tags.find((tag) => tag.tagId === tagId)?.tagName || '', i18n.language)
         ),
         status: tool.status,
-        installed: tool.installed,
-        associatedPluginId: tool.associatedPluginId
+        version: tool.version,
+        source: tool.source
       }));
-  }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
+  }, [tools, searchText, selectedTagIds, tags, i18n.language]);
 
   return (
     <Box h={'full'}>
@@ -282,43 +217,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 />
               </Box>
             </Flex>
-
-            <MyMenu
-              trigger="hover"
-              Button={
-                <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                  <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                  <Box fontSize={'12px'}>
-                    {installedFilter === 'installed'
-                      ? t('app:toolkit_installed')
-                      : installedFilter === 'uninstalled'
-                        ? t('app:toolkit_uninstalled')
-                        : t('common:All')}
-                  </Box>
-                </Flex>
-              }
-              menuList={[
-                {
-                  children: [
-                    {
-                      label: t('common:All'),
-                      onClick: () => setInstalledFilter('all'),
-                      isActive: installedFilter === 'all'
-                    },
-                    {
-                      label: t('app:toolkit_installed'),
-                      onClick: () => setInstalledFilter('installed'),
-                      isActive: installedFilter === 'installed'
-                    },
-                    {
-                      label: t('app:toolkit_uninstalled'),
-                      onClick: () => setInstalledFilter('uninstalled'),
-                      isActive: installedFilter === 'uninstalled'
-                    }
-                  ]
-                }
-              ]}
-            />
           </Flex>
         </Box>
 
@@ -342,10 +240,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     item={tool}
                     systemTitle={feConfigs?.systemTitle}
                     mode="team"
-                    onInstall={() => toggleInstall({ pluginId: tool.id, installed: true })}
-                    onDelete={() => toggleInstall({ pluginId: tool.id, installed: false })}
                     onClickCard={() => setSelectedTool(tool)}
-                    isInstallingOrDeleting={loadingPluginIds.has(tool.id)}
+                    showActionButton={false}
                   />
                 );
               })}
@@ -377,20 +273,21 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
           showPoint={false}
-          onToggleInstall={(installed) => {
-            if (selectedTool) {
-              toggleInstall({ pluginId: selectedTool.id, installed });
-            }
-          }}
+          showActionButton={false}
           systemTitle={feConfigs.systemTitle}
-          isLoading={loadingPluginIds.has(selectedTool.id)}
-          onFetchDetail={async (toolId: string) => {
-            const res = await getTeamToolDetail({ toolId });
-            return {
-              tools: res.tools,
-              downloadUrl: ''
-            };
-          }}
+          onFetchDetail={async (toolId: string, version?: string) =>
+            getTeamToolDetail({
+              toolId,
+              version,
+              source: selectedTool.source === 'system' ? 'system' : 'team'
+            })
+          }
+          onFetchVersions={async (toolId: string) =>
+            getTeamToolVersions({
+              toolId,
+              source: selectedTool.source === 'system' ? 'system' : 'team'
+            })
+          }
           mode="team"
         />
       )}

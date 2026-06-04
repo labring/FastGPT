@@ -382,9 +382,9 @@ importers:
       '@bany/curl-to-json':
         specifier: ^1.2.8
         version: 1.2.8
-      '@fastgpt-sdk/plugin':
-        specifier: 0.6.1
-        version: 0.6.1
+      '@fastgpt-plugin/sdk-client':
+        specifier: 0.0.1-alpha.8
+        version: 0.0.1-alpha.8(zod@4.1.12)
       axios:
         specifier: 'catalog:'
         version: 1.16.0
@@ -1585,6 +1585,9 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
+      '@fastgpt-sdk/storage':
+        specifier: workspace:*
+        version: link:../../sdk/storage
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -3587,8 +3590,10 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-sdk/plugin@0.6.1':
-    resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.8':
+    resolution: {integrity: sha512-YTJmErVEbQLPfeIaBcTlIvjIqyDO907cBfkfQ2mHtRI9vnrsGJGSbl+W44vzb4qBW+VxzegQyAPLimjDHw8ThQ==}
+    peerDependencies:
+      zod: ^4
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17502,9 +17507,8 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-sdk/plugin@0.6.1':
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.8(zod@4.1.12)':
     dependencies:
-      '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
   '@fidm/asn1@1.0.4': {}
@@ -21375,7 +21379,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.59.2
       debug: 4.4.3
       minimatch: 10.2.5
-      semver: 7.7.4
+      semver: 7.8.0
       tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3

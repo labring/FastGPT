@@ -1,4 +1,4 @@
-import { Box, Flex, Switch, Checkbox } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   DraggableProvided,
@@ -6,56 +6,27 @@ import type {
 } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
-import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
+import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const ToolRow = ({
   tool,
   setEditingToolId,
-  setLocalTools,
   provided,
   snapshot
 }: {
   tool: AdminSystemToolListItemType;
   setEditingToolId: (toolId: string) => void;
-  setLocalTools: React.Dispatch<React.SetStateAction<GetAdminSystemToolsResponseType>>;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
-  const { t, i18n } = useTranslation();
-
-  const { runAsync: updateSystemTool, loading } = useRequest(
-    async (updateFields: {
-      defaultInstalled?: boolean;
-      hasTokenFee?: boolean;
-      status?: PluginStatusEnum;
-    }) => {
-      return putAdminUpdateTool({
-        ...tool,
-        pluginId: tool.id,
-        defaultInstalled: updateFields.defaultInstalled,
-        hasTokenFee: updateFields.hasTokenFee,
-        status: updateFields.status
-      });
-    },
-    {
-      onSuccess: (_, updateFields) => {
-        setLocalTools((prev) =>
-          prev.map((item) => (item.id === tool.id ? { ...item, ...updateFields[0] } : item))
-        );
-      },
-      errorToast: t('app:toolkit_update_failed')
-    }
-  );
+  const { t } = useTranslation();
 
   return (
     <MyBox
-      isLoading={loading}
       display={'flex'}
       ref={provided.innerRef}
       {...provided.draggableProps}
@@ -79,7 +50,7 @@ const ToolRow = ({
         setEditingToolId(tool.id);
       }}
     >
-      <Box display={'flex'} w={2 / 10} pl={2}>
+      <Box display={'flex'} w={2.2 / 10} pl={2}>
         <Flex
           h={'full'}
           rounded={'xs'}
@@ -134,10 +105,10 @@ const ToolRow = ({
           </Box>
         )}
       </Box>
-      <Box w={2.5 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      <Box w={4.1 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
         {tool?.intro || '-'}
       </Box>
-      <Box w={1 / 10} pl={6}>
+      <Box w={1.1 / 10} pl={6}>
         <Box
           as={'span'}
           color={
@@ -155,56 +126,21 @@ const ToolRow = ({
               : t('app:toolkit_status_normal')}
         </Box>
       </Box>
-      <Box w={1 / 10} pl={4}>
-        <Box
-          as={'span'}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const newDefaultInstalled = !tool?.defaultInstalled;
-            const updateFields: {
-              defaultInstalled: boolean;
-              status?: number;
-            } = {
-              defaultInstalled: newDefaultInstalled
-            };
-            if (newDefaultInstalled && tool.status !== PluginStatusEnum.Normal) {
-              updateFields.status = PluginStatusEnum.Normal;
-            }
-            updateSystemTool(updateFields);
-          }}
-        >
-          <Checkbox isChecked={tool.defaultInstalled} colorScheme="primary" />
-        </Box>
-      </Box>
-      <Box w={1 / 10}>
-        {tool?.associatedPluginId ? (
-          <Box
-            as={'span'}
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              e.preventDefault();
-              updateSystemTool({
-                hasTokenFee: !tool?.hasTokenFee
-              });
-            }}
-            pl={2}
-          >
-            <Switch isChecked={tool?.hasTokenFee} size={'sm'} />
-          </Box>
-        ) : (
+      <Box w={1.1 / 10}>
+        {tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.none ? (
           <Box pl={4}>-</Box>
-        )}
-      </Box>
-      <Box w={1 / 10}>
-        {!!tool?.hasSecretInput ? (
-          <Box color={tool?.hasSystemSecret ? 'green.600' : 'myGray.500'}>
-            {tool?.hasSystemSecret
+        ) : (
+          <Box
+            color={
+              tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.configured
+                ? 'green.600'
+                : 'myGray.500'
+            }
+          >
+            {tool.systemSecretStatus === SystemToolSystemSecretStatusEnum.configured
               ? t('app:toolkit_system_key_configured')
               : t('app:toolkit_system_key_not_configured')}
           </Box>
-        ) : (
-          <Box pl={4}>-</Box>
         )}
       </Box>
     </MyBox>

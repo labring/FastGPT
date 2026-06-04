@@ -19,6 +19,7 @@ import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
+import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
@@ -69,6 +70,8 @@ export const getSubapps = async ({
     tmbId,
     lang
   });
+
+  console.log('tools', JSON.stringify(tools, null, 2));
   formatTools.forEach((tool) => {
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
@@ -303,12 +306,28 @@ export const getExecuteTool = ({
             usages,
             nodeResponse
           };
-        } else if (tool.type === 'toolWorkflow') {
+        } else if (tool.type === 'toolWorkflow' || tool.type === 'commercialTool') {
+          const id = await (async () => {
+            if (tool.type === 'toolWorkflow') {
+              return tool.id;
+            } else {
+              const systemToolRepo = SystemToolRepo.getInstance();
+              const trueId = (
+                await systemToolRepo.getSystemToolDetail({
+                  pluginId: `commercial-${tool.id}`
+                })
+              ).associatedPluginId;
+              if (!trueId) {
+                throw new Error('No associated plugin found');
+              }
+              return trueId;
+            }
+          })();
           const { response, usages, nodeResponse } = await dispatchPlugin({
             app: {
               name: tool.name,
               avatar: tool.avatar,
-              id: tool.id
+              id
             },
             userChatInput: '',
             customAppVariables: requestParams,

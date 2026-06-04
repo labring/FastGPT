@@ -181,12 +181,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     responseChatItemId: data.responseChatItemId,
     histories: [],
     uid: data.uid,
-    variablesConfig: chatConfig.variables,
-    inputVariables: customAppVariables,
+    variablesConfig: [],
+    inputVariables: {},
     externalVariables: externalProvider?.externalWorkflowVariables,
     sourceVariableState: variableState
   });
-  const childrenRunVariables = childrenVariableState.toRuntimeRecord();
   const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
     (node) => {
       // Update plugin input value
@@ -195,15 +194,15 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           ...node,
           showStatus: false,
           inputs: node.inputs.map((input) => {
-            let val = childrenRunVariables[input.key] ?? input.value;
+            let val = customAppVariables[input.key] ?? input.value;
             if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
               val = anyValueDecrypt(val);
             } else if (
               input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
               Array.isArray(val) &&
-              childrenRunVariables[input.key]
+              customAppVariables[input.key]
             ) {
-              childrenRunVariables[input.key] = val.map((item) =>
+              customAppVariables[input.key] = val.map((item) =>
                 typeof item === 'string' ? item : item.url
               );
             }
@@ -249,7 +248,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     variableState: childrenVariableState,
     query: serverGetWorkflowToolRunUserQuery({
       pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
-      variables: childrenRunVariables
+      variables: customAppVariables
     }).value,
     stream: false,
     workflowStreamResponse: undefined

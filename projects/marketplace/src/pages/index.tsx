@@ -14,6 +14,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
   getDownloadURL,
   getMarketplaceToolDetail,
+  getMarketplaceToolVersions,
   getMarketplaceTools,
   getToolTags
 } from '@/web/api';
@@ -160,7 +161,7 @@ const ToolkitMarketplace = () => {
 
     return tools.map((tool) => {
       return {
-        id: tool.toolId,
+        id: tool.toolId || tool.pluginId,
         name: parseI18nString(tool.name || '', i18n.language) || '',
         description: parseI18nString(tool.description || '', i18n.language) || '',
         icon: tool.icon,
@@ -169,14 +170,15 @@ const ToolkitMarketplace = () => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
+        version: tool.version,
         downloadCount: tool.downloadCount
       };
     });
   }, [tools, i18n.language, toolTags]);
 
-  const onDownload = useCallback(async (toolId: string) => {
+  const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
-      const url = await getDownloadURL(toolId);
+      const url = await getDownloadURL(toolId, version);
       if (url) {
         // Create download link
         const link = document.createElement('a');
@@ -476,10 +478,13 @@ const ToolkitMarketplace = () => {
           mode="marketplace"
           selectedTool={selectedTool}
           // @ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
-          onToggleInstall={() => {
-            onDownload(selectedTool.id);
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
+          onToggleInstall={(_, version) => {
+            onDownload(selectedTool.id, version);
           }}
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
     </>

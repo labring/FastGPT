@@ -74,7 +74,7 @@ export const getHTTPToolRuntimeNode = ({
     jsonSchema: tool.requestSchema,
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
     outputs: [
-      ...jsonSchema2NodeOutput(tool.outputSchema),
+      ...jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema }),
       {
         id: NodeOutputKeyEnum.rawResponse,
         key: NodeOutputKeyEnum.rawResponse,

@@ -53,7 +53,7 @@ export function splitCombineToolId(id: string): {
 
   // mcp-appId, mcp-appId/toolname
   if (source === AppToolSourceEnum.mcp) {
-    const [parentId, toolName] = toolId.split('/');
+    const [parentId] = toolId.split('/');
     return {
       source: AppToolSourceEnum.mcp,
       pluginId: toolId,
@@ -61,7 +61,7 @@ export function splitCombineToolId(id: string): {
     };
   }
   if (source === AppToolSourceEnum.http) {
-    const [parentId, toolName] = toolId.split('/');
+    const [parentId] = toolId.split('/');
     return {
       source: AppToolSourceEnum.http,
       pluginId: toolId,

@@ -8,6 +8,7 @@ import { AppFolderPath } from './folder';
 import { AppVersionPath } from './version';
 import { AppTemplatePath } from './template';
 import { AppPermissionPath } from './permission';
+import { ToolPath } from './tool';
 
 export const AppPath: OpenAPIPath = {
   ...AppCommonPath,
@@ -18,5 +19,6 @@ export const AppPath: OpenAPIPath = {
   ...AppLogPath,
   ...PublishChannelPath,
   ...McpToolsPath,
-  ...HttpToolsPath
+  ...HttpToolsPath,
+  ...ToolPath
 };

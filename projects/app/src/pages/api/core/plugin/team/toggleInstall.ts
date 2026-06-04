@@ -9,29 +9,30 @@ export type ToggleInstallPluginBody = ToggleInstallPluginBodyType;
 
 export type ToggleInstallPluginResponse = {};
 
+/** disable the toggle install plugin api */
 async function handler(
   req: ApiRequestProps<ToggleInstallPluginBody>,
   res: ApiResponseType<any>
 ): Promise<ToggleInstallPluginResponse> {
-  const { pluginId, installed } = req.body;
+  // const { pluginId, installed } = req.body;
 
-  const { teamId } = await authUserPer({
-    req,
-    authToken: true,
-    per: ReadPermissionVal
-  });
+  // const { teamId } = await authUserPer({
+  //   req,
+  //   authToken: true,
+  //   per: ReadPermissionVal
+  // });
 
-  await MongoTeamInstalledPlugin.findOneAndUpdate(
-    { teamId, pluginId },
-    {
-      teamId,
-      pluginId,
-      installed
-    },
-    {
-      upsert: true
-    }
-  );
+  // await MongoTeamInstalledPlugin.findOneAndUpdate(
+  //   { teamId, pluginId },
+  //   {
+  //     teamId,
+  //     pluginId,
+  //     installed
+  //   },
+  //   {
+  //     upsert: true
+  //   }
+  // );
 
   return {};
 }

@@ -1,4 +1,5 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -31,6 +32,7 @@ import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/service/resource';
+import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -142,6 +144,15 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
+const cleanupWorkflowToolSystemToolAssociation = async (appIds: string[]) => {
+  if (appIds.length === 0) return;
+
+  await MongoSystemTool.updateMany(
+    { 'customConfig.associatedPluginId': { $in: appIds } },
+    { $unset: { 'customConfig.associatedPluginId': '' } }
+  );
+};
+
 export const deleteAppDataProcessor = async ({
   app,
   teamId
@@ -150,6 +161,10 @@ export const deleteAppDataProcessor = async ({
   teamId: string;
 }) => {
   const appId = String(app._id);
+
+  if (app.type === AppTypeEnum.workflowTool) {
+    await cleanupWorkflowToolSystemToolAssociation([appId]);
+  }
 
   // 1. 删除应用头像
   await removeImageByPath(app.avatar);
@@ -212,6 +227,17 @@ export const deleteAppsImmediate = async ({
   teamId: string;
   appIds: string[];
 }) => {
+  const workflowToolApps = await MongoApp.find(
+    {
+      teamId,
+      _id: { $in: appIds },
+      type: AppTypeEnum.workflowTool
+    },
+    '_id'
+  ).lean();
+
+  await cleanupWorkflowToolSystemToolAssociation(workflowToolApps.map((app) => String(app._id)));
+
   // Remove eval job
   const evalJobs = await MongoEvaluation.find(
     {

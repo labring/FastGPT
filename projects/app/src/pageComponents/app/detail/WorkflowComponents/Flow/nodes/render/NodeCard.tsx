@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Button, Flex, useDisclosure, type FlexProps } from '@chakra-ui/react';
+import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import InlineEdit from './InlineEdit';
@@ -22,7 +22,8 @@ import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
+import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -35,7 +36,6 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useBoolean, useCreation } from 'ahooks';
@@ -52,6 +52,7 @@ import {
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
 import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 
@@ -219,13 +220,10 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
-    // 1. MCP tool, HTTP tool set and system tool set do not have version
+    // 1. MCP tool and HTTP tool set do not have version
     if (
       isAppNode &&
-      (node.toolConfig?.mcpToolSet ||
-        node.toolConfig?.mcpTool ||
-        node?.toolConfig?.httpToolSet ||
-        node?.toolConfig?.systemToolSet)
+      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
     )
       return false;
     // 2. Team app/System commercial plugin
@@ -579,25 +577,32 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
 
   const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    runAsync: loadVersions,
+    data: versionList = [],
+    loading: isLoadingVersions
+  } = useRequest(
+    async () => {
+      if (!node.pluginId) return [];
 
-  // Load version list
-  const { ScrollData, data: versionList } = useScrollPagination(getToolVersionList, {
-    pageSize: 20,
-    params: {
-      pluginId: node.pluginId
+      const { source } = splitCombineToolId(node.pluginId);
+
+      return getTeamToolVersions({
+        toolId: node.pluginId,
+        source: source === AppToolSourceEnum.systemTool ? 'system' : 'team'
+      });
     },
-    refreshDeps: [node.pluginId, isOpen],
-    disabled: !isOpen,
-    manual: false
-  });
+    {
+      refreshDeps: [node.pluginId]
+    }
+  );
 
   const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest(
     async (versionId: string) => {
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getToolPreviewNode({ appId: node.pluginId, versionId });
+        const template = await getToolPreviewNode({ appId: node.pluginId, version: versionId });
 
         if (!!template) {
           onResetNode({
@@ -626,8 +631,9 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionName,
-        value: item._id
+        label: item.version,
+        description: item.versionDescription,
+        value: item.version
       }))
     ],
     [node.isLatestVersion, node.version, t, versionList]
@@ -635,7 +641,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const valueLabel = useMemo(() => {
     return (
       <Flex alignItems={'center'} gap={0.5}>
-        {node?.version === '' ? t('app:keep_the_latest') : node?.versionLabel}
+        {!node?.version ? t('app:keep_the_latest') : node?.versionLabel}
         {!node.isLatestVersion && (
           <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
             {t('app:not_the_newest')}
@@ -645,28 +651,17 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     );
   }, [node.isLatestVersion, node.version, node.versionLabel, t]);
 
-  const ScrollDataWrapper = useCallback(
-    (props: { children: React.ReactNode }) => (
-      <ScrollData minH={'100px'} maxH={'40vh'}>
-        {props.children}
-      </ScrollData>
-    ),
-    [ScrollData]
-  );
-
   return (
     <MySelect
       className="nowheel"
       value={node.version}
       onChange={onUpdateVersion}
-      isLoading={isUpdating}
-      customOnOpen={onOpen}
-      customOnClose={onClose}
+      isLoading={isUpdating || isLoadingVersions}
+      customOnOpen={loadVersions}
       placeholder={node?.versionLabel}
       variant={'whitePrimaryOutline'}
       size={'sm'}
       list={renderVersionList}
-      ScrollData={ScrollDataWrapper}
       valueLabel={valueLabel}
     />
   );

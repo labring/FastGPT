@@ -20,7 +20,13 @@ async function handler(
     return Promise.reject('Tool IDs are required');
   }
 
-  return await pluginClient.confirmToolUpload(toolIds);
+  await pluginClient.confirmPlugin(
+    toolIds.map((id) => ({
+      ...id,
+      pluginId: id.pluginId.replace(/^systemTool-/, '')
+    }))
+  );
+  return {};
 }
 
 export default NextAPI(handler);

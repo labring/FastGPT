@@ -6,6 +6,7 @@ import { increaseDownloadCount } from '@/service/downloadCount';
 
 export type GetDownloadURLQuery = {
   toolId?: string;
+  version?: string;
 };
 export type GetDownloadURLBody = {
   toolIds?: string[];
@@ -16,21 +17,29 @@ async function handler(
   req: ApiRequestProps<GetDownloadURLBody, GetDownloadURLQuery>,
   res: ApiResponseType<any>
 ): Promise<GetDownloadURLResponse> {
-  const { toolId } = req.query;
+  const { toolId, version } = req.query;
   const { toolIds } = req.body;
   if (!toolId && !toolIds) {
-    return Promise.reject('toolId or toolIds is required');
+    throw new Error('toolId or toolIds is required');
   }
 
   const filterTools = toolIds && toolIds.length > 0 ? toolIds : toolId ? [toolId] : [];
-  const tools = (await getToolList()).filter((item) => filterTools.includes(item.toolId));
+  const toolList =
+    toolId && version
+      ? await getToolList({ toolId: toolId.split('/')[0], version })
+      : await getToolList();
+  const tools = toolList.filter((item) => filterTools.includes(item.toolId));
+
+  if (toolId && version && tools.length === 0) {
+    throw new Error('tool not found');
+  }
 
   for await (const tool of tools) {
     await increaseDownloadCount(tool.toolId, 'tool');
   }
 
   return toolId
-    ? getPkgdownloadURL(toolId)
-    : Array.from(tools.map((tool) => getPkgdownloadURL(tool.toolId)));
+    ? tools[0]?.downloadUrl || getPkgdownloadURL(toolId)
+    : Array.from(tools.map((tool) => tool.downloadUrl || getPkgdownloadURL(tool.toolId)));
 }
 export default NextAPI(handler);

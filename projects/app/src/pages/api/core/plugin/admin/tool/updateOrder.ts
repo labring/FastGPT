@@ -1,6 +1,4 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { refreshVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -28,9 +26,6 @@ async function handler(
       }
     }))
   );
-
-  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
-
   return {};
 }
 

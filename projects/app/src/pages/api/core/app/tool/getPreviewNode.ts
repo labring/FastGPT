@@ -11,20 +11,20 @@ import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
-export type GetPreviewNodeQuery = { appId: string; versionId?: string };
+export type GetPreviewNodeQuery = { appId: string; version?: string };
 
 async function handler(
   req: ApiRequestProps<{}, GetPreviewNodeQuery>,
   _res: NextApiResponse<any>
 ): Promise<FlowNodeTemplateType> {
-  const { appId, versionId } = req.query;
+  const { appId, version } = req.query;
 
   const { authAppId } = splitCombineToolId(appId);
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
 
-  return getChildAppPreviewNode({ appId, versionId, lang: getLocale(req) });
+  return getChildAppPreviewNode({ appId, versionId: version, lang: getLocale(req) });
 }
 
 export default NextAPI(handler);

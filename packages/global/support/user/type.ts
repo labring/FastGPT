@@ -5,8 +5,9 @@ import type { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
 import { TeamTmbItemSchema } from './team/type';
 
-export const UserTagsEnum = z.enum(['wecom']);
-export type UserTagsEnum = z.infer<typeof UserTagsEnum>;
+export const UserTagsSchema = z.enum(['wecom']);
+export const UserTagsEnum = UserTagsSchema.enum;
+export type UserTagsType = z.infer<typeof UserTagsSchema>;
 
 export type UserMetaType = {
   isActivatedWecomLicense?: boolean;
@@ -29,7 +30,7 @@ export type UserModelSchema = {
     keyword: string;
   };
   contact?: string;
-  tags: UserTagsEnum[];
+  tags: UserTagsType[];
   meta?: UserMetaType;
 };
 
@@ -43,7 +44,7 @@ export const UserSchema = z.object({
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
   contact: z.string().optional(),
-  tags: z.array(UserTagsEnum).optional()
+  tags: z.array(UserTagsSchema).optional()
 });
 export type UserType = z.infer<typeof UserSchema>;
 

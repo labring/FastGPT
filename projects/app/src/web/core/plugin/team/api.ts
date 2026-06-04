@@ -1,19 +1,21 @@
-import { GET, POST } from '@/web/common/api/request';
+import { GET } from '@/web/common/api/request';
 import type {
   GetTeamSystemPluginListQueryType,
-  ToggleInstallPluginBodyType,
   GetTeamPluginListResponseType
-} from '@fastgpt/global/openapi/core/plugin/team/api';
+} from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
 import type {
   GetTeamToolDetailQueryType,
-  GetTeamToolDetailResponseType
-} from '@fastgpt/global/openapi/core/plugin/team/toolApi';
+  GetTeamToolDetailResponseType,
+  GetTeamToolVersionsQueryType,
+  GetTeamToolVersionsResponseType
+} from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
 
 export const getTeamSystemPluginList = (data: GetTeamSystemPluginListQueryType) =>
-  GET<GetTeamPluginListResponseType>(`/core/plugin/team/list`, data);
-export const postToggleInstallPlugin = (data: ToggleInstallPluginBodyType) =>
-  POST(`/core/plugin/team/toggleInstall`, data);
+  GET<GetTeamPluginListResponseType>(`/core/plugin/team/tool/list`, data);
 
 /* ===== Tool ===== */
 export const getTeamToolDetail = (data: GetTeamToolDetailQueryType) =>
-  GET<GetTeamToolDetailResponseType>(`/core/plugin/team/toolDetail`, data);
+  GET<GetTeamToolDetailResponseType>(`/core/plugin/team/tool/detail`, data);
+
+export const getTeamToolVersions = (data: GetTeamToolVersionsQueryType) =>
+  GET<GetTeamToolVersionsResponseType>(`/core/plugin/team/tool/versions`, data);

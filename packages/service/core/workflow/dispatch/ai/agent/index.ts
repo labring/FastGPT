@@ -206,6 +206,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         useAgentSandbox: !!sandboxClient
       }
     );
+
+    console.log('agentSubAppsMap', agentSubAppsMap);
     // runtime 运行详情和工具卡需要根据 function name 反查展示名、头像和描述。
     // 用户工具与系统工具的 id 形态不完全一致，这里统一归一化查询。
     const getSubAppInfo = (id: string) => {

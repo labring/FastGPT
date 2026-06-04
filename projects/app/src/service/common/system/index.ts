@@ -19,12 +19,12 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { hasAgentSandboxConfig, serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
+import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const defaultOpenSourceLoginGuideDocUrl =
@@ -196,7 +196,7 @@ export async function initSystemConfig() {
 
 export async function initSystemPluginTags() {
   try {
-    const tags = await getSystemToolTags();
+    const tags = pluginTagList;
 
     if (tags.length > 0) {
       const bulkOps = tags.map((tag, index) => ({

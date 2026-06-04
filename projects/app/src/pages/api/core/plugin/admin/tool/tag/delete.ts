@@ -5,8 +5,6 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { DeletePluginToolTagQuery } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { refreshVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, DeletePluginToolTagQuery>
@@ -34,8 +32,6 @@ async function handler(
       { session }
     );
   });
-
-  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
 }
 
 export default NextAPI(handler);

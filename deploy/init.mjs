@@ -158,7 +158,9 @@ const loadArgs = (version) => {
   /**
    * @type {{tags: Record<Services, string>, images: Record<Services, Record<string, string>>}}
    */
-  const obj = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'version', version, 'args.json')));
+  const obj = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), 'version', version, 'args.json'))
+  );
   const args = {};
   for (const key of Object.keys(obj.tags)) {
     args[key] = {
@@ -232,7 +234,7 @@ const generateDevFile = async (deployVersions, vectors) => {
     )
   ]);
 
-  console.log('success geenrate dev files');
+  console.log('success generated dev files');
 };
 
 /**
@@ -244,7 +246,9 @@ const generateProdFile = async (deployVersions, vectors) => {
   console.log('generating public prod docker-compose.yml files');
   const outputRoot = path.join(process.cwd(), '..', 'document', 'public', 'deploy', 'docker');
   const regions = Object.values(RegionEnum);
-  const versionArgs = Object.fromEntries(deployVersions.map((version) => [version, loadArgs(version)]));
+  const versionArgs = Object.fromEntries(
+    deployVersions.map((version) => [version, loadArgs(version)])
+  );
   const versionTemplates = Object.fromEntries(
     await Promise.all(
       deployVersions.map(async (version) => [
@@ -272,17 +276,22 @@ const generateProdFile = async (deployVersions, vectors) => {
         Object.entries(vectors).map(([vector, { filename }]) =>
           fs.promises.writeFile(
             path.join(outputRoot, version, region, `docker-compose.${filename}.yml`),
-            formatYamlOutput(replace(versionTemplates[version], region, vector, versionArgs[version], vectors))
+            formatYamlOutput(
+              replace(versionTemplates[version], region, vector, versionArgs[version], vectors)
+            )
           )
         )
       )
     )
   );
 
-  console.log('success geenrate prod files');
+  console.log('success generated prod files');
 };
 
 const deployVersions = await loadDeployVersions();
 await syncInstallScriptVersions(deployVersions);
 const vectors = await loadVectorConfigs();
-await Promise.all([generateDevFile(deployVersions, vectors), generateProdFile(deployVersions, vectors)]);
+await Promise.all([
+  generateDevFile(deployVersions, vectors),
+  generateProdFile(deployVersions, vectors)
+]);

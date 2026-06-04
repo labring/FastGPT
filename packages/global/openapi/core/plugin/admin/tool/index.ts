@@ -3,16 +3,23 @@ import {
   CreateAppToolBodySchema,
   DeleteSystemToolQuerySchema,
   GetAdminSystemToolDetailQuerySchema,
+  GetAdminSystemToolVersionsQuerySchema,
+  GetAdminSystemToolVersionsResponseSchema,
   GetAdminSystemToolsQuery,
   GetAdminSystemToolsResponseSchema,
   GetAllSystemAppsBodySchema,
   GetAllSystemAppsResponseSchema,
-  UpdateToolBodySchema,
-  UpdateToolOrderBodySchema
+  GetToolRuntimeConfigQuerySchema,
+  GetToolRuntimeConfigResponseSchema,
+  ResetToolRuntimeConfigBodySchema,
+  UpdateSystemToolBodySchema,
+  UpdateToolOrderBodySchema,
+  UpdateToolRuntimeConfigBodySchema,
+  UpdateWorkflowToolBodySchema
 } from './api';
 import { TagsMap } from '../../../../tag';
-import z from 'zod';
-import { AdminSystemToolDetailSchema } from '../../../../../core/plugin/admin/tool/type';
+import { z } from 'zod';
+import { AdminSystemToolDetailSchema } from '../../../../../core/app/tool/systemTool/type';
 import { SystemToolTagPath } from './tag';
 
 export const AdminPluginToolPath: OpenAPIPath = {
@@ -56,6 +63,26 @@ export const AdminPluginToolPath: OpenAPIPath = {
       }
     }
   },
+  '/core/plugin/admin/tool/versions': {
+    get: {
+      summary: '获取系统工具版本列表',
+      description: '获取系统工具版本列表，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestParams: {
+        query: GetAdminSystemToolVersionsQuerySchema
+      },
+      responses: {
+        '200': {
+          description: '成功获取系统工具版本列表',
+          content: {
+            'application/json': {
+              schema: GetAdminSystemToolVersionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/plugin/admin/tool/update': {
     put: {
       summary: '更新系统工具',
@@ -65,7 +92,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: UpdateToolBodySchema
+            schema: UpdateSystemToolBodySchema
           }
         }
       },
@@ -105,6 +132,74 @@ export const AdminPluginToolPath: OpenAPIPath = {
       }
     }
   },
+  '/core/plugin/admin/tool/runtimeConfig/update': {
+    put: {
+      summary: '更新工具运行时配置',
+      description: '更新插件服务中的工具运行时配置，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateToolRuntimeConfigBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新工具运行时配置',
+          content: {
+            'application/json': {
+              schema: z.object({})
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/plugin/admin/tool/runtimeConfig/detail': {
+    get: {
+      summary: '获取工具运行时配置',
+      description: '获取插件服务中的工具运行时配置，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestParams: {
+        query: GetToolRuntimeConfigQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取工具运行时配置',
+          content: {
+            'application/json': {
+              schema: GetToolRuntimeConfigResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/plugin/admin/tool/runtimeConfig/reset': {
+    post: {
+      summary: '重置工具运行时配置',
+      description: '将工具运行时配置重置为插件服务默认值，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ResetToolRuntimeConfigBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功重置工具运行时配置',
+          content: {
+            'application/json': {
+              schema: z.object({})
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/plugin/admin/tool/delete': {
     delete: {
       summary: '删除系统工具',
@@ -126,7 +221,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     }
   },
   // Workflow tool
-  '/core/plugin/admin/tool/workflow/systemApps': {
+  '/core/plugin/admin/tool/app/systemApps': {
     post: {
       summary: '获取所有系统工具类型应用',
       description: '获取所有系统工具类型应用，用于选择系统上的应用作为系统工具。需要系统管理员权限',
@@ -150,7 +245,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/admin/tool/workflow/create': {
+  '/core/plugin/admin/tool/app/create': {
     post: {
       summary: '将系统应用设置成系统工具',
       description: '将系统应用设置成系统工具，需要系统管理员权限',
@@ -165,6 +260,30 @@ export const AdminPluginToolPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功将系统应用设置成系统工具',
+          content: {
+            'application/json': {
+              schema: z.object({})
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/plugin/admin/tool/app/update': {
+    put: {
+      summary: '更新工作流工具',
+      description: '更新工作流工具配置，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateWorkflowToolBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新工作流工具',
           content: {
             'application/json': {
               schema: z.object({})

@@ -1,13 +1,12 @@
+import { PluginPermissionEnumSchema } from '@fastgpt-plugin/sdk-client';
+import z from 'zod';
+
+export * from '@fastgpt-plugin/sdk-client';
+
 export {
-  FastGPTPluginClient,
-  RunToolWithStream,
-  ToolDetailSchema,
-  ToolSimpleSchema,
-  ToolTagsNameMap
-} from '@fastgpt-sdk/plugin';
-export type {
-  AIProxyChannelsType,
-  I18nStringStrictType,
-  ToolDetailType,
-  ToolSimpleType
-} from '@fastgpt-sdk/plugin';
+  PluginPermissionEnum,
+  PluginPermissionEnumSchema,
+  FastGPTPluginClient
+} from '@fastgpt-plugin/sdk-client';
+
+export const PluginPermissionListSchema = z.array(PluginPermissionEnumSchema);

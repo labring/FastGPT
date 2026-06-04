@@ -3,10 +3,6 @@ import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { serviceEnv } from '@fastgpt/service/env';
 
-vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
-  refreshSystemTools: vi.fn().mockResolvedValue([])
-}));
-
 const mockGetAllKeysByPrefix = vi.fn().mockResolvedValue([]);
 vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
@@ -30,19 +26,19 @@ describe('refreshVersionKey', () => {
   });
 
   it('should set a version key without id', async () => {
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool);
+    await refreshVersionKey(SystemCacheKeyEnum.modelPermission);
     const redis = getGlobalRedisConnection() as any;
     expect(redis.set).toHaveBeenCalledWith(
-      `VERSION_KEY:${SystemCacheKeyEnum.systemTool}`,
+      `VERSION_KEY:${SystemCacheKeyEnum.modelPermission}`,
       expect.any(String)
     );
   });
 
   it('should set a version key with specific id', async () => {
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool, 'team123');
+    await refreshVersionKey(SystemCacheKeyEnum.modelPermission, 'team123');
     const redis = getGlobalRedisConnection() as any;
     expect(redis.set).toHaveBeenCalledWith(
-      `VERSION_KEY:${SystemCacheKeyEnum.systemTool}:team123`,
+      `VERSION_KEY:${SystemCacheKeyEnum.modelPermission}:team123`,
       expect.any(String)
     );
   });
@@ -54,10 +50,10 @@ describe('refreshVersionKey', () => {
 
     mockGetAllKeysByPrefix.mockResolvedValueOnce(['key1', 'key2']);
 
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool, '*');
+    await refreshVersionKey(SystemCacheKeyEnum.modelPermission, '*');
 
     expect(mockGetAllKeysByPrefix).toHaveBeenCalledWith(
-      `VERSION_KEY:${SystemCacheKeyEnum.systemTool}`
+      `VERSION_KEY:${SystemCacheKeyEnum.modelPermission}`
     );
     expect(mockPipeline.del).toHaveBeenCalledWith(['key1', 'key2']);
     expect(mockPipeline.exec).toHaveBeenCalled();
@@ -70,14 +66,14 @@ describe('refreshVersionKey', () => {
 
     mockGetAllKeysByPrefix.mockResolvedValueOnce([]);
 
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool, '*');
+    await refreshVersionKey(SystemCacheKeyEnum.modelPermission, '*');
 
     expect(mockPipeline.del).not.toHaveBeenCalled();
   });
 
   it('should init systemCache if not present', async () => {
     expect((global as any).systemCache).toBeUndefined();
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool);
+    await refreshVersionKey(SystemCacheKeyEnum.modelPermission);
     expect(global.systemCache).toBeDefined();
   });
 });
@@ -92,22 +88,22 @@ describe('getVersionKey', () => {
 
   it('should return existing value from redis', async () => {
     const redis = getGlobalRedisConnection() as any;
-    await redis.set(`VERSION_KEY:${SystemCacheKeyEnum.systemTool}`, 'existing-val');
+    await redis.set(`VERSION_KEY:${SystemCacheKeyEnum.modelPermission}`, 'existing-val');
 
-    const result = await getVersionKey(SystemCacheKeyEnum.systemTool);
+    const result = await getVersionKey(SystemCacheKeyEnum.modelPermission);
     expect(result).toBe('existing-val');
   });
 
   it('should return existing value with id', async () => {
     const redis = getGlobalRedisConnection() as any;
-    await redis.set(`VERSION_KEY:${SystemCacheKeyEnum.systemTool}:t1`, 'val-t1');
+    await redis.set(`VERSION_KEY:${SystemCacheKeyEnum.modelPermission}:t1`, 'val-t1');
 
-    const result = await getVersionKey(SystemCacheKeyEnum.systemTool, 't1');
+    const result = await getVersionKey(SystemCacheKeyEnum.modelPermission, 't1');
     expect(result).toBe('val-t1');
   });
 
   it('should create and return new UUID when key does not exist', async () => {
-    const result = await getVersionKey(SystemCacheKeyEnum.systemTool);
+    const result = await getVersionKey(SystemCacheKeyEnum.modelPermission);
     expect(result).toBeTruthy();
     expect(typeof result).toBe('string');
     // UUID format check
@@ -116,16 +112,16 @@ describe('getVersionKey', () => {
 
   it('should set the new UUID in redis when key does not exist', async () => {
     const redis = getGlobalRedisConnection() as any;
-    const result = await getVersionKey(SystemCacheKeyEnum.systemTool);
+    const result = await getVersionKey(SystemCacheKeyEnum.modelPermission);
 
     // Verify the value was stored
-    const stored = await redis.get(`VERSION_KEY:${SystemCacheKeyEnum.systemTool}`);
+    const stored = await redis.get(`VERSION_KEY:${SystemCacheKeyEnum.modelPermission}`);
     expect(stored).toBe(result);
   });
 
   it('should init systemCache if not present', async () => {
     expect((global as any).systemCache).toBeUndefined();
-    await getVersionKey(SystemCacheKeyEnum.systemTool);
+    await getVersionKey(SystemCacheKeyEnum.modelPermission);
     expect(global.systemCache).toBeDefined();
   });
 });
@@ -148,58 +144,57 @@ describe('getCachedData', () => {
   it('should init systemCache if not present', async () => {
     expect((global as any).systemCache).toBeUndefined();
     // getCachedData should auto-init systemCache
-    const result = await getCachedData(SystemCacheKeyEnum.systemTool);
+    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
     expect(global.systemCache).toBeDefined();
-    expect(result).toEqual([]);
+    expect(result).toBeNull();
   });
 
   it('should call refreshFunc on first access (cache miss)', async () => {
-    const mockData = [{ id: 'tool1' }];
+    const mockData = { permission: true };
     mockRefreshFunc.mockResolvedValue(mockData);
 
     initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].refreshFunc = mockRefreshFunc;
+    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
 
-    const result = await getCachedData(SystemCacheKeyEnum.systemTool);
+    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
     expect(mockRefreshFunc).toHaveBeenCalled();
     expect(result).toEqual(mockData);
   });
 
-  it('should return cached data on cache hit in production', async () => {
-    const mockData = [{ id: 'tool1' }];
+  it('should return cached data on cache hit', async () => {
+    const mockData = { permission: true };
     mockRefreshFunc.mockResolvedValue(mockData);
 
     initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].refreshFunc = mockRefreshFunc;
+    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
 
     // First call to populate cache
-    await getCachedData(SystemCacheKeyEnum.systemTool);
+    await getCachedData(SystemCacheKeyEnum.modelPermission);
     mockRefreshFunc.mockClear();
 
     // Second call should hit cache (versionKey matches)
-    const result = await getCachedData(SystemCacheKeyEnum.systemTool);
-    // In non-production with devRefresh=true, it will still refresh
-    // So we test modelPermission which has no devRefresh
-    expect(result).toBeDefined();
+    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
+    expect(mockRefreshFunc).not.toHaveBeenCalled();
+    expect(result).toEqual(mockData);
   });
 
   it('should refresh when DISABLE_CACHE is true', async () => {
     serviceEnv.DISABLE_CACHE = true;
-    const mockData = [{ id: 'tool1' }];
+    const mockData = { permission: 'first' };
     mockRefreshFunc.mockResolvedValue(mockData);
 
     initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].refreshFunc = mockRefreshFunc;
+    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
 
     // First call
-    await getCachedData(SystemCacheKeyEnum.systemTool);
+    await getCachedData(SystemCacheKeyEnum.modelPermission);
     mockRefreshFunc.mockClear();
 
     // Second call should still refresh due to DISABLE_CACHE
-    mockRefreshFunc.mockResolvedValue([{ id: 'tool2' }]);
-    const result = await getCachedData(SystemCacheKeyEnum.systemTool);
+    mockRefreshFunc.mockResolvedValue({ permission: 'second' });
+    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
     expect(mockRefreshFunc).toHaveBeenCalled();
-    expect(result).toEqual([{ id: 'tool2' }]);
+    expect(result).toEqual({ permission: 'second' });
   });
 
   it('should use cache for modelPermission (no devRefresh) when versionKey matches', async () => {
@@ -220,33 +215,15 @@ describe('getCachedData', () => {
     expect(result).toEqual({ perm: true });
   });
 
-  it('should refresh when devRefresh is true in non-production', async () => {
-    const mockData = [{ id: 'tool1' }];
-    mockRefreshFunc.mockResolvedValue(mockData);
-
-    initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].refreshFunc = mockRefreshFunc;
-
-    // First call
-    await getCachedData(SystemCacheKeyEnum.systemTool);
-    mockRefreshFunc.mockClear();
-
-    // Second call - devRefresh=true and not production, so should refresh
-    mockRefreshFunc.mockResolvedValue([{ id: 'tool2' }]);
-    const result = await getCachedData(SystemCacheKeyEnum.systemTool);
-    expect(mockRefreshFunc).toHaveBeenCalled();
-    expect(result).toEqual([{ id: 'tool2' }]);
-  });
-
   it('should update versionKey after refresh', async () => {
-    mockRefreshFunc.mockResolvedValue([]);
+    mockRefreshFunc.mockResolvedValue({ permission: true });
 
     initCache();
-    global.systemCache[SystemCacheKeyEnum.systemTool].refreshFunc = mockRefreshFunc;
+    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
 
-    expect(global.systemCache[SystemCacheKeyEnum.systemTool].versionKey).toBe('');
-    await getCachedData(SystemCacheKeyEnum.systemTool);
-    expect(global.systemCache[SystemCacheKeyEnum.systemTool].versionKey).not.toBe('');
+    expect(global.systemCache[SystemCacheKeyEnum.modelPermission].versionKey).toBe('');
+    await getCachedData(SystemCacheKeyEnum.modelPermission);
+    expect(global.systemCache[SystemCacheKeyEnum.modelPermission].versionKey).not.toBe('');
   });
 
   it('should support id parameter for getCachedData', async () => {
