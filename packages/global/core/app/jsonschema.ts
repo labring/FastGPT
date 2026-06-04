@@ -115,15 +115,15 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   if (type === 'array' && items?.enum && items.enum.length > 0) {
     return {
       value: [],
-      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
-      list: items.enum.map((item: any) => ({ label: item, value: item }))
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
+      list: items.enum.map(formatJsonSchemaEnumOption)
     };
   }
   if (enumList && enumList.length > 0) {
     return {
-      value: enumList[0],
-      renderTypeList: [FlowNodeInputTypeEnum.select],
-      list: enumList.map((item) => ({ label: item, value: item }))
+      value: String(enumList[0]),
+      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+      list: enumList.map(formatJsonSchemaEnumOption)
     };
   }
   if (type === 'string') {
@@ -140,10 +140,16 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   if (type === 'boolean') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.switch]
+      renderTypeList: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference]
     };
   }
   return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
+};
+
+/** 将 JSON Schema enum 值规范成节点输入选项，避免响应 schema 因非字符串 value 解析失败。 */
+const formatJsonSchemaEnumOption = (item: any) => {
+  const value = String(item);
+  return { label: value, value };
 };
 
 export const jsonSchema2NodeInput = ({

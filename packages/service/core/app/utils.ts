@@ -144,10 +144,20 @@ export async function rewriteAppWorkflowToDetail({
 
             node.inputs = preview.inputs.map((item) => {
               const input = inputsMap.get(item.key);
+              const selectedRenderType =
+                input?.renderTypeList?.[input?.selectedTypeIndex ?? 0] ?? item.renderTypeList?.[0];
+              const selectedTypeIndex = selectedRenderType
+                ? item.renderTypeList.findIndex((renderType) => renderType === selectedRenderType)
+                : -1;
+
               return {
                 ...item,
                 value: input?.value,
-                selectedTypeIndex: input?.selectedTypeIndex
+                selectedTypeIndex:
+                  selectedTypeIndex >= 0 &&
+                  (selectedTypeIndex > 0 || input?.selectedTypeIndex !== undefined)
+                    ? selectedTypeIndex
+                    : undefined
               };
             });
             node.outputs = preview.outputs.map((item) => {
