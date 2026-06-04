@@ -11,6 +11,7 @@ import {
   str2OpenApiSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 
 describe('jsonSchema2NodeInput', () => {
   it('should return correct node input for http schema', () => {
@@ -46,7 +47,7 @@ describe('jsonSchema2NodeInput', () => {
         toolDescription: undefined,
         required: false,
         value: '11',
-        renderTypeList: ['select'],
+        renderTypeList: ['select', 'reference'],
         list: [
           {
             label: '11',
@@ -74,7 +75,7 @@ describe('jsonSchema2NodeInput', () => {
         valueType: 'boolean',
         toolDescription: undefined,
         required: false,
-        renderTypeList: ['switch']
+        renderTypeList: ['switch', 'reference']
       },
       {
         key: 'object',
@@ -202,13 +203,58 @@ describe('jsonSchema2NodeInput', () => {
         toolDescription: '选择热榜来源网站（可多选）',
         required: true,
         value: [],
-        renderTypeList: ['multipleSelect'],
+        renderTypeList: ['multipleSelect', 'reference'],
         list: [
           { label: '36kr', value: '36kr' },
           { label: 'zhihu', value: 'zhihu' },
           { label: 'weibo', value: 'weibo' },
           { label: 'juejin', value: 'juejin' },
           { label: 'toutiao', value: 'toutiao' }
+        ]
+      }
+    ]);
+  });
+
+  it('should stringify enum options to match node input schema', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        count: {
+          type: 'number',
+          enum: [1, 2],
+          description: 'Number enum'
+        },
+        flags: {
+          type: 'array',
+          items: {
+            type: 'boolean',
+            enum: [true, false]
+          }
+        }
+      }
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
+
+    result.forEach((item) => expect(() => FlowNodeInputItemTypeSchema.parse(item)).not.toThrow());
+    expect(result).toMatchObject([
+      {
+        key: 'count',
+        value: '1',
+        valueType: WorkflowIOValueTypeEnum.number,
+        renderTypeList: ['select', 'reference'],
+        list: [
+          { label: '1', value: '1' },
+          { label: '2', value: '2' }
+        ]
+      },
+      {
+        key: 'flags',
+        valueType: WorkflowIOValueTypeEnum.arrayBoolean,
+        renderTypeList: ['multipleSelect', 'reference'],
+        list: [
+          { label: 'true', value: 'true' },
+          { label: 'false', value: 'false' }
         ]
       }
     ]);
