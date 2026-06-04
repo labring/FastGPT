@@ -115,14 +115,14 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   if (type === 'array' && items?.enum && items.enum.length > 0) {
     return {
       value: [],
-      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
       list: items.enum.map((item: any) => ({ label: item, value: item }))
     };
   }
   if (enumList && enumList.length > 0) {
     return {
       value: enumList[0],
-      renderTypeList: [FlowNodeInputTypeEnum.select],
+      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
       list: enumList.map((item) => ({ label: item, value: item }))
     };
   }
@@ -140,7 +140,7 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
   }
   if (type === 'boolean') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.switch]
+      renderTypeList: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference]
     };
   }
   return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };

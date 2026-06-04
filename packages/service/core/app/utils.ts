@@ -147,7 +147,8 @@ export async function rewriteAppWorkflowToDetail({
               return {
                 ...item,
                 value: input?.value,
-                selectedTypeIndex: input?.selectedTypeIndex
+                selectedTypeIndex: input?.selectedTypeIndex,
+                renderTypeList: input?.renderTypeList ?? item.renderTypeList
               };
             });
             node.outputs = preview.outputs.map((item) => {
