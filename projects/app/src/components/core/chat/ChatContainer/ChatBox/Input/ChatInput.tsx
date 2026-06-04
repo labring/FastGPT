@@ -282,8 +282,8 @@ const ChatInput = ({
 
   const RenderButtonGroup = useMemo(() => {
     const iconSize = {
-      w: isPc ? '20px' : '16px',
-      h: isPc ? '20px' : '16px'
+      w: '20px',
+      h: '20px'
     };
 
     return (
@@ -292,7 +292,7 @@ const ChatInput = ({
         justifyContent={'space-between'}
         w={'100%'}
         mt={0}
-        h={[8, 9]}
+        h={9}
         gap={[0, 1]}
       >
         {/* 左侧自定义按钮组 */}
@@ -303,14 +303,14 @@ const ChatInput = ({
         {/* 右侧原有按钮组 */}
         <Flex alignItems={'center'} gap={[0, 1]}>
           {/* Attachment and Voice Group */}
-          <Flex alignItems={'center'} h={[8, 9]}>
+          <Flex alignItems={'center'} h={9}>
             {/* file selector button */}
             {canUploadFile && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
-                w={[8, 9]}
-                h={[8, 9]}
+                w={9}
+                h={9}
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
@@ -332,8 +332,8 @@ const ChatInput = ({
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
-                w={[8, 9]}
-                h={[8, 9]}
+                w={9}
+                h={9}
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
@@ -358,14 +358,14 @@ const ChatInput = ({
           )}
 
           {/* Send Button Container */}
-          <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
+          <Flex alignItems={'center'} w={9} h={9} borderRadius={'lg'}>
             <MyBox
               isLoading={isStopping}
               display={'flex'}
               alignItems={'center'}
               justifyContent={'center'}
-              w={[7, 9]}
-              h={[7, 9]}
+              w={9}
+              h={9}
               p={[1, 2]}
               bg={
                 isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
@@ -425,6 +425,7 @@ const ChatInput = ({
       w={'100%'}
       maxW={['100%', '780px']}
       mx={'auto'}
+      pb={['calc(12px + env(safe-area-inset-bottom))', 0]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -487,7 +488,7 @@ const ChatInput = ({
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
             <Box>
-              <FilePreview fileList={fileList} removeFiles={removeFiles} />
+              <FilePreview fileList={fileList} removeFiles={removeFiles} pt={0} />
             </Box>
           )}
 
@@ -520,7 +521,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={0} pb={6} />
+      <ComplianceTip type={'chat'} pt={0} pb={[0, 6]} />
     </Box>
   );
 };

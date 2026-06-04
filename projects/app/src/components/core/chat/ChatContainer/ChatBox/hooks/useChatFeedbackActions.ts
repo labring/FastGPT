@@ -34,7 +34,7 @@ type AdminMarkState = AdminMarkType & { dataId: string };
  * 设计边界：
  * - hook 负责动作和 modal 状态，`FeedbackModal`、`SelectMarkCollection` 的 JSX 仍留在
  *   `ChatBox/index.tsx`，避免本 PR 同时进入 UI 组件拆分。
- * - 用户点赞/取消点赞、取消点踩、关闭 custom feedback 都沿用原来的乐观更新策略：
+ * - 用户点赞/取消点赞、点踩/取消点踩、关闭 custom feedback 都沿用原来的乐观更新策略：
  *   先更新本地 `chatRecords`，API 异常保持静默，不在本次拆分里新增 toast 或回滚。
  * - admin mark 的弹窗流程需要跨三步选择 dataset、collection、输入数据，因此 hook 只保存
  *   当前 modal 数据和 success 回写逻辑，不改 `SelectMarkCollection` 内部交互。
@@ -88,7 +88,7 @@ export const useChatFeedbackActions = ({
   /**
    * 生成用户点赞回调。
    *
-   * 点赞只在 user feedback 模式和 AI 消息下可用。点赞与点踩互不隐藏、互不清空；
+   * 点赞只在 user feedback 模式和 AI 消息下可用。点赞与点踩互斥：点亮赞时清空踩，
    * 再次点击已点赞消息会取消 `userGoodFeedback`，保留原有“点击切换”语义。
    */
   const onAddUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
@@ -103,7 +103,8 @@ export const useChatFeedbackActions = ({
           chatItem.dataId === chat.dataId
             ? {
                 ...chatItem,
-                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                userGoodFeedback: isGoodFeedback ? undefined : 'yes',
+                userBadFeedback: undefined
               }
             : chatItem
         )
@@ -125,7 +126,8 @@ export const useChatFeedbackActions = ({
    * 生成用户点踩回调。
    *
    * 没有点踩内容时返回打开 `FeedbackModal` 的回调，由弹窗收集具体原因；已有点踩内容时返回
-   * 取消点踩回调，清空本地 `userBadFeedback` 并同步服务端。点赞与点踩互不隐藏、互不清空。
+   * 取消点踩回调，清空本地 `userBadFeedback` 并同步服务端。点赞与点踩互斥，
+   * 点踩提交成功后会清空本地 `userGoodFeedback`。
    */
   const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
     if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
@@ -230,7 +232,9 @@ export const useChatFeedbackActions = ({
   const onFeedbackSuccess = useMemoizedFn((content: string) => {
     setChatRecords((state) =>
       state.map((item) =>
-        item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
+        item.dataId === feedbackId
+          ? { ...item, userGoodFeedback: undefined, userBadFeedback: content }
+          : item
       )
     );
     setFeedbackId(undefined);

@@ -68,7 +68,20 @@ const Chat = () => {
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex="1 0 0" w={0} position="relative" insertProps={rightWindowStyle}>
+        <PageContainer
+          flex="1 0 0"
+          w={0}
+          position="relative"
+          pr={datasetCiteData ? 0 : undefined}
+          insertProps={{
+            ...rightWindowStyle,
+            ...(datasetCiteData
+              ? {
+                  borderRadius: [0, '16px 0 0 16px']
+                }
+              : {})
+          }}
+        >
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
@@ -84,7 +97,17 @@ const Chat = () => {
       )}
 
       {datasetCiteData && (
-        <PageContainer flex="1 0 0" w={0} maxW="560px" insertProps={rightWindowStyle}>
+        <PageContainer
+          flex="1 0 0"
+          w={0}
+          maxW="560px"
+          insertProps={{
+            ...rightWindowStyle,
+            borderLeft: '1px solid',
+            borderLeftColor: 'myGray.200',
+            borderRadius: [0, '0 16px 16px 0']
+          }}
+        >
           <ChatQuoteList
             metadata={datasetCiteData.metadata}
             rawSearch={datasetCiteData.rawSearch}

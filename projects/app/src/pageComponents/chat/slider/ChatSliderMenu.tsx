@@ -50,9 +50,9 @@ const MobileClearHistoryConfirm = ({
       >
         <ModalOverlay bg="rgba(0, 0, 0, 0.16)" zIndex={1500} />
         <ModalContent
-          w="328px"
-          maxW="calc(100vw - 48px)"
-          mx="24px"
+          w="calc(100vw - 32px)"
+          maxW="calc(100vw - 32px)"
+          mx="16px"
           p="32px"
           borderRadius="10px"
           boxShadow="0 8px 24px rgba(19, 51, 107, 0.16)"

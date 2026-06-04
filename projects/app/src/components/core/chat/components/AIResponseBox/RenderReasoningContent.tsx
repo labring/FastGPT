@@ -56,12 +56,12 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
         >
           <HStack mr={1} spacing="0">
             <Flex w="24px" h="24px" alignItems="center" justifyContent="flex-start">
-              <MyIcon name={'core/chat/deepThinking'} fill={'myGray.600'} />
+              <MyIcon name={'core/chat/deepThinking'} fill={'myGray.500'} />
             </Flex>
             <Box fontSize={'16px'}>{t('chat:ai_reasoning')}</Box>
           </HStack>
 
-          <AccordionIcon ml={1} />
+          <AccordionIcon ml={1} color={'myGray.500'} />
         </AccordionButton>
         <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
           <Box
@@ -70,7 +70,7 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
             overflow={contentExpanded ? 'visible' : 'hidden'}
             ml={1.5}
             pl={3}
-            borderLeft={'2px solid'}
+            borderLeft={'1px solid'}
             borderColor={'myGray.200'}
             sx={{
               '.markdown': {

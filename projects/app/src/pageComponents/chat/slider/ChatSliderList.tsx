@@ -105,7 +105,18 @@ const ChatSliderList = () => {
     <>
       {/* 移动端侧栏只需要纵向滚动；隐藏横向滚动条，避免底部语言入口上方出现灰线。 */}
       {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
-      <ScrollData flex={'1 0 0'} h={0} p={0} overflowY={'auto'} overflowX={'hidden'}>
+      <ScrollData
+        flex={'1 0 0'}
+        h={0}
+        p={0}
+        overflowY={'auto'}
+        overflowX={'hidden'}
+        sx={{
+          '& > div:last-of-type': {
+            color: 'var(--chakra-colors-myGray-400)'
+          }
+        }}
+      >
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}

@@ -27,6 +27,14 @@ export type CitationRenderItem = {
 
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
+const getCitationGridSpan = (text: string) => {
+  const textWidthUnits = Array.from(text).reduce((sum, char) => {
+    return sum + (/[\u4E00-\u9FFF]/.test(char) ? 2 : 1);
+  }, 0);
+
+  return Math.min(Math.max(Math.ceil(textWidthUnits / 7), 1), 5);
+};
+
 const CitationListCard = React.memo(function CitationListCard({
   items,
   isPc,
@@ -67,7 +75,7 @@ const CitationListCard = React.memo(function CitationListCard({
           p={'8px'}
         >
           <Box ref={cardContentRef}>
-            <Flex alignItems={'center'} justifyContent={'space-between'} px={'8px'}>
+            <Flex h={'28px'} alignItems={'center'} justifyContent={'space-between'} px={'8px'}>
               <MyTooltip label={t('chat:view_citations')}>
                 <Flex
                   alignItems={'center'}
@@ -80,6 +88,9 @@ const CitationListCard = React.memo(function CitationListCard({
                   _hover={{
                     color: 'primary.600',
                     '.citation-count': {
+                      color: 'primary.600'
+                    },
+                    '.citation-arrow': {
                       color: 'primary.600'
                     }
                   }}
@@ -96,6 +107,7 @@ const CitationListCard = React.memo(function CitationListCard({
                     {t('chat:citation_card_suffix')}
                   </Box>
                   <MyIcon
+                    className="citation-arrow"
                     name={'common/arrowRight'}
                     w={'14px'}
                     color={'myGray.400'}
@@ -127,6 +139,8 @@ const CitationListCard = React.memo(function CitationListCard({
                   <Flex
                     alignItems={'center'}
                     minW={0}
+                    w={'max-content'}
+                    gridColumn={`span ${getCitationGridSpan(item.displayText)}`}
                     px={'8px'}
                     py={'6px'}
                     borderRadius={'8px'}
@@ -142,7 +156,7 @@ const CitationListCard = React.memo(function CitationListCard({
                     }}
                   >
                     <MyIcon name={item.icon as any} mr={2} flexShrink={0} w={'14px'} />
-                    <Box className="textEllipsis" minW={0}>
+                    <Box minW={0} whiteSpace={'nowrap'}>
                       {item.displayText}
                     </Box>
                   </Flex>

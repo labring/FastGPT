@@ -197,7 +197,13 @@ const ChatController = ({
                 t('common:core.app.TTS start'),
                 <MyIcon
                   {...iconStyle}
-                  name={'common/voiceLight'}
+                  name={'core/chat/soundWave'}
+                  color="currentColor"
+                  sx={{
+                    '& path': {
+                      fill: 'currentColor'
+                    }
+                  }}
                   _hover={{ color: isFooter ? 'primary.600' : '#E74694' }}
                   onClick={async () => {
                     setAudioPlayingChatId(chat.dataId);

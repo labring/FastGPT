@@ -31,7 +31,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import AIModelSelector from '@/components/Select/AIModelSelector';
+import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
@@ -51,7 +51,7 @@ import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/uti
 import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
-import { chatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -295,13 +295,13 @@ const HomeChatWindow = () => {
         {/* 模型选择 */}
         {isPc && availableModels.length > 0 && (
           <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
-            <AIModelSelector
+            <ChatAIModelSelector
               cacheModel={false}
-              h={['30px', '36px']}
+              h={'36px'}
               boxShadow={'none'}
               size="sm"
               bg={'myGray.50'}
-              rounded="full"
+              rounded="10px"
               list={availableModels}
               value={selectedModel}
               onChange={onChangeModel}
@@ -314,7 +314,7 @@ const HomeChatWindow = () => {
           <Menu isLazy closeOnSelect={false} autoSelect={false}>
             <MenuButton
               as={Button}
-              h={['30px', '36px']}
+              h={'36px'}
               boxShadow={'none'}
               size="sm"
               rounded="full"
@@ -427,12 +427,12 @@ const HomeChatWindow = () => {
           />
         ) : (
           <Flex
-            h="46px"
+            h="48px"
             px={3}
             bg="white"
             alignItems="center"
             justifyContent="space-between"
-            color="myGray.900"
+            color="myGray.600"
           >
             <IconButton
               aria-label="Open history"
@@ -440,17 +440,16 @@ const HomeChatWindow = () => {
                 <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
               }
               variant="unstyled"
-              {...chatHeaderIconButtonStyle}
-              color="myGray.900"
+              {...mobileChatHeaderIconButtonStyle}
               onClick={onOpenSlider}
             />
             <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
               <Box fontSize="16px" fontWeight={500} className="textEllipsis" maxW="200px">
                 {selectedModelData?.name || selectedModel}
               </Box>
-              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.700" ml={1} />
+              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" ml={1} />
             </Flex>
-            <Box minW="32px">
+            <Box minW="36px">
               <ToolMenu history={chatRecords} chatType={ChatTypeEnum.home} />
             </Box>
           </Flex>
@@ -479,7 +478,7 @@ const HomeChatWindow = () => {
             dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
-            quickAppList={chatSettings?.quickAppList || []}
+            quickAppList={(chatSettings?.quickAppList || []).slice(0, 3)}
             onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>

@@ -33,6 +33,8 @@ const ChatSliderQuickAppList = () => {
             key={app._id}
             p="8px"
             gap={2}
+            h="44px"
+            minH="44px"
             cursor="pointer"
             borderRadius="8px"
             alignItems="center"

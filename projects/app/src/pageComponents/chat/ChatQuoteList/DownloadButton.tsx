@@ -2,6 +2,16 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useTranslation } from 'next-i18next';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
+const menuItemStyles = {
+  px: '4px',
+  py: '6px'
+};
+
+const menuIconStyles = {
+  w: '16px',
+  h: '16px'
+};
+
 const DownloadButton = ({
   canAccessRawData,
   onDownload,
@@ -19,6 +29,8 @@ const DownloadButton = ({
         icon: 'core/dataset/datasetLightSmall',
         label: t('chat:go_to_dataset'),
         type: 'grayBg' as const,
+        menuItemStyles,
+        iconStyles: menuIconStyles,
         onClick: onRouteToDataset
       }
     : undefined;
@@ -29,7 +41,7 @@ const DownloadButton = ({
         size={'xs'}
         Button={
           <MyIconButton
-            icon="more"
+            icon="core/chat/dotsHorizontal"
             size={'1rem'}
             color={'myGray.600'}
             hoverBg={'myGray.100'}
@@ -39,16 +51,20 @@ const DownloadButton = ({
           {
             children: [
               {
-                icon: 'common/link',
-                label: t('chat:read_raw_source'),
-                type: 'grayBg',
-                onClick: onRead
-              },
-              {
                 icon: 'core/chat/fileDownload',
                 label: t('chat:download_chunks'),
                 type: 'grayBg',
+                menuItemStyles,
+                iconStyles: menuIconStyles,
                 onClick: onDownload
+              },
+              {
+                icon: 'common/link',
+                label: t('chat:read_raw_source'),
+                type: 'grayBg',
+                menuItemStyles,
+                iconStyles: menuIconStyles,
+                onClick: onRead
               },
               ...(datasetMenuItem ? [datasetMenuItem] : [])
             ]
@@ -60,7 +76,7 @@ const DownloadButton = ({
 
   return (
     <MyIconButton
-      icon="more"
+      icon="core/chat/dotsHorizontal"
       size={'1rem'}
       color={'myGray.600'}
       hoverBg={'myGray.100'}

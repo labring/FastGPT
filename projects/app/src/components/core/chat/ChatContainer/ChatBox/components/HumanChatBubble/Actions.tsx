@@ -9,16 +9,22 @@ type HumanChatBubbleActionsProps = {
   chatText: string;
   chatTime?: Date;
   onEdit: () => void;
+  isAlwaysVisible?: boolean;
 };
 
-const HumanChatBubbleActions = ({ chatText, chatTime, onEdit }: HumanChatBubbleActionsProps) => {
+const HumanChatBubbleActions = ({
+  chatText,
+  chatTime,
+  onEdit,
+  isAlwaysVisible = false
+}: HumanChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
   return (
     <Flex
       className="chat-controller-hover"
-      display={'none'}
+      display={isAlwaysVisible ? 'flex' : 'none'}
       position={'absolute'}
       right={0}
       top={'100%'}

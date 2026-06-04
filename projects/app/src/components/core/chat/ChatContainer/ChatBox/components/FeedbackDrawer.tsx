@@ -36,8 +36,8 @@ const FeedbackDrawer = ({ children, onClose }: FeedbackDrawerProps) => {
           }}
         >
           <Box bg="white" borderTopRadius="16px" px="16px" pb="50px">
-            <Box pt="10px" pb="14px">
-              <Drawer.Handle />
+            <Box py="16px">
+              <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Box>
             {children}
           </Box>

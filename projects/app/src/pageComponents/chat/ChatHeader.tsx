@@ -67,7 +67,7 @@ const ChatHeader = ({
     <Flex
       alignItems={'center'}
       px={[3, 5]}
-      minH={['46px', '60px']}
+      minH={['48px', '60px']}
       borderBottom={'sm'}
       color={'myGray.900'}
       fontSize={'sm'}

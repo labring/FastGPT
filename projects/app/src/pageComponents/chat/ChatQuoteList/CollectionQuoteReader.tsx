@@ -230,14 +230,14 @@ const CollectionReader = ({
       {datasetDataList.length > 0 && (
         <Flex
           w={'full'}
+          h={'56px'}
           px={4}
-          py={3}
           alignItems={'center'}
           borderBottom={'1px solid'}
           borderColor={'myGray.150'}
         >
           {/* 引用序号 */}
-          <Flex fontSize={'14px'} lineHeight={'20px'} alignItems={'center'} gap={1}>
+          <Flex fontSize={'16px'} lineHeight={'24px'} alignItems={'center'} gap={1}>
             <Box as={'span'} color={'myGray.900'}>
               {t('common:core.chat.Quote')} {quoteIndex + 1}
             </Box>
@@ -268,7 +268,7 @@ const CollectionReader = ({
           <Box flex={1} />
 
           {/* 检索按钮 */}
-          <Flex gap={'12px'}>
+          <Flex gap={'8px'}>
             <NavButton
               direction="up"
               isDisabled={quoteIndex === 0}

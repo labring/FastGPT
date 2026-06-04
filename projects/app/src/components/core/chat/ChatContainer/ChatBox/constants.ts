@@ -4,7 +4,7 @@ export const textareaMinH = '22px';
 
 export const ChatInputDefaultHeight: BoxProps['h'] = '132px';
 
-export const HomeChatMobileBottomGap = '46px';
+export const HomeChatMobileBottomGap = 0;
 
 export const HomeChatContentWrapperStyle: BoxProps = {
   px: ['16px', 4],

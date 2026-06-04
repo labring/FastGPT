@@ -55,8 +55,8 @@ const HumanChatBubbleEditDrawer = ({
             px={'16px'}
             pb={'calc(16px + env(safe-area-inset-bottom))'}
           >
-            <Flex justifyContent={'center'} pt={'10px'} pb={6}>
-              <Drawer.Handle />
+            <Flex justifyContent={'center'} py={'16px'}>
+              <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
 
             <Flex alignItems={'center'} justifyContent={'center'} mb={5}>

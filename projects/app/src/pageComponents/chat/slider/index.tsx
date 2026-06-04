@@ -216,6 +216,9 @@ const ActionButton: React.FC<{
   return (
     <Flex
       p={2}
+      gap={isCollapsed ? 0 : 2}
+      h={'44px'}
+      minH={'44px'}
       flex={1}
       cursor={'pointer'}
       borderRadius={'8px'}
@@ -235,7 +238,7 @@ const ActionButton: React.FC<{
           })}
       onClick={onClick}
     >
-      <MyIcon w="20px" h="20px" name={icon} viewBox="0 0 20 20" mr={isCollapsed ? 0 : 2} />
+      <MyIcon w="20px" h="20px" name={icon} viewBox="0 0 20 20" />
       <AnimatedText
         show={!isCollapsed && !!text}
         fontSize="sm"
@@ -278,7 +281,7 @@ const NavigationSection = () => {
       <AnimatePresence mode="wait">
         {isCollapsed ? (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={2}>
+            <Flex flexDir="column" gap={'12px'}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -302,7 +305,7 @@ const NavigationSection = () => {
           </AnimatedSection>
         ) : (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={2}>
+            <Flex flexDir="column" gap={'12px'}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -514,9 +517,11 @@ const ChatSlider = ({ activeAppId }: Props) => {
           {myApps.map((item) => (
             <Flex
               key={item.appId}
-              py={2}
-              px={2}
-              mb={3}
+              p={2}
+              gap={2}
+              h={'44px'}
+              minH={'44px'}
+              mb={'12px'}
               cursor={'pointer'}
               borderRadius={'md'}
               alignItems={'center'}
@@ -529,8 +534,8 @@ const ChatSlider = ({ activeAppId }: Props) => {
                       handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId)
                   })}
             >
-              <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
-              <Box ml={2} className={'textEllipsis'}>
+              <Avatar src={item.avatar} w={'20px'} h={'20px'} borderRadius={'6px'} />
+              <Box className={'textEllipsis'}>
                 {item.name}
               </Box>
             </Flex>

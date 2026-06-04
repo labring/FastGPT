@@ -98,11 +98,30 @@ const CollectionQuoteItem = ({
         <Flex
           className="hover-data"
           position={'absolute'}
-          bottom={2}
-          right={5}
+          bottom={'12px'}
+          right={'12px'}
           gap={1.5}
           visibility={'hidden'}
         >
+          <MyTooltip label={t('common:Copy')}>
+            <Flex
+              alignItems={'center'}
+              fontSize={'10px'}
+              border={'1px solid'}
+              borderColor={'myGray.200'}
+              bg={'white'}
+              rounded={'sm'}
+              px={1}
+              py={1}
+              boxShadow={
+                '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+              }
+              cursor={'pointer'}
+              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
+            >
+              <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
+            </Flex>
+          </MyTooltip>
           {canEdit && (
             <MyTooltip label={t('common:core.dataset.data.Edit')}>
               <Flex
@@ -129,25 +148,6 @@ const CollectionQuoteItem = ({
               </Flex>
             </MyTooltip>
           )}
-          <MyTooltip label={t('common:Copy')}>
-            <Flex
-              alignItems={'center'}
-              fontSize={'10px'}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              bg={'white'}
-              rounded={'sm'}
-              px={1}
-              py={1}
-              boxShadow={
-                '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-              }
-              cursor={'pointer'}
-              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
-            >
-              <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
-            </Flex>
-          </MyTooltip>
         </Flex>
       </Box>
       {editInputData && (

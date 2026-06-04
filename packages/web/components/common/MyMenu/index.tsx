@@ -31,6 +31,7 @@ export type MenuItemData = {
     description?: string;
     onClick?: () => any;
     menuItemStyles?: MenuItemProps;
+    iconStyles?: AvatarProps;
     disabled?: boolean;
     disabledTip?: string;
   }>;
@@ -318,6 +319,7 @@ const MyMenu = ({
                           src={child.icon as any}
                           mr={2}
                           {...sizeMapStyle[size].iconStyle}
+                          {...child.iconStyles}
                           color={
                             child.isActive
                               ? 'inherit'

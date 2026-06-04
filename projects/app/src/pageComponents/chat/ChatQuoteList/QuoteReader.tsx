@@ -162,7 +162,6 @@ const QuoteReader = ({
             px={'12px'}
             py={'10px'}
             borderRadius={'6px'}
-            bg={'myGray.50'}
             color={'myGray.900'}
             fontSize={'14px'}
             lineHeight={'20px'}

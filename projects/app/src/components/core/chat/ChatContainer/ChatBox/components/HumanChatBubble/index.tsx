@@ -76,6 +76,7 @@ const HumanChatBubble = ({ chatValue, chatTime, onEditSubmit, children }: HumanC
       <HumanChatBubbleActions
         chatText={chatText}
         chatTime={chatTime}
+        isAlwaysVisible={!isPc}
         onEdit={() => setIsEditing(true)}
       />
       {!isPc && isEditing && (

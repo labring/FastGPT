@@ -26,6 +26,7 @@ const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, footerSlot }
       px={4}
       bg={'white'}
       borderRight={['', theme.borders.base]}
+      borderRightColor={['', 'myGray.200']}
       whiteSpace={'nowrap'}
     >
       <ChatSliderHeader title={title} banner={banner} />

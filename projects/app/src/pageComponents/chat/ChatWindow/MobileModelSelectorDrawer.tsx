@@ -81,8 +81,8 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
           }}
         >
           <Box bg="white" borderTopRadius="16px" px={4} pb="42px">
-            <Flex justifyContent="center" pt="10px" pb={5}>
-              <Drawer.Handle />
+            <Flex justifyContent="center" py="16px">
+              <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
 
             {!activeProvider ? (
@@ -90,7 +90,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 {providerGroups.map((provider) => (
                   <Flex
                     key={provider.id}
-                    h="48px"
+                    h="44px"
                     alignItems="center"
                     px={2}
                     borderRadius="6px"
@@ -101,7 +101,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                       fallbackSrc={HUGGING_FACE_ICON}
                       w="24px"
                       borderRadius="0"
-                      mr={3}
+                      mr="4px"
                     />
                     <Box flex="1" fontSize="16px" color="myGray.900">
                       {provider.name}
@@ -117,7 +117,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
               </Box>
             ) : (
               <>
-                <Flex h="36px" alignItems="center" mb={2}>
+                <Flex h="48px" alignItems="center">
                   <IconButton
                     aria-label="Back"
                     icon={
@@ -125,6 +125,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                         name="core/workflow/undo"
                         w="24px"
                         h="24px"
+                        p="6px"
                         color="myGray.700"
                       />
                     }
@@ -133,7 +134,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     h="32px"
                     onClick={() => setActiveProviderId('')}
                   />
-                  <Flex flex="1" justifyContent="center" alignItems="center" gap={2} minW={0}>
+                  <Flex flex="1" justifyContent="center" alignItems="center" gap="4px" minW={0}>
                     <Avatar
                       src={activeProvider.avatar}
                       fallbackSrc={HUGGING_FACE_ICON}
@@ -147,7 +148,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                   <IconButton
                     aria-label="Close"
                     icon={
-                      <MyIcon name="close" w="24px" h="24px" color="myGray.700" />
+                      <MyIcon name="close" w="24px" h="24px" p="6px" color="myGray.700" />
                     }
                     variant="unstyled"
                     minW="32px"
@@ -162,9 +163,10 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     return (
                       <Flex
                         key={model.model}
-                        h="48px"
+                        h="44px"
                         alignItems="center"
-                        px={3}
+                        px="8px"
+                        py="4px"
                         borderRadius="6px"
                         bg={isSelected ? 'myGray.50' : 'transparent'}
                         onClick={() => {

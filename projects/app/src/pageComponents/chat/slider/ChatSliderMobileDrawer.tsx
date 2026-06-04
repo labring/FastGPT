@@ -57,6 +57,7 @@ const ChatSliderMobileDrawer = ({
           py={'12px'}
           bg={'white'}
           borderRight={['', theme.borders.base]}
+          borderRightColor={['', 'myGray.200']}
           whiteSpace={'nowrap'}
         >
           {showHeader && <ChatSliderHeader title={title} banner={banner} />}

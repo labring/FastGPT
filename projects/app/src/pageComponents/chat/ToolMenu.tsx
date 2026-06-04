@@ -14,7 +14,10 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import type { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { getChatVariableGroups } from '@/components/core/chat/ChatContainer/ChatBox/components/ChatVariableForm';
 import { ChatVariableDrawer } from './ChatWindow/ChatVariableButton';
-import { chatHeaderIconButtonStyle } from './ChatWindow/headerIconButtonStyle';
+import {
+  chatHeaderIconButtonStyle,
+  mobileChatHeaderIconButtonStyle
+} from './ChatWindow/headerIconButtonStyle';
 
 const ToolMenu = ({
   history,
@@ -94,7 +97,7 @@ const ToolMenu = ({
               aria-label={''}
               size={'sm'}
               variant="unstyled"
-              {...chatHeaderIconButtonStyle}
+              {...(isPc ? chatHeaderIconButtonStyle : mobileChatHeaderIconButtonStyle)}
             />
           </Box>
         }
@@ -108,11 +111,7 @@ const ToolMenu = ({
                   onChangeChatId();
                   setSandboxExists(false);
                 }
-              }
-            ]
-          },
-          {
-            children: [
+              },
               // {
               //   icon: 'core/app/appApiLight',
               //   label: `HTML ${t('common:Export')}`,
@@ -121,7 +120,7 @@ const ToolMenu = ({
               ...(history.length > 0
                 ? [
                     {
-                      icon: 'file/markdown' as const,
+                      icon: 'core/chat/markdown' as const,
                       label: `Markdown ${t('common:Export')}`,
                       onClick: () => onExportChat({ type: 'md', history })
                     }

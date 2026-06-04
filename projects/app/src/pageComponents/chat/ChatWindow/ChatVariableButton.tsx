@@ -109,8 +109,8 @@ export const ChatVariableDrawer = ({
           }}
         >
           <Box bg="white" borderTopRadius="16px" px="16px" pb="42px">
-            <Flex justifyContent="center" pt="10px" pb={4}>
-              <Drawer.Handle />
+            <Flex justifyContent="center" py="16px">
+              <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
             <Flex alignItems="center" mb={4}>
               <Box fontSize="16px" fontWeight={600} color="myGray.900">

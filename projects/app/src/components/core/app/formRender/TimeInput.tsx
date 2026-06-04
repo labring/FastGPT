@@ -86,15 +86,9 @@ const TimeInput: React.FC<TimeInputProps> = ({
       alignItems={'center'}
       gap={2}
       w={'100%'}
-      overflowX={['auto', 'visible']}
-      css={{
-        scrollbarWidth: 'none',
-        '&::-webkit-scrollbar': {
-          display: 'none'
-        }
-      }}
+      minW={0}
     >
-      <Box flex={'1 1 0'} minW={['144px', 0]}>
+      <Box flex={'1 1 0'} minW={0}>
         <DateTimePicker
           selectedDateTime={formatValue}
           onChange={handleDateChange}
@@ -110,7 +104,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           bg={'white'}
         />
       </Box>
-      <Box position={'relative'} flex={'0 0 72px'} minW={['72px', 0]}>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={hour}
           onChange={handleHourChange}
@@ -121,7 +115,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           hideStepper
           isDisabled={isDisabled || !enableHour}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableHour ? 'myGray.100' : 'white',
             color: isDisabled || !enableHour ? 'myGray.400' : 'inherit'
@@ -140,7 +134,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           {t('common:hour_unit')}
         </Box>
       </Box>
-      <Box position={'relative'} flex={'0 0 72px'} minW={['72px', 0]}>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={minute}
           onChange={handleMinuteChange}
@@ -151,7 +145,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           hideStepper
           isDisabled={isDisabled || !enableMinute}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableMinute ? 'myGray.100' : 'white',
             color: isDisabled || !enableMinute ? 'myGray.400' : 'inherit'
@@ -170,7 +164,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           {t('common:minute_unit')}
         </Box>
       </Box>
-      <Box position={'relative'} flex={'0 0 72px'} minW={['72px', 0]}>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={second}
           onChange={handleSecondChange}
@@ -181,7 +175,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
           hideStepper
           isDisabled={isDisabled || !enableSecond}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableSecond ? 'myGray.100' : 'white',
             color: isDisabled || !enableSecond ? 'myGray.400' : 'inherit'

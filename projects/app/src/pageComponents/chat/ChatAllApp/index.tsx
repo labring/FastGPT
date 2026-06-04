@@ -47,24 +47,41 @@ const ChatAllApp = () => {
   if (!isPc) {
     return (
       <Flex flexDirection="column" h="100%" bg="white">
-        <Flex h="64px" px={5} alignItems="center" justifyContent="space-between" flexShrink={0}>
-          <MyIcon
-            w="24px"
+        <Flex
+          h="48px"
+          px="16px"
+          py="6px"
+          alignItems="center"
+          justifyContent="space-between"
+          flexShrink={0}
+        >
+          <Flex
+            w="36px"
+            h="36px"
+            alignItems="center"
+            justifyContent="center"
             color="myGray.600"
-            name="core/chat/sidebar/menu"
+            cursor="pointer"
             onClick={onOpenSlider}
-          />
+          >
+            <MyIcon w="24px" color="currentColor" name="core/chat/sidebar/menu" />
+          </Flex>
 
           <Box fontSize="16px" fontWeight={600} color="myGray.900">
             {t('chat:all_apps.title')}
           </Box>
 
-          <MyIcon
-            w="24px"
+          <Flex
+            w="36px"
+            h="36px"
+            alignItems="center"
+            justifyContent="center"
             color="myGray.600"
-            name="common/searchLight"
+            cursor="pointer"
             onClick={() => setShowMobileSearch((state) => !state)}
-          />
+          >
+            <MyIcon w="24px" color="currentColor" name="common/searchLight" />
+          </Flex>
         </Flex>
 
         <ChatSliderMobileDrawer
@@ -74,7 +91,7 @@ const ChatAllApp = () => {
           menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
         />
 
-        <Box px={5} pt={2} flexShrink={0}>
+        <Box px="16px" py="8px" flexShrink={0}>
           <FillRowTabs<ChatAllAppTabEnum>
             list={tabOptions}
             value={tab}
@@ -95,7 +112,7 @@ const ChatAllApp = () => {
                 lineHeight="36px"
                 py={0}
                 pr="36px"
-                bg="myGray.25"
+                bg="white"
                 placeholder={t('app:search_app')}
                 maxLength={30}
                 value={mobileSearchKey}

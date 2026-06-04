@@ -21,7 +21,7 @@ const ChatSliderMobileNewChatButton = () => {
       bottom="68px"
       h="36px"
       minH="36px"
-      px="14px"
+      px="20px"
       py="8px"
       borderRadius="9999px"
       bg="#3370FF"

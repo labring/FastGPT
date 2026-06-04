@@ -26,10 +26,11 @@ const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
           key={q._id}
           alignItems="center"
           gap={isMobile ? '8px' : 1}
+          h={isMobile ? '44px' : undefined}
           border="sm"
           borderRadius="md"
           px={isMobile ? '16px' : 2}
-          py={isMobile ? '8px' : 1}
+          py={isMobile ? 0 : 1}
           maxW={isMobile ? '100%' : undefined}
           cursor="pointer"
           _hover={{ bg: 'myGray.50' }}
@@ -38,9 +39,9 @@ const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
           borderColor="myGray.200"
           onClick={() => onSwitchQuickApp?.(q._id)}
         >
-          <Avatar src={q.avatar} w={4} borderRadius="xs" />
+          <Avatar src={q.avatar} w={isMobile ? '24px' : 4} borderRadius="xs" />
           <Box
-            fontSize="xs"
+            fontSize={isMobile ? '14px' : 'xs'}
             fontWeight="500"
             userSelect="none"
             {...(isMobile

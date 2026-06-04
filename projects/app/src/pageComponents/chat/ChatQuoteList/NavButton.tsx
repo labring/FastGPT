@@ -15,7 +15,8 @@ const NavButton = ({
   const baseStyles = {
     color: 'myGray.500',
     borderRadius: '6px',
-    boxSize: '28px',
+    boxSize: '32px',
+    p: '8px',
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'all 0.2s'
@@ -39,6 +40,7 @@ const NavButton = ({
       <MyIcon
         name={'core/chat/chevronDown'}
         w={'16px'}
+        h={'16px'}
         transform={isUp ? 'rotate(180deg)' : undefined}
       />
     </Flex>
