@@ -986,9 +986,9 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
+      const childNodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       // format response data. Add modulename and module type
-      const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
+      const formatCurrentNodeResponse: NodeResponseCompleteType['responseData'] = (() => {
         if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
 
         const val = {
@@ -1000,21 +1000,30 @@ export class WorkflowQueue {
           nodeId: node.nodeId,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
-        nodeResponses.push(val);
+
         return val;
       })();
+      // 如果节点已经返回内部明细，则由内部明细完整表达运行过程；只有没有内部明细时，
+      // dispatch 才使用当前节点 responseData 作为运行详情兜底，避免 workflow agent 失败时出现外层重复节点。
+      const formatResponseData =
+        childNodeResponses.length > 0 ? undefined : formatCurrentNodeResponse;
+      const streamResponses = childNodeResponses.length
+        ? childNodeResponses
+        : formatResponseData
+          ? [formatResponseData]
+          : [];
 
       // Response node response
       if (
         this.data.apiVersion === 'v2' &&
         !this.data.isToolCall &&
         this.isRootRuntime &&
-        nodeResponses.length > 0
+        streamResponses.length > 0
       ) {
         const filteredResponses = this.data.responseAllData
-          ? nodeResponses
+          ? streamResponses
           : filterPublicNodeResponseData({
-              nodeRespones: nodeResponses,
+              nodeRespones: streamResponses,
               responseDetail: this.data.responseDetail
             });
 

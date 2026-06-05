@@ -365,7 +365,7 @@ export type DispatchNodeResultType<
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
-  [DispatchNodeResponseKeyEnum.nodeResponses]?: ChatHistoryItemResType[]; // Node responses
+  [DispatchNodeResponseKeyEnum.nodeResponses]?: ChatHistoryItemResType[]; // 内部 n 个节点平铺；dispatch/index 不会把自身节点混入这里
   [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
