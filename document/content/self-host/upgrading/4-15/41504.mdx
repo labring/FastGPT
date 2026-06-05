@@ -21,26 +21,23 @@ description: 'FastGPT V4.15.0-beta4 更新说明'
 - 升级后需要使用官方系统工具 zip 包重新导入系统工具。
 - 模型配置和 workflow 模板保持兼容，无需专项迁移。
 - 插件服务建议连接新的 MongoDB 数据库，保留旧插件服务数据库和对象存储数据，便于回滚和审计。
-- 插件服务生产环境需设置强 `AUTH_TOKEN`，避免继续使用默认 token。
+- 插件服务生产环境需设置强 `AUTH_TOKEN`，要求 32 位以上。
 
-插件服务可继续复用原 MongoDB 实例，但需要修改数据库名，让新版插件数据写入新库。参考环境变量如下：
+插件服务可继续复用原 MongoDB 实例，可使用独立数据库名，避免冲突，参考：
 
 ```yaml
 fastgpt-plugin:
   environment:
-    MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin-v1?authSource=admin
+    MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin
 ```
 
 ## 🚀 新增内容
 
-1. 系统工具支持以独立 `.pkg` 插件包方式安装。
-2. 系统工具支持上传官方 zip 包批量导入。
-3. 插件服务支持插件上传确认、URL 安装、版本列表、删除和 disabled 清理。
-4. 插件版本支持通过 `pluginId`、`version` 和 `etag` 唯一识别。
-5. 插件服务启动时会自动注册 active 插件到 local-pool 运行时。
-6. 应用/知识库增加虚拟列表渲染。
-7. 增加单独的 openapi 文档，区分 devapi 文档。
-8. 导出工作流模板，同时导出名字和介绍。
+1. 重写插件系统架构。
+2. 重写 chatbox ui。
+3. 应用/知识库增加虚拟列表渲染。
+4. 增加单独的 openapi 文档，区分 devapi 文档。
+5. 导出工作流模板，同时导出名字和介绍。
 
 ## ⚙️ 优化
 
