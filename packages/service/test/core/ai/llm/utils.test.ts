@@ -6,8 +6,6 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/typ
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const mockCreateGetChatFileURL = vi.hoisted(() => vi.fn());
-
 // Mock external dependencies
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => {
   const countGptMessagesTokens = vi.fn();
@@ -35,12 +33,6 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
     head: vi.fn(),
     get: vi.fn()
   }
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    createGetChatFileURL: mockCreateGetChatFileURL
-  })
 }));
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
@@ -643,13 +635,9 @@ describe('loadRequestMessages function tests', () => {
       });
     });
 
-    it('should normalize internal audio and video file_url to base64 content parts', async () => {
-      mockAxiosGet.mockResolvedValue({
-        data: Buffer.from('media bytes')
-      });
-      mockCreateGetChatFileURL
-        .mockResolvedValueOnce({ url: '/chat/audio.mp3' })
-        .mockResolvedValueOnce({ url: '/chat/video.mp4' });
+    it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
+      const audioUrl = 'http://localhost:9000/preview/audio.mp3';
+      const videoUrl = 'http://localhost:9000/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -657,14 +645,14 @@ describe('loadRequestMessages function tests', () => {
             {
               type: 'file_url',
               name: 'audio.mp3',
-              url: 'http://localhost:9000/preview/audio.mp3',
+              url: audioUrl,
               fileType: 'audio',
               key: 'chat/audio.mp3'
             },
             {
               type: 'file_url',
               name: 'video.mp4',
-              url: 'http://localhost:9000/preview/video.mp4',
+              url: videoUrl,
               fileType: 'video',
               key: 'chat/video.mp4'
             },
@@ -689,20 +677,22 @@ describe('loadRequestMessages function tests', () => {
           expect.objectContaining({
             type: 'input_audio',
             input_audio: {
-              data: `data:;base64,${Buffer.from('media bytes').toString('base64')}`,
+              data: audioUrl,
               format: 'mp3'
             }
           }),
           expect.objectContaining({
             type: 'video_url',
             video_url: {
-              url: `data:;base64,${Buffer.from('media bytes').toString('base64')}`
+              url: videoUrl
             }
           }),
           expect.objectContaining({ type: 'text', text: 'Analyze these files' })
         ])
       );
       expect(content.some((item: any) => item.type === 'file_url')).toBe(false);
+      expect(content.some((item: any) => item.key)).toBe(false);
+      expect(mockAxiosGet).not.toHaveBeenCalled();
     });
 
     it('should preserve legacy vision extraction when extractFiles is omitted', async () => {
