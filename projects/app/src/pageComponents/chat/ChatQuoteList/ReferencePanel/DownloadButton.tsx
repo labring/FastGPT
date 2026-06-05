@@ -16,9 +16,6 @@ const ReferencePanelDownloadButton = ({
         w={'24px'}
         h={'24px'}
         minW={'24px'}
-        display={'inline-flex'}
-        alignItems={'center'}
-        justifyContent={'center'}
         cursor={'pointer'}
         borderRadius={'sm'}
         bg={'transparent'}
@@ -26,7 +23,9 @@ const ReferencePanelDownloadButton = ({
         p={0}
         _hover={{ bg: 'myGray.100' }}
       >
-        <MyIcon name={'common/ellipsis'} w={'16px'} color={'myGray.700'} display={'block'} />
+        <Flex w={'100%'} h={'100%'} alignItems={'center'} justifyContent={'center'}>
+          <MyIcon name={'common/ellipsis'} w={'16px'} color={'myGray.700'} display={'block'} />
+        </Flex>
       </MenuButton>
       <MenuList p={'6px'} border={'1px solid #fff'} boxShadow={'3'} minW={'120px'}>
         <MenuItem onClick={onClick} fontSize={'sm'} borderRadius={'sm'}>
