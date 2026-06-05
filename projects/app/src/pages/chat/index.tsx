@@ -264,7 +264,8 @@ export async function getServerSideProps(context: any) {
 
   const chatQuoteReaderConfig = await (async () => {
     try {
-      if (!appId) return null;
+      // 非发布渠道无需查询外链配置，跳过无效 DB 查询
+      if (!appId || !fromPublish) return null;
 
       const config = await MongoOutLink.findOne(
         {
@@ -292,17 +293,18 @@ export async function getServerSideProps(context: any) {
     }
   })();
 
+  /* 发布渠道：由外链配置决定，默认关闭；非发布渠道：不受配置控制，始终开启 */
   return {
     props: {
       appId,
       teamId,
       fromPublish,
-      showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
-      showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
-      showCite: chatQuoteReaderConfig?.showCite ?? true,
-      showFullText: chatQuoteReaderConfig?.showFullText ?? true,
-      canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
-      showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
+      showRunningStatus: fromPublish ? (chatQuoteReaderConfig?.showRunningStatus ?? true) : true,
+      showSkillReferences: fromPublish ? (chatQuoteReaderConfig?.showSkillReferences ?? false) : false,
+      showCite: fromPublish ? (chatQuoteReaderConfig?.showCite ?? false) : true,
+      showFullText: fromPublish ? (chatQuoteReaderConfig?.showFullText ?? false) : true,
+      canDownloadSource: fromPublish ? (chatQuoteReaderConfig?.canDownloadSource ?? true) : true,
+      showWholeResponse: fromPublish ? (chatQuoteReaderConfig?.showWholeResponse ?? true) : true,
       ...(await serviceSideProps(context, [
         'file',
         'app',

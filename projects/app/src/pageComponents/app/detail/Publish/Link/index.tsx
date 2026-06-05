@@ -434,7 +434,6 @@ function EditLinkModal({
             <FormLabel>{t('publish:show_node')}</FormLabel>
             <Switch {...register('showRunningStatus')} />
           </Flex>
-          {/*
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.Response Quote')}</FormLabel>
@@ -446,8 +445,10 @@ function EditLinkModal({
             <Switch
               {...register('showCite', {
                 onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('showFullText', false);
+                  const checked = e.target.checked;
+                  setValue('showCite', checked);
+                  setValue('showFullText', checked);
+                  if (!checked) {
                     setValue('canDownloadSource', false);
                   }
                 }
@@ -455,7 +456,7 @@ function EditLinkModal({
               isChecked={showCite}
             />
           </Flex>
-          */}
+          {/*
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:core.app.share.Show full text')}</FormLabel>
@@ -477,6 +478,7 @@ function EditLinkModal({
               isChecked={showFullText}
             />
           </Flex>
+          */}
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:core.app.share.Download source')}</FormLabel>

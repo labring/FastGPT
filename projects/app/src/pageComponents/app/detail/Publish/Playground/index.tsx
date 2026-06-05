@@ -146,7 +146,6 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex gap={4} flexWrap={'wrap'}>
-          {/*
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
               <FormLabel fontSize={'12px'}>
@@ -157,8 +156,10 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             <Switch
               {...register('showCite', {
                 onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('showFullText', false);
+                  const checked = e.target.checked;
+                  setValue('showCite', checked);
+                  setValue('showFullText', checked);
+                  if (!checked) {
                     setValue('canDownloadSource', false);
                   }
                   autoSave();
@@ -167,7 +168,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
               isChecked={showCite}
             />
           </Flex>
-          */}
+          {/*
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
               <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>
@@ -187,6 +188,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
               isChecked={showFullText}
             />
           </Flex>
+          */}
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
               <FormLabel fontSize={'12px'} fontWeight={'medium'}>
