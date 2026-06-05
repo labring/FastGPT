@@ -273,7 +273,7 @@ const NavigationSection = () => {
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
-    <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
+    <Flex mt={4} flexDirection={'column'} gap={'12px'} px={4}>
       <AnimatedSection show={isCollapsed}>
         <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onTriggerCollapse} />
       </AnimatedSection>
