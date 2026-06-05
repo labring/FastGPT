@@ -84,18 +84,20 @@ type AppToolType = WorkflowTemplateType & {
 export async function getChildAppPreviewNode({
   appId,
   versionId,
+  keepLatest = false,
   lang = 'en',
   source: toolSource = 'system'
 }: {
   appId: string;
   versionId?: string;
+  keepLatest?: boolean;
   lang?: localeType;
   source?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombineToolId(appId);
 
   if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
-    return getToolPreviewNode({ pluginId: appId, versionId, lang, source: toolSource });
+    return getToolPreviewNode({ pluginId: appId, versionId, keepLatest, lang, source: toolSource });
   }
 
   // 存在 app 里面的插件的情况

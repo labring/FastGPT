@@ -245,7 +245,10 @@ const NodeTemplateList = ({
             ].includes(template.flowNodeType);
 
             if (shouldLoadPreviewNode) {
-              const node = await getToolPreviewNode({ appId: template.id });
+              const node = await getToolPreviewNode({
+                appId: template.id,
+                lockLatestVersion: templateType === TemplateTypeEnum.systemTools
+              });
               return {
                 ...node,
                 flowNodeType:

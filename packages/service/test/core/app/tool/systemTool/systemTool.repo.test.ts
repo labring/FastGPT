@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getTool: vi.fn(),
   findSystemTools: vi.fn(),
   findSystemTool: vi.fn(),
+  findAppVersions: vi.fn(),
   findAppById: vi.fn(),
   getAppLatestVersion: vi.fn(),
   getAppVersionById: vi.fn(),
@@ -38,6 +39,12 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: mocks.getAppLatestVersion,
   getAppVersionById: mocks.getAppVersionById,
   checkIsLatestVersion: mocks.checkIsLatestVersion
+}));
+
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    find: mocks.findAppVersions
+  }
 }));
 
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
@@ -186,7 +193,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
 });
 
 describe('SystemToolRepo.getSystemToolDetail', () => {
-  it('returns saved author for workflow tools', async () => {
+  it('returns app version id and label for workflow tools', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-workflow-tool',
       status: 'Normal',
@@ -210,6 +217,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     });
     mocks.getAppLatestVersion.mockResolvedValue({
       versionId: 'latest-version',
+      versionName: 'Latest Version',
       nodes: []
     });
     mocks.checkIsLatestVersion.mockResolvedValue(true);
@@ -220,5 +228,43 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
     expect(tool.author).toBe('Custom Author');
     expect(tool.hasTokenFee).toBe(true);
+    expect(tool.version).toBe('latest-version');
+    expect(tool.versionLabel).toBe('Latest Version');
+  });
+});
+
+describe('SystemToolRepo.getVersions', () => {
+  it('returns app version ids and names for workflow tools', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-workflow-tool',
+      customConfig: {
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+    mocks.findAppVersions.mockResolvedValue([
+      {
+        _id: '507f1f77bcf86cd799439012',
+        versionName: 'Workflow v2'
+      },
+      {
+        _id: '507f1f77bcf86cd799439013',
+        versionName: 'Workflow v1'
+      }
+    ]);
+
+    const versions = await SystemToolRepo.getInstance().getVersions({
+      pluginId: 'commercial-workflow-tool'
+    });
+
+    expect(versions).toEqual([
+      {
+        version: '507f1f77bcf86cd799439012',
+        versionDescription: 'Workflow v2'
+      },
+      {
+        version: '507f1f77bcf86cd799439013',
+        versionDescription: 'Workflow v1'
+      }
+    ]);
   });
 });

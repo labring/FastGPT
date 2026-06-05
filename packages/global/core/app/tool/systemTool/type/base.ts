@@ -13,6 +13,7 @@ import { SystemToolSystemSecretStatusEnum } from '../constants';
 export const SystemToolBaseSchema = z.object({
   id: z.string(),
   version: z.string(),
+  versionLabel: z.string().optional(),
   etag: z.string().optional()
 });
 

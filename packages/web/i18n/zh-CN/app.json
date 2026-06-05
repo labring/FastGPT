@@ -191,6 +191,7 @@
   "invalid_json_format": "JSON 格式错误",
   "json_schema_tip": "示例：\n{\n  \"name\": \"test\",\n  \"description\":\"测试\",\n  \"schema\": {\n    \"type\":\"object\",\n    \"properties\": {\n      \"test\": {\n        \"type\": \"string\",\n        \"description\": \"Text field\"\n      }\n    },\n    \"required\": [\n      \"test\"\n    ]\n  }\n}",
   "keep_the_latest": "保持最新版本",
+  "keep_the_latest_confirm_tip": "请确认是否保持最新版。上游工具更新可能导致当前配置或功能不可用，请谨慎操作。",
   "llm_multimodal_audio": "音频",
   "llm_multimodal_image": "图片",
   "llm_multimodal_select_placeholder": "请选择多模态能力",

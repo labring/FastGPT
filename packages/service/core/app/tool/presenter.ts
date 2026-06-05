@@ -16,11 +16,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 export async function getToolPreviewNode({
   pluginId,
   versionId,
+  keepLatest,
   lang = 'en',
   source: toolSource = 'system'
 }: {
   pluginId: string;
   versionId?: string;
+  keepLatest?: boolean;
   lang?: localeType;
   source?: string;
 }): Promise<FlowNodeTemplateType> {
@@ -31,6 +33,7 @@ export async function getToolPreviewNode({
     lang,
     source: toolSource
   });
+  const shouldKeepLatest = keepLatest ?? !versionId;
 
   const inputs = [
     ...(toolDetail.secrets?.length
@@ -65,8 +68,8 @@ export async function getToolPreviewNode({
     isTool: true,
     catchError: false,
 
-    version: versionId, // 为 undefined 时，为保持最新版
-    versionLabel: versionId,
+    version: shouldKeepLatest ? '' : toolDetail.version,
+    versionLabel: shouldKeepLatest ? undefined : (toolDetail.versionLabel ?? toolDetail.version),
     isLatestVersion: toolDetail.isLatestVersion,
     showSourceHandle: true,
     showTargetHandle: true,

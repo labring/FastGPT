@@ -9,6 +9,7 @@ import {
   type GetTeamToolDetailResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type detailQuery = GetTeamToolDetailQueryType;
 
@@ -20,7 +21,12 @@ async function handler(
   req: ApiRequestProps<detailBody, detailQuery>,
   res: ApiResponseType<any>
 ): Promise<detailResponse> {
-  const { toolId, source, version } = GetTeamToolDetailQuerySchema.parse(req.query);
+  const {
+    query: { toolId, source, version }
+  } = parseApiInput({
+    req,
+    querySchema: GetTeamToolDetailQuerySchema
+  });
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });

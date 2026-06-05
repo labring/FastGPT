@@ -55,6 +55,7 @@ import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -576,6 +577,12 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { t } = useTranslation();
 
   const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
+  const {
+    openConfirm: openKeepLatestConfirm,
+    ConfirmModal: KeepLatestConfirmModal
+  } = useConfirm({
+    content: t('app:keep_the_latest_confirm_tip')
+  });
 
   const {
     runAsync: loadVersions,
@@ -602,7 +609,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getToolPreviewNode({ appId: node.pluginId, version: versionId });
+        const template = await getToolPreviewNode({
+          appId: node.pluginId,
+          version: versionId || undefined,
+          keepLatest: !versionId
+        });
 
         if (!!template) {
           onResetNode({
@@ -623,6 +634,19 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       refreshDeps: [node, onResetNode]
     }
   );
+  const onSelectVersion = useCallback(
+    (versionId: string) => {
+      if (!versionId) {
+        openKeepLatestConfirm({
+          onConfirm: () => onUpdateVersion('')
+        })();
+        return;
+      }
+
+      return onUpdateVersion(versionId);
+    },
+    [onUpdateVersion, openKeepLatestConfirm]
+  );
 
   const renderVersionList = useCreation(
     () => [
@@ -631,8 +655,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.version,
-        description: item.versionDescription,
+        label: item.versionDescription || item.version,
+        description: item.versionDescription ? item.version : undefined,
         value: item.version
       }))
     ],
@@ -652,18 +676,21 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   }, [node.isLatestVersion, node.version, node.versionLabel, t]);
 
   return (
-    <MySelect
-      className="nowheel"
-      value={node.version}
-      onChange={onUpdateVersion}
-      isLoading={isUpdating || isLoadingVersions}
-      customOnOpen={loadVersions}
-      placeholder={node?.versionLabel}
-      variant={'whitePrimaryOutline'}
-      size={'sm'}
-      list={renderVersionList}
-      valueLabel={valueLabel}
-    />
+    <>
+      <MySelect
+        className="nowheel"
+        value={node.version}
+        onChange={onSelectVersion}
+        isLoading={isUpdating || isLoadingVersions}
+        customOnOpen={loadVersions}
+        placeholder={node?.versionLabel}
+        variant={'whitePrimaryOutline'}
+        size={'sm'}
+        list={renderVersionList}
+        valueLabel={valueLabel}
+      />
+      <KeepLatestConfirmModal isLoading={isUpdating} />
+    </>
   );
 });
 

@@ -41,7 +41,15 @@ export async function rewriteAppWorkflowToDetail({
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
-  const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
+  const loadToolNode = async ({
+    id,
+    versionId,
+    keepLatest
+  }: {
+    id: string;
+    versionId?: string;
+    keepLatest?: boolean;
+  }) => {
     const { authAppId } = splitCombineToolId(id);
 
     try {
@@ -49,6 +57,7 @@ export async function rewriteAppWorkflowToDetail({
         getChildAppPreviewNode({
           appId: id,
           versionId,
+          keepLatest,
           lang
         }),
         ...(authAppId
@@ -140,7 +149,11 @@ export async function rewriteAppWorkflowToDetail({
     nodes.map(async (node) => {
       // Tool node
       if (node.pluginId) {
-        const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
+        const result = await loadToolNode({
+          id: node.pluginId,
+          versionId: node.version,
+          keepLatest: !node.version
+        });
         if (result.success) {
           const preview = result.data!;
           node.avatar = preview.avatar ?? node.avatar;

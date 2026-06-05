@@ -191,6 +191,7 @@
   "invalid_json_format": "JSON format error",
   "json_schema_tip": "Example:\n{\n  \"name\": \"test\",\n  \"description\":\"测试\",\n  \"schema\": {\n    \"type\":\"object\",\n    \"properties\": {\n      \"test\": {\n        \"type\": \"string\",\n        \"description\": \"Text field\"\n      }\n    },\n    \"required\": [\n      \"test\"\n    ]\n  }\n}",
   "keep_the_latest": "Keep the latest",
+  "keep_the_latest_confirm_tip": "Please confirm whether to keep the latest version. Upstream tool updates may make the current configuration or features unavailable. Proceed with caution.",
   "llm_multimodal_audio": "Audio",
   "llm_multimodal_image": "Image",
   "llm_multimodal_select_placeholder": "Select multimodal capabilities",

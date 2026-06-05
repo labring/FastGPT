@@ -329,7 +329,8 @@ const SystemToolConfigModal = ({
   const versionSelectList = useMemo(
     () =>
       toolVersions.map((item) => ({
-        label: item.version,
+        label: item.versionDescription || item.version,
+        description: item.versionDescription ? item.version : undefined,
         value: item.version
       })),
     [toolVersions]
