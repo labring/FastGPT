@@ -18,10 +18,12 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable,
   checkWorkflowNodeAndConnection
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 
 describe('nodeTemplate2FlowNode', () => {
   it('should convert template to flow node', () => {
@@ -195,6 +197,154 @@ describe('filterWorkflowNodeOutputsByType', () => {
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.arrayString);
     expect(result).toHaveLength(2);
+  });
+});
+
+describe('filterSelectableWorkflowNodeOutputs', () => {
+  const makeOutput = (
+    id: string,
+    valueType: WorkflowIOValueTypeEnum,
+    extra?: Partial<FlowNodeOutputItemType>
+  ): FlowNodeOutputItemType => ({
+    id,
+    key: id,
+    label: id,
+    type: FlowNodeOutputTypeEnum.static,
+    valueType,
+    ...extra
+  });
+
+  it('filters outputs that cannot be selected by reference selector', () => {
+    const outputs: FlowNodeOutputItemType[] = [
+      makeOutput('text', WorkflowIOValueTypeEnum.string),
+      makeOutput('count', WorkflowIOValueTypeEnum.number),
+      makeOutput(NodeOutputKeyEnum.addOutputParam, WorkflowIOValueTypeEnum.string),
+      makeOutput('invalid', WorkflowIOValueTypeEnum.string, { invalid: true }),
+      makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
+    ];
+
+    const result = filterSelectableWorkflowNodeOutputs({
+      outputs,
+      valueType: WorkflowIOValueTypeEnum.string,
+      catchError: false
+    });
+
+    expect(result.map((output) => output.id)).toEqual(['text']);
+  });
+
+  it('keeps error output only when source node can catch error', () => {
+    const outputs: FlowNodeOutputItemType[] = [
+      makeOutput('text', WorkflowIOValueTypeEnum.string),
+      makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
+    ];
+
+    const result = filterSelectableWorkflowNodeOutputs({
+      outputs,
+      valueType: WorkflowIOValueTypeEnum.string,
+      catchError: true
+    });
+
+    expect(result.map((output) => output.id)).toEqual(['text', 'error']);
+  });
+});
+
+describe('workflowReferenceValueIsSelectable', () => {
+  const sourceNodes = [
+    {
+      nodeId: 'source',
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          id: 'count',
+          key: 'count',
+          label: 'count',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.number
+        }
+      ]
+    }
+  ];
+
+  it('returns true when single reference points to an existing selectable output', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'text'],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(true);
+  });
+
+  it('returns false when referenced source node has been deleted', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['deleted', 'text'],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
+  });
+
+  it('returns false when referenced output no longer exists', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'deleted'],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
+  });
+
+  it('returns false when referenced output type is not selectable for current value type', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', 'count'],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for incomplete reference value', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['source', ''],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
+  });
+
+  it('returns true for multiple references when at least one item is selectable', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: [
+          ['deleted', 'text'],
+          ['source', 'text']
+        ],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for multiple references when none of the items are selectable', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: [
+          ['deleted', 'text'],
+          ['source', 'deleted']
+        ],
+        sourceNodes,
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(false);
   });
 });
 
