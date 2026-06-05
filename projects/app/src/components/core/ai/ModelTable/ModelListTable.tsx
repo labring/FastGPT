@@ -19,7 +19,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { putSystemModel } from '@/web/core/ai/config';
+import { clientInitData } from '@/web/common/system/staticData';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -199,12 +201,6 @@ const ModelListTable = ({
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
               {t('common:model.model_type')}
             </Th>
-            {permissionConfig && (
-              <>
-                <Th fontSize={'xs'}>{t('common:permission.Owner')}</Th>
-                <Th fontSize={'xs'}>{t('common:permission.Permission')}</Th>
-              </>
-            )}
             {showTrainedModelColumns ? (
               <>
                 <Th
@@ -275,6 +271,12 @@ const ModelListTable = ({
                   )}
                 </HStack>
               </Th>
+            )}
+            {permissionConfig && (
+              <>
+                <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
+                <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
+              </>
             )}
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '240px' : undefined}>
               {t('account_model:action')}
@@ -391,18 +393,6 @@ const ModelTableRow = ({
       <Td>
         <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
       </Td>
-      {permissionConfig && (
-        <>
-          <Td fontSize={'sm'} color={'myGray.700'}>
-            {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
-          </Td>
-          <Td fontSize={'sm'}>
-            <MyTag type="borderFill" colorSchema={item.isShared ? 'green' : 'gray'}>
-              {item.isShared ? t('common:permission.Public') : t('common:permission.Private')}
-            </MyTag>
-          </Td>
-        </>
-      )}
       {showTrainedModelColumns ? (
         <>
           <Td fontSize={'sm'} color={'myGray.700'}>
@@ -477,6 +467,20 @@ const ModelTableRow = ({
           )}
         </Td>
       )}
+      {permissionConfig && (
+        <>
+          <Td fontSize={'sm'} color={'myGray.700'}>
+            {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
+          </Td>
+          <Td fontSize={'sm'}>
+            <MyTag type="borderFill" colorSchema={item.isShared ? 'blue' : 'gray'}>
+              {item.isShared
+                ? t('account:model.permission_public')
+                : t('account:model.permission_private')}
+            </MyTag>
+          </Td>
+        </>
+      )}
       <Td fontSize={'sm'}>
         <ModelTableActionCell
           item={item}
@@ -523,15 +527,24 @@ const ModelTableActionCell = ({
     <HStack spacing={2}>
       {showPermissionButton && (
         <LazyCollaboratorProvider
-          selectedHint={t('account_model:model_permission_config_hint')}
+          selectedHint={
+            item.isShared ? t('account_model:model_permission_public_hint') : undefined
+          }
           defaultRole={ReadRoleVal}
           onGetCollaboratorList={() => getModelCollaborators(item.id)}
-          onUpdateCollaborators={({ collaborators }) =>
-            updateModelCollaborators({
+          onUpdateCollaborators={async ({ collaborators }) => {
+            await updateModelCollaborators({
               collaborators,
               modelIds: [item.id]
-            })
-          }
+            });
+            if (
+              item.isShared &&
+              collaborators.some((clb) => clb.permission !== OwnerRoleVal)
+            ) {
+              await putSystemModel({ id: item.id, isShared: false });
+              clientInitData(undefined, { forceRefresh: true });
+            }
+          }}
           permission={userPermission}
         >
           {({ onOpenManageModal }) => (

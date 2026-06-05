@@ -47,7 +47,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
@@ -353,11 +353,11 @@ const ModelTable = () => {
                 </Th>
                 <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
                 {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
+                <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
+                <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
                 <Th fontSize={'xs'}>
                   {t('account:model.active')}({activeModelLength})
                 </Th>
-                <Th fontSize={'xs'}>{t('common:permission.Owner')}</Th>
-                <Th fontSize={'xs'}>{t('common:permission.Permission')}</Th>
                 <Th fontSize={'xs'}></Th>
               </Tr>
             </Thead>
@@ -407,6 +407,16 @@ const ModelTable = () => {
                     <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                   </Td>
                   {feConfigs?.isPlus && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
+                  <Td fontSize={'sm'} color={'myGray.700'}>
+                    {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
+                  </Td>
+                  <Td fontSize={'sm'}>
+                    <MyTag type="borderFill" colorSchema={item.isShared ? 'blue' : 'gray'}>
+                      {item.isShared
+                        ? t('account:model.permission_public')
+                        : t('account:model.permission_private')}
+                    </MyTag>
+                  </Td>
                   <Td fontSize={'sm'}>
                     <Switch
                       size={'sm'}
@@ -420,16 +430,6 @@ const ModelTable = () => {
                       }
                       colorScheme={'myBlue'}
                     />
-                  </Td>
-                  <Td fontSize={'sm'} color={'myGray.700'}>
-                    {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
-                  </Td>
-                  <Td fontSize={'sm'}>
-                    <MyTag type="borderFill" colorSchema={item.isShared ? 'green' : 'gray'}>
-                      {item.isShared
-                        ? t('common:permission.Public')
-                        : t('common:permission.Private')}
-                    </MyTag>
                   </Td>
                   <Td>
                     <HStack>
@@ -446,20 +446,30 @@ const ModelTable = () => {
                             onClick={() => onEditModel(item.id)}
                           />
                           <LazyCollaboratorProvider
-                            selectedHint={t('account_model:model_permission_config_hint')}
+                            selectedHint={
+                              item.isShared
+                                ? t('account_model:model_permission_public_hint')
+                                : undefined
+                            }
                             defaultRole={ReadRoleVal}
                             onGetCollaboratorList={() => getModelCollaborators(item.id)}
-                            onUpdateCollaborators={({ collaborators }) =>
-                              updateModelCollaborators({
+                            onUpdateCollaborators={async ({ collaborators }) => {
+                              await updateModelCollaborators({
                                 collaborators,
                                 modelIds: [item.id]
-                              })
-                            }
+                              });
+                              if (
+                                item.isShared &&
+                                collaborators.some((clb) => clb.permission !== OwnerRoleVal)
+                              ) {
+                                await updateModel({ id: item.id, isShared: false });
+                              }
+                            }}
                             permission={userInfo!.team.permission}
                           >
                             {({ onOpenManageModal }) => (
                               <MyIconButton
-                                icon={'modal/changePer'}
+                                icon={'key'}
                                 tip={t('common:permission.Permission config')}
                                 onClick={onOpenManageModal}
                               />
@@ -493,6 +503,7 @@ const ModelTable = () => {
           modelData={editModelData}
           onSuccess={refreshModels}
           onClose={() => setEditModelData(undefined)}
+          isNormalUser={!isRoot}
         />
       )}
       {isOpenJsonConfig && (
