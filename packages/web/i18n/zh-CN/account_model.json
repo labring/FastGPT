@@ -90,6 +90,7 @@
   "evaluation_model": "评测模型",
   "evaluation_model_tip": "用于应用评测，及评测数据集中针对数据质量的评测。",
   "model_permission_config_hint": "若无协作者，默认全部成员可用",
+  "model_permission_public_hint": "当前为公开状态，添加协作者后，将自动切换为私有状态",
   "action": "操作",
   "train": "训练",
   "train_model_generate_new": "训练模型（生成新模型）",
