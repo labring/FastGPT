@@ -4,7 +4,7 @@ import React from 'react';
 const InteractiveCard = ({ children }: { children: React.ReactNode }) => {
   return (
     <Card
-      w={['100%', '560px']}
+      w={['100%', '360px']}
       maxW={'100%'}
       minW={'250px'}
       bg={'white'}

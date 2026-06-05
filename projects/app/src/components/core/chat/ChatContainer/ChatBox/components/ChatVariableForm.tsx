@@ -29,7 +29,7 @@ type ChatVariableFormProps = {
 const ChatVariableCard = ({ children }: { children: React.ReactNode }) => {
   return (
     <Card
-      w={['100%', '560px']}
+      w={['100%', '360px']}
       maxW={'100%'}
       bg={'white'}
       border={'1px solid'}
