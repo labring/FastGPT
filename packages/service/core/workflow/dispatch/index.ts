@@ -46,7 +46,7 @@ import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
 import { rewriteRuntimeWorkFlow, filterOrphanEdges } from './utils';
 import { WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId, nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -864,7 +864,8 @@ export class WorkflowQueue {
           value = getReferenceVariableValue({
             value,
             nodesMap: this.runtimeNodesMap,
-            variables: runtimeVariables
+            variables: runtimeVariables,
+            isReferenceVal: nodeInputIsReference(input)
           });
 
           // Dynamic input is stored in the dynamic key

@@ -287,13 +287,15 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 export const getReferenceVariableValue = ({
   value,
   nodesMap,
-  variables
+  variables,
+  isReferenceVal = true
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
+  isReferenceVal?: boolean;
 }) => {
-  if (!value) return value;
+  if (!value || !isReferenceVal) return value;
 
   const resoleValue = (value: [string, string | undefined]) => {
     const sourceNodeId = value[0];
