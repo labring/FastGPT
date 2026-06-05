@@ -24,7 +24,7 @@ describe('createWorkflowAgentLoopToolCatalog', () => {
       'search',
       'dataset_search'
     ]);
-    expect(catalog.askTool?.function.name).toBe('ask_agent');
+    expect(catalog.askTool?.function.name).toBe('ask_user');
     expect(catalog.updatePlanTool?.function.name).toBe('update_plan');
   });
 
@@ -35,5 +35,14 @@ describe('createWorkflowAgentLoopToolCatalog', () => {
 
     expect(catalog.runtimeTools).toEqual([]);
     expect(catalog.updatePlanTool?.function.name).toBe('update_plan');
+  });
+
+  it('does not mutate completion tools because internal tools are injected before this adapter', () => {
+    const completionTools = [tool('search'), tool('dataset_search')];
+    const catalog = createWorkflowAgentLoopToolCatalog({
+      completionTools
+    });
+
+    expect(catalog.runtimeTools).toBe(completionTools);
   });
 });

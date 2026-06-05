@@ -1,49 +1,37 @@
 import { describe, expect, it } from 'vitest';
 import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { mergeStableCompletedSteps } from '@fastgpt/service/core/ai/llm/agentLoop';
+import { mergeStableCompletedSteps } from '@fastgpt/service/core/ai/llm/agentLoop/systemTools/plan';
 
 const parsePlan = (plan: unknown): AgentPlanType => AgentPlanSchema.parse(plan);
 
 describe('mergeStableCompletedSteps', () => {
-  it('preserves completed step status and evidence when the reviser edits the step', () => {
+  it('preserves completed step status and note when the reviser edits the step', () => {
     const currentPlan = parsePlan({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Read code',
+          name: 'Read code',
           description: 'Read current implementation',
           status: 'done',
-          evidence: [
-            {
-              kind: 'tool_result',
-              ref: 'call_read',
-              summary: 'Found loop entry'
-            }
-          ],
-          outputSummary: 'Loop entry located'
+          note: 'Loop entry located'
         }
       ]
     });
 
     const revisedPlan = parsePlan({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Read updated code',
+          name: 'Read updated code',
           description: 'Read current implementation again',
           status: 'pending',
-          evidence: [
-            {
-              kind: 'manual',
-              summary: 'Reviser acknowledged prior work'
-            }
-          ]
+          note: 'Reviser acknowledged prior work'
         }
       ]
     });
@@ -53,72 +41,46 @@ describe('mergeStableCompletedSteps', () => {
     expect(result.warnings).toEqual([]);
     expect(result.plan.steps[0]).toMatchObject({
       id: 's1',
-      title: 'Read updated code',
+      name: 'Read updated code',
       status: 'done',
-      outputSummary: 'Loop entry located',
-      evidence: [
-        {
-          kind: 'tool_result',
-          ref: 'call_read',
-          summary: 'Found loop entry'
-        },
-        {
-          kind: 'manual',
-          summary: 'Reviser acknowledged prior work'
-        }
-      ]
+      note: 'Loop entry located'
     });
   });
 
   it('merges dropped completed steps back and resets new revised steps to pending', () => {
     const currentPlan = parsePlan({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's1',
-          title: 'Read code',
+          name: 'Read code',
           description: 'Read current implementation',
           status: 'done',
-          evidence: [
-            {
-              kind: 'tool_result',
-              summary: 'Completed'
-            }
-          ]
+          note: 'Completed'
         },
         {
           id: 's2',
-          title: 'Old blocked step',
+          name: 'Old blocked step',
           description: 'Old blocked work',
           status: 'blocked',
-          blocker: 'Need a new approach',
-          needsReplan: true,
-          evidence: []
+          note: 'Need a new approach'
         }
       ]
     });
 
     const revisedPlan = parsePlan({
       planId: 'plan_1',
-      task: 'Task',
+      name: 'Task',
       description: 'Description',
       steps: [
         {
           id: 's3',
-          title: 'New step',
+          name: 'New step',
           description: 'Use a better approach',
           status: 'done',
-          outputSummary: 'Model guessed this was already done',
-          blocker: 'Stale blocker',
-          needsReplan: true,
-          evidence: [
-            {
-              kind: 'manual',
-              summary: 'Model guessed completion'
-            }
-          ]
+          note: 'Model guessed this was already done'
         }
       ]
     });
@@ -129,23 +91,15 @@ describe('mergeStableCompletedSteps', () => {
     expect(result.plan.steps).toEqual([
       expect.objectContaining({
         id: 's3',
-        status: 'pending',
-        evidence: []
+        status: 'pending'
       }),
       expect.objectContaining({
         id: 's1',
         status: 'done',
-        evidence: [
-          {
-            kind: 'tool_result',
-            summary: 'Completed'
-          }
-        ]
+        note: 'Completed'
       })
     ]);
-    expect(result.plan.steps[0]).not.toHaveProperty('outputSummary');
-    expect(result.plan.steps[0]).not.toHaveProperty('blocker');
-    expect(result.plan.steps[0]).not.toHaveProperty('needsReplan');
+    expect(result.plan.steps[0].note).toBeUndefined();
     expect(result.plan.steps.find((step) => step.id === 's2')).toBeUndefined();
   });
 });

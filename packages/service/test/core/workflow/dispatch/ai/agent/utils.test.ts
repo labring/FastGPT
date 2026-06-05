@@ -1,16 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
-import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
+import {
+  getSubapps,
+  getExecuteTool
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/utils';
 import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
+import {
+  createReadFilesTool,
+  READ_FILES_TOOL_NAME
+} from '@fastgpt/service/core/ai/llm/agentLoop/systemTools/readFile';
 
-const { dispatchAgentDatasetSearchMock, dispatchFileReadMock } = vi.hoisted(() => ({
-  dispatchAgentDatasetSearchMock: vi.fn(),
-  dispatchFileReadMock: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
-  dispatchFileRead: dispatchFileReadMock
+const { dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
+  dispatchAgentDatasetSearchMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
@@ -22,16 +23,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
 }));
 
 describe('Agent read_files tool protocol', () => {
-  it('exposes read_files with ids parameter', async () => {
-    const { completionTools } = await getSubapps({
-      tmbId: 'tmb_1',
-      tools: [],
-      hasFiles: true,
-      hasDataset: false
-    });
+  it('defines read_files with ids parameter', async () => {
+    const readFileTool = createReadFilesTool();
 
-    expect(completionTools).toContain(readFileTool);
-    expect(readFileTool.function.name).toBe(SubAppIds.readFiles);
+    expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
     expect(readFileTool.function.parameters).toEqual({
       type: 'object',
       properties: {
@@ -40,79 +35,27 @@ describe('Agent read_files tool protocol', () => {
           items: {
             type: 'string'
           },
-          description: '文件 ID'
+          description: 'File IDs'
         }
       },
       required: ['ids']
     });
   });
 
-  it('dispatches read_files by ids', async () => {
-    dispatchFileReadMock.mockResolvedValue({
-      response: 'file content',
-      usages: [],
-      nodeResponse: {
-        moduleName: '文件解析'
-      }
-    });
-    const executeTool = getExecuteTool({
-      checkIsStopping: vi.fn(),
-      chatConfig: {},
-      runningUserInfo: {
-        teamId: 'team_1',
-        tmbId: 'tmb_1'
-      },
-      runningAppInfo: {
-        id: 'app_1'
-      },
-      chatId: 'chat_1',
-      uid: 'user_1',
-      variableState: {} as any,
-      externalProvider: {
-        openaiAccount: undefined
-      } as any,
-      lang: 'zh-CN',
-      requestOrigin: '',
-      mode: 'chat',
-      timezone: 'Asia/Shanghai',
-      retainDatasetCite: false,
-      maxRunTimes: 10,
-      workflowDispatchDeep: 0,
-      params: {
-        model: 'gpt-4'
-      },
-      stream: false,
-      getSubAppInfo: () => ({
-        name: '文件解析',
-        avatar: '',
-        toolDescription: ''
-      }),
-      getSubApp: () => undefined,
-      completionTools: [readFileTool],
-      filesMap: {
-        'current-0': '/current.pdf'
-      }
-    } as any);
-
-    await executeTool({
-      callId: 'call_read_files',
-      toolId: SubAppIds.readFiles,
-      args: '{"ids":["current-0"]}'
+  it('does not expose read file as a runtime subapp tool', async () => {
+    const { completionTools } = await getSubapps({
+      tmbId: 'tmb_1',
+      tools: [],
+      hasDataset: false
     });
 
-    expect(dispatchFileReadMock).toHaveBeenCalledTimes(1);
-    expect(dispatchFileReadMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        files: [{ id: 'current-0', url: '/current.pdf' }]
-      })
-    );
+    expect(completionTools).toEqual([]);
   });
 
   it('exposes dataset search with query array parameter', async () => {
     const { completionTools } = await getSubapps({
       tmbId: 'tmb_1',
       tools: [],
-      hasFiles: false,
       hasDataset: true
     });
 
@@ -131,6 +74,16 @@ describe('Agent read_files tool protocol', () => {
       },
       required: ['query']
     });
+  });
+
+  it('does not expose sandbox tools from subapp collection', async () => {
+    const { completionTools } = await getSubapps({
+      tmbId: 'tmb_1',
+      tools: [],
+      hasDataset: false
+    });
+
+    expect(completionTools.map((tool) => tool.function.name)).toEqual([]);
   });
 
   it('passes external OpenAI account to dataset search tool', async () => {
@@ -182,8 +135,7 @@ describe('Agent read_files tool protocol', () => {
         toolDescription: ''
       }),
       getSubApp: () => undefined,
-      completionTools: [],
-      filesMap: {}
+      completionTools: []
     } as any);
 
     await executeTool({

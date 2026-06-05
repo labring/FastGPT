@@ -9,6 +9,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../ai/llm/agentLoop';
+import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -39,6 +40,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
   fileUrls?: string[];
+  sandboxClient?: SandboxClient;
 };
 
 export type ToolNodeItemType = {

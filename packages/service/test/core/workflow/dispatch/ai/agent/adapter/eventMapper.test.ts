@@ -7,23 +7,21 @@ import { createWorkflowAgentLoopEventMapper } from '@fastgpt/service/core/workfl
 
 const createPlan = () => ({
   planId: 'plan_1',
-  task: 'Investigate',
+  name: 'Investigate',
   description: 'Investigate code',
   steps: [
     {
       id: 's1',
-      title: 'Read code',
+      name: 'Read code',
       description: 'Read code',
-      acceptanceCriteria: [],
-      status: 'pending' as const,
-      evidence: []
+      status: 'pending' as const
     }
   ]
 });
 
 const toolResponse = ({ id, name, response }: { id: string; name: string; response: string }) =>
   ({
-    type: 'tool_response',
+    type: 'tool_run_end',
     call: {
       id,
       type: 'function',
@@ -76,6 +74,13 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         event: SseResponseEventEnum.answer
       })
     );
+    expect(mapper.assistantResponses).toEqual([
+      {
+        text: {
+          content: 'main answer'
+        }
+      }
+    ]);
   });
 
   it('streams model request lifecycle as workflow node status', () => {
@@ -234,10 +239,12 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     expect(mapper.assistantResponses).toEqual([
       {
-        id: 'call_time',
         reasoning: {
           content: 'first reasoning'
-        },
+        }
+      },
+      {
+        id: 'call_time',
         tools: [
           {
             id: 'call_time',
@@ -344,11 +351,13 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     });
     expect(mapper.assistantResponses).toEqual([
       {
-        id: 'call_time',
         reasoning: {
           content: 'hidden first reasoning'
         },
-        hideReason: true,
+        hideReason: true
+      },
+      {
+        id: 'call_time',
         tools: [
           {
             id: 'call_time',
@@ -403,10 +412,12 @@ describe('createWorkflowAgentLoopEventMapper', () => {
 
     expect(mapper.assistantResponses).toEqual([
       {
-        id: 'call_weather',
         reasoning: {
           content: 'Need weather and time.'
-        },
+        }
+      },
+      {
+        id: 'call_weather',
         tools: [
           expect.objectContaining({
             id: 'call_weather',
@@ -484,9 +495,9 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         avatar: 'avatar',
         toolDescription: ''
       }),
-      internalToolNames: new Set(['ask_agent', 'update_plan']),
+      internalToolNames: new Set(['ask_user', 'update_plan']),
       updatePlanToolName: 'update_plan',
-      askToolName: 'ask_agent'
+      askToolName: 'ask_user'
     });
 
     mapper.emitEvent({
@@ -496,14 +507,14 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         type: 'function',
         function: {
           name: 'update_plan',
-          arguments: '{}'
+          arguments: ''
         }
       }
     });
     mapper.emitEvent({
       type: 'tool_params',
       callId: 'call_update_plan',
-      argsDelta: '{"action":"create"}'
+      argsDelta: '{"action":"set_plan","name":"Investigate","steps":[{"name":"Read code"}]}'
     });
     mapper.emitEvent({
       type: 'llm_request_end',
@@ -519,7 +530,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
           type: 'function',
           function: {
             name: 'update_plan',
-            arguments: '{}{"action":"create"}'
+            arguments: '{"action":"set_plan","name":"Investigate","steps":[{"name":"Read code"}]}'
           }
         }
       ]
@@ -530,6 +541,15 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         name: 'update_plan',
         response: 'ok'
       })
+    });
+    mapper.emitEvent({
+      type: 'plan_operation',
+      operation: 'set_plan',
+      success: true,
+      message: 'ok',
+      id: 'call_update_plan',
+      params: '{"action":"set_plan","name":"Investigate","steps":[{"name":"Read code"}]}',
+      seconds: 0
     });
     mapper.emitEvent({
       type: 'tool_call',
@@ -612,14 +632,20 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     );
     expect(mapper.assistantResponses).toEqual([
       {
+        text: {
+          content: 'draft before plan'
+        },
+        reasoning: {
+          content: 'planning'
+        }
+      },
+      {
         id: 'call_update_plan',
         agentPlanUpdate: {
           id: 'call_update_plan',
           functionName: 'update_plan',
-          params: '{}{"action":"create"}',
-          response: 'ok',
-          assistantText: 'draft before plan',
-          reasoningText: 'planning'
+          params: '{"action":"set_plan","name":"Investigate","steps":[{"name":"Read code"}]}',
+          response: 'ok'
         }
       },
       {
@@ -640,6 +666,114 @@ describe('createWorkflowAgentLoopEventMapper', () => {
             functionName: 'search',
             params: '{"q":"FastGPT"}',
             response: 'Search result'
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('streams and persists sandbox/read file internal tools as normal tool cards', () => {
+    const workflowStreamResponse = vi.fn();
+    const mapper = createWorkflowAgentLoopEventMapper({
+      workflowStreamResponse,
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent(toolCall({ id: 'call_file', name: 'read_files', args: '{"ids":["f1"]}' }));
+    mapper.emitEvent({
+      type: 'tool_params',
+      callId: 'call_file',
+      argsDelta: ''
+    });
+    mapper.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_file',
+      finishReason: 'tool_calls',
+      answerText: 'Need to read file.',
+      reasoningText: 'read file first',
+      toolCalls: [createToolCall({ id: 'call_file', name: 'read_files' })]
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_file',
+        name: 'read_files',
+        response: 'file content'
+      })
+    });
+    mapper.emitEvent(
+      toolCall({ id: 'call_sandbox', name: 'sandbox_shell', args: '{"command":"pwd"}' })
+    );
+    mapper.emitEvent({
+      type: 'tool_run_end',
+      call: createToolCall({ id: 'call_sandbox', name: 'sandbox_shell' }),
+      rawResponse: 'sandbox output',
+      response: 'sandbox output',
+      seconds: 0.2
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_file',
+        event: SseResponseEventEnum.toolCall
+      })
+    );
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_file',
+        event: SseResponseEventEnum.toolResponse
+      })
+    );
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_sandbox',
+        event: SseResponseEventEnum.toolCall
+      })
+    );
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_sandbox',
+        event: SseResponseEventEnum.toolResponse
+      })
+    );
+    expect(mapper.assistantResponses).toEqual([
+      {
+        text: {
+          content: 'Need to read file.'
+        },
+        reasoning: {
+          content: 'read file first'
+        }
+      },
+      {
+        id: 'call_file',
+        tools: [
+          {
+            id: 'call_file',
+            toolName: 'read_files',
+            toolAvatar: '',
+            functionName: 'read_files',
+            params: '{"ids":["f1"]}',
+            response: 'file content'
+          }
+        ]
+      },
+      {
+        id: 'call_sandbox',
+        tools: [
+          {
+            id: 'call_sandbox',
+            toolName: 'sandbox_shell',
+            toolAvatar: '',
+            functionName: 'sandbox_shell',
+            params: '{"command":"pwd"}',
+            response: 'sandbox output'
           }
         ]
       }
@@ -711,6 +845,54 @@ describe('createWorkflowAgentLoopEventMapper', () => {
             toolAvatar: 'avatar',
             functionName: 'weather',
             params: '{"city":"Beijing"}'
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('ignores replayed tool params and responses that are already applied', () => {
+    const mapper = createWorkflowAgentLoopEventMapper({
+      getSubAppInfo: (id) => ({
+        name: id,
+        avatar: '',
+        toolDescription: ''
+      }),
+      internalToolNames: new Set()
+    });
+
+    mapper.emitEvent(toolCall({ id: 'call_search', name: 'search', args: '{"q":"FastGPT"}' }));
+    mapper.emitEvent({
+      type: 'tool_params',
+      callId: 'call_search',
+      argsDelta: '{"q":"FastGPT"}'
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_search',
+        name: 'search',
+        response: 'result'
+      })
+    });
+    mapper.emitEvent({
+      ...toolResponse({
+        id: 'call_search',
+        name: 'search',
+        response: 'result'
+      })
+    });
+
+    expect(mapper.assistantResponses).toEqual([
+      {
+        id: 'call_search',
+        tools: [
+          {
+            id: 'call_search',
+            toolName: 'search',
+            toolAvatar: '',
+            functionName: 'search',
+            params: '{"q":"FastGPT"}',
+            response: 'result'
           }
         ]
       }
@@ -932,7 +1114,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
     ]);
   });
 
-  it('recognizes agent loop control tools from injected tool names', () => {
+  it('records agent loop plan operations from dedicated control events', () => {
     const workflowStreamResponse = vi.fn();
     const mapper = createWorkflowAgentLoopEventMapper({
       workflowStreamResponse,
@@ -953,7 +1135,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         type: 'function',
         function: {
           name: 'agent_update_plan',
-          arguments: '{"updates":['
+          arguments: '{"action":"update_steps","steps":['
         }
       }
     });
@@ -969,6 +1151,15 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         response: 'ok'
       })
     });
+    mapper.emitEvent({
+      type: 'plan_operation',
+      operation: 'update_steps',
+      success: true,
+      message: 'ok',
+      id: 'call_custom_plan',
+      params: '{"action":"update_steps","steps":[]}',
+      seconds: 0
+    });
 
     expect(workflowStreamResponse).not.toHaveBeenCalled();
     expect(mapper.assistantResponses).toEqual([
@@ -977,14 +1168,14 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         agentPlanUpdate: {
           id: 'call_custom_plan',
           functionName: 'agent_update_plan',
-          params: '{"updates":[]}',
+          params: '{"action":"update_steps","steps":[]}',
           response: 'ok'
         }
       }
     ]);
   });
 
-  it('stores stop gate feedback as an agent loop control value', () => {
+  it('stores assistant_push stop gate feedback as an agent loop control value', () => {
     const mapper = createWorkflowAgentLoopEventMapper({
       getSubAppInfo: () => ({
         name: '',
@@ -994,14 +1185,21 @@ describe('createWorkflowAgentLoopEventMapper', () => {
       internalToolNames: new Set()
     });
 
-    mapper.emitEvent({
-      type: 'stop_gate_feedback',
-      id: 'stop_gate_1',
-      reason: 'Active plan is not complete.',
-      feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>',
-      assistantText: 'too early',
-      reasoningText: 'checking'
-    });
+    const event = {
+      type: 'assistant_push' as const,
+      value: {
+        id: 'stop_gate_1',
+        agentStopGate: {
+          id: 'stop_gate_1',
+          reason: 'Active plan is not complete.',
+          feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>'
+        },
+        hideInUI: true
+      }
+    };
+
+    mapper.emitEvent(event);
+    mapper.emitEvent(event);
 
     expect(mapper.assistantResponses).toEqual([
       {
@@ -1009,10 +1207,9 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         agentStopGate: {
           id: 'stop_gate_1',
           reason: 'Active plan is not complete.',
-          feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>',
-          assistantText: 'too early',
-          reasoningText: 'checking'
-        }
+          feedback: '<stop_gate_feedback>\nYou cannot finish yet.\n</stop_gate_feedback>'
+        },
+        hideInUI: true
       }
     ]);
   });
@@ -1197,7 +1394,7 @@ describe('createWorkflowAgentLoopEventMapper', () => {
         {
           ...plan.steps[0],
           status: 'done' as const,
-          outputSummary: 'Read code'
+          note: 'Read code'
         }
       ]
     };

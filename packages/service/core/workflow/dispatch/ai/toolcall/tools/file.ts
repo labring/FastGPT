@@ -1,4 +1,3 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getFileContentByUrl } from '../../../../utils/file';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -6,40 +5,42 @@ import { getLogger } from '@fastgpt-sdk/otel/logger';
 import { LogCategories } from '../../../../../../common/logger';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import z from 'zod';
-import type { ChildResponseItemType } from '../type';
+import type { ChildResponseItemType, FileInputType } from '../type';
+import { AgentNodeResponseDisplay } from '../../../../../ai/llm/agentLoop/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
 
-export const ReadFileTooData = {
-  id: 'read_files',
+export const ReadFileToolDisplay = {
   name: {
     'zh-CN': '文件解析',
     en: 'File parse',
     'zh-Hant': '文件解析'
   },
-  avatar: 'core/workflow/template/readFiles'
-};
-export const ReadFileToolSchema: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: ReadFileTooData.id,
-    description: '解析文件内容，获取文本。',
-    parameters: {
-      type: 'object',
-      properties: {
-        ids: { type: 'array', items: { type: 'string' } }
-      },
-      required: ['ids']
-    }
-  }
+  avatar: AgentNodeResponseDisplay.readFile.moduleLogo
 };
 
-export const ReadFileToolParamsSchema = z.object({
-  ids: z.array(z.string())
-});
+export const getToolCallFileUrl = ({
+  id,
+  allFiles,
+  fileUrlList
+}: {
+  id: string;
+  allFiles: Map<string, FileInputType>;
+  fileUrlList?: string[];
+}) => {
+  const file = allFiles.get(id);
+  if (file?.url) return file.url;
+
+  const index = Number(id);
+  if (Array.isArray(fileUrlList) && Number.isInteger(index) && index >= 0) {
+    return fileUrlList[index] || '';
+  }
+
+  return '';
+};
+
 type FileReadParams = {
-  files: { id: string; url: string }[];
+  files: { id: string; name?: string; url: string }[];
   toolCallId: string;
 
   teamId: string;
@@ -63,7 +64,7 @@ export const dispatchReadFileTool = async ({
         ...nodeResponse,
         moduleType: FlowNodeTypeEnum.readFiles,
         moduleName: i18nT('chat:read_file'),
-        moduleLogo: ReadFileTooData.avatar,
+        moduleLogo: ReadFileToolDisplay.avatar,
         id: toolCallId,
         nodeId: toolCallId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
@@ -76,7 +77,7 @@ export const dispatchReadFileTool = async ({
 
   try {
     const readFilesResult = await Promise.all(
-      files.map(async ({ url, id }) => {
+      files.map(async ({ url, id, name: inputName }) => {
         try {
           const { name, content } = await getFileContentByUrl({
             url,
@@ -88,13 +89,13 @@ export const dispatchReadFileTool = async ({
 
           return {
             id,
-            name,
+            name: inputName || name,
             content
           };
         } catch (error) {
           return {
             id,
-            name: url,
+            name: inputName || url,
             content: getErrText(error, 'Load file error')
           };
         }
@@ -106,6 +107,7 @@ export const dispatchReadFileTool = async ({
       .map(
         (file) => `<file>
 <id>${file.id}</id>
+<name>${file.name}</name>
 <content>${file.content}</content>
 </file>`
       )
@@ -114,7 +116,12 @@ export const dispatchReadFileTool = async ({
     return {
       response,
       usages,
-      flowResponse: getFlowResponse()
+      flowResponse: getFlowResponse({
+        readFiles: readFilesResult.map((file) => ({
+          name: file.name,
+          url: files.find((item) => item.id === file.id)?.url || ''
+        }))
+      })
     };
   } catch (error) {
     logger.error('[File Read] Compression failed, using original content', { error });

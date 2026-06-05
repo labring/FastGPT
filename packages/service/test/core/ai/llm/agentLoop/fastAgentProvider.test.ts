@@ -1,0 +1,337 @@
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  ModelTypeEnum
+} from '@fastgpt/global/core/ai/constants';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
+
+const { createLLMResponseMock, compressRequestMessagesMock, compressToolResponseMock } = vi.hoisted(
+  () => ({
+    createLLMResponseMock: vi.fn(),
+    compressRequestMessagesMock: vi.fn(),
+    compressToolResponseMock: vi.fn()
+  })
+);
+
+vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
+  createLLMResponse: createLLMResponseMock
+}));
+
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getLLMModel: vi.fn(
+    (): LLMModelItemType => ({
+      type: ModelTypeEnum.llm,
+      provider: 'openai',
+      model: 'gpt-5',
+      name: 'GPT-5',
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 60000,
+      functionCall: true,
+      toolChoice: true,
+      reasoning: true,
+      reasoningEffort: true
+    })
+  )
+}));
+
+vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
+  compressRequestMessages: compressRequestMessagesMock,
+  compressToolResponse: compressToolResponseMock
+}));
+
+vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
+  filterGPTMessageByMaxContext: vi.fn(async ({ messages }) => messages)
+}));
+
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countGptMessagesTokens: vi.fn(async () => 100)
+}));
+
+vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
+  formatModelChars2Points: vi.fn(() => ({
+    totalPoints: 1
+  }))
+}));
+
+import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop';
+import { runFastAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/providers/fastAgent';
+
+const tool = (name: string): ChatCompletionTool => ({
+  type: 'function',
+  function: {
+    name,
+    description: `${name} description`,
+    parameters: {
+      type: 'object',
+      properties: {}
+    }
+  }
+});
+
+const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
+  llmParams: {
+    model: 'gpt-5',
+    stream: true
+  },
+  toolCatalog: {
+    runtimeTools: [tool('search')]
+  },
+  executeTool: vi.fn(async () => ({
+    response: 'runtime tool response',
+    assistantMessages: [],
+    usages: []
+  })),
+  ...overrides
+});
+
+describe('runFastAgentLoop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
+      messages
+    }));
+    compressToolResponseMock.mockImplementation(async ({ response }) => ({
+      compressed: response
+    }));
+  });
+
+  it('injects internal tools only when runtime systemTools enable them', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_without_internal_tools',
+        content: 'direct answer'
+      }),
+      text({
+        requestId: 'req_with_internal_tools',
+        content: 'direct answer'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      },
+      runtime: createRuntime()
+    });
+    expect(
+      createLLMResponseMock.mock.calls[0][0].body.tools.map(
+        (item: ChatCompletionTool) => item.function.name
+      )
+    ).toEqual(['search']);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      },
+      runtime: createRuntime({
+        systemTools: {
+          plan: { enabled: true },
+          ask: { enabled: true },
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        }
+      })
+    });
+    const toolNames = createLLMResponseMock.mock.calls[1][0].body.tools.map(
+      (item: ChatCompletionTool) => item.function.name
+    );
+    expect(toolNames).toEqual(expect.arrayContaining(['search', 'ask_user', 'update_plan']));
+    expect(toolNames.some((name: string) => name.startsWith('sandbox_'))).toBe(true);
+  });
+
+  it('runs readFile with internal execution while emitting runtime tool card events', async () => {
+    const events: any[] = [];
+    const usagePush = vi.fn();
+    const executeTool = vi.fn();
+    const executeReadFile = vi.fn(async () => ({
+      response: 'file content',
+      usages: [
+        {
+          moduleName: 'File read',
+          totalPoints: 2,
+          inputTokens: 10,
+          outputTokens: 3
+        }
+      ],
+      nodeResponse: {
+        id: 'read_file_call',
+        nodeId: 'read_file_call',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Read file',
+        toolRes: 'file content'
+      }
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'read_file_call',
+        name: 'read_files',
+        args: {
+          ids: ['file_1']
+        }
+      }),
+      text({
+        requestId: 'req_final',
+        content: 'done'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'read file'
+          }
+        ]
+      },
+      runtime: createRuntime({
+        systemTools: {
+          readFile: {
+            enabled: true,
+            execute: executeReadFile
+          }
+        },
+        executeTool,
+        usagePush,
+        emitEvent: (event) => events.push(event)
+      })
+    });
+
+    expect(executeReadFile).toHaveBeenCalledTimes(1);
+    expect(executeTool).not.toHaveBeenCalled();
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(['tool_call', 'tool_run_end'])
+    );
+    expect(events.map((event) => event.type)).not.toContain('file_read_start');
+    expect(events.map((event) => event.type)).not.toContain('file_read_end');
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'tool_run_end',
+          call: expect.objectContaining({
+            id: 'read_file_call'
+          }),
+          nodeResponse: expect.objectContaining({
+            moduleName: 'Read file'
+          })
+        })
+      ])
+    );
+    expect(usagePush).toHaveBeenCalledWith([
+      expect.objectContaining({
+        moduleName: 'File read',
+        totalPoints: 2
+      })
+    ]);
+  });
+
+  it('does not intercept read_files runtime tools when the internal tool is disabled', async () => {
+    const events: any[] = [];
+    const executeTool = vi.fn(async () => ({
+      response: 'runtime read file response',
+      assistantMessages: [],
+      usages: [
+        {
+          moduleName: 'Runtime tool',
+          totalPoints: 1
+        }
+      ]
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'runtime_read_file_call',
+        name: 'read_files',
+        args: {
+          ids: ['file_1']
+        }
+      }),
+      text({
+        requestId: 'req_final',
+        content: 'done'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'read file with runtime tool'
+          }
+        ]
+      },
+      runtime: createRuntime({
+        toolCatalog: {
+          runtimeTools: [tool('read_files')]
+        },
+        executeTool,
+        emitEvent: (event) => events.push(event)
+      })
+    });
+
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(['tool_call', 'tool_run_start', 'tool_run_end'])
+    );
+    expect(events.map((event) => event.type)).not.toContain('file_read_start');
+    expect(events.map((event) => event.type)).not.toContain('file_read_end');
+  });
+
+  it('pushes usages produced by interactive tool resume', async () => {
+    const usagePush = vi.fn();
+    const interactiveUsage = {
+      moduleName: 'Interactive tool',
+      totalPoints: 3
+    };
+
+    await runFastAgentLoop({
+      input: {
+        messages: [],
+        childrenInteractiveParams: {
+          childrenResponse: {
+            type: 'userSelect'
+          },
+          toolParams: {
+            toolCallId: 'call_interactive',
+            memoryRequestMessages: [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.Tool,
+                tool_call_id: 'call_interactive',
+                content: 'pending'
+              }
+            ]
+          }
+        }
+      },
+      runtime: createRuntime({
+        executeInteractiveTool: vi.fn(async () => ({
+          response: 'interactive response',
+          assistantMessages: [],
+          usages: [interactiveUsage],
+          stop: true
+        })),
+        usagePush
+      })
+    });
+
+    expect(usagePush).toHaveBeenCalledWith([interactiveUsage]);
+  });
+});

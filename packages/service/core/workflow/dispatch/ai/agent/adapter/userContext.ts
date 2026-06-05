@@ -10,7 +10,7 @@ import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
 import type { DeployedSkillInfo } from '../../../../../ai/skill/runtime/types';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { READ_FILES_TOOL_NAME } from '../../../../../ai/llm/agentLoop/systemTools/readFile';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export type AgentInputFile = {
@@ -217,7 +217,7 @@ export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
   if (documentFiles.length === 0) return '';
 
   return `## 文件
-用户本次对话上传的的文件， 可通过 ${SubAppIds.readFiles} 读取文件内容：
+用户本次对话上传的的文件， 可通过 ${READ_FILES_TOOL_NAME} 读取文件内容：
 
 ${documentFiles
   .map(
@@ -319,7 +319,7 @@ export type UseUserContextResult = {
   chatHistories: ChatItemMiniType[];
   currentFiles: AgentInputFile[];
   queryInput: string;
-  filesMap: Record<string, string>;
+  filesMap: Record<string, Pick<AgentInputFile, 'name' | 'url'>>;
   getCurrentMessages: (params?: {
     skillInfos?: DeployedSkillInfo[];
     currentWorkingDirectory?: string;
@@ -363,7 +363,7 @@ export const useUserContext = async ({
 }): Promise<UseUserContextResult> => {
   const chatHistories = getHistories(history, histories);
   // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
-  const filesMap: Record<string, string> = {};
+  const filesMap: UseUserContextResult['filesMap'] = {};
 
   const getMessagePrefixId = (message: ChatItemMiniType, index: number) =>
     message.dataId || `${index}`;
@@ -373,7 +373,10 @@ export const useUserContext = async ({
 
     for (const file of files) {
       if (file.type === ChatFileTypeEnum.file) {
-        filesMap[file.id] = file.url;
+        filesMap[file.id] = {
+          name: file.name,
+          url: file.url
+        };
       }
     }
   };

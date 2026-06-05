@@ -43,7 +43,7 @@ const createHook = ({
   toolCatalog = {
     runtimeTools: [],
     updatePlanTool: createTool('update_plan'),
-    askTool: createTool('ask_agent')
+    askTool: createTool('ask_user')
   }
 }: {
   nodeResponses?: any[];
@@ -88,7 +88,7 @@ describe('agent adapter useToolNodeResponse', () => {
       }
     });
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call,
       response: 'tool response',
       seconds: 0.8,
@@ -106,7 +106,7 @@ describe('agent adapter useToolNodeResponse', () => {
       }
     } as any);
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call,
       response: 'duplicated response',
       seconds: 0.9
@@ -162,7 +162,7 @@ describe('agent adapter useToolNodeResponse', () => {
       ]
     });
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call,
       response: 'fallback response',
       seconds: 0.7
@@ -187,10 +187,10 @@ describe('agent adapter useToolNodeResponse', () => {
     const hook = createHook();
 
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: createCall({
         id: 'call_ask',
-        name: 'ask_agent'
+        name: 'ask_user'
       }),
       response: 'need more info',
       seconds: 0.3,
@@ -206,21 +206,21 @@ describe('agent adapter useToolNodeResponse', () => {
       }
     } as any);
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: createCall({
         id: 'call_set_plan',
         name: 'update_plan',
-        args: '{"updates":[{"action":"set_plan"}]}'
+        args: '{"action":"set_plan","name":"Task","steps":[{"name":"Step"}]}'
       }),
       response: 'plan set',
       seconds: 0.04
     } as any);
     hook.appendToolNodeResponse({
-      type: 'tool_response',
+      type: 'tool_run_end',
       call: createCall({
         id: 'call_update_plan',
         name: 'update_plan',
-        args: '{"updates":[{"action":"finish"}]}'
+        args: '{"action":"update_steps","steps":[{"id":"s1","status":"done"}]}'
       }),
       response: 'plan updated',
       seconds: 0.06
@@ -228,10 +228,9 @@ describe('agent adapter useToolNodeResponse', () => {
 
     expect(hook.nodeResponses).toEqual([
       expect.objectContaining({
-        id: 'agent_node-plan-call_ask',
-        moduleName: 'chat:plan_agent',
+        id: 'agent_node-ask-call_ask',
+        moduleName: 'chat:collect_questions',
         runningTime: 0.3,
-        agentPlanStatus: 'ask_question',
         textOutput: 'need more info',
         childTotalPoints: 0.1,
         childrenResponses: [
@@ -255,5 +254,6 @@ describe('agent adapter useToolNodeResponse', () => {
         textOutput: 'plan updated'
       })
     ]);
+    expect(hook.nodeResponses[0]).not.toHaveProperty('agentPlanStatus');
   });
 });

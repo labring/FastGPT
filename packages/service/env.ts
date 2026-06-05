@@ -211,8 +211,8 @@ export const serviceEnv = createEnv({
     }),
 
     //==================== Beta features ====================
-    AGENT_ENGINE: z.enum(['default', 'pi']).default('default').meta({
-      description: 'Agent 引擎选择：default（unified agent loop）| pi（pi-agent-core 引擎）'
+    AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
+      description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
     }),
     HELPER_BOT_MODEL: z
       .string()

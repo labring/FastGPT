@@ -6,16 +6,12 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../../ai/llm/agentLoop';
-import { runSandboxTools } from '../../../../../ai/sandbox/toolCall';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { runWorkflow } from '../../../index';
 import type { DispatchFlowResponse } from '../../../type';
-import { getSandboxToolWorkflowResponse } from '../constants';
-import type { ChildResponseItemType, DispatchToolModuleProps, FileInputType } from '../type';
-import { dispatchReadFileTool, ReadFileToolParamsSchema } from '../tools/file';
+import type { ChildResponseItemType, DispatchToolModuleProps } from '../type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from '../utils';
 import type { ToolInfo } from './useToolCatalog';
-import { checkTeamSandboxPermission } from '../../../../../../support/permission/teamLimit';
 
 type WorkflowProps = Omit<
   DispatchToolModuleProps,
@@ -81,7 +77,6 @@ export const useToolRunner = ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
-  allFiles,
   fileUrls = [],
   getToolInfo,
   cacheToolFlowResponse,
@@ -91,7 +86,6 @@ export const useToolRunner = ({
   workflowProps: WorkflowProps;
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
-  allFiles: Map<string, FileInputType>;
   fileUrls?: string[];
   getToolInfo: (name: string) => ToolInfo | undefined;
   cacheToolFlowResponse: (args: {
@@ -113,6 +107,20 @@ export const useToolRunner = ({
       };
     }
 
+    if (toolInfo.type === 'sandbox' || toolInfo.type === 'file') {
+      /**
+       * sandbox/readFile 是 agent-loop provider 注入并拦截的内置工具。
+       * 如果这里收到它们，说明内置工具被误放进 runtimeTools；返回稳定错误，避免绕过 provider 事件协议。
+       */
+      return {
+        response: `${call.function.name} is an agent-loop internal tool and cannot be executed as a runtime tool.`,
+        assistantMessages: [],
+        usages: [],
+        interactive: undefined,
+        stop: false
+      };
+    }
+
     const {
       response,
       flowResponse,
@@ -121,54 +129,6 @@ export const useToolRunner = ({
       interactive,
       stop
     } = await (async (): Promise<ToolRunResult> => {
-      /**
-       * 先处理系统工具：sandbox/file。
-       */
-      if (toolInfo.type === 'sandbox') {
-        try {
-          await checkTeamSandboxPermission(workflowProps.runningUserInfo.teamId);
-        } catch (err) {
-          throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
-        }
-
-        const { input, response, durationSeconds } = await runSandboxTools({
-          toolName: call.function.name,
-          args: call.function.arguments ?? '',
-          appId: workflowProps.runningAppInfo.id,
-          userId: workflowProps.uid,
-          chatId: workflowProps.chatId
-        });
-
-        const flowResponse = getSandboxToolWorkflowResponse({
-          name: toolInfo.name,
-          logo: toolInfo.avatar,
-          toolId: call.function.name,
-          input,
-          response,
-          durationSeconds
-        });
-
-        return { response, flowResponse };
-      }
-
-      if (toolInfo.type === 'file') {
-        const { ids } = ReadFileToolParamsSchema.parse(parseJsonArgs(call.function.arguments));
-        const { response, usages, flowResponse } = await dispatchReadFileTool({
-          files: ids.map((id) => ({ id, url: allFiles.get(id)?.url ?? '' })),
-          toolCallId: call.id,
-          teamId: workflowProps.runningUserInfo.teamId,
-          tmbId: workflowProps.runningUserInfo.tmbId,
-          customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
-          usageId: workflowProps.usageId
-        });
-
-        return {
-          response,
-          usages,
-          flowResponse
-        };
-      }
-
       const toolNode = toolInfo.rawData;
 
       /**
@@ -203,7 +163,7 @@ export const useToolRunner = ({
 
     /**
      * 这里只缓存真实工具/子流程的运行详情。
-     * 最终 tool response 可能还会被 agentLoop 压缩，统一由 onAfterToolCall 落 nodeResponse。
+     * 最终 tool response 可能还会被 agentLoop 压缩，统一由 onToolRunEnd 落 nodeResponse。
      */
     cacheToolFlowResponse({
       call,
@@ -225,7 +185,7 @@ export const useToolRunner = ({
   }: AgentLoopChildrenInteractiveParams<WorkflowInteractiveResponseType>) => {
     /**
      * 交互恢复时没有新的 function call 生命周期，直接续跑上次中断的子工具入口。
-     * 因此运行详情在这里追加，避免等待一个不会再触发的 onAfterToolCall。
+     * 因此运行详情在这里追加，避免等待一个不会再触发的 onToolRunEnd。
      */
     initToolNodes(runtimeNodes, childrenResponse.entryNodeIds);
     initToolCallEdges(runtimeEdges, childrenResponse.entryNodeIds);

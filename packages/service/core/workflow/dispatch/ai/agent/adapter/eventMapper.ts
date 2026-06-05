@@ -17,6 +17,19 @@ const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
 const isInternalTool = (name: string, internalToolNames: Set<string>) =>
   internalToolNames.has(name);
 
+const appendUniqueDelta = (current: string | null | undefined, delta: string) => {
+  const currentValue = current || '';
+  if (!delta || currentValue === delta) return currentValue;
+  return `${currentValue}${delta}`;
+};
+
+const getUnstreamedText = (streamedText: string, finalText?: string) => {
+  if (!finalText) return undefined;
+  if (!streamedText) return finalText;
+  if (finalText === streamedText) return undefined;
+  return finalText.startsWith(streamedText) ? finalText.slice(streamedText.length) : undefined;
+};
+
 /**
  * 将通用 agent loop 事件映射为 workflow SSE 和 assistantResponses。
  * 只有 main_agent 可见文本会流给用户；plan_update 和外部工具调用会同步写入
@@ -40,8 +53,139 @@ export const createWorkflowAgentLoopEventMapper = ({
   assistantResponses?: AIChatItemValueItemType[];
 }) => {
   const toolNameByCallId = new Map<string, string>();
-  const isUpdatePlanTool = (name?: string) => !!name && name === updatePlanToolName;
-  const isAskTool = (name?: string) => !!name && name === askToolName;
+  let currentAssistantTextIndex: number | undefined;
+  let answerDeltaText = '';
+  let reasoningDeltaText = '';
+
+  const isPlainAssistantOutput = (value?: AIChatItemValueItemType) =>
+    !!value &&
+    !value.id &&
+    !value.tools?.length &&
+    !value.skills?.length &&
+    !value.interactive &&
+    !value.plan &&
+    !value.planStatus &&
+    !value.agentPlanUpdate &&
+    !value.agentAsk &&
+    !value.agentStopGate &&
+    !value.contextCheckpoint &&
+    !value.tool;
+
+  const ensureCurrentAssistantTextValue = () => {
+    if (
+      currentAssistantTextIndex !== undefined &&
+      isPlainAssistantOutput(assistantResponses[currentAssistantTextIndex])
+    ) {
+      return currentAssistantTextIndex;
+    }
+
+    assistantResponses.push({});
+    currentAssistantTextIndex = assistantResponses.length - 1;
+    return currentAssistantTextIndex;
+  };
+
+  const appendAnswerDelta = (text: string) => {
+    if (!text) return;
+    const index = ensureCurrentAssistantTextValue();
+    const currentValue = assistantResponses[index];
+    if (!currentValue.reasoning?.content && reasoningDeltaText) {
+      assistantResponses[index] = {
+        ...currentValue,
+        reasoning: {
+          content: reasoningDeltaText
+        },
+        ...(!showReasoning ? { hideReason: true } : {})
+      };
+    }
+    const latestValue = assistantResponses[index];
+    answerDeltaText += text;
+    assistantResponses[index] = {
+      ...latestValue,
+      text: {
+        content: `${latestValue.text?.content || ''}${text}`
+      }
+    };
+  };
+
+  const appendReasoningDelta = (text: string) => {
+    if (!text) return;
+    reasoningDeltaText += text;
+    const index = ensureCurrentAssistantTextValue();
+    const currentValue = assistantResponses[index];
+    assistantResponses[index] = {
+      ...currentValue,
+      reasoning: {
+        content: `${currentValue.reasoning?.content || ''}${text}`
+      },
+      ...(!showReasoning ? { hideReason: true } : {})
+    };
+  };
+
+  const appendAssistantOutput = ({
+    assistantText,
+    reasoningText,
+    insertIndex
+  }: {
+    assistantText?: string;
+    reasoningText?: string;
+    insertIndex?: number;
+  }) => {
+    if (!assistantText && !reasoningText) return;
+
+    if (
+      currentAssistantTextIndex !== undefined &&
+      isPlainAssistantOutput(assistantResponses[currentAssistantTextIndex]) &&
+      (insertIndex === undefined || currentAssistantTextIndex <= insertIndex)
+    ) {
+      const currentValue = assistantResponses[currentAssistantTextIndex];
+      assistantResponses[currentAssistantTextIndex] = {
+        ...currentValue,
+        ...(assistantText
+          ? {
+              text: {
+                content: `${currentValue.text?.content || ''}${assistantText}`
+              }
+            }
+          : {}),
+        ...(reasoningText
+          ? {
+              reasoning: {
+                content: `${currentValue.reasoning?.content || ''}${reasoningText}`
+              },
+              ...(!showReasoning ? { hideReason: true } : {})
+            }
+          : {})
+      };
+      return;
+    }
+
+    const value: AIChatItemValueItemType = {
+      ...(assistantText
+        ? {
+            text: {
+              content: assistantText
+            }
+          }
+        : {}),
+      ...(reasoningText
+        ? {
+            reasoning: {
+              content: reasoningText
+            },
+            ...(!showReasoning ? { hideReason: true } : {})
+          }
+        : {})
+    };
+
+    if (typeof insertIndex === 'number') {
+      assistantResponses.splice(insertIndex, 0, value);
+      currentAssistantTextIndex = insertIndex;
+      return;
+    }
+
+    assistantResponses.push(value);
+    currentAssistantTextIndex = assistantResponses.length - 1;
+  };
 
   /**
    * 根据 callId 找到已经持久化的工具运行卡片。
@@ -64,7 +208,7 @@ export const createWorkflowAgentLoopEventMapper = ({
 
   /**
    * 新建或更新工具运行卡片。
-   * tool_call 到达时先创建卡片，后续 tool_params/tool_response 再按 callId 追加内容。
+   * tool_call 到达时先创建卡片，后续 tool_params/tool_run_end 再按 callId 追加内容。
    */
   const upsertToolResponse = (tool: ToolModuleResponseItemType) => {
     const responseIndex = findToolResponseIndex(tool.id);
@@ -111,6 +255,7 @@ export const createWorkflowAgentLoopEventMapper = ({
   const upsertAgentPlanUpdate = (
     update: NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
   ) => {
+    currentAssistantTextIndex = undefined;
     const responseIndex = findAgentPlanUpdateIndex(update.id);
     if (responseIndex < 0) {
       assistantResponses.push({
@@ -129,26 +274,11 @@ export const createWorkflowAgentLoopEventMapper = ({
     };
   };
 
-  const updateAgentPlanUpdate = (
-    callId: string,
-    updater: (
-      update: NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
-    ) => NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
-  ) => {
-    const responseIndex = findAgentPlanUpdateIndex(callId);
-    const currentValue = responseIndex >= 0 ? assistantResponses[responseIndex] : undefined;
-    if (!currentValue?.agentPlanUpdate) return;
-
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      agentPlanUpdate: updater(currentValue.agentPlanUpdate)
-    };
-  };
-
   const findAgentAskIndex = (callId: string) =>
     assistantResponses.findIndex((item) => item.agentAsk?.id === callId);
 
   const upsertAgentAsk = (ask: NonNullable<AIChatItemValueItemType['agentAsk']>) => {
+    currentAssistantTextIndex = undefined;
     const responseIndex = findAgentAskIndex(ask.id);
     if (responseIndex < 0) {
       assistantResponses.push({
@@ -167,20 +297,23 @@ export const createWorkflowAgentLoopEventMapper = ({
     };
   };
 
-  const updateAgentAsk = (
-    callId: string,
-    updater: (
-      ask: NonNullable<AIChatItemValueItemType['agentAsk']>
-    ) => NonNullable<AIChatItemValueItemType['agentAsk']>
-  ) => {
-    const responseIndex = findAgentAskIndex(callId);
-    const currentValue = responseIndex >= 0 ? assistantResponses[responseIndex] : undefined;
-    if (!currentValue?.agentAsk) return;
+  const upsertAssistantValueById = (value: AIChatItemValueItemType) => {
+    if (!value.id) {
+      assistantResponses.push(value);
+      currentAssistantTextIndex = undefined;
+      return;
+    }
 
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      agentAsk: updater(currentValue.agentAsk)
-    };
+    const responseIndex = assistantResponses.findIndex((item) => item.id === value.id);
+    if (responseIndex < 0) {
+      assistantResponses.push(value);
+    } else {
+      assistantResponses[responseIndex] = {
+        ...assistantResponses[responseIndex],
+        ...value
+      };
+    }
+    currentAssistantTextIndex = undefined;
   };
 
   const insertAssistantTextBeforeRuntimeTools = ({
@@ -200,74 +333,36 @@ export const createWorkflowAgentLoopEventMapper = ({
      *   request 2: reasoningText="工具返回了时间", assistantText="现在是 10 点"
      *
      * request 1 没有可见回答，但 reasoning 仍然属于 call_time 前的 assistant turn。
-     * 如果不挂到对应 tools value 上，刷新后/下一轮上下文会只剩 tool，丢失第一段思考。
+     * 所以这里把 assistant 输出作为独立 value 插到对应工具卡片之前；历史恢复时再合并为同一条
+     * assistant tool_calls 消息，不把文本/思考挂到工具卡片自身。
      */
     const runtimeToolCalls = toolCalls.filter((call) => {
       const functionName = call.function.name;
-      return (
-        functionName &&
-        !isUpdatePlanTool(functionName) &&
-        !isAskTool(functionName) &&
-        !isInternalTool(functionName, internalToolNames)
-      );
+      return functionName && !isInternalTool(functionName, internalToolNames);
     });
-    if (!runtimeToolCalls.length) return;
+    if (!runtimeToolCalls.length) return false;
 
     const runtimeToolCallIds = new Set(runtimeToolCalls.map((call) => call.id));
     const existingIndex = assistantResponses.findIndex((item) =>
       item.tools?.some((tool) => runtimeToolCallIds.has(tool.id))
     );
 
-    if (!assistantText) {
-      // reason -> tool：没有 answerText 可单独插入时，把 reasoning 按 callId 挂到已创建的工具卡。
-      if (!reasoningText || existingIndex < 0) return;
-
-      const currentValue = assistantResponses[existingIndex];
-      assistantResponses[existingIndex] = {
-        ...currentValue,
-        reasoning: {
-          content: [currentValue.reasoning?.content, reasoningText].filter(Boolean).join('\n\n')
-        },
-        ...(!showReasoning ? { hideReason: true } : {})
-      };
-      return;
-    }
-
     const insertIndex = existingIndex >= 0 ? existingIndex : assistantResponses.length;
-
-    const assistantValue: AIChatItemValueItemType = {
-      text: { content: assistantText },
-      ...(reasoningText
-        ? {
-            reasoning: { content: reasoningText },
-            ...(!showReasoning ? { hideReason: true } : {})
-          }
-        : {})
-    };
-    assistantResponses.splice(insertIndex, 0, assistantValue);
+    appendAssistantOutput({
+      assistantText,
+      reasoningText,
+      insertIndex
+    });
+    return true;
   };
 
   const applyToolParams = ({ callId, argsDelta }: { callId: string; argsDelta: string }) => {
     const functionName = toolNameByCallId.get(callId);
-    if (isUpdatePlanTool(functionName)) {
-      updateAgentPlanUpdate(callId, (update) => ({
-        ...update,
-        params: `${update.params || ''}${argsDelta}`
-      }));
-      return;
-    }
-    if (isAskTool(functionName)) {
-      updateAgentAsk(callId, (ask) => ({
-        ...ask,
-        params: `${ask.params || ''}${argsDelta}`
-      }));
-      return;
-    }
     if (!functionName || isInternalTool(functionName, internalToolNames)) return;
 
     updateToolResponse(callId, (tool) => ({
       ...tool,
-      params: `${tool.params || ''}${argsDelta}`
+      params: appendUniqueDelta(tool.params, argsDelta)
     }));
 
     workflowStreamResponse?.({
@@ -284,18 +379,11 @@ export const createWorkflowAgentLoopEventMapper = ({
 
   const applyToolResponse = ({ callId, response }: { callId: string; response: string }) => {
     const functionName = toolNameByCallId.get(callId);
-    if (isUpdatePlanTool(functionName)) {
-      updateAgentPlanUpdate(callId, (update) => ({
-        ...update,
-        response: `${update.response || ''}${response}`
-      }));
-      return;
-    }
     if (!functionName || isInternalTool(functionName, internalToolNames)) return;
 
     updateToolResponse(callId, (tool) => ({
       ...tool,
-      response: `${tool.response || ''}${response}`
+      response: appendUniqueDelta(tool.response, response)
     }));
 
     workflowStreamResponse?.({
@@ -316,6 +404,7 @@ export const createWorkflowAgentLoopEventMapper = ({
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
       case 'answer_delta': {
+        appendAnswerDelta(event.text);
         workflowStreamResponse?.({
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
@@ -325,6 +414,7 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'reasoning_delta': {
+        appendReasoningDelta(event.text);
         if (!showReasoning) return;
 
         workflowStreamResponse?.({
@@ -336,6 +426,9 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'llm_request_start': {
+        answerDeltaText = '';
+        reasoningDeltaText = '';
+        currentAssistantTextIndex = undefined;
         workflowStreamResponse?.({
           event: SseResponseEventEnum.flowNodeStatus,
           data: {
@@ -346,29 +439,35 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'llm_request_end': {
-        event.toolCalls?.forEach((call) => {
-          if (isUpdatePlanTool(call.function.name)) {
-            updateAgentPlanUpdate(call.id, (update) => ({
-              ...update,
-              ...(event.answerText ? { assistantText: event.answerText } : {}),
-              ...(event.reasoningText ? { reasoningText: event.reasoningText } : {})
-            }));
-          }
-          if (isAskTool(call.function.name)) {
-            updateAgentAsk(call.id, (ask) => ({
-              ...ask,
-              ...(event.answerText ? { assistantText: event.answerText } : {}),
-              ...(event.reasoningText ? { reasoningText: event.reasoningText } : {})
-            }));
-          }
-        });
+        const assistantText = getUnstreamedText(answerDeltaText, event.answerText);
+        const reasoningText = getUnstreamedText(reasoningDeltaText, event.reasoningText);
+
+        const closeAssistantOutputContext = () => {
+          answerDeltaText = '';
+          reasoningDeltaText = '';
+          currentAssistantTextIndex = undefined;
+        };
+
         if (event.toolCalls?.length) {
-          insertAssistantTextBeforeRuntimeTools({
+          const handledByRuntimeTool = insertAssistantTextBeforeRuntimeTools({
             toolCalls: event.toolCalls,
-            assistantText: event.answerText,
-            reasoningText: event.reasoningText
+            assistantText,
+            reasoningText
           });
+          if (!handledByRuntimeTool) {
+            appendAssistantOutput({
+              assistantText,
+              reasoningText
+            });
+          }
+          closeAssistantOutputContext();
+          return;
         }
+        appendAssistantOutput({
+          assistantText,
+          reasoningText
+        });
+        closeAssistantOutputContext();
         return;
       }
       case 'after_message_compress': {
@@ -383,24 +482,8 @@ export const createWorkflowAgentLoopEventMapper = ({
       case 'tool_call': {
         const functionName = event.call.function.name;
         const params = event.call.function.arguments ?? '';
-        toolNameByCallId.set(event.call.id, functionName);
-        if (isUpdatePlanTool(functionName)) {
-          upsertAgentPlanUpdate({
-            id: event.call.id,
-            functionName,
-            params
-          });
-          return;
-        }
-        if (isAskTool(functionName)) {
-          upsertAgentAsk({
-            id: event.call.id,
-            functionName,
-            params
-          });
-          return;
-        }
         if (isInternalTool(functionName, internalToolNames)) return;
+        toolNameByCallId.set(event.call.id, functionName);
 
         const subApp = getSubAppInfo(functionName);
         const tool: ToolModuleResponseItemType = {
@@ -428,24 +511,15 @@ export const createWorkflowAgentLoopEventMapper = ({
         });
         return;
       }
-      case 'tool_response': {
+      case 'tool_run_end': {
         applyToolResponse({
           callId: event.call.id,
           response: event.response
         });
         return;
       }
-      case 'stop_gate_feedback': {
-        assistantResponses.push({
-          id: event.id,
-          agentStopGate: {
-            id: event.id,
-            reason: event.reason,
-            feedback: event.feedback,
-            ...(event.assistantText ? { assistantText: event.assistantText } : {}),
-            ...(event.reasoningText ? { reasoningText: event.reasoningText } : {})
-          }
-        });
+      case 'assistant_push': {
+        upsertAssistantValueById(event.value);
         return;
       }
       case 'plan_status': {
@@ -457,6 +531,26 @@ export const createWorkflowAgentLoopEventMapper = ({
               status: event.status
             }
           }
+        });
+        return;
+      }
+      case 'plan_operation': {
+        if (!event.id) return;
+        upsertAgentPlanUpdate({
+          id: event.id,
+          functionName: updatePlanToolName || 'update_plan',
+          params: event.params || '',
+          response: event.message
+        });
+        return;
+      }
+      case 'ask_start': {
+        if (!event.id) return;
+        upsertAgentAsk({
+          id: event.id,
+          askId: event.id,
+          functionName: askToolName || 'ask_user',
+          params: event.params || ''
         });
         return;
       }

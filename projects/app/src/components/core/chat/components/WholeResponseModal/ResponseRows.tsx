@@ -16,6 +16,8 @@ const ImageQuery = dynamic(() => import('./ImageQuery'));
 
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
+  const agentPlanStatus =
+    activeModule.agentPlanStatus === 'ask_question' ? undefined : activeModule.agentPlanStatus;
 
   return (
     <>
@@ -25,11 +27,7 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
       />
       <Row
         label={t('common:Status')}
-        value={
-          activeModule.agentPlanStatus
-            ? t(agentPlanStatusMap[activeModule.agentPlanStatus] as any)
-            : undefined
-        }
+        value={agentPlanStatus ? t(agentPlanStatusMap[agentPlanStatus] as any) : undefined}
       />
       {activeModule.totalPoints !== undefined && (
         <Row
@@ -304,7 +302,14 @@ const ReadFilesRows = ({ activeModule }: { activeModule: ChatHistoryItemResType 
         <Row
           label={t('workflow:response.read files')}
           rawDom={
-            <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
+            <Flex
+              flexWrap={'wrap'}
+              bg={'myGray.50'}
+              border="base"
+              borderRadius={'md'}
+              gap={3}
+              p={2}
+            >
               {activeModule.readFiles.map((file, i) => (
                 <HStack
                   key={i}

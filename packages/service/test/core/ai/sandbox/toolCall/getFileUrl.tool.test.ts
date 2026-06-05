@@ -20,6 +20,11 @@ import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/toolCall
 
 const createSandboxInstance = () =>
   ({
+    getContext: vi.fn(() => ({
+      appId: 'app',
+      userId: 'user',
+      chatId: 'chat'
+    })),
     provider: {
       readFileStream: vi.fn(() => Readable.from(['file-content']))
     }
@@ -36,14 +41,12 @@ describe('sandboxGetFileUrlTool', () => {
     const sandbox = createSandboxInstance();
 
     const result = await sandboxGetFileUrlTool.execute({
-      appId: 'app',
-      userId: 'user',
-      chatId: 'chat',
       sandboxInstance: sandbox,
       params: { paths: ['/workspace/file.txt'] }
     });
 
     expect(JSON.parse(result.response)).toEqual([{ fileUrl: 'signed-url', filename: 'file.txt' }]);
+    expect(sandbox.getContext).toHaveBeenCalledTimes(1);
     expect(sandbox.provider.readFileStream).toHaveBeenCalledWith('/workspace/file.txt');
     expect(s3Mock.uploadChatFile).toHaveBeenCalledWith(
       expect.objectContaining({

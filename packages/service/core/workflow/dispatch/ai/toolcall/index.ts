@@ -12,6 +12,8 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
+import { getSandboxClient } from '../../../../ai/sandbox/service/runtime';
+import { injectSandboxFiles } from '../../../../ai/sandbox/toolCall';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -97,6 +99,30 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
+    // 初始化沙盒
+    const sandboxClient = await (async () => {
+      if (useSandbox) {
+        const sandboxClient = await getSandboxClient({
+          appId: props.runningAppInfo.id,
+          userId: props.uid,
+          chatId: props.chatId
+        });
+        if (currentInputFiles.length > 0) {
+          await injectSandboxFiles({
+            appId: props.runningAppInfo.id,
+            userId: props.uid,
+            chatId: props.chatId,
+            files: currentInputFiles.map((file) => ({
+              path: file.sandboxPath!,
+              url: file.url
+            }))
+          });
+        }
+
+        return sandboxClient;
+      }
+    })();
+
     // 未配置独立模型密钥时，沿用系统文本审核逻辑。
     if (toolModel.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
@@ -128,6 +154,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...props,
         allFiles,
         currentInputFiles,
+        sandboxClient,
         runtimeNodes,
         runtimeEdges,
         toolNodes,

@@ -3,14 +3,14 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getSandboxToolInfo, injectSandboxFiles } from '../../../../../ai/sandbox/toolCall';
-import type { FileInputType, ToolNodeItemType } from '../type';
-import { ReadFileTooData, ReadFileToolSchema } from '../tools/file';
+import { getSandboxToolInfo } from '../../../../../ai/sandbox/toolCall';
+import type { ToolNodeItemType } from '../type';
+import { ReadFileToolDisplay } from '../tools/file';
+import { READ_FILES_TOOL_NAME } from '../../../../../ai/llm/agentLoop/systemTools/readFile';
 
 export type ToolInfo =
   | {
@@ -75,21 +75,13 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
 export const useToolCatalog = async ({
   messages,
   toolNodes,
-  currentInputFiles,
   useAgentSandbox,
-  lang,
-  appId,
-  userId,
-  chatId
+  lang
 }: {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
-  currentInputFiles: FileInputType[];
   useAgentSandbox?: boolean;
   lang?: localeType;
-  appId: string;
-  userId: string;
-  chatId: string;
 }) => {
   let finalMessages = messages;
   const toolNodesMap = new Map<string, ToolNodeItemType>();
@@ -103,11 +95,9 @@ export const useToolCatalog = async ({
     return createToolSchema(item);
   });
 
-  tools.push(ReadFileToolSchema);
+  const sandboxEnabled = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
-  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
-    tools.push(...SANDBOX_TOOLS);
-
+  if (sandboxEnabled) {
     const systemMessage = messages.find((message) => message.role === 'system');
     if (systemMessage) {
       finalMessages = messages.map((message) =>
@@ -118,26 +108,14 @@ export const useToolCatalog = async ({
     } else {
       finalMessages = [{ role: 'system', content: SANDBOX_SYSTEM_PROMPT }, ...messages];
     }
-
-    if (currentInputFiles.length > 0) {
-      await injectSandboxFiles({
-        appId,
-        userId,
-        chatId,
-        files: currentInputFiles.map((file) => ({
-          path: file.sandboxPath!,
-          url: file.url
-        }))
-      });
-    }
   }
 
   const getToolInfo = (name: string): ToolInfo | undefined => {
-    if (name === ReadFileTooData.id) {
+    if (name === READ_FILES_TOOL_NAME) {
       return {
         type: 'file',
-        name: parseI18nString(ReadFileTooData.name, lang),
-        avatar: ReadFileTooData.avatar
+        name: parseI18nString(ReadFileToolDisplay.name, lang),
+        avatar: ReadFileToolDisplay.avatar
       };
     }
 

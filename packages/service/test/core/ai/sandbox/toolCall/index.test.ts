@@ -44,6 +44,11 @@ import {
 
 const createSandboxInstance = () =>
   ({
+    getContext: vi.fn(() => ({
+      appId: 'app',
+      userId: 'user',
+      chatId: 'chat'
+    })),
     ensureAvailable: vi.fn(async () => undefined),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
     provider: {
@@ -59,14 +64,14 @@ describe('sandbox toolCall index', () => {
     s3Mock.jwtSignS3ObjectKey.mockReturnValue('signed-url');
   });
 
-  it('executes known tools through a fetched sandbox client', async () => {
+  it('executes known tools through a provided sandbox client', async () => {
+    const sandbox = createSandboxInstance();
+
     await expect(
       runSandboxTools({
-        appId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
-        args: JSON.stringify({ command: 'pwd' })
+        args: JSON.stringify({ command: 'pwd' }),
+        sandboxClient: sandbox
       })
     ).resolves.toMatchObject({
       success: true,
@@ -74,11 +79,8 @@ describe('sandbox toolCall index', () => {
       response: JSON.stringify({ stdout: 'out', stderr: '', exitCode: 0 })
     });
 
-    expect(runtimeMock.getSandboxClient).toHaveBeenCalledWith({
-      appId: 'app',
-      userId: 'user',
-      chatId: 'chat'
-    });
+    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
+    expect(sandbox.exec).toHaveBeenCalledWith('pwd', undefined);
   });
 
   it('reports unknown tools and invalid arguments', async () => {
@@ -86,9 +88,6 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        appId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         toolName: 'unknown-tool',
         args: '{}',
         sandboxClient: sandbox
@@ -100,9 +99,6 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        appId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         toolName: SANDBOX_READ_FILE_TOOL_NAME,
         args: JSON.stringify({ path: '/workspace/a.txt', startLine: 3, endLine: 1 }),
         sandboxClient: sandbox
@@ -112,14 +108,11 @@ describe('sandbox toolCall index', () => {
     });
   });
 
-  it('reuses a provided sandbox client for valid tools', async () => {
+  it('does not read sandbox context for tools that do not need export metadata', async () => {
     const sandbox = createSandboxInstance();
 
     await expect(
       runSandboxTools({
-        appId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
         args: JSON.stringify({ command: 'pwd' }),
         sandboxClient: sandbox
@@ -129,6 +122,7 @@ describe('sandbox toolCall index', () => {
     });
 
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
+    expect(sandbox.getContext).not.toHaveBeenCalled();
     expect(sandbox.exec).toHaveBeenCalledWith('pwd', undefined);
   });
 

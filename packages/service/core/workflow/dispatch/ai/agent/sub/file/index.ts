@@ -14,7 +14,7 @@ import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import type { DispatchSubAppResponse } from '../../type';
 
 type FileReadParams = {
-  files: { id: string; url: string }[];
+  files: { id: string; name?: string; url: string }[];
 
   teamId: string;
   tmbId: string;
@@ -29,7 +29,7 @@ export const dispatchFileRead = async ({
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
     const readFilesResult = await Promise.all(
-      files.map(async ({ id, url }) => {
+      files.map(async ({ id, url, name: inputName }) => {
         // Get from buffer
         const fileBuffer = await getS3RawTextSource().getRawTextBuffer({
           sourceId: url,
@@ -38,7 +38,7 @@ export const dispatchFileRead = async ({
         if (fileBuffer) {
           return {
             id,
-            name: fileBuffer.filename,
+            name: inputName || fileBuffer.filename,
             content: fileBuffer.text
           };
         }
@@ -47,7 +47,7 @@ export const dispatchFileRead = async ({
           if (await isInternalAddress(url)) {
             return {
               id,
-              name: '',
+              name: inputName || '',
               content: PRIVATE_URL_TEXT
             };
           }
@@ -100,13 +100,13 @@ export const dispatchFileRead = async ({
 
           return {
             id,
-            name: filename,
+            name: inputName || filename,
             content: rawText
           };
         } catch (error) {
           return {
             id,
-            name: '',
+            name: inputName || '',
             content: getErrText(error, 'Load file error')
           };
         }
@@ -118,7 +118,11 @@ export const dispatchFileRead = async ({
       usages: [],
       nodeResponse: {
         moduleType: FlowNodeTypeEnum.readFiles,
-        moduleName: i18nT('chat:read_file')
+        moduleName: i18nT('chat:read_file'),
+        readFiles: readFilesResult.map((file) => ({
+          name: file.name,
+          url: files.find((item) => item.id === file.id)?.url || ''
+        }))
       }
     };
   } catch (error) {
