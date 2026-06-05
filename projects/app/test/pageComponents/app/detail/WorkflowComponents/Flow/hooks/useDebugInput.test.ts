@@ -3,8 +3,10 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
+  checkInputShouldRenderInDebug,
   getDebugInputFormProps,
   getDebugInputFormValue,
+  getDebugInputRenderTypeList,
   getDebugRuntimeInputs
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useDebugInput';
 
@@ -17,6 +19,74 @@ const makeInput = (input: Partial<FlowNodeInputItemType>): FlowNodeInputItemType
 });
 
 describe('useDebugInput', () => {
+  it('should render reference inputs that have a normal debug form type', () => {
+    const input = makeInput({
+      key: 'userChatInput',
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+      selectedTypeIndex: 0,
+      value: [['workflowStart', 'userChatInput']]
+    });
+
+    expect(checkInputShouldRenderInDebug(input)).toBe(true);
+    expect(getDebugInputRenderTypeList(input)).toEqual([FlowNodeInputTypeEnum.textarea]);
+  });
+
+  it('should not render reference-only config inputs in node debug form', () => {
+    const input = makeInput({
+      key: 'datasetSelectList',
+      renderTypeList: [
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.selectDatasetParamsModal
+      ],
+      selectedTypeIndex: 0,
+      value: [['workflowStart', 'datasetSelectList']]
+    });
+
+    expect(checkInputShouldRenderInDebug(input)).toBe(false);
+    expect(getDebugInputRenderTypeList(input)).toEqual([]);
+  });
+
+  it('should not render hidden dataset search config inputs in node debug form', () => {
+    const input = makeInput({
+      key: 'datasetSearchUsingExtensionQuery',
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    });
+
+    expect(checkInputShouldRenderInDebug(input)).toBe(false);
+  });
+
+  it('should keep false and zero values from being treated as missing debug inputs', () => {
+    const booleanInput = makeInput({
+      key: 'enable',
+      renderTypeList: [FlowNodeInputTypeEnum.switch],
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    });
+    const numberInput = makeInput({
+      key: 'count',
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0
+    });
+
+    expect(checkInputShouldRenderInDebug(booleanInput)).toBe(false);
+    expect(checkInputShouldRenderInDebug(numberInput)).toBe(false);
+  });
+
+  it('should render empty array values as missing debug inputs', () => {
+    const input = makeInput({
+      key: 'query',
+      renderTypeList: [FlowNodeInputTypeEnum.textarea],
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      value: []
+    });
+
+    expect(checkInputShouldRenderInDebug(input)).toBe(true);
+  });
+
   it('should not use reference value as node debug form default value', () => {
     const input = makeInput({
       key: 'userChatInput',

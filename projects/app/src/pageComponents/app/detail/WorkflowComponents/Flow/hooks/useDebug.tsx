@@ -14,7 +14,6 @@ import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
@@ -29,8 +28,10 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import {
+  checkInputShouldRenderInDebug,
   getDebugInputFormProps,
   getDebugInputFormValue,
+  getDebugInputRenderTypeList,
   getDebugRuntimeInputs
 } from './useDebugInput';
 
@@ -152,9 +153,9 @@ export const useDebug = () => {
     if (!runtimeNode) return <></>;
     // BUG: 工具调用的情况下，无法填写非必填
     const renderInputs = runtimeNode.inputs.filter((input) => {
-      if (runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput) return true;
-      if (nodeInputIsReference(input)) return true;
-      if (!input.value) return true;
+      return checkInputShouldRenderInDebug(input, {
+        showValuedInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput
+      });
     });
 
     const variablesForm = useForm<Record<string, any>>({
@@ -245,10 +246,10 @@ export const useDebug = () => {
                 <LabelAndFormRender
                   {...inputProps}
                   key={item.key}
-                  label={item.label}
+                  label={item.debugLabel || item.label}
                   required={item.required}
                   description={t(item.placeholder || item.description)}
-                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                  inputType={nodeInputTypeToInputType(getDebugInputRenderTypeList(item))}
                   form={variablesForm}
                   fieldName={`nodeVariables.${item.key}`}
                   bg={'myGray.50'}
