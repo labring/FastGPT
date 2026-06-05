@@ -14,6 +14,7 @@ import RenderAgentPlanAskInteractive from './RenderAgentPlanAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
 import RenderPlanStatus from './RenderPlanStatus';
+import RenderProcessingCollapse from './RenderProcessingCollapse';
 import RenderReasoningContent from './RenderReasoningContent';
 import RenderSkill from './RenderSkill';
 import RenderText from './RenderText';
@@ -28,7 +29,11 @@ const AIResponseBox = ({
   isLastResponseValue,
   isLastChild,
   isChatting,
-  onOpenCiteModal
+  onOpenCiteModal,
+  wrapProcessing = true,
+  showProcessing = true,
+  showAnswer = true,
+  showInteractive = true
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -37,6 +42,10 @@ const AIResponseBox = ({
   isLastChild: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  wrapProcessing?: boolean;
+  showProcessing?: boolean;
+  showAnswer?: boolean;
+  showInteractive?: boolean;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
@@ -49,9 +58,10 @@ const AIResponseBox = ({
   if (value.hideInUI) return null;
 
   const responseBlocks: React.ReactNode[] = [];
+  const processingBlocks: React.ReactNode[] = [];
 
-  if (reasoningContent && !value.hideReason) {
-    responseBlocks.push(
+  if (showProcessing && reasoningContent && !value.hideReason) {
+    processingBlocks.push(
       <RenderReasoningContent
         key="reasoning"
         isChatting={isChatting}
@@ -62,7 +72,54 @@ const AIResponseBox = ({
     );
   }
 
-  if (value.text && textContent) {
+  if (showProcessing && tools && showRunningStatus) {
+    processingBlocks.push(
+      <Box key="tools">
+        {tools.map((tool) => (
+          <Box key={tool.id} _notLast={{ mb: 2 }}>
+            <RenderTool showAnimation={isChatting} tool={tool} />
+          </Box>
+        ))}
+      </Box>
+    );
+  }
+
+  if (showProcessing && skills && showSkillReferences && showRunningStatus) {
+    processingBlocks.push(
+      <Box key="skills">
+        {skills.map((skill) => (
+          <Box key={skill.id} _notLast={{ mb: 2 }}>
+            <RenderSkill skill={skill} />
+          </Box>
+        ))}
+      </Box>
+    );
+  }
+
+  if (showProcessing && 'plan' in value && value.plan) {
+    processingBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
+  }
+
+  if (showProcessing && 'planStatus' in value && value.planStatus?.status === 'generating') {
+    processingBlocks.push(<RenderPlanStatus key="planStatus" planStatus={value.planStatus} />);
+  }
+
+  if (processingBlocks.length > 0) {
+    if (wrapProcessing) {
+      responseBlocks.push(
+        <RenderProcessingCollapse
+          key="processing"
+          isProcessing={isChatting && isLastResponseValue && !textContent && !value.interactive}
+        >
+          {processingBlocks}
+        </RenderProcessingCollapse>
+      );
+    } else {
+      responseBlocks.push(...processingBlocks);
+    }
+  }
+
+  if (showAnswer && value.text && textContent) {
     responseBlocks.push(
       <RenderText
         key="text"
@@ -75,31 +132,7 @@ const AIResponseBox = ({
     );
   }
 
-  if (tools && showRunningStatus) {
-    responseBlocks.push(
-      <Box key="tools">
-        {tools.map((tool) => (
-          <Box key={tool.id} _notLast={{ mb: 2 }}>
-            <RenderTool showAnimation={isChatting} tool={tool} />
-          </Box>
-        ))}
-      </Box>
-    );
-  }
-
-  if (skills && showSkillReferences && showRunningStatus) {
-    responseBlocks.push(
-      <Box key="skills">
-        {skills.map((skill) => (
-          <Box key={skill.id} _notLast={{ mb: 2 }}>
-            <RenderSkill skill={skill} />
-          </Box>
-        ))}
-      </Box>
-    );
-  }
-
-  if ('interactive' in value && value.interactive) {
+  if (showInteractive && 'interactive' in value && value.interactive) {
     const interactive = extractDeepestInteractive(value.interactive);
     if (interactive.type === 'userSelect') {
       responseBlocks.push(
@@ -130,14 +163,6 @@ const AIResponseBox = ({
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
-  }
-
-  if ('plan' in value && value.plan) {
-    responseBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
-  }
-
-  if ('planStatus' in value && value.planStatus?.status === 'generating') {
-    responseBlocks.push(<RenderPlanStatus key="planStatus" planStatus={value.planStatus} />);
   }
 
   if (responseBlocks.length === 1) {

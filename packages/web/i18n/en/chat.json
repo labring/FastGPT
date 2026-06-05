@@ -97,6 +97,8 @@
   "plan_check_tip": "Plan generated. Continue the chat to refine the plan",
   "plugins_output": "Plugin Output",
   "press_to_speak": "Hold down to speak",
+  "processed": "Processed",
+  "processing": "Processing",
   "query_extension_IO_tokens": "Problem Optimization Input/Output Tokens",
   "query_extension_result": "Problem optimization results",
   "question_tip": "From top to bottom, the response order of each module",

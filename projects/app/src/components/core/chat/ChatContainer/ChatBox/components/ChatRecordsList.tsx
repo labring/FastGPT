@@ -1,16 +1,22 @@
-import React, { type ChangeEvent, type MutableRefObject } from 'react';
+import React, { type ChangeEvent, type MutableRefObject, useCallback, useMemo } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import ChatBoxDivider from '../../../Divider';
 import DeletedItemsCollapse from '../../DeletedItemsCollapse';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
 import ChatItem from './ChatItem';
 import type { ChatBoxInputType } from '../type';
+import {
+  hasAiAnswerContent,
+  hasAiInteractiveContent,
+  hasAiProcessingContent
+} from './AIChatBubble/utils';
 
 export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
@@ -69,11 +75,85 @@ const ChatRecordsList = ({
 }: ChatRecordsListProps) => {
   const { t } = useTranslation();
 
+  const canMergeAiProcessingRecord = useCallback((item: ChatSiteItemType) => {
+    if (item.obj !== ChatRoleEnum.AI || item.hideInUI || item.deleteTime) return false;
+    if (item.collapseTop || item.collapseBottom) return false;
+
+    let hasProcessing = false;
+
+    const hasBlockingContent = item.value.some((value) => {
+      const aiValue = value as AIChatItemValueItemType;
+      if (aiValue.hideInUI) return false;
+
+      hasProcessing = hasProcessing || hasAiProcessingContent(aiValue);
+      return hasAiAnswerContent(aiValue) || hasAiInteractiveContent(aiValue);
+    });
+
+    return hasProcessing && !hasBlockingContent;
+  }, []);
+
+  const canMergeAiAnswerRecord = useCallback((item: ChatSiteItemType) => {
+    if (item.obj !== ChatRoleEnum.AI || item.hideInUI || item.deleteTime) return false;
+    if (item.collapseTop || item.collapseBottom) return false;
+
+    return item.value.some((value) => hasAiAnswerContent(value as AIChatItemValueItemType));
+  }, []);
+
+  const renderRecords = useMemo(() => {
+    const result: Array<{ item: ChatSiteItemType; sourceIndex: number; lastSourceIndex: number }> =
+      [];
+
+    for (let index = 0; index < records.length; index++) {
+      const item = records[index];
+      const startIndex = index;
+
+      if (!canMergeAiProcessingRecord(item)) {
+        result.push({ item, sourceIndex: index, lastSourceIndex: index });
+        continue;
+      }
+
+      const mergedValues = [...item.value];
+      const mergedResponseData = [...(item.responseData || [])];
+      let lastSourceIndex = index;
+      let cursor = index + 1;
+      let answerRecord: ChatSiteItemType | undefined;
+
+      while (cursor < records.length && canMergeAiProcessingRecord(records[cursor])) {
+        mergedValues.push(...records[cursor].value);
+        mergedResponseData.push(...(records[cursor].responseData || []));
+        lastSourceIndex = cursor;
+        cursor++;
+      }
+
+      if (cursor < records.length && canMergeAiAnswerRecord(records[cursor])) {
+        answerRecord = records[cursor];
+        mergedValues.push(...answerRecord.value);
+        mergedResponseData.push(...(answerRecord.responseData || []));
+        lastSourceIndex = cursor;
+        index = cursor;
+      } else {
+        index = lastSourceIndex;
+      }
+
+      result.push({
+        item: {
+          ...(answerRecord || item),
+          value: mergedValues,
+          responseData: mergedResponseData
+        },
+        sourceIndex: startIndex,
+        lastSourceIndex
+      });
+    }
+
+    return result;
+  }, [canMergeAiAnswerRecord, canMergeAiProcessingRecord, records]);
+
   return (
     <Box id={'history'}>
-      {records.map((item, index) => {
+      {renderRecords.map(({ item, sourceIndex, lastSourceIndex }) => {
         const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
-        const previousRecord = records[index - 1];
+        const previousRecord = records[sourceIndex - 1];
         const retryPreviousHuman =
           previousRecord?.obj === ChatRoleEnum.Human ? onRetry(previousRecord.dataId) : undefined;
 
@@ -107,13 +187,13 @@ const ChatRecordsList = ({
                       chat={item}
                       onRetry={onRetry(item.dataId)}
                       onEditSubmit={onEdit(item.dataId)}
-                      isLastChild={index === records.length - 1}
+                      isLastChild={lastSourceIndex === records.length - 1}
                     />
                   )}
                   {item.obj === ChatRoleEnum.AI && (
                     <ChatItem
                       chat={item}
-                      isLastChild={index === records.length - 1}
+                      isLastChild={lastSourceIndex === records.length - 1}
                       {...{
                         showVoiceIcon,
                         statusBoxData,

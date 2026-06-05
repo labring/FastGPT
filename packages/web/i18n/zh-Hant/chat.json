@@ -96,6 +96,8 @@
   "plan_check_tip": "規劃已生成，您可繼續對話來微調當前規劃",
   "plugins_output": "外掛程式輸出",
   "press_to_speak": "按住說話",
+  "processed": "已處理",
+  "processing": "處理中",
   "query_extension_IO_tokens": "問題最佳化輸入/輸出 Tokens",
   "query_extension_result": "問題優化結果",
   "question_tip": "由上至下，各個模組的回應順序",

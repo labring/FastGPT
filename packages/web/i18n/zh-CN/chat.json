@@ -97,6 +97,8 @@
   "plan_check_tip": "规划已生成，您可继续对话来微调当前规划",
   "plugins_output": "插件输出",
   "press_to_speak": "按住说话",
+  "processed": "已处理",
+  "processing": "处理中",
   "query_extension_IO_tokens": "问题优化输入/输出 Tokens",
   "query_extension_result": "问题优化结果",
   "question_tip": "从上到下，为各个模块的响应顺序",

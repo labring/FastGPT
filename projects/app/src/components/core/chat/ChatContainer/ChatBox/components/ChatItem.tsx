@@ -21,6 +21,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import HumanChatBubble from './HumanChatBubble';
 import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
+import { hasAiAnswerContent } from './AIChatBubble/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -116,8 +117,14 @@ const ChatItem = (props: Props) => {
           }
 
           groupedValues.push([value]);
-        } else {
-          currentGroup.push(value);
+          return;
+        }
+
+        currentGroup.push(value);
+
+        if (hasAiAnswerContent(value)) {
+          groupedValues.push(currentGroup);
+          currentGroup = [];
         }
       });
 
