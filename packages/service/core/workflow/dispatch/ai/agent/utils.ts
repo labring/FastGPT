@@ -71,7 +71,6 @@ export const getSubapps = async ({
     lang
   });
 
-  console.log('tools', JSON.stringify(tools, null, 2));
   formatTools.forEach((tool) => {
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
