@@ -52,9 +52,9 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
 };
 
 export const SANDBOX_READ_FILE_TOOL_NAME: I18nStringType = {
-  'zh-CN': '虚拟机/获取文件链接',
-  'zh-Hant': '虛擬機/獲取文件鏈接',
-  en: 'Sandbox/Get File URL'
+  'zh-CN': '获取文件链接',
+  'zh-Hant': '獲取文件鏈接',
+  en: 'Get File URL'
 };
 export const SANDBOX_GET_FILE_URL_TOOL_NAME = 'sandbox_get_file_url';
 export const SandboxGetFileUrlToolSchema = z.object({
