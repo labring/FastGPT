@@ -215,7 +215,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       appChatConfig: chatConfig,
       versionId: resolvedVersionId,
       variables: childrenRunVariables,
-      newTitle: (typeof userChatInput === 'string' ? userChatInput : '').slice(0, 8),
+      newTitle: (typeof userChatInput === 'string' ? userChatInput : '').slice(0, 20),
       source: ChatSourceEnum.workflow,
       sourceName: getChatSourceName(
         ChatSourceEnum.workflow,
