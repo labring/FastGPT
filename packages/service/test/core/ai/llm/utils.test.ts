@@ -49,6 +49,7 @@ const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -636,8 +637,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
-      const audioUrl = 'http://localhost:9000/preview/audio.mp3';
-      const videoUrl = 'http://localhost:9000/preview/video.mp4';
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const audioUrl = 'https://cdn.example.com/preview/audio.mp3';
+      const videoUrl = 'https://cdn.example.com/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
