@@ -12,7 +12,10 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getCollectionSource } from '@/web/core/dataset/api/collection';
-import { DatasetCollectionTypeEnum, ApiDatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ApiDatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DocumentViewer from './DocumentViewer';
 import ReferencePanelDownloadButton from './DownloadButton';

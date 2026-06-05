@@ -1,7 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Box, Flex, Button } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import type { SearchDataResponseItemType, AssistantDatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  SearchDataResponseItemType,
+  AssistantDatasetCiteItemType
+} from '@fastgpt/global/core/dataset/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getAssistantRetrievalResults, getAssistantQuoteList } from '@/web/core/chat/api';
@@ -92,9 +95,14 @@ const DatasetSearchRetrievalResults = ({
       .map((item) => item.id)
       .filter((v): v is string => !!v);
     const collectionIdList = [
-      ...new Set(retrievalRawResults.map((item) => item.collectionId).filter((v): v is string => !!v))
+      ...new Set(
+        retrievalRawResults.map((item) => item.collectionId).filter((v): v is string => !!v)
+      )
     ];
-    return { retrievalDatasetDataIdList: datasetDataIdList, retrievalCollectionIdList: collectionIdList };
+    return {
+      retrievalDatasetDataIdList: datasetDataIdList,
+      retrievalCollectionIdList: collectionIdList
+    };
   }, [retrievalRawResults]);
 
   const { data: retrievalResultsDetail = [] } = useRequest(
@@ -230,9 +238,13 @@ const DatasetSearchRetrievalResults = ({
               const fullTextScore = item.score.find((s) => s.type === 'fullText');
               const embeddingScore = item.score.find((s) => s.type === 'embedding');
               if (fullTextScore)
-                descriptionList.push(`${t('chat:fulltext_search')}${fullTextScore.value.toFixed(4)}`);
+                descriptionList.push(
+                  `${t('chat:fulltext_search')}${fullTextScore.value.toFixed(4)}`
+                );
               if (embeddingScore)
-                descriptionList.push(`${t('chat:vector_search')}${embeddingScore.value.toFixed(4)}`);
+                descriptionList.push(
+                  `${t('chat:vector_search')}${embeddingScore.value.toFixed(4)}`
+                );
             }
             const title = `${t('chat:recall_card_prefix')}${SOURCE_TYPE_TEXT[item.sourceType] || t('chat:source_type_chunk')}`;
             let linkText = '';
@@ -286,7 +298,14 @@ const DatasetSearchRetrievalResults = ({
         )}
       </Box>
     );
-  }, [hasRetrievalResults, retrievalMergedList, activeModule.retrievalType, SOURCE_TYPE_TEXT, t, isShowAllRecall]);
+  }, [
+    hasRetrievalResults,
+    retrievalMergedList,
+    activeModule.retrievalType,
+    SOURCE_TYPE_TEXT,
+    t,
+    isShowAllRecall
+  ]);
 
   const rerankListDom = useMemo(() => {
     if (!hasRetrievalResults || rerankMergedList.length === 0) return null;

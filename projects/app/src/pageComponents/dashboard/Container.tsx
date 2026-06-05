@@ -10,7 +10,11 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { LOGO_ICON, DEFAULT_SYSTEM_SHORT_NAME, AGENT_BUILDER_VERSION } from '@fastgpt/global/common/system/constants';
+import {
+  LOGO_ICON,
+  DEFAULT_SYSTEM_SHORT_NAME,
+  AGENT_BUILDER_VERSION
+} from '@fastgpt/global/common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import type { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
@@ -631,22 +635,22 @@ export const DashboardNavbar = ({
             </Box>
           )}
           {!hideCollapseButton && (
-              <Flex h="48px" align="center">
-                <Flex
-                  w={SIDEBAR_COLLAPSED_WIDTH}
-                  justify="center"
-                  flexShrink={0}
-                  cursor="pointer"
-                  onClick={() => setIsCollapsed(!isCollapsed)}
-                >
-                  <MyIcon name="navbar/bottomIcon" w="14px" color="#3E4A59" flexShrink={0} />
-                </Flex>
-                {!isCollapsed && (
-                  <Box fontSize={'xs'} color={'#2D3540'} pr={3} flex={1} textAlign={'right'}>
-                    {AGENT_BUILDER_VERSION}
-                  </Box>
-                )}
+            <Flex h="48px" align="center">
+              <Flex
+                w={SIDEBAR_COLLAPSED_WIDTH}
+                justify="center"
+                flexShrink={0}
+                cursor="pointer"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+              >
+                <MyIcon name="navbar/bottomIcon" w="14px" color="#3E4A59" flexShrink={0} />
               </Flex>
+              {!isCollapsed && (
+                <Box fontSize={'xs'} color={'#2D3540'} pr={3} flex={1} textAlign={'right'}>
+                  {AGENT_BUILDER_VERSION}
+                </Box>
+              )}
+            </Flex>
           )}
         </Box>
       </Box>

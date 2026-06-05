@@ -909,27 +909,31 @@ export const ModelEditModal = ({
       <>
         <GridItem>
           <Flex alignItems={'center'} gap={1} mb={2}>
-            <FormLabel required={isNormalUser} fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+            <FormLabel
+              required={isNormalUser}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              color={'myGray.900'}
+            >
               {t('account:model.request_url')}
             </FormLabel>
             <QuestionTip label={t('account:model.request_url_tip')} />
           </Flex>
-          <Input
-            {...register('requestUrl', { required: isNormalUser })}
-            {...InputStyles}
-          />
+          <Input {...register('requestUrl', { required: isNormalUser })} {...InputStyles} />
         </GridItem>
         <GridItem>
           <Flex alignItems={'center'} gap={1} mb={2}>
-            <FormLabel required={isNormalUser} fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+            <FormLabel
+              required={isNormalUser}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              color={'myGray.900'}
+            >
               {t('account:model.request_auth')}
             </FormLabel>
             <QuestionTip label={t('account:model.request_auth_tip')} />
           </Flex>
-          <Input
-            {...register('requestAuth', { required: isNormalUser })}
-            {...InputStyles}
-          />
+          <Input {...register('requestAuth', { required: isNormalUser })} {...InputStyles} />
         </GridItem>
       </>
     ),
@@ -1238,12 +1242,7 @@ export const ModelEditModal = ({
       </ModalBody>
       <ModalFooter display={'flex'} w="full" px={'32px'} py={0} mt={4} alignItems={'center'}>
         <Flex alignItems={'center'} gap={2} mr={'auto'}>
-          <Flex
-            alignItems={'center'}
-            bg={'myGray.100'}
-            borderRadius={'full'}
-            p={'2px'}
-          >
+          <Flex alignItems={'center'} bg={'myGray.100'} borderRadius={'full'} p={'2px'}>
             {[
               { value: true, label: t('account:model.permission_public') },
               { value: false, label: t('account:model.permission_private') }
