@@ -5,7 +5,6 @@ import {
 } from '../../../../../core/app/tool/systemTool/type/base';
 import type { AdminSystemToolDetailType } from '../../../../../core/app/tool/systemTool/type';
 import {
-  AdminSystemToolChildDetailSchema,
   AdminSystemToolDetailSchema,
   AdminSystemToolListItemSchema
 } from '../../../../../core/app/tool/systemTool/type';
@@ -28,17 +27,40 @@ export type GetAdminSystemToolsQueryType = z.infer<typeof GetAdminSystemToolsQue
 export const GetAdminSystemToolsResponseSchema = z.array(AdminSystemToolListItemSchema);
 export type GetAdminSystemToolsResponseType = z.infer<typeof GetAdminSystemToolsResponseSchema>;
 
-// Admin tool detail
+/* ============================================================================
+ * API: 获取系统工具详情
+ * Route: GET /api/core/plugin/admin/tool/detail
+ * Method: GET
+ * Description: 管理员获取系统工具详情，支持按版本查看
+ * Tags: ['管理员系统工具管理', 'Read']
+ * ============================================================================ */
+
 export const GetAdminSystemToolDetailQuerySchema = z.object({
-  toolId: z.string(),
-  version: z.string().optional()
+  toolId: z.string().meta({
+    example: 'systemTool-weather',
+    description: '系统工具 ID，支持系统工具、商业工具和工具集子工具 ID'
+  }),
+  version: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '工具版本 ID。为空时返回最新版本详情'
+  })
 });
 export type GetAdminSystemToolDetailQueryType = z.infer<typeof GetAdminSystemToolDetailQuerySchema>;
 export type GetAdminSystemToolDetailResponseType = AdminSystemToolDetailType;
 
-// Admin tool versions
+/* ============================================================================
+ * API: 获取系统工具版本列表
+ * Route: GET /api/core/plugin/admin/tool/versions
+ * Method: GET
+ * Description: 管理员获取系统工具版本列表，工作流工具返回关联应用版本 ID 和版本名称
+ * Tags: ['管理员系统工具管理', 'Read']
+ * ============================================================================ */
+
 export const GetAdminSystemToolVersionsQuerySchema = z.object({
-  toolId: z.string()
+  toolId: z.string().meta({
+    example: 'systemTool-weather',
+    description: '系统工具 ID，支持系统工具、商业工具和工具集子工具 ID'
+  })
 });
 export type GetAdminSystemToolVersionsQueryType = z.infer<
   typeof GetAdminSystemToolVersionsQuerySchema

@@ -1,6 +1,5 @@
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -9,19 +8,25 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import {
+  GetSystemToolTemplatesBodySchema,
+  GetSystemToolTemplatesResponseSchema,
+  type GetSystemToolTemplatesBodyType
+} from '@fastgpt/global/openapi/core/app/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type GetSystemPluginTemplatesBody = {
-  getAll?: boolean;
-  searchKey?: string;
-  parentId?: ParentIdType;
-  tags?: string[];
-};
+export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
 export async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
-  const { tags, parentId, searchKey } = req.body;
+  const {
+    body: { tags, parentId, searchKey }
+  } = parseApiInput({
+    req,
+    bodySchema: GetSystemToolTemplatesBodySchema
+  });
   const lang = getLocale(req);
   const searchRegex = getSearchRegex(searchKey);
 
@@ -56,7 +61,9 @@ export async function handler(
         hasTokenFee: parent.hasTokenFee
       })) ?? [];
 
-    return filterTemplatesBySearchKey(childTemplates, searchRegex);
+    return GetSystemToolTemplatesResponseSchema.parse(
+      filterTemplatesBySearchKey(childTemplates, searchRegex)
+    );
   }
   // no parentId, get all tools
   const tools = await systemToolRepo.getSystemToolList({
@@ -65,7 +72,7 @@ export async function handler(
     tags
   });
 
-  return tools
+  const templates = tools
     .filter((item) => {
       if (isRoot) return true;
       if (item.hideTags && item.hideTags.some((tag) => userTags.includes(tag))) return false;
@@ -82,6 +89,8 @@ export async function handler(
       tags: tool.tags
     }))
     .filter((item) => filterTemplateBySearchKey(item, searchRegex));
+
+  return GetSystemToolTemplatesResponseSchema.parse(templates);
 }
 
 export default NextAPI(handler);

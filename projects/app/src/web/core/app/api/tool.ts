@@ -6,16 +6,18 @@ import type {
 import { getAppDetailById, getMyApps } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type { GetPreviewNodeQuery } from '@/pages/api/core/app/tool/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetPathProps,
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/tool/getSystemToolTemplates';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getMcpChildren } from './mcpTools';
+import type {
+  GetPreviewNodeQuery,
+  GetSystemToolTemplatesBodyType
+} from '@fastgpt/global/openapi/core/app/tool/api';
 
 /* ============ team plugin ============== */
 export const getTeamAppTemplates = async (data?: {
@@ -83,7 +85,7 @@ export const getTeamAppTemplates = async (data?: {
 };
 
 /* ============ Tool ============== */
-export const getAppToolTemplates = (data: GetSystemPluginTemplatesBody) =>
+export const getAppToolTemplates = (data: GetSystemToolTemplatesBodyType) =>
   POST<NodeTemplateListItemType[]>('/core/app/tool/getSystemToolTemplates', data);
 
 export const getAppToolPaths = (data: GetPathProps) => {

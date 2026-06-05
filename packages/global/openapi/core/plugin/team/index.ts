@@ -5,8 +5,8 @@ import {
   GetTeamToolDetailQuerySchema,
   GetTeamToolVersionsQuerySchema,
   GetTeamToolVersionsResponseSchema,
-  TeamToolDetailSchema
-} from './tool/dto';
+  OpenAPITeamToolDetailSchema
+} from './tool/api';
 
 export const PluginTeamPath: OpenAPIPath = {
   '/core/plugin/team/tool/list': {
@@ -40,7 +40,7 @@ export const PluginTeamPath: OpenAPIPath = {
           description: '获取工具卡片详情成功',
           content: {
             'application/json': {
-              schema: TeamToolDetailSchema
+              schema: OpenAPITeamToolDetailSchema
             }
           }
         }

@@ -33,7 +33,7 @@ export const openAPITagGroups = [
   },
   {
     name: '核心-工具管理',
-    tags: [TagsMap.httpTools, TagsMap.mcpTools, TagsMap.mcpServer]
+    tags: [TagsMap.appSystemTool, TagsMap.httpTools, TagsMap.mcpTools, TagsMap.mcpServer]
   },
   {
     name: '核心-AI 相关',

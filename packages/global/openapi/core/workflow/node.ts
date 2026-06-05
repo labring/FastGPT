@@ -17,7 +17,7 @@ const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.meta({
 // `invalidCondition` in FlowNodeOutputItemTypeSchema is a Zod function schema used only
 // by the editor to validate outputs; function schemas cannot be represented in JSON
 // Schema, so we strip it before exposing via OpenAPI.
-const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
+export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
   invalidCondition: true
 }).meta({
   description: '工作流节点输出配置'

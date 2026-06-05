@@ -1,28 +1,33 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  type GetPathProps,
-  type ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import {
+  GetToolPathQuerySchema,
+  GetToolPathResponseSchema,
+  type GetToolPathQueryType,
+  type GetToolPathResponseType
+} from '@fastgpt/global/openapi/core/app/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type pathQuery = GetPathProps;
+export type pathQuery = GetToolPathQueryType;
 
-export type pathBody = {};
+export type pathBody = Record<string, never>;
 
-export type pathResponse = Promise<ParentTreePathItemType[]>;
+export type pathResponse = Promise<GetToolPathResponseType>;
 
-export async function handler(
-  req: ApiRequestProps<pathBody, pathQuery>,
-  res: ApiResponseType<any>
-): Promise<pathResponse> {
-  const { sourceId: pluginId, type = 'current' } = req.query;
+export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promise<pathResponse> {
+  const {
+    query: { sourceId: pluginId, type = 'current' }
+  } = parseApiInput({
+    req,
+    querySchema: GetToolPathQuerySchema
+  });
   const lang = getLocale(req);
 
-  if (!pluginId) return [];
+  if (!pluginId) return GetToolPathResponseSchema.parse([]);
 
   const parentToolId = getParentToolId(pluginId);
   const pathToolIds = type === 'parent' ? (parentToolId ? [parentToolId] : []) : [];
@@ -34,7 +39,9 @@ export async function handler(
     pathToolIds.push(pluginId);
   }
 
-  return Promise.all(pathToolIds.map((toolId) => getToolPathItem({ toolId, lang })));
+  return GetToolPathResponseSchema.parse(
+    await Promise.all(pathToolIds.map((toolId) => getToolPathItem({ toolId, lang })))
+  );
 }
 
 export default NextAPI(handler);
@@ -58,7 +65,7 @@ async function getToolPathItem({
 }: {
   toolId: string;
   lang: ReturnType<typeof getLocale>;
-}): Promise<ParentTreePathItemType> {
+}): Promise<GetToolPathResponseType[number]> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const { source } = splitCombineToolId(toolId);
   const tool = await systemToolRepo.getSystemToolDetail({
