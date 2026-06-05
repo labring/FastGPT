@@ -1,7 +1,10 @@
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  workflowReferenceValueIsSelectable,
+  type WorkflowReferenceSourceNode
+} from '@/web/core/workflow/utils';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.string,
@@ -9,49 +12,41 @@ const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.boolean
 ]);
 
-const debugFormInputTypes = new Set<FlowNodeInputTypeEnum>([
-  FlowNodeInputTypeEnum.input,
-  FlowNodeInputTypeEnum.textarea,
-  FlowNodeInputTypeEnum.numberInput,
-  FlowNodeInputTypeEnum.switch,
-  FlowNodeInputTypeEnum.select,
-  FlowNodeInputTypeEnum.multipleSelect,
-  FlowNodeInputTypeEnum.JSONEditor,
-  FlowNodeInputTypeEnum.selectLLMModel,
-  FlowNodeInputTypeEnum.fileSelect,
-  FlowNodeInputTypeEnum.timePointSelect,
-  FlowNodeInputTypeEnum.timeRangeSelect,
-  FlowNodeInputTypeEnum.password
-]);
-
-const hasInputValue = (value: unknown) => {
-  if (value === undefined || value === null || value === '') return false;
-  if (Array.isArray(value)) return value.length > 0;
-
-  return true;
+const inputReferenceValueIsValid = ({
+  input,
+  referenceSourceNodes = []
+}: {
+  input: FlowNodeInputItemType;
+  referenceSourceNodes?: WorkflowReferenceSourceNode[];
+}) => {
+  return workflowReferenceValueIsSelectable({
+    value: input.value,
+    sourceNodes: referenceSourceNodes,
+    valueType: input.valueType
+  });
 };
 
 /**
- * 返回节点调试表单可使用的普通输入类型。
- *
- * 节点编辑器里有 `reference`、隐藏项和配置弹窗等特殊渲染类型；调试表单只需要让用户补运行值，
- * 因此必须降级到普通表单控件，避免把配置型输入兜底渲染成空白 textarea。
+ * 节点调试只补两类输入：插件入口的全部参数，以及普通节点里引用上游输出的参数。
+ * 其他已配置好的节点参数保持原值，不因空值或默认值额外展示调试输入框。
  */
-export const getDebugInputRenderTypeList = (input: FlowNodeInputItemType) =>
-  input.renderTypeList.filter((type) => debugFormInputTypes.has(type));
-
 export const checkInputShouldRenderInDebug = (
   input: FlowNodeInputItemType,
   options?: {
-    showValuedInputs?: boolean;
+    showAllInputs?: boolean;
+    referenceSourceNodes?: WorkflowReferenceSourceNode[];
   }
 ) => {
-  if (getDebugInputRenderTypeList(input).length === 0) return false;
-  if (!input.label && !input.debugLabel) return false;
-
-  if (options?.showValuedInputs) return true;
-  if (nodeInputIsReference(input)) return true;
-  if (!hasInputValue(input.value)) return true;
+  if (options?.showAllInputs) return true;
+  if (
+    nodeInputIsReference(input) &&
+    inputReferenceValueIsValid({
+      input,
+      referenceSourceNodes: options?.referenceSourceNodes
+    })
+  ) {
+    return true;
+  }
 
   return false;
 };
@@ -59,7 +54,7 @@ export const checkInputShouldRenderInDebug = (
 export const getDebugInputFormValue = (input: FlowNodeInputItemType) => {
   if (nodeInputIsReference(input)) return undefined;
 
-  const value = input.value ?? input.defaultValue;
+  const value = input.value;
   if (typeof value === 'object' && value !== null) {
     return JSON.stringify(value, null, 2);
   }

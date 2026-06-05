@@ -27,7 +27,8 @@ import { type TFunction } from 'next-i18next';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType,
-  type ReferenceItemValueType
+  type ReferenceItemValueType,
+  type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
@@ -384,6 +385,93 @@ export const filterWorkflowNodeOutputsByType = (
       output.valueType === WorkflowIOValueTypeEnum.any ||
       validTypeMap[valueType]?.includes(output.valueType)
   );
+};
+
+export type WorkflowReferenceSourceNode = {
+  nodeId: string;
+  outputs: FlowNodeOutputItemType[];
+  catchError?: boolean;
+};
+
+/**
+ * 过滤引用选择器中真正可选的输出。
+ * ReferenceSelector 和节点 debug 的引用有效性判断必须共用这套规则，避免已删除、类型不匹配、
+ * addOutputParam、invalid output 或未开启 catchError 的错误输出在不同入口表现不一致。
+ */
+export const filterSelectableWorkflowNodeOutputs = ({
+  outputs,
+  valueType,
+  catchError
+}: {
+  outputs: FlowNodeOutputItemType[];
+  valueType?: WorkflowIOValueTypeEnum;
+  catchError?: boolean;
+}) => {
+  return filterWorkflowNodeOutputsByType(outputs, valueType ?? WorkflowIOValueTypeEnum.any).filter(
+    (output) => {
+      if (output.type === FlowNodeOutputTypeEnum.error) {
+        return catchError === true;
+      }
+
+      return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+    }
+  );
+};
+
+const referenceItemIsSelectable = ({
+  value,
+  sourceNodes,
+  valueType
+}: {
+  value: ReferenceItemValueType;
+  sourceNodes: WorkflowReferenceSourceNode[];
+  valueType?: WorkflowIOValueTypeEnum;
+}) => {
+  const [sourceNodeId, outputId] = value;
+  if (!sourceNodeId || !outputId) return false;
+
+  const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
+  if (!sourceNode) return false;
+
+  return filterSelectableWorkflowNodeOutputs({
+    outputs: sourceNode.outputs,
+    valueType,
+    catchError: sourceNode.catchError
+  }).some((output) => output.id === outputId);
+};
+
+/**
+ * 判断引用值是否仍能被 ReferenceSelector 选中。
+ * 单选引用要求当前二元组命中；多选引用只要存在一个仍可选的引用项，选择器就会展示有效值。
+ */
+export const workflowReferenceValueIsSelectable = ({
+  value,
+  sourceNodes,
+  valueType
+}: {
+  value?: ReferenceValueType;
+  sourceNodes: WorkflowReferenceSourceNode[];
+  valueType?: WorkflowIOValueTypeEnum;
+}) => {
+  if (!Array.isArray(value)) return false;
+
+  if (typeof value[0] === 'string') {
+    return referenceItemIsSelectable({
+      value: value as ReferenceItemValueType,
+      sourceNodes,
+      valueType
+    });
+  }
+
+  return value.some((item) => {
+    if (!Array.isArray(item)) return false;
+
+    return referenceItemIsSelectable({
+      value: item as ReferenceItemValueType,
+      sourceNodes,
+      valueType
+    });
+  });
 };
 
 export const getNodeAllSource = ({

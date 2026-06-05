@@ -5,7 +5,7 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
-import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
+import { checkWorkflowNodeAndConnection, getNodeAllSource } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -31,7 +31,6 @@ import {
   checkInputShouldRenderInDebug,
   getDebugInputFormProps,
   getDebugInputFormValue,
-  getDebugInputRenderTypeList,
   getDebugRuntimeInputs
 } from './useDebugInput';
 
@@ -51,6 +50,12 @@ export const useDebug = () => {
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const childrenNodeIdListMap = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.childrenNodeIdListMap
+  );
   const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 
@@ -151,10 +156,19 @@ export const useDebug = () => {
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
-    // BUG: 工具调用的情况下，无法填写非必填
+    const referenceSourceNodes = getNodeAllSource({
+      nodeId: runtimeNode.nodeId,
+      systemConfigNode,
+      getNodeById,
+      edges,
+      chatConfig: appDetail.chatConfig,
+      t,
+      childrenNodeIdListMap
+    });
     const renderInputs = runtimeNode.inputs.filter((input) => {
       return checkInputShouldRenderInDebug(input, {
-        showValuedInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput
+        showAllInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput,
+        referenceSourceNodes
       });
     });
 
@@ -249,7 +263,7 @@ export const useDebug = () => {
                   label={item.debugLabel || item.label}
                   required={item.required}
                   description={t(item.placeholder || item.description)}
-                  inputType={nodeInputTypeToInputType(getDebugInputRenderTypeList(item))}
+                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
                   form={variablesForm}
                   fieldName={`nodeVariables.${item.key}`}
                   bg={'myGray.50'}
@@ -314,7 +328,12 @@ export const useDebug = () => {
     internalVar,
     filteredVar,
     runtimeNodeId,
-    onStartNodeDebug
+    onStartNodeDebug,
+    systemConfigNode,
+    getNodeById,
+    edges,
+    appDetail.chatConfig,
+    childrenNodeIdListMap
   ]);
 
   return {
