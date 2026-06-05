@@ -130,11 +130,14 @@ export const ListAppBodySchema = z
       description: '父级应用/文件夹 ID，为空时查询根目录'
     }),
     type: z
-      .union([z.enum(AppTypeEnum), z.array(z.enum(AppTypeEnum))])
+      .preprocess(
+        (value) => (value === '' ? undefined : value),
+        z.union([z.enum(AppTypeEnum), z.array(z.enum(AppTypeEnum))]).optional()
+      )
       .optional()
       .meta({
         example: AppTypeEnum.workflow,
-        description: '应用类型筛选，支持单个类型或类型数组'
+        description: '应用类型筛选，支持单个类型或类型数组；空字符串按全部类型处理'
       }),
     searchKey: z.string().optional().meta({
       example: '客服',

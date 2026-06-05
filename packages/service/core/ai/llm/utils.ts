@@ -15,7 +15,6 @@ import { axios } from '../../../common/api/axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
-import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
@@ -194,23 +193,6 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 通过内部 S3 key 生成当前服务可读取的聊天文件 URL。
-   * 读取失败时返回 undefined，由调用方决定是否回退原始 URL。
-   */
-  const getS3FileUrl = async (key?: string) => {
-    if (!key) return;
-
-    try {
-      return (
-        await getS3ChatSource().createGetChatFileURL({
-          key,
-          external: false
-        })
-      ).url;
-    } catch {}
-  };
-
-  /**
    * 从 URL 下载二进制内容并转成 data URL。
    * 用于供应商不能访问内部文件或模型配置要求 base64 的媒体输入。
    */
@@ -286,19 +268,11 @@ export const loadRequestMessages = async ({
   });
 
   /**
-   * 将 FastGPT 内部的 S3 key 还原成可读取 URL。
-   * key 解析失败时回退原始 URL，避免外部可访问链接被误丢弃。
-   */
-  const resolveMediaUrl = async ({ key, url }: { key?: string; url: string }) => {
-    return (await getS3FileUrl(key)) || url;
-  };
-
-  /**
    * 判断媒体是否需要在服务端转 base64。
-   * key/本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
+   * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
    */
-  const shouldLoadMediaAsBase64 = ({ key, url }: { key?: string; url: string }) =>
-    !!key || url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+  const shouldLoadMediaAsBase64 = (url: string) =>
+    url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
   /**
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。
@@ -360,7 +334,7 @@ export const loadRequestMessages = async ({
   const normalizeImageContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key, ...imageItem } = item;
+    const { key: _key, ...imageItem } = item;
     const imgUrl = imageItem.image_url.url;
 
     if (imgUrl.startsWith('data:image/')) {
@@ -368,10 +342,9 @@ export const loadRequestMessages = async ({
     }
 
     try {
-      if (shouldLoadMediaAsBase64({ key, url: imgUrl })) {
+      if (shouldLoadMediaAsBase64(imgUrl)) {
         try {
-          const url = await resolveMediaUrl({ key, url: imgUrl });
-          const { completeBase64: base64 } = await getImageBase64(url);
+          const { completeBase64: base64 } = await getImageBase64(imgUrl);
 
           return {
             ...imageItem,
@@ -409,17 +382,17 @@ export const loadRequestMessages = async ({
   const normalizeAudioContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'input_audio' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key, ...audioItem } = item;
+    const { key: _key, ...audioItem } = item;
     const audioData = audioItem.input_audio.data;
     if (audioData.startsWith('data:')) {
       return audioItem;
     }
 
-    if (!shouldLoadMediaAsBase64({ key, url: audioData })) {
+    if (!shouldLoadMediaAsBase64(audioData)) {
       return audioItem;
     }
 
-    const data = await loadUrlAsBase64Data(await resolveMediaUrl({ key, url: audioData }));
+    const data = await loadUrlAsBase64Data(audioData);
     return {
       ...audioItem,
       input_audio: {
@@ -436,17 +409,17 @@ export const loadRequestMessages = async ({
   const normalizeVideoContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'video_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key, ...videoItem } = item;
+    const { key: _key, ...videoItem } = item;
     const videoUrl = videoItem.video_url.url;
     if (videoUrl.startsWith('data:')) {
       return videoItem;
     }
 
-    if (!shouldLoadMediaAsBase64({ key, url: videoUrl })) {
+    if (!shouldLoadMediaAsBase64(videoUrl)) {
       return videoItem;
     }
 
-    const url = await loadUrlAsBase64Data(await resolveMediaUrl({ key, url: videoUrl }));
+    const url = await loadUrlAsBase64Data(videoUrl);
     return {
       ...videoItem,
       video_url: {
@@ -462,15 +435,15 @@ export const loadRequestMessages = async ({
   const normalizeFileUrlContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'file_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key, ...fileItem } = item;
+    const { key: _key, ...fileItem } = item;
     const fileType = fileItem.fileType || getFileTypeFromUrl(fileItem.url);
 
     // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的
     // input_audio / video_url。普通 file 当前不直接透传给 LLM。
     if (fileType === 'audio' && useAudio) {
-      const fileUrl = await resolveMediaUrl({ key, url: fileItem.url });
+      const fileUrl = fileItem.url;
       const filename = getFilenameFromUrl(fileUrl, fileItem.name);
-      const audioUrl = shouldLoadMediaAsBase64({ key, url: fileUrl })
+      const audioUrl = shouldLoadMediaAsBase64(fileUrl)
         ? await loadUrlAsBase64Data(fileUrl)
         : fileUrl;
 
@@ -478,8 +451,8 @@ export const loadRequestMessages = async ({
     }
 
     if (fileType === 'video' && useVideo) {
-      const fileUrl = await resolveMediaUrl({ key, url: fileItem.url });
-      const videoUrl = shouldLoadMediaAsBase64({ key, url: fileUrl })
+      const fileUrl = fileItem.url;
+      const videoUrl = shouldLoadMediaAsBase64(fileUrl)
         ? await loadUrlAsBase64Data(fileUrl)
         : fileUrl;
 
@@ -502,7 +475,7 @@ export const loadRequestMessages = async ({
 
   /**
    * 将 FastGPT 内部媒体 content part 归一化为供应商可消费的消息格式。
-   * 本地路径、S3 key、以及强制 base64 开关会在这里统一转换。
+   * 本地路径和强制 base64 开关会在这里统一转换；内部 key 只会被剥离，不参与处理。
    */
   const normalizeMediaContentParts = async (content: ChatCompletionContentPart[]) => {
     const normalized = await Promise.all(content.map((item) => normalizeMediaContentPart(item)));
