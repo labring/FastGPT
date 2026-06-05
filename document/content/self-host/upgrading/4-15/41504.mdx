@@ -18,7 +18,7 @@ description: 'FastGPT V4.15.0-beta4 更新说明'
 
 本次插件服务将系统工具从旧的内置工具源码与运行时缓存机制，升级为独立插件包的上传、安装、版本管理和 local-pool 运行机制。
 
-- 升级后需要使用官方系统工具 zip 包重新导入系统工具。
+- 升级后可使用官方系统工具 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)重新导入系统工具，该 zip 包含了旧版所有系统工具。
 - 模型配置和 workflow 模板保持兼容，无需专项迁移。
 - 插件服务建议连接新的 MongoDB 数据库，保留旧插件服务数据库和对象存储数据，便于回滚和审计。
 - 插件服务生产环境需设置强 `AUTH_TOKEN`，要求 32 位以上。
