@@ -1055,6 +1055,18 @@ describe('isValidReferenceValueFormat', () => {
     expect(isValidReferenceValueFormat([123, 'outputKey'])).toBe(false);
     expect(isValidReferenceValueFormat([null, 'outputKey'])).toBe(false);
   });
+
+  it('should validate source node when nodesMap is provided', () => {
+    const nodesMap = {
+      nodeId: {
+        nodeId: 'nodeId'
+      }
+    };
+
+    expect(isValidReferenceValueFormat(['nodeId', 'outputKey'], nodesMap)).toBe(true);
+    expect(isValidReferenceValueFormat([VARIABLE_NODE_ID, 'variableKey'], nodesMap)).toBe(true);
+    expect(isValidReferenceValueFormat(['指标', '金额（元）'], nodesMap)).toBe(false);
+  });
 });
 
 describe('isValidReferenceValue', () => {
@@ -1297,7 +1309,7 @@ describe('removeUnauthModels', () => {
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
   });
 
-  it('should skip array value inputs (reference type)', async () => {
+  it('should clear array value inputs when selected render type is not reference', async () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1318,7 +1330,31 @@ describe('removeUnauthModels', () => {
     const allowedModels = new Set(['gpt-4']);
 
     const result = await removeUnauthModels({ modules, allowedModels });
-    expect(result?.[0].inputs[0].value).toEqual(['nodeId', 'outputKey']);
+    expect(result?.[0].inputs[0].value).toBeUndefined();
+  });
+
+  it('should clear two-dimensional array value inputs when selected render type is not reference', async () => {
+    const modules = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: 'model',
+            label: 'Model',
+            value: [['gpt-4', 'gpt-4o'], ['unauthorized-model']],
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const allowedModels = new Set(['gpt-4']);
+
+    const result = await removeUnauthModels({ modules, allowedModels });
+    expect(result?.[0].inputs[0].value).toBeUndefined();
   });
 
   it('should handle modules with no model inputs', async () => {

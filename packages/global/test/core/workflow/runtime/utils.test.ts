@@ -1281,6 +1281,27 @@ describe('getReferenceVariableValue', () => {
     expect(result).toEqual(tableData);
   });
 
+  it('should skip reference resolution when input is not reference mode', () => {
+    const result = getReferenceVariableValue({
+      value: [['node1', 'out1']],
+      nodesMap: {
+        node1: {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [
+            { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
+          ]
+        }
+      },
+      variables: {},
+      isReferenceValue: false
+    });
+
+    expect(result).toEqual([['node1', 'out1']]);
+  });
+
   it('should handle array with single reference', () => {
     const nodesMap: Record<string, RuntimeNodeItemType> = {
       node1: {

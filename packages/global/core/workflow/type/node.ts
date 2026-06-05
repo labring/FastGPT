@@ -9,6 +9,7 @@ import { PluginStatusSchema } from '../../plugin/type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
+import { JSONSchemaInputTypeSchema } from '../../app/jsonschema';
 
 export const NodeToolConfigTypeSchema = z.object({
   mcpToolSet: z
@@ -186,6 +187,7 @@ const HandleTypeSchema = z.object({
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   id: z.string(),
   status: PluginStatusSchema.optional(),
+  jsonSchema: JSONSchemaInputTypeSchema.optional(),
 
   showSourceHandle: BoolSchema.optional(),
   showTargetHandle: BoolSchema.optional(),
@@ -273,6 +275,7 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  jsonSchema: JSONSchemaInputTypeSchema.optional(),
   position: z
     .object({
       x: NumSchema,

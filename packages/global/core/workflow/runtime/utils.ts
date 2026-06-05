@@ -15,7 +15,7 @@ import { type WorkflowInteractiveResponseType } from '../template/system/interac
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { isValidReferenceValueFormat } from '../utils';
+import { checkInputIsReference, isValidReferenceValueFormat } from '../utils';
 import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
@@ -287,13 +287,15 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 export const getReferenceVariableValue = ({
   value,
   nodesMap,
-  variables
+  variables,
+  isReferenceValue = true
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
+  isReferenceValue?: boolean;
 }) => {
-  if (!value) return value;
+  if (!value || !isReferenceValue) return value;
 
   const resoleValue = (value: [string, string | undefined]) => {
     const sourceNodeId = value[0];
@@ -314,7 +316,7 @@ export const getReferenceVariableValue = ({
   };
 
   // handle single reference value
-  if (isValidReferenceValueFormat(value)) {
+  if (isValidReferenceValueFormat(value, nodesMap)) {
     return resoleValue(value as [string, string | undefined]);
   }
 
@@ -456,7 +458,8 @@ export function replaceEditorVariable({
         return getReferenceVariableValue({
           value: input.value,
           nodesMap,
-          variables
+          variables,
+          isReferenceValue: checkInputIsReference(input)
         });
       }
     })();

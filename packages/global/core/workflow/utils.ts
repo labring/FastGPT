@@ -410,7 +410,9 @@ export const formatEditorVariablePickerIcon = (
 // Check the value is a valid reference value format: [variableId, outputId]
 export const isValidReferenceValueFormat = (
   value: any,
-  nodesMap?: Record<string, Pick<StoreNodeItemType, 'nodeId'>> | Map<string, Pick<StoreNodeItemType, 'nodeId'>>
+  nodesMap?:
+    | Record<string, Pick<StoreNodeItemType, 'nodeId'>>
+    | Map<string, Pick<StoreNodeItemType, 'nodeId'>>
 ): value is ReferenceItemValueType => {
   if (!(Array.isArray(value) && value.length === 2 && typeof value[0] === 'string')) {
     return false;
@@ -509,8 +511,8 @@ export const removeUnauthModels = async ({
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
-          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
-          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+          // 引用值也是数组，不能用 value 形状猜测类型，否则会误伤手动输入的二维数组。
+          if (checkInputIsReference(input)) {
             return;
           }
           if (!allowedModels.has(input.value)) {

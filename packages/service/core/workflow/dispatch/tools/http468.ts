@@ -19,6 +19,7 @@ import {
   replaceEditorVariable,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
@@ -62,7 +63,7 @@ type HttpResponse = DispatchNodeResultType<
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
-  let {
+  const {
     runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
@@ -72,11 +73,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
-      system_httpReqUrl: httpReqUrl,
-      system_httpHeader: httpHeader = [],
+      system_httpReqUrl: rawHttpReqUrl,
+      system_httpHeader: rawHttpHeader = [],
       system_httpParams: httpParams = [],
-      system_httpJsonBody: httpJsonBody = '',
-      system_httpFormBody: httpFormBody = [],
+      system_httpJsonBody: rawHttpJsonBody = '',
+      system_httpFormBody: rawHttpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
       system_header_secret: headerSecret,
@@ -84,6 +85,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ...body
     }
   } = props;
+
+  let httpReqUrl = rawHttpReqUrl;
+  let httpHeader = rawHttpHeader;
+  let httpJsonBody = rawHttpJsonBody;
+  let httpFormBody = rawHttpFormBody;
 
   if (!httpReqUrl) {
     return Promise.reject('Http url is empty');
@@ -417,7 +423,8 @@ export const replaceJsonBodyString = (
         return getReferenceVariableValue({
           value: input.value,
           nodesMap: runtimeNodesMap,
-          variables: allVariables
+          variables: allVariables,
+          isReferenceValue: checkInputIsReference(input)
         });
       }
     })();

@@ -26,6 +26,84 @@ import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
+export const formatAgentToolSchema = ({
+  toolId,
+  inputs,
+  jsonSchema: runtimeJsonSchema,
+  flowNodeType,
+  name,
+  toolDescription,
+  intro
+}: {
+  toolId: string;
+  inputs: FlowNodeInputItemType[];
+  jsonSchema?: JSONSchemaInputType;
+  flowNodeType: FlowNodeTypeEnum;
+  name: string;
+  toolDescription?: string;
+  intro?: string;
+}): ChatCompletionTool => {
+  const toolParams: FlowNodeInputItemType[] = [];
+  let toolDataInputSchema: JSONSchemaInputType | undefined;
+
+  for (const input of inputs) {
+    if (input.toolDescription) {
+      toolParams.push(input);
+    }
+
+    if (input.key === NodeInputKeyEnum.toolData) {
+      toolDataInputSchema = (input.value as McpToolDataType)?.inputSchema;
+    }
+  }
+  const jsonSchema = runtimeJsonSchema || toolDataInputSchema;
+
+  const description = JSON.stringify({
+    type: flowNodeType,
+    name: name,
+    intro: toolDescription || intro
+  });
+  const formatToolId = `t${toolId}`;
+
+  if (jsonSchema) {
+    return {
+      type: 'function',
+      function: {
+        name: formatToolId,
+        description,
+        parameters: jsonSchema
+      }
+    };
+  }
+
+  const properties: Record<string, any> = {};
+  toolParams.forEach((param) => {
+    const jsonSchema = param.valueType
+      ? valueTypeJsonSchemaMap[param.valueType] || toolValueTypeList[0].jsonSchema
+      : toolValueTypeList[0].jsonSchema;
+
+    properties[param.key] = {
+      ...jsonSchema,
+      description: param.toolDescription || '',
+      enum: param.enum?.split('\n').filter(Boolean) || undefined
+    };
+  });
+
+  const requestSchema: ChatCompletionTool = {
+    type: 'function',
+    function: {
+      name: formatToolId,
+      description,
+      parameters: {
+        type: 'object',
+        properties,
+        required: toolParams.filter((param) => param.required).map((param) => param.key)
+      }
+    }
+  };
+
+  return requestSchema;
+};
+
 export const getAgentRuntimeTools = async ({
   tools,
   tmbId,
@@ -35,79 +113,6 @@ export const getAgentRuntimeTools = async ({
   tmbId: string;
   lang?: localeType;
 }): Promise<SubAppInitType[]> => {
-  const formatSchema = ({
-    toolId,
-    inputs,
-    flowNodeType,
-    name,
-    toolDescription,
-    intro
-  }: {
-    toolId: string;
-    inputs: FlowNodeInputItemType[];
-    flowNodeType: FlowNodeTypeEnum;
-    name: string;
-    toolDescription?: string;
-    intro?: string;
-  }): ChatCompletionTool => {
-    const toolParams: FlowNodeInputItemType[] = [];
-    let jsonSchema: JSONSchemaInputType | undefined;
-
-    for (const input of inputs) {
-      if (input.toolDescription) {
-        toolParams.push(input);
-      }
-
-      if (input.key === NodeInputKeyEnum.toolData) {
-        jsonSchema = (input.value as McpToolDataType)?.inputSchema;
-      }
-    }
-
-    const description = JSON.stringify({
-      type: flowNodeType,
-      name: name,
-      intro: toolDescription || intro
-    });
-    const formatToolId = `t${toolId}`;
-
-    if (jsonSchema) {
-      return {
-        type: 'function',
-        function: {
-          name: formatToolId,
-          description,
-          parameters: jsonSchema
-        }
-      };
-    }
-
-    const properties: Record<string, any> = {};
-    toolParams.forEach((param) => {
-      const jsonSchema = param.valueType
-        ? valueTypeJsonSchemaMap[param.valueType] || toolValueTypeList[0].jsonSchema
-        : toolValueTypeList[0].jsonSchema;
-
-      properties[param.key] = {
-        ...jsonSchema,
-        description: param.toolDescription || '',
-        enum: param.enum?.split('\n').filter(Boolean) || undefined
-      };
-    });
-
-    return {
-      type: 'function',
-      function: {
-        name: formatToolId,
-        description,
-        parameters: {
-          type: 'object',
-          properties,
-          required: toolParams.filter((param) => param.required).map((param) => param.key)
-        }
-      }
-    };
-  };
-
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
@@ -183,9 +188,10 @@ export const getAgentRuntimeTools = async ({
               version: child.version,
               toolConfig: child.toolConfig,
               params: tool.config,
-              requestSchema: formatSchema({
+              requestSchema: formatAgentToolSchema({
                 toolId: child.nodeId,
                 inputs: child.inputs,
+                jsonSchema: child.jsonSchema,
                 flowNodeType: child.flowNodeType,
                 name: child.name,
                 toolDescription: child.toolDescription,
@@ -218,9 +224,10 @@ export const getAgentRuntimeTools = async ({
                 version: child.version,
                 toolConfig: child.toolConfig,
                 params: tool.config,
-                requestSchema: formatSchema({
+                requestSchema: formatAgentToolSchema({
                   toolId: child.nodeId,
                   inputs: child.inputs,
+                  jsonSchema: child.jsonSchema,
                   flowNodeType: child.flowNodeType,
                   name: child.name,
                   toolDescription: child.toolDescription,
@@ -249,9 +256,10 @@ export const getAgentRuntimeTools = async ({
                 version: child.version,
                 toolConfig: child.toolConfig,
                 params: tool.config,
-                requestSchema: formatSchema({
+                requestSchema: formatAgentToolSchema({
                   toolId: child.nodeId,
                   inputs: child.inputs,
+                  jsonSchema: child.jsonSchema,
                   flowNodeType: child.flowNodeType,
                   name: child.name,
                   toolDescription: child.toolDescription,
@@ -284,9 +292,10 @@ export const getAgentRuntimeTools = async ({
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               params: tool.config,
-              requestSchema: formatSchema({
+              requestSchema: formatAgentToolSchema({
                 toolId: cleanedPluginId,
                 inputs: toolNode.inputs,
+                jsonSchema: toolNode.jsonSchema,
                 flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,
                 toolDescription: toolNode.toolDescription,

@@ -289,6 +289,10 @@ export async function getChildAppPreviewNode({
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
     };
   })();
+  const runtimeToolNode =
+    flowNodeType === FlowNodeTypeEnum.tool && app.workflow.nodes.length === 1
+      ? app.workflow.nodes[0]
+      : undefined;
 
   return {
     id: getNanoid(),
@@ -316,6 +320,7 @@ export async function getChildAppPreviewNode({
     hasSystemSecret: app.hasSystemSecret,
     isFolder: app.isFolder,
     status: app.status,
+    jsonSchema: runtimeToolNode?.jsonSchema,
 
     ...nodeIOConfig,
     outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
