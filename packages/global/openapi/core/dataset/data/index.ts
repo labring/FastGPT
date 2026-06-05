@@ -2,12 +2,16 @@ import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
   GetDatasetDataDetailQuerySchema,
+  GetDatasetDataDetailResponseSchema,
   UpdateDatasetDataBodySchema,
   DeleteDatasetDataQuerySchema,
   GetQuoteDataBodySchema,
+  GetQuoteDataResponseSchema,
   InsertDataBodySchema,
+  InsertDataResponseSchema,
   InsertImagesBodySchema,
   PushDataBodySchema,
+  PushDataResponseSchema,
   GetDatasetDataListBodySchema,
   GetDatasetDataListResponseSchema
 } from './api';
@@ -47,7 +51,10 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回数据详情'
+          description: '成功返回数据详情',
+          content: {
+            'application/json': { schema: GetDatasetDataDetailResponseSchema }
+          }
         }
       }
     }
@@ -103,7 +110,10 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回引用数据和所属集合信息'
+          description: '成功返回引用数据和所属集合信息',
+          content: {
+            'application/json': { schema: GetQuoteDataResponseSchema }
+          }
         }
       }
     }
@@ -122,7 +132,10 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新数据的 ID'
+          description: '成功返回新数据的 ID',
+          content: {
+            'application/json': { schema: InsertDataResponseSchema }
+          }
         }
       }
     }
@@ -160,7 +173,10 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回插入条数'
+          description: '成功返回插入条数',
+          content: {
+            'application/json': { schema: PushDataResponseSchema }
+          }
         }
       }
     }

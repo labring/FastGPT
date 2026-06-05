@@ -5,16 +5,27 @@ import {
   DeleteCollectionQuerySchema,
   ExportCollectionBodySchema,
   GetCollectionDetailQuerySchema,
+  GetCollectionDetailResponseSchema,
   GetCollectionPathsQuerySchema,
+  GetCollectionPathsResponseSchema,
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
+  ListCollectionV2ResponseSchema,
   ReadCollectionSourceBodySchema,
+  ReadCollectionSourceResponseSchema,
   ScrollCollectionsBodySchema,
   SyncCollectionBodySchema,
+  SyncCollectionResponseSchema,
   UpdateDatasetCollectionBodySchema
 } from './api';
 import { DatasetCollectionCreatePath } from './createPath';
+import {
+  CheckDuplicateFileNamesBodySchema,
+  CheckDuplicateFileNamesResponseSchema,
+  CheckMd5DuplicateBodySchema,
+  CheckMd5DuplicateResponseSchema
+} from './checkApi';
 
 export const DatasetCollectionPath: OpenAPIPath = {
   ...DatasetCollectionCreatePath,
@@ -50,7 +61,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合详情'
+          description: '成功返回集合详情',
+          content: {
+            'application/json': { schema: GetCollectionDetailResponseSchema }
+          }
         }
       }
     }
@@ -69,7 +83,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合列表和总数'
+          description: '成功返回集合列表和总数',
+          content: {
+            'application/json': { schema: ListCollectionV2ResponseSchema }
+          }
         }
       }
     }
@@ -122,7 +139,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回路径列表'
+          description: '成功返回路径列表',
+          content: {
+            'application/json': { schema: GetCollectionPathsResponseSchema }
+          }
         }
       }
     }
@@ -141,7 +161,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回资源 URL'
+          description: '成功返回资源 URL',
+          content: {
+            'application/json': { schema: ReadCollectionSourceResponseSchema }
+          }
         }
       }
     }
@@ -160,7 +183,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回同步结果（success / sameRaw / failed）'
+          description: '成功返回同步结果（success / sameRaw / failed）',
+          content: {
+            'application/json': { schema: SyncCollectionResponseSchema }
+          }
         }
       }
     }
@@ -199,6 +225,50 @@ export const DatasetCollectionPath: OpenAPIPath = {
             'application/json': {
               schema: GetCollectionTrainingDetailResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/collection/check/duplicate': {
+    post: {
+      summary: '检查集合名称重复',
+      description: '检查指定知识库下的文件名是否已存在，用于上传前的去重校验',
+      tags: [TagsMap.datasetCollection],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CheckDuplicateFileNamesBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回重复的文件名列表',
+          content: {
+            'application/json': { schema: CheckDuplicateFileNamesResponseSchema }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/collection/check/md5Duplicate': {
+    post: {
+      summary: '检查文件 MD5 重复',
+      description: '检查文件 MD5 的重复情况，包含同批次内重复和与知识库已有文件的重复',
+      tags: [TagsMap.datasetCollection],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CheckMd5DuplicateBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回重复文件列表，包含重复类型和已存在的文件名',
+          content: {
+            'application/json': { schema: CheckMd5DuplicateResponseSchema }
           }
         }
       }

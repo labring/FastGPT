@@ -5,19 +5,30 @@ import { DatasetCollectionPath } from './collection';
 import { ApiDatasetPath } from './apiDataset';
 import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
+import { DatasetTagPath } from './tag';
+import { DatasetSynonymPath } from './synonym';
+import { DatasetCollaboratorPath } from './collaborator';
+import { CustomPath } from './custom';
 import {
   CreateDatasetBodySchema,
+  CreateDatasetResponseSchema,
   CreateDatasetWithFilesBodySchema,
+  CreateDatasetWithFilesResponseSchema,
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
+  GetDatasetDetailResponseSchema,
   GetDatasetListBodySchema,
+  GetDatasetListResponseSchema,
   GetDatasetPathsQuerySchema,
+  GetDatasetPathsResponseSchema,
+  GetDatasetPermissionQuerySchema,
+  GetDatasetPermissionResponseSchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
-  ExportDatasetQuerySchema,
-  GetDatasetPermissionQuerySchema
+  SearchDatasetTestResponseSchema,
+  ExportDatasetQuerySchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -35,7 +46,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新创建的知识库 ID'
+          description: '成功返回新创建的知识库 ID',
+          content: {
+            'application/json': { schema: CreateDatasetResponseSchema }
+          }
         }
       }
     }
@@ -54,7 +68,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库信息和向量模型配置'
+          description: '成功返回知识库信息和向量模型配置',
+          content: {
+            'application/json': { schema: CreateDatasetWithFilesResponseSchema }
+          }
         }
       }
     }
@@ -73,7 +90,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建文件夹'
+          description: '成功创建文件夹',
+          content: {
+            'application/json': { schema: CreateDatasetResponseSchema }
+          }
         }
       }
     }
@@ -92,7 +112,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库列表'
+          description: '成功返回知识库列表',
+          content: {
+            'application/json': { schema: GetDatasetListResponseSchema }
+          }
         }
       }
     }
@@ -107,7 +130,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回路径列表'
+          description: '成功返回路径列表',
+          content: {
+            'application/json': { schema: GetDatasetPathsResponseSchema }
+          }
         }
       }
     }
@@ -122,7 +148,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库详情'
+          description: '成功返回知识库详情',
+          content: {
+            'application/json': { schema: GetDatasetDetailResponseSchema }
+          }
         }
       }
     }
@@ -194,7 +223,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回搜索结果列表及耗时信息'
+          description: '成功返回搜索结果列表及耗时信息',
+          content: {
+            'application/json': { schema: SearchDatasetTestResponseSchema }
+          }
         }
       }
     }
@@ -224,7 +256,10 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库名称和读写权限，无访问权限时返回空名称和 false'
+          description: '成功返回知识库名称和读写权限，无访问权限时返回空名称和 false',
+          content: {
+            'application/json': { schema: GetDatasetPermissionResponseSchema }
+          }
         }
       }
     }
@@ -234,5 +269,9 @@ export const DatasetPath: OpenAPIPath = {
   ...DatasetDataPath,
   ...ApiDatasetPath,
   ...DatasetFilePath,
-  ...DatasetTrainingPath
+  ...DatasetTrainingPath,
+  ...DatasetTagPath,
+  ...DatasetSynonymPath,
+  ...DatasetCollaboratorPath,
+  ...CustomPath
 };
