@@ -22,7 +22,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
     per: ReadPermissionVal
   });
 
-  const [rebuildingCount, trainingCount] = await Promise.all([
+  const [rebuildingCount, trainingCount, errorCount] = await Promise.all([
     MongoDatasetData.countDocuments(
       { rebuilding: true, teamId, datasetId },
       {
@@ -34,12 +34,19 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
       {
         ...readFromSecondary
       }
+    ),
+    MongoDatasetTraining.countDocuments(
+      { teamId, datasetId, errorMsg: { $exists: true, $ne: null } },
+      {
+        ...readFromSecondary
+      }
     )
   ]);
 
   return GetDatasetTrainingQueueResponseSchema.parse({
     rebuildingCount,
-    trainingCount
+    trainingCount,
+    errorCount
   });
 }
 
