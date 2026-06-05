@@ -365,7 +365,7 @@ export const SearchDatasetTestBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
   }),
-  text: z.string().meta({
+  text: z.string().min(1).meta({
     example: 'FastGPT 是什么',
     description: '搜索文本'
   }),
@@ -500,3 +500,154 @@ export const PostDatasetSyncBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' })
 });
 export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;
+
+/* ============================================================================
+ * API: 多知识库检索
+ * Route: POST /api/core/dataset/custom/searchApi
+ * ============================================================================ */
+
+// 入参 Schema
+export const SearchApiBodySchema = z.object({
+  datasetIds: z
+    .array(ObjectIdSchema)
+    .min(1)
+    .meta({
+      example: ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'],
+      description: '知识库 ID 列表，至少传一个'
+    }),
+  text: z.string().min(1).meta({
+    example: 'FastGPT 是什么',
+    description: '搜索文本'
+  }),
+  similarity: z.number().optional().meta({
+    example: 0.3,
+    description: '最低相似度阈值'
+  }),
+  limit: z.number().optional().meta({
+    example: 5000,
+    description: '最大返回 token 数'
+  }),
+  searchMode: z.enum(DatasetSearchModeEnum).optional().meta({
+    example: DatasetSearchModeEnum.mixedRecall,
+    description: '搜索模式'
+  }),
+  embeddingWeight: z.number().optional().meta({
+    example: 1,
+    description: '向量搜索权重'
+  }),
+  embeddingModelId: z.string().optional().meta({
+    description: '向量嵌入模型名称，不传则使用知识库默认向量模型'
+  }),
+  usingReRank: z.boolean().optional().meta({
+    description: '是否使用重排序'
+  }),
+  rerankModelId: z.string().optional().meta({
+    description: '重排序模型Id'
+  }),
+  rerankMethod: z.enum(RerankMethodEnum).optional().meta({
+    description: '重排序方法'
+  }),
+  rerankWeight: z.number().optional().meta({
+    description: '重排序权重'
+  }),
+  datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
+    description: '是否使用问题扩展'
+  }),
+  datasetSearchExtensionModelId: z.string().optional().meta({
+    description: '问题扩展模型Id'
+  }),
+  datasetSearchExtensionBg: z.string().optional().meta({
+    description: '问题扩展背景描述'
+  }),
+  agenticSearch: z.boolean().optional().meta({
+    description: '是否启用 Agentic 检索（多轮智能检索）'
+  }),
+  datasetDeepSearchModelId: z.string().optional().meta({
+    description: 'Agentic 检索使用的 LLM 模型Id'
+  }),
+  datasetDeepSearchMaxTimes: z.number().optional().meta({
+    description: 'Agentic 检索最大迭代轮次'
+  }),
+  datasetDeepSearchBg: z.string().optional().meta({
+    description: 'Agentic 检索背景描述'
+  }),
+  collectionFilterMatch: z
+    .object({
+      tags: z
+        .object({
+          $and: z
+            .array(z.union([z.string(), z.null(), z.record(z.string(), z.any())]))
+            .optional()
+            .meta({
+              description:
+                'AND 条件：集合必须同时拥有所有列出的标签名。字符串=标签名，null=集合无标签，对象={标签名: {操作符: 值}}'
+            }),
+          $or: z
+            .array(z.union([z.string(), z.null(), z.record(z.string(), z.any())]))
+            .optional()
+            .meta({
+              description:
+                'OR 条件：集合至少拥有一个列出的标签名。字符串=标签名，null=集合无标签，对象={标签名: {操作符: 值}}'
+            })
+        })
+        .optional()
+        .meta({
+          description: '标签过滤条件。AND 和 OR 可同时使用，AND 先生效。AND 标签和 null 不能共存'
+        }),
+      createTime: z
+        .object({
+          $gte: z.string().optional().meta({ description: '开始时间（ISO 格式）' }),
+          $lte: z.string().optional().meta({ description: '结束时间（ISO 格式）' })
+        })
+        .optional()
+        .meta({ description: '按集合创建时间范围过滤' }),
+      collectionIds: z.array(ObjectIdSchema).optional().meta({ description: '按指定集合 ID 过滤' })
+    })
+    .optional()
+    .meta({
+      description:
+        '集合元数据过滤条件。支持 tags / createTime / collectionIds 三维过滤。\n' +
+        '标签过滤支持新旧两种格式：\n' +
+        '  旧格式（仅匹配标签名）：["tagA", "tagB"]\n' +
+        '  新格式（支持值比较）：[{"tagName":{"$gte":10,"$lte":100}}, {"category":{"$eq":"技术文档"}}]\n' +
+        '标签值操作符：$eq, $ne, $gt, $lt, $gte, $lte（数值/日期），$contains, $notContains, $startsWith, $endsWith, $regex（字符串）'
+    })
+});
+export type SearchApiBody = z.infer<typeof SearchApiBodySchema>;
+
+// 出参 Schema
+export const SearchApiResponseSchema = z.object({
+  list: z.array(SearchDataResponseItemSchema).meta({
+    description: '搜索结果列表'
+  }),
+  duration: z.string().meta({
+    example: '0.523s',
+    description: '搜索耗时'
+  }),
+  limit: z.number().meta({
+    description: '实际使用的最大 token 数'
+  }),
+  searchMode: z.enum(DatasetSearchModeEnum).meta({
+    description: '实际使用的搜索模式'
+  }),
+  usingReRank: z.boolean().meta({
+    description: '是否使用了重排序'
+  }),
+  similarity: z.number().meta({
+    description: '实际使用的相似度阈值'
+  }),
+  queryExtensionModelId: z.string().optional().meta({
+    description: '问题扩展使用的模型Id'
+  }),
+  agenticSearchResult: z
+    .object({
+      reasoningText: z.string().meta({ description: '思考过程文本' }),
+      searchCount: z.number().meta({ description: '实际检索轮次' }),
+      toolCallCount: z.number().meta({ description: 'Tool 调用总次数' })
+    })
+    .optional()
+    .meta({
+      description: 'Agentic 检索结果，仅 agenticSearch=true 时返回'
+    })
+});
+export type SearchApiResponse = z.infer<typeof SearchApiResponseSchema>;

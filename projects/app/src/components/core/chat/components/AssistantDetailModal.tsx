@@ -965,7 +965,7 @@ const ChatDetailModal = ({
     );
     return (
       datasetSearchNode?.retrievalMode === DatasetRetrievalModeEnum.agentic &&
-      datasetSearchNode.agenticSearchResult
+      !!datasetSearchNode.agenticSearchResult
     );
   }, [workflowNodes]);
 

@@ -234,7 +234,7 @@ export const WholeResponseContent = ({
   const isAgenticMode = useMemo(
     () =>
       activeModule.retrievalMode === DatasetRetrievalModeEnum.agentic &&
-      activeModule.agenticSearchResult,
+      !!activeModule.agenticSearchResult,
     [activeModule]
   );
 
