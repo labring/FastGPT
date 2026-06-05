@@ -51,7 +51,7 @@ const AIChatBubble = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
-  const showFooterActions = chatType !== 'log' && isLastValueGroup && (!isLastChild || !isChatting);
+  const showFooterActions = isLastValueGroup && (!isLastChild || !isChatting);
   const canShowWholeResponse = chatType !== 'share' && showWholeResponse;
   const showLoading = isLastChild && isLastValueGroup && isChatting;
 

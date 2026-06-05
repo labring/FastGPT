@@ -4,6 +4,9 @@ import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import ChatController, { type ChatControllerProps } from '../ChatController';
+import { ChatBoxContext } from '../../Provider';
+import { useContextSelector } from 'use-context-selector';
+import { ChatTypeEnum } from '../../constants';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -22,6 +25,8 @@ const AIChatBubbleActions = ({
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { onRetry } = chatControllerProps;
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
 
   return (
     <Box mt={4} maxW={'100%'}>
@@ -38,7 +43,7 @@ const AIChatBubbleActions = ({
         <Flex alignItems={'center'} gap={'4px'}>
           <ChatController {...chatControllerProps} variant="footer" />
 
-          {onRetry && (
+          {showRetry && (
             <MyIcon
               name={'common/retryLight'}
               w={'16px'}

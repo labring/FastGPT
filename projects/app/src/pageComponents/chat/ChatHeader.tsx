@@ -306,7 +306,7 @@ export const PcHeader = ({
           mr={3}
           maxW={'200px'}
           className="textEllipsis"
-          color={'myGray.1000'}
+          color={'myGray.900'}
           cursor={'pointer'}
           onClick={() => {
             copyData(chatId);

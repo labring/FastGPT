@@ -212,42 +212,29 @@ const ChatItem = (props: Props) => {
 
   return (
     <Box data-chat-id={chat.dataId}>
-      {/* control icon */}
-      {!isHumanMessage && isChatLog && (
+      {/* Workflow status */}
+      {!isHumanMessage && isChatLog && !!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
         <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-          {isChatting && chat.obj === ChatRoleEnum.AI && isLastChild ? null : (
-            <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-              <ChatController
-                {...props}
-                isLastChild={isLastChild}
-                showFeedbackContent={showFeedbackContent}
-                onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
-              />
-            </Flex>
-          )}
-          {/* Workflow status */}
-          {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
-            <Flex
-              alignItems={'center'}
-              px={3}
-              py={'1.5px'}
-              borderRadius="md"
-              bg={chatStatusMap.bg}
-              fontSize={'sm'}
-            >
-              <Box
-                className={styles.statusAnimation}
-                bg={chatStatusMap.color}
-                w="8px"
-                h="8px"
-                borderRadius={'50%'}
-                mt={'1px'}
-              />
-              <Box ml={2} color={'myGray.600'}>
-                {statusBoxData.name}
-              </Box>
-            </Flex>
-          )}
+          <Flex
+            alignItems={'center'}
+            px={3}
+            py={'1.5px'}
+            borderRadius="md"
+            bg={chatStatusMap.bg}
+            fontSize={'sm'}
+          >
+            <Box
+              className={styles.statusAnimation}
+              bg={chatStatusMap.color}
+              w="8px"
+              h="8px"
+              borderRadius={'50%'}
+              mt={'1px'}
+            />
+            <Box ml={2} color={'myGray.600'}>
+              {statusBoxData.name}
+            </Box>
+          </Flex>
         </Flex>
       )}
 

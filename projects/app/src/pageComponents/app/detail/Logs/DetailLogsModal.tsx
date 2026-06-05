@@ -104,8 +104,8 @@ const DetailLogsModal = ({
         w={'100%'}
         maxW={datasetCiteData ? ['100%', '1080px'] : ['100%', '600px']}
         bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'md'}
+        boxShadow={'0px 8px 24px rgba(19, 51, 107, 0.12), 0px 0px 1px rgba(19, 51, 107, 0.08)'}
+        borderRadius={'8px'}
         overflow={'hidden'}
         transition={'.2s ease'}
       >
@@ -148,10 +148,10 @@ const DetailLogsModal = ({
         ) : (
           <Flex
             alignItems={'center'}
-            px={[3, 5]}
-            h={['46px', '60px']}
+            px={[4, 5]}
+            h={['48px', '56px']}
             borderBottom={'base'}
-            borderBottomColor={'gray.200'}
+            borderBottomColor={'myGray.200'}
             color={'myGray.900'}
           >
             {isPc ? (
@@ -177,7 +177,11 @@ const DetailLogsModal = ({
             <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
             <IconButton
               variant={'whiteBase'}
-              size={'smSquare'}
+              w={'32px'}
+              h={'32px'}
+              minW={'32px'}
+              p={0}
+              borderColor={'myGray.250'}
               aria-label="Close"
               icon={<MyIcon name={'common/closeLight'} w={'16px'} />}
               onClick={onClose}
@@ -186,7 +190,7 @@ const DetailLogsModal = ({
         )}
 
         {/* Chat container */}
-        <Flex pt={2} flex={'1 0 0'} h={0} flexDirection={'column'}>
+        <Flex flex={'1 0 0'} h={0} flexDirection={'column'}>
           <Flex flex={'1 0 0'} h={0}>
             <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
               {isPlugin ? (
@@ -230,7 +234,7 @@ const DetailLogsModal = ({
           </Flex>
 
           {/* Feedback filter bar - commented out, moved to Render component */}
-          <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="gray.200">
+          <Flex bg="white" px={6} py={3} borderTop="1px solid" borderColor="myGray.200">
             <DetailLogsModalFeedbackTypeFilter
               feedbackType={feedbackType}
               setFeedbackType={setFeedbackType}
