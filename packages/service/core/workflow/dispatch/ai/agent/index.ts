@@ -243,6 +243,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
+    // Merge skill path maps from all capabilities for pre-resolving tool display names
+    const skillPathMap: Record<string, string> = Object.assign(
+      {},
+      ...capabilities.map((c) => c.skillPathMap ?? {})
+    );
 
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
@@ -476,7 +481,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
               filesMap,
-              capabilityToolCallHandler
+              capabilityToolCallHandler,
+              skillPathMap
             });
             nodeResponses.push(result.nodeResponse);
 
@@ -574,7 +580,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           getSubApp,
           completionTools: agentCompletionTools,
           filesMap,
-          capabilityToolCallHandler
+          capabilityToolCallHandler,
+          skillPathMap
         });
         nodeResponses.push(result.nodeResponse);
         masterMessages = result.masterMessages;

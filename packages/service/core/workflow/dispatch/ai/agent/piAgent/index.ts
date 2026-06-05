@@ -125,6 +125,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
+    // Merge skill path maps from all capabilities for pre-resolving tool display names
+    const skillPathMap: Record<string, string> = Object.assign(
+      {},
+      ...capabilities.map((c) => c.skillPathMap ?? {})
+    );
 
     // Get sub apps — pi-agent-core manages reasoning, no plan tool needed.
     // Skill capability owns the sandbox session: the model uses skill tools
@@ -214,7 +219,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubAppInfo,
       capabilityToolCallHandler,
       nodeResponses,
-      assistantResponses
+      assistantResponses,
+      skillPathMap
     });
 
     /* ===== Restore session messages from last AI history ===== */

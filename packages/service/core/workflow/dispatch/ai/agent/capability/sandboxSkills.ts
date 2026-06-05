@@ -46,6 +46,8 @@ type SandboxToolResult = {
   response: string;
   usages: any[];
   assistantResponses?: AIChatItemValueItemType[];
+  /** Skill names detected when reading SKILL.md files */
+  skillNames?: string[];
 };
 
 type SandboxSkillsCapabilityParams = {
@@ -231,6 +233,14 @@ export async function createSandboxSkillsCapability(
     ? `${buildSkillsContextPrompt(skillsMeta, defaults.workDirectory)}\n\n${buildGetFileUrlPromptSection()}`
     : buildSkillsContextPrompt(skillsMeta, defaults.workDirectory);
 
+  // Build a path→name map so callers can pre-resolve tool display names
+  // before SSE emission when sandbox_read_file reads SKILL.md files.
+  const skillPathMap: Record<string, string> = {};
+  for (const s of skillsMeta) {
+    if (s.skillMdPath) skillPathMap[s.skillMdPath] = s.name;
+    if (s.directory) skillPathMap[s.directory + '/'] = s.name;
+  }
+
   // --- Lazy-init state ---
   let sandboxContext: AgentSandboxContext | null = null;
   let initPromise: Promise<AgentSandboxContext> | null = null;
@@ -345,7 +355,8 @@ export async function createSandboxSkillsCapability(
           logger.error('[Agent Sandbox] Release failed', { error: err });
         });
       }
-    }
+    },
+    skillPathMap
   };
 }
 
@@ -373,9 +384,14 @@ async function buildSessionHandler(
         toolCallId
       });
 
+      const skillNames = assistantResponses
+        .flatMap((r) => r.skills?.map((s) => s.skillName) ?? [])
+        .filter(Boolean);
+
       return {
         ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
-        ...(assistantResponses.length > 0 && { assistantResponses })
+        ...(assistantResponses.length > 0 && { assistantResponses }),
+        ...(skillNames.length > 0 && { skillNames })
       };
     },
     [SandboxToolIds.writeFile]: async () => {

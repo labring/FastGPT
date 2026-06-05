@@ -54,6 +54,30 @@ export type ToolDispatchContext = Pick<
   datasetParams?: AppFormEditFormType['dataset'];
 };
 
+/**
+ * When sandbox_read_file reads SKILL.md files, resolve the display name
+ * to "加载 foo，bar 技能" so the frontend shows it immediately during streaming.
+ */
+export function resolveSkillDisplayName(
+  args: Record<string, any>,
+  skillPathMap?: Record<string, string>
+): string | undefined {
+  if (!skillPathMap) return undefined;
+  const paths: string[] | undefined = args?.paths;
+  if (!paths?.length) return undefined;
+
+  const skillNames: string[] = [];
+  for (const filePath of paths) {
+    if (!filePath.endsWith('/SKILL.md')) continue;
+    for (const [key, name] of Object.entries(skillPathMap)) {
+      if (filePath === key || filePath.startsWith(key)) {
+        if (!skillNames.includes(name)) skillNames.push(name);
+      }
+    }
+  }
+  return skillNames.length > 0 ? `加载 ${skillNames.join('，')} 技能` : undefined;
+}
+
 export async function buildAgentTools({
   completionTools,
   ctx,
@@ -62,7 +86,8 @@ export async function buildAgentTools({
   getSubAppInfo,
   capabilityToolCallHandler,
   nodeResponses,
-  assistantResponses
+  assistantResponses,
+  skillPathMap
 }: {
   completionTools: ChatCompletionTool[];
   ctx: ToolDispatchContext;
@@ -72,6 +97,7 @@ export async function buildAgentTools({
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   nodeResponses: ChatHistoryItemResType[];
   assistantResponses: AIChatItemValueItemType[];
+  skillPathMap?: Record<string, string>;
 }): Promise<AgentTool[]> {
   const { Type } = await import('@mariozechner/pi-ai');
 
@@ -186,6 +212,18 @@ export async function buildAgentTools({
               toolRes: capResult.response
             });
             if (capResult.usages?.length) usagePush(capResult.usages);
+            // Persist skill assistantResponses (e.g. skill references from SKILL.md reads)
+            if (capResult.assistantResponses?.length) {
+              assistantResponses.push(...capResult.assistantResponses);
+            }
+            // When sandbox_read_file loads SKILL.md, update the tool display name
+            // to reflect which skills are being loaded (e.g. "加载 pptx 技能")
+            if (capResult.skillNames?.length) {
+              const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
+              if (toolItem?.tool) {
+                toolItem.tool.toolName = `加载 ${capResult.skillNames.join('，')} 技能`;
+              }
+            }
             return { response: capResult.response, usages: capResult.usages };
           }
 
@@ -348,10 +386,15 @@ export async function buildAgentTools({
       signal?: AbortSignal
     ) => {
       const subAppInfo = getSubAppInfo(toolId);
+      // When sandbox_read_file reads SKILL.md, resolve skill names so the
+      // frontend shows "加载 xxx 技能" immediately during streaming.
+      const skillDisplayName = resolveSkillDisplayName(args, skillPathMap);
+      const toolName = skillDisplayName ?? subAppInfo?.name ?? toolId;
+
       assistantResponses.push({
         tool: {
           id: callId,
-          toolName: subAppInfo?.name || toolId,
+          toolName,
           toolAvatar: subAppInfo?.avatar || '',
           functionName: toolId,
           params: JSON.stringify(args)
@@ -363,7 +406,7 @@ export async function buildAgentTools({
         data: {
           tool: {
             id: callId,
-            toolName: subAppInfo?.name || toolId,
+            toolName,
             toolAvatar: subAppInfo?.avatar || '',
             functionName: toolId,
             params: JSON.stringify(args)
