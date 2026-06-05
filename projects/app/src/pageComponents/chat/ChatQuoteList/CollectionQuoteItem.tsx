@@ -45,24 +45,24 @@ const CollectionQuoteItem = ({
         ref={(el: HTMLDivElement | null) => {
           quoteRefs.current.set(dataId, el);
         }}
-        p={2}
-        py={2}
+        p={'12px'}
         cursor={hasBeenSearched ? 'pointer' : 'default'}
-        bg={isCurrentSelected ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
+        bg={isCurrentSelected ? 'blue.50' : ''}
         position={'relative'}
         overflow={'hidden'}
+        borderRadius={'6px'}
         border={'1px solid '}
-        borderColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
+        borderColor={isCurrentSelected ? 'primary.300' : 'transparent'}
         wordBreak={'break-all'}
         fontSize={'sm'}
         _hover={
           hasBeenSearched
             ? {
+                bg: isCurrentSelected ? 'blue.50' : 'rgba(51, 112, 255, 0.08)',
                 '& .hover-data': { visibility: 'visible' }
               }
             : {
-                bg: 'linear-gradient(180deg,  #FBFBFC 7.61%, #F0F1F6 100%)',
-                borderTopColor: 'myGray.50',
+                bg: 'rgba(51, 112, 255, 0.08)',
                 '& .hover-data': { visibility: 'visible' }
               }
         }
@@ -98,12 +98,12 @@ const CollectionQuoteItem = ({
         <Flex
           className="hover-data"
           position={'absolute'}
-          bottom={2}
-          right={5}
+          bottom={'12px'}
+          right={'12px'}
           gap={1.5}
           visibility={'hidden'}
         >
-          <MyTooltip label={t('common:core.dataset.Quote Length')}>
+          <MyTooltip label={t('common:Copy')}>
             <Flex
               alignItems={'center'}
               fontSize={'10px'}
@@ -111,14 +111,15 @@ const CollectionQuoteItem = ({
               borderColor={'myGray.200'}
               bg={'white'}
               rounded={'sm'}
-              px={2}
+              px={1}
               py={1}
               boxShadow={
                 '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
               }
+              cursor={'pointer'}
+              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
             >
-              <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-              {q.length + (a?.length || 0)}
+              <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
             </Flex>
           </MyTooltip>
           {canEdit && (
@@ -147,25 +148,6 @@ const CollectionQuoteItem = ({
               </Flex>
             </MyTooltip>
           )}
-          <MyTooltip label={t('common:Copy')}>
-            <Flex
-              alignItems={'center'}
-              fontSize={'10px'}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              bg={'white'}
-              rounded={'sm'}
-              px={1}
-              py={1}
-              boxShadow={
-                '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-              }
-              cursor={'pointer'}
-              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
-            >
-              <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
-            </Flex>
-          </MyTooltip>
         </Flex>
       </Box>
       {editInputData && (

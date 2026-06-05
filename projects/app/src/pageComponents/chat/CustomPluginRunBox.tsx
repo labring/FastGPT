@@ -40,6 +40,9 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
             value={tab}
             onChange={setTab}
             inlineStyles={{ px: 0.5, pt: 0 }}
+            outerPadding="4px"
+            outerHeight="40px"
+            itemHeight="32px"
             gap={5}
             py={0}
             fontSize={'sm'}
@@ -61,6 +64,9 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         value={tab}
         onChange={setTab}
         inlineStyles={{ px: 0.5, pt: 0 }}
+        outerPadding="4px"
+        outerHeight="40px"
+        itemHeight="32px"
         gap={5}
         py={0}
         fontSize={'sm'}

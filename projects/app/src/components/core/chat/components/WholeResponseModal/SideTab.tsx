@@ -37,8 +37,19 @@ const NormalSideTabItem = ({
       width={'100%'}
       cursor={'pointer'}
       borderRadius={'6px'}
-      position={'relative'}
     >
+      {children && (
+        <Flex
+          h={'24px'}
+          w={'20px'}
+          flexShrink={0}
+          alignItems={'center'}
+          justifyContent={'center'}
+          mr={1}
+        >
+          {children}
+        </Flex>
+      )}
       <Avatar
         src={
           sideBarItem.moduleLogo ||
@@ -69,16 +80,6 @@ const NormalSideTabItem = ({
         >
           {t(sideBarItem.runningTime as any) + 's'}
         </Box>
-      </Box>
-      <Box
-        h={'24px'}
-        w={'24px'}
-        position={'absolute'}
-        right={'4px'}
-        top={'50%'}
-        transform={'translateY(-50%)'}
-      >
-        {children}
       </Box>
     </Flex>
   );

@@ -82,33 +82,40 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const enableSecond = timeGranularity === 'second';
 
   return (
-    <Flex alignItems={'center'} gap={2}>
-      <DateTimePicker
-        selectedDateTime={formatValue}
-        onChange={handleDateChange}
-        popPosition={popPosition}
-        disabled={[
-          ...(minDate ? [{ before: minDate }] : []),
-          ...(maxDate ? [{ after: maxDate }] : [])
-        ]}
-        isDisabled={isDisabled}
-        w={'168px'}
-        h={8}
-        borderColor={'myGray.200'}
-        bg={'white'}
-      />
-      <Box position={'relative'}>
+    <Flex
+      alignItems={'center'}
+      gap={2}
+      w={'100%'}
+      minW={0}
+    >
+      <Box flex={'1 1 0'} minW={0}>
+        <DateTimePicker
+          selectedDateTime={formatValue}
+          onChange={handleDateChange}
+          popPosition={popPosition}
+          disabled={[
+            ...(minDate ? [{ before: minDate }] : []),
+            ...(maxDate ? [{ after: maxDate }] : [])
+          ]}
+          isDisabled={isDisabled}
+          w={'100%'}
+          h={8}
+          borderColor={'myGray.200'}
+          bg={'white'}
+        />
+      </Box>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={hour}
           onChange={handleHourChange}
           min={0}
           max={23}
-          w={'48px'}
+          w={'100%'}
           size={'sm'}
           hideStepper
           isDisabled={isDisabled || !enableHour}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableHour ? 'myGray.100' : 'white',
             color: isDisabled || !enableHour ? 'myGray.400' : 'inherit'
@@ -127,18 +134,18 @@ const TimeInput: React.FC<TimeInputProps> = ({
           {t('common:hour_unit')}
         </Box>
       </Box>
-      <Box position={'relative'}>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={minute}
           onChange={handleMinuteChange}
           min={0}
           max={59}
-          w={'48px'}
+          w={'100%'}
           size={'sm'}
           hideStepper
           isDisabled={isDisabled || !enableMinute}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableMinute ? 'myGray.100' : 'white',
             color: isDisabled || !enableMinute ? 'myGray.400' : 'inherit'
@@ -157,18 +164,18 @@ const TimeInput: React.FC<TimeInputProps> = ({
           {t('common:minute_unit')}
         </Box>
       </Box>
-      <Box position={'relative'}>
+      <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={second}
           onChange={handleSecondChange}
           min={0}
           max={59}
-          w={'48px'}
+          w={'100%'}
           size={'sm'}
           hideStepper
           isDisabled={isDisabled || !enableSecond}
           inputFieldProps={{
-            pr: '20px',
+            pr: '18px',
             pl: '8px',
             bg: isDisabled || !enableSecond ? 'myGray.100' : 'white',
             color: isDisabled || !enableSecond ? 'myGray.400' : 'inherit'

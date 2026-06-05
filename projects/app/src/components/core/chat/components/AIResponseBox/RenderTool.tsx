@@ -5,7 +5,9 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box
+  Box,
+  Flex,
+  HStack
 } from '@chakra-ui/react';
 import type { ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -37,15 +39,29 @@ const RenderTool = React.memo(
     return (
       <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
-          <AccordionButton {...accordionButtonStyle}>
-            <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
-            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-              {t(tool.toolName)}
-            </Box>
+          <AccordionButton
+            {...accordionButtonStyle}
+            p={0}
+            bg={'transparent'}
+            border={'none'}
+            borderRadius={0}
+            boxShadow={'none'}
+            color={'myGray.600'}
+            _hover={{ bg: 'transparent', color: 'myGray.600' }}
+            _expanded={{ color: 'myGray.600' }}
+          >
+            <HStack mr={1} spacing="0">
+              <Flex w="24px" h="24px" alignItems="center" justifyContent="flex-start">
+                <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="sm" />
+              </Flex>
+              <Box fontSize="16px" lineHeight="24px" color="myGray.600">
+                {t(tool.toolName)}
+              </Box>
+            </HStack>
             {showAnimation && tool.response === undefined && (
-              <MyIcon name={'common/loading'} w={'14px'} />
+              <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />
             )}
-            <AccordionIcon color={'myGray.600'} ml={5} />
+            <AccordionIcon ml={1} color={'myGray.500'} />
           </AccordionButton>
           <AccordionPanel
             py={0}

@@ -8,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import ChatSliderFooter from '@/pageComponents/chat/slider/ChatSliderFooter';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import ChatSliderMobileNewChatButton from '@/pageComponents/chat/slider/ChatSliderMobileNewChatButton';
 
 type Props = {
   title?: string;
@@ -43,26 +44,34 @@ const ChatSliderMobileDrawer = ({
       isOpen={isOpenSlider}
       onClose={onCloseSlider}
     >
-      <DrawerOverlay backgroundColor="rgba(255,255,255,0.5)" />
+      <DrawerOverlay backgroundColor="rgba(0, 0, 0, 0.16)" />
 
       <DrawerContent maxWidth="75vw">
         <MyBox
           display={'flex'}
           flexDirection={'column'}
+          position="relative"
           w={'100%'}
           h={'100%'}
+          px={'16px'}
+          py={'12px'}
           bg={'white'}
           borderRight={['', theme.borders.base]}
+          borderRightColor={['', 'myGray.200']}
           whiteSpace={'nowrap'}
         >
           {showHeader && <ChatSliderHeader title={title} banner={banner} />}
 
-          {showMenu && <MyDivider h="0.5px" bg="myGray.100" my={2} mx={2} w="calc(100% - 16px)" />}
+          {showMenu && (
+            <MyDivider h="0.5px" bg="myGray.100" my="16px" mx={2} w="calc(100% - 16px)" />
+          )}
           {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}
 
           {showList && <ChatSliderList />}
 
           {footerSlot}
+
+          {showList && <ChatSliderMobileNewChatButton />}
 
           {showFooter && <ChatSliderFooter />}
         </MyBox>

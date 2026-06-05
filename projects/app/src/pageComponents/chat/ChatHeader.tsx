@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import ToolMenu from './ToolMenu';
+import MarkdownExportButton from './MarkdownExportButton';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
 
@@ -61,12 +61,13 @@ const ChatHeader = ({
   const isPlugin = chatData.app.type === AppTypeEnum.workflowTool;
   const isShare = source === 'share';
   const chatType = isShare ? ChatTypeEnum.share : ChatTypeEnum.chat;
+  const hasHistory = history.length > 0;
 
   return isPc && isPlugin ? null : (
     <Flex
       alignItems={'center'}
       px={[3, 5]}
-      minH={['46px', '60px']}
+      minH={['48px', '60px']}
       borderBottom={'sm'}
       color={'myGray.900'}
       fontSize={'sm'}
@@ -102,7 +103,9 @@ const ChatHeader = ({
         {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
-        {!isPlugin && !hideMenu && <ToolMenu history={history} reserveSpace={reserveSpace} />}
+        {!isPlugin && !hideMenu && hasHistory && (
+          <MarkdownExportButton history={history} reserveSpace={reserveSpace} />
+        )}
       </Flex>
     </Flex>
   );
@@ -161,6 +164,9 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
       >
         <LightRowTabs<TabEnum>
           gap={3}
+          outerPadding="4px"
+          outerHeight="40px"
+          itemHeight="32px"
           inlineStyles={{
             px: 2
           }}
@@ -300,7 +306,7 @@ export const PcHeader = ({
           mr={3}
           maxW={'200px'}
           className="textEllipsis"
-          color={'myGray.1000'}
+          color={'myGray.900'}
           cursor={'pointer'}
           onClick={() => {
             copyData(chatId);

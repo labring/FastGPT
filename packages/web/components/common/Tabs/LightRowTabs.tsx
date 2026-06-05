@@ -11,6 +11,9 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   inlineStyles?: FlexProps;
   activeColor?: string;
   defaultColor?: string;
+  itemHeight?: string;
+  outerPadding?: string;
+  outerHeight?: string;
   onChange: (value: ValueType) => void;
 };
 
@@ -20,6 +23,9 @@ const LightRowTabs = <ValueType = string,>({
   value,
   activeColor = 'primary.600',
   defaultColor = 'transparent',
+  itemHeight,
+  outerPadding,
+  outerHeight,
   onChange,
   inlineStyles,
   ...props
@@ -53,6 +59,8 @@ const LightRowTabs = <ValueType = string,>({
       <Grid
         gridTemplateColumns={`repeat(${list.length},1fr)`}
         p={sizeMap.outP}
+        {...(outerPadding ? { p: outerPadding } : {})}
+        {...(outerHeight ? { minH: outerHeight } : {})}
         borderRadius={'sm'}
         fontSize={sizeMap.fontSize}
         userSelect={'none'}
@@ -63,6 +71,7 @@ const LightRowTabs = <ValueType = string,>({
           <Flex
             key={item.value as string}
             py={sizeMap.inlineP}
+            {...(itemHeight ? { h: itemHeight } : {})}
             alignItems={'center'}
             justifyContent={'center'}
             borderBottom={'2px solid'}

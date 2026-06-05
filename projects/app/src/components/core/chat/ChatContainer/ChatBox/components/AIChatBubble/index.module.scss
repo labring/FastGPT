@@ -1,0 +1,10 @@
+:global(.markdown).markdown {
+  font-size: 16px;
+  line-height: 1.75;
+
+  &,
+  * {
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+}

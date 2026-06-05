@@ -34,6 +34,7 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
+  className?: string;
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -49,6 +50,7 @@ const MarkdownRender = ({
   showAnimation,
   isDisabled,
   forbidZhFormat,
+  className,
 
   chatAuthData,
   onOpenCiteModal
@@ -83,6 +85,7 @@ const MarkdownRender = ({
     <Box position={'relative'}>
       <ReactMarkdown
         className={`markdown ${styles.markdown}
+      ${className || ''}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}

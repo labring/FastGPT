@@ -38,13 +38,12 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   return (
     <>
       <Grid
-        py={[0, 4]}
+        pt="16px"
+        pb={[4, 6]}
         gridTemplateColumns={[
-          '1fr',
-          'repeat(2,1fr)',
-          'repeat(2,1fr)',
-          'repeat(3,1fr)',
-          'repeat(4,1fr)'
+          'minmax(0,1fr)',
+          'repeat(2,minmax(0,1fr))',
+          'repeat(3,minmax(0,1fr))'
         ]}
         gridGap={5}
         alignItems={'stretch'}
@@ -66,15 +65,14 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                 px={5}
                 cursor={'pointer'}
                 border={'base'}
-                boxShadow={'2'}
                 bg={'white'}
                 borderRadius={'lg'}
                 position={'relative'}
                 display={'flex'}
                 flexDirection={'column'}
+                minW={0}
                 _hover={{
                   borderColor: 'primary.300',
-                  boxShadow: '1.5',
                   '& .more': {
                     display: 'flex'
                   },
@@ -95,9 +93,9 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
                   }
                 }}
               >
-                <HStack>
+                <HStack minW={0}>
                   <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                  <Box flex={'1 0 0'} color={'myGray.900'}>
+                  <Box flex={'1 0 0'} color={'myGray.900'} className="textEllipsis">
                     {app.name}
                   </Box>
                   <Box mr={'-1.25rem'}>

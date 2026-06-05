@@ -159,7 +159,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
             w="100%"
             color={'myGray.900'}
             fontSize={'sm'}
-            templateColumns={['1fr', 'repeat(2, 1fr)']}
+            templateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
             border="1px solid"
             borderColor="myGray.200"
             borderRadius="md"
@@ -172,6 +172,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
               borderBottom={['1px solid', 'none']}
               sx={{ borderColor: 'myGray.200 !important' }}
               minH={0}
+              minW={0}
             >
               <Flex h="100%" direction="column" minH={0} py={4} overflow="hidden">
                 <Box mb={2} px={4}>
@@ -244,6 +245,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                     <Box key={item._id} userSelect={'none'}>
                       <Flex
                         align="center"
+                        minW={0}
                         pr={2}
                         pl={4}
                         py={1.5}
@@ -261,7 +263,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                           }
                         }}
                       >
-                        <Box w={'5'} onClick={(e) => e.stopPropagation()}>
+                        <Box w={'5'} flexShrink={0} onClick={(e) => e.stopPropagation()}>
                           {item.type !== AppTypeEnum.folder && (
                             <Checkbox
                               isChecked={localSelectedIds.includes(String(item._id))}
@@ -272,19 +274,32 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                           )}
                         </Box>
 
-                        <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" ml={3} mr={2.5} />
+                        <Avatar
+                          src={item.avatar}
+                          w={7}
+                          h={7}
+                          borderRadius="sm"
+                          ml={3}
+                          mr={2.5}
+                          flexShrink={0}
+                        />
 
                         <Box flex={1} minW={0}>
-                          <Box fontSize="sm" color={'myGray.900'} lineHeight={1}>
+                          <Box
+                            fontSize="sm"
+                            color={'myGray.900'}
+                            lineHeight={1}
+                            className="textEllipsis"
+                          >
                             {item.name}
                           </Box>
-                          <Box fontSize="xs" color="myGray.500">
+                          <Box fontSize="xs" color="myGray.500" className="textEllipsis">
                             {item.type === AppTypeEnum.folder ? t('common:Folder') : ''}
                           </Box>
                         </Box>
 
                         {item.type === AppTypeEnum.folder && (
-                          <Box mr={10}>
+                          <Box mr={10} flexShrink={0}>
                             <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
                           </Box>
                         )}
@@ -295,8 +310,8 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
               </Flex>
             </GridItem>
 
-            <GridItem minH={0}>
-              <VStack spacing={2} alignItems="stretch">
+            <GridItem minH={0} minW={0}>
+              <VStack spacing={2} alignItems="stretch" h="100%" minH={0} minW={0}>
                 <Box mb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
                   {t('chat:setting.favourite.selected_list', {
                     num: `${checkedQuickApps.length} / 4`
@@ -321,6 +336,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                         {...provided.droppableProps}
                         spacing={0}
                         alignItems="stretch"
+                        minW={0}
                         maxH={['50vh', '400px']}
                         overflowY="auto"
                       >
@@ -337,13 +353,14 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   alignItems="center"
+                                  minW={0}
                                   gap={2}
                                   px={2}
                                   py={1.5}
                                   borderRadius="md"
                                   bg={snapshot.isDragging ? 'myGray.50' : 'transparent'}
                                 >
-                                  <Box {...provided.dragHandleProps}>
+                                  <Box {...provided.dragHandleProps} flexShrink={0}>
                                     <MyIcon
                                       name={'drag'}
                                       cursor={'pointer'}
@@ -354,13 +371,24 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                                       w={'16px'}
                                     />
                                   </Box>
-                                  <Flex alignItems="center" flex={1}>
-                                    <Avatar src={app.avatar} borderRadius={'sm'} w="1.25rem" />
-                                    <Box flex={1} className="textEllipsis" userSelect="none" ml={2}>
+                                  <Flex alignItems="center" flex={1} minW={0}>
+                                    <Avatar
+                                      src={app.avatar}
+                                      borderRadius={'sm'}
+                                      w="1.25rem"
+                                      flexShrink={0}
+                                    />
+                                    <Box
+                                      flex={1}
+                                      minW={0}
+                                      className="textEllipsis"
+                                      userSelect="none"
+                                      ml={2}
+                                    >
                                       {app.name}
                                     </Box>
                                   </Flex>
-                                  <Box color="myGray.400" fontSize="xs">
+                                  <Box color="myGray.400" fontSize="xs" flexShrink={0}>
                                     <MyIcon
                                       name="common/closeLight"
                                       w="16px"

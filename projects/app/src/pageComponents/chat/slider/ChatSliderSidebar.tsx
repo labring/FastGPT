@@ -12,6 +12,8 @@ type Props = {
   footerSlot?: React.ReactNode;
 };
 
+export const CHAT_HISTORY_SLIDER_PC_WIDTH = '256px';
+
 const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, footerSlot }: Props) => {
   const theme = useTheme();
 
@@ -21,8 +23,10 @@ const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, footerSlot }
       flexDirection={'column'}
       w={'100%'}
       h={'100%'}
+      px={4}
       bg={'white'}
       borderRight={['', theme.borders.base]}
+      borderRightColor={['', 'myGray.200']}
       whiteSpace={'nowrap'}
     >
       <ChatSliderHeader title={title} banner={banner} />

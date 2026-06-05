@@ -37,9 +37,9 @@ export type ChatProviderProps = {
   chatType: ChatTypeEnum;
   dialogTips?: string;
   wideLogo?: string;
+  squareLogo?: string;
   slogan?: string;
 
-  currentQuickAppId?: string;
   quickAppList?: ChatQuickAppType[];
   onSwitchQuickApp?: (appId: string) => Promise<void>;
 };

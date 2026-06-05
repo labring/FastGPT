@@ -19,8 +19,7 @@ import ChatSetting from '@/pageComponents/chat/ChatSetting';
 import AppChatWindow from '@/pageComponents/chat/ChatWindow/AppChatWindow';
 import HomeChatWindow from '@/pageComponents/chat/ChatWindow/HomeChatWindow';
 import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/context/chatPageContext';
-import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
-import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
+import ChatAllApp from '@/pageComponents/chat/ChatAllApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -40,6 +39,14 @@ const Chat = () => {
 
   const collapse = useContextSelector(ChatPageContext, (v) => v.collapse);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
+  const rightWindowStyle = useMemo(
+    () => ({
+      borderWidth: 0,
+      boxShadow: 'none',
+      bg: 'white'
+    }),
+    []
+  );
 
   useEffect(() => {
     resetChatItemUIState();
@@ -61,15 +68,25 @@ const Chat = () => {
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex="1 0 0" w={0} position="relative">
+        <PageContainer
+          flex="1 0 0"
+          w={0}
+          position="relative"
+          pr={datasetCiteData ? 0 : undefined}
+          insertProps={{
+            ...rightWindowStyle,
+            ...(datasetCiteData
+              ? {
+                  borderRadius: [0, '16px 0 0 16px']
+                }
+              : {})
+          }}
+        >
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
-          {/* favourite apps */}
-          {pane === ChatSidebarPaneEnum.FAVORITE_APPS && <ChatFavouriteApp />}
-
-          {/* team apps */}
-          {pane === ChatSidebarPaneEnum.TEAM_APPS && <ChatTeamApp />}
+          {/* all apps */}
+          {pane === ChatSidebarPaneEnum.ALL_APPS && <ChatAllApp />}
 
           {/* recently used apps chat window */}
           {pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && <AppChatWindow />}
@@ -80,7 +97,18 @@ const Chat = () => {
       )}
 
       {datasetCiteData && (
-        <PageContainer flex="1 0 0" w={0} maxW="560px">
+        <PageContainer
+          flex={['1 0 0', '0 0 400px']}
+          w={['0', '400px']}
+          maxW={['100%', '400px']}
+          pr={0}
+          insertProps={{
+            ...rightWindowStyle,
+            borderLeft: '1px solid',
+            borderLeftColor: 'myGray.200',
+            borderRadius: [0, '0 16px 16px 0']
+          }}
+        >
           <ChatQuoteList
             metadata={datasetCiteData.metadata}
             rawSearch={datasetCiteData.rawSearch}

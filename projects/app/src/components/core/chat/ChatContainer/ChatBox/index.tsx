@@ -24,7 +24,12 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories } from './utils/interactive';
-import { ChatTypeEnum, FeedbackTypeEnum } from './constants';
+import {
+  ChatInputWrapperStyle,
+  ChatTypeEnum,
+  FeedbackTypeEnum,
+  HomeChatContentWrapperStyle
+} from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import dynamic from 'next/dynamic';
@@ -52,10 +57,11 @@ import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
-const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'));
-const QuickApps = dynamic(() => import('./components/home/QuickApps'));
+const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
+const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayout'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 type Props = OutLinkChatAuthProps &
@@ -101,6 +107,7 @@ const ChatBox = ({
   onMarkChatRead
 }: Props) => {
   const { t } = useTranslation();
+  const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -113,8 +120,6 @@ const ChatBox = ({
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
   const { ScrollContainerRef, scrollToBottom, generatingScroll } = useChatScroll();
 
-  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
-  const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
@@ -297,7 +302,7 @@ const ChatBox = ({
     syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
   });
 
-  const { isRecordActionLoading, retryInput, delOneMessage } = useChatRecordActions({
+  const { isRecordActionLoading, retryInput, editInput } = useChatRecordActions({
     sendPrompt,
     onDeleteChatItem
   });
@@ -487,15 +492,13 @@ const ChatBox = ({
       records: processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      userAvatar,
-      appAvatar,
       showVoiceIcon,
       showMarkIcon,
       statusBoxData,
       questionGuides,
       onToggleDeletedGroup: toggleDeletedGroup,
       onRetry: retryInput,
-      onDelete: delOneMessage,
+      onEdit: editInput,
       onMark,
       onAddUserLike,
       onAddUserDislike,
@@ -506,15 +509,13 @@ const ChatBox = ({
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      userAvatar,
-      appAvatar,
       showVoiceIcon,
       showMarkIcon,
       statusBoxData,
       questionGuides,
       toggleDeletedGroup,
       retryInput,
-      delOneMessage,
+      editInput,
       onMark,
       onAddUserLike,
       onAddUserDislike,
@@ -522,17 +523,26 @@ const ChatBox = ({
       onToggleFeedbackReadStatus
     ]
   );
-  const HomeChatRenderBox = useMemo(() => {
-    return (
-      <>
-        <WelcomeHomeBox />
-
-        <Box mt={5} w={'100%'}>
-          <QuickApps />
+  const HomeChatInput = (
+    <>
+      {variableList.filter((item) => item.type !== VariableInputEnum.internal).length > 0 ? (
+        <Box w={'100%'}>
+          <ChatHomeVariablesForm chatForm={chatForm} />
         </Box>
-      </>
-    );
-  }, []);
+      ) : (
+        <ChatInput
+          onSendMessage={sendPrompt}
+          onStop={() => abortRequest('stop')}
+          onStopChat={requestStopChat}
+          onStopSettled={handleStopSettled}
+          disableSend={isRoundPending}
+          TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
+          chatForm={chatForm}
+        />
+      )}
+    </>
+  );
 
   return (
     <MyBox
@@ -547,32 +557,17 @@ const ChatBox = ({
       {isHomeRender ? (
         <MyBox
           isLoading={isLoadingRecords}
+          display="flex"
+          flexDirection="column"
           flex={'1 0 0'}
           h={0}
-          px={[2, 4]}
-          w="100%"
-          maxW={['auto', 'min(820px, 100%)']}
-          mx={'auto'}
+          {...HomeChatContentWrapperStyle}
         >
-          <Flex h={'100%'} flexDir={'column'} justifyContent={'center'} w={'100%'}>
-            {HomeChatRenderBox}
-            {variableList.filter((item) => item.type !== VariableInputEnum.internal).length > 0 ? (
-              <Box w={'100%'}>
-                <ChatHomeVariablesForm chatForm={chatForm} />
-              </Box>
-            ) : (
-              <ChatInput
-                onSendMessage={sendPrompt}
-                onStop={() => abortRequest('stop')}
-                onStopChat={requestStopChat}
-                onStopSettled={handleStopSettled}
-                disableSend={isRoundPending}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-              />
-            )}
-          </Flex>
+          {isPc ? (
+            <DesktopHomeLayout inputSlot={HomeChatInput} />
+          ) : (
+            <MobileHomeLayout inputSlot={HomeChatInput} />
+          )}
         </MyBox>
       ) : (
         <>
@@ -586,12 +581,7 @@ const ChatBox = ({
             recordsListProps={recordsListProps}
           />
           {canRenderChatInput && (
-            <Box
-              px={[3, 5]}
-              m={['0 auto 10px', '10px auto']}
-              w={'100%'}
-              maxW={['auto', 'min(820px, 100%)']}
-            >
+            <Box {...ChatInputWrapperStyle}>
               {showWorkorder && <WorkorderEntrance />}
 
               <ChatInput

@@ -275,11 +275,22 @@ const OutLink = (props: Props) => {
       />
       <Flex
         h={'full'}
-        gap={4}
+        gap={datasetCiteData ? 0 : 4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
         {(!datasetCiteData || isPc) && (
-          <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
+          <PageContainer
+            flex={'1 0 0'}
+            w={0}
+            p={'0 !important'}
+            insertProps={
+              datasetCiteData
+                ? {
+                    borderRadius: [0, '16px 0 0 16px']
+                  }
+                : undefined
+            }
+          >
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
@@ -333,7 +344,17 @@ const OutLink = (props: Props) => {
         )}
 
         {datasetCiteData && (
-          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
+          <PageContainer
+            flex={'1 0 0'}
+            w={0}
+            maxW={'560px'}
+            p={'0 !important'}
+            insertProps={{
+              borderLeft: '1px solid',
+              borderLeftColor: 'myGray.200',
+              borderRadius: [0, '0 16px 16px 0']
+            }}
+          >
             <ChatQuoteList
               rawSearch={datasetCiteData.rawSearch}
               metadata={datasetCiteData.metadata}

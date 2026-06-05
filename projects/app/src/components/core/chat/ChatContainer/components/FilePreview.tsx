@@ -1,7 +1,7 @@
 import React from 'react';
 import { type FieldArrayWithId } from 'react-hook-form';
 import { type ChatBoxInputFormType } from '../ChatBox/type';
-import { Box, CircularProgress, Flex, HStack } from '@chakra-ui/react';
+import { Box, CircularProgress, Flex, HStack, type FlexProps } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -11,10 +11,12 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 const RenderFilePreview = ({
   fileList,
-  removeFiles
+  removeFiles,
+  pt = [2, 3]
 }: {
   fileList: FieldArrayWithId<ChatBoxInputFormType, 'files', 'id'>[];
   removeFiles?: (index?: number | number[]) => void;
+  pt?: FlexProps['pt'];
 }) => {
   const { isPc } = useSystem();
 
@@ -22,7 +24,7 @@ const RenderFilePreview = ({
     <Flex
       overflow={'visible'}
       wrap={'wrap'}
-      pt={[2, 3]}
+      pt={pt}
       userSelect={'none'}
       mb={fileList.length > 0 ? 2 : 0}
       gap={'6px'}

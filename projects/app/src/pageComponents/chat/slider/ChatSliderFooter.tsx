@@ -22,10 +22,10 @@ const ChatSliderFooter = () => {
   const isSettingPane = pane === ChatSidebarPaneEnum.SETTING;
 
   return (
-    <Box flexShrink={0} p={2} mt="auto">
+    <Box flexShrink={0} mt="auto">
       <Flex gap={2} alignItems="center" justifyContent="space-between">
         <UserAvatarPopover isCollapsed={false} placement="top-end">
-          <Flex alignItems="center" gap={2} borderRadius="50%" p={2}>
+          <Flex alignItems="center" gap={2} borderRadius="50%">
             <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />
             <Box className="textEllipsis" flexGrow={1} fontSize={'sm'} fontWeight={500} minW={0}>
               {userInfo?.team?.memberName}
@@ -38,7 +38,6 @@ const ChatSliderFooter = () => {
             _hover={{ bg: 'myGray.200' }}
             bg={isSettingPane ? 'myGray.200' : 'transparent'}
             borderRadius={'8px'}
-            p={2}
             cursor={'pointer'}
             w="40px"
             h="40px"

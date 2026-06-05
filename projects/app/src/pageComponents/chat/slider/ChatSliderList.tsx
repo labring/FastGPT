@@ -105,14 +105,26 @@ const ChatSliderList = () => {
     <>
       {/* 移动端侧栏只需要纵向滚动；隐藏横向滚动条，避免底部语言入口上方出现灰线。 */}
       {/* eslint-disable-next-line react-hooks/static-components -- ScrollData is supplied by useScrollPagination. */}
-      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflowY={'auto'} overflowX={'hidden'}>
+      <ScrollData
+        flex={'1 0 0'}
+        h={0}
+        p={0}
+        overflowY={'auto'}
+        overflowX={'hidden'}
+        sx={{
+          '& > div:last-of-type': {
+            color: 'var(--chakra-colors-myGray-400)'
+          }
+        }}
+      >
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
             key={item.id}
             alignItems={'center'}
-            px={4}
-            h={'44px'}
+            p="8px"
+            h={'40px'}
+            minH={'40px'}
             cursor={'pointer'}
             userSelect={'none'}
             borderRadius={'md'}
@@ -132,7 +144,7 @@ const ChatSliderList = () => {
             bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeChatId
               ? {
-                  backgroundColor: 'primary.50 !important',
+                  backgroundColor: 'primary.100 !important',
                   color: 'primary.600'
                 }
               : {
@@ -142,14 +154,10 @@ const ChatSliderList = () => {
                   }
                 })}
             {...(i !== concatHistory.length - 1 && {
-              mb: '8px'
+              mb: '4px'
             })}
           >
-            <MyIcon
-              name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
-              w={'16px'}
-            />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
+            <Box flex={'1 0 0'} className="textEllipsis">
               {item.customTitle || item.title}
             </Box>
             {!!item.id && (
@@ -186,8 +194,13 @@ const ChatSliderList = () => {
                     Button={
                       <IconButton
                         size={'xs'}
-                        variant={'whiteBase'}
-                        icon={<MyIcon name={'more'} w={'14px'} p={1} />}
+                        variant={'ghost'}
+                        border={'none'}
+                        bg={'transparent'}
+                        color={'myGray.500'}
+                        _hover={{ bg: 'transparent', color: 'myGray.700' }}
+                        _active={{ bg: 'transparent' }}
+                        icon={<MyIcon name={'more'} w={'14px'} p={1} color={'currentColor'} />}
                         aria-label={''}
                       />
                     }

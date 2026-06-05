@@ -8,7 +8,7 @@ import { delChatRecordById } from '@/web/core/chat/record/api';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
-import type { SendPromptFnType } from '../type';
+import type { ChatBoxInputType, SendPromptFnType } from '../type';
 
 type UseChatRecordActionsProps = {
   sendPrompt: SendPromptFnType;
@@ -20,6 +20,7 @@ type UseChatRecordActionsProps = {
  *
  * 这里的“记录级动作”特指会直接改变 chatRecords 的删除、重试等操作：
  * - `retryInput` 会删除目标 human 消息及其后续记录，再用旧输入重新发送。
+ * - `editInput` 会删除目标 human 消息及其后续记录，再用编辑后的文本重新发送。
  * - `delOneMessage` 会删除一条 human 消息，并顺带删除紧随其后的 AI 回复。
  * - `onDelMessage` 是 hook 内部的删除通道，优先走外部覆盖的 `onDeleteChatItem`，
  *   否则使用默认 `delChatRecordById` API，并自动带上当前 app/chat/outLink 鉴权信息。
@@ -108,6 +109,49 @@ export const useChatRecordActions = ({
   });
 
   /**
+   * 生成某条 human 消息的“编辑后发送”回调。
+   *
+   * 编辑和重试的核心流程一致：先删除目标 human 消息及后续记录，再用裁剪前的 history
+   * 重新发起一轮对话。text/files 使用编辑表单提交的新内容；删除旧记录时仍保留文件，
+   * 避免编辑后的消息继续引用原附件或新附件时被提前清理。
+   */
+  const editInput = useMemoizedFn((dataId?: string) => {
+    if (!dataId) return;
+
+    return async (input: ChatBoxInputType) => {
+      setIsRecordActionLoading(true);
+      const index = chatRecords.findIndex((item) => item.dataId === dataId);
+      const delHistory = chatRecords.slice(index);
+
+      try {
+        if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
+
+        await Promise.all(
+          delHistory.map((item) => {
+            if (item.dataId) {
+              return onDelMessage(item.dataId, false);
+            }
+          })
+        );
+        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
+
+        sendPrompt({
+          ...formatChatValue2InputType(delHistory[0].value),
+          ...input,
+          history: chatRecords.slice(0, index)
+        });
+      } catch (error) {
+        toast({
+          status: 'warning',
+          title: getErrText(error, 'Edit failed')
+        });
+      } finally {
+        setIsRecordActionLoading(false);
+      }
+    };
+  });
+
+  /**
    * 生成单条 human 消息的删除回调。
    *
    * ChatBox 的一轮普通对话通常是 human 后面紧跟 AI 回复，因此删除 human 时需要同步删除
@@ -137,6 +181,7 @@ export const useChatRecordActions = ({
   return {
     isRecordActionLoading,
     retryInput,
+    editInput,
     delOneMessage
   };
 };

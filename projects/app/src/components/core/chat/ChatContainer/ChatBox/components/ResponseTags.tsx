@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import type { ChatSiteItemType } from '../type';
@@ -28,10 +27,186 @@ export type CitationRenderItem = {
 
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
+const getCitationGridSpan = (text: string) => {
+  const textWidthUnits = Array.from(text).reduce((sum, char) => {
+    return sum + (/[\u4E00-\u9FFF]/.test(char) ? 2 : 1);
+  }, 0);
+
+  return Math.min(Math.max(Math.ceil(textWidthUnits / 7), 1), 5);
+};
+
+const CitationListCard = React.memo(function CitationListCard({
+  items,
+  isPc,
+  onOpenAll
+}: {
+  items: CitationRenderItem[];
+  isPc: boolean;
+  onOpenAll: () => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState<boolean>(false);
+  const cardContentRef = React.useRef<HTMLDivElement>(null);
+  const cardContentSize = useSize(cardContentRef);
+  const collapsedMaxHeight = 80;
+  const isOverflow = (cardContentSize?.height || 0) > collapsedMaxHeight;
+
+  if (items.length === 0) return null;
+
+  return (
+    <>
+      <Box
+        display={['none', 'block']}
+        mt={3}
+        w={'100%'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        borderRadius={'12px'}
+        bg={'white'}
+        overflow={'hidden'}
+        _hover={{
+          background: 'linear-gradient(0deg, #FFF 56.25%, #F7F8FA 100%)'
+        }}
+      >
+        <Box
+          position={'relative'}
+          maxH={!expanded && isOverflow ? `${collapsedMaxHeight}px` : 'none'}
+          overflow={'hidden'}
+          p={'8px'}
+        >
+          <Box ref={cardContentRef}>
+            <Flex h={'28px'} alignItems={'center'} justifyContent={'space-between'} px={'8px'}>
+              <MyTooltip label={t('chat:view_citations')}>
+                <Flex
+                  alignItems={'center'}
+                  gap={'6px'}
+                  color={'myGray.600'}
+                  fontSize={'14px'}
+                  lineHeight={'20px'}
+                  fontWeight={500}
+                  cursor={'pointer'}
+                  _hover={{
+                    color: 'primary.600',
+                    '.citation-count': {
+                      color: 'primary.600'
+                    },
+                    '.citation-arrow': {
+                      color: 'primary.600'
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenAll();
+                  }}
+                >
+                  <Box>
+                    {t('chat:citation_card_prefix')}
+                    <Box as={'span'} className="citation-count" color={'myGray.900'}>
+                      {items.length}
+                    </Box>
+                    {t('chat:citation_card_suffix')}
+                  </Box>
+                  <MyIcon
+                    className="citation-arrow"
+                    name={'common/arrowRight'}
+                    w={'14px'}
+                    color={'myGray.400'}
+                    transform={'rotate(-45deg)'}
+                  />
+                </Flex>
+              </MyTooltip>
+
+              {isOverflow && (
+                <MyIcon
+                  name={expanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                  w={'16px'}
+                  color={'myGray.500'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() => setExpanded((state) => !state)}
+                />
+              )}
+            </Flex>
+
+            <Box
+              mt={'4px'}
+              display={'grid'}
+              gridTemplateColumns={'repeat(5, minmax(0, 1fr))'}
+              gap={'4px'}
+            >
+              {items.map((item) => (
+                <MyTooltip key={item.key} label={t('common:core.chat.quote.Read Quote')}>
+                  <Flex
+                    alignItems={'center'}
+                    minW={0}
+                    w={'max-content'}
+                    gridColumn={`span ${getCitationGridSpan(item.displayText)}`}
+                    px={'8px'}
+                    py={'6px'}
+                    borderRadius={'8px'}
+                    bg={'myGray.50'}
+                    color={'myGray.900'}
+                    fontSize={'14px'}
+                    lineHeight={'20px'}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myGray.100' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      item.onClick?.();
+                    }}
+                  >
+                    <MyIcon name={item.icon as any} mr={2} flexShrink={0} w={'14px'} />
+                    <Box minW={0} whiteSpace={'nowrap'}>
+                      {item.displayText}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              ))}
+            </Box>
+          </Box>
+
+          {!expanded && isOverflow && (
+            <Box
+              position={'absolute'}
+              left={0}
+              right={0}
+              bottom={0}
+              h={'32px'}
+              zIndex={1}
+              bgGradient={'linear(to-b, rgba(255,255,255,0), rgba(255,255,255,1.0))'}
+              pointerEvents={'none'}
+            />
+          )}
+        </Box>
+      </Box>
+
+      <Flex
+        display={['inline-flex', 'none']}
+        mt={3}
+        alignItems={'center'}
+        gap={'4px'}
+        color={'primary.600'}
+        fontSize={'14px'}
+        lineHeight={'20px'}
+        fontWeight={500}
+        cursor={'pointer'}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenAll();
+        }}
+      >
+        <MyIcon name={'common/link'} w={'16px'} h={'16px'} color={'primary.600'} />
+        <Box>{t('chat:citation_card_title', { num: items.length })}</Box>
+      </Flex>
+    </>
+  );
+});
+
 const ResponseTags = ({
   showTags,
   historyItem,
-  onOpenCiteModal
+  onOpenCiteModal,
+  showFooterMeta = true
 }: {
   showTags: boolean;
   historyItem: ChatSiteItemType;
@@ -42,10 +217,10 @@ const ResponseTags = ({
     datasetId?: string;
     quoteId?: string;
   }) => void;
+  showFooterMeta?: boolean;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
-  const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
 
   const durationSeconds = historyItem.durationSeconds || 0;
@@ -69,8 +244,6 @@ const ResponseTags = ({
     };
   }, [historyItem, isShowCite]);
 
-  const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
-
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
@@ -86,9 +259,6 @@ const ResponseTags = ({
     chatId,
     outLinkAuthData
   });
-
-  const quoteListSize = useSize(quoteListRef);
-  const quoteIsOverflow = quoteListSize ? quoteListSize.height >= (isPc ? 50 : 55) : true;
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
@@ -110,7 +280,8 @@ const ResponseTags = ({
         icon:
           'imageId' in item && item.imageId
             ? 'core/dataset/imageFill'
-            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }) ||
+              'core/chat/quoteFill',
         onClick: () => {
           onOpenCiteModal({
             collectionId: item.collectionId,
@@ -126,6 +297,7 @@ const ResponseTags = ({
       type: 'link' as const,
       key: `${r.url}-${index}`,
       displayText: r.name,
+      icon: 'common/link',
       onClick: () => {
         window.open(r.url, '_blank');
       }
@@ -135,140 +307,27 @@ const ResponseTags = ({
   }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags =
-    notSharePage || quoteList.length > 0 || useAgentSandbox || (isPc && durationSeconds > 0);
+    (showFooterMeta && notSharePage) ||
+    useAgentSandbox ||
+    (showFooterMeta && isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>
       {/* quote */}
       {citationRenderList.length > 0 && (
-        <>
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <Box width={'100%'}>
-              <ChatBoxDivider
-                icon="core/chat/quoteFill"
-                text={t('common:core.chat.Quote')}
-                iconColor="#E82F72"
-              />
-            </Box>
-            {quoteFolded && quoteIsOverflow && (
-              <MyIcon
-                _hover={{ color: 'primary.500', cursor: 'pointer' }}
-                name="core/chat/chevronDown"
-                w={'14px'}
-                onClick={() => setQuoteFolded(!quoteFolded)}
-              />
-            )}
-          </Flex>
-
-          <Flex
-            ref={quoteListRef}
-            alignItems={'center'}
-            position={'relative'}
-            flexWrap={'wrap'}
-            gap={2}
-            maxH={quoteFolded && quoteIsOverflow ? ['50px', '55px'] : 'auto'}
-            overflow={'hidden'}
-            _after={
-              quoteFolded && quoteIsOverflow
-                ? {
-                    content: '""',
-                    position: 'absolute',
-                    zIndex: 2,
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '50%',
-                    background:
-                      'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))'
-                  }
-                : {}
-            }
-          >
-            {citationRenderList.map((item, index) => {
-              return (
-                <MyTooltip key={item.key} label={t('common:core.chat.quote.Read Quote')}>
-                  <Flex
-                    alignItems={'center'}
-                    fontSize={'xs'}
-                    border={'sm'}
-                    borderRadius={'sm'}
-                    _hover={{
-                      '.controller': {
-                        display: 'flex'
-                      }
-                    }}
-                    overflow={'hidden'}
-                    position={'relative'}
-                    cursor={'pointer'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      item.onClick?.();
-                    }}
-                    height={6}
-                  >
-                    <Flex
-                      color={'myGray.500'}
-                      bg={'myGray.150'}
-                      w={4}
-                      justifyContent={'center'}
-                      fontSize={'10px'}
-                      h={'full'}
-                      alignItems={'center'}
-                    >
-                      {index + 1}
-                    </Flex>
-                    <Flex px={1.5}>
-                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
-                      <Box
-                        className="textEllipsis3"
-                        wordBreak={'break-all'}
-                        flex={'1 0 0'}
-                        fontSize={'mini'}
-                      >
-                        {item.displayText}
-                      </Box>
-                    </Flex>
-                  </Flex>
-                </MyTooltip>
-              );
-            })}
-            {!quoteFolded && (
-              <MyIcon
-                position={'absolute'}
-                bottom={0}
-                right={0}
-                _hover={{ color: 'primary.500', cursor: 'pointer' }}
-                name="core/chat/chevronUp"
-                w={'14px'}
-                onClick={() => setQuoteFolded(!quoteFolded)}
-              />
-            )}
-          </Flex>
-        </>
+        <CitationListCard
+          items={citationRenderList}
+          isPc={isPc}
+          onOpenAll={() => onOpenCiteModal()}
+        />
       )}
 
       {notEmptyTags && (
         <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
-          {isPc && durationSeconds > 0 && (
+          {showFooterMeta && isPc && durationSeconds > 0 && (
             <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
                 {durationSeconds.toFixed(2)}s
-              </MyTag>
-            </MyTooltip>
-          )}
-
-          {quoteList.length > 0 && (
-            <MyTooltip label={t('chat:view_citations')}>
-              <MyTag
-                colorSchema="blue"
-                type="borderSolid"
-                cursor={'pointer'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenCiteModal();
-                }}
-              >
-                {t('chat:citations', { num: quoteList.length })}
               </MyTag>
             </MyTooltip>
           )}
@@ -287,7 +346,7 @@ const ResponseTags = ({
             </>
           )}
 
-          {notSharePage && showWholeResponse && (
+          {showFooterMeta && notSharePage && showWholeResponse && (
             <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
               <MyTag
                 colorSchema="gray"

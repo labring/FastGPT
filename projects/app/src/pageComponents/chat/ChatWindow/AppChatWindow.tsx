@@ -1,6 +1,5 @@
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import { Flex, Box } from '@chakra-ui/react';
+import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideBar from '@/components/SideBar';
@@ -21,12 +20,19 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import NextHead from '@/components/common/NextHead';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { ChatSidebarPaneEnum } from '../constants';
-import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
+import ChatHistorySidebar, {
+  CHAT_HISTORY_SLIDER_PC_WIDTH
+} from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import ChatWindowHeader from './ChatWindowHeader';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import ToolMenu from '@/pageComponents/chat/ToolMenu';
+import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -37,8 +43,9 @@ const AppChatWindow = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
@@ -50,18 +57,17 @@ const AppChatWindow = () => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
 
-  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
+  const collapseSidebar = useContextSelector(ChatPageContext, (v) => v.collapseSidebar);
 
   const { loading } = useRequest(
     async () => {
-      if (!appId || forbidLoadChat.current) return;
+      if (!appId || forbidLoadChatRef.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
@@ -86,11 +92,11 @@ const AppChatWindow = () => {
           if (e?.statusText === AppErrEnum.unAuthApp) {
             refreshRecentlyUsed();
           }
-          handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
+          handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
         }
       },
       onFinally() {
-        forbidLoadChat.current = false;
+        forbidLoadChatRef.current = false;
       }
     }
   );
@@ -106,6 +112,8 @@ const AppChatWindow = () => {
       if (!appId) {
         return Promise.reject('appId is empty');
       }
+
+      collapseSidebar();
 
       const histories = messages.slice(-1);
       const { responseText } = await streamFetch({
@@ -132,17 +140,18 @@ const AppChatWindow = () => {
 
       refreshRecentlyUsed();
 
-      return { responseText, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChatRef.current };
     },
     [
       appId,
       chatId,
       onUpdateHistoryTitle,
       setChatBoxData,
-      forbidLoadChat,
+      forbidLoadChatRef,
       isShowCite,
       showSkillReferences,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      collapseSidebar
     ]
   );
 
@@ -153,7 +162,10 @@ const AppChatWindow = () => {
 
       {/* show history slider */}
       {isPc ? (
-        <SideBar externalTrigger={Boolean(datasetCiteData)}>
+        <SideBar
+          w={`0 0 ${CHAT_HISTORY_SLIDER_PC_WIDTH}`}
+          externalTrigger={Boolean(datasetCiteData)}
+        >
           <ChatHistorySidebar
             menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
@@ -173,13 +185,43 @@ const AppChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        <ChatHeader
-          pane={pane}
-          chatSettings={chatSettings}
-          showHistory
-          history={chatRecords}
-          totalRecordsCount={totalRecordsCount}
-        />
+        {isPc ? (
+          <ChatWindowHeader
+            title={chatBoxData.title}
+            history={chatRecords}
+            chatType={ChatTypeEnum.chat}
+          />
+        ) : (
+          <Flex
+            h="48px"
+            px={4}
+            bg="white"
+            alignItems="center"
+            justifyContent="space-between"
+            color="myGray.600"
+          >
+            <IconButton
+              aria-label="Open history"
+              icon={
+                <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
+              }
+              variant="unstyled"
+              {...mobileChatHeaderIconButtonStyle}
+              onClick={onOpenSlider}
+            />
+
+            <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
+              <Avatar src={chatBoxData.app.avatar} w="20px" borderRadius="6px" />
+              <Box ml={2} fontSize="16px" fontWeight={500} color="myGray.900" className="textEllipsis">
+                {chatBoxData.app.name}
+              </Box>
+            </Flex>
+
+            <Box minW="36px">
+              <ToolMenu history={chatRecords} chatType={ChatTypeEnum.chat} />
+            </Box>
+          </Flex>
+        )}
 
         <Box flex={'1 0 0'} bg={'white'}>
           {isPlugin ? (

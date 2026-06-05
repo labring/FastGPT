@@ -103,12 +103,31 @@ const CiteLink = React.memo(function CiteLink({
       gutter={4}
     >
       <PopoverTrigger>
-        <Button variant={'unstyled'} minH={0} minW={0} h={'auto'}>
+        <Button
+          variant={'unstyled'}
+          display={['none', 'inline-flex']}
+          minH={0}
+          minW={0}
+          ml={'4px'}
+          boxSize={'20px'}
+          p={'4px'}
+          borderRadius={'full'}
+          bg={'myGray.150'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          cursor={'pointer'}
+          _hover={{
+            '.cite-link-icon': {
+              color: 'primary.600'
+            }
+          }}
+        >
           <MyIcon
-            name={'core/chat/quoteSign'}
-            w={'1rem'}
-            color={'primary.700'}
-            cursor={'pointer'}
+            className="cite-link-icon"
+            name={'common/link'}
+            w={'12px'}
+            h={'12px'}
+            color={'myGray.400'}
           />
         </Button>
       </PopoverTrigger>
@@ -155,7 +174,7 @@ const CiteLink = React.memo(function CiteLink({
                   });
                 }}
               >
-                {t('common:all_quotes')}
+                {t('chat:view_all_citations')}
               </Button>
             </Flex>
             <Box h={'300px'} overflow={'auto'} px={4}>

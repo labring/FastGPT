@@ -216,6 +216,9 @@ const ActionButton: React.FC<{
   return (
     <Flex
       p={2}
+      gap={isCollapsed ? 0 : 2}
+      h={'44px'}
+      minH={'44px'}
       flex={1}
       cursor={'pointer'}
       borderRadius={'8px'}
@@ -235,7 +238,7 @@ const ActionButton: React.FC<{
           })}
       onClick={onClick}
     >
-      <MyIcon w="20px" h="20px" name={icon} viewBox="0 0 20 20" mr={isCollapsed ? 0 : 2} />
+      <MyIcon w="20px" h="20px" name={icon} viewBox="0 0 20 20" />
       <AnimatedText
         show={!isCollapsed && !!text}
         fontSize="sm"
@@ -263,18 +266,14 @@ const NavigationSection = () => {
     ChatPageContext,
     (v) => v.pane === ChatSidebarPaneEnum.HOME
   );
-  const isTeamAppsActive = useContextSelector(
+  const isAllAppsActive = useContextSelector(
     ChatPageContext,
-    (v) => v.pane === ChatSidebarPaneEnum.TEAM_APPS
-  );
-  const isFavouriteAppsActive = useContextSelector(
-    ChatPageContext,
-    (v) => v.pane === ChatSidebarPaneEnum.FAVORITE_APPS
+    (v) => v.pane === ChatSidebarPaneEnum.ALL_APPS
   );
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
-    <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
+    <Flex mt={4} flexDirection={'column'} gap={'12px'} px={4}>
       <AnimatedSection show={isCollapsed}>
         <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onTriggerCollapse} />
       </AnimatedSection>
@@ -282,7 +281,7 @@ const NavigationSection = () => {
       <AnimatePresence mode="wait">
         {isCollapsed ? (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={2}>
+            <Flex flexDir="column" gap={'12px'}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -295,25 +294,18 @@ const NavigationSection = () => {
                   )}
 
                   <ActionButton
-                    icon="core/chat/sidebar/star"
+                    icon="common/app"
                     isCollapsed={true}
-                    isActive={isFavouriteAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                    isActive={isAllAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
                   />
                 </>
               )}
-
-              <ActionButton
-                icon="common/app"
-                isCollapsed={true}
-                isActive={isTeamAppsActive}
-                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
-              />
             </Flex>
           </AnimatedSection>
         ) : (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={2}>
+            <Flex flexDir="column" gap={'12px'}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -327,22 +319,14 @@ const NavigationSection = () => {
                   )}
 
                   <ActionButton
-                    icon="core/chat/sidebar/star"
-                    text={t('chat:sidebar.favourite_apps')}
+                    icon="common/app"
+                    text={t('chat:sidebar.all_apps')}
                     isCollapsed={false}
-                    isActive={isFavouriteAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.FAVORITE_APPS)}
+                    isActive={isAllAppsActive}
+                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
                   />
                 </>
               )}
-
-              <ActionButton
-                icon="common/app"
-                text={t('chat:sidebar.team_apps')}
-                isCollapsed={false}
-                isActive={isTeamAppsActive}
-                onClick={() => handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS)}
-              />
             </Flex>
           </AnimatedSection>
         )}
@@ -533,9 +517,11 @@ const ChatSlider = ({ activeAppId }: Props) => {
           {myApps.map((item) => (
             <Flex
               key={item.appId}
-              py={2}
-              px={2}
-              mb={3}
+              p={2}
+              gap={2}
+              h={'44px'}
+              minH={'44px'}
+              mb={'12px'}
               cursor={'pointer'}
               borderRadius={'md'}
               alignItems={'center'}
@@ -548,8 +534,8 @@ const ChatSlider = ({ activeAppId }: Props) => {
                       handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId)
                   })}
             >
-              <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
-              <Box ml={2} className={'textEllipsis'}>
+              <Avatar src={item.avatar} w={'20px'} h={'20px'} borderRadius={'6px'} />
+              <Box className={'textEllipsis'}>
                 {item.name}
               </Box>
             </Flex>
