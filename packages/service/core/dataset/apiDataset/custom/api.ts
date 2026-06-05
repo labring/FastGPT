@@ -285,8 +285,38 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     return fileId;
   };
 
+  /**
+   * 获取文件内容元数据（不下载/解析），直接返回 /v1/file/content 的原始数据
+   * 用于图片等不需要文本解析的场景，直接获取 previewUrl
+   */
+  const getFileContentUrl = async ({
+    apiFileId
+  }: {
+    apiFileId: string;
+  }): Promise<{
+    title?: string;
+    content?: string;
+    previewUrl?: string;
+  }> => {
+    const data = await request<
+      {
+        title?: string;
+      } & RequireOnlyOne<{
+        content: string;
+        previewUrl: string;
+      }>
+    >(`/v1/file/content`, { id: apiFileId }, 'GET');
+
+    return {
+      title: data.title,
+      content: (data as any).content,
+      previewUrl: (data as any).previewUrl
+    };
+  };
+
   return {
     getFileContent,
+    getFileContentUrl,
     listFiles,
     getFilePreviewUrl,
     getFileDetail,

@@ -11,8 +11,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import {
   authDataset,
-  authDatasetCollection,
-  getCollectionTmbPermission
+  authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
@@ -358,25 +357,6 @@ async function handler(
   let myRoles: any[] = [];
 
   if (!isTeamOwner) {
-    if (parentId) {
-      const parentCollection = await MongoDatasetCollection.findOne(
-        { _id: parentId },
-        '_id tmbId datasetId parentId inheritPermission type'
-      ).lean<
-        Pick<
-          DatasetCollectionSchemaType,
-          '_id' | 'tmbId' | 'datasetId' | 'parentId' | 'inheritPermission' | 'type'
-        >
-      >();
-      if (parentCollection) {
-        parentFolderPermission = await getCollectionTmbPermission({
-          collection: parentCollection,
-          teamId,
-          tmbId
-        });
-      }
-    }
-
     // 参考 dataset/list：获取所有 collection 权限数据
     const [roleList, myGroupMap, myOrgSet] = await Promise.all([
       MongoResourcePermission.find({

@@ -752,6 +752,7 @@
   "error.unAuthFile": "無檔案權限",
   "error.file_upload_disabled": "當前應用未開啟文件上傳",
   "error.inheritPermissionError": "繼承權限錯誤",
+  "error.owner_required": "協作者中必須包含所有者",
   "error.invalid_params": "參數無效",
   "error.llm_track_expired": "請求詳情已過期",
   "error.missingParams": "參數不足",

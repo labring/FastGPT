@@ -21,6 +21,14 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
+import { getApiDatasetRequest } from '../apiDataset';
+
+// 图片文件扩展名集合
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
+const isImageFile = (fileName: string): boolean => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ext ? IMAGE_EXTENSIONS.has(ext) : false;
+};
 
 // 更新父 folder 的 updateTime
 export async function updateParentFolderTime(parentId: string | null) {
@@ -193,11 +201,76 @@ export const collectionTagsToTagLabel = async ({
   return result.length > 0 ? result : undefined;
 };
 
+/**
+ * 同步图片 collection（apiFile 等外部来源的图片）
+ * 检查外部文件是否存在及是否有更新
+ */
+const syncImageCollection = async (collection: CollectionWithDatasetType, dataset: any) => {
+  const sourceId = collection.apiFileId;
+  if (!sourceId) return Promise.reject('apiFileId is missing');
+
+  if (collection.type === DatasetCollectionTypeEnum.apiFile) {
+    if (!dataset.apiDatasetServer) {
+      return Promise.reject('API dataset server config not found');
+    }
+
+    const apiDatasetRequest = await getApiDatasetRequest(dataset.apiDatasetServer);
+
+    try {
+      // 检查文件是否还存在
+      const fileDetail = await apiDatasetRequest.getFileDetail({ apiFileId: sourceId });
+
+      // 用 updateTime 判断是否变化
+      const fileFingerprint = hashStr(JSON.stringify(fileDetail));
+      if (collection.hashRawText && fileFingerprint === collection.hashRawText) {
+        return DatasetCollectionSyncResultEnum.sameRaw;
+      }
+
+      // 文件有变化 → 重建 collection
+      await mongoSessionRun(async (session) => {
+        await delCollection({
+          collections: [collection],
+          delImg: false,
+          delFile: false,
+          session
+        });
+        await createCollectionAndInsertData({
+          session,
+          dataset,
+          imageIds: [fileDetail.id],
+          createCollectionParams: {
+            ...collection,
+            name: fileDetail.name || collection.name,
+            updateTime: new Date(),
+            trainingType: DatasetCollectionDataProcessModeEnum.imageParse,
+            hashRawText: fileFingerprint,
+            tags: (await collectionTagsToTagLabel({
+              datasetId: collection.datasetId,
+              tags: collection.tags
+            })) as string[] | undefined
+          }
+        });
+      });
+
+      return DatasetCollectionSyncResultEnum.success;
+    } catch (error) {
+      return DatasetCollectionSyncResultEnum.failed;
+    }
+  }
+
+  return DatasetCollectionSyncResultEnum.sameRaw;
+};
+
 export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const dataset = collection.dataset;
 
   if (!collectionCanSync(collection.type)) {
     return Promise.reject(DatasetErrEnum.notSupportSync);
+  }
+
+  // 图片集合：用文件名后缀判断
+  if (collection.type === DatasetCollectionTypeEnum.apiFile && isImageFile(collection.name)) {
+    return syncImageCollection(collection, dataset);
   }
 
   // Get new text

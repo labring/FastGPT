@@ -760,6 +760,7 @@
   "error.unAuthFile": "No file permission",
   "error.file_upload_disabled": "File upload is disabled for the current app",
   "error.inheritPermissionError": "Permission inheritance error.",
+  "error.owner_required": "Owner is required in collaborators.",
   "error.invalid_params": "Invalid parameter.",
   "error.llm_track_expired": "Request details expired",
   "error.missingParams": "Parameter is missing.",

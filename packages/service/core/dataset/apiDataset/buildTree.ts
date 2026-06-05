@@ -76,7 +76,7 @@ export async function syncCollectionPermissions({
 
   try {
     const fileDetail = await apiDatasetRequest.getFileDetail({ apiFileId: file.id });
-    if (fileDetail.permissions?.length) {
+    if (fileDetail.permissions) {
       await syncExternalFilePermissions({
         collection: {
           _id: mongoId,

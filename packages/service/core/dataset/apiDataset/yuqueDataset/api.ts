@@ -329,8 +329,13 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     }
   };
 
+  const getFileContentUrl = async () => {
+    return Promise.reject('getFileContentUrl not supported for yuque dataset');
+  };
+
   return {
     getFileContent,
+    getFileContentUrl,
     listFiles,
     getFilePreviewUrl,
     getFileDetail,

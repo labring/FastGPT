@@ -10,6 +10,7 @@ export enum CommonErrEnum {
   unAuthFile = 'unAuthFile',
   missingParams = 'missingParams',
   inheritPermissionError = 'inheritPermissionError',
+  ownerRequired = 'ownerRequired',
   pdfEncrypted = 'pdfEncrypted',
   pptxParseFailed = 'pptxParseFailed',
   fileTypeRequiresExternalParse = 'fileTypeRequiresExternalParse',
@@ -40,6 +41,10 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.inheritPermissionError,
     message: i18nT('common:error.inheritPermissionError')
+  },
+  {
+    statusText: CommonErrEnum.ownerRequired,
+    message: i18nT('common:error.owner_required')
   },
   {
     statusText: CommonErrEnum.pdfEncrypted,

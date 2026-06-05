@@ -366,10 +366,7 @@ const CollectionCard = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[-:T]/g, '')
-          .slice(0, 14);
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
         a.download = `collections-${timestamp}.zip`;
         document.body.appendChild(a);
         a.click();
@@ -846,24 +843,6 @@ const CollectionCard = () => {
                             const isLink = collection.type === DatasetCollectionTypeEnum.link;
 
                             const permissionItem = (() => {
-                              const isPermissionSyncDisabled =
-                                datasetDetail?.apiDatasetServer?.apiServer?.permissionSync === true;
-
-                              if (isPermissionSyncDisabled) {
-                                return {
-                                  label: (
-                                    <MyTooltip label={t('dataset:permission_sync_disabled_tip')}>
-                                      <Flex alignItems={'center'} opacity={0.4}>
-                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                        {t('common:Permission')}
-                                      </Flex>
-                                    </MyTooltip>
-                                  ),
-                                  onClick: undefined,
-                                  menuItemStyles: { cursor: 'not-allowed' }
-                                };
-                              }
-
                               return {
                                 label: (
                                   <Flex
