@@ -17,6 +17,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
+import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
@@ -45,6 +46,7 @@ enum TabEnum {
 
 export const useDebug = () => {
   const { t } = useSafeTranslation();
+  const { t: workflowT } = useTranslation();
   const { toast } = useToast();
 
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
@@ -162,7 +164,7 @@ export const useDebug = () => {
       getNodeById,
       edges,
       chatConfig: appDetail.chatConfig,
-      t,
+      t: workflowT,
       childrenNodeIdListMap
     });
     const renderInputs = runtimeNode.inputs.filter((input) => {
@@ -323,6 +325,7 @@ export const useDebug = () => {
     runtimeEdges,
     defaultGlobalVariables,
     t,
+    workflowT,
     variables.length,
     customVar,
     internalVar,

@@ -1,6 +1,7 @@
 {
   "search_skill": "Search",
   "create_skill": "New Skill",
+  "create_your_first_skill": "Create your first Skill",
   "no_skills": "No skills yet",
   "copy_skill": "Create a copy",
   "related_apps_count": "{{count}} linked apps",

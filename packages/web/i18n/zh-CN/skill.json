@@ -1,6 +1,7 @@
 {
   "search_skill": "搜索",
   "create_skill": "新建技能",
+  "create_your_first_skill": "创建你的第一个技能",
   "no_skills": "暂无 Skill",
   "copy_skill": "创建副本",
   "related_apps_count": "关联应用 {{count}}",

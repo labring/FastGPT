@@ -3,7 +3,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useCallback, useMemo } from 'react';
@@ -23,6 +23,7 @@ import {
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import {
+  isDashboardImportAppTypeAllowed,
   type JsonImportModalScene,
   parseDashboardImportConfig,
   resolveImportAppType
@@ -45,7 +46,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
 
-  const { register, setValue, getValues, watch, handleSubmit } = useForm<FormType>({
+  const { register, setValue, getValues, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '',
       name: '',
@@ -53,7 +54,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
       workflowStr: ''
     }
   });
-  const workflowStr = watch('workflowStr');
+  const workflowStr = useWatch({ control, name: 'workflowStr' }) || '';
 
   const syncImportMetaToForm = useCallback(
     (value: string) => {
@@ -104,7 +105,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
     removeUtmWorkflow();
   };
 
-  const avatar = watch('avatar');
+  const avatar = useWatch({ control, name: 'avatar' }) || '';
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -124,7 +125,9 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
     try {
       const workflow = JSON.parse(workflowStr);
       const type = resolveImportAppType(workflow);
-      if (type) return createAppTypeMap[type].icon;
+      if (type && isDashboardImportAppTypeAllowed({ appType: type, scene })) {
+        return createAppTypeMap[type].icon;
+      }
       return defaultVal;
     } catch {
       return defaultVal;
@@ -146,6 +149,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
 
       const { workflow, appType } = parseDashboardImportConfig({
         config,
+        scene,
         t
       });
 

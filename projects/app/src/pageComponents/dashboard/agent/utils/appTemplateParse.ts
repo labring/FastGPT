@@ -20,16 +20,34 @@ type ParsedImportConfig = {
   appType: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.workflowTool;
 };
 
+type SupportedImportAppType = ParsedImportConfig['appType'];
+
 const supportedImportAppTypes = [
   AppTypeEnum.simple,
   AppTypeEnum.workflow,
   AppTypeEnum.workflowTool
 ] as const;
 
+const dashboardImportAppTypesByScene: Record<
+  JsonImportModalScene,
+  readonly SupportedImportAppType[]
+> = {
+  agent: [AppTypeEnum.simple, AppTypeEnum.workflow],
+  tool: [AppTypeEnum.workflowTool]
+};
+
 const isSupportedImportAppType = (
   type: unknown
 ): type is (typeof supportedImportAppTypes)[number] =>
   supportedImportAppTypes.includes(type as (typeof supportedImportAppTypes)[number]);
+
+export const isDashboardImportAppTypeAllowed = ({
+  appType,
+  scene
+}: {
+  appType: SupportedImportAppType;
+  scene: JsonImportModalScene;
+}) => dashboardImportAppTypesByScene[scene].includes(appType);
 
 /**
  * 归一化 simple 应用表单配置。
@@ -93,9 +111,11 @@ export const resolveImportAppType = (config: Record<string, unknown>) => {
  */
 export const parseDashboardImportConfig = ({
   config,
+  scene,
   t
 }: {
   config: unknown;
+  scene: JsonImportModalScene;
   t: any;
 }): ParsedImportConfig => {
   if (!config || typeof config !== 'object') {
@@ -106,6 +126,10 @@ export const parseDashboardImportConfig = ({
   const appType = resolveImportAppType(config as Record<string, unknown>);
 
   if (!appType) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  if (!isDashboardImportAppTypeAllowed({ appType, scene })) {
     throw new Error(t('app:type_not_recognized'));
   }
 
@@ -164,7 +188,7 @@ export const parseDashboardImportConfig = ({
  * 只用于工作台新建应用，工作流内部导入时会忽略。
  */
 export const parseWorkflowImportConfig = ({ config, t }: { config: unknown; t: any }) => {
-  const { workflow, appType } = parseDashboardImportConfig({ config, t });
+  const { workflow, appType } = parseDashboardImportConfig({ config, scene: 'agent', t });
 
   if (appType !== AppTypeEnum.workflow) {
     throw new Error(t('app:type_not_recognized'));
