@@ -16,6 +16,7 @@ const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
   return quickAppList && quickAppList.length > 0 ? (
     <Flex
       mb={isMobile ? 0 : '2'}
+      mx={isMobile ? 0 : 2}
       alignItems={isMobile ? 'flex-start' : 'center'}
       gap={isMobile ? '12px' : 2}
       flexWrap={isMobile ? 'nowrap' : 'wrap'}

@@ -18,6 +18,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn, useSize } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
 import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
@@ -77,6 +78,7 @@ const ChatItem = (props: Props) => {
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
+  const { isPc } = useSystem();
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -308,8 +310,8 @@ const ChatItem = (props: Props) => {
               mt={['6px', 2]}
               className="chat-box-card"
               w={'100%'}
-              maxW={['calc(100% - 25px)', '700px']}
-              mx={'auto'}
+              maxW={isPc ? '700px' : 'calc(100% - 25px)'}
+              mx={isPc ? 'auto' : 0}
               textAlign={styleMap.textAlign}
             >
               <HumanChatBubble
@@ -329,8 +331,8 @@ const ChatItem = (props: Props) => {
             mt={['6px', 2]}
             className="chat-box-card"
             w={'100%'}
-            maxW={['calc(100% - 25px)', '700px']}
-            mx={'auto'}
+            maxW={isPc ? '700px' : 'calc(100% - 25px)'}
+            mx={isPc ? 'auto' : 0}
             textAlign={styleMap.textAlign}
           >
             <AIChatBubble

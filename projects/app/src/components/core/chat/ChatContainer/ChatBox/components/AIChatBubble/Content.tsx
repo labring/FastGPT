@@ -73,8 +73,24 @@ const AIChatBubbleContent = ({
     const group = processingGroup;
     processingGroup = [];
 
+    if (group.length === 1) {
+      const { value, index } = group[0];
+      contentBlocks.push(
+        <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
+          {renderValue({
+            value,
+            index,
+            wrapProcessing: false,
+            showAnswer: false,
+            showInteractive: false
+          })}
+        </Box>
+      );
+      return;
+    }
+
     contentBlocks.push(
-      <Box key={`${dataId}-processing-${group[0].index}`} _notFirst={{ mt: 2 }}>
+      <Box key={`${dataId}-processing-${group[0].index}`} _notFirst={{ mt: 4 }}>
         <RenderProcessingCollapse isProcessing={isProcessing}>
           {group.map(({ value, index }) => (
             <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
@@ -112,7 +128,7 @@ const AIChatBubbleContent = ({
     flushProcessingGroup(isChatting && isLastChild && !hasAnswer && !hasInteractive);
 
     contentBlocks.push(
-      <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 2 }}>
+      <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
         {renderValue({ value, index, wrapProcessing: true, showProcessing: false })}
       </Box>
     );

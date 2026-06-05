@@ -167,6 +167,8 @@ const ChatInput = ({
             mx={0}
             px={0}
             border={'none'}
+            borderRadius={0}
+            appearance={'none'}
             _focusVisible={{
               border: 'none'
             }}
@@ -193,8 +195,10 @@ const ChatInput = ({
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
-              color: '#707070',
-              fontSize: 'sm'
+              color: 'myGray.400',
+              fontSize: 'inherit',
+              lineHeight: 'inherit',
+              letterSpacing: 'inherit'
             }}
             value={inputValue}
             onChange={(e) => {
@@ -321,7 +325,7 @@ const ChatInput = ({
                 }}
               >
                 <MyTooltip label={selectFileLabel}>
-                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
+                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'myGray.500'} />
                 </MyTooltip>
                 <File onSelect={(files) => onSelectFile({ files })} />
               </Flex>
@@ -344,7 +348,7 @@ const ChatInput = ({
                 }}
               >
                 <MyTooltip label={t('common:core.chat.Record')}>
-                  <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'#707070'} />
+                  <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'myGray.500'} />
                 </MyTooltip>
               </Flex>
             )}
@@ -417,7 +421,8 @@ const ChatInput = ({
 
   const activeStyles: FlexProps = {
     boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
-    border: '0.5px solid rgba(0, 0, 0, 0.24)'
+    border: '1px solid',
+    borderColor: 'myGray.250'
   };
 
   return (
@@ -466,7 +471,8 @@ const ChatInput = ({
           ? activeStyles
           : {
               _hover: activeStyles,
-              border: '0.5px solid rgba(0, 0, 0, 0.18)',
+              border: '1px solid',
+              borderColor: 'myGray.200',
               boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
             })}
         onClick={() => TextareaDom?.current?.focus()}

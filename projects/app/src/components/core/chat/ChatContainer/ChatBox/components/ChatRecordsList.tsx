@@ -112,14 +112,16 @@ const ChatRecordsList = ({
         continue;
       }
 
-      const mergedValues = [...item.value];
+      const mergedValues: AIChatItemValueItemType[] = [
+        ...(item.value as AIChatItemValueItemType[])
+      ];
       const mergedResponseData = [...(item.responseData || [])];
       let lastSourceIndex = index;
       let cursor = index + 1;
       let answerRecord: ChatSiteItemType | undefined;
 
       while (cursor < records.length && canMergeAiProcessingRecord(records[cursor])) {
-        mergedValues.push(...records[cursor].value);
+        mergedValues.push(...(records[cursor].value as AIChatItemValueItemType[]));
         mergedResponseData.push(...(records[cursor].responseData || []));
         lastSourceIndex = cursor;
         cursor++;
@@ -127,7 +129,7 @@ const ChatRecordsList = ({
 
       if (cursor < records.length && canMergeAiAnswerRecord(records[cursor])) {
         answerRecord = records[cursor];
-        mergedValues.push(...answerRecord.value);
+        mergedValues.push(...(answerRecord.value as AIChatItemValueItemType[]));
         mergedResponseData.push(...(answerRecord.responseData || []));
         lastSourceIndex = cursor;
         index = cursor;
@@ -140,7 +142,7 @@ const ChatRecordsList = ({
           ...(answerRecord || item),
           value: mergedValues,
           responseData: mergedResponseData
-        },
+        } as ChatSiteItemType,
         sourceIndex: startIndex,
         lastSourceIndex
       });

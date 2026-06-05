@@ -1,14 +1,14 @@
 import type { IconButtonProps } from '@chakra-ui/react';
 
 export const chatHeaderIconButtonStyle: Partial<IconButtonProps> = {
-  w: '36px',
-  h: '36px',
-  minW: '36px',
+  w: '32px',
+  h: '32px',
+  minW: '32px',
   p: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: 'myGray.500',
+  color: 'myGray.600',
   bg: 'white',
   border: '1px solid',
   borderColor: 'myGray.250',

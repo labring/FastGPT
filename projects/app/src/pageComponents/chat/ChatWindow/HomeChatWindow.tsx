@@ -428,7 +428,7 @@ const HomeChatWindow = () => {
         ) : (
           <Flex
             h="48px"
-            px={3}
+            px={4}
             bg="white"
             alignItems="center"
             justifyContent="space-between"
@@ -444,7 +444,13 @@ const HomeChatWindow = () => {
               onClick={onOpenSlider}
             />
             <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
-              <Box fontSize="16px" fontWeight={500} className="textEllipsis" maxW="200px">
+              <Box
+                fontSize="16px"
+                fontWeight={500}
+                color="myGray.900"
+                className="textEllipsis"
+                maxW="200px"
+              >
                 {selectedModelData?.name || selectedModel}
               </Box>
               <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" ml={1} />

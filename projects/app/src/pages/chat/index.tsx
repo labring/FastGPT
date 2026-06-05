@@ -98,9 +98,10 @@ const Chat = () => {
 
       {datasetCiteData && (
         <PageContainer
-          flex="1 0 0"
-          w={0}
-          maxW="560px"
+          flex={['1 0 0', '0 0 400px']}
+          w={['0', '400px']}
+          maxW={['100%', '400px']}
+          pr={0}
           insertProps={{
             ...rightWindowStyle,
             borderLeft: '1px solid',

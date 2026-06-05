@@ -170,9 +170,9 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
       {/* header */}
       <Flex
         w="full"
-        px={[4, 6]}
-        pt={[4, '20px']}
-        pb={0}
+        px={isPc ? 6 : 4}
+        pt={isPc ? '20px' : 2}
+        pb={isPc ? 0 : 2}
         gap={4}
         alignItems="center"
         justifyContent="space-between"

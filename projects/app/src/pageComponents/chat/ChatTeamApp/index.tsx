@@ -124,14 +124,19 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
 
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
-          px={[4, 6]}
+          px={isPc ? 6 : 4}
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex pt={paths.length > 0 ? 3 : [4, '20px']} alignItems={'center'} gap={3}>
+          <Flex
+            pt={paths.length > 0 ? 3 : isPc ? '20px' : 2}
+            pb={isPc ? 0 : 2}
+            alignItems={'center'}
+            gap={3}
+          >
             <Tabs
               variant="unstyled"
               w={['100%', 'auto']}

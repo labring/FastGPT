@@ -123,7 +123,8 @@ const ChatSliderList = () => {
             key={item.id}
             alignItems={'center'}
             p="8px"
-            minH={'44px'}
+            h={'40px'}
+            minH={'40px'}
             cursor={'pointer'}
             userSelect={'none'}
             borderRadius={'md'}
