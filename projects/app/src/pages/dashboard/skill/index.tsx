@@ -40,8 +40,16 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
     useSkillSandboxOperationGuard();
 
-  const { skills, isFetchingSkills, loadSkills, searchKey, setSearchKey, parentId, paths } =
-    useContextSelector(SkillListContext, (v) => v);
+  const {
+    skills,
+    isFetchingSkills,
+    loadSkills,
+    searchKey,
+    setSearchKey,
+    parentId,
+    paths,
+    folderDetail
+  } = useContextSelector(SkillListContext, (v) => v);
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {
     onSuccess() {
@@ -59,7 +67,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     });
   };
 
-  const hasCreatePer = !!userInfo?.team.permission.hasSkillCreatePer;
+  const hasCreatePer = folderDetail
+    ? folderDetail.permission.hasWritePer
+    : userInfo?.team.permission.hasSkillCreatePer;
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

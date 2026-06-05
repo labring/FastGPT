@@ -6,8 +6,8 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 async function handler(req: ApiRequestProps, _res: ApiResponseType): Promise<UserType> {
-  const { tmbId, userId, teamId } = await authCert({ req, authToken: true });
-  const user = await getUserDetail({ tmbId });
+  const { tmbId, userId, teamId, isRoot } = await authCert({ req, authToken: true });
+  const user = await getUserDetail({ tmbId, isRoot });
 
   pushTrack.dailyUserActive({
     uid: userId,

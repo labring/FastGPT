@@ -30,8 +30,8 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
-  const InfoMenu = useCallback(
-    ({ children }: { children: React.ReactNode }) => {
+  const renderInfoMenu = useCallback(
+    (children: React.ReactNode) => {
       return (
         <MyPopover
           placement={'bottom-end'}
@@ -41,7 +41,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
           trigger={'hover'}
           Trigger={children}
         >
-          {({ onClose }) => (
+          {() => (
             <Box p={1.5}>
               <MyBox
                 display={'flex'}
@@ -93,8 +93,10 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 cursor={'pointer'}
               >
                 <ExportConfigPopover
+                  appType={appDetail.type}
                   chatConfig={appDetail.chatConfig}
                   appName={appDetail.name}
+                  appIntro={appDetail.intro}
                   getWorkflowData={flowData2StoreData}
                 />
               </MyBox>
@@ -145,9 +147,11 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
     },
     [
       appDetail.chatConfig,
+      appDetail.intro,
       appDetail.name,
       appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
+      appDetail.type,
       feConfigs?.show_team_chat,
       flowData2StoreData,
       onDelApp,
@@ -189,7 +193,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
           </Box>
         </HStack>
 
-        <InfoMenu>
+        {renderInfoMenu(
           <IconButton
             aria-label="Expand"
             icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
@@ -204,18 +208,18 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
               bg: 'myGray.50'
             }}
           />
-        </InfoMenu>
+        )}
 
         {isOpenImport && <ImportSettings onClose={onCloseImport} />}
       </HStack>
     );
   }, [
-    InfoMenu,
     appDetail.avatar,
     appDetail.name,
     isOpenImport,
     isSaved,
     onCloseImport,
+    renderInfoMenu,
     showSaveStatus,
     t
   ]);

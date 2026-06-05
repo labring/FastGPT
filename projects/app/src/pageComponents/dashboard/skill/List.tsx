@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -47,6 +47,7 @@ import type {
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -190,13 +191,14 @@ const List = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { skills, loadSkills, isFetchingSkills, searchKey } = useContextSelector(
+  const { skills, loadSkills, isFetchingSkills, searchKey, folderDetail } = useContextSelector(
     SkillListContext,
     (v) => ({
       skills: v.skills,
       loadSkills: v.loadSkills,
       isFetchingSkills: v.isFetchingSkills,
-      searchKey: v.searchKey
+      searchKey: v.searchKey,
+      folderDetail: v.folderDetail
     })
   );
 
@@ -206,9 +208,9 @@ const List = ({
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
     listKey: `${router.pathname}-${router.query.parentId || ''}-${searchKey}`,
-    reservedSlotCount: onClickCreate && !searchKey ? 1 : 0,
+    reservedSlotCount: 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 12
+    estimatedRowGap: 20
   });
 
   const selectedSkill = useMemo(
@@ -523,28 +525,45 @@ const List = ({
 
   if (skills.length === 0 && isFetchingSkills) return null;
 
-  if (skills.length === 0 && (!onClickCreate || !!searchKey)) {
-    return <EmptyTip text={searchKey ? undefined : t('skill:no_skills')} />;
-  }
-
   return (
     <>
-      <Grid
-        ref={gridRef}
-        py={4}
-        gridTemplateColumns={[
-          '1fr',
-          'repeat(2,1fr)',
-          'repeat(2,1fr)',
-          'repeat(3,1fr)',
-          'repeat(4,1fr)'
-        ]}
-        gridGap={3}
-        alignItems={'stretch'}
-      >
-        {onClickCreate && !searchKey && <ListCreateCard onClick={onClickCreate} />}
-        {renderVirtualGridItems(renderSkillCard)}
-      </Grid>
+      {skills.length === 0 && !folderDetail ? (
+        searchKey ? (
+          <EmptyTip />
+        ) : isPc && onClickCreate ? (
+          <CreateButton onClick={onClickCreate} />
+        ) : (
+          <Grid
+            py={4}
+            gridTemplateColumns={[
+              '1fr',
+              'repeat(2,1fr)',
+              'repeat(2,1fr)',
+              'repeat(3,1fr)',
+              'repeat(4,1fr)'
+            ]}
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+          </Grid>
+        )
+      ) : (
+        <Grid
+          ref={gridRef}
+          py={4}
+          gridTemplateColumns={
+            folderDetail
+              ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+              : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+          }
+          gridGap={5}
+          alignItems={'stretch'}
+        >
+          {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+          {renderVirtualGridItems(renderSkillCard)}
+        </Grid>
+      )}
       <DeleteConfirmModal />
       <ConfirmCopyModal />
       {!!editedSkill && (
@@ -604,6 +623,125 @@ const List = ({
         />
       )}
     </>
+  );
+};
+
+const CreateButton = ({ onClick }: { onClick: () => void }) => {
+  const { t } = useTranslation();
+  const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
+
+  return (
+    <Box
+      position="relative"
+      width="100%"
+      minH={'150px'}
+      overflow="hidden"
+      rounded={'sm'}
+      cursor={'pointer'}
+      onClick={onClick}
+      onMouseEnter={() => setIsHoverCreateButton(true)}
+      onMouseLeave={() => setIsHoverCreateButton(false)}
+      boxShadow={'0 4px 27.1px 0 rgba(199, 212, 233, 0.29)'}
+      userSelect={'none'}
+      mt={4}
+    >
+      <Box
+        as="img"
+        src={getWebReqUrl('/imgs/app/createButton.jpg')}
+        alt="create skill"
+        width="100%"
+        maxW="100%"
+        display="block"
+        transition="transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+        transform={isHoverCreateButton ? 'scale(1.2) translateY(-12px)' : 'scale(1) translateY(0)'}
+      />
+      <VStack
+        position="absolute"
+        top="50%"
+        left="50%"
+        transform="translate(-50%, -50%)"
+        color="#334155"
+        fontSize="32px"
+        fontWeight="medium"
+      >
+        <Flex gap={2.5} alignItems={'center'}>
+          <MyIcon name={'core/skill/default'} w={8} />
+          {t('skill:create_your_first_skill')}
+        </Flex>
+        <Box
+          mt={4}
+          h={14}
+          w={'330px'}
+          display={'flex'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          sx={{
+            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='330' height='56'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%237895FE' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`
+          }}
+        >
+          <MyIcon name={'common/addLight'} w={8} color={'#7895FE'} />
+        </Box>
+      </VStack>
+    </Box>
+  );
+};
+
+const ForbiddenCreateButton = () => {
+  const { t } = useTranslation();
+  return (
+    <MyBox
+      py={4}
+      px={5}
+      cursor={'not-allowed'}
+      border={'base'}
+      bg={'white'}
+      borderRadius={'10px'}
+      position={'relative'}
+      display={'flex'}
+      flexDirection={'column'}
+    >
+      <Box color={'myGray.900'} fontWeight={'medium'}>
+        {t('common:new_create')}
+      </Box>
+      <Box
+        mt={4}
+        mb={2}
+        h={'100%'}
+        w={'100%'}
+        display={'flex'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        position={'relative'}
+        flex={'1 0 56px'}
+      >
+        <Box
+          position={'absolute'}
+          top={'1px'}
+          left={'1px'}
+          right={'1px'}
+          bottom={'1px'}
+          bg={'myGray.50'}
+          borderRadius={'14px'}
+        />
+        <Box
+          w={'100%'}
+          h={'100%'}
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          sx={{
+            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%23D7D7D7' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`,
+            backgroundSize: '100% 100%'
+          }}
+        >
+          <MyIcon name={'common/disable'} w={'26px'} color={'#DFE2EA'} zIndex={1} />
+          <Box color={'myGray.500'} fontSize={'11px'} fontWeight={'medium'} zIndex={1}>
+            {t('app:has_no_create_per')}
+          </Box>
+        </Box>
+      </Box>
+    </MyBox>
   );
 };
 

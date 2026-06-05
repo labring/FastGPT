@@ -1,6 +1,7 @@
 {
   "search_skill": "Search",
   "create_skill": "New Skill",
+  "create_your_first_skill": "Create your first Skill",
   "no_skills": "No skills yet",
   "copy_skill": "Create a copy",
   "related_apps_count": "{{count}} linked apps",
@@ -18,6 +19,7 @@
   "permission_settings": "Permission Settings",
   "export_config": "Export Config",
   "create_folder": "New Folder",
+  "unnamed_skill": "Unnamed",
   "skill_name_placeholder": "Enter skill name",
   "skill_avatar_and_name": "Avatar & Name",
   "skill_intro_label": "App Introduction",

@@ -45,7 +45,11 @@ export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
     source: 'mine',
     type: AgentSkillTypeEnum.folder,
     parentId: parentId ?? null
-  }).then((res) => res.list.map((item) => ({ id: item._id, name: item.name })));
+  }).then((res) =>
+    res.list
+      .filter((item) => item.permission.hasWritePer)
+      .map((item) => ({ id: item._id, name: item.name }))
+  );
 
 /** 获取 Skill 详情 */
 export const getSkillDetail = (data: GetSkillDetailQuery) =>

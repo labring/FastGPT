@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
-import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 
 export enum TabEnum {
   config = 'config',
@@ -180,7 +179,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
           createTime: new Date(res.createTime),
           updateTime: new Date(res.updateTime),
           appCount: res.appCount ?? 0,
-          permission: new SkillPermission({ role: res.permission ?? 0 })
+          permission: res.permission
         };
         return detail;
       });

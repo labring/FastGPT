@@ -239,7 +239,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />
       )}
-      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
+      {isOpenJsonImportModal && (
+        <JsonImportModal scene={'agent'} onClose={onCloseJsonImportModal} />
+      )}
     </Flex>
   );
 };

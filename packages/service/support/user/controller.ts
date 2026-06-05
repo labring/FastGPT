@@ -2,6 +2,7 @@ import { type UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -15,10 +16,12 @@ export async function authUserExist({ userId, username }: { userId?: string; use
 
 export async function getUserDetail({
   tmbId,
-  userId
+  userId,
+  isRoot = false
 }: {
   tmbId?: string;
   userId?: string;
+  isRoot?: boolean;
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
@@ -38,14 +41,20 @@ export async function getUserDetail({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  const permission = isRoot ? new TeamPermission({ isOwner: true }) : tmb.permission;
+  const team = {
+    ...tmb,
+    permission
+  };
+
   return {
     _id: user._id,
     username: user.username,
     avatar: tmb.avatar,
     timezone: user.timezone,
     promotionRate: user.promotionRate,
-    team: tmb,
-    permission: tmb.permission,
+    team,
+    permission,
     contact: user.contact,
     language: user.language,
     tags: user.tags

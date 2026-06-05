@@ -14,9 +14,12 @@ import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type ExportConfigPopoverProps = {
+  appType: AppTypeEnum;
   appName: string;
+  appIntro?: string | null;
   chatConfig?: AppChatConfigType;
   filterSensitiveInfo?: boolean;
   onFilterSensitiveInfoChange?: (value: boolean) => void;
@@ -34,7 +37,9 @@ const ExportConfigPopover = ({
   appForm,
   getWorkflowData,
   chatConfig,
+  appType,
   appName,
+  appIntro,
   filterSensitiveInfo: filterSensitiveInfoProp,
   onFilterSensitiveInfoChange
 }: ExportConfigPopoverProps) => {
@@ -60,21 +65,31 @@ const ExportConfigPopover = ({
       let config = '';
 
       if (appForm) {
+        const appConfig = filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm;
         config = JSON.stringify(
-          filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm,
+          {
+            ...appConfig,
+            type: appType,
+            name: appName,
+            intro: appIntro ?? ''
+          },
           null,
           2
         );
       } else if (getWorkflowData) {
         const workflowData = getWorkflowData();
         if (!workflowData) return;
+        const nodes = filterSensitiveInfo
+          ? filterSensitiveNodesData(workflowData.nodes)
+          : workflowData.nodes;
         config = JSON.stringify(
           {
-            nodes: filterSensitiveInfo
-              ? filterSensitiveNodesData(workflowData.nodes)
-              : workflowData.nodes,
+            nodes,
             edges: workflowData.edges,
-            chatConfig
+            chatConfig,
+            type: appType,
+            name: appName,
+            intro: appIntro ?? ''
           },
           null,
           2
@@ -100,7 +115,17 @@ const ExportConfigPopover = ({
         });
       }
     },
-    [appForm, appName, chatConfig, copyData, getWorkflowData, t, filterSensitiveInfo]
+    [
+      appForm,
+      appIntro,
+      appName,
+      appType,
+      chatConfig,
+      copyData,
+      getWorkflowData,
+      t,
+      filterSensitiveInfo
+    ]
   );
 
   return (
@@ -117,7 +142,7 @@ const ExportConfigPopover = ({
         </MyBox>
       }
     >
-      {({ onClose }) => (
+      {() => (
         <Box p={1} onClick={(e) => e.stopPropagation()}>
           <Flex
             py={'0.38rem'}

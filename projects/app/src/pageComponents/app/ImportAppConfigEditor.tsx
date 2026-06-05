@@ -8,10 +8,20 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: (value: string) => void;
+  onFileChange?: (value: string) => void;
   rows?: number;
+  textareaHeight?: string;
 };
 
-const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
+const ImportAppConfigEditor = ({
+  value,
+  onChange,
+  onBlur,
+  onFileChange,
+  rows = 16,
+  textareaHeight
+}: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
@@ -45,8 +55,10 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
         if (e.target) {
           try {
             const res = JSON.parse(e.target.result as string);
-            onChange(JSON.stringify(res, null, 2));
-          } catch (error) {
+            const jsonStr = JSON.stringify(res, null, 2);
+            onChange(jsonStr);
+            onFileChange?.(jsonStr);
+          } catch {
             toast({
               title: t('app:invalid_json_format'),
               status: 'error'
@@ -56,7 +68,7 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
       };
       reader.readAsText(file);
     },
-    [onChange, t, toast]
+    [onChange, onFileChange, t, toast]
   );
 
   const onSelectFile = useCallback(
@@ -72,7 +84,6 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
       e.preventDefault();
       setIsDragging(false);
       const file = e.dataTransfer.files[0];
-      console.log(file);
       readJSONFile(file);
     },
     [readJSONFile]
@@ -80,20 +91,27 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
 
   return (
     <>
-      <Box w={['100%', '31rem']} h={'full'} display={'flex'} flexDir={'column'}>
+      <Box
+        w={'100%'}
+        maxW={'31rem'}
+        h={textareaHeight ? 'auto' : 'full'}
+        display={'flex'}
+        flexDir={'column'}
+      >
         <Flex justify={'space-between'} align={'center'} pb={3} flexShrink={0}>
           <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
             {t('common:json_config')}
           </Box>
           <Button onClick={onOpen} variant={'whiteBase'} p={0}>
-            <Flex px={'0.88rem'} py={'0.44rem'} color={'myGray.600'} fontSize={'mini'}>
+            <Flex px={'0.88rem'} alignItems={'center'} color={'myGray.600'} fontSize={'mini'}>
               <MyIcon name={'file/uploadFile'} w={'1rem'} mr={'0.38rem'} />
               {t('common:upload_file')}
             </Flex>
           </Button>
         </Flex>
         <Box
-          flex={1}
+          flex={textareaHeight ? 'unset' : 1}
+          h={textareaHeight ?? 'full'}
           position={'relative'}
           onDragEnter={handleDragEnter}
           onDragOver={(e) => e.preventDefault()}
@@ -101,7 +119,7 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
           onDragLeave={handleDragLeave}
         >
           <Textarea
-            bg={'myGray.50'}
+            bg={'white'}
             border={'1px solid'}
             borderRadius={'md'}
             borderColor={'myGray.200'}
@@ -109,6 +127,7 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
             placeholder={t('app:or_drag_JSON')}
             rows={rows}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={(e) => onBlur?.(e.target.value)}
             h={'full'}
             resize={'none'}
             opacity={isDragging ? 0.3 : 1}

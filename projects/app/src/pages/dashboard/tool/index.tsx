@@ -234,7 +234,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />
       )}
-      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
+      {isOpenJsonImportModal && <JsonImportModal scene={'tool'} onClose={onCloseJsonImportModal} />}
     </Flex>
   );
 };
