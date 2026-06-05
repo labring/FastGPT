@@ -22,6 +22,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -80,6 +81,8 @@ export const dispatchTool = async ({
       })
     };
   };
+
+  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
   try {
     if (toolConfig?.systemTool?.toolId) {
@@ -152,6 +155,7 @@ export const dispatchTool = async ({
       const result: any = res.output || {};
 
       if (res.error) {
+        logger.error('Call tool error', { error: res.error });
         return getErrResponse(res.error);
       }
 
@@ -282,6 +286,7 @@ export const dispatchTool = async ({
         msg: getErrText(error)
       });
     }
+    logger.error('Call tool error', { error });
     return getErrResponse(error);
   }
 };

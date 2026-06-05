@@ -23,6 +23,7 @@ import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -53,6 +54,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
+  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
   const {
     uid: uId,
@@ -152,6 +154,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           };
         }
 
+        logger.error('Tool Run Error', { error: res.error });
         throw res.error;
       }
 
@@ -326,6 +329,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         msg: getErrText(error)
       });
     }
+
+    logger.error('Tool Run Error', { error });
 
     return getNodeErrResponse({
       error,
