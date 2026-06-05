@@ -5,7 +5,7 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
-import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
+import { checkWorkflowNodeAndConnection, getNodeAllSource } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -14,7 +14,6 @@ import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
@@ -29,6 +28,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import {
+  checkInputShouldRenderInDebug,
   getDebugInputFormProps,
   getDebugInputFormValue,
   getDebugRuntimeInputs
@@ -50,6 +50,12 @@ export const useDebug = () => {
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const childrenNodeIdListMap = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.childrenNodeIdListMap
+  );
   const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 
@@ -150,11 +156,20 @@ export const useDebug = () => {
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
-    // BUG: 工具调用的情况下，无法填写非必填
+    const referenceSourceNodes = getNodeAllSource({
+      nodeId: runtimeNode.nodeId,
+      systemConfigNode,
+      getNodeById,
+      edges,
+      chatConfig: appDetail.chatConfig,
+      t,
+      childrenNodeIdListMap
+    });
     const renderInputs = runtimeNode.inputs.filter((input) => {
-      if (runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput) return true;
-      if (nodeInputIsReference(input)) return true;
-      if (!input.value) return true;
+      return checkInputShouldRenderInDebug(input, {
+        showAllInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput,
+        referenceSourceNodes
+      });
     });
 
     const variablesForm = useForm<Record<string, any>>({
@@ -245,7 +260,7 @@ export const useDebug = () => {
                 <LabelAndFormRender
                   {...inputProps}
                   key={item.key}
-                  label={item.label}
+                  label={item.debugLabel || item.label}
                   required={item.required}
                   description={t(item.placeholder || item.description)}
                   inputType={nodeInputTypeToInputType(item.renderTypeList)}
@@ -313,7 +328,12 @@ export const useDebug = () => {
     internalVar,
     filteredVar,
     runtimeNodeId,
-    onStartNodeDebug
+    onStartNodeDebug,
+    systemConfigNode,
+    getNodeById,
+    edges,
+    appDetail.chatConfig,
+    childrenNodeIdListMap
   ]);
 
   return {

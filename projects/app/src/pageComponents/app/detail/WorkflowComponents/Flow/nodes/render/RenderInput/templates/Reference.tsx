@@ -2,12 +2,9 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
+import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
-import {
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
@@ -15,10 +12,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import {
-  FlowNodeOutputTypeEnum,
-  isNestedParentNodeType
-} from '@fastgpt/global/core/workflow/node/constant';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import {
   WorkflowBufferDataContext,
@@ -103,20 +97,17 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
-          children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
-            .filter((output) => {
-              if (output.type === FlowNodeOutputTypeEnum.error) {
-                return node.catchError === true;
-              }
-              return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
-            })
-            .map((output) => {
-              return {
-                label: t(output.label as any),
-                value: output.id,
-                valueType: output.valueType
-              };
-            })
+          children: filterSelectableWorkflowNodeOutputs({
+            outputs: node.outputs,
+            valueType,
+            catchError: node.catchError
+          }).map((output) => {
+            return {
+              label: t(output.label as any),
+              value: output.id,
+              valueType: output.valueType
+            };
+          })
         };
       })
       .filter((item) => item.children.length > 0);
