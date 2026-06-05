@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
@@ -153,7 +153,7 @@ export const useDebug = () => {
     // BUG: 工具调用的情况下，无法填写非必填
     const renderInputs = runtimeNode.inputs.filter((input) => {
       if (runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput) return true;
-      if (checkInputIsReference(input)) return true;
+      if (nodeInputIsReference(input)) return true;
       if (!input.value) return true;
     });
 

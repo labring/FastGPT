@@ -60,9 +60,10 @@ export const getHandleId = (
   return `${nodeId}-${type}-${key}`;
 };
 
-export const checkInputIsReference = (input: FlowNodeInputItemType) => {
-  if (input.renderTypeList?.[input?.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference)
+export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
+  if (input.renderTypeList?.[input?.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference) {
     return true;
+  }
 
   return false;
 };
@@ -410,7 +411,9 @@ export const formatEditorVariablePickerIcon = (
 // Check the value is a valid reference value format: [variableId, outputId]
 export const isValidReferenceValueFormat = (
   value: any,
-  nodesMap?: Record<string, Pick<StoreNodeItemType, 'nodeId'>> | Map<string, Pick<StoreNodeItemType, 'nodeId'>>
+  nodesMap?:
+    | Record<string, Pick<StoreNodeItemType, 'nodeId'>>
+    | Map<string, Pick<StoreNodeItemType, 'nodeId'>>
 ): value is ReferenceItemValueType => {
   if (!(Array.isArray(value) && value.length === 2 && typeof value[0] === 'string')) {
     return false;

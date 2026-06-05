@@ -1,5 +1,5 @@
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
@@ -9,7 +9,7 @@ const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
 ]);
 
 export const getDebugInputFormValue = (input: FlowNodeInputItemType) => {
-  if (checkInputIsReference(input)) return undefined;
+  if (nodeInputIsReference(input)) return undefined;
 
   const value = input.value ?? input.defaultValue;
   if (typeof value === 'object' && value !== null) {

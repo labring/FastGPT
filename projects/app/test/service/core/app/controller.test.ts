@@ -73,6 +73,40 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
+  it('保存前兼容已压缩的知识库选择项数组', () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0,
+            value: [
+              {
+                datasetId: 'dataset-1'
+              },
+              {
+                datasetId: 'dataset-2'
+              }
+            ]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    beforeUpdateAppFormat({ nodes });
+
+    expect(nodes[0].inputs[0].value).toEqual([
+      {
+        datasetId: 'dataset-1'
+      },
+      {
+        datasetId: 'dataset-2'
+      }
+    ]);
+  });
+
   it('保存前统一压缩 Agent datasetParams 中的知识库选择项', () => {
     const nodes = [
       {
@@ -134,7 +168,29 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toBe(referenceValue);
   });
 
-  it('保存前移除 Agent Skill 的编辑态删除标记', () => {
+  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0,
+            value: [
+              {
+                name: 'Invalid Dataset'
+              }
+            ]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    expect(() => beforeUpdateAppFormat({ nodes })).toThrow();
+  });
+
+  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -168,14 +224,11 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toEqual([
       {
         skillId: 'skill-1',
-        name: 'Deleted Skill',
-        description: 'Snapshot description',
-        avatar: 'skill-avatar.png'
+        name: 'Deleted Skill'
       },
       {
         skillId: 'skill-2',
-        name: 'Normal Skill',
-        description: ''
+        name: 'Normal Skill'
       }
     ]);
   });
