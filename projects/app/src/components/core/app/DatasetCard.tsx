@@ -9,14 +9,12 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 type DatasetCardProps = {
   dataset: SelectedDatasetType;
   onDelete?: (datasetId: string) => void;
-  showPreview?: boolean;
   flexProps?: FlexProps;
 };
 
 const formCardShadow = '0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)';
 
 const cardProps: FlexProps = {
-  position: 'relative',
   w: '100%',
   minW: 0,
   maxW: '100%',
@@ -33,14 +31,14 @@ const cardProps: FlexProps = {
 const DatasetCard = React.memo(function DatasetCard({
   dataset,
   onDelete,
-  showPreview = true,
   flexProps
 }: DatasetCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const isDeleted = !!dataset.isDeleted;
-  const hasController = showPreview || onDelete;
-  const hasPreviewButton = showPreview && !isDeleted;
+  const hasPreviewButton = !isDeleted;
+  const hasDeleteButton = !!onDelete;
+  const hasController = hasPreviewButton || hasDeleteButton;
 
   return (
     <Flex
@@ -63,10 +61,9 @@ const DatasetCard = React.memo(function DatasetCard({
       <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
       <Box
         ml={2}
-        flex={'1 0 0'}
+        flex={'1 1 auto'}
         w={0}
         minW={0}
-        pr={hasController ? (hasPreviewButton && onDelete ? 14 : 8) : 0}
         className={'textEllipsis'}
         fontSize={'sm'}
         color={isDeleted ? 'red.600' : 'myGray.900'}
@@ -77,17 +74,14 @@ const DatasetCard = React.memo(function DatasetCard({
       {hasController && (
         <Box
           className="dataset-card-controller"
-          position={'absolute'}
-          right={2}
-          top={'50%'}
-          transform={'translateY(-50%)'}
+          ml={2}
+          flexShrink={0}
           display={'flex'}
           alignItems={'center'}
           opacity={[1, 0]}
           pointerEvents={['auto', 'none']}
-          bg={'white'}
         >
-          {showPreview && !isDeleted && (
+          {hasPreviewButton && (
             <MyIconButton
               icon={'common/viewLight'}
               onClick={(e) => {
@@ -101,11 +95,11 @@ const DatasetCard = React.memo(function DatasetCard({
               }}
             />
           )}
-          {onDelete && (
+          {hasDeleteButton && (
             <MyDeleteIconButton
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(dataset.datasetId);
+                onDelete?.(dataset.datasetId);
               }}
             />
           )}

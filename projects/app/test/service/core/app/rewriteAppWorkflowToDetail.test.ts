@@ -197,6 +197,91 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     });
   });
 
+  it('保留 Agent 工具和 Skill 输入的引用模式值，不按选择列表重写', async () => {
+    const toolReferenceValue = ['source-node', 'tools'];
+    const skillReferenceValue = ['source-node', 'skills'];
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      renderTypeList: [FlowNodeInputTypeEnum.selectTool, FlowNodeInputTypeEnum.reference],
+      selectedTypeIndex: 1,
+      value: toolReferenceValue
+    };
+    const skillsInput = {
+      key: NodeInputKeyEnum.skills,
+      renderTypeList: [FlowNodeInputTypeEnum.selectSkill, FlowNodeInputTypeEnum.reference],
+      selectedTypeIndex: 1,
+      value: skillReferenceValue
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput, skillsInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toEqual(toolReferenceValue);
+    expect(skillsInput.value).toEqual(skillReferenceValue);
+    expect(getChildAppPreviewNodeMock).not.toHaveBeenCalled();
+  });
+
+  it('校验嵌套工具权限时透传 root 身份', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    getChildAppPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Personal Tool',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: toolAppId,
+                config: {}
+              }
+            ]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: true
+    });
+
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tmbId: 'tmb-1',
+        appId: toolAppId,
+        isRoot: true
+      })
+    );
+  });
+
   it('保留 Agent 知识库选择输入的引用模式值，不按知识库列表重写', async () => {
     const user = await getUser(`agent-dataset-reference-${getNanoid(6)}`);
     const dataset = await MongoDataset.create({

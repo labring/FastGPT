@@ -56,7 +56,8 @@ export async function rewriteAppWorkflowToDetail({
               authAppByTmbId({
                 tmbId: ownerTmbId,
                 appId: authAppId,
-                per: ReadPermissionVal
+                per: ReadPermissionVal,
+                isRoot
               })
             ]
           : [])
@@ -206,7 +207,7 @@ export async function rewriteAppWorkflowToDetail({
       if (node.flowNodeType === FlowNodeTypeEnum.agent) {
         // Tool load
         const toolInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools);
-        if (toolInput) {
+        if (toolInput && !nodeInputIsReference(toolInput)) {
           const toolsParse = z.array(SkillToolSchema).safeParse(toolInput?.value || []);
           const tools = toolsParse.success ? toolsParse.data : [];
           const nodes = await Promise.all(
@@ -254,7 +255,7 @@ export async function rewriteAppWorkflowToDetail({
 
         // Skill load
         const skillsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.skills);
-        if (skillsInput) {
+        if (skillsInput && !nodeInputIsReference(skillsInput)) {
           const skillParse = z
             .array(SelectedAgentSkillItemTypeSchema)
             .safeParse(skillsInput.value || []);
