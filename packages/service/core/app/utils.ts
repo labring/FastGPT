@@ -1,38 +1,29 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { getChildAppPreviewNode } from './tool/controller';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
+import {
+  SelectedAgentSkillItemTypeSchema,
+  type AppFormEditFormType,
+  type SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import z from 'zod';
 
-export async function listAppDatasetDataByTeamIdAndDatasetIds({
-  teamId,
-  datasetIdList
-}: {
-  teamId?: string;
-  datasetIdList: string[];
-}) {
-  const myDatasets = await MongoDataset.find({
-    _id: { $in: datasetIdList },
-    ...(teamId && { teamId })
-  }).lean();
-
-  return myDatasets.map((item) => ({
-    datasetId: String(item._id),
-    avatar: item.avatar,
-    name: item.name,
-    vectorModel: getEmbeddingModel(item.vectorModel)
-  }));
-}
-
+/**
+ * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
+ */
 export async function rewriteAppWorkflowToDetail({
   nodes,
   teamId,
@@ -46,7 +37,9 @@ export async function rewriteAppWorkflowToDetail({
   ownerTmbId: string;
   lang?: localeType;
 }) {
-  const datasetIdSet = new Set<string>();
+  type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
+    Partial<SelectedDatasetType>;
+  const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
   const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
     const { authAppId } = splitCombineToolId(id);
@@ -63,7 +56,8 @@ export async function rewriteAppWorkflowToDetail({
               authAppByTmbId({
                 tmbId: ownerTmbId,
                 appId: authAppId,
-                per: ReadPermissionVal
+                per: ReadPermissionVal,
+                isRoot
               })
             ]
           : [])
@@ -80,7 +74,6 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
-
   const loadAgentSkill = async (
     selectedSkill: SelectedAgentSkillItemType
   ): Promise<SelectedAgentSkillItemType> => {
@@ -106,8 +99,43 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
+  const formatSelectedDatasetValue = async (
+    value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
+  ): Promise<SelectedDatasetType[] | undefined> => {
+    const loadDatasetInfo = async (
+      snapshot: SelectedDatasetSnapshot
+    ): Promise<SelectedDatasetType> => {
+      const datasetId = String(snapshot.datasetId);
+      const dataset = await MongoDataset.findOne({
+        _id: datasetId,
+        ...(!isRoot && teamId && { teamId })
+      }).lean();
 
-  /* Add node(App Type) versionlabel and latest sign ==== */
+      if (dataset && !dataset.deleteTime) {
+        return {
+          datasetId: String(dataset._id),
+          avatar: dataset.avatar,
+          name: dataset.name,
+          vectorModel: getEmbeddingModel(dataset.vectorModel),
+          isDeleted: false
+        };
+      }
+
+      // 保存前会压缩成 { datasetId }，软删除或物理删除后没有快照时需要补齐合法占位。
+      return {
+        datasetId,
+        avatar: defaultDeletedDatasetAvatar,
+        name: snapshot.name || '',
+        vectorModel: snapshot.vectorModel || getEmbeddingModel(),
+        isDeleted: true
+      };
+    };
+
+    if (!value) return;
+    const datasets = Array.isArray(value) ? value : [value];
+    return Promise.all(datasets.map(loadDatasetInfo));
+  };
+
   await Promise.all(
     nodes.map(async (node) => {
       // Tool node
@@ -153,6 +181,7 @@ export async function rewriteAppWorkflowToDetail({
               return {
                 ...item,
                 value: input?.value,
+                renderTypeList: input?.renderTypeList ?? item.renderTypeList,
                 selectedTypeIndex:
                   selectedTypeIndex >= 0 &&
                   (selectedTypeIndex > 0 || input?.selectedTypeIndex !== undefined)
@@ -176,147 +205,99 @@ export async function rewriteAppWorkflowToDetail({
       }
       // Agent, parse subapp
       if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-        const tools = (node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools)
-          ?.value || []) as SkillToolType[];
-        const nodes = await Promise.all(
-          tools.map(async (tool) => {
-            const result = await loadToolNode({ id: tool.id });
-            if (result.success) {
-              const data = result.data!;
-              // Merge saved config back into inputs
-              const mergedInputs = data.inputs.map((input) => ({
-                ...input,
-                value:
-                  tool.config && tool.config[input.key] !== undefined
-                    ? tool.config[input.key] // Use saved config value
-                    : input.value // Keep default value
-              }));
+        // Tool load
+        const toolInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools);
+        if (toolInput && !nodeInputIsReference(toolInput)) {
+          const toolsParse = z.array(SkillToolSchema).safeParse(toolInput?.value || []);
+          const tools = toolsParse.success ? toolsParse.data : [];
+          const nodes = await Promise.all(
+            tools.map(async (tool) => {
+              const result = await loadToolNode({ id: tool.id });
+              if (result.success) {
+                const data = result.data!;
+                // Merge saved config back into inputs
+                const mergedInputs = data.inputs.map((input) => ({
+                  ...input,
+                  value:
+                    tool.config && tool.config[input.key] !== undefined
+                      ? tool.config[input.key] // Use saved config value
+                      : input.value // Keep default value
+                }));
 
-              return {
-                ...data,
-                inputs: mergedInputs
-              };
-            } else {
-              return {
-                id: tool.id,
-                templateType: 'personalTool' as const,
-                flowNodeType: FlowNodeTypeEnum.tool,
-                name: 'Invalid',
-                avatar: '',
-                intro: '',
-                showStatus: false,
-                weight: 0,
-                isTool: true,
-                version: 'v1',
-                inputs: [],
-                outputs: [],
-                configStatus: 'invalid' as const,
-                pluginData: {
-                  error: result.error
-                }
-              };
+                return {
+                  ...data,
+                  inputs: mergedInputs
+                };
+              } else {
+                return {
+                  id: tool.id,
+                  templateType: 'personalTool' as const,
+                  flowNodeType: FlowNodeTypeEnum.tool,
+                  name: 'Invalid',
+                  avatar: '',
+                  intro: '',
+                  showStatus: false,
+                  weight: 0,
+                  isTool: true,
+                  version: 'v1',
+                  inputs: [],
+                  outputs: [],
+                  configStatus: 'invalid' as const,
+                  pluginData: {
+                    error: result.error
+                  }
+                };
+              }
+            })
+          );
+          toolInput.value = nodes;
+        }
+
+        // Skill load
+        const skillsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.skills);
+        if (skillsInput && !nodeInputIsReference(skillsInput)) {
+          const skillParse = z
+            .array(SelectedAgentSkillItemTypeSchema)
+            .safeParse(skillsInput.value || []);
+          const skills = skillParse.success ? skillParse.data : [];
+          if (skills.length > 0) {
+            skillsInput.value = await Promise.all(skills.map(loadAgentSkill));
+          }
+        }
+      }
+      // Dataset load
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+        node.flowNodeType === FlowNodeTypeEnum.agent
+      ) {
+        await Promise.all(
+          node.inputs.map(async (input) => {
+            if (nodeInputIsReference(input)) return;
+            // Agent
+            if (input.key === NodeInputKeyEnum.datasetSelectList) {
+              const datasets = await formatSelectedDatasetValue(input.value);
+              if (datasets) {
+                input.value = datasets;
+              }
+            }
+            // workflow
+            if (input.key === NodeInputKeyEnum.datasetParams) {
+              const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+              if (datasetParams?.datasets) {
+                const datasets = await formatSelectedDatasetValue(datasetParams.datasets);
+                if (!datasets) return;
+
+                input.value = {
+                  ...datasetParams,
+                  datasets
+                };
+              }
             }
           })
         );
-        node.inputs.forEach((input) => {
-          if (input.key === NodeInputKeyEnum.selectedTools) {
-            input.value = nodes;
-          }
-        });
-
-        const skillsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.skills);
-        const skills = (
-          Array.isArray(skillsInput?.value) ? skillsInput!.value : []
-        ) as SelectedAgentSkillItemType[];
-        if (skillsInput && skills.length > 0) {
-          skillsInput.value = await Promise.all(skills.map(loadAgentSkill));
-        }
       }
     })
   );
-
-  // Get all dataset ids from nodes
-  nodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-
-    const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.datasetSelectList);
-    if (!input) return;
-
-    const rawValue = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-    if (!rawValue) return;
-
-    const datasetIds = Array.isArray(rawValue)
-      ? rawValue.map((v) => v?.datasetId).filter((id) => !!id && typeof id === 'string')
-      : rawValue?.datasetId
-        ? [String(rawValue.datasetId)]
-        : [];
-
-    datasetIds.forEach((id) => datasetIdSet.add(id));
-  });
-
-  if (datasetIdSet.size === 0) return;
-
-  // Load dataset list
-  const datasetList = await listAppDatasetDataByTeamIdAndDatasetIds({
-    teamId: isRoot ? undefined : teamId,
-    datasetIdList: Array.from(datasetIdSet)
-  });
-  const datasetMap = new Map(datasetList.map((ds) => [String(ds.datasetId), ds]));
-
-  // Rewrite dataset ids, add dataset info to nodes
-  if (datasetList.length > 0) {
-    nodes.forEach((node) => {
-      if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-
-      node.inputs.forEach((item) => {
-        if (item.key !== NodeInputKeyEnum.datasetSelectList) return;
-
-        const val = item.value as undefined | { datasetId: string }[] | { datasetId: string };
-
-        if (Array.isArray(val)) {
-          item.value = val
-            .map((v) => {
-              const data = datasetMap.get(String(v.datasetId));
-              if (!data)
-                return {
-                  datasetId: v.datasetId,
-                  avatar: '',
-                  name: 'Dataset not found',
-                  vectorModel: ''
-                };
-              return {
-                datasetId: data.datasetId,
-                avatar: data.avatar,
-                name: data.name,
-                vectorModel: data.vectorModel
-              };
-            })
-            .filter(Boolean);
-        } else if (typeof val === 'object' && val !== null) {
-          const data = datasetMap.get(String(val.datasetId));
-          if (!data) {
-            item.value = [
-              {
-                datasetId: val.datasetId,
-                avatar: '',
-                name: 'Dataset not found',
-                vectorModel: ''
-              }
-            ];
-          } else {
-            item.value = [
-              {
-                datasetId: data.datasetId,
-                avatar: data.avatar,
-                name: data.name,
-                vectorModel: data.vectorModel
-              }
-            ];
-          }
-        }
-      });
-    });
-  }
 
   return nodes;
 }

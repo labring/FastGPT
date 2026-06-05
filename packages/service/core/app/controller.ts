@@ -33,19 +33,57 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/service/resource';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
+import {
+  SelectedAgentSkillItemTypeSchema,
+  type AppFormEditFormType
+} from '@fastgpt/global/core/app/formEdit/type';
+import z from 'zod';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
+/**
+ * 在更新应用前，对工作流节点数据进行格式化和安全处理。
+ * 主要职责：
+ * 1. 知识库：统一数据结构为 { datasetId: string }[]。
+ * 2. Skill: 统一数据结构为 { skillId: string }[]。
+ * 2. 敏感信息（如 Header Secret、密码类型输入、系统工具手动配置的密钥）进行加密存储。
+ */
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
 
+  const StoredSelectedDatasetSchema = z.object({
+    datasetId: z.string()
+  });
+
+  /**
+   * 格式化数据集选择值，保存阶段只保留 datasetId，移除编辑态快照字段。
+   * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
+   * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
+   */
+  const formatDatasetSelectValue = (value: unknown) => {
+    const datasets = z
+      .union([StoredSelectedDatasetSchema, z.array(StoredSelectedDatasetSchema)])
+      .parse(value);
+
+    const datasetList = Array.isArray(datasets) ? datasets : [datasets];
+    return datasetList.map(({ datasetId }) => ({ datasetId }));
+  };
+
   nodes.forEach((node) => {
+    const isDatasetNode =
+      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      node.flowNodeType === FlowNodeTypeEnum.agent;
+
     // Format header secret
     node.inputs.forEach((input) => {
+      if (nodeInputIsReference(input)) return;
+
+      // 敏感信息
       if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
         input.value = storeSecretValue(input.value);
       }
-      if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+      if (input.renderTypeList?.includes(FlowNodeInputTypeEnum.password)) {
         input.value = encryptSecretValue(input.value);
       }
       if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
@@ -59,35 +97,31 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
           }
         });
       }
-    });
 
-    // Format dataset search
-    if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-      node.inputs.forEach((input) => {
+      // 知识库
+      if (isDatasetNode) {
+        // Agent
         if (input.key === NodeInputKeyEnum.datasetSelectList) {
-          const val = input.value as undefined | { datasetId: string }[] | { datasetId: string };
-          if (!val) {
-            input.value = [];
-          } else if (Array.isArray(val)) {
-            // Not rewrite reference value
-            if (val.length === 2 && val.every((item) => typeof item === 'string')) {
-              return;
-            }
-            input.value = val
-              .map((dataset: { datasetId: string }) => ({
-                datasetId: dataset.datasetId
-              }))
-              .filter((item) => !!item.datasetId);
-          } else if (typeof val === 'object' && val !== null) {
-            input.value = [
-              {
-                datasetId: val.datasetId
-              }
-            ];
+          input.value = formatDatasetSelectValue(input.value);
+        }
+        // workflow
+        if (input.key === NodeInputKeyEnum.datasetParams) {
+          const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+          if (datasetParams?.datasets) {
+            input.value = {
+              ...datasetParams,
+              datasets: formatDatasetSelectValue(datasetParams.datasets)
+            };
           }
         }
-      });
-    }
+      }
+
+      // Skills
+      if (input.key === NodeInputKeyEnum.skills) {
+        const skills = z.array(SelectedAgentSkillItemTypeSchema).parse(input.value);
+        input.value = skills.map(({ isDeleted, description, avatar, ...skill }) => skill);
+      }
+    });
   });
 };
 

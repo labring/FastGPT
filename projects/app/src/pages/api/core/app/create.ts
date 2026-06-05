@@ -34,7 +34,10 @@ import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import {
+  beforeUpdateAppFormat,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/app/controller';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
@@ -155,6 +158,10 @@ export const onCreateApp = async ({
       return Promise.reject('agent type can only be created in agent folder');
     }
   }
+
+  beforeUpdateAppFormat({
+    nodes: modules
+  });
 
   const create = async (session: ClientSession) => {
     const resourceRefs = extractAppResourceRefsFromNodes(modules);

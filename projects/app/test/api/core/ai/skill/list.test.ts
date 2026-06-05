@@ -82,9 +82,9 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     ]);
 
-    const createSkillNode = (skillId: string): StoreNodeItemType =>
+    const createSkillNode = (skill: { _id: unknown; name: string }): StoreNodeItemType =>
       ({
-        nodeId: `node-${skillId}`,
+        nodeId: `node-${String(skill._id)}`,
         name: 'Agent',
         flowNodeType: FlowNodeTypeEnum.agent,
         inputs: [
@@ -93,7 +93,12 @@ describe('POST /api/core/ai/skill/list', () => {
             label: 'Skills',
             renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
             valueType: WorkflowIOValueTypeEnum.arrayObject,
-            value: [{ skillId }]
+            value: [
+              {
+                skillId: String(skill._id),
+                name: skill.name
+              }
+            ]
           }
         ],
         outputs: []
@@ -102,7 +107,7 @@ describe('POST /api/core/ai/skill/list', () => {
     const appId = await onCreateApp({
       name: 'Skill Ref App',
       type: AppTypeEnum.chatAgent,
-      modules: [createSkillNode(String(publishedSkill._id))],
+      modules: [createSkillNode(publishedSkill)],
       edges: [],
       chatConfig: {},
       teamId: user.teamId,
@@ -116,7 +121,7 @@ describe('POST /api/core/ai/skill/list', () => {
       auth: user,
       query: { appId },
       body: {
-        nodes: [createSkillNode(String(draftSkill._id))],
+        nodes: [createSkillNode(draftSkill)],
         edges: [],
         chatConfig: {},
         isPublish: false,
@@ -149,7 +154,7 @@ describe('POST /api/core/ai/skill/list', () => {
       auth: user,
       query: { appId },
       body: {
-        nodes: [createSkillNode(String(draftSkill._id))],
+        nodes: [createSkillNode(draftSkill)],
         edges: [],
         chatConfig: {},
         isPublish: true,

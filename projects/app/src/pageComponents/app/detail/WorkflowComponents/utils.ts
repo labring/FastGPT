@@ -10,7 +10,6 @@ import {
   type FlowNodeItemType,
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -21,26 +20,6 @@ export const uiWorkflow2StoreWorkflow = ({
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }) => {
-  const formatInputs = (inputs: StoreNodeItemType['inputs']) =>
-    inputs.map((input) => {
-      if (input.key !== NodeInputKeyEnum.skills || !Array.isArray(input.value)) {
-        return input;
-      }
-
-      // isDeleted 只用于编辑页提示，保存时不能写回应用配置。
-      return {
-        ...input,
-        value: (input.value as SelectedAgentSkillItemType[]).map(
-          ({ skillId, name, description, avatar }) => ({
-            skillId,
-            name,
-            description,
-            ...(avatar === undefined ? {} : { avatar })
-          })
-        )
-      };
-    });
-
   const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({
     nodeId: item.data.nodeId,
     parentNodeId: item.data.parentNodeId,
@@ -52,7 +31,7 @@ export const uiWorkflow2StoreWorkflow = ({
     showStatus: item.data.showStatus,
     position: item.position,
     version: item.data.version,
-    inputs: formatInputs(item.data.inputs),
+    inputs: item.data.inputs,
     outputs: item.data.outputs,
     isFolded: item.data.isFolded,
     pluginId: item.data.pluginId,

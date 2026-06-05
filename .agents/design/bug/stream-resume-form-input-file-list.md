@@ -280,7 +280,7 @@ ChatItem
 
 设计文档：
 
-- `.agent/design/bug/stream-resume-form-input-file-list.md`
+- `.agents/design/bug/stream-resume-form-input-file-list.md`
   - 新增本次问题的设计说明、根因、方案、测试和 TODO。
 
 ### 数据合并与恢复工具

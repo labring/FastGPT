@@ -10,11 +10,9 @@ import {
   Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -32,12 +30,12 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxTipTag from '../../components/SandboxTipTag';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import DatasetCard from '@/components/core/app/DatasetCard';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -69,7 +67,6 @@ const EditForm = ({
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
-  const router = useRouter();
   const { t } = useTranslation();
   const { defaultModels, feConfigs } = useSystemStore();
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -360,63 +357,21 @@ const EditForm = ({
             </Box>
           )}
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
-            {selectDatasets.map((item) => (
-              <Flex
-                key={item.datasetId}
-                overflow={'hidden'}
-                alignItems={'center'}
-                p={2}
-                bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
-                border={'base'}
-                _hover={{
-                  '& .controler': {
-                    display: 'flex'
-                  }
-                }}
-              >
-                <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
-                <Box
-                  ml={2}
-                  flex={'1 0 0'}
-                  w={0}
-                  className={'textEllipsis'}
-                  fontSize={'sm'}
-                  color={'myGray.900'}
-                >
-                  {item.name}
-                </Box>
-
-                {/* Icon */}
-                <Box className="controler" display={['flex', 'none']} alignItems={'center'}>
-                  <MyIconButton
-                    icon={'common/viewLight'}
-                    onClick={() =>
-                      router.push({
-                        pathname: '/dataset/detail',
-                        query: {
-                          datasetId: item.datasetId
-                        }
-                      })
+            {selectDatasets.map((dataset) => (
+              <DatasetCard
+                key={dataset.datasetId}
+                dataset={dataset}
+                onDelete={(datasetId) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    dataset: {
+                      ...state.dataset,
+                      datasets:
+                        state.dataset.datasets?.filter((pre) => pre.datasetId !== datasetId) || []
                     }
-                  />
-                  <MyDeleteIconButton
-                    onClick={() => {
-                      setAppForm((state) => ({
-                        ...state,
-                        dataset: {
-                          ...state.dataset,
-                          datasets:
-                            state.dataset.datasets?.filter(
-                              (pre) => pre.datasetId !== item.datasetId
-                            ) || []
-                        }
-                      }));
-                    }}
-                  />
-                </Box>
-              </Flex>
+                  }));
+                }}
+              />
             ))}
           </Grid>
         </Box>
@@ -543,7 +498,8 @@ const EditForm = ({
             datasetId: item.datasetId,
             name: item.name,
             avatar: item.avatar,
-            vectorModel: item.vectorModel
+            vectorModel: item.vectorModel,
+            isDeleted: item.isDeleted
           }))}
           onClose={onCloseDatasetSelect}
           onChange={(e) => {

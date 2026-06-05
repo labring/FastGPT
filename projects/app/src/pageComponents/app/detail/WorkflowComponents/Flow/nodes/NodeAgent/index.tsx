@@ -46,6 +46,7 @@ import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag'
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import DatasetCard from '@/components/core/app/DatasetCard';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -867,28 +868,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       {t('common:Choose')}
                     </Button>
                     {selectedDatasets.map((dataset) => (
-                      <Flex
-                        key={dataset.datasetId}
-                        alignItems={'center'}
-                        h={10}
-                        boxShadow={'sm'}
-                        bg={'white'}
-                        border={'base'}
-                        px={2}
-                        borderRadius={'md'}
-                      >
-                        <Avatar src={dataset.avatar} w={'18px'} borderRadius={'xs'} />
-                        <Box
-                          ml={1.5}
-                          flex={'1 0 0'}
-                          w={0}
-                          className="textEllipsis"
-                          fontWeight={'bold'}
-                          fontSize={['sm', 'sm']}
-                        >
-                          {dataset.name}
-                        </Box>
-                      </Flex>
+                      <DatasetCard key={dataset.datasetId} dataset={dataset} />
                     ))}
                   </Grid>
                   {isOpenDatasetSelect && (
@@ -897,7 +877,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         datasetId: d.datasetId,
                         name: d.name,
                         avatar: d.avatar,
-                        vectorModel: d.vectorModel
+                        vectorModel: d.vectorModel,
+                        isDeleted: d.isDeleted
                       }))}
                       onChange={(e) => {
                         if (!datasetSelectInput) return;

@@ -9,9 +9,9 @@ import {
   Checkbox,
   VStack,
   HStack,
-  IconButton,
   Spacer,
-  useDisclosure
+  useDisclosure,
+  IconButton
 } from '@chakra-ui/react';
 import { ChevronRightIcon, CloseIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -45,6 +45,12 @@ export const DatasetSelectModal = ({
   // Current selected datasets, initialized with defaultSelectedDatasets
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType[]>(defaultSelectedDatasets);
+  // 已删除知识库只在弹窗确认时被写回移除；关闭弹窗不影响外部配置。
+  const availableSelectedDatasets = useMemo(
+    () => selectedDatasets.filter((dataset) => !dataset.isDeleted),
+    [selectedDatasets]
+  );
+  const hasDeletedSelectedDatasets = availableSelectedDatasets.length !== selectedDatasets.length;
   const { toast } = useToast();
   const { userInfo } = useUserStore();
 
@@ -61,14 +67,14 @@ export const DatasetSelectModal = ({
   } = useDatasetSelect();
 
   // The vector model of the first selected dataset
-  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
+  const activeVectorModel = availableSelectedDatasets[0]?.vectorModel?.model;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
     (datasetId: string) => {
-      return selectedDatasets.some((dataset) => dataset.datasetId === datasetId);
+      return availableSelectedDatasets.some((dataset) => dataset.datasetId === datasetId);
     },
-    [selectedDatasets]
+    [availableSelectedDatasets]
   );
 
   // Check if a dataset is disabled (vector model mismatch)
@@ -98,11 +104,13 @@ export const DatasetSelectModal = ({
       return false;
     }
 
-    const selectedDatasetIds = new Set(selectedDatasets.map((dataset) => dataset.datasetId));
+    const selectedDatasetIds = new Set(
+      availableSelectedDatasets.map((dataset) => dataset.datasetId)
+    );
     return compatibleDatasetsByModel.every((item: DatasetListItemType) =>
       selectedDatasetIds.has(item._id)
     );
-  }, [compatibleDatasetsByModel, selectedDatasets]);
+  }, [availableSelectedDatasets, compatibleDatasetsByModel]);
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
@@ -118,7 +126,8 @@ export const DatasetSelectModal = ({
           datasetId: item._id,
           avatar: item.avatar,
           name: item.name,
-          vectorModel: item.vectorModel
+          vectorModel: item.vectorModel,
+          isDeleted: false
         }
       ]);
     } else {
@@ -343,7 +352,8 @@ export const DatasetSelectModal = ({
                                 datasetId: item._id,
                                 avatar: item.avatar,
                                 name: item.name,
-                                vectorModel: item.vectorModel
+                                vectorModel: item.vectorModel,
+                                isDeleted: false
                               })
                             );
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);
@@ -373,7 +383,7 @@ export const DatasetSelectModal = ({
                     <>
                       {/* Selected count display */}
                       <Box mb={3} px={4} fontSize="sm" color="myGray.600">
-                        {t('app:Selected')}: {selectedDatasets.length} {t('app:dataset')}
+                        {t('app:Selected')}: {availableSelectedDatasets.length} {t('app:dataset')}
                       </Box>
                       {/* Selected dataset list */}
                       <VStack
@@ -385,10 +395,10 @@ export const DatasetSelectModal = ({
                         h={0}
                         minH={0}
                       >
-                        {selectedDatasets.length === 0 && !isFetching && (
+                        {availableSelectedDatasets.length === 0 && !isFetching && (
                           <EmptyTip text={t('app:No_selected_dataset')} />
                         )}
-                        {selectedDatasets.map((item) => (
+                        {availableSelectedDatasets.map((item) => (
                           <Flex
                             key={item.datasetId}
                             px={2}
@@ -441,7 +451,7 @@ export const DatasetSelectModal = ({
               </Button>
             )}
             <Spacer />
-            {isRootEmpty ? (
+            {isRootEmpty && !hasDeletedSelectedDatasets ? (
               <Button
                 px={3.5}
                 maxH={8}
@@ -455,19 +465,21 @@ export const DatasetSelectModal = ({
               </Button>
             ) : (
               <HStack spacing={3} align="center">
-                <Flex
-                  px={3}
-                  py={1.5}
-                  borderRadius={'sm'}
-                  bg={'primary.50'}
-                  alignItems={'center'}
-                  fontSize={'11px'}
-                  color={'primary.600'}
-                  gap={1}
-                >
-                  <MyIcon name={'common/info'} w={3.5} />
-                  {t('app:dataset.Select_dataset_model_tip')}
-                </Flex>
+                {!isRootEmpty && (
+                  <Flex
+                    px={3}
+                    py={1.5}
+                    borderRadius={'sm'}
+                    bg={'primary.50'}
+                    alignItems={'center'}
+                    fontSize={'11px'}
+                    color={'primary.600'}
+                    gap={1}
+                  >
+                    <MyIcon name={'common/info'} w={3.5} />
+                    {t('app:dataset.Select_dataset_model_tip')}
+                  </Flex>
+                )}
                 <Button
                   px={3.5}
                   maxH={8}
@@ -475,7 +487,7 @@ export const DatasetSelectModal = ({
                   onClick={() => {
                     // Close modal and return selected datasets
                     onClose();
-                    onChange(selectedDatasets);
+                    onChange(availableSelectedDatasets);
                   }}
                 >
                   {t('common:Confirm')}

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   getHandleId,
-  checkInputIsReference,
+  nodeInputIsReference,
   getGuideModule,
   splitGuideModule,
   getAppChatConfig,
@@ -65,14 +65,14 @@ describe('getHandleId', () => {
   });
 });
 
-describe('checkInputIsReference', () => {
+describe('nodeInputIsReference', () => {
   it('should return true when renderTypeList first item is reference', () => {
     const input: FlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.reference]
     };
-    expect(checkInputIsReference(input)).toBe(true);
+    expect(nodeInputIsReference(input)).toBe(true);
   });
 
   it('should return true when selectedTypeIndex points to reference', () => {
@@ -82,7 +82,7 @@ describe('checkInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 1
     };
-    expect(checkInputIsReference(input)).toBe(true);
+    expect(nodeInputIsReference(input)).toBe(true);
   });
 
   it('should return false when renderTypeList first item is not reference', () => {
@@ -91,7 +91,7 @@ describe('checkInputIsReference', () => {
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input]
     };
-    expect(checkInputIsReference(input)).toBe(false);
+    expect(nodeInputIsReference(input)).toBe(false);
   });
 
   it('should return false when selectedTypeIndex is 0 and first item is not reference', () => {
@@ -101,7 +101,7 @@ describe('checkInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 0
     };
-    expect(checkInputIsReference(input)).toBe(false);
+    expect(nodeInputIsReference(input)).toBe(false);
   });
 
   it('should return false when renderTypeList is undefined', () => {
@@ -109,7 +109,7 @@ describe('checkInputIsReference', () => {
       key: 'test',
       label: 'Test'
     } as FlowNodeInputItemType;
-    expect(checkInputIsReference(input)).toBe(false);
+    expect(nodeInputIsReference(input)).toBe(false);
   });
 
   it('should use index 0 when selectedTypeIndex is undefined', () => {
@@ -118,7 +118,7 @@ describe('checkInputIsReference', () => {
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
     };
-    expect(checkInputIsReference(input)).toBe(true);
+    expect(nodeInputIsReference(input)).toBe(true);
   });
 });
 
