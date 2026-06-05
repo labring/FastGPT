@@ -148,7 +148,6 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
 
   const mySkills = await MongoAgentSkills.find(findSkillQuery)
     .sort({
-      type: -1, // Folders first
       updateTime: -1
     })
     .lean();
