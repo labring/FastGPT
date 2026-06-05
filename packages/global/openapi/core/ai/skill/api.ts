@@ -13,6 +13,7 @@ import {
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
 import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
+import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -42,7 +43,7 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   type: AgentSkillTypeSchema,
   createTime: z.string(),
   updateTime: z.string(),
-  permission: z.number().optional(),
+  permission: SkillPermissionSchema,
   sourceMember: z
     .object({
       name: z.string(),
@@ -135,7 +136,7 @@ export const GetSkillDetailResponseSchema = z.object({
   currentVersionId: z.string().optional(),
   createTime: z.string(),
   updateTime: z.string(),
-  permission: z.any().optional(),
+  permission: SkillPermissionSchema,
   appCount: z.number().optional()
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;

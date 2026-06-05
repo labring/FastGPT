@@ -54,7 +54,8 @@ async function handler(
 
   const userDetail = await getUserDetail({
     tmbId: user?.lastLoginTmbId,
-    userId: user._id
+    userId: user._id,
+    isRoot: username === 'root'
   });
 
   user.lastLoginTmbId = userDetail.team.tmbId;

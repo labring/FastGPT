@@ -54,6 +54,26 @@ describe('tokenLogin API', () => {
     expect(res.data.team.tmbId).toBe(String(testTmb._id));
   });
 
+  it('should return owner permissions for root session', async () => {
+    const res = await Call(tokenLoginApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: true,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.permission.isOwner).toBe(true);
+    expect(res.data.permission.hasAppCreatePer).toBe(true);
+    expect(res.data.permission.hasSkillCreatePer).toBe(true);
+    expect(res.data.team.permission.isOwner).toBe(true);
+    expect(res.data.team.permission.hasAppCreatePer).toBe(true);
+    expect(res.data.team.permission.hasSkillCreatePer).toBe(true);
+  });
+
   it('should call pushTrack.dailyUserActive', async () => {
     await Call(tokenLoginApi.default, {
       auth: {

@@ -15,8 +15,12 @@ vi.mock('@/pageComponents/app/detail/Edit/SimpleApp/utils', () => ({
   }))
 }));
 
-const { normalizeSimpleImportForm, parseDashboardImportConfig, resolveImportAppType } =
-  await import('@/pageComponents/dashboard/agent/utils/importJson');
+const {
+  normalizeSimpleImportForm,
+  parseDashboardImportConfig,
+  parseWorkflowImportConfig,
+  resolveImportAppType
+} = await import('@/pageComponents/dashboard/agent/utils/appTemplateParse');
 
 const t = (key: string) => key;
 
@@ -220,6 +224,50 @@ describe('parseDashboardImportConfig', () => {
         config: {
           nodes: {}
         },
+        t
+      })
+    ).toThrow('app:type_not_recognized');
+  });
+});
+
+describe('parseWorkflowImportConfig', () => {
+  it('should parse workflow JSON and ignore app meta in workflow detail import', () => {
+    const result = parseWorkflowImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        name: 'Workflow name',
+        intro: 'Workflow intro',
+        nodes: [{ flowNodeType: 'workflowStart' }],
+        edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
+        chatConfig: { welcomeText: 'hello' }
+      },
+      t
+    });
+
+    expect(result).toEqual({
+      nodes: [{ flowNodeType: 'workflowStart' }],
+      edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
+      chatConfig: { welcomeText: 'hello' }
+    });
+  });
+
+  it('should reject non-workflow JSON in workflow detail import', () => {
+    expect(() =>
+      parseWorkflowImportConfig({
+        config: {
+          type: AppTypeEnum.workflowTool,
+          nodes: [{ flowNodeType: 'pluginInput' }],
+          edges: []
+        },
+        t
+      })
+    ).toThrow('app:type_not_recognized');
+
+    expect(() =>
+      parseWorkflowImportConfig({
+        config: createSimpleConfig({
+          type: AppTypeEnum.simple
+        }),
         t
       })
     ).toThrow('app:type_not_recognized');

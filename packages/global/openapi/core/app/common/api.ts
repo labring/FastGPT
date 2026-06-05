@@ -35,6 +35,24 @@ const emptyObjectToUndefined = (value: unknown) => {
   return value;
 };
 
+const appTypeValues = new Set(Object.values(AppTypeEnum));
+
+const preprocessListAppType = (value: unknown) => {
+  const isAppType = (item: unknown): item is AppTypeEnum =>
+    typeof item === 'string' && appTypeValues.has(item as AppTypeEnum);
+
+  if (value === '') {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const validTypes = value.filter(isAppType);
+    return validTypes.length > 0 ? validTypes : undefined;
+  }
+
+  return isAppType(value) ? value : undefined;
+};
+
 export const OpenAPIAppScheduledTriggerConfigSchema = z
   .preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
   .meta({
@@ -131,7 +149,7 @@ export const ListAppBodySchema = z
     }),
     type: z
       .preprocess(
-        (value) => (value === '' ? undefined : value),
+        preprocessListAppType,
         z.union([z.enum(AppTypeEnum), z.array(z.enum(AppTypeEnum))]).optional()
       )
       .optional()

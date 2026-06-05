@@ -26,7 +26,7 @@ import {
   type JsonImportModalScene,
   parseDashboardImportConfig,
   resolveImportAppType
-} from '@/pageComponents/dashboard/agent/utils/importJson';
+} from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 
 type FormType = {
   avatar: string;

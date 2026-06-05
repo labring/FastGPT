@@ -9,6 +9,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
+import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -51,11 +52,10 @@ const ImportSettings = ({ onClose }: Props) => {
               return onClose();
             }
             try {
-              const workflowConfig = JSON.parse(value) as Parameters<typeof initData>[0] & {
-                type?: unknown;
-                name?: unknown;
-                intro?: unknown;
-              };
+              const workflowConfig = parseWorkflowImportConfig({
+                config: JSON.parse(value),
+                t
+              });
               await removeUnauthModels({ modules: workflowConfig.nodes, allowedModels: myModels });
               await initData(workflowConfig);
               toast({

@@ -206,7 +206,7 @@ const List = ({
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
     listKey: `${router.pathname}-${router.query.parentId || ''}-${searchKey}`,
-    reservedSlotCount: onClickCreate && !searchKey ? 1 : 0,
+    reservedSlotCount: 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 12
   });
@@ -523,8 +523,8 @@ const List = ({
 
   if (skills.length === 0 && isFetchingSkills) return null;
 
-  if (skills.length === 0 && (!onClickCreate || !!searchKey)) {
-    return <EmptyTip text={searchKey ? undefined : t('skill:no_skills')} />;
+  if (skills.length === 0 && !!searchKey) {
+    return <EmptyTip />;
   }
 
   return (
@@ -542,7 +542,7 @@ const List = ({
         gridGap={3}
         alignItems={'stretch'}
       >
-        {onClickCreate && !searchKey && <ListCreateCard onClick={onClickCreate} />}
+        {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
         {renderVirtualGridItems(renderSkillCard)}
       </Grid>
       <DeleteConfirmModal />
@@ -604,6 +604,61 @@ const List = ({
         />
       )}
     </>
+  );
+};
+
+const ForbiddenCreateButton = () => {
+  const { t } = useTranslation();
+  return (
+    <MyBox
+      py={4}
+      px={5}
+      cursor={'not-allowed'}
+      border={'base'}
+      bg={'white'}
+      borderRadius={'10px'}
+      position={'relative'}
+      display={'flex'}
+      flexDirection={'column'}
+    >
+      <Box color={'myGray.900'} fontWeight={'medium'}>
+        {t('common:new_create')}
+      </Box>
+      <Box
+        mt={4}
+        mb={2}
+        h={'100%'}
+        w={'100%'}
+        display={'flex'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        position={'relative'}
+        flex={'1 0 56px'}
+      >
+        <Box
+          position={'absolute'}
+          top={'1px'}
+          left={'1px'}
+          right={'1px'}
+          bottom={'1px'}
+          bg={'myGray.50'}
+          borderRadius={'14px'}
+        />
+        <Box
+          w={'100%'}
+          h={'100%'}
+          display={'flex'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          sx={{
+            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%23DFE2EA' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`,
+            backgroundSize: '100% 100%'
+          }}
+        >
+          <MyIcon name={'common/addLight'} w={8} color={'myGray.400'} zIndex={1} />
+        </Box>
+      </Box>
+    </MyBox>
   );
 };
 

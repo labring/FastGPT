@@ -11,7 +11,7 @@ export type JsonImportModalScene = 'agent' | 'tool';
 
 type ImportWorkflowConfig = {
   nodes: StoreNodeItemType[];
-  edges?: StoreEdgeItemType[];
+  edges: StoreEdgeItemType[];
   chatConfig?: AppChatConfigType;
 };
 
@@ -155,4 +155,20 @@ export const parseDashboardImportConfig = ({
     },
     appType
   };
+};
+
+/**
+ * 解析工作流详情内的 JSON 导入配置。
+ *
+ * 该入口只允许导入 workflow 配置。导出的 `name`、`intro` 等应用元信息
+ * 只用于工作台新建应用，工作流内部导入时会忽略。
+ */
+export const parseWorkflowImportConfig = ({ config, t }: { config: unknown; t: any }) => {
+  const { workflow, appType } = parseDashboardImportConfig({ config, t });
+
+  if (appType !== AppTypeEnum.workflow) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  return workflow;
 };
