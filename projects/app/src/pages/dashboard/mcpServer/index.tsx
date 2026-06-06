@@ -74,7 +74,7 @@ const McpServer = () => {
             flexDirection={'column'}
           >
             {isPc ? (
-              <Flex alignItems={'center'} justifyContent={'space-between'} h={'64px'}>
+              <Flex alignItems={'center'} justifyContent={'space-between'} h={'76px'}>
                 <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
                   {t('dashboard_mcp:mcp_server')}
                 </Box>
