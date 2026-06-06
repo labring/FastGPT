@@ -16,24 +16,24 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 export async function getToolPreviewNode({
   pluginId,
   versionId,
-  keepLatest,
+  getLatestVersion,
   lang = 'en',
   source: toolSource = 'system'
 }: {
   pluginId: string;
   versionId?: string;
-  keepLatest?: boolean;
+  getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
 }): Promise<FlowNodeTemplateType> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
-    version: versionId,
+    version: versionId || undefined,
     lang,
     source: toolSource
   });
-  const shouldKeepLatest = keepLatest ?? !versionId;
+  const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
 
   const inputs = [
     ...(toolDetail.secrets?.length
@@ -68,8 +68,8 @@ export async function getToolPreviewNode({
     isTool: true,
     catchError: false,
 
-    version: shouldKeepLatest ? '' : toolDetail.version,
-    versionLabel: shouldKeepLatest ? undefined : (toolDetail.versionLabel ?? toolDetail.version),
+    version: shouldReturnVersion ? toolDetail.version : '',
+    versionLabel: shouldReturnVersion ? (toolDetail.versionLabel ?? toolDetail.version) : undefined,
     isLatestVersion: toolDetail.isLatestVersion,
     showSourceHandle: true,
     showTargetHandle: true,

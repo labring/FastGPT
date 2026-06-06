@@ -98,21 +98,34 @@ export type GetToolPathResponseType = z.infer<typeof GetToolPathResponseSchema>;
  * Tags: ['系统工具', 'HTTP 工具管理', 'MCP 工具管理', '团队插件管理', 'Read']
  * ============================================================================ */
 
-export const GetPreviewNodeQuerySchema = z.object({
+const GetPreviewNodeBaseQuerySchema = z.object({
   appId: z.string().meta({
     example: 'systemTool-weather',
     description:
       '工具 ID，支持系统工具 systemTool/commercial、我的工具 personal/mcp/http 组合 ID 及工具集子工具 ID'
-  }),
-  version: z.string().optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '工具版本 ID。为空时由 keepLatest 决定版本语义；新建系统工具节点默认锁定当前最新版'
-  }),
-  keepLatest: BoolSchema.optional().meta({
-    example: false,
-    description: '是否保持最新版。true 表示节点不保存具体版本，false 表示锁定返回的版本'
   })
 });
+
+export const GetPreviewNodeQuerySchema = z.union([
+  GetPreviewNodeBaseQuerySchema.extend({
+    versionId: z.string().meta({
+      example: '68ad85a7463006c963799a05',
+      description:
+        '工具版本 ID，与 getLatestVersion 必须二选一。传空字符串时返回最新版节点数据，但响应中的 version 为空'
+    }),
+    getLatestVersion: z.undefined().optional()
+  }),
+  GetPreviewNodeBaseQuerySchema.extend({
+    versionId: z.undefined().optional(),
+    getLatestVersion: BoolSchema.refine((value) => value === true, {
+      message: 'getLatestVersion must be true when provided'
+    }).meta({
+      example: true,
+      description:
+        '是否获取最新版本 ID，与 versionId 必须二选一。只能传 true，表示返回最新版节点数据并带上具体 version'
+    })
+  })
+]);
 
 export type GetPreviewNodeQuery = z.infer<typeof GetPreviewNodeQuerySchema>;
 

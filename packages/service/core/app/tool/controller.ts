@@ -84,20 +84,26 @@ type AppToolType = WorkflowTemplateType & {
 export async function getChildAppPreviewNode({
   appId,
   versionId,
-  keepLatest = false,
+  getLatestVersion,
   lang = 'en',
   source: toolSource = 'system'
 }: {
   appId: string;
   versionId?: string;
-  keepLatest?: boolean;
+  getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source, pluginId } = splitCombineToolId(appId);
 
   if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
-    return getToolPreviewNode({ pluginId: appId, versionId, keepLatest, lang, source: toolSource });
+    return getToolPreviewNode({
+      pluginId: appId,
+      versionId,
+      getLatestVersion,
+      lang,
+      source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : toolSource
+    });
   }
 
   // 存在 app 里面的插件的情况
@@ -108,7 +114,11 @@ export async function getChildAppPreviewNode({
       if (!item) return Promise.reject(PluginErrEnum.unExist);
       if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: pluginId, versionId, app: item });
+      const version = await getAppVersionById({
+        appId: pluginId,
+        versionId: versionId || undefined,
+        app: item
+      });
 
       const isLatest =
         version.versionId && Types.ObjectId.isValid(version.versionId)
@@ -130,6 +140,8 @@ export async function getChildAppPreviewNode({
         };
       }
 
+      const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
+
       return {
         id: String(item._id),
         teamId: String(item.teamId),
@@ -144,8 +156,8 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
-        version: versionId ? version?.versionId : '',
-        versionLabel: version?.versionName,
+        version: shouldReturnVersion ? (version.versionId ?? '') : '',
+        versionLabel: shouldReturnVersion ? version.versionName : undefined,
         isLatestVersion: isLatest,
 
         originCost: 0,
@@ -161,7 +173,11 @@ export async function getChildAppPreviewNode({
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const version = await getAppVersionById({
+        appId: parentId,
+        versionId: versionId || undefined,
+        app: item
+      });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
@@ -203,7 +219,11 @@ export async function getChildAppPreviewNode({
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const version = await getAppVersionById({
+        appId: parentId,
+        versionId: versionId || undefined,
+        app: item
+      });
       const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {

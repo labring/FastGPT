@@ -431,7 +431,7 @@ export const loadGeneratedTools = async ({
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getToolPreviewNode({ appId: toolId });
+        const tool = await getToolPreviewNode({ appId: toolId, versionId: '' });
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,

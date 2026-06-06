@@ -20,7 +20,7 @@ async function handler(
   req: ApiRequestProps<Record<string, never>, GetPreviewNodeQuery>
 ): Promise<FlowNodeTemplateType> {
   const {
-    query: { appId, version, keepLatest }
+    query: { appId, versionId, getLatestVersion }
   } = parseApiInput({
     req,
     querySchema: GetPreviewNodeQuerySchema
@@ -34,8 +34,8 @@ async function handler(
   return GetPreviewNodeResponseSchema.parse(
     await getChildAppPreviewNode({
       appId,
-      versionId: version,
-      keepLatest,
+      versionId,
+      getLatestVersion,
       lang: getLocale(req)
     })
   );

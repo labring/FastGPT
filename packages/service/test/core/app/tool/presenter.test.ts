@@ -122,7 +122,7 @@ describe('getToolPreviewNode', () => {
     expect(result.versionLabel).toBeUndefined();
   });
 
-  it('locks latest version when requested explicitly', async () => {
+  it('returns latest version id when requested explicitly', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
       version: '1.0.0',
@@ -145,7 +145,7 @@ describe('getToolPreviewNode', () => {
 
     const result = await getToolPreviewNode({
       pluginId: 'systemTool-weather',
-      keepLatest: false,
+      getLatestVersion: true,
       lang: 'en'
     });
 
@@ -153,7 +153,7 @@ describe('getToolPreviewNode', () => {
     expect(result.versionLabel).toBe('1.0.0');
   });
 
-  it('keeps latest version when requested explicitly', async () => {
+  it('uses latest data but returns empty version when versionId is an empty string', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
       version: '1.0.0',
@@ -176,10 +176,16 @@ describe('getToolPreviewNode', () => {
 
     const result = await getToolPreviewNode({
       pluginId: 'systemTool-weather',
-      keepLatest: true,
+      versionId: '',
       lang: 'en'
     });
 
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'system'
+    });
     expect(result.version).toBe('');
     expect(result.versionLabel).toBeUndefined();
   });

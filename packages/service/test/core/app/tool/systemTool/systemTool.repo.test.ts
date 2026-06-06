@@ -3,6 +3,7 @@ import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
+  listPluginVersions: vi.fn(),
   getTool: vi.fn(),
   findSystemTools: vi.fn(),
   findSystemTool: vi.fn(),
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
     listTools: mocks.listTools,
+    listPluginVersions: mocks.listPluginVersions,
     getTool: mocks.getTool
   }
 }));
@@ -165,7 +167,11 @@ describe('SystemToolRepo.getSystemToolList', () => {
     mocks.listTools.mockResolvedValue([
       createPluginTool({ pluginId: 'no-secret', name: 'No secret' }),
       createPluginTool({ pluginId: 'need-secret', name: 'Need secret', hasSecret: true }),
-      createPluginTool({ pluginId: 'configured-secret', name: 'Configured secret', hasSecret: true })
+      createPluginTool({
+        pluginId: 'configured-secret',
+        name: 'Configured secret',
+        hasSecret: true
+      })
     ]);
     mocks.findSystemTools.mockResolvedValue([
       createToolConfig({ pluginId: 'no-secret', pluginOrder: 1, tags: [] }),
@@ -266,5 +272,20 @@ describe('SystemToolRepo.getVersions', () => {
         versionDescription: 'Workflow v1'
       }
     ]);
+  });
+
+  it('lists commercial plugin versions from commercial source', async () => {
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.listPluginVersions.mockResolvedValue([{ version: '2.0.0' }, { version: '1.0.0' }]);
+
+    const versions = await SystemToolRepo.getInstance().getVersions({
+      pluginId: 'commercial-search'
+    });
+
+    expect(mocks.listPluginVersions).toHaveBeenCalledWith({
+      pluginId: 'search',
+      source: 'commercial'
+    });
+    expect(versions).toEqual([{ version: '2.0.0' }, { version: '1.0.0' }]);
   });
 });

@@ -330,7 +330,6 @@ const SystemToolConfigModal = ({
     () =>
       toolVersions.map((item) => ({
         label: item.versionDescription || item.version,
-        description: item.versionDescription ? item.version : undefined,
         value: item.version
       })),
     [toolVersions]

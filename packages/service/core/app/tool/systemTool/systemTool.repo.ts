@@ -338,15 +338,11 @@ export class SystemToolRepo {
       }));
     }
 
-    if (pluginSource === AppToolSourceEnum.commercial) {
-      return Promise.reject('Plugin is not associated with a app');
-    }
-
     const parentToolId = rawPluginId.split('/')[0];
 
     const versions = await pluginClient.listPluginVersions({
       pluginId: parentToolId,
-      source
+      source: pluginSource === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : source
     });
 
     return versions.map((item) => ({

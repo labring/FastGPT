@@ -23,6 +23,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
 import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -56,6 +57,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -221,15 +223,22 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
-    // 1. MCP tool and HTTP tool set do not have version
+    const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
+    // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
+    if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
+
+    // 2. MCP/HTTP tool sets do not have version
     if (
       isAppNode &&
-      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
+      (node.toolConfig?.mcpToolSet ||
+        node.toolConfig?.mcpTool ||
+        node?.toolConfig?.httpToolSet ||
+        node?.toolConfig?.httpTool)
     )
       return false;
-    // 2. Team app/System commercial plugin
+    // 3. Team app/System commercial plugin
     if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
-    // 3. System tool
+    // 4. System tool
     if (isAppNode && node?.toolConfig?.systemTool) return true;
 
     return false;
@@ -577,12 +586,13 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { t } = useTranslation();
 
   const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
-  const {
-    openConfirm: openKeepLatestConfirm,
-    ConfirmModal: KeepLatestConfirmModal
-  } = useConfirm({
+  const { openConfirm: openKeepLatestConfirm, ConfirmModal: KeepLatestConfirmModal } = useConfirm({
     content: t('app:keep_the_latest_confirm_tip')
   });
+  const toolSource = useMemo(
+    () => (node.pluginId ? splitCombineToolId(node.pluginId).source : undefined),
+    [node.pluginId]
+  );
 
   const {
     runAsync: loadVersions,
@@ -592,15 +602,35 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     async () => {
       if (!node.pluginId) return [];
 
-      const { source } = splitCombineToolId(node.pluginId);
+      const { authAppId } = splitCombineToolId(node.pluginId);
+      if (toolSource === AppToolSourceEnum.mcp || toolSource === AppToolSourceEnum.http) return [];
+
+      if (toolSource === AppToolSourceEnum.personal) {
+        if (!authAppId) return [];
+
+        const { list = [] } = await getAppVersionList({
+          appId: authAppId,
+          isPublish: true,
+          offset: 0,
+          pageSize: 100
+        });
+
+        return list.map<SystemToolVersionType>((item) => ({
+          version: item._id,
+          versionDescription: item.versionName
+        }));
+      }
 
       return getTeamToolVersions({
         toolId: node.pluginId,
-        source: source === AppToolSourceEnum.systemTool ? 'system' : 'team'
+        source:
+          toolSource === AppToolSourceEnum.systemTool || toolSource === AppToolSourceEnum.commercial
+            ? 'system'
+            : 'team'
       });
     },
     {
-      refreshDeps: [node.pluginId]
+      refreshDeps: [node.pluginId, toolSource]
     }
   );
 
@@ -611,8 +641,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (node.pluginId) {
         const template = await getToolPreviewNode({
           appId: node.pluginId,
-          version: versionId || undefined,
-          keepLatest: !versionId
+          versionId
         });
 
         if (!!template) {
@@ -656,7 +685,6 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       },
       ...versionList.map((item) => ({
         label: item.versionDescription || item.version,
-        description: item.versionDescription ? item.version : undefined,
         value: item.version
       }))
     ],
