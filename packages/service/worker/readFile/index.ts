@@ -11,7 +11,8 @@ import { readCsvRawText } from './extension/csv';
 type IncomingMessage = {
   id: string;
 } & Omit<ReadRawTextProps<any>, 'buffer'> & {
-    sharedBuffer: SharedArrayBuffer;
+    buffer?: ArrayBuffer;
+    sharedBuffer?: SharedArrayBuffer;
     bufferSize: number;
   };
 
@@ -40,12 +41,16 @@ const read = async (params: ReadRawTextByBuffer) => {
 };
 
 parentPort?.on('message', async (props: IncomingMessage) => {
-  const { id, sharedBuffer, bufferSize, extension, encoding } = props;
+  const { id, buffer: transferredBuffer, sharedBuffer, bufferSize, extension, encoding } = props;
 
   try {
-    // 使用 SharedArrayBuffer，零拷贝共享内存
-    const sharedArray = new Uint8Array(sharedBuffer);
-    const buffer = Buffer.from(sharedArray.buffer, 0, bufferSize);
+    const rawBuffer = transferredBuffer ?? sharedBuffer;
+    if (!rawBuffer) {
+      throw new Error('Read file worker missing buffer');
+    }
+
+    // 优先使用 transfer 进来的 ArrayBuffer；兼容旧的 SharedArrayBuffer 零拷贝路径。
+    const buffer = Buffer.from(rawBuffer, 0, bufferSize);
 
     const data = await read({ extension, encoding, buffer });
 

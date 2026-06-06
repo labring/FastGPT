@@ -101,6 +101,11 @@ describe('readRawTextByLocalFile', () => {
     });
 
     expect(result.rawText).toBe('Hello World');
+    expect(mockReadRawContentFromBuffer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
   });
 
   it('should extract extension from file path', async () => {
@@ -135,6 +140,11 @@ describe('readFileContentByBuffer', () => {
     });
 
     expect(result.rawText).toBe('Hello from buffer');
+    expect(mockReadRawContentFromBuffer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
   });
 
   it('should use system parse for non-pdf files', async () => {

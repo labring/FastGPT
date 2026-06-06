@@ -1,12 +1,77 @@
 import { build, BuildOptions, context } from 'esbuild';
 import fs from 'fs';
+import { createRequire } from 'module';
 import path from 'path';
 
 // 项目路径
 const ROOT_DIR = path.resolve(__dirname, '../../..');
 const WORKER_SOURCE_DIR = path.join(ROOT_DIR, 'packages/service/worker');
 const WORKER_OUTPUT_DIR = path.join(__dirname, '../worker');
+const WORKER_RUNTIME_NODE_MODULES_DIR = path.join(WORKER_OUTPUT_DIR, 'node_modules');
 const OTEL_SDK_DIR = path.join(ROOT_DIR, 'sdk/otel/src');
+const require = createRequire(import.meta.url);
+
+const workerRuntimePackages = ['@llamaindex/liteparse'];
+const liteParsePlatformPackages = [
+  '@llamaindex/liteparse-darwin-x64',
+  '@llamaindex/liteparse-darwin-arm64',
+  '@llamaindex/liteparse-linux-x64-gnu',
+  '@llamaindex/liteparse-linux-x64-musl',
+  '@llamaindex/liteparse-linux-arm64-gnu',
+  '@llamaindex/liteparse-linux-arm64-musl',
+  '@llamaindex/liteparse-win32-x64-msvc',
+  '@llamaindex/liteparse-win32-arm64-msvc'
+];
+
+const resolvePackageDir = (packageName: string, resolvePaths: string[]) => {
+  try {
+    return path.dirname(require.resolve(`${packageName}/package.json`, { paths: resolvePaths }));
+  } catch {
+    return;
+  }
+};
+
+const copyPackage = (packageName: string, sourceDir: string) => {
+  const destination = path.join(WORKER_RUNTIME_NODE_MODULES_DIR, ...packageName.split('/'));
+
+  fs.rmSync(destination, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.cpSync(sourceDir, destination, {
+    recursive: true,
+    dereference: true
+  });
+
+  console.log(`📦 ${packageName} 运行时依赖已复制 → ${path.relative(process.cwd(), destination)}`);
+};
+
+/**
+ * 复制 worker external 依赖到 worker 目录下。
+ *
+ * 这些依赖不适合直接打进 esbuild bundle：LiteParse 包含 N-API .node 文件和 PDFium
+ * 动态库，必须以真实文件形式存在。Docker runner 已经复制整个 worker 目录，因此把
+ * runtime node_modules 放在 worker 旁边即可让 Node worker 线程就近解析。
+ */
+const copyWorkerRuntimePackages = () => {
+  fs.rmSync(WORKER_RUNTIME_NODE_MODULES_DIR, { recursive: true, force: true });
+
+  for (const packageName of workerRuntimePackages) {
+    const sourceDir = resolvePackageDir(packageName, [__dirname, ROOT_DIR]);
+    if (!sourceDir) {
+      throw new Error(`Worker runtime dependency "${packageName}" is not installed.`);
+    }
+
+    copyPackage(packageName, sourceDir);
+
+    if (packageName === '@llamaindex/liteparse') {
+      for (const platformPackage of liteParsePlatformPackages) {
+        const platformSourceDir = resolvePackageDir(platformPackage, [sourceDir, __dirname, ROOT_DIR]);
+        if (!platformSourceDir) continue;
+
+        copyPackage(platformPackage, platformSourceDir);
+      }
+    }
+  }
+};
 
 /**
  * Worker 预编译脚本
@@ -54,6 +119,7 @@ async function buildWorkers(watch: boolean = false) {
       '@fastgpt-sdk/otel/metrics': path.join(OTEL_SDK_DIR, 'metrics-entry.ts'),
       '@fastgpt-sdk/otel/tracing': path.join(OTEL_SDK_DIR, 'tracing-entry.ts')
     },
+    external: ['@llamaindex/liteparse', '@llamaindex/liteparse-*'],
     // 移除调试代码
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   };
@@ -86,6 +152,8 @@ async function buildWorkers(watch: boolean = false) {
 
     // 过滤掉失败的 context
     const validContexts = contexts.filter((ctx) => ctx !== null);
+
+    copyWorkerRuntimePackages();
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`✅ ${validContexts.length}/${workers.length} 个 Worker 正在监听中`);
@@ -137,6 +205,7 @@ async function buildWorkers(watch: boolean = false) {
       // 非监听模式下,如果有失败的编译,退出并返回错误码
       process.exit(1);
     }
+    copyWorkerRuntimePackages();
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 }

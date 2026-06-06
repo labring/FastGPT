@@ -24,7 +24,8 @@ export const text2Chunks = (props: SplitProps) => {
 type ReadFileWorkerProps = {
   extension: string;
   encoding: string;
-  sharedBuffer: SharedArrayBuffer;
+  buffer?: ArrayBuffer;
+  sharedBuffer?: SharedArrayBuffer;
   bufferSize: number;
 };
 
@@ -44,8 +45,28 @@ export const readRawContentFromBuffer = (props: {
   buffer: Buffer;
 }) => {
   const bufferSize = props.buffer.length;
+  const sourceArrayBuffer = props.buffer.buffer;
+  const canTransferBuffer =
+    props.buffer.byteOffset === 0 &&
+    props.buffer.byteLength === sourceArrayBuffer.byteLength &&
+    sourceArrayBuffer instanceof ArrayBuffer;
 
-  // 使用 SharedArrayBuffer，避免数据复制
+  if (canTransferBuffer) {
+    /**
+     * 大文件解析时优先 transfer 独占 ArrayBuffer，避免再复制一份 SharedArrayBuffer。
+     * readFile worker 会消费输入 buffer，调用方不应在提交解析后继续复用该 buffer。
+     */
+    return getReadFileWorker().run(
+      {
+        extension: props.extension,
+        encoding: props.encoding,
+        buffer: sourceArrayBuffer,
+        bufferSize
+      },
+      [sourceArrayBuffer]
+    );
+  }
+
   const sharedBuffer = new SharedArrayBuffer(bufferSize);
   const sharedArray = new Uint8Array(sharedBuffer);
   sharedArray.set(props.buffer);

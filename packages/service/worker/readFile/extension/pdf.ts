@@ -1,77 +1,38 @@
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-// @ts-ignore
-import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { type ReadRawTextByBuffer, type ReadFileResponse, type ParsedPage } from '../type';
+import { postprocessLiteParsePages } from '../utils/pdfTextPostprocess';
 
-type TokenType = {
-  str: string;
-  dir: string;
-  width: number;
-  height: number;
-  transform: number[];
-  fontName: string;
-  hasEOL: boolean;
-};
+const LITE_PARSE_MAX_PAGES = 100000;
+const LITE_PARSE_BATCH_PAGES = 100;
 
+/**
+ * 使用 LiteParse 解析普通 PDF 文本。
+ *
+ * OCR 默认关闭，避免普通系统解析路径产生额外耗时和 OCR 资源依赖；LiteParse 只输出文本
+ * 和 textItems，本路径不会返回图片或 Markdown。PDF 按页分批解析，降低 PDFium/native
+ * 一次性持有大量页面结构的内存峰值；最后仍统一后处理全部 pages，保持现有文本清理行为。
+ */
 export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const logger = getLogger(LogCategories.INFRA.WORKER);
-  const readPDFPage = async (doc: any, pageNo: number) => {
-    try {
-      const page = await doc.getPage(pageNo);
-      const tokenizedText = await page.getTextContent();
+  const { LiteParse } = await import('@llamaindex/liteparse');
+  const pages: ParsedPage[] = [];
 
-      const viewport = page.getViewport({ scale: 1 });
-      const pageHeight = viewport.height;
-      const headerThreshold = pageHeight * 0.95;
-      const footerThreshold = pageHeight * 0.05;
+  for (let pageStart = 1; pageStart <= LITE_PARSE_MAX_PAGES; pageStart += LITE_PARSE_BATCH_PAGES) {
+    const pageEnd = pageStart + LITE_PARSE_BATCH_PAGES - 1;
+    const parser = new LiteParse({
+      ocrEnabled: false,
+      maxPages: LITE_PARSE_MAX_PAGES,
+      targetPages: `${pageStart}-${pageEnd}`,
+      quiet: true
+    });
+    const result = await parser.parse(buffer);
 
-      const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
-        return (
-          !token.transform ||
-          (token.transform[5] < headerThreshold && token.transform[5] > footerThreshold)
-        );
-      });
+    if (!result.pages.length) break;
 
-      // concat empty string 'hasEOL'
-      for (let i = 0; i < pageTexts.length; i++) {
-        const item = pageTexts[i];
-        if (item.str === '' && pageTexts[i - 1]) {
-          pageTexts[i - 1].hasEOL = item.hasEOL;
-          pageTexts.splice(i, 1);
-          i--;
-        }
-      }
+    pages.push(...result.pages);
+  }
 
-      page.cleanup();
-
-      return pageTexts
-        .map((token) => {
-          const paragraphEnd = token.hasEOL && /([。？！.?!\n\r]|(\r\n))$/.test(token.str);
-
-          return paragraphEnd ? `${token.str}\n` : token.str;
-        })
-        .join('');
-    } catch (error) {
-      logger.error('Failed to read pdf page', { pageNo, error });
-      return '';
-    }
-  };
-
-  // Create a completely new ArrayBuffer to avoid SharedArrayBuffer transferList issues
-  const uint8Array = new Uint8Array(buffer.byteLength);
-  uint8Array.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
-  const loadingTask = pdfjs.getDocument({ data: uint8Array });
-  const doc = await loadingTask.promise;
-
-  const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
-  const result = (
-    await Promise.all(pageArr.map(async (page) => await readPDFPage(doc, page)))
-  ).join('');
-
-  loadingTask.destroy();
+  const rawText = postprocessLiteParsePages(pages);
 
   return {
-    rawText: result
+    rawText
   };
 };

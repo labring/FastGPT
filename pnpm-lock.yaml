@@ -33,6 +33,9 @@ catalogs:
     '@emotion/styled':
       specifier: ^11
       version: 11.11.0
+    '@llamaindex/liteparse':
+      specifier: 2.0.5
+      version: 2.0.5
     '@modelcontextprotocol/sdk':
       specifier: ^1
       version: 1.26.0
@@ -464,6 +467,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
+      '@llamaindex/liteparse':
+        specifier: 'catalog:'
+        version: 2.0.5
       '@mariozechner/pi-agent-core':
         specifier: ^0.67.3
         version: 0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
@@ -605,9 +611,6 @@ importers:
       papaparse:
         specifier: 5.4.1
         version: 5.4.1
-      pdfjs-dist:
-        specifier: 4.10.38
-        version: 4.10.38
       pg:
         specifier: ^8.10.0
         version: 8.14.0
@@ -1274,6 +1277,9 @@ importers:
       '@fortaine/fetch-event-source':
         specifier: ^3.0.6
         version: 3.0.6
+      '@llamaindex/liteparse':
+        specifier: 'catalog:'
+        version: 2.0.5
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@4.1.12)
@@ -4099,6 +4105,49 @@ packages:
 
   '@lezer/yaml@1.0.3':
     resolution: {integrity: sha512-GuBLekbw9jDBDhGur82nuwkxKQ+a3W5H0GfaAthDXcAu+XdpS43VlnxA9E9hllkpSP5ellRDKjLLj7Lu9Wr6xA==}
+
+  '@llamaindex/liteparse-darwin-arm64@2.0.5':
+    resolution: {integrity: sha512-Z6gO+2Anwx7baBDXNUMHl8QYWuaDmLQZCZ4NKBgMXGlBaESL6OWsShigFMtPWRlNw5EsP/r+tn7uJmPxy2z2tg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@llamaindex/liteparse-darwin-x64@2.0.5':
+    resolution: {integrity: sha512-vK+BWVPrMId90sTCg5D/5I7ei2DLuy9Zt0mmByphKAGhiEb906X/hQJELKf4a6pBm1QhS0rb8sPDoHhQTY9aEA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.5':
+    resolution: {integrity: sha512-CKClEmHFf1iEwMp7SHqfcpa12D1Esr+JkxxE3pWS0fTXoTEkDOrjRQP1AEbXczGqb+pVVhCxWYcp5DsiXwC5aQ==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.5':
+    resolution: {integrity: sha512-3FBSjROuqleSLOhXFPEoG6Rq0mFGVxGuN45d1x3fxqUfDig753rTdAqisJnyLYLDiEUjK9llPP3rmuuFBVBFBg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@llamaindex/liteparse-linux-x64-musl@2.0.5':
+    resolution: {integrity: sha512-arucwQ/pqetqtno+wngn3ho+oof7zJwCaNkJ63YaTk9xyxxWUQ9h8Dl4IdI1tCprgPx0U9DOWtKfJzcASXteUA==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@llamaindex/liteparse-win32-arm64-msvc@2.0.5':
+    resolution: {integrity: sha512-0yT8qm7tkvZv/LW/zS8WuWA7ixLmkuFI9DjSO1dcIZpq/RgyvP/jyZsNSZEqR3IfR1GsViFmplTp9MjW7KV+1Q==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.5':
+    resolution: {integrity: sha512-htxyLATNuWJdTVHCM73jkDBNJZrvzz7gptUpGsVjhYOc7WvTBNCPsoSeOo07NonBH4mwEZfOU3XjuEwwjYGDWQ==}
+    cpu: [x64]
+    os: [win32]
+
+  '@llamaindex/liteparse@2.0.5':
+    resolution: {integrity: sha512-EQN2hYKRSDqhl5SAr8kqJZFn3pzh6DXAhhtng2zRlqvg/rslaroaBAbvzKep+ElljrmfYNZYjJqavgDK1IM1TQ==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   '@logtape/logtape@2.0.2':
     resolution: {integrity: sha512-cveUBLbCMFkvkLycP/2vNWvywl47JcJbazHIju94/QNGboZ/jyYAgZIm0ZXezAOx3eIz8OG1EOZ5CuQP3+2FQg==}
@@ -7902,6 +7951,10 @@ packages:
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
+
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
 
   commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
@@ -12017,10 +12070,6 @@ packages:
 
   pause-stream@0.0.11:
     resolution: {integrity: sha512-e3FBlXLmN/D1S+zHzanP4E/4Z60oFAa3O051qt1pxa7DEJWKAyil6upYVXCWadEnuoqa4Pkc9oUx9zsxYeRv8A==}
-
-  pdfjs-dist@4.10.38:
-    resolution: {integrity: sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ==}
-    engines: {node: '>=20'}
 
   pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
@@ -18061,6 +18110,39 @@ snapshots:
       '@lezer/highlight': 1.2.1
       '@lezer/lr': 1.4.2
 
+  '@llamaindex/liteparse-darwin-arm64@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-darwin-x64@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-linux-x64-musl@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-win32-arm64-msvc@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.5':
+    optional: true
+
+  '@llamaindex/liteparse@2.0.5':
+    dependencies:
+      commander: 12.1.0
+    optionalDependencies:
+      '@llamaindex/liteparse-darwin-arm64': 2.0.5
+      '@llamaindex/liteparse-darwin-x64': 2.0.5
+      '@llamaindex/liteparse-linux-arm64-gnu': 2.0.5
+      '@llamaindex/liteparse-linux-x64-gnu': 2.0.5
+      '@llamaindex/liteparse-linux-x64-musl': 2.0.5
+      '@llamaindex/liteparse-win32-arm64-msvc': 2.0.5
+      '@llamaindex/liteparse-win32-x64-msvc': 2.0.5
+
   '@logtape/logtape@2.0.2': {}
 
   '@logtape/pretty@2.0.2(@logtape/logtape@2.0.2)':
@@ -22589,6 +22671,8 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@11.1.0: {}
+
+  commander@12.1.0: {}
 
   commander@14.0.3: {}
 
@@ -27863,10 +27947,6 @@ snapshots:
   pause-stream@0.0.11:
     dependencies:
       through: 2.3.8
-
-  pdfjs-dist@4.10.38:
-    optionalDependencies:
-      '@napi-rs/canvas': 0.1.69
 
   pend@1.2.0: {}
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import path from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 /*
  * 真实 spawn 测试：使用 projects/app/worker/readFile.js 构建产物，
@@ -17,6 +17,12 @@ const REAL_WORKER_PATH = path.join(APP_PROJECT_DIR, 'worker/readFile.js');
 
 const shouldRunIntegration =
   process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && existsSync(REAL_WORKER_PATH);
+const pdfFixturePath = process.env.RUN_READ_FILE_WORKER_PDF_PATH;
+const itIfPdfFixture = pdfFixturePath && existsSync(pdfFixturePath) ? it : it.skip;
+const shouldRunPdfStress =
+  process.env.RUN_READ_FILE_WORKER_PDF_STRESS === 'true' &&
+  Boolean(pdfFixturePath && existsSync(pdfFixturePath));
+const itIfPdfStress = shouldRunPdfStress ? it : it.skip;
 
 const { WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 const { readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
@@ -43,6 +49,11 @@ const parseText = (text: string) =>
     buffer: Buffer.from(text, 'utf-8')
   });
 
+const getPositiveIntegerEnv = (name: string, defaultValue: number) => {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : defaultValue;
+};
+
 const destroyReadFilePool = async () => {
   const workerPoll = (global as any).workerPoll;
   const pool = workerPoll?.[WorkerNameEnum.readFile];
@@ -63,7 +74,6 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
 
   if (process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && !existsSync(REAL_WORKER_PATH)) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[skipped] readFile worker integration requires RUN_READ_FILE_WORKER_INTEGRATION=true and worker bundle at ${REAL_WORKER_PATH}.`
     );
@@ -113,6 +123,89 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Shanghai');
   });
 
+  itIfPdfFixture(
+    '解析 pdf（真实 worker + LiteParse）',
+    async () => {
+      const result = await readRawContentFromBuffer({
+        extension: 'pdf',
+        encoding: 'utf-8',
+        buffer: readFileSync(pdfFixturePath!)
+      });
+
+      expect(result.rawText.length).toBeGreaterThan(1000);
+      expect(result.rawText).toContain('人工智能');
+    },
+    60000
+  );
+
+  itIfPdfFixture(
+    '并发 pdf 直接交给真实 worker pool，按 PARSE_FILE_WORKERS 控制并发',
+    async () => {
+      const concurrency = 4;
+      const fileBuffer = readFileSync(pdfFixturePath!);
+
+      const results = await Promise.all(
+        Array.from({ length: concurrency }, () =>
+          readRawContentFromBuffer({
+            extension: 'pdf',
+            encoding: 'utf-8',
+            buffer: Buffer.from(fileBuffer)
+          })
+        )
+      );
+
+      expect(results).toHaveLength(concurrency);
+      results.forEach((result) => {
+        expect(result.rawText.length).toBeGreaterThan(1000);
+        expect(result.rawText).toContain('人工智能');
+      });
+    },
+    120000
+  );
+
+  itIfPdfStress(
+    'pdf worker 压测：多轮并发提交给 worker pool 后稳定返回',
+    async () => {
+      const concurrency = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_PDF_STRESS_CONCURRENCY', 4);
+      const rounds = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_PDF_STRESS_ROUNDS', 5);
+      const fileBuffer = readFileSync(pdfFixturePath!);
+      const durations: number[] = [];
+      const startedAt = Date.now();
+
+      for (let round = 0; round < rounds; round++) {
+        const roundStartedAt = Date.now();
+        const results = await Promise.all(
+          Array.from({ length: concurrency }, () =>
+            readRawContentFromBuffer({
+              extension: 'pdf',
+              encoding: 'utf-8',
+              buffer: Buffer.from(fileBuffer)
+            })
+          )
+        );
+
+        durations.push(Date.now() - roundStartedAt);
+        results.forEach((result) => {
+          expect(result.rawText.length).toBeGreaterThan(1000);
+          expect(result.rawText).toContain('人工智能');
+        });
+      }
+
+      const pool = getReadFilePool();
+      expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
+
+      console.info('pdf worker stress summary', {
+        concurrency,
+        rounds,
+        totalTasks: concurrency * rounds,
+        wallMs: Date.now() - startedAt,
+        roundMs: durations,
+        workerCount: pool.workerQueue.length
+      });
+    },
+    120000
+  );
+
   it('未知扩展名应被 reject', async () => {
     await expect(
       readRawContentFromBuffer({
@@ -146,7 +239,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(sameWorker?.tasksCompleted).toBe(initialTasks + 5);
   });
 
-  it('并发场景：池按上限扩容，所有任务都成功返回', async () => {
+  it('并发场景：readFile 入口直接交给 worker pool，所有任务都成功返回', async () => {
     const concurrency = 4;
 
     const results = await Promise.all(
@@ -163,7 +256,6 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     results.forEach((r, i) => expect(r.rawText).toBe(`payload-${i}`));
 
     const pool = getReadFilePool();
-    // 池子大小不应超过 maxReservedThreads
     expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
     expect(pool.workerQueue.length).toBeGreaterThan(1);
   });
