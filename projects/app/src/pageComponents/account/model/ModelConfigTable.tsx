@@ -378,13 +378,6 @@ const ModelTable = () => {
                         {item.testMode && <TestModeBetaTag />}
                       </Flex>
                     </HStack>
-                    {!showModelId && (
-                      <Box mt={1} pl={7}>
-                        <CopyBox value={item.model} color={'myGray.500'} fontSize={'xs'}>
-                          {item.model}
-                        </CopyBox>
-                      </Box>
-                    )}
                     <HStack mt={2}>
                       {item.contextToken && (
                         <MyTag type="borderFill" colorSchema="blue" py={0.5}>
