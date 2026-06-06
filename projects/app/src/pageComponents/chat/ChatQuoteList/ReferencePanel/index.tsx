@@ -27,6 +27,7 @@ type CollectionMeta = {
   collectionType?: string;
   datasetType?: string;
   fileName?: string;
+  apiDatasetBaseUrl?: string;
 };
 
 const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
@@ -176,6 +177,12 @@ const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
         return;
       }
 
+      if (isApiDataset && collectionMeta.apiDatasetBaseUrl) {
+        const fullUrl = `${collectionMeta.apiDatasetBaseUrl.replace(/\/+$/, '')}${value}`;
+        window.open(fullUrl, '_blank');
+        return;
+      }
+
       if (value.startsWith('/')) {
         window.open(`${location.origin}${value}`, '_blank');
       } else {
@@ -193,6 +200,8 @@ const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
     metadata.chatId,
     metadata.outLinkAuthData,
     chatItemDataId,
+    isApiDataset,
+    collectionMeta.apiDatasetBaseUrl,
     toast,
     t
   ]);
