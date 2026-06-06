@@ -1,6 +1,6 @@
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import { postprocessLiteParsePages } from '../utils/pdfTextPostprocess';
-
+import { LiteParse } from '@llamaindex/liteparse';
 /**
  * 使用 LiteParse 解析普通 PDF 文本。
  *
@@ -9,7 +9,6 @@ import { postprocessLiteParsePages } from '../utils/pdfTextPostprocess';
  * 读取文件错误路径处理。maxPages 放大是为了避免 LiteParse 默认 1000 页限制截断超大 PDF。
  */
 export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const { LiteParse } = await import('@llamaindex/liteparse');
   const parser = new LiteParse({
     ocrEnabled: false,
     maxPages: 100000,
