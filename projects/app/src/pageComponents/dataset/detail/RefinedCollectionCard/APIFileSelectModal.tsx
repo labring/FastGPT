@@ -130,10 +130,10 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
       w={'600px'}
       isCentered
     >
-      <MyBox isLoading={loading} position="relative" minH={fileMode === FileSelectMode.Partial ? '400px' : undefined}>
-        <Flex flexDirection={'column'} py={2} px={4}>
+      <MyBox isLoading={loading}>
+        <Flex flexDirection={'column'} h={fileMode === FileSelectMode.Partial ? '547px' : 'auto'} py={2} px={4}>
           {/* 全部文件 / 部分文件 切换卡片 */}
-          <SimpleGrid columns={2} spacing={4} mb={4}>
+          <SimpleGrid columns={2} spacing={4} mb={4} flexShrink={0}>
             <Box
               border="1px solid"
               borderColor={fileMode === FileSelectMode.All ? 'primary.600' : 'myGray.200'}
@@ -186,7 +186,7 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
           {/* 部分文件模式：显示文件导航和文件列表 */}
           {fileMode === FileSelectMode.Partial && (
             <>
-              <Flex justifyContent={'space-between'} mb={2}>
+              <Flex justifyContent={'space-between'} mb={2} flexShrink={0}>
                 <FolderPath
                   forbidLastClick
                   paths={paths}
@@ -212,7 +212,7 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
                 )}
               </Flex>
 
-              <Box overflowY="auto" maxH={'350px'} mb={16} userSelect={'none'}>
+              <Box overflowY="auto" flex={'1 1 0'} mb={4} userSelect={'none'}>
                 <Box>
                   <Flex
                     alignItems={'center'}
@@ -311,13 +311,10 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
           )}
 
           <Box
-            position={fileMode === FileSelectMode.Partial ? 'absolute' : undefined}
             display={'flex'}
             justifyContent={'end'}
-            bottom={0}
-            left={0}
-            right={0}
-            p={4}
+            flexShrink={0}
+            pt={3}
           >
             <Button variant="outline" mr={3} onClick={onClose}>
               {t('common:Cancel')}
