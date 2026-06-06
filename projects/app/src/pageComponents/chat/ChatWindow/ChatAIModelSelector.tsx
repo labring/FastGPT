@@ -41,33 +41,6 @@ const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
   return model?.type === ModelTypeEnum.embedding && !!model.vision;
 };
 
-const SelectorActiveModelTags = React.memo(function SelectorActiveModelTags({
-  model
-}: {
-  model?: SystemModelItemType;
-}) {
-  const showTestModeTip = isTestModeModel(model);
-  const showMultimodalTip = isMultimodalEmbeddingModel(model);
-
-  if (!showTestModeTip && !showMultimodalTip) return null;
-
-  return (
-    <Box
-      position={'absolute'}
-      top={'50%'}
-      right={'40px'}
-      transform={'translateY(-50%)'}
-      zIndex={3}
-      display={'flex'}
-      alignItems={'center'}
-      gap={1}
-    >
-      {showTestModeTip && <TestModeBetaTag />}
-      {showMultimodalTip && <MultimodalTag />}
-    </Box>
-  );
-});
-
 const ModelOptionLabel = React.memo(function ModelOptionLabel({
   name,
   showTestModeTip,
@@ -80,7 +53,7 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
@@ -200,12 +173,12 @@ const OneRowSelector = ({
           list={avatarList}
           valueLabel={
             selectedModelData ? (
-              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
+              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
                 <ModelOptionLabel
                   name={selectedModelData.name}
                   noOfLines={noOfLines}
-                  showTestModeTip={false}
-                  showMultimodalTip={false}
+                  showTestModeTip={isTestModeModel(selectedModelData)}
+                  showMultimodalTip={isMultimodalEmbeddingModel(selectedModelData)}
                 />
               </Flex>
             ) : undefined
@@ -220,7 +193,6 @@ const OneRowSelector = ({
           }}
         />
       </MyTooltip>
-      <SelectorActiveModelTags model={selectedModelData} />
     </Box>
   );
 };
@@ -240,7 +212,6 @@ const MultipleRowSelector = ({
     ttsModelList,
     sttModelList,
     reRankModelList,
-    getModelProvider,
     getModelProviders,
     getMyModelList
   } = useSystemStore();
@@ -340,12 +311,12 @@ const MultipleRowSelector = ({
     if (!selectedModelData) return <>{t('common:not_model_config')}</>;
 
     return (
-      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
+      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
         <ModelOptionLabel
           name={selectedModelData.name}
           noOfLines={noOfLines}
-          showTestModeTip={false}
-          showMultimodalTip={false}
+          showTestModeTip={isTestModeModel(selectedModelData)}
+          showMultimodalTip={isMultimodalEmbeddingModel(selectedModelData)}
         />
       </Flex>
     );
@@ -377,7 +348,6 @@ const MultipleRowSelector = ({
           }}
         />
       </MyTooltip>
-      <SelectorActiveModelTags model={selectedModelData} />
     </Box>
   );
 };

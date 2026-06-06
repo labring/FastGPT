@@ -1,29 +1,19 @@
-import { Box, Card } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import React from 'react';
-import { MessageCardStyle } from '../constants';
 import Markdown from '@/components/Markdown';
-import ChatAvatar from './ChatAvatar';
-import { useContextSelector } from 'use-context-selector';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import styles from './AIChatBubble/index.module.scss';
 
 const WelcomeBox = ({ welcomeText }: { welcomeText: string }) => {
-  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
-
   return (
-    <Box py={3}>
-      {/* avatar */}
-      <ChatAvatar src={appAvatar} type={'AI'} />
-      {/* message */}
-      <Box textAlign={'left'}>
-        <Card
-          order={2}
-          mt={2}
-          {...MessageCardStyle}
-          bg={'white'}
-          boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
-        >
-          <Markdown source={`~~~guide \n${welcomeText}`} forbidZhFormat />
-        </Card>
+    <Box py={3} w={'100%'}>
+      <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
+        <Box color={'myGray.900'} textAlign={'left'} fontSize={'16px'} lineHeight={1.75}>
+          <Markdown
+            className={styles.markdown}
+            source={`~~~guide \n${welcomeText}`}
+            forbidZhFormat
+          />
+        </Box>
       </Box>
     </Box>
   );

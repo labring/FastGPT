@@ -42,7 +42,7 @@ function MyLink(e: any) {
   );
 }
 
-const Guide = ({ text }: { text: string }) => {
+const Guide = ({ text, className }: { text: string; className?: string }) => {
   const formatText = useMemo(
     () => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()').replace(/\\n/g, '\n&nbsp;'),
     [text]
@@ -50,7 +50,7 @@ const Guide = ({ text }: { text: string }) => {
 
   return (
     <ReactMarkdown
-      className={`markdown ${styles.markdown}`}
+      className={`markdown ${styles.markdown} ${className || ''}`}
       remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
       components={{

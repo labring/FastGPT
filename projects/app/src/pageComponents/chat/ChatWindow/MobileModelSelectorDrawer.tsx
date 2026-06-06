@@ -80,13 +80,21 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
             outline: 'none'
           }}
         >
-          <Box bg="white" borderTopRadius="16px" px={4} pb="42px">
-            <Flex justifyContent="center" py="16px">
+          <Box
+            bg="white"
+            borderTopRadius="16px"
+            px={4}
+            pb="42px"
+            maxH="min(72dvh, 560px)"
+            display="flex"
+            flexDirection="column"
+          >
+            <Flex justifyContent="center" py="16px" flexShrink={0}>
               <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
 
             {!activeProvider ? (
-              <Box pb={4}>
+              <Box pb={4} flex="1 1 0" minH={0} overflowY="auto">
                 {providerGroups.map((provider) => (
                   <Flex
                     key={provider.id}
@@ -116,8 +124,8 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 ))}
               </Box>
             ) : (
-              <>
-                <Flex h="48px" alignItems="center">
+              <Flex flexDirection="column" flex="1 1 0" minH={0}>
+                <Flex h="48px" alignItems="center" flexShrink={0}>
                   <IconButton
                     aria-label="Back"
                     icon={
@@ -156,7 +164,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     onClick={onClose}
                   />
                 </Flex>
-                <Box pb={4}>
+                <Box pb={4} flex="1 1 0" minH={0} overflowY="auto">
                   {activeProvider.children.map((model) => {
                     const isSelected = model.model === value;
 
@@ -184,7 +192,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     );
                   })}
                 </Box>
-              </>
+              </Flex>
             )}
           </Box>
         </Drawer.Content>
