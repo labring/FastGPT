@@ -1,4 +1,4 @@
-import type { Transferable, Worker as NodeWorker } from 'worker_threads';
+import type { TransferListItem, Worker as NodeWorker } from 'worker_threads';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
@@ -67,7 +67,7 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
 
 type WorkerRunTaskType<T> = {
   data: T;
-  transferList?: Transferable[];
+  transferList?: TransferListItem[];
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
@@ -163,7 +163,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     }
   }
 
-  run(data: Props, transferList?: Transferable[]) {
+  run(data: Props, transferList?: TransferListItem[]) {
     return new Promise<Response>((resolve, reject) => {
       /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
