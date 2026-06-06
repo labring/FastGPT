@@ -96,18 +96,38 @@ const requestLLMPargraph = async ({
   return data;
 };
 
-const reduceQueue = () => {
+const reduceGpuQueue = () => {
   global.datasetParseQueueLen =
     global.datasetParseQueueLen > 0 ? global.datasetParseQueueLen - 1 : 0;
 
   return global.datasetParseQueueLen === 0;
 };
 
-export const datasetParseQueue = async (): Promise<any> => {
-  const max = global.systemEnv?.datasetParseMaxProcess || 10;
-  logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
-  if (global.datasetParseQueueLen >= max) return;
-  global.datasetParseQueueLen++;
+const reduceNonGpuQueue = () => {
+  global.datasetParseNonGpuQueueLen =
+    global.datasetParseNonGpuQueueLen > 0 ? global.datasetParseNonGpuQueueLen - 1 : 0;
+
+  return global.datasetParseNonGpuQueueLen === 0;
+};
+
+const runParseQueue = async ({
+  queueName,
+  isGpuFilter,
+  getQueueLen,
+  incrementQueue,
+  decrementQueue,
+  max
+}: {
+  queueName: string;
+  isGpuFilter: boolean | { $ne: boolean };
+  getQueueLen: () => number;
+  incrementQueue: () => void;
+  decrementQueue: () => boolean;
+  max: number;
+}): Promise<any> => {
+  addLog.debug(`[${queueName}] Queue size: ${getQueueLen()}`);
+  if (max != null && max > 0 && getQueueLen() >= max) return;
+  incrementQueue();
   const timeout = global.systemEnv.customPdfParse?.timeout || 10;
 
   try {
@@ -124,6 +144,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           const data = await MongoDatasetTraining.findOneAndUpdate(
             {
               mode: TrainingModeEnum.parse,
+              useGpuQueue: isGpuFilter,
               retryCount: { $gt: 0 },
               lockTime: { $lte: addMinutes(new Date(), -timeout) }
             },
@@ -166,7 +187,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         break;
       }
       if (error) {
-        logger.error('Parse queue fetch task failed', { error });
+        logger.error(`[${queueName}] fetch task failed`, { error });
         await delay(500);
         continue;
       }
@@ -179,7 +200,7 @@ export const datasetParseQueue = async (): Promise<any> => {
       const collection = data.collection;
 
       if (!dataset || !collection) {
-        logger.warn('Parse queue task skipped: dataset or collection missing', {
+        logger.warn(`[${queueName}] task skipped: dataset or collection missing`, {
           datasetId: data.datasetId,
           collectionId: data.collectionId,
           trainingId: data._id
@@ -188,7 +209,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         continue;
       }
 
-      logger.info('Parse queue task started', {
+      logger.info(`[${queueName}] started`, {
         trainingId: data._id,
         datasetId: data.datasetId,
         collectionId: data.collectionId,
@@ -271,7 +292,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           })();
 
           if (!sourceReadType) {
-            logger.warn('Parse queue task skipped: source read type resolved to null', {
+            logger.warn(`[${queueName}] task skipped: source read type resolved to null`, {
               trainingId: data._id,
               datasetId: data.datasetId,
               collectionId: data.collectionId,
@@ -401,7 +422,7 @@ export const datasetParseQueue = async (): Promise<any> => {
               (deleteErr?.codeName === 'NoSuchTransaction' ||
                 deleteErr?.message?.includes('has been aborted'))
             ) {
-              addLog.warn('[Parse Queue] deleteOne session aborted, retrying without session');
+              addLog.warn(`[${queueName}] deleteOne session aborted, retrying without session`);
               await MongoDatasetTraining.deleteOne({ _id: data._id });
             } else {
               throw deleteErr;
@@ -409,7 +430,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           }
         });
 
-        logger.debug('Parse queue task finished', {
+        logger.debug(`[${queueName}] task finished`, {
           durationMs: Date.now() - startTime,
           trainingId: data._id,
           datasetId: data.datasetId,
@@ -417,7 +438,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         });
       } catch (err) {
         if (err === TeamErrEnum.datasetSizeNotEnough) {
-          logger.info('Parse queue dataset limit exceeded, locking task', {
+          logger.info(`[${queueName}] dataset limit exceeded, locking task`, {
             trainingId: data._id,
             datasetId: data.datasetId,
             collectionId: data.collectionId
@@ -435,7 +456,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           continue;
         }
 
-        logger.error('Parse queue task failed', {
+        logger.error(`[${queueName}] task failed`, {
           error: err,
           trainingId: data._id,
           datasetId: data.datasetId,
@@ -456,12 +477,40 @@ export const datasetParseQueue = async (): Promise<any> => {
       }
     }
   } catch (error) {
-    logger.error('Parse queue loop failed', { error });
+    logger.error(`[${queueName}] loop failed`, { error });
   }
 
-  if (reduceQueue()) {
-    logger.info('Parse queue drained', { queueSize: global.datasetParseQueueLen });
+  if (decrementQueue()) {
+    logger.info(`[${queueName}] drained`);
   }
 
-  logger.debug('Parse queue loop exit', { queueSize: global.datasetParseQueueLen });
+  logger.debug(`[${queueName}] loop exit`);
+};
+
+export const datasetParseQueue = async (): Promise<any> => {
+  const max = global.systemEnv?.datasetParseMaxProcess || 10;
+  return runParseQueue({
+    queueName: 'Parse GPU Queue',
+    isGpuFilter: true,
+    getQueueLen: () => global.datasetParseQueueLen,
+    incrementQueue: () => {
+      global.datasetParseQueueLen++;
+    },
+    decrementQueue: reduceGpuQueue,
+    max
+  });
+};
+
+export const datasetParseNonGpuQueue = async (): Promise<any> => {
+  const max = global.systemEnv?.datasetParseNonGpuMaxProcess || 20;
+  return runParseQueue({
+    queueName: 'Parse NonGPU Queue',
+    isGpuFilter: { $ne: true },
+    getQueueLen: () => global.datasetParseNonGpuQueueLen,
+    incrementQueue: () => {
+      global.datasetParseNonGpuQueueLen++;
+    },
+    decrementQueue: reduceNonGpuQueue,
+    max
+  });
 };

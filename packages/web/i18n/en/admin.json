@@ -305,6 +305,7 @@
   "oneapi_key": "OneAPI key (overwrites environment variable configuration)",
   "input_oneapi_key": "Enter the OneAPI key",
   "dataset_parse_max_process": "Max processes for knowledge base parsing",
+  "dataset_parse_non_gpu_max_process": "Max processes for non-GPU knowledge base parsing",
   "dataset_index_max_process": "Max processes for knowledge base indexing",
   "file_understanding_max_process": "Max processes for LLM",
   "image_understanding_max_process": "Max processes for VLM",

@@ -25,7 +25,12 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModelById, getEmbeddingModelById, getVlmModelById, getRerankModelById } from '../../ai/model';
+import {
+  getLLMModelById,
+  getEmbeddingModelById,
+  getVlmModelById,
+  getRerankModelById
+} from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
@@ -340,12 +345,17 @@ export const createCollectionAndInsertData = async ({
         });
       } else {
         addLog.debug('[createCollectionAndInsertData] Pushing to parse queue');
+        const gpuParseExts = global.systemEnv?.gpuParseFileExtensions || ['.pdf'];
+        const useGpuQueue = gpuParseExts.some((ext) =>
+          (formatCreateCollectionParams.name || '').toLowerCase().endsWith(ext.toLowerCase())
+        );
         await pushDatasetToParseQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
           collectionId,
           billId: traingUsageId,
+          useGpuQueue,
           session
         });
         addLog.debug('[createCollectionAndInsertData] Successfully pushed to parse queue');
