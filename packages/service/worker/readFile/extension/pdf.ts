@@ -16,7 +16,7 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
     quiet: true
   });
 
-  const result = await parser.parse(Buffer.from(buffer));
+  const result = await parser.parse(buffer);
   const rawText = postprocessLiteParsePages(result.pages) || result.text || '';
 
   return {
