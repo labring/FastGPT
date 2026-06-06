@@ -4,8 +4,7 @@ import {
   NodeTemplateListItemTypeSchema
 } from '../../../../core/workflow/type/node';
 import { OpenAPIFlowNodeOutputItemTypeSchema } from '../../workflow/node';
-
-const BooleanQuerySchema = z.union([z.boolean(), z.enum(['true', 'false'])]);
+import { BoolSchema } from '../../../../common/zod';
 
 const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
   toolDescription: z.string().optional().meta({
@@ -36,7 +35,7 @@ export const GetSystemToolTemplatesBodySchema = z.object({
     example: 'weather',
     description: '搜索关键字，会匹配工具名称、简介、工具描述和标签'
   }),
-  parentId: z.string().optional().meta({
+  parentId: z.string().nullish().meta({
     example: 'systemTool-map',
     description: '工具集父工具 ID。传入后返回该工具集下的子工具模板'
   }),
@@ -65,7 +64,7 @@ export type GetSystemToolTemplatesResponseType = z.infer<
  * ============================================================================ */
 
 export const GetToolPathQuerySchema = z.object({
-  sourceId: z.string().optional().meta({
+  sourceId: z.string().nullish().meta({
     example: 'systemTool-map/geocode',
     description: '工具 ID。为空时返回空路径'
   }),
@@ -107,13 +106,9 @@ export const GetPreviewNodeQuerySchema = z.object({
   }),
   version: z.string().optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: '工具版本 ID。为空时默认按保持最新版语义返回节点'
+    description: '工具版本 ID。为空时由 keepLatest 决定版本语义；新建系统工具节点默认锁定当前最新版'
   }),
-  lockLatestVersion: BooleanQuerySchema.optional().meta({
-    example: true,
-    description: '兼容旧参数：是否锁定当前最新版。true 表示保存具体版本，false 表示保持最新版'
-  }),
-  keepLatest: BooleanQuerySchema.optional().meta({
+  keepLatest: BoolSchema.optional().meta({
     example: false,
     description: '是否保持最新版。true 表示节点不保存具体版本，false 表示锁定返回的版本'
   })

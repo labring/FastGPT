@@ -16,14 +16,11 @@ import {
   type GetPreviewNodeQuery
 } from '@fastgpt/global/openapi/core/app/tool/api';
 
-const formatBooleanQuery = (value?: boolean | 'true' | 'false') =>
-  typeof value === 'string' ? value === 'true' : value;
-
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetPreviewNodeQuery>
 ): Promise<FlowNodeTemplateType> {
   const {
-    query: { appId, version, lockLatestVersion, keepLatest }
+    query: { appId, version, keepLatest }
   } = parseApiInput({
     req,
     querySchema: GetPreviewNodeQuerySchema
@@ -38,9 +35,7 @@ async function handler(
     await getChildAppPreviewNode({
       appId,
       versionId: version,
-      keepLatest:
-        formatBooleanQuery(keepLatest) ??
-        (lockLatestVersion === undefined ? undefined : !formatBooleanQuery(lockLatestVersion)),
+      keepLatest,
       lang: getLocale(req)
     })
   );

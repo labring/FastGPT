@@ -247,7 +247,7 @@ const NodeTemplateList = ({
             if (shouldLoadPreviewNode) {
               const node = await getToolPreviewNode({
                 appId: template.id,
-                lockLatestVersion: templateType === TemplateTypeEnum.systemTools
+                keepLatest: false
               });
               return {
                 ...node,
