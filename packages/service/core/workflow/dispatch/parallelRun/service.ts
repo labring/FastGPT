@@ -88,7 +88,6 @@ export const buildTaskRuntimeContext = (
 ): TaskRuntimeContext => {
   const { runtimeNodes, runtimeEdges, childrenNodeIdList, item, index } = params;
 
-  const childrenSet = new Set(childrenNodeIdList);
   // Include ALL nodes (not just children) so that external node outputs remain accessible
   // for variable reference resolution (getReferenceVariableValue uses runtimeNodesMap).
   const taskRuntimeNodes = cloneDeep(runtimeNodes);
