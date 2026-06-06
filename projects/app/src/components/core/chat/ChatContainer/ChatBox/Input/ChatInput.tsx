@@ -527,7 +527,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={0} pb={[0, 6]} />
+      <ComplianceTip type={'chat'} pt={0} pb={0} />
     </Box>
   );
 };

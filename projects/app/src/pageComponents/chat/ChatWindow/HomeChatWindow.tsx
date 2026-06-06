@@ -96,7 +96,6 @@ const HomeChatWindow = () => {
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const homeAppId = useContextSelector(ChatPageContext, (v) => v.chatSettings?.appId || '');
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
-  const collapseSidebar = useContextSelector(ChatPageContext, (v) => v.collapseSidebar);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
@@ -230,8 +229,6 @@ const HomeChatWindow = () => {
         return Promise.reject('appId is empty');
       }
 
-      collapseSidebar();
-
       const histories = messages.slice(-1);
 
       // Home chat uses the selected model and tools. Quick apps enter the normal app chat pane.
@@ -294,7 +291,7 @@ const HomeChatWindow = () => {
       <>
         {/* 模型选择 */}
         {isPc && availableModels.length > 0 && (
-          <Box w={[0, 'auto']} flex={['1 0 0', '0 0 auto']}>
+          <Box w={['0', '128px']} flex={['1 1 0', '0 0 128px']} minW={0}>
             <ChatAIModelSelector
               cacheModel={false}
               h={'36px'}

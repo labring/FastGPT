@@ -59,7 +59,7 @@ const MarkdownRender = ({
     return {
       img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
       pre: RewritePre,
-      code: Code,
+      code: (props: any) => <Code {...props} markdownClassName={className} />,
       table: MarkdownTable as any,
       a: (props: any) => (
         <A
@@ -104,7 +104,7 @@ export default React.memo(Markdown);
 
 /* Custom dom */
 function Code(e: any) {
-  const { className, codeBlock, children } = e;
+  const { className, codeBlock, children, markdownClassName } = e;
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
@@ -115,7 +115,7 @@ function Code(e: any) {
       return <MermaidCodeBlock code={strChildren} />;
     }
     if (codeType === CodeClassNameEnum.guide) {
-      return <ChatGuide text={strChildren} />;
+      return <ChatGuide text={strChildren} className={markdownClassName} />;
     }
     if (codeType === CodeClassNameEnum.questionguide) {
       return <QuestionGuide text={strChildren} />;
@@ -145,7 +145,7 @@ function Code(e: any) {
         {children}
       </CodeLight>
     );
-  }, [codeType, className, codeBlock, match, children, strChildren]);
+  }, [codeType, className, codeBlock, match, children, strChildren, markdownClassName]);
 
   return Component;
 }
