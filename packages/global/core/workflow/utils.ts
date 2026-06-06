@@ -60,8 +60,18 @@ export const getHandleId = (
   return `${nodeId}-${type}-${key}`;
 };
 
+/**
+ * 判断输入值是否应按工作流引用解析。
+ * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
+ * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
+ */
 export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
-  if (input.renderTypeList?.[input?.selectedTypeIndex || 0] === FlowNodeInputTypeEnum.reference) {
+  const renderType = input.renderTypeList?.[input?.selectedTypeIndex || 0];
+
+  if (
+    renderType === FlowNodeInputTypeEnum.reference ||
+    renderType === FlowNodeInputTypeEnum.settingDatasetQuotePrompt
+  ) {
     return true;
   }
 

@@ -398,7 +398,6 @@ const ChatInput = ({
       </Flex>
     );
   }, [
-    isPc,
     InputLeftComponent,
     canUploadFile,
     selectFileLabel,
@@ -410,13 +409,10 @@ const ChatInput = ({
     isStopping,
     isChatting,
     canSendMessage,
-    disableSend,
     onOpenSelectFile,
     onSelectFile,
     handleSend,
-    handleStop,
-    onStopChat,
-    onStopSettled
+    handleStop
   ]);
 
   const activeStyles: FlexProps = {
@@ -430,7 +426,7 @@ const ChatInput = ({
       w={'100%'}
       maxW={['100%', '780px']}
       mx={'auto'}
-      pb={['calc(12px + env(safe-area-inset-bottom))', 0]}
+      pb={0}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -462,7 +458,7 @@ const ChatInput = ({
         h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
         minH={mobilePreSpeak ? '48px' : ChatInputDefaultHeight}
         p={mobilePreSpeak ? [0, 4] : 4}
-        mb={4}
+        mb={0}
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}
@@ -527,7 +523,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={0} pb={0} />
+      <ComplianceTip type={'chat'} pt={4} pb={0} />
     </Box>
   );
 };

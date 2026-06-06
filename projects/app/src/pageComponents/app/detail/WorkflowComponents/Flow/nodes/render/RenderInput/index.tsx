@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Switch } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
 import InputLabel from './Label';
@@ -13,6 +13,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useTranslation } from 'next-i18next';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -105,6 +107,7 @@ type Props = {
   mb?: number;
 };
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -144,14 +147,37 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
           if (!RenderItem) return null;
 
+          const renderInput =
+            input.key === NodeInputKeyEnum.useAgentSandbox
+              ? {
+                  ...input,
+                  customRender: ({
+                    value,
+                    onChange
+                  }: {
+                    value: boolean;
+                    onChange?: (value: boolean) => void;
+                  }) => (
+                    <Switch
+                      isChecked={!!value}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        if (checked && (!showSandbox || !enableSandbox)) return;
+                        onChange?.(checked);
+                      }}
+                    />
+                  )
+                }
+              : input;
+
           return {
             Component: (
-              <RenderItem.Component inputs={filterProInputs} item={input} nodeId={nodeId} />
+              <RenderItem.Component inputs={filterProInputs} item={renderInput} nodeId={nodeId} />
             ),
             LableRightComponent: RenderItem.LableRightComponent ? (
               <RenderItem.LableRightComponent
                 inputs={filterProInputs}
-                item={input}
+                item={renderInput}
                 nodeId={nodeId}
               />
             ) : undefined
@@ -179,17 +205,21 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
             {/* tmp */}
             {input.key === NodeInputKeyEnum.useAgentSandbox ? (
-              showSandbox ? (
-                enableSandbox ? (
-                  <Flex alignItems={'center'} gap={1}>
+              RenderComponent ? (
+                <Flex alignItems={'center'} gap={1}>
+                  {showSandbox && enableSandbox ? (
                     <SandboxTipTag />
-                    {RenderComponent!.Component}
-                  </Flex>
-                ) : (
-                  <SandboxNotSupportTip type="freeDisable" />
-                )
+                  ) : (
+                    <MyTag>
+                      {t(
+                        showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip'
+                      )}
+                    </MyTag>
+                  )}
+                  {RenderComponent.Component}
+                </Flex>
               ) : (
-                <SandboxNotSupportTip type="systemDisable" />
+                <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
               )
             ) : (
               <>

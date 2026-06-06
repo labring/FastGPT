@@ -268,11 +268,15 @@ const EditForm = ({
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
 
-            {showSandbox && enableSandbox && (
-              <Box mr={2}>
+            <Box mr={2}>
+              {showSandbox && enableSandbox ? (
                 <SandboxTipTag />
-              </Box>
-            )}
+              ) : (
+                <MyTag>
+                  {t(showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip')}
+                </MyTag>
+              )}
+            </Box>
             <Switch
               isChecked={appForm.aiSettings.useAgentSandbox ?? false}
               onChange={(e) => onChangeAgentSandbox(e.target.checked)}

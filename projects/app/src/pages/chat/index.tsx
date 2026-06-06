@@ -72,7 +72,7 @@ const Chat = () => {
           flex="1 0 0"
           w={0}
           position="relative"
-          pr={datasetCiteData ? 0 : undefined}
+          pr={datasetCiteData ? 0 : [0, '16px']}
           insertProps={{
             ...rightWindowStyle,
             ...(datasetCiteData

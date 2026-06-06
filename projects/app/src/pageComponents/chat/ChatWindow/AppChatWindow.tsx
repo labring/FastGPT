@@ -198,9 +198,7 @@ const AppChatWindow = () => {
           >
             <IconButton
               aria-label="Open history"
-              icon={
-                <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
-              }
+              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />}
               variant="unstyled"
               {...mobileChatHeaderIconButtonStyle}
               onClick={onOpenSlider}
@@ -208,7 +206,13 @@ const AppChatWindow = () => {
 
             <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
               <Avatar src={chatBoxData.app.avatar} w="20px" borderRadius="6px" />
-              <Box ml={2} fontSize="16px" fontWeight={500} color="myGray.900" className="textEllipsis">
+              <Box
+                ml={2}
+                fontSize="16px"
+                fontWeight={500}
+                color="myGray.900"
+                className="textEllipsis"
+              >
                 {chatBoxData.app.name}
               </Box>
             </Flex>
@@ -219,7 +223,7 @@ const AppChatWindow = () => {
           </Flex>
         )}
 
-        <Box flex={'1 0 0'} bg={'white'}>
+        <Box flex={'1 0 0'} bg={'white'} pb={4}>
           {isPlugin ? (
             <CustomPluginRunBox
               appId={appId}

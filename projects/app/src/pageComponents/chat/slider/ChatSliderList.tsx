@@ -40,6 +40,7 @@ const ChatSliderList = () => {
       updateTime: Date;
       chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
+      isTemporary?: boolean;
     }[] = scopedHistories.map((item) => {
       const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
 
@@ -64,6 +65,7 @@ const ChatSliderList = () => {
       updateTime: Date;
       chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
+      isTemporary?: boolean;
     } = {
       id: activeChatId,
       title: getDisplayHistoryTitle({
@@ -71,6 +73,7 @@ const ChatSliderList = () => {
         fallbackTitle: t('common:core.chat.New Chat')
       }),
       updateTime: new Date(),
+      isTemporary: true,
       chatGenerateStatus:
         chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
       hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
@@ -112,7 +115,7 @@ const ChatSliderList = () => {
         overflowY={'auto'}
         overflowX={'hidden'}
         sx={{
-          '& > div:last-of-type': {
+          '& > div > div:last-of-type:not(.chatHistoryItem)': {
             color: 'var(--chakra-colors-myGray-400)'
           }
         }}
@@ -120,6 +123,7 @@ const ChatSliderList = () => {
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
+            className="chatHistoryItem"
             key={item.id}
             alignItems={'center'}
             p="8px"
@@ -172,7 +176,7 @@ const ChatSliderList = () => {
                     bg={'primary.500'}
                     flexShrink={0}
                   />
-                ) : (
+                ) : item.isTemporary ? null : (
                   <Box
                     className="time"
                     display={'block'}

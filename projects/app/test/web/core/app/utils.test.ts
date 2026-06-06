@@ -6,7 +6,7 @@ import {
   appWorkflow2AgentForm
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 
@@ -94,6 +94,20 @@ describe('form2AppWorkflow', () => {
 
     expect(result.nodes).toHaveLength(4);
     expect(result.edges).toHaveLength(2);
+
+    const datasetNode = result.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    );
+    const aiNode = result.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+    expect(
+      aiNode?.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatDatasetQuote)?.value
+    ).toEqual([datasetNode?.nodeId, NodeOutputKeyEnum.datasetQuoteQA]);
+    expect(
+      result.edges.some(
+        (edge) => edge.source === datasetNode?.nodeId && edge.target === aiNode?.nodeId
+      )
+    ).toBe(true);
   });
 });
 

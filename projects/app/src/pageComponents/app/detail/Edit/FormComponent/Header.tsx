@@ -278,7 +278,7 @@ const Header = ({
                       }
                       if (!enableSandbox) {
                         toast({
-                          title: t('skill:sandbox_plan_not_supported_title'),
+                          title: t('app:sandbox_free_not_support'),
                           status: 'warning'
                         });
                         return false;
