@@ -13,6 +13,7 @@ type CollectionMeta = {
   collectionType?: string;
   datasetType?: string;
   fileName?: string;
+  apiDatasetBaseUrl?: string;
 };
 
 type Props = {
@@ -59,7 +60,8 @@ const DocumentViewer = ({
         onMetaChangeRef.current?.({
           collectionType: (res as any).collectionType,
           datasetType: (res as any).datasetType,
-          fileName: (res as any).fileName
+          fileName: (res as any).fileName,
+          apiDatasetBaseUrl: (res as any).apiDatasetBaseUrl
         });
       }
       return res;

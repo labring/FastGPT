@@ -113,7 +113,8 @@ export const GetCollectionQuoteResSchema = z.object({
   hasMoreNext: z.boolean().describe('是否还有更多后置数据'),
   collectionType: z.string().optional().describe('集合类型（DatasetCollectionTypeEnum）'),
   datasetType: z.string().optional().describe('所属知识库类型'),
-  fileName: z.string().optional().describe('文件名')
+  fileName: z.string().optional().describe('文件名'),
+  apiDatasetBaseUrl: z.string().optional().describe('API 知识库的 baseUrl，仅 API 类型知识库有值')
 });
 export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSchema>;
 

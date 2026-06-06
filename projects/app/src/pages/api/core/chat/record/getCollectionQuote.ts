@@ -80,7 +80,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
       ...result,
       collectionType: collection.type,
       datasetType: collection.dataset?.type,
-      fileName: collection.name
+      fileName: collection.name,
+      apiDatasetBaseUrl: collection.dataset?.apiDatasetServer?.apiServer?.baseUrl || ''
     };
   }
 
@@ -98,7 +99,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
       ...result,
       collectionType: collection.type,
       datasetType: collection.dataset?.type,
-      fileName: collection.name
+      fileName: collection.name,
+      apiDatasetBaseUrl: collection.dataset?.apiDatasetServer?.apiServer?.baseUrl || ''
     };
   }
 
@@ -108,7 +110,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
     hasMoreNext: false,
     collectionType: collection.type,
     datasetType: collection.dataset?.type,
-    fileName: collection.name
+    fileName: collection.name,
+    apiDatasetBaseUrl: collection.dataset?.apiDatasetServer?.apiServer?.baseUrl || ''
   };
 }
 
