@@ -21,7 +21,8 @@ import {
   getAppChatConfig,
   getHandleId,
   isValidReferenceValue,
-  isValidReferenceValueFormat
+  isValidReferenceValueFormat,
+  nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -525,7 +526,7 @@ export const getNodeAllSource = ({
     const parentNode = getNodeById(parentId);
     if (parentNode) {
       parentNode.inputs.forEach((input) => {
-        if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.reference)) return;
+        if (!nodeInputIsReference(input)) return;
         const val = input.value as ReferenceItemValueType | undefined;
         if (!Array.isArray(val) || val.length < 2) return;
         const [refNodeId] = val;
@@ -748,8 +749,7 @@ export const checkWorkflowNodeAndConnection = ({
           if (Array.isArray(input.value) && input.value.length === 0) return true;
         }
         // check reference invalid
-        const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
-        if (renderType === FlowNodeInputTypeEnum.reference) {
+        if (nodeInputIsReference(input)) {
           // 无效引用时，返回 true
           const checkValueValid = (value: ReferenceItemValueType) => {
             const nodeId = value?.[0];
