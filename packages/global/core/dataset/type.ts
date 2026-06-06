@@ -170,6 +170,8 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
 
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
+  parsingCompleteTime: z.coerce.date().optional().meta({ description: '解析完成时间' }),
+  indexingCompleteTime: z.coerce.date().optional().meta({ description: '索引完成时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
 
@@ -257,7 +259,9 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   chunkIndex: z.int().min(0).meta({ description: '块索引' }),
+  createTime: z.coerce.date().optional().meta({ description: '创建时间（入库时间）' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
+  indexingCompleteTime: z.coerce.date().optional().meta({ description: '索引完成时间' }),
   history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
@@ -641,6 +645,8 @@ export type DatasetCollectionsListItemType = {
 
   dataAmount: number;
   trainingAmount: number;
+  processedCount?: number;
+  remainingCount?: number;
   hasError?: boolean;
 
   // 计算得出的状态字段

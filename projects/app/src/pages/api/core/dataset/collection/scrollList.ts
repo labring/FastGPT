@@ -93,7 +93,7 @@ async function handler(
           status:
             item.type === DatasetCollectionTypeEnum.folder
               ? CollectionStatusEnum.ready
-              : CollectionStatusEnum.training,
+              : CollectionStatusEnum.queued,
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -153,7 +153,18 @@ async function handler(
                 }
               }
             },
-            { $count: 'count' }
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                processedCount: {
+                  $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+                },
+                remainingCount: {
+                  $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+                }
+              }
+            }
           ],
           as: 'dataCount'
         }
@@ -163,6 +174,12 @@ async function handler(
           ...selectField,
           dataAmount: {
             $ifNull: [{ $arrayElemAt: ['$dataCount.count', 0] }, 0]
+          },
+          processedCount: {
+            $ifNull: [{ $arrayElemAt: ['$dataCount.processedCount', 0] }, 0]
+          },
+          remainingCount: {
+            $ifNull: [{ $arrayElemAt: ['$dataCount.remainingCount', 0] }, 0]
           },
           trainingAmount: {
             $ifNull: [{ $arrayElemAt: ['$trainingCount.count', 0] }, 0]

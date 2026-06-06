@@ -62,8 +62,12 @@ function getFileStatus(item: {
     if (!item.hasActive && item.allParse) {
       return CollectionStatusEnum.queued;
     }
-    // 有任务正在执行 或 parse 已完成（已有 chunk 等后续任务）→ 处理中
-    return CollectionStatusEnum.training;
+    // 全部是 parse 模式 且 有任务正在执行 → 解析中
+    if (item.allParse) {
+      return CollectionStatusEnum.parsing;
+    }
+    // 存在非 parse 模式任务（chunk/qa 等）→ 索引中
+    return CollectionStatusEnum.indexing;
   }
   // 没有训练任务时，无论是否有数据，都表示训练已完成
   // - 有数据：正常完成
@@ -452,13 +456,15 @@ async function handler(
               tags: item.tags
             }),
             dataAmount: 0,
+            processedCount: 0,
+            remainingCount: 0,
             indexAmount: 0,
             trainingAmount: 0,
             hasError: false,
             status:
               item.type === DatasetCollectionTypeEnum.folder
                 ? CollectionStatusEnum.ready
-                : CollectionStatusEnum.training,
+                : CollectionStatusEnum.queued,
             permission,
             ...(isDatabaseDataset && item.tableSchema
               ? { tableSchemaDescription: item.tableSchema.description }
@@ -499,13 +505,15 @@ async function handler(
             tags: item.tags
           }),
           dataAmount: 0,
+          processedCount: 0,
+          remainingCount: 0,
           indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
           status:
             item.type === DatasetCollectionTypeEnum.folder
               ? CollectionStatusEnum.ready
-              : CollectionStatusEnum.training,
+              : CollectionStatusEnum.queued,
           permission: permissionsMap.get(String(item._id)) ?? parentFolderPermission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -617,7 +625,7 @@ async function handleFieldSort({
     // 聚合数据量（仅分页后的数据）
     const [trainingAmountResult, dataAmountResult]: [
       { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-      { _id: string; count: number }[]
+      { _id: string; count: number; processedCount: number; remainingCount: number }[]
     ] = await Promise.all([
       MongoDatasetTraining.aggregate(
         [
@@ -654,7 +662,13 @@ async function handleFieldSort({
           {
             $group: {
               _id: '$collectionId',
-              count: { $sum: 1 }
+              count: { $sum: 1 },
+              processedCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+              },
+              remainingCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+              }
             }
           }
         ],
@@ -707,6 +721,8 @@ async function handleFieldSort({
 
       const trainingAmount = training?.count || 0;
       const dataAmount = data?.count || 0;
+      const processedCount = data?.processedCount || 0;
+      const remainingCount = data?.remainingCount || 0;
       const hasError = training?.hasError || false;
       const hasActive = training?.hasActive || false;
       const allParse = training?.allParse || false;
@@ -720,6 +736,8 @@ async function handleFieldSort({
           tags: tagResults[index] as any,
           trainingAmount,
           dataAmount,
+          processedCount,
+          remainingCount,
           hasError,
           matchingStatuses: Array.from(matchingStatuses),
           permission,
@@ -744,6 +762,8 @@ async function handleFieldSort({
           tags: tagResults[index] as any,
           trainingAmount,
           dataAmount,
+          processedCount,
+          remainingCount,
           hasError,
           status: fileStatus,
           permission,
@@ -791,7 +811,7 @@ async function handleFieldSort({
   // 4. 聚合数据量（仅分页后的数据）
   const [trainingAmountResult, dataAmountResult]: [
     { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-    { _id: string; count: number }[]
+    { _id: string; count: number; processedCount: number; remainingCount: number }[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [
@@ -828,7 +848,13 @@ async function handleFieldSort({
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            processedCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+            },
+            remainingCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+            }
           }
         }
       ],
@@ -888,6 +914,8 @@ async function handleFieldSort({
 
     const trainingAmount = training?.count || 0;
     const dataAmount = data?.count || 0;
+    const processedCount = data?.processedCount || 0;
+    const remainingCount = data?.remainingCount || 0;
     const hasError = training?.hasError || false;
     const hasActive = training?.hasActive || false;
     const allParse = training?.allParse || false;
@@ -903,6 +931,8 @@ async function handleFieldSort({
         tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
+        processedCount,
+        remainingCount,
         hasError,
         matchingStatuses: Array.from(matchingStatuses),
         permission: itemPermission,
@@ -927,6 +957,8 @@ async function handleFieldSort({
         tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
+        processedCount,
+        remainingCount,
         hasError,
         status: fileStatus,
         permission: itemPermission,
@@ -1060,7 +1092,18 @@ async function handleDataAmountSortOrStatusFilter({
               }
             }
           },
-          { $count: 'count' }
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              processedCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+              },
+              remainingCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+              }
+            }
+          }
         ],
         as: 'dataInfo'
       }
@@ -1071,6 +1114,8 @@ async function handleDataAmountSortOrStatusFilter({
       $addFields: {
         trainingAmount: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.count', 0] }, 0] },
         dataAmount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.count', 0] }, 0] },
+        processedCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.processedCount', 0] }, 0] },
+        remainingCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.remainingCount', 0] }, 0] },
         hasError: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasError', 0] }, false] },
         hasActive: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasActive', 0] }, false] },
         allParse: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.allParse', 0] }, false] }
@@ -1101,7 +1146,13 @@ async function handleDataAmountSortOrStatusFilter({
                               $and: [{ $eq: ['$hasActive', false] }, { $eq: ['$allParse', true] }]
                             },
                             then: CollectionStatusEnum.queued,
-                            else: CollectionStatusEnum.training
+                            else: {
+                              $cond: {
+                                if: { $eq: ['$allParse', true] },
+                                then: CollectionStatusEnum.parsing,
+                                else: CollectionStatusEnum.indexing
+                              }
+                            }
                           }
                         },
                         else: CollectionStatusEnum.ready
@@ -1299,7 +1350,12 @@ async function handleStatusFilterWithMemoryPagination({
       ],
       { ...readFromSecondary }
     ),
-    MongoDatasetData.aggregate<{ _id: string; count: number }>(
+    MongoDatasetData.aggregate<{
+      _id: string;
+      count: number;
+      processedCount: number;
+      remainingCount: number;
+    }>(
       [
         {
           $match: {
@@ -1308,7 +1364,18 @@ async function handleStatusFilterWithMemoryPagination({
             collectionId: { $in: allCollectionIds }
           }
         },
-        { $group: { _id: '$collectionId', count: { $sum: 1 } } }
+        {
+          $group: {
+            _id: '$collectionId',
+            count: { $sum: 1 },
+            processedCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+            },
+            remainingCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+            }
+          }
+        }
       ],
       { ...readFromSecondary }
     )
@@ -1349,6 +1416,8 @@ async function handleStatusFilterWithMemoryPagination({
 
     const trainingAmountVal = training?.count || 0;
     const dataAmountVal = data?.count || 0;
+    const processedCountVal = data?.processedCount || 0;
+    const remainingCountVal = data?.remainingCount || 0;
     const hasErrorVal = training?.hasError || false;
     const hasActiveVal = training?.hasActive || false;
     const allParseVal = training?.allParse || false;
@@ -1362,6 +1431,8 @@ async function handleStatusFilterWithMemoryPagination({
         ...item,
         trainingAmount: trainingAmountVal,
         dataAmount: dataAmountVal,
+        processedCount: processedCountVal,
+        remainingCount: remainingCountVal,
         hasError: hasErrorVal,
         matchingStatuses
       };
@@ -1378,6 +1449,8 @@ async function handleStatusFilterWithMemoryPagination({
         ...item,
         trainingAmount: trainingAmountVal,
         dataAmount: dataAmountVal,
+        processedCount: processedCountVal,
+        remainingCount: remainingCountVal,
         hasError: hasErrorVal,
         status: fileStatus
       };

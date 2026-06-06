@@ -29,6 +29,8 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
+import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -360,13 +362,15 @@ const runParseQueue = async ({
           insertLen: Math.round(predictDataLimitLength(trainingMode, chunks) * 0.7)
         });
 
-        const trainingData = chunks.map((item, index) => ({
-          ...item,
+        const parsedDatas: PushDataChunkType[] = chunks.map((item, index) => ({
+          q: item.q,
+          a: item.a,
           indexes: item.indexes?.map((text) => ({
             type: DatasetDataIndexTypeEnum.custom,
             text
           })),
-          chunkIndex: index
+          chunkIndex: index,
+          metadata: item.metadata
         }));
 
         await mongoSessionRun(async (session) => {
@@ -377,11 +381,32 @@ const runParseQueue = async ({
               ...(title && collection.type === DatasetCollectionTypeEnum.link && { name: title }),
               rawTextLength: resultText.length,
               hashRawText: hashStr(resultText),
+              parsingCompleteTime: new Date(),
               // backup/template 模式：原始内容已解析完成，标记为已解析
               ...(isBackupMode ? { updateTime: new Date() } : {})
             },
             { session }
           );
+
+          // 5.5 Create Data drafts after parsing completes.
+          //     Subsequent training stages (vector/image/auto etc.) only UPDATE these records.
+          const draftResults = await createDataDrafts({
+            items: parsedDatas.map((item, i) => ({
+              q: item.q || '',
+              a: item.a || '',
+              chunkIndex: i,
+              metadata: item.metadata
+            })),
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            datasetId: dataset._id,
+            collectionId: collection._id,
+            session
+          });
+          // Associate dataId with training records → generateVector uses UPDATE path
+          draftResults.forEach((result, i) => {
+            parsedDatas[i].id = String(result._id);
+          });
 
           // 6. Push to chunk queue
           await pushDataListToTrainingQueue({
@@ -395,7 +420,7 @@ const runParseQueue = async ({
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: trainingData,
+            data: parsedDatas,
             session
           });
 
@@ -412,11 +437,11 @@ const runParseQueue = async ({
           } catch (deleteErr: any) {
             // Session may have been aborted by server (e.g. transaction timeout).
             // Only safe to retry without session when pushDataListToTrainingQueue used its own
-            // independent transactions (large dataset path: trainingData.length > 10000).
+            // independent transactions (large dataset path: parsedDatas.length > 10000).
             // For small datasets, pushDataListToTrainingQueue reuses the outer session, so a
             // session abort means training data was also rolled back — rethrow to let the outer
             // error handler retry the entire parse task and avoid silent data loss.
-            const usedIndependentTransaction = trainingData.length > 10000;
+            const usedIndependentTransaction = parsedDatas.length > 10000;
             if (
               usedIndependentTransaction &&
               (deleteErr?.codeName === 'NoSuchTransaction' ||

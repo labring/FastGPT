@@ -100,6 +100,12 @@ const DatasetCollectionSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  parsingCompleteTime: {
+    type: Date
+  },
+  indexingCompleteTime: {
+    type: Date
+  },
   tableSchema: {
     type: {
       tableName: { type: String, required: true },

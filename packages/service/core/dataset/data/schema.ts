@@ -98,6 +98,13 @@ const DatasetDataSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
+  indexingCompleteTime: {
+    type: Date
+  },
   chunkIndex: {
     type: Number,
     default: 0

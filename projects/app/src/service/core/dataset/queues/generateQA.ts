@@ -17,7 +17,11 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { delay } from '@fastgpt/service/common/bullmq';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
@@ -151,27 +155,59 @@ export async function generateQA(): Promise<any> {
 
         const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-        // get vector and insert
-        await pushDataListToTrainingQueue({
-          teamId: data.teamId,
-          tmbId: data.tmbId,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          mode: TrainingModeEnum.chunk,
-          data: qaArr.map((item) => ({
-            ...item,
-            chunkIndex: data.chunkIndex
-          })),
-          billId: data.billId,
-          vectorModelId: data.dataset.vectorModelId,
-          agentModelId: data.dataset.agentModelId,
-          vlmModelId: data.dataset.vlmModelId
+        // Create Data drafts for each QA pair (replaces the original pre-created Data)
+        const qaItems = qaArr.map((item) => ({
+          ...item,
+          chunkIndex: data.chunkIndex
+        }));
+
+        // Wrap Data creation, training queue push, and cleanup in a single transaction.
+        // If any step fails, MongoDB rolls back everything — no orphaned Data drafts.
+        await mongoSessionRun(async (session) => {
+          const draftResults = await createDataDrafts({
+            items: qaItems.map((item) => ({
+              q: item.q || '',
+              a: item.a || '',
+              chunkIndex: item.chunkIndex
+            })),
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            session
+          });
+          draftResults.forEach((result, i) => {
+            qaItems[i].id = String(result._id);
+          });
+
+          // push to vector queue
+          await pushDataListToTrainingQueue({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            mode: TrainingModeEnum.chunk,
+            data: qaItems,
+            billId: data.billId,
+            vectorModelId: data.dataset.vectorModelId,
+            agentModelId: data.dataset.agentModelId,
+            vlmModelId: data.dataset.vlmModelId,
+            session
+          });
+
+          // Clean up the original pre-created Data (replaced by QA pair Data records)
+          if (data.dataId) {
+            await Promise.all([
+              MongoDatasetData.deleteOne({ _id: data.dataId }, { session }),
+              MongoDatasetDataText.deleteMany({ dataId: data.dataId }, { session })
+            ]);
+          }
+
+          // delete data from training
+          await MongoDatasetTraining.findByIdAndDelete(data._id, { session });
         });
 
-        // delete data from training
-        await MongoDatasetTraining.findByIdAndDelete(data._id);
-
-        // Push usage
+        // Push usage (outside transaction — fire-and-forget, non-critical)
         pushLLMTrainingUsage({
           teamId: data.teamId,
           inputTokens,

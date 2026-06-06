@@ -166,7 +166,8 @@ export const DatasetStatusMap = {
 export enum CollectionStatusEnum {
   ready = 'ready', // 已就绪
   queued = 'queued', // 排队中
-  training = 'training', // 处理中
+  parsing = 'parsing', // 解析中
+  indexing = 'indexing', // 索引中
   error = 'error', // 异常
   notExist = 'notExist' // 不存在（数据库知识库的表被删除）
 }

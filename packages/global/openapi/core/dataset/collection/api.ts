@@ -204,7 +204,9 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
   queuedCounts: TrainingCountsSchema.meta({ description: '排队中数量' }),
   trainingCounts: TrainingCountsSchema.meta({ description: '训练中数量' }),
   errorCounts: TrainingCountsSchema.meta({ description: '错误数量' }),
-  trainedCount: z.number().meta({ description: '已训练数据量' })
+  trainedCount: z.number().meta({ description: '已训练数据量' }),
+  parsingCompleteTime: z.coerce.date().optional().meta({ description: '解析完成时间' }),
+  indexingCompleteTime: z.coerce.date().optional().meta({ description: '索引完成时间' })
 });
 export type GetCollectionTrainingDetailResponseType = z.infer<
   typeof GetCollectionTrainingDetailResponseSchema

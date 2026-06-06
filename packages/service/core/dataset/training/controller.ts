@@ -111,8 +111,8 @@ export const pushDataListToTrainingQueue = async ({
       };
     }
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
-      const vllmModelData = getVlmModelById(vlmModelId);
-      if (!vllmModelData) {
+      const vlmModelData = getVlmModelById(vlmModelId);
+      if (!vlmModelData) {
         // imageParse mode can use customPdfParse service instead of VLM
         const hasCustomPdfParse =
           mode === TrainingModeEnum.imageParse &&
@@ -128,8 +128,8 @@ export const pushDataListToTrainingQueue = async ({
         };
       }
       return {
-        maxToken: getLLMMaxChunkSize(vllmModelData),
-        model: vllmModelData.model,
+        maxToken: getLLMMaxChunkSize(vlmModelData),
+        model: vlmModelData.model,
         weight: 0
       };
     }

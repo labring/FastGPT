@@ -1,13 +1,11 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
   DatasetDataIndexItemType,
-  DatasetDataItemType,
-  CreateDatasetDataPropsType
+  DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModelById } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -15,13 +13,11 @@ import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { detectLang } from 'diting-rag-ts';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const formatIndexes = async ({
   indexes = [],
@@ -158,76 +154,56 @@ const formatIndexes = async ({
 
   return prefixIndexes;
 };
-/* insert data.
- * 1. create data id
- * 2. insert pg
- * 3. create mongo data
+
+/**
+ * Insert vector indexes for an existing Data record.
+ * Called by generateVector to update pre-created Data with vector embeddings.
+ *
+ * Steps:
+ * 1. formatIndexes — compute default + custom indexes from q/a
+ * 2. Embedding + Vector DB insert
+ * 3. Update Data.indexes
+ * 4. Trigger collection update (indexes now ready for search)
  */
-export async function insertData2Dataset({
-  id,
-  teamId,
-  tmbId,
-  datasetId,
-  collectionId,
+export async function insertDataVector({
+  dataId,
   q,
   a,
-  imageId,
-  chunkIndex = 0,
   indexSize = 512,
   indexes,
-  metadata,
   indexPrefix,
   embeddingModelId,
-  imageDescMap,
+  teamId,
+  datasetId,
+  collectionId,
   session
-}: CreateDatasetDataPropsType & {
+}: {
+  dataId: string;
+  q: string;
+  a?: string;
+  indexSize: number;
+  indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
+  indexPrefix?: string;
   embeddingModelId: string;
-  indexSize?: number;
-  imageDescMap?: Record<string, string>;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
   session?: ClientSession;
 }) {
-  if (imageId && !q) {
-    return Promise.reject(DatasetErrEnum.imageDatasetRequiresVlmModelOrCustomParse);
-  }
-  if (!q || !datasetId || !collectionId || !embeddingModelId) {
-    return Promise.reject('q, datasetId, collectionId, embeddingModelId is required');
-  }
-  if (String(teamId) === String(tmbId)) {
-    return Promise.reject("teamId and tmbId can't be the same");
-  }
-
-  addLog.debug('[insertData2Dataset] Start', {
-    teamId: String(teamId),
-    datasetId: String(datasetId),
-    collectionId: String(collectionId),
-    q: q?.substring(0, 100),
-    hasIndexes: !!indexes?.length,
-    indexCount: indexes?.length,
-    embeddingModelId,
-    hasSession: !!session
-  });
-
   const embModel = getEmbeddingModelById(embeddingModelId);
   indexSize = Math.min(embModel.maxToken, indexSize);
 
-  addLog.debug('[insertData2Dataset] embModel loaded', {
-    modelId: embModel.id,
-    model: embModel.model,
-    maxToken: embModel.maxToken,
-    indexSize
-  });
-
-  // 1. Get vector indexes and insert
-  // Empty indexes check, if empty, create default index
+  // 1. Format indexes (merge custom indexes with default q/a indexes)
   const newIndexes = await formatIndexes({
     indexes,
     q,
-    a,
+    a: a || '',
     indexSize,
     maxIndexSize: embModel.maxToken,
     indexPrefix
   });
 
+  // 2. Embedding + insert to Vector DB
   const { tokens, insertIds } = await insertDatasetDataVector({
     inputs: newIndexes.map((item) => item.text),
     model: embModel,
@@ -236,70 +212,35 @@ export async function insertData2Dataset({
     collectionId
   });
 
-  const results = newIndexes.map((item, index) => ({
-    ...item,
-    dataId: insertIds[index]
-  }));
-
-  addLog.debug('[insertData2Dataset] Step 3: MongoDatasetData.create...', {
-    teamId: String(teamId),
-    datasetId: String(datasetId),
-    collectionId: String(collectionId),
-    resultCount: results.length
-  });
-
-  const detectedLanguage = detectLang(q);
-  const mergedMetadata = { ...(metadata || {}), detectedLanguage };
-
-  const [{ _id }] = await MongoDatasetData.create(
-    [
-      {
-        ...(id && { _id: id }),
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        q,
-        a,
-        imageId,
-        imageDescMap,
-        chunkIndex,
-        indexes: results,
-        ...(Object.keys(mergedMetadata).length > 0 && { metadata: mergedMetadata })
-      }
-    ],
-    { session, ordered: true }
-  );
-
-  await MongoDatasetDataText.create(
-    [
-      {
-        teamId,
-        datasetId,
-        collectionId,
-        dataId: _id,
-        fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
-      }
-    ],
-    { session, ordered: true }
-  );
-
-  // 只移除图片数据集的图片的 TTL
-  if (isS3ObjectKey(imageId, 'dataset')) {
-    await removeS3TTL({ key: imageId, bucketName: 'private', session });
+  // Defensive check: insertIds must match newIndexes in length.
+  // A mismatch indicates the vector DB silently dropped one or more inserts,
+  // which would produce dataId: undefined in the results and corrupt Data.indexes.
+  if (insertIds.length !== newIndexes.length) {
+    throw new Error(
+      `insertIds length mismatch: expected ${newIndexes.length}, got ${insertIds.length}`
+    );
   }
 
-  // Trigger collection update (async, with 5s delay and debounce)
+  const results = newIndexes.map((item, i) => ({
+    ...item,
+    dataId: insertIds[i]
+  }));
+
+  // 3. Update Data.indexes (overwrite) and set indexingCompleteTime
+  await MongoDatasetData.updateOne(
+    { _id: dataId },
+    { $set: { indexes: results, indexingCompleteTime: new Date() } },
+    { session }
+  );
+
+  // 4. Trigger collection update (indexes now ready for search)
   pushCollectionUpdateJob({
     collectionId: String(collectionId),
     datasetId: String(datasetId),
     teamId: String(teamId)
   });
 
-  return {
-    insertId: _id,
-    tokens
-  };
+  return { insertId: dataId, tokens };
 }
 
 /**

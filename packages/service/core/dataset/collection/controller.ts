@@ -43,6 +43,7 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
+import { createDataDrafts } from '../data/controller';
 import {
   DBDatasetVectorTableName,
   DBDatasetValueVectorTableName,
@@ -217,6 +218,7 @@ export const createCollectionAndInsertData = async ({
       imageId?: string;
       indexes?: string[];
       metadata?: Record<string, any>;
+      id?: string;
     }>;
     chunkSize?: number;
     indexSize?: number;
@@ -308,7 +310,7 @@ export const createCollectionAndInsertData = async ({
         billSource: UsageSourceEnum.training,
         vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id,
         agentModelId: getLLMModelById(dataset.agentModelId)?.id,
-        vllmModelId: getVlmModelById(dataset.vlmModelId)?.id,
+        vlmModelId: getVlmModelById(dataset.vlmModelId)?.id,
         rerankModelId: getRerankModelById()?.id,
         session
       });
@@ -324,7 +326,33 @@ export const createCollectionAndInsertData = async ({
       });
 
       if (rawText || imageIds) {
-        addLog.debug('[createCollectionAndInsertData] Pushing to data training queue');
+        addLog.debug('[createCollectionAndInsertData] Creating Data drafts before training queue');
+
+        // Pre-create Data drafts using the shared batch helper (same logic as createDataDraft
+        // but with bulk inserts for efficiency).
+        const draftResults = await createDataDrafts({
+          items: chunks.map((item, i) => ({
+            q: item.q || '',
+            a: item.a || '',
+            imageId: item.imageId,
+            chunkIndex: i,
+            metadata: item.metadata
+          })),
+          teamId,
+          tmbId,
+          datasetId: dataset._id,
+          collectionId,
+          session
+        });
+
+        // Associate dataId with chunks → Training records carry dataId
+        draftResults.forEach((result, i) => {
+          chunks[i].id = String(result._id);
+        });
+
+        addLog.debug('[createCollectionAndInsertData] Pushing to data training queue', {
+          draftCount: draftResults.length
+        });
         return pushDataListToTrainingQueue({
           teamId,
           tmbId,
