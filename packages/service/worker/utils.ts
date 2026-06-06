@@ -1,4 +1,4 @@
-import type { Worker as NodeWorker } from 'worker_threads';
+import type { Transferable, Worker as NodeWorker } from 'worker_threads';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
@@ -65,7 +65,12 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
   });
 };
 
-type WorkerRunTaskType<T> = { data: T; resolve: (e: any) => void; reject: (e: any) => void };
+type WorkerRunTaskType<T> = {
+  data: T;
+  transferList?: Transferable[];
+  resolve: (e: any) => void;
+  reject: (e: any) => void;
+};
 type WorkerQueueItem = {
   id: string;
   worker: NodeWorker;
@@ -116,7 +121,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     this.maxTasksPerWorker = maxTasksPerWorker;
   }
 
-  private runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
+  private runTask({ data, transferList, resolve, reject }: WorkerRunTaskType<Props>) {
     // Get idle worker or create a new worker
     const runningWorker = (() => {
       // @ts-ignore
@@ -145,23 +150,27 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         this.deleteWorker(runningWorker.id);
       }, this.taskTimeoutMs);
 
-      runningWorker.worker.postMessage({
-        id: runningWorker.id,
-        ...data
-      });
+      runningWorker.worker.postMessage(
+        {
+          id: runningWorker.id,
+          ...data
+        },
+        transferList
+      );
     } else {
       // Not enough worker, push to wait queue
-      this.waitQueue.push({ data, resolve, reject });
+      this.waitQueue.push({ data, transferList, resolve, reject });
     }
   }
 
-  run(data: Props) {
+  run(data: Props, transferList?: Transferable[]) {
     return new Promise<Response>((resolve, reject) => {
       /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
       */
       this.runTask({
         data,
+        transferList,
         resolve,
         reject
       });

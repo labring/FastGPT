@@ -80,8 +80,10 @@ describe('worker/function', () => {
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
-    it('使用 SharedArrayBuffer 包装 Buffer 并通过 pool.run 派发', async () => {
-      const original = Buffer.from('hello world', 'utf-8');
+    it('默认 transfer 独占 Buffer 并通过 pool.run 派发', async () => {
+      const original = Buffer.allocUnsafeSlow(11);
+      original.write('hello world', 'utf-8');
+      const sourceArrayBuffer = original.buffer;
       const expected = { rawText: 'parsed-content' };
       mockRun.mockResolvedValueOnce(expected);
 
@@ -107,12 +109,28 @@ describe('worker/function', () => {
       expect(runArg.extension).toBe('txt');
       expect(runArg.encoding).toBe('utf-8');
       expect(runArg.bufferSize).toBe(original.length);
-      expect(runArg.sharedBuffer).toBeInstanceOf(SharedArrayBuffer);
+      expect(runArg.buffer).toBe(sourceArrayBuffer);
+      expect(runArg.sharedBuffer).toBeUndefined();
+      expect(mockRun.mock.calls[0][1]).toEqual([sourceArrayBuffer]);
+    });
 
-      // SharedArrayBuffer 内容必须完整复刻原 Buffer
-      expect(runArg.sharedBuffer.byteLength).toBe(original.length);
-      const sharedView = new Uint8Array(runArg.sharedBuffer);
-      expect(Array.from(sharedView)).toEqual(Array.from(original));
+    it('Buffer 不独占 ArrayBuffer 时回退到 SharedArrayBuffer', async () => {
+      const original = Buffer.from('prefix:hello world').subarray('prefix:'.length);
+      mockRun.mockResolvedValueOnce({ rawText: 'parsed-content' });
+
+      await readRawContentFromBuffer({
+        extension: 'txt',
+        encoding: 'utf-8',
+        buffer: original
+      });
+
+      const runArg = mockRun.mock.calls[0][0];
+      expect(runArg.buffer).toBeUndefined();
+      expect(runArg.sharedBuffer).toBeInstanceOf(SharedArrayBuffer);
+      expect(mockRun.mock.calls[0][1]).toBeUndefined();
+      expect(Buffer.from(new Uint8Array(runArg.sharedBuffer)).toString('utf-8')).toBe(
+        'hello world'
+      );
     });
 
     it('空 Buffer 也能正常构造（byteLength 为 0）', async () => {
@@ -127,7 +145,9 @@ describe('worker/function', () => {
       expect(result).toEqual({ rawText: '' });
       const runArg = mockRun.mock.calls[0][0];
       expect(runArg.bufferSize).toBe(0);
-      expect(runArg.sharedBuffer.byteLength).toBe(0);
+      expect(runArg.buffer.byteLength).toBe(0);
+      expect(runArg.sharedBuffer).toBeUndefined();
+      expect(mockRun.mock.calls[0][1]).toEqual([runArg.buffer]);
     });
 
     it('二进制 Buffer 不应在拷贝过程中失真', async () => {
@@ -142,8 +162,8 @@ describe('worker/function', () => {
       });
 
       const runArg = mockRun.mock.calls[0][0];
-      const sharedView = new Uint8Array(runArg.sharedBuffer);
-      expect(Array.from(sharedView)).toEqual(Array.from(bytes));
+      const view = new Uint8Array(runArg.buffer ?? runArg.sharedBuffer);
+      expect(Array.from(view)).toEqual(Array.from(bytes));
     });
 
     it('PARSE_FILE_WORKERS 自定义值生效', async () => {
@@ -192,10 +212,16 @@ describe('worker/function', () => {
       const callOrder: string[] = [];
 
       mockRun.mockImplementation(
-        async (props: { extension: string; sharedBuffer: SharedArrayBuffer }) => {
+        async (props: {
+          extension: string;
+          buffer?: ArrayBuffer;
+          sharedBuffer?: SharedArrayBuffer;
+        }) => {
           activeCount += 1;
           maxActiveCount = Math.max(maxActiveCount, activeCount);
-          callOrder.push(Buffer.from(new Uint8Array(props.sharedBuffer)).toString('utf-8'));
+          const rawBuffer = props.buffer ?? props.sharedBuffer;
+          expect(rawBuffer).toBeDefined();
+          callOrder.push(Buffer.from(new Uint8Array(rawBuffer!)).toString('utf-8'));
 
           await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -252,18 +278,18 @@ describe('worker/function', () => {
       expect(mockRun).toHaveBeenCalledTimes(3);
     });
 
-    it('每次调用都生成新的 SharedArrayBuffer（避免跨任务串扰）', async () => {
+    it('fallback 路径每次调用都生成新的 SharedArrayBuffer（避免跨任务串扰）', async () => {
       mockRun.mockResolvedValue({ rawText: 'ok' });
 
       await readRawContentFromBuffer({
         extension: 'txt',
         encoding: 'utf-8',
-        buffer: Buffer.from('aaa')
+        buffer: Buffer.from('xaaa').subarray(1)
       });
       await readRawContentFromBuffer({
         extension: 'txt',
         encoding: 'utf-8',
-        buffer: Buffer.from('bbb')
+        buffer: Buffer.from('xbbb').subarray(1)
       });
 
       const sab1 = mockRun.mock.calls[0][0].sharedBuffer;

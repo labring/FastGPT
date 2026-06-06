@@ -28,7 +28,6 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
   const { path } = params;
 
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
-
   const buffer = await fs.promises.readFile(path);
 
   return readFileContentByBuffer({
@@ -97,7 +96,7 @@ export const readFileContentByBuffer = async ({
     const { data: response } = await axios.post<{
       pages: number;
       markdown: string;
-      error?: Object | string;
+      error?: object | string;
     }>(url, data, {
       timeout: 600000,
       headers: {
@@ -188,12 +187,14 @@ export const readFileContentByBuffer = async ({
   const start = Date.now();
   logger.debug('Start parsing file', { extension });
 
-  let { rawText, formatText, imageList } = await (async () => {
+  const parsedFile = await (async () => {
     if (extension === 'pdf') {
       return await pdfParseFn();
     }
     return await systemParse();
   })();
+  const { imageList } = parsedFile;
+  let { rawText, formatText } = parsedFile;
 
   logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
