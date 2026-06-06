@@ -54,6 +54,7 @@ async function buildWorkers(watch: boolean = false) {
       '@fastgpt-sdk/otel/metrics': path.join(OTEL_SDK_DIR, 'metrics-entry.ts'),
       '@fastgpt-sdk/otel/tracing': path.join(OTEL_SDK_DIR, 'tracing-entry.ts')
     },
+    external: ['@llamaindex/liteparse', '@llamaindex/liteparse-*'],
     // 移除调试代码
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   };

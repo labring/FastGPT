@@ -38,22 +38,52 @@ const getReadFileWorker = () =>
     maxTasksPerWorker: 100
   });
 
+let readFileQueue: Promise<void> = Promise.resolve();
+
+/**
+ * 串行提交 readFile worker 任务。
+ *
+ * readFile worker 内部会加载 mammoth/xlsx/LiteParse 等解析库，这些库存在初始化缓存、
+ * native 状态和内存峰值风险。文件解析通常不是高频轻量任务，这里在父进程统一串行提交，
+ * 避免多种文件格式同时触发 worker 初始化或大文件 SharedArrayBuffer 复制。
+ */
+const runSerializedReadFile = async <T>(task: () => Promise<T>): Promise<T> => {
+  const previousTask = readFileQueue;
+  let releaseCurrentTask!: () => void;
+
+  readFileQueue = new Promise<void>((resolve) => {
+    releaseCurrentTask = resolve;
+  });
+
+  await previousTask;
+
+  try {
+    return await task();
+  } finally {
+    releaseCurrentTask();
+  }
+};
+
 export const readRawContentFromBuffer = (props: {
   extension: string;
   encoding: string;
   buffer: Buffer;
 }) => {
-  const bufferSize = props.buffer.length;
+  const runTask = () => {
+    const bufferSize = props.buffer.length;
 
-  // 使用 SharedArrayBuffer，避免数据复制
-  const sharedBuffer = new SharedArrayBuffer(bufferSize);
-  const sharedArray = new Uint8Array(sharedBuffer);
-  sharedArray.set(props.buffer);
+    // SharedArrayBuffer 构造放在任务真正提交前，避免大文件并发排队时提前复制多份。
+    const sharedBuffer = new SharedArrayBuffer(bufferSize);
+    const sharedArray = new Uint8Array(sharedBuffer);
+    sharedArray.set(props.buffer);
 
-  return getReadFileWorker().run({
-    extension: props.extension,
-    encoding: props.encoding,
-    sharedBuffer,
-    bufferSize
-  });
+    return getReadFileWorker().run({
+      extension: props.extension,
+      encoding: props.encoding,
+      sharedBuffer,
+      bufferSize
+    });
+  };
+
+  return runSerializedReadFile(runTask);
 };

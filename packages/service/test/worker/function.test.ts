@@ -186,6 +186,48 @@ describe('worker/function', () => {
       ).rejects.toThrow('parse failed');
     });
 
+    it('并发文件解析会在父进程串行提交给 readFile worker', async () => {
+      let activeCount = 0;
+      let maxActiveCount = 0;
+      const callOrder: string[] = [];
+
+      mockRun.mockImplementation(
+        async (props: { extension: string; sharedBuffer: SharedArrayBuffer }) => {
+          activeCount += 1;
+          maxActiveCount = Math.max(maxActiveCount, activeCount);
+          callOrder.push(Buffer.from(new Uint8Array(props.sharedBuffer)).toString('utf-8'));
+
+          await new Promise((resolve) => setTimeout(resolve, 20));
+
+          activeCount -= 1;
+          return { rawText: 'ok' };
+        }
+      );
+
+      const results = await Promise.all([
+        readRawContentFromBuffer({
+          extension: 'pdf',
+          encoding: 'utf-8',
+          buffer: Buffer.from('pdf-1')
+        }),
+        readRawContentFromBuffer({
+          extension: 'txt',
+          encoding: 'utf-8',
+          buffer: Buffer.from('txt-1')
+        }),
+        readRawContentFromBuffer({
+          extension: 'md',
+          encoding: 'utf-8',
+          buffer: Buffer.from('md-1')
+        })
+      ]);
+
+      expect(results).toEqual([{ rawText: 'ok' }, { rawText: 'ok' }, { rawText: 'ok' }]);
+      expect(mockRun).toHaveBeenCalledTimes(3);
+      expect(maxActiveCount).toBe(1);
+      expect(callOrder).toEqual(['pdf-1', 'txt-1', 'md-1']);
+    });
+
     it('多次调用每次都通过 getWorkerController 获取池（不在本层缓存）', async () => {
       mockRun.mockResolvedValue({ rawText: 'ok' });
 
