@@ -139,17 +139,17 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   );
 
   itIfPdfFixture(
-    '并发 pdf 会串行提交到真实 worker，避免 LiteParse native 并发崩溃',
+    '并发 pdf 直接交给真实 worker pool，按 PARSE_FILE_WORKERS 控制并发',
     async () => {
       const concurrency = 4;
-      const buffer = readFileSync(pdfFixturePath!);
+      const fileBuffer = readFileSync(pdfFixturePath!);
 
       const results = await Promise.all(
         Array.from({ length: concurrency }, () =>
           readRawContentFromBuffer({
             extension: 'pdf',
             encoding: 'utf-8',
-            buffer
+            buffer: Buffer.from(fileBuffer)
           })
         )
       );
@@ -164,11 +164,11 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
   );
 
   itIfPdfStress(
-    'pdf worker 压测：多轮并发入口串行提交后稳定返回',
+    'pdf worker 压测：多轮并发提交给 worker pool 后稳定返回',
     async () => {
       const concurrency = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_PDF_STRESS_CONCURRENCY', 4);
       const rounds = getPositiveIntegerEnv('RUN_READ_FILE_WORKER_PDF_STRESS_ROUNDS', 5);
-      const buffer = readFileSync(pdfFixturePath!);
+      const fileBuffer = readFileSync(pdfFixturePath!);
       const durations: number[] = [];
       const startedAt = Date.now();
 
@@ -179,7 +179,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
             readRawContentFromBuffer({
               extension: 'pdf',
               encoding: 'utf-8',
-              buffer
+              buffer: Buffer.from(fileBuffer)
             })
           )
         );
@@ -192,7 +192,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
       }
 
       const pool = getReadFilePool();
-      expect(pool.workerQueue.length).toBeLessThanOrEqual(1);
+      expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
 
       console.info('pdf worker stress summary', {
         concurrency,
@@ -239,7 +239,7 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(sameWorker?.tasksCompleted).toBe(initialTasks + 5);
   });
 
-  it('并发场景：readFile 入口串行提交，所有任务都成功返回', async () => {
+  it('并发场景：readFile 入口直接交给 worker pool，所有任务都成功返回', async () => {
     const concurrency = 4;
 
     const results = await Promise.all(
@@ -256,9 +256,8 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     results.forEach((r, i) => expect(r.rawText).toBe(`payload-${i}`));
 
     const pool = getReadFilePool();
-    // readFile 入口在父进程串行提交，避免多格式解析库并发初始化和大文件复制。
     expect(pool.workerQueue.length).toBeLessThanOrEqual(pool.maxReservedThreads);
-    expect(pool.workerQueue.length).toBe(1);
+    expect(pool.workerQueue.length).toBeGreaterThan(1);
   });
 
   it('maxTasksPerWorker 触发回收：任务数达到阈值后 worker 被销毁', async () => {

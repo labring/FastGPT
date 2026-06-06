@@ -206,10 +206,11 @@ describe('worker/function', () => {
       ).rejects.toThrow('parse failed');
     });
 
-    it('并发文件解析会在父进程串行提交给 readFile worker', async () => {
+    it('并发文件解析直接交给 readFile worker pool，并发数由 PARSE_FILE_WORKERS 决定', async () => {
       let activeCount = 0;
       let maxActiveCount = 0;
       const callOrder: string[] = [];
+      mockEnv.PARSE_FILE_WORKERS = 3;
 
       mockRun.mockImplementation(
         async (props: {
@@ -250,8 +251,8 @@ describe('worker/function', () => {
 
       expect(results).toEqual([{ rawText: 'ok' }, { rawText: 'ok' }, { rawText: 'ok' }]);
       expect(mockRun).toHaveBeenCalledTimes(3);
-      expect(maxActiveCount).toBe(1);
-      expect(callOrder).toEqual(['pdf-1', 'txt-1', 'md-1']);
+      expect(maxActiveCount).toBe(3);
+      expect(callOrder).toEqual(expect.arrayContaining(['pdf-1', 'txt-1', 'md-1']));
     });
 
     it('多次调用每次都通过 getWorkerController 获取池（不在本层缓存）', async () => {
