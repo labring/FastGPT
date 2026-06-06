@@ -216,7 +216,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             status: 'warning',
             title: !showSandbox
               ? t('skill:sandbox_system_not_configured_toast')
-              : t('skill:sandbox_plan_not_supported_title')
+              : t('app:sandbox_free_not_support')
           });
         }
         return;

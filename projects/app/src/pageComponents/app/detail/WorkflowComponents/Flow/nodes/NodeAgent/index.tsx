@@ -432,18 +432,14 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           return;
         }
         if (!enableSandbox) {
-          openConfirm({
-            title: t('skill:sandbox_plan_not_supported_title'),
-            customContent: t('skill:sandbox_plan_not_supported_content'),
-            onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
-            confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
-            cancelText: t('common:Close'),
-            showCancel: isTeamAdmin
-          })();
+          toast({
+            status: 'warning',
+            title: t('app:sandbox_free_not_support')
+          });
           return;
         }
       }
-      if (!checked && selectedAgentSkills.length > 0) {
+      if (!checked && enableSandbox && selectedAgentSkills.length > 0) {
         toast({
           status: 'warning',
           title: t('skill:sandbox_disable_blocked_toast')
@@ -469,10 +465,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       selectedAgentSkills.length,
       showSandbox,
       t,
-      toast,
-      openConfirm,
-      isTeamAdmin,
-      onOpenRecharge
+      toast
     ]
   );
   const skillsRenderType = useMemo(
@@ -554,7 +547,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           >
             <InputLabel nodeId={nodeId} input={sandboxInput} />
             <Flex alignItems={'center'} gap={1} className={'nodrag'}>
-              {showSandbox && enableSandbox && <SandboxTipTag />}
+              {showSandbox && enableSandbox ? (
+                <SandboxTipTag />
+              ) : (
+                <MyTag>
+                  {t(showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip')}
+                </MyTag>
+              )}
               <Switch
                 isChecked={!!sandboxInput.value}
                 onChange={(e) => onChangeAgentSandbox(e.target.checked)}

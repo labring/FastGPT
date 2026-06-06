@@ -120,6 +120,16 @@ describe('nodeInputIsReference', () => {
     };
     expect(nodeInputIsReference(input)).toBe(true);
   });
+
+  it('should treat settingDatasetQuotePrompt as reference', () => {
+    const input: FlowNodeInputItemType = {
+      key: NodeInputKeyEnum.aiChatDatasetQuote,
+      label: 'Dataset quote',
+      renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+      valueType: WorkflowIOValueTypeEnum.datasetQuote
+    };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
 });
 
 describe('getGuideModule', () => {

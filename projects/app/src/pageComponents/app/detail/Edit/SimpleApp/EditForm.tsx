@@ -75,6 +75,7 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
+  const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -259,31 +260,28 @@ const EditForm = ({
               <FormLabel ml={2}>{t('app:use_agent_sandbox')}</FormLabel>
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
-            {showSandbox ? (
-              enableSandbox ? (
-                <>
-                  <Box mr={2}>
-                    <SandboxTipTag />
-                  </Box>
-                  <Switch
-                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-                    onChange={(e) => {
-                      setAppForm((state) => ({
-                        ...state,
-                        aiSettings: {
-                          ...state.aiSettings,
-                          useAgentSandbox: e.target.checked
-                        }
-                      }));
-                    }}
-                  />
-                </>
+            <Box mr={2}>
+              {showSandbox && enableSandbox ? (
+                <SandboxTipTag />
               ) : (
-                <SandboxNotSupportTip type="freeDisable" />
-              )
-            ) : (
-              <SandboxNotSupportTip type="systemDisable" />
-            )}
+                <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
+              )}
+            </Box>
+            <Switch
+              isChecked={isAgentSandboxEnabled}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                if (checked && (!showSandbox || !enableSandbox)) return;
+
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    useAgentSandbox: checked
+                  }
+                }));
+              }}
+            />
           </Flex>
         </Box>
 
