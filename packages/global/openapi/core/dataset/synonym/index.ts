@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
@@ -19,7 +20,7 @@ export const DatasetSynonymPath: OpenAPIPath = {
         content: {
           'multipart/form-data': {
             schema: UploadSynonymBodySchema.extend({
-              file: { type: 'string', format: 'binary' }
+              file: z.string().meta({ format: 'binary' })
             })
           }
         }
