@@ -30,19 +30,19 @@ export const CreateDatasetBodySchema = z.object({
     example: DatasetTypeEnum.dataset,
     description: '知识库类型'
   }),
-  name: z.string().meta({
+  name: z.string().min(1).max(30).meta({
     example: '我的知识库',
-    description: '知识库名称'
+    description: '知识库名称,1-30个字符'
   }),
-  intro: z.string().meta({
+  intro: z.string().optional().meta({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().optional().meta({
     example: '/imgs/dataset/avatar.png',
-    description: '知识库头像'
+    description: '知识库头像，不传则使用默认头像'
   }),
-  vectorModelId: z.string().optional().meta({
+  vectorModelId: z.string().min(1).optional().meta({
     example: '68ad85a7463006c963799a05',
     description: '向量模型Id(平台维护的唯一模型ID),不传则使用默认向量模型'
   }),
@@ -60,7 +60,7 @@ export const CreateDatasetBodySchema = z.object({
   websiteConfig: z
     .object({
       url: z.string().meta({ description: '网站 URL' }),
-      selector: z.string().meta({ description: '网站选择器' })
+      selector: z.string().meta({ description: '网站选择器，没有特殊指定传空字符串 ""' })
     })
     .optional()
     .meta({
@@ -90,13 +90,13 @@ export type CreateDatasetResponse = z.infer<typeof CreateDatasetResponseSchema>;
 export const CreateDatasetWithFilesBodySchema = z.object({
   datasetParams: z
     .object({
-      name: z.string().meta({
+      name: z.string().min(1).max(30).meta({
         example: '我的知识库',
-        description: '知识库名称'
+        description: '知识库名称,1-30个字符'
       }),
-      avatar: z.string().meta({
+      avatar: z.string().optional().meta({
         example: '/imgs/dataset/avatar.png',
-        description: '知识库头像'
+        description: '知识库头像，不传则使用默认头像'
       }),
       parentId: ParentIdSchema.meta({
         example: '68ad85a7463006c963799a05',
@@ -249,9 +249,9 @@ export const UpdateDatasetBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '父级文件夹 ID,传 null 表示移动到根目录'
   }),
-  name: z.string().optional().meta({
+  name: z.string().min(1).max(30).optional().meta({
     example: '我的知识库',
-    description: '知识库名称'
+    description: '知识库名称,1-30个字符'
   }),
   avatar: z.string().optional().meta({
     example: '/imgs/dataset/avatar.png',
@@ -276,7 +276,7 @@ export const UpdateDatasetBodySchema = z.object({
   websiteConfig: z
     .object({
       url: z.string().meta({ description: '网站 URL' }),
-      selector: z.string().meta({ description: '网站选择器' })
+      selector: z.string().meta({ description: '网站选择器，没有特殊指定传空字符串 ""' })
     })
     .optional()
     .meta({
@@ -341,9 +341,9 @@ export const CreateDatasetFolderBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '父级文件夹 ID,不传则创建在根目录'
   }),
-  name: z.string().meta({
+  name: z.string().min(1).max(100).meta({
     example: '我的文件夹',
-    description: '文件夹名称'
+    description: '文件夹名称,1-100个字符'
   }),
   intro: z.string().meta({
     example: '存放产品相关知识库',
@@ -367,7 +367,7 @@ export const SearchDatasetTestBodySchema = z.object({
   }),
   text: z.string().min(1).meta({
     example: 'FastGPT 是什么',
-    description: '搜索文本'
+    description: '搜索文本，不能为空'
   }),
   similarity: z.number().optional().meta({
     example: 0.3,
@@ -517,7 +517,7 @@ export const SearchApiBodySchema = z.object({
     }),
   text: z.string().min(1).meta({
     example: 'FastGPT 是什么',
-    description: '搜索文本'
+    description: '搜索文本，不能为空'
   }),
   similarity: z.number().optional().meta({
     example: 0.3,

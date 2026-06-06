@@ -375,8 +375,8 @@ export const DatasetTagSchema = z.object({
 export type DatasetTagType = z.infer<typeof DatasetTagSchema>;
 
 export const TagUsageSchema = z.object({
-  tagId: z.string().meta({ description: '标签 ID' }),
-  collections: z.array(z.string()).meta({ description: '集合 ID' })
+  tagId: ObjectIdSchema.meta({ description: '标签 ID' }),
+  collections: z.array(ObjectIdSchema).meta({ description: '集合 ID' })
 });
 export type TagUsageType = z.infer<typeof TagUsageSchema>;
 

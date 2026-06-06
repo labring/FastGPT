@@ -5,8 +5,11 @@ import {
   RebuildEmbeddingBodySchema,
   DeleteTrainingDataBodySchema,
   GetTrainingDataDetailBodySchema,
+  GetTrainingDataDetailResponseSchema,
   GetTrainingErrorBodySchema,
-  GetDatasetTrainingQueueQuerySchema
+  GetTrainingErrorResponseSchema,
+  GetDatasetTrainingQueueQuerySchema,
+  GetDatasetTrainingQueueResponseSchema
 } from './api';
 
 export const DatasetTrainingPath: OpenAPIPath = {
@@ -84,7 +87,10 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回训练数据详情，数据不存在时返回空'
+          description: '成功返回训练数据详情，数据不存在时返回空',
+          content: {
+            'application/json': { schema: GetTrainingDataDetailResponseSchema }
+          }
         }
       }
     }
@@ -104,7 +110,10 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回错误数据分页列表'
+          description: '成功返回错误数据分页列表',
+          content: {
+            'application/json': { schema: GetTrainingErrorResponseSchema }
+          }
         }
       }
     }
@@ -120,7 +129,10 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回重建数量和训练队列数量'
+          description: '成功返回重建数量和训练队列数量',
+          content: {
+            'application/json': { schema: GetDatasetTrainingQueueResponseSchema }
+          }
         }
       }
     }
