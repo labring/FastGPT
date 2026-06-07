@@ -38,14 +38,13 @@ export const readDocsFile = async (
           }
 
           const imageBuffer = await image.read();
+          const imageArrayBuffer = new Uint8Array(imageBuffer.byteLength);
+          imageArrayBuffer.set(imageBuffer);
           const { key } = await options
             .uploadFile({
               name,
               mime,
-              buffer: imageBuffer.buffer.slice(
-                imageBuffer.byteOffset,
-                imageBuffer.byteOffset + imageBuffer.byteLength
-              )
+              buffer: imageArrayBuffer.buffer
             })
             .catch((error) => {
               logger.warn('Failed to upload docx image from worker', { name, mime, error });
