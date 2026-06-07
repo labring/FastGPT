@@ -70,13 +70,18 @@ export const CreateGetPresignedUrlParamsSchema = z.object({
 });
 export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 
-export const UploadImage2S3BucketParamsSchema = z.object({
-  base64Img: z.string().nonempty(),
-  uploadKey: z.string().nonempty(),
-  mimetype: z.string().nonempty(),
-  filename: z.string().nonempty(),
-  expiredTime: z.coerce.date().optional()
-});
+export const UploadImage2S3BucketParamsSchema = z
+  .object({
+    base64Img: z.string().nonempty().optional(),
+    buffer: z.instanceof(Buffer).optional(),
+    uploadKey: z.string().nonempty(),
+    mimetype: z.string().nonempty(),
+    filename: z.string().nonempty(),
+    expiredTime: z.coerce.date().optional()
+  })
+  .refine((value) => value.base64Img || value.buffer, {
+    message: 'base64Img or buffer is required'
+  });
 export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
 export const UploadFileByBodySchema = z.object({

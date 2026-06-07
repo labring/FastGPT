@@ -68,8 +68,26 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
 type WorkerRunTaskType<T> = {
   data: T;
   transferList?: TransferListItem[];
+  handlers?: WorkerRunHandlers;
   resolve: (e: any) => void;
   reject: (e: any) => void;
+};
+export type WorkerUploadFileRequest = {
+  name: string;
+  mime: string;
+  buffer: ArrayBuffer;
+};
+export type WorkerUploadFileResult = {
+  key: string;
+};
+/**
+ * Worker 任务运行期间可发起的通用主线程能力。
+ *
+ * 这些 handler 只服务当前 run 调用，worker 发送中间事件时不会释放任务槽位；
+ * 只有最终 success/error 消息才会完成任务。
+ */
+export type WorkerRunHandlers = {
+  uploadFile?: (data: WorkerUploadFileRequest) => Promise<WorkerUploadFileResult>;
 };
 type WorkerQueueItem = {
   id: string;
@@ -78,12 +96,14 @@ type WorkerQueueItem = {
   taskTime: number;
   tasksCompleted: number;
   timeoutId?: NodeJS.Timeout;
+  handlers?: WorkerRunHandlers;
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
 type WorkerResponse<T = any> = {
   id: string;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'uploadFile';
+  requestId?: string;
   data: T;
 };
 
@@ -121,7 +141,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     this.maxTasksPerWorker = maxTasksPerWorker;
   }
 
-  private runTask({ data, transferList, resolve, reject }: WorkerRunTaskType<Props>) {
+  private runTask({ data, transferList, handlers, resolve, reject }: WorkerRunTaskType<Props>) {
     // Get idle worker or create a new worker
     const runningWorker = (() => {
       // @ts-ignore
@@ -144,6 +164,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       runningWorker.taskTime = Date.now();
       runningWorker.resolve = resolve;
       runningWorker.reject = reject;
+      runningWorker.handlers = handlers;
       runningWorker.timeoutId = setTimeout(() => {
         reject('Worker timeout');
         // 超时即销毁，避免占着 idle 槽位永远不释放
@@ -159,11 +180,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       );
     } else {
       // Not enough worker, push to wait queue
-      this.waitQueue.push({ data, transferList, resolve, reject });
+      this.waitQueue.push({ data, transferList, handlers, resolve, reject });
     }
   }
 
-  run(data: Props, transferList?: TransferListItem[]) {
+  run(data: Props, transferList?: TransferListItem[], handlers?: WorkerRunHandlers) {
     return new Promise<Response>((resolve, reject) => {
       /*
         Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
@@ -171,6 +192,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       this.runTask({
         data,
         transferList,
+        handlers,
         resolve,
         reject
       });
@@ -195,13 +217,21 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       status: 'running',
       taskTime: Date.now(),
       tasksCompleted: 0,
+      handlers: undefined,
       resolve: () => {},
       reject: () => {}
     };
     this.workerQueue.push(item);
 
     // watch response
-    worker.on('message', ({ id, type, data }: WorkerResponse<Response>) => {
+    worker.on('message', ({ id, type, requestId, data }: WorkerResponse<Response>) => {
+      if (id !== item.id) return;
+
+      if (type === 'uploadFile') {
+        this.handleUploadFileMessage({ item, requestId, data });
+        return;
+      }
+
       if (type === 'success') {
         item.resolve(data);
       } else if (type === 'error') {
@@ -217,6 +247,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         this.deleteWorker(item.id);
       } else {
         item.status = 'idle';
+        item.handlers = undefined;
       }
     });
 
@@ -233,11 +264,55 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     return item;
   }
 
+  private handleUploadFileMessage({
+    item,
+    requestId,
+    data
+  }: {
+    item: WorkerQueueItem;
+    requestId?: string;
+    data: any;
+  }) {
+    const reply = (type: 'uploadFileResult' | 'uploadFileError', payload: any) => {
+      if (!this.workerQueue.includes(item) || item.status !== 'running') return;
+      try {
+        item.worker.postMessage({
+          id: item.id,
+          type,
+          requestId,
+          data: payload
+        });
+      } catch (error) {
+        getLogger(LogCategories.INFRA.WORKER).warn('Failed to reply worker uploadFile request', {
+          workerId: item.id,
+          name: this.name,
+          error
+        });
+      }
+    };
+
+    if (!requestId) {
+      reply('uploadFileError', 'Missing uploadFile requestId');
+      return;
+    }
+
+    const handler = item.handlers?.uploadFile;
+    if (!handler) {
+      reply('uploadFileError', 'Missing uploadFile handler');
+      return;
+    }
+
+    handler(data)
+      .then((result) => reply('uploadFileResult', result))
+      .catch((error) => reply('uploadFileError', error));
+  }
+
   private deleteWorker(workerId: string) {
     const item = this.workerQueue.find((item) => item.id === workerId);
     if (item) {
       item.reject?.('error');
       clearTimeout(item.timeoutId);
+      item.handlers = undefined;
       item.worker.removeAllListeners();
       item.worker.terminate();
     }

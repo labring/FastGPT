@@ -6,11 +6,16 @@ export type ReadRawTextProps<T> = {
 
 export type ReadRawTextByBuffer = ReadRawTextProps<Buffer>;
 
-export type ImageType = {
-  uuid: string;
-  base64: string;
-  mime: string;
+export type UploadedFileResult = {
+  key: string;
+  previewUrl?: string;
 };
+
+export type UploadFileHandler = (data: {
+  name: string;
+  mime: string;
+  buffer: ArrayBuffer;
+}) => Promise<UploadedFileResult>;
 
 export type TextItem = {
   text: string;
@@ -34,5 +39,4 @@ export type ParsedPage = {
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;
-  imageList?: ImageType[];
 };

@@ -1,6 +1,7 @@
 import iconv from 'iconv-lite';
-import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
-import { matchMdImg } from '@fastgpt/global/common/string/markdown';
+import { type ReadRawTextByBuffer, type ReadFileResponse, type UploadFileHandler } from '../type';
+import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
+import { uploadBase64Image } from '../../utils/base64ImageUpload';
 
 const hasNonAsciiByte = (buffer: Buffer) => {
   for (let i = 0; i < buffer.length; i++) {
@@ -25,10 +26,12 @@ const rawEncodingList = [
 ];
 
 // 加载源文件内容
-export const readFileRawText = async ({
-  buffer,
-  encoding
-}: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
+export const readFileRawText = async (
+  { buffer, encoding }: ReadRawTextByBuffer,
+  options: {
+    uploadFile?: UploadFileHandler;
+  } = {}
+): Promise<ReadFileResponse> => {
   const content = (() => {
     try {
       const normalizedEncoding = encoding?.toLowerCase?.() || '';
@@ -47,15 +50,24 @@ export const readFileRawText = async ({
       }
 
       return buffer.toString('utf-8');
-    } catch (error) {
+    } catch {
       return buffer.toString('utf-8');
     }
   })();
 
-  const { text, imageList } = matchMdImg(content);
+  const rawText = await parseMarkdownBase64Images(content, {
+    controller: (image) => {
+      if (image.type !== 'base64') return Promise.resolve({ key: '' });
+
+      return uploadBase64Image({
+        mime: image.mime,
+        base64: image.base64,
+        uploadFile: options.uploadFile
+      });
+    }
+  });
 
   return {
-    rawText: text,
-    imageList
+    rawText
   };
 };

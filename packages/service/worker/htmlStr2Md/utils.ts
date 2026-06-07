@@ -1,42 +1,80 @@
 import TurndownService from 'turndown';
-import { type ImageType } from '../readFile/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 import { getLogger, LogCategories } from '../../common/logger';
 import { workerEnv } from '../env';
-// @ts-ignore
-const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+import { gfm } from 'joplin-turndown-plugin-gfm';
+import { uploadBase64Image } from '../utils/base64ImageUpload';
+import { type UploadFileHandler } from '../readFile/type';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 const MAX_HTML_SIZE = workerEnv.MAX_HTML_TRANSFORM_CHARS;
 const logger = getLogger(LogCategories.INFRA.WORKER);
+const htmlBase64UploadConcurrency = 5;
 
-const processBase64Images = (htmlContent: string) => {
-  // 优化后的正则:
-  // 1. 使用精确的 base64 字符集 [A-Za-z0-9+/=]+ 避免回溯
-  // 2. 明确捕获 mime 类型和 base64 数据
-  // 3. 减少不必要的捕获组
-  const base64Regex = /src="data:([^;]+);base64,([A-Za-z0-9+/=]+)"/g;
-  const images: ImageType[] = [];
+const htmlBase64SrcRegex = /\bsrc\s*=\s*(["'])data:([^;]+);base64,([A-Za-z0-9+/=]+)\1/gi;
 
-  const processedHtml = htmlContent.replace(base64Regex, (_match, mime, base64Data) => {
-    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
-    images.push({
-      uuid,
-      base64: base64Data,
-      mime
-    });
-    return `src="${uuid}"`;
-  });
+/**
+ * HTML 转 markdown 前实时处理 base64 图片。
+ *
+ * 有 uploadFile 时上传为对象存储 key；没有 uploadFile 时删除 src，避免大体积 base64
+ * 进入 turndown 或被 worker 结果回传。
+ */
+const processBase64Images = async (
+  htmlContent: string,
+  options: {
+    uploadFile?: UploadFileHandler;
+  } = {}
+) => {
+  const matches = Array.from(htmlContent.matchAll(htmlBase64SrcRegex));
+  if (matches.length === 0) return htmlContent;
 
-  return { processedHtml, images };
+  const replacements = await batchRun(
+    matches,
+    async (match) => {
+      const [, quote, mime, base64Data] = match;
+
+      if (!options.uploadFile) {
+        return `src=${quote}${quote}`;
+      }
+
+      try {
+        const { key } = await uploadBase64Image({
+          mime,
+          base64: base64Data,
+          uploadFile: options.uploadFile
+        });
+        return `src=${quote}${key}${quote}`;
+      } catch (error) {
+        logger.warn('Failed to upload parsed HTML base64 image', { mime, error });
+        return `src=${quote}${quote}`;
+      }
+    },
+    htmlBase64UploadConcurrency
+  );
+
+  let result = '';
+  let lastIndex = 0;
+
+  for (const [matchIndex, match] of matches.entries()) {
+    const [fullMatch] = match;
+    const index = match.index ?? 0;
+
+    result += htmlContent.slice(lastIndex, index);
+    result += replacements[matchIndex];
+    lastIndex = index + fullMatch.length;
+  }
+
+  return result + htmlContent.slice(lastIndex);
 };
 
-export const html2md = (
-  html: string
-): {
+export const html2md = async (
+  html: string,
+  options: {
+    uploadFile?: UploadFileHandler;
+  } = {}
+): Promise<{
   rawText: string;
-  imageList: ImageType[];
-} => {
+}> => {
   const turndownService = new TurndownService({
     headingStyle: 'atx',
     bulletListMarker: '-',
@@ -50,7 +88,7 @@ export const html2md = (
 
   try {
     turndownService.remove(['i', 'script', 'iframe', 'style']);
-    turndownService.use(turndownPluginGfm.gfm);
+    turndownService.use(gfm);
 
     // add custom handling for media tag
     turndownService.addRule('media', {
@@ -71,25 +109,28 @@ export const html2md = (
     });
 
     // Base64 img to id, otherwise it will occupy memory when going to md
-    const { processedHtml, images } = processBase64Images(html);
+    const processedHtml = await processBase64Images(html, {
+      uploadFile: options.uploadFile
+    });
 
-    // if html is too large, return the original html (but preserve image list)
+    // if html is too large, return the original html
     if (processedHtml.length > MAX_HTML_SIZE) {
-      return { rawText: processedHtml, imageList: images };
+      return { rawText: processedHtml };
     }
 
     const md = turndownService.turndown(processedHtml);
-    // const { text, imageList } = matchMdImg(md);
 
     return {
-      rawText: simpleMarkdownText(md),
-      imageList: images
+      rawText: simpleMarkdownText(md)
     };
   } catch (error) {
+    if (options.uploadFile) {
+      throw error;
+    }
+
     logger.error('HTML to markdown conversion failed', { error });
     return {
-      rawText: '',
-      imageList: []
+      rawText: ''
     };
   }
 };

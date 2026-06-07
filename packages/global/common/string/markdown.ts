@@ -1,6 +1,5 @@
 import { batchRun } from '../system/utils';
-import { getNanoid, simpleText } from './tools';
-import type { ImageType } from '../../../service/worker/readFile/type';
+import { simpleText } from './tools';
 
 /* Delete redundant text in markdown */
 export const simpleMarkdownText = (rawText: string) => {
@@ -27,7 +26,7 @@ export const simpleMarkdownText = (rawText: string) => {
   rawText = rawText.replace(/\\\\n/g, '\\n');
 
   // Remove headings and code blocks front spaces
-  ['####', '###', '##', '#', '```', '~~~'].forEach((item, i) => {
+  ['####', '###', '##', '#', '```', '~~~'].forEach((item) => {
     const reg = new RegExp(`\\n\\s*${item}`, 'g');
     if (reg.test(rawText)) {
       rawText = rawText.replace(new RegExp(`(\\n)( *)(${item})`, 'g'), '$1$3');
@@ -46,7 +45,7 @@ export const htmlTable2Md = (content: string): string => {
       if (!rows) return htmlTable;
 
       // Parse table data
-      let tableData: string[][] = [];
+      const tableData: string[][] = [];
       let maxColumns = 0;
 
       // Try to convert to markdown table
@@ -109,92 +108,224 @@ export const htmlTable2Md = (content: string): string => {
       });
 
       return chunks.join('\n');
-    } catch (error) {
+    } catch {
       return htmlTable;
     }
   });
 };
 
-/**
- * format markdown
- * 1. upload base64
- * 2. replace \
- */
-export const uploadMarkdownBase64 = async ({
-  rawText,
-  uploadImgController
-}: {
-  rawText: string;
-  uploadImgController?: (base64: string) => Promise<string>;
-}) => {
-  if (uploadImgController) {
-    // match base64, upload and replace it
-    const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
-    const base64Arr = rawText.match(base64Regex) || [];
+export type MatchedImageUploadResult = {
+  key: string;
+  previewUrl?: string;
+};
 
-    // upload base64 and replace it
-    await batchRun(
-      base64Arr,
-      async (base64Img) => {
-        try {
-          const str = await uploadImgController(base64Img);
-          rawText = rawText.replace(base64Img, str);
-        } catch (error) {
-          rawText = rawText.replace(base64Img, '');
-          rawText = rawText.replace(/!\[.*\]\(\)/g, '');
-        }
-      },
-      20
-    );
+type MarkdownImageBase = {
+  altText: string;
+  url: string;
+  fullMatch: string;
+  index: number;
+};
+
+export type MarkdownImage = MarkdownImageBase &
+  (
+    | {
+        type: 'base64';
+        dataUrl: string;
+        mime: string;
+        base64: string;
+      }
+    | {
+        type: 'http';
+      }
+  );
+
+type MarkdownImageUploadController = (image: MarkdownImage) => Promise<MatchedImageUploadResult>;
+
+export type MarkdownImageParseOptions = {
+  parseBase64?: boolean;
+  parseHttp?: boolean;
+  controller?: MarkdownImageUploadController;
+  controler?: MarkdownImageUploadController;
+};
+
+const mdBase64ImageSrcRegex = /^data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)$/;
+const mdHttpImageSrcRegex = /^https?:\/\/.+/;
+const markdownImageUploadConcurrency = 5;
+const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
+
+const findClosingBracket = (text: string, startIndex: number) => {
+  for (let i = startIndex; i < text.length; i++) {
+    if (text[i] === '\\') {
+      i++;
+      continue;
+    }
+
+    if (text[i] === ']') return i;
   }
 
-  // Remove white space on both sides of the picture
-  // const trimReg = /(!\[.*\]\(.*\))\s*/g;
-  // if (trimReg.test(rawText)) {
-  //   rawText = rawText.replace(trimReg, '$1');
-  // }
-
-  return rawText;
+  return -1;
 };
 
-export const markdownProcess = async ({
-  rawText,
-  uploadImgController
-}: {
-  rawText: string;
-  uploadImgController?: (base64: string) => Promise<string>;
-}) => {
-  const imageProcess = await uploadMarkdownBase64({
-    rawText,
-    uploadImgController
-  });
+const findMarkdownImageUrlEnd = (text: string, startIndex: number) => {
+  let depth = 0;
 
-  return simpleMarkdownText(imageProcess);
+  for (let i = startIndex; i < text.length; i++) {
+    const char = text[i];
+
+    if (char === '\\') {
+      i++;
+      continue;
+    }
+
+    if (char === '(') {
+      depth++;
+      continue;
+    }
+
+    if (char === ')') {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+
+  return -1;
 };
 
-export const matchMdImg = (text: string) => {
-  // 优化后的正则:
-  // 1. 使用 [^\]]* 匹配 alt 文本(更精确)
-  // 2. 使用 [A-Za-z0-9+/=]+ 匹配 base64 数据(避免回溯)
-  // 3. 明确匹配 data:image/ 前缀
-  const base64Regex = /!\[([^\]]*)\]\((data:image\/([^;]+);base64,([A-Za-z0-9+/=]+))\)/g;
-  const imageList: ImageType[] = [];
+/**
+ * 扫描 markdown 图片节点，支持 URL 中包含未转义括号或转义右括号的场景。
+ *
+ * 普通正则 `!\[...\]\(([^)]+)\)` 会在 `https://a.com/img(1).png` 的第一个 `)` 截断，
+ * 导致 http 图片转存失败；这里用轻量扫描保留完整节点范围。
+ */
+const matchMarkdownImages = (text: string) => {
+  const matches: MarkdownImageBase[] = [];
+  let start = 0;
 
-  text = text.replace(base64Regex, (_match, altText, _fullDataUrl, mime, base64Data) => {
-    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
+  while (start < text.length) {
+    const imageStart = text.indexOf('![', start);
+    if (imageStart === -1) break;
 
-    imageList.push({
-      uuid,
-      base64: base64Data,
-      mime: `image/${mime}`
+    const altStart = imageStart + 2;
+    const altEnd = findClosingBracket(text, altStart);
+    if (altEnd === -1 || text[altEnd + 1] !== '(') {
+      start = imageStart + 2;
+      continue;
+    }
+
+    const urlStart = altEnd + 2;
+    const urlEnd = findMarkdownImageUrlEnd(text, urlStart);
+    if (urlEnd === -1) {
+      start = imageStart + 2;
+      continue;
+    }
+
+    const fullMatch = text.slice(imageStart, urlEnd + 1);
+    matches.push({
+      altText: text.slice(altStart, altEnd),
+      url: text.slice(urlStart, urlEnd),
+      fullMatch,
+      index: imageStart
     });
 
-    // 保持原有的 alt 文本，只替换 base64 部分
-    return `![${altText}](${uuid})`;
+    start = urlEnd + 1;
+  }
+
+  return matches;
+};
+
+/**
+ * 处理 markdown 图片语法中的图片，并统一执行 markdown 文本清理。
+ *
+ * base64 图片默认会被解析：传入上传回调时替换成对象存储 key，不传回调或上传失败时删除，
+ * 避免大体积 base64 继续在解析链路中流转。http 图片默认不处理，开启后可复用同一个
+ * 上传回调转存；没有回调或转存失败时保留原 URL。
+ */
+export const parseMarkdownBase64Images = async (
+  text: string,
+  imageOptions: MarkdownImageParseOptions = {}
+) => {
+  const {
+    parseBase64 = true,
+    parseHttp = false,
+    controller = imageOptions.controler
+  } = imageOptions;
+  const images = matchMarkdownImages(text).flatMap<MarkdownImage>((match) => {
+    const { fullMatch, altText, url: rawUrl, index } = match;
+    const url = unescapeMarkdownUrl(rawUrl);
+    const base64Match = url.match(mdBase64ImageSrcRegex);
+
+    if (parseBase64 && base64Match) {
+      const [, mime, base64] = base64Match;
+
+      return [
+        {
+          type: 'base64',
+          altText,
+          url,
+          dataUrl: url,
+          mime: `image/${mime}`,
+          base64,
+          fullMatch,
+          index
+        }
+      ];
+    }
+
+    if (parseHttp && mdHttpImageSrcRegex.test(url)) {
+      return [
+        {
+          type: 'http',
+          altText,
+          url,
+          fullMatch,
+          index
+        }
+      ];
+    }
+
+    return [];
   });
 
-  return {
-    text,
-    imageList
+  if (images.length === 0) return simpleMarkdownText(text);
+
+  const preservedMarkdownImages = new Map<string, string>();
+  const preserveMarkdownImage = (image: MarkdownImage, index: number) => {
+    const token = `__FASTGPT_MARKDOWN_IMAGE_${index}_PLACEHOLDER__`;
+    preservedMarkdownImages.set(token, image.fullMatch);
+    return token;
   };
+
+  const uploadResults = controller
+    ? await batchRun(
+        images,
+        async (image, index) => {
+          try {
+            // 上传回调返回的是对象存储 key，markdown 中先保留 key，后续业务层再决定是否签名成 URL。
+            const { key } = await controller(image);
+            return key ? `![${image.altText}](${key})` : '';
+          } catch {
+            return image.type === 'http' ? preserveMarkdownImage(image, index) : '';
+          }
+        },
+        markdownImageUploadConcurrency
+      )
+    : images.map((image, index) =>
+        image.type === 'http' ? preserveMarkdownImage(image, index) : ''
+      );
+
+  let result = '';
+  let lastIndex = 0;
+
+  for (const [index, image] of images.entries()) {
+    result += text.slice(lastIndex, image.index);
+    result += uploadResults[index];
+    lastIndex = image.index + image.fullMatch.length;
+  }
+
+  const cleanedText = simpleMarkdownText(result + text.slice(lastIndex));
+
+  return Array.from(preservedMarkdownImages.entries()).reduce(
+    (text, [token, rawMarkdown]) => text.replaceAll(token, rawMarkdown),
+    cleanedText
+  );
 };

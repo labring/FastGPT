@@ -87,12 +87,18 @@ export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams
 ) {
-  const { base64Img, filename, mimetype, uploadKey, expiredTime } = params;
+  const { base64Img, buffer: inputBuffer, filename, mimetype, uploadKey, expiredTime } = params;
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
 
-  const base64Data = base64Img.split(',')[1] || base64Img;
-  const buffer = Buffer.from(base64Data, 'base64');
+  const buffer = (() => {
+    if (inputBuffer) return inputBuffer;
+    const base64Data = base64Img?.split(',')[1] || base64Img;
+    if (!base64Data) {
+      throw new Error('base64Img or buffer is required');
+    }
+    return Buffer.from(base64Data, 'base64');
+  })();
 
   await bucket.client.uploadObject({
     key: uploadKey,

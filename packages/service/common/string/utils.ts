@@ -1,6 +1,5 @@
 import { serviceEnv } from '../../env';
 import { WorkerNameEnum, getWorkerController } from '../../worker/utils';
-import { type ImageType } from '../../worker/readFile/type';
 import { getLogger, LogCategories } from '../logger';
 
 const logger = getLogger(LogCategories.INFRA.WORKER);
@@ -16,7 +15,6 @@ export const htmlToMarkdown = async (html?: string | null) => {
     { html: string },
     {
       rawText: string;
-      imageList: ImageType[];
     }
   >({
     name: WorkerNameEnum.htmlStr2Md,

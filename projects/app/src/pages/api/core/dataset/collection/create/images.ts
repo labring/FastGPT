@@ -74,7 +74,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         const filename = path.basename(file.filename);
         const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
         return uploadImage2S3Bucket('private', {
-          base64Img: (await fs.promises.readFile(file.path)).toString('base64'),
+          buffer: await fs.promises.readFile(file.path),
           uploadKey: fileKey,
           mimetype: file.mimetype,
           filename,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileRawText } from '@fastgpt/service/worker/readFile/extension/rawText';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 
@@ -104,12 +104,78 @@ describe('readFileRawText performance', () => {
     });
     const duration = performance.now() - start;
 
-    expect(result.rawText.length).toBe(text.length);
-    expect(result.imageList ?? []).toHaveLength(0);
+    expect(result.rawText.length).toBe(text.trim().length);
+    expect(result).not.toHaveProperty('imageList');
     expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.largeUtf8Text);
   });
 
-  it('should extract 200 base64 images without pathological regex cost', async () => {
+  it('should upload base64 images in worker and replace markdown image src with key', async () => {
+    const base64Data =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const content = `段落\n\n![alt](data:image/png;base64,${base64Data})\n`;
+    const buffer = Buffer.from(content, 'utf8');
+    const uploadFile = vi.fn(async () => ({
+      key: 'dataset/file-parsed/image.png'
+    }));
+
+    const result = await readFileRawText(
+      {
+        extension: 'md',
+        buffer,
+        encoding: 'utf-8'
+      },
+      { uploadFile }
+    );
+
+    expect(uploadFile).toHaveBeenCalledWith({
+      name: expect.stringMatching(/\.png$/),
+      mime: 'image/png',
+      buffer: expect.any(ArrayBuffer)
+    });
+    expect(result.rawText).toContain('![alt](dataset/file-parsed/image.png)');
+    expect(result).not.toHaveProperty('imageList');
+  });
+
+  it('should remove base64 images when uploadFile handler is missing', async () => {
+    const base64Data =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const content = `段落\n\n![alt](data:image/png;base64,${base64Data})\n`;
+    const buffer = Buffer.from(content, 'utf8');
+
+    const result = await readFileRawText({
+      extension: 'md',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(result.rawText).toContain('段落');
+    expect(result.rawText).not.toContain('data:image/png;base64');
+    expect(result.rawText).not.toContain('![alt]');
+    expect(result).not.toHaveProperty('imageList');
+  });
+
+  it('should reject oversized base64 image before upload', async () => {
+    const oversizedBase64 = 'A'.repeat(Math.ceil((40 * 1024 * 1024 + 1) / 3) * 4);
+    const content = `段落\n\n![alt](data:image/png;base64,${oversizedBase64})\n`;
+    const uploadFile = vi.fn(async () => ({
+      key: 'dataset/file-parsed/image.png'
+    }));
+
+    const result = await readFileRawText(
+      {
+        extension: 'md',
+        buffer: Buffer.from(content, 'utf8'),
+        encoding: 'utf-8'
+      },
+      { uploadFile }
+    );
+
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(result.rawText).toContain('段落');
+    expect(result.rawText).not.toContain('data:image/png;base64');
+  });
+
+  it('should process 200 base64 images without carrying imageList', async () => {
     const base64Data =
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     const imageCount = 200;
@@ -118,19 +184,24 @@ describe('readFileRawText performance', () => {
       (_, i) => `段落 ${i}\n\n![alt-${i}](data:image/png;base64,${base64Data})\n`
     ).join('\n');
     const buffer = Buffer.from(content, 'utf8');
+    const uploadFile = vi.fn(async ({ name }: { name: string }) => ({
+      key: `dataset/file-parsed/${name}`
+    }));
 
     const start = performance.now();
-    const result = await readFileRawText({
-      extension: 'md',
-      buffer,
-      encoding: 'utf-8'
-    });
+    const result = await readFileRawText(
+      {
+        extension: 'md',
+        buffer,
+        encoding: 'utf-8'
+      },
+      { uploadFile }
+    );
     const duration = performance.now() - start;
 
-    const imageList = result.imageList ?? [];
-    expect(imageList).toHaveLength(imageCount);
-    expect(imageList[0].base64).toBe(base64Data);
-    expect(imageList[0].mime).toBe('image/png');
+    expect(uploadFile).toHaveBeenCalledTimes(imageCount);
+    expect(result).not.toHaveProperty('imageList');
+    expect(result.rawText).not.toContain('data:image/png;base64');
     expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.manyBase64Images);
   });
 });

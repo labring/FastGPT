@@ -2,9 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   simpleMarkdownText,
   htmlTable2Md,
-  uploadMarkdownBase64,
-  markdownProcess,
-  matchMdImg
+  parseMarkdownBase64Images
 } from '@fastgpt/global/common/string/markdown';
 
 describe('markdown 字符串处理函数测试', () => {
@@ -185,12 +183,12 @@ describe('markdown 字符串处理函数测试', () => {
     });
   });
 
-  describe('uploadMarkdownBase64', () => {
-    it('应该在没有 uploadImgController 时返回原文本', async () => {
+  describe('parseMarkdownBase64Images', () => {
+    it('应该在没有 uploadImgController 时移除 base64 图片', async () => {
       const rawText = '![image](data:image/png;base64,ABC123)';
-      const result = await uploadMarkdownBase64({ rawText });
+      const result = await parseMarkdownBase64Images(rawText);
 
-      expect(result).toBe(rawText);
+      expect(result).toBe('');
     });
 
     it('应该上传 base64 图片并替换 URL', async () => {
@@ -198,11 +196,13 @@ describe('markdown 字符串处理函数测试', () => {
       const rawText = `![test](${base64Img})`;
       const uploadedUrl = 'https://cdn.example.com/image.png';
 
-      const mockUpload = vi.fn().mockResolvedValue(uploadedUrl);
+      const mockUpload = vi.fn().mockResolvedValue({ key: uploadedUrl });
 
-      const result = await uploadMarkdownBase64({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(mockUpload).toHaveBeenCalledWith(base64Img);
@@ -210,23 +210,23 @@ describe('markdown 字符串处理函数测试', () => {
     });
 
     it('应该处理多个 base64 图片', async () => {
-      // 注意: uploadMarkdownBase64 的正则 [^\)]+ 是贪婪匹配
-      // 多个图片在同一行会被匹配为一个,所以用换行分隔
       const base64Img1 = 'data:image/png;base64,ABC=';
       const base64Img2 = 'data:image/jpeg;base64,DEF=';
       const rawText = `![img1](${base64Img1})\n![img2](${base64Img2})`;
 
       const mockUpload = vi
         .fn()
-        .mockResolvedValueOnce('https://cdn.example.com/img1.png')
-        .mockResolvedValueOnce('https://cdn.example.com/img2.jpg');
+        .mockResolvedValueOnce({ key: 'https://cdn.example.com/img1.png' })
+        .mockResolvedValueOnce({ key: 'https://cdn.example.com/img2.jpg' });
 
-      const result = await uploadMarkdownBase64({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
-      // batchRun 会调用所有匹配到的图片
+      // 按匹配顺序逐张上传所有 markdown base64 图片
       expect(mockUpload).toHaveBeenCalled();
       expect(result).toContain('https://cdn.example.com/img1.png');
       expect(result).toContain('https://cdn.example.com/img2.jpg');
@@ -238,9 +238,11 @@ describe('markdown 字符串处理函数测试', () => {
 
       const mockUpload = vi.fn().mockRejectedValue(new Error('Upload failed'));
 
-      const result = await uploadMarkdownBase64({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       // 上传失败时应该移除图片
@@ -248,20 +250,20 @@ describe('markdown 字符串处理函数测试', () => {
     });
 
     it('应该处理部分上传失败', async () => {
-      // 注意: uploadMarkdownBase64 的正则 [^\)]+ 是贪婪匹配
-      // 多个图片在同一行会被匹配为一个,所以用换行分隔
       const base64Img1 = 'data:image/png;base64,OK=';
       const base64Img2 = 'data:image/jpeg;base64,FAIL=';
       const rawText = `![img1](${base64Img1})\n![img2](${base64Img2})`;
 
       const mockUpload = vi
         .fn()
-        .mockResolvedValueOnce('https://cdn.example.com/img1.png')
+        .mockResolvedValueOnce({ key: 'https://cdn.example.com/img1.png' })
         .mockRejectedValueOnce(new Error('Failed'));
 
-      const result = await uploadMarkdownBase64({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(result).toContain('https://cdn.example.com/img1.png');
@@ -278,11 +280,13 @@ describe('markdown 字符串处理函数测试', () => {
         ## Footer
       `;
 
-      const mockUpload = vi.fn().mockResolvedValue('https://cdn.example.com/image.png');
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'https://cdn.example.com/image.png' });
 
-      const result = await uploadMarkdownBase64({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(result).toContain('# Header');
@@ -293,10 +297,10 @@ describe('markdown 字符串处理函数测试', () => {
     });
   });
 
-  describe('markdownProcess', () => {
+  describe('parseMarkdownBase64Images markdown 清理', () => {
     it('应该处理不带上传控制器的 Markdown', async () => {
       const rawText = '# Title\n\nSome text\n\n';
-      const result = await markdownProcess({ rawText });
+      const result = await parseMarkdownBase64Images(rawText);
 
       expect(result).toContain('# Title');
       expect(result).toContain('Some text');
@@ -306,11 +310,13 @@ describe('markdown 字符串处理函数测试', () => {
       const base64Img = 'data:image/png;base64,TEST=';
       const rawText = `# Title\n\n![image](${base64Img})\n\nMore text`;
 
-      const mockUpload = vi.fn().mockResolvedValue('https://cdn.example.com/image.png');
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'https://cdn.example.com/image.png' });
 
-      const result = await markdownProcess({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(result).toContain('# Title');
@@ -320,7 +326,7 @@ describe('markdown 字符串处理函数测试', () => {
 
     it('应该移除多余的转义字符', async () => {
       const rawText = '\\# Title\n\\* Item 1\n\\* Item 2';
-      const result = await markdownProcess({ rawText });
+      const result = await parseMarkdownBase64Images(rawText);
 
       expect(result).toContain('# Title');
       expect(result).toContain('* Item 1');
@@ -328,7 +334,7 @@ describe('markdown 字符串处理函数测试', () => {
     });
 
     it('应该处理空文本', async () => {
-      const result = await markdownProcess({ rawText: '' });
+      const result = await parseMarkdownBase64Images('');
 
       expect(result).toBe('');
     });
@@ -347,11 +353,13 @@ describe('markdown 字符串处理函数测试', () => {
         \`\`\`
       `;
 
-      const mockUpload = vi.fn().mockResolvedValue('https://cdn.example.com/img.png');
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'https://cdn.example.com/img.png' });
 
-      const result = await markdownProcess({
-        rawText,
-        uploadImgController: mockUpload
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(result).toContain('# Heading');
@@ -361,153 +369,182 @@ describe('markdown 字符串处理函数测试', () => {
     });
   });
 
-  describe('matchMdImg', () => {
-    it('应该提取单个 base64 图片', () => {
-      const base64Data =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      const text = `![test](data:image/png;base64,${base64Data})`;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(1);
-      expect(result.imageList[0].base64).toBe(base64Data);
-      expect(result.imageList[0].mime).toBe('image/png');
-      expect(result.imageList[0].uuid).toMatch(/^IMAGE_[a-zA-Z0-9]+_IMAGE$/);
-      expect(result.text).toContain('IMAGE_');
-      expect(result.text).not.toContain('data:image');
-    });
-
-    it('应该保留 alt 文本', () => {
+  describe('parseMarkdownBase64Images', () => {
+    it('应该在没有上传回调时删除 markdown base64 图片', async () => {
       const base64Data = 'ABC123==';
-      const text = `![My Image](data:image/png;base64,${base64Data})`;
-      const result = matchMdImg(text);
+      const text = `before ![alt](data:image/png;base64,${base64Data}) after`;
+      const result = await parseMarkdownBase64Images(text);
 
-      expect(result.text).toContain('![My Image]');
-      expect(result.imageList[0].uuid).toBeTruthy();
+      expect(result).toBe('before  after');
+      expect(result).not.toContain('data:image/png;base64');
     });
 
-    it('应该处理空 alt 文本', () => {
+    it('应该在传入上传回调时逐张替换为 image key', async () => {
       const base64Data = 'ABC123==';
-      const text = `![](data:image/png;base64,${base64Data})`;
-      const result = matchMdImg(text);
+      const text = `![alt](data:image/png;base64,${base64Data})`;
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/file-parsed/image.png' });
 
-      expect(result.text).toContain('![]');
-      expect(result.imageList).toHaveLength(1);
-    });
-
-    it('应该提取多个 base64 图片', () => {
-      const base64Data1 = 'DATA1==';
-      const base64Data2 = 'DATA2==';
-      const text = `
-        ![img1](data:image/png;base64,${base64Data1})
-        Some text
-        ![img2](data:image/jpeg;base64,${base64Data2})
-      `;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(2);
-      expect(result.imageList[0].base64).toBe(base64Data1);
-      expect(result.imageList[0].mime).toBe('image/png');
-      expect(result.imageList[1].base64).toBe(base64Data2);
-      expect(result.imageList[1].mime).toBe('image/jpeg');
-    });
-
-    it('应该处理不同的图片格式', () => {
-      const formats = ['png', 'jpeg', 'gif', 'webp'];
-      let text = '';
-
-      formats.forEach((fmt, i) => {
-        text += `![img${i}](data:image/${fmt};base64,DATA${i}==)\n`;
+      const result = await parseMarkdownBase64Images(text, {
+        controller: upload
       });
 
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(formats.length);
-      formats.forEach((fmt, i) => {
-        expect(result.imageList[i].mime).toBe(`image/${fmt}`);
-      });
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          altText: 'alt',
+          dataUrl: `data:image/png;base64,${base64Data}`,
+          mime: 'image/png',
+          base64: base64Data
+        })
+      );
+      expect(result).toBe('![alt](dataset/file-parsed/image.png)');
     });
 
-    it('应该处理简单的 alt 文本', () => {
-      const base64Data = 'TEST==';
-      const text = `![Alt text](data:image/png;base64,${base64Data})`;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(1);
-      expect(result.text).toContain('![Alt text]');
-    });
-
-    it('应该处理不包含 base64 图片的文本', () => {
-      const text = `
-        # Title
-        ![normal image](https://example.com/image.png)
-        Some text
-      `;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(0);
-      expect(result.text).toBe(text);
-    });
-
-    it('应该处理混合的图片类型', () => {
+    it('应该保留普通 URL 图片和普通文本', async () => {
       const base64Data = 'BASE64==';
-      const text = `
-        ![base64](data:image/png;base64,${base64Data})
-        ![url](https://example.com/image.jpg)
-      `;
-      const result = matchMdImg(text);
+      const text = `# Title\n![base64](data:image/png;base64,${base64Data})\n![url](https://example.com/image.jpg)`;
+      const result = await parseMarkdownBase64Images(text);
 
-      expect(result.imageList).toHaveLength(1);
-      expect(result.text).toContain('https://example.com/image.jpg');
-      expect(result.text).not.toContain('data:image/png');
+      expect(result).toContain('# Title');
+      expect(result).toContain('![url](https://example.com/image.jpg)');
+      expect(result).not.toContain('data:image/png');
     });
 
-    it('应该处理空文本', () => {
-      const result = matchMdImg('');
+    it('上传失败时应该移除失败图片并继续处理后续图片', async () => {
+      const text = [
+        '![img1](data:image/png;base64,OK=)',
+        'middle',
+        '![img2](data:image/jpeg;base64,FAIL=)'
+      ].join('\n');
+      const upload = vi
+        .fn()
+        .mockResolvedValueOnce({ key: 'dataset/file-parsed/image.png' })
+        .mockRejectedValueOnce(new Error('upload failed'));
 
-      expect(result.imageList).toHaveLength(0);
-      expect(result.text).toBe('');
-    });
-
-    it('应该处理大型 base64 图片', () => {
-      // 生成约 100KB 的 base64 数据
-      const largeBase64 = 'A'.repeat(100 * 1024);
-      const text = `![large](data:image/png;base64,${largeBase64})`;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(1);
-      expect(result.imageList[0].base64).toBe(largeBase64);
-      expect(result.imageList[0].base64.length).toBe(100 * 1024);
-    });
-
-    it('应该为每个图片生成唯一的 UUID', () => {
-      const base64Data = 'SAME==';
-      const text = `
-        ![img1](data:image/png;base64,${base64Data})
-        ![img2](data:image/png;base64,${base64Data})
-      `;
-      const result = matchMdImg(text);
-
-      expect(result.imageList).toHaveLength(2);
-      expect(result.imageList[0].uuid).not.toBe(result.imageList[1].uuid);
-    });
-
-    it('应该处理 base64 填充字符', () => {
-      const testCases = ['ABC=', 'ABCD==', 'ABCDEF'];
-
-      testCases.forEach((base64Data) => {
-        const text = `![test](data:image/png;base64,${base64Data})`;
-        const result = matchMdImg(text);
-
-        expect(result.imageList).toHaveLength(1);
-        expect(result.imageList[0].base64).toBe(base64Data);
+      const result = await parseMarkdownBase64Images(text, {
+        controller: upload
       });
+
+      expect(result).toContain('![img1](dataset/file-parsed/image.png)');
+      expect(result).toContain('middle');
+      expect(result).not.toContain('data:image/jpeg');
+    });
+
+    it('并发上传完成顺序不一致时应该保留原始图片顺序', async () => {
+      const text = [
+        'start',
+        '![img1](data:image/png;base64,ONE=)',
+        'middle',
+        '![img2](data:image/png;base64,TWO=)',
+        'end'
+      ].join('\n');
+      const upload = vi.fn(async (image) => {
+        if (image.type === 'base64' && image.base64 === 'ONE=') {
+          await new Promise((resolve) => setTimeout(resolve, 30));
+          return { key: 'key-1' };
+        }
+
+        return { key: 'key-2' };
+      });
+
+      const result = await parseMarkdownBase64Images(text, {
+        controller: upload
+      });
+
+      expect(result).toBe(
+        ['start', '![img1](key-1)', 'middle', '![img2](key-2)', 'end'].join('\n')
+      );
+    });
+
+    it('parseHttp 开启时应该转存普通 http 图片', async () => {
+      const text = 'hello ![img](https://img.example.com/a.png)';
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/file-parsed/a.png' });
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: upload
+      });
+
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'http',
+          altText: 'img',
+          url: 'https://img.example.com/a.png'
+        })
+      );
+      expect(result).toBe('hello ![img](dataset/file-parsed/a.png)');
+    });
+
+    it('parseHttp 开启时应该正确处理 URL 中的括号', async () => {
+      const text = 'hello ![img](https://img.example.com/a(1).png)';
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/file-parsed/a.png' });
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: upload
+      });
+
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'http',
+          url: 'https://img.example.com/a(1).png'
+        })
+      );
+      expect(result).toBe('hello ![img](dataset/file-parsed/a.png)');
+    });
+
+    it('parseHttp 开启时应该正确处理 URL 中转义的右括号', async () => {
+      const text = String.raw`hello ![img](https://img.example.com/a\).png)`;
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/file-parsed/a.png' });
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: upload
+      });
+
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'http',
+          url: 'https://img.example.com/a).png'
+        })
+      );
+      expect(result).toBe('hello ![img](dataset/file-parsed/a.png)');
+    });
+
+    it('http 图片转存失败时应该用原始 markdown 节点回退', async () => {
+      const text = String.raw`hello ![img](https://img.example.com/a\).png)`;
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: vi.fn().mockRejectedValue(new Error('failed'))
+      });
+
+      expect(result).toBe(text);
+    });
+
+    it('parseHttp 开启但未传上传回调时应该保留普通 http 图片', async () => {
+      const text = 'hello ![img](https://img.example.com/a.png)';
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true
+      });
+
+      expect(result).toBe(text);
+    });
+
+    it('http 图片转存失败时应该保留原 URL', async () => {
+      const text = 'hello ![img](https://img.example.com/a.png)';
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: vi.fn().mockRejectedValue(new Error('failed'))
+      });
+
+      expect(result).toBe(text);
     });
   });
 
   describe('性能测试', () => {
-    it('uploadMarkdownBase64 应该处理多个图片', async () => {
-      // 注意: uploadMarkdownBase64 的正则 [^\)]+ 是贪婪匹配
-      // 多个图片在同一行会被匹配为一个,所以用换行分隔
+    it('parseMarkdownBase64Images 应该处理多个图片', async () => {
       const imageCount = 5;
       let text = '';
 
@@ -517,18 +554,20 @@ describe('markdown 字符串处理函数测试', () => {
 
       const mockUpload = vi.fn().mockImplementation(async (img) => {
         await new Promise((resolve) => setTimeout(resolve, 10)); // 模拟异步上传
-        return `https://cdn.example.com/${img.split('DATA')[1].split('=')[0]}.png`;
+        return { key: `https://cdn.example.com/${img.split('DATA')[1].split('=')[0]}.png` };
       });
 
-      await uploadMarkdownBase64({
-        rawText: text,
-        uploadImgController: mockUpload
+      await parseMarkdownBase64Images(text, {
+        controller: (image) => {
+          expect(image.type).toBe('base64');
+          return mockUpload(image.url);
+        }
       });
 
       expect(mockUpload).toHaveBeenCalledTimes(imageCount);
     });
 
-    it('matchMdImg 应该快速处理大文档', () => {
+    it('parseMarkdownBase64Images 应该快速处理大文档并删除 base64', async () => {
       // 生成包含 100 个 base64 图片的文档
       let text = '';
       for (let i = 0; i < 100; i++) {
@@ -536,10 +575,10 @@ describe('markdown 字符串处理函数测试', () => {
       }
 
       const start = performance.now();
-      const result = matchMdImg(text);
+      const result = await parseMarkdownBase64Images(text);
       const duration = performance.now() - start;
 
-      expect(result.imageList).toHaveLength(100);
+      expect(result).not.toContain('data:image/png;base64');
       expect(duration).toBeLessThan(1000); // 应该在 1 秒内完成
     });
   });

@@ -1,7 +1,25 @@
-import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createProxyAxios } from '../../common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
+import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
+import { type UploadedFileResult } from '../../worker/readFile/type';
+import { getImageBuffer } from '../../common/file/image/utils';
+
+type TextinImageUploadHandler = (
+  params:
+    | {
+        type: 'http';
+        url: string;
+        mime: string;
+        buffer: Buffer;
+      }
+    | {
+        type: 'base64';
+        mime: string;
+        base64: string;
+        dataUrl: string;
+      }
+) => Promise<UploadedFileResult>;
 
 export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -36,7 +54,12 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
     return Promise.reject({ message: `[Textin] ${getErrText(err)}` });
   };
 
-  const parsePDF = async (fileBuffer: Buffer) => {
+  const parsePDF = async (
+    fileBuffer: Buffer,
+    options: {
+      uploadImage?: TextinImageUploadHandler;
+    } = {}
+  ) => {
     logger.debug('Textin PDF parse started');
     const startTime = Date.now();
 
@@ -44,7 +67,7 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
       // Build request parameters (https://docs.textin.com/xparse/parse-quickstart#url%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E)
       const params = {
         get_image: 'objects', // 返回页面内的子图像
-        image_output_type: 'base64str', // 图片对象以base64字符串返回
+        image_output_type: 'default', // 图片对象返回临时链接，避免响应体携带大体积 base64
         parse_mode: 'auto', // 自动模式：直接提取pdf中的文字
         dpi: 144, // 坐标基准144 dpi
         markdown_details: 1, // 返回detail字段（markdown元素详细信息）
@@ -73,8 +96,30 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
         return Promise.reject('[Textin] No markdown content in response');
       }
       logger.debug('Textin markdown content received', { length: rawMarkdown.length });
-      // Process tables and images (reuse existing utility functions)
-      const { text, imageList } = matchMdImg(rawMarkdown);
+      const text = await parseMarkdownBase64Images(rawMarkdown, {
+        parseBase64: true,
+        parseHttp: true,
+        controller: options.uploadImage
+          ? async (image) => {
+              if (image.type === 'base64') {
+                return options.uploadImage!({
+                  type: 'base64',
+                  mime: image.mime,
+                  base64: image.base64,
+                  dataUrl: image.dataUrl
+                });
+              }
+
+              const { buffer, mime } = await getImageBuffer(image.url);
+              return options.uploadImage!({
+                type: 'http',
+                url: image.url,
+                mime,
+                buffer
+              });
+            }
+          : undefined
+      });
 
       // Get page count
       const pages = data.result?.pages?.length || data.result?.total_page_number || 1;
@@ -86,8 +131,7 @@ export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCo
 
       return {
         pages,
-        text,
-        imageList
+        text
       };
     } catch (error) {
       return responseError(error);
