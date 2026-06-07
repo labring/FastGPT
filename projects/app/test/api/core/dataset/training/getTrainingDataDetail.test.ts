@@ -44,7 +44,6 @@ describe('get training data detail test', () => {
     const res = await Call<getTrainingDataDetailBody, {}, getTrainingDataDetailResponse>(handler, {
       auth: root,
       body: {
-        datasetId: dataset._id,
         collectionId: collection._id,
         dataId: trainingData._id
       }
@@ -57,5 +56,63 @@ describe('get training data detail test', () => {
     expect(res.data?.mode).toBe(TrainingModeEnum.chunk);
     expect(res.data?.q).toBe('test');
     expect(res.data?.a).toBe('test');
+  });
+
+  it('should ignore legacy datasetId and only read data from the authorized collection', async () => {
+    const root = await getRootUser();
+    const [dataset, foreignDataset] = await Promise.all([
+      MongoDataset.create({
+        name: 'test',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      }),
+      MongoDataset.create({
+        name: 'foreign',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      })
+    ]);
+    const [collection, foreignCollection] = await Promise.all([
+      MongoDatasetCollection.create({
+        name: 'test',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      }),
+      MongoDatasetCollection.create({
+        name: 'foreign',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: foreignDataset._id
+      })
+    ]);
+    const foreignTrainingData = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: foreignDataset._id,
+      collectionId: foreignCollection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.chunk,
+      q: 'foreign',
+      a: 'foreign'
+    });
+
+    const res = await Call<getTrainingDataDetailBody, {}, getTrainingDataDetailResponse>(handler, {
+      auth: root,
+      body: {
+        datasetId: foreignDataset._id,
+        collectionId: collection._id,
+        dataId: foreignTrainingData._id
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toBeNull();
   });
 });

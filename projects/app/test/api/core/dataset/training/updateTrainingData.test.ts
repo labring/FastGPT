@@ -42,7 +42,6 @@ describe('update training data test', () => {
     const res = await Call<updateTrainingDataBody, {}, updateTrainingDataResponse>(handler, {
       auth: root,
       body: {
-        datasetId: dataset._id,
         collectionId: collection._id,
         dataId: trainingData._id,
         q: 'test',
@@ -61,5 +60,68 @@ describe('update training data test', () => {
     expect(updatedTrainingData?.q).toBe('test');
     expect(updatedTrainingData?.a).toBe('test');
     expect(updatedTrainingData?.chunkIndex).toBe(1);
+  });
+
+  it('should ignore legacy datasetId and only update data from the authorized collection', async () => {
+    const root = await getRootUser();
+    const [dataset, foreignDataset] = await Promise.all([
+      MongoDataset.create({
+        name: 'test',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      }),
+      MongoDataset.create({
+        name: 'foreign',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      })
+    ]);
+    const [collection, foreignCollection] = await Promise.all([
+      MongoDatasetCollection.create({
+        name: 'test',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      }),
+      MongoDatasetCollection.create({
+        name: 'foreign',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: foreignDataset._id
+      })
+    ]);
+    const foreignTrainingData = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: foreignDataset._id,
+      collectionId: foreignCollection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.chunk,
+      q: 'origin',
+      a: 'origin'
+    });
+
+    const res = await Call<updateTrainingDataBody, {}, updateTrainingDataResponse>(handler, {
+      auth: root,
+      body: {
+        datasetId: foreignDataset._id,
+        collectionId: collection._id,
+        dataId: foreignTrainingData._id,
+        q: 'changed',
+        a: 'changed'
+      } as any
+    });
+
+    const existingTrainingData = await MongoDatasetTraining.findById(foreignTrainingData._id);
+
+    expect(res.code).not.toBe(200);
+    expect(existingTrainingData?.q).toBe('origin');
+    expect(existingTrainingData?.a).toBe('origin');
   });
 });

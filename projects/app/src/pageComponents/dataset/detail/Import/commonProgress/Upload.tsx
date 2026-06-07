@@ -127,8 +127,14 @@ const Upload = () => {
           };
 
           if (importSource === ImportDataSourceEnum.reTraining) {
+            const reTrainingParams: Omit<typeof commonParams, 'datasetId'> & {
+              datasetId?: string;
+            } = {
+              ...commonParams
+            };
+            delete reTrainingParams.datasetId;
             const res = await postReTrainingDatasetFileCollection({
-              ...commonParams,
+              ...reTrainingParams,
               collectionId
             });
             retrainNewCollectionId.current = res.collectionId;

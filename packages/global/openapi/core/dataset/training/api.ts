@@ -9,10 +9,6 @@ import { PaginationSchema, PaginationResponseSchema } from '../../../api';
  * Route: PUT /api/core/dataset/training/updateTrainingData
  * ============================================================================ */
 export const UpdateTrainingDataBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'
@@ -63,10 +59,6 @@ export type RebuildEmbeddingResponse = z.infer<typeof RebuildEmbeddingResponseSc
  * Route: POST /api/core/dataset/training/deleteTrainingData
  * ============================================================================ */
 export const DeleteTrainingDataBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'
@@ -86,10 +78,6 @@ export type DeleteTrainingDataResponse = z.infer<typeof DeleteTrainingDataRespon
  * Route: POST /api/core/dataset/training/getTrainingDataDetail
  * ============================================================================ */
 export const GetTrainingDataDetailBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'

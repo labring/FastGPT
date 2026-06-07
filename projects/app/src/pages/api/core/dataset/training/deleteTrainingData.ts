@@ -11,12 +11,12 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
-  const { datasetId, collectionId, dataId } = parseApiInput({
+  const { collectionId, dataId } = parseApiInput({
     req,
     bodySchema: DeleteTrainingDataBodySchema
   }).body;
 
-  const { teamId } = await authDatasetCollection({
+  const { collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -25,8 +25,9 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
   });
 
   await MongoDatasetTraining.deleteOne({
-    teamId,
-    datasetId,
+    teamId: collection.teamId,
+    datasetId: collection.datasetId,
+    collectionId: collection._id,
     _id: dataId
   });
 

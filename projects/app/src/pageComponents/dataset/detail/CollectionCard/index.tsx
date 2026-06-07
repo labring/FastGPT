@@ -485,7 +485,6 @@ const CollectionCard = () => {
 
         {!!trainingStatesCollection && (
           <TrainingStates
-            datasetId={datasetDetail._id}
             collectionId={trainingStatesCollection.collectionId}
             onClose={() => setTrainingStatesCollection(undefined)}
           />

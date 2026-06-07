@@ -464,7 +464,6 @@ const DataCard = () => {
       )}
       {errorModalId && (
         <TrainingStates
-          datasetId={datasetId}
           defaultTab={'errors'}
           collectionId={errorModalId}
           onClose={() => {
