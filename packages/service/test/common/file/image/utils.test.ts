@@ -366,6 +366,21 @@ describe('getImageBase64', () => {
       'Image download too large'
     );
   });
+
+  it('should reject before converting to base64 when buffer exceeds base64 limit', async () => {
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(Buffer.from('12345678901'), {
+        'content-type': 'image/png'
+      })
+    );
+
+    await expect(
+      getImageBase64('/img/base64-too-large.png', {
+        maxSize: 20,
+        maxBase64BufferSize: 10
+      })
+    ).rejects.toThrow('Image buffer too large to convert to base64');
+  });
 });
 
 describe('addEndpointToImageUrl', () => {

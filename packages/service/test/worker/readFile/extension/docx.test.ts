@@ -52,7 +52,7 @@ describe('readDocsFile', () => {
       buffer: new Uint8Array([1, 2, 3]).buffer
     });
     expect(result.rawText).toContain('dataset/file-parsed/image.png');
-    expect(result.imageList).toEqual([]);
+    expect(result).not.toHaveProperty('imageList');
   });
 
   it('docx 包含图片但没有 uploadFile 时在 worker 内报错', async () => {

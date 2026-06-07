@@ -1,7 +1,7 @@
 import iconv from 'iconv-lite';
 import { type ReadRawTextByBuffer, type ReadFileResponse, type UploadFileHandler } from '../type';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
-import { uploadBase64Image } from '../utils/base64ImageUpload';
+import { uploadBase64Image } from '../../utils/base64ImageUpload';
 
 const hasNonAsciiByte = (buffer: Buffer) => {
   for (let i = 0; i < buffer.length; i++) {

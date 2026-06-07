@@ -151,6 +151,7 @@ export type MarkdownImageParseOptions = {
 const mdBase64ImageSrcRegex = /^data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)$/;
 const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
+const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
 
 const findClosingBracket = (text: string, startIndex: number) => {
   for (let i = startIndex; i < text.length; i++) {
@@ -249,7 +250,8 @@ export const parseMarkdownBase64Images = async (
     controller = imageOptions.controler
   } = imageOptions;
   const images = matchMarkdownImages(text).flatMap<MarkdownImage>((match) => {
-    const { fullMatch, altText, url, index } = match;
+    const { fullMatch, altText, url: rawUrl, index } = match;
+    const url = unescapeMarkdownUrl(rawUrl);
     const base64Match = url.match(mdBase64ImageSrcRegex);
 
     if (parseBase64 && base64Match) {
@@ -286,21 +288,30 @@ export const parseMarkdownBase64Images = async (
 
   if (images.length === 0) return simpleMarkdownText(text);
 
+  const preservedMarkdownImages = new Map<string, string>();
+  const preserveMarkdownImage = (image: MarkdownImage, index: number) => {
+    const token = `__FASTGPT_MARKDOWN_IMAGE_${index}_PLACEHOLDER__`;
+    preservedMarkdownImages.set(token, image.fullMatch);
+    return token;
+  };
+
   const uploadResults = controller
     ? await batchRun(
         images,
-        async (image) => {
+        async (image, index) => {
           try {
             // 上传回调返回的是对象存储 key，markdown 中先保留 key，后续业务层再决定是否签名成 URL。
             const { key } = await controller(image);
             return key ? `![${image.altText}](${key})` : '';
           } catch {
-            return image.type === 'http' ? image.fullMatch : '';
+            return image.type === 'http' ? preserveMarkdownImage(image, index) : '';
           }
         },
         markdownImageUploadConcurrency
       )
-    : images.map((image) => (image.type === 'http' ? image.fullMatch : ''));
+    : images.map((image, index) =>
+        image.type === 'http' ? preserveMarkdownImage(image, index) : ''
+      );
 
   let result = '';
   let lastIndex = 0;
@@ -311,5 +322,10 @@ export const parseMarkdownBase64Images = async (
     lastIndex = image.index + image.fullMatch.length;
   }
 
-  return simpleMarkdownText(result + text.slice(lastIndex));
+  const cleanedText = simpleMarkdownText(result + text.slice(lastIndex));
+
+  return Array.from(preservedMarkdownImages.entries()).reduce(
+    (text, [token, rawMarkdown]) => text.replaceAll(token, rawMarkdown),
+    cleanedText
+  );
 };

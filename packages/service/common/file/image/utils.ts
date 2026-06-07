@@ -63,11 +63,21 @@ const BASE64_PREFIX_MAP: Record<string, string> = {
 const DEFAULT_IMAGE_TYPE = 'image/jpeg';
 const DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS = 180 * 1000;
 const DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE = 10 * 1024 * 1024;
+const DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE = DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE;
 
 export class ImageDownloadTooLargeError extends Error {
   constructor(size: number, maxSize: number) {
     super(`Image download too large. Size: ${size} bytes, maximum allowed: ${maxSize} bytes`);
     this.name = 'ImageDownloadTooLargeError';
+  }
+}
+
+export class ImageBase64TooLargeError extends Error {
+  constructor(size: number, maxSize: number) {
+    super(
+      `Image buffer too large to convert to base64. Size: ${size} bytes, maximum allowed: ${maxSize} bytes`
+    );
+    this.name = 'ImageBase64TooLargeError';
   }
 }
 
@@ -189,11 +199,27 @@ export const getImageBuffer = async (
   }
 };
 
-export const getImageBase64 = async (url: string) => {
+export const getImageBase64 = async (
+  url: string,
+  options: {
+    timeoutMs?: number;
+    maxSize?: number;
+    maxBase64BufferSize?: number;
+  } = {}
+) => {
   logger.debug('Load image to base64', { url });
 
   try {
-    const { buffer, mime } = await getImageBuffer(url);
+    const { buffer, mime } = await getImageBuffer(url, {
+      timeoutMs: options.timeoutMs,
+      maxSize: options.maxSize
+    });
+    const maxBase64BufferSize = options.maxBase64BufferSize ?? DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE;
+
+    if (buffer.length > maxBase64BufferSize) {
+      throw new ImageBase64TooLargeError(buffer.length, maxBase64BufferSize);
+    }
+
     const base64 = buffer.toString('base64');
 
     return {

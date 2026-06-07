@@ -25,6 +25,6 @@ describe('readHtmlRawText', () => {
     });
     expect(result.rawText).toContain('dataset/file-parsed/html-image.png');
     expect(result.rawText).not.toContain('data:image/png;base64');
-    expect(result.imageList).toEqual([]);
+    expect(result).not.toHaveProperty('imageList');
   });
 });

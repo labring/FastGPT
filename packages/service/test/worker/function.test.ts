@@ -372,7 +372,7 @@ describe('worker/function', () => {
     });
 
     it('通过 htmlStr2Md worker pool 派发并返回 rawText', async () => {
-      mockRun.mockResolvedValueOnce({ rawText: '# Title', imageList: [] });
+      mockRun.mockResolvedValueOnce({ rawText: '# Title' });
 
       const result = await htmlToMarkdown('<h1>Title</h1>');
 
@@ -390,7 +390,7 @@ describe('worker/function', () => {
     });
 
     it('空 html 统一传空字符串', async () => {
-      mockRun.mockResolvedValueOnce({ rawText: '', imageList: [] });
+      mockRun.mockResolvedValueOnce({ rawText: '' });
 
       const result = await htmlToMarkdown(null);
 
@@ -400,7 +400,7 @@ describe('worker/function', () => {
 
     it('HTML_TO_MARKDOWN_WORKERS 自定义值生效', async () => {
       mockEnv.HTML_TO_MARKDOWN_WORKERS = 6;
-      mockRun.mockResolvedValueOnce({ rawText: 'ok', imageList: [] });
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
 
       await htmlToMarkdown('<p>ok</p>');
 

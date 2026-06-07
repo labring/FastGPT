@@ -504,10 +504,21 @@ describe('markdown 字符串处理函数测试', () => {
       expect(upload).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'http',
-          url: String.raw`https://img.example.com/a\).png`
+          url: 'https://img.example.com/a).png'
         })
       );
       expect(result).toBe('hello ![img](dataset/file-parsed/a.png)');
+    });
+
+    it('http 图片转存失败时应该用原始 markdown 节点回退', async () => {
+      const text = String.raw`hello ![img](https://img.example.com/a\).png)`;
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: vi.fn().mockRejectedValue(new Error('failed'))
+      });
+
+      expect(result).toBe(text);
     });
 
     it('parseHttp 开启但未传上传回调时应该保留普通 http 图片', async () => {

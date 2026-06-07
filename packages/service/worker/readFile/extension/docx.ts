@@ -1,10 +1,5 @@
 import mammoth, { images } from 'mammoth';
-import {
-  type ReadRawTextByBuffer,
-  type ReadFileResponse,
-  type ImageType,
-  type UploadFileHandler
-} from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse, type UploadFileHandler } from '../type';
 import { html2md } from '../../htmlStr2Md/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { resolveMimeExtension } from '../../../common/s3/utils/mime';
@@ -18,8 +13,6 @@ export const readDocsFile = async (
     uploadFile?: UploadFileHandler;
   } = {}
 ): Promise<ReadFileResponse> => {
-  // docx 图片在 worker 内实时上传到 S3，保留空 imageList 仅兼容旧返回结构。
-  const imageList: ImageType[] = [];
   const logger = getLogger(LogCategories.INFRA.WORKER);
   try {
     const { value: html } = await mammoth.convertToHtml(
@@ -58,11 +51,10 @@ export const readDocsFile = async (
       }
     );
 
-    const { rawText } = html2md(html);
+    const { rawText } = await html2md(html);
 
     return {
-      rawText,
-      imageList
+      rawText
     };
   } catch (error) {
     logger.error('Failed to parse docx file', { error });
