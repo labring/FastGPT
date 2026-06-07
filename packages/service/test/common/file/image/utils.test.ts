@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { Readable } from 'node:stream';
 import {
   isValidImageContentType,
   detectImageTypeFromBuffer,
   guessBase64ImageType,
+  getImageBuffer,
   getImageBase64
 } from '@fastgpt/service/common/file/image/utils';
 
@@ -22,6 +24,11 @@ const loadUtilsModule = async () => {
   vi.resetModules();
   return import('@fastgpt/service/common/file/image/utils');
 };
+
+const mockImageResponse = (buffer: Buffer, headers: Record<string, string> = {}) => ({
+  data: Readable.from([buffer]),
+  headers
+});
 
 describe('isValidImageContentType', () => {
   it('should return true for valid image MIME types', () => {
@@ -211,18 +218,29 @@ describe('getImageBase64', () => {
     mockAxiosGet.mockReset();
   });
 
+  it('should return image buffer without base64 encoding', async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    mockAxiosGet.mockResolvedValue(mockImageResponse(pngBytes, { 'content-type': 'image/png' }));
+
+    const result = await getImageBuffer('/api/system/img/test.png');
+
+    expect(result).toEqual({
+      buffer: pngBytes,
+      mime: 'image/png'
+    });
+  });
+
   it('should return base64 with correct mime when header has valid image content-type', async () => {
     const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    mockAxiosGet.mockResolvedValue({
-      data: pngBytes,
-      headers: { 'content-type': 'image/png' }
-    });
+    mockAxiosGet.mockResolvedValue(mockImageResponse(pngBytes, { 'content-type': 'image/png' }));
 
     const result = await getImageBase64('/api/system/img/test.png');
 
     expect(mockAxiosGet).toHaveBeenCalledWith('/api/system/img/test.png', {
       baseURL: 'http://localhost:3000',
-      responseType: 'arraybuffer'
+      responseType: 'stream',
+      timeout: 180000,
+      maxContentLength: 10 * 1024 * 1024
     });
     expect(result.mime).toBe('image/png');
     expect(result.base64).toBe(pngBytes.toString('base64'));
@@ -231,10 +249,9 @@ describe('getImageBase64', () => {
 
   it('should detect type from buffer when header content-type is not a valid image type', async () => {
     const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
-    mockAxiosGet.mockResolvedValue({
-      data: jpegBytes,
-      headers: { 'content-type': 'application/octet-stream' }
-    });
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(jpegBytes, { 'content-type': 'application/octet-stream' })
+    );
 
     const result = await getImageBase64('/img/photo.jpg');
 
@@ -244,10 +261,7 @@ describe('getImageBase64', () => {
 
   it('should detect type from buffer when header content-type is missing', async () => {
     const gifBytes = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
-    mockAxiosGet.mockResolvedValue({
-      data: gifBytes,
-      headers: {}
-    });
+    mockAxiosGet.mockResolvedValue(mockImageResponse(gifBytes));
 
     const result = await getImageBase64('/img/anim.gif');
 
@@ -257,10 +271,9 @@ describe('getImageBase64', () => {
   it('should fallback to guessBase64ImageType when buffer detection fails', async () => {
     // Unknown magic bytes that do not match any signature
     const unknownBytes = Buffer.from([0xaa, 0xbb, 0xcc, 0xdd]);
-    mockAxiosGet.mockResolvedValue({
-      data: unknownBytes,
-      headers: { 'content-type': 'text/html' }
-    });
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(unknownBytes, { 'content-type': 'text/html' })
+    );
 
     const result = await getImageBase64('/img/unknown.dat');
 
@@ -273,10 +286,9 @@ describe('getImageBase64', () => {
 
   it('should handle content-type header with charset parameter', async () => {
     const svgBytes = Buffer.from([0x3c, 0x73, 0x76, 0x67, 0x20, 0x78, 0x6d, 0x6c]);
-    mockAxiosGet.mockResolvedValue({
-      data: svgBytes,
-      headers: { 'content-type': 'image/svg+xml; charset=utf-8' }
-    });
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(svgBytes, { 'content-type': 'image/svg+xml; charset=utf-8' })
+    );
 
     const result = await getImageBase64('/img/icon.svg');
 
@@ -300,10 +312,7 @@ describe('getImageBase64', () => {
 
   it('should handle empty arraybuffer response', async () => {
     const emptyBuffer = Buffer.from([]);
-    mockAxiosGet.mockResolvedValue({
-      data: emptyBuffer,
-      headers: { 'content-type': 'image/png' }
-    });
+    mockAxiosGet.mockResolvedValue(mockImageResponse(emptyBuffer, { 'content-type': 'image/png' }));
 
     const result = await getImageBase64('/img/empty.png');
 
@@ -315,10 +324,7 @@ describe('getImageBase64', () => {
   it('should prefer header content-type over buffer detection when header is valid', async () => {
     // JPEG magic bytes but header says image/webp
     const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    mockAxiosGet.mockResolvedValue({
-      data: jpegBytes,
-      headers: { 'content-type': 'image/webp' }
-    });
+    mockAxiosGet.mockResolvedValue(mockImageResponse(jpegBytes, { 'content-type': 'image/webp' }));
 
     const result = await getImageBase64('/img/test.webp');
 
@@ -328,14 +334,37 @@ describe('getImageBase64', () => {
 
   it('should construct completeBase64 in correct data URI format', async () => {
     const bmpBytes = Buffer.from([0x42, 0x4d, 0x00, 0x00, 0x00, 0x00]);
-    mockAxiosGet.mockResolvedValue({
-      data: bmpBytes,
-      headers: { 'content-type': 'image/bmp' }
-    });
+    mockAxiosGet.mockResolvedValue(mockImageResponse(bmpBytes, { 'content-type': 'image/bmp' }));
 
     const result = await getImageBase64('/img/test.bmp');
 
     expect(result.completeBase64).toMatch(/^data:image\/bmp;base64,[A-Za-z0-9+/=]+$/);
+  });
+
+  it('should reject before reading when content-length exceeds maxSize', async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(pngBytes, {
+        'content-type': 'image/png',
+        'content-length': '11'
+      })
+    );
+
+    await expect(getImageBuffer('/img/too-large.png', { maxSize: 10 })).rejects.toThrow(
+      'Image download too large'
+    );
+  });
+
+  it('should reject while streaming when image exceeds maxSize', async () => {
+    mockAxiosGet.mockResolvedValue(
+      mockImageResponse(Buffer.from('12345678901'), {
+        'content-type': 'image/png'
+      })
+    );
+
+    await expect(getImageBuffer('/img/stream-too-large.png', { maxSize: 10 })).rejects.toThrow(
+      'Image download too large'
+    );
   });
 });
 

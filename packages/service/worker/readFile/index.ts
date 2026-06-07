@@ -32,8 +32,8 @@ type WorkerUploadFileResponse = {
 /**
  * 为单个 readFile 任务创建 worker 内的 uploadFile 请求桥。
  *
- * docx 解析图片时会 await 这个 handler；主线程负责上传并通过 requestId 回传结果。
- * 没有 prefix 时不创建 handler，docx 图片解析会按缺少上传参数处理并失败。
+ * 文档解析图片时会 await 这个 handler；主线程负责上传并通过 requestId 回传结果。
+ * 没有 prefix 时不创建 handler，带图片的文档解析会按缺少上传参数处理并失败。
  */
 const createUploadFileHandler = ({
   taskId,
@@ -103,9 +103,13 @@ const read = async (
   switch (params.extension) {
     case 'txt':
     case 'md':
-      return readFileRawText(params);
+      return readFileRawText(params, {
+        uploadFile: options.uploadFile
+      });
     case 'html':
-      return readHtmlRawText(params);
+      return readHtmlRawText(params, {
+        uploadFile: options.uploadFile
+      });
     case 'pdf':
       return readPdfFile(params);
     case 'docx':

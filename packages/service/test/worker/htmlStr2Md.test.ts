@@ -262,8 +262,6 @@ describe('html2md 性能和功能测试', () => {
       const html = `<img src="data:image/png;base64,${invalidBase64}">`;
       const result = html2md(html);
 
-      // 注意: matchMdImg 会在 Markdown 中提取这个图片
-      // 因为它使用更宽松的正则 [^)]+
       // 这个测试验证系统不会因为非法字符而崩溃
       expect(result.imageList.length).toBeGreaterThanOrEqual(0);
       expect(result.rawText).toBeTruthy();

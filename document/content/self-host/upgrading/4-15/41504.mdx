@@ -53,8 +53,10 @@ fastgpt-plugin:
 
 1. 模型获取多模态文件链接异常。
 2. 修复 training 接口存在的潜在越权风险。
+3. HTTP tool parse 的 SSRF 风险。
 
 ## 🛠️ 代码优化
 
 1. 插件服务从旧 `runtime` 结构调整为 pnpm workspace monorepo，拆分为 HTTP 服务入口、领域模型、用例、API adapter、基础设施、SDK 和 CLI。
 2. 将 app API 接口全部用 zod schema 编写并生成文档。
+3. 及时处理 worker 内图片，不再存留 base64，降低内存消耗。

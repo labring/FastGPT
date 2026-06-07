@@ -190,6 +190,34 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('item 1');
   });
 
+  it('解析带 base64 图片的 md 时通过主线程 uploadFile handler 上传图片', async () => {
+    mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/test/md-parsed/image.png');
+    const base64Data =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    const result = await readRawContentFromBuffer({
+      extension: 'md',
+      encoding: 'utf-8',
+      buffer: Buffer.from(`hello\n\n![alt](data:image/png;base64,${base64Data})`, 'utf-8'),
+      imageKeyOptions: {
+        prefix: 'dataset/test/md-parsed'
+      }
+    });
+
+    expect(result.rawText).toContain('hello');
+    expect(result.rawText).toContain('![alt](dataset/test/md-parsed/image.png)');
+    expect(result).not.toHaveProperty('imageList');
+    expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith(
+      'private',
+      expect.objectContaining({
+        buffer: expect.any(Buffer),
+        uploadKey: expect.stringMatching(/^dataset\/test\/md-parsed\/.+\.png$/),
+        mimetype: 'image/png',
+        filename: expect.stringMatching(/\.png$/)
+      })
+    );
+  });
+
   it('解析 csv', async () => {
     const csv = 'name,age,city\nAlice,30,Beijing\nBob,25,Shanghai';
     const result = await readRawContentFromBuffer({

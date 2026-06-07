@@ -1,18 +1,33 @@
-import { batchRun, delay } from '@fastgpt/global/common/system/utils';
-import { htmlTable2Md } from '@fastgpt/global/common/string/markdown';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { htmlTable2Md, parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { type Method } from 'axios';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { type ImageType } from '../../worker/readFile/type';
-import { getImageBase64 } from '../../common/file/image/utils';
+import { getImageBuffer } from '../../common/file/image/utils';
 import { createProxyAxios, axios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
+import { type UploadedFileResult } from '../../worker/readFile/type';
 
 type ApiResponseDataType<T = any> = {
   code: string;
   msg?: string;
   data: T;
 };
+
+type Doc2xImageUploadHandler = (
+  params:
+    | {
+        type: 'http';
+        url: string;
+        mime: string;
+        buffer: Buffer;
+      }
+    | {
+        type: 'base64';
+        mime: string;
+        base64: string;
+        dataUrl: string;
+      }
+) => Promise<UploadedFileResult>;
 
 export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -72,7 +87,12 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       .catch((err) => responseError(err));
   };
 
-  const parsePDF = async (fileBuffer: Buffer) => {
+  const parsePDF = async (
+    fileBuffer: Buffer,
+    options: {
+      uploadImage?: Doc2xImageUploadHandler;
+    } = {}
+  ) => {
     logger.debug('Doc2x PDF parse started');
     const startTime = Date.now();
 
@@ -185,45 +205,35 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
     const { text, pages } = await checkResult();
 
-    // ![](url) => ![](base64)
-    const parseTextImage = async (text: string) => {
-      // Extract image links and convert to base64
-      const imageList: { id: string; url: string }[] = [];
-      let processedText = text.replace(/!\[.*?\]\((http[^)]+)\)/g, (match, url) => {
-        const id = `IMAGE_${getNanoid()}_IMAGE`;
-        imageList.push({
-          id,
-          url
-        });
-        return `![](${id})`;
-      });
+    const formatText = await parseMarkdownBase64Images(htmlTable2Md(text), {
+      parseBase64: true,
+      parseHttp: true,
+      controller: options.uploadImage
+        ? async (image) => {
+            if (image.type === 'base64') {
+              return options.uploadImage!({
+                type: 'base64',
+                mime: image.mime,
+                base64: image.base64,
+                dataUrl: image.dataUrl
+              });
+            }
 
-      // Get base64 from image url
-      const resultImageList: ImageType[] = [];
-      await batchRun(
-        imageList,
-        async (item) => {
-          try {
-            const { base64, mime } = await getImageBase64(item.url);
-            resultImageList.push({
-              uuid: item.id,
-              mime,
-              base64
-            });
-          } catch (error) {
-            processedText = processedText.replace(item.id, item.url);
-            logger.warn('Doc2x image fetch failed', { url: item.url, error });
+            try {
+              const { buffer, mime } = await getImageBuffer(image.url);
+              return options.uploadImage!({
+                type: 'http',
+                url: image.url,
+                mime,
+                buffer
+              });
+            } catch (error) {
+              logger.warn('Doc2x image transfer failed', { url: image.url, error });
+              throw error;
+            }
           }
-        },
-        5
-      );
-
-      return {
-        text: processedText,
-        imageList: resultImageList
-      };
-    };
-    const { text: formatText, imageList } = await parseTextImage(htmlTable2Md(text));
+        : undefined
+    });
 
     logger.debug('Doc2x PDF parse finished', {
       durationMs: Date.now() - startTime,
@@ -232,8 +242,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
     return {
       pages,
-      text: formatText,
-      imageList
+      text: formatText
     };
   };
 

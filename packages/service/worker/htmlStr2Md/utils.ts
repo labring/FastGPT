@@ -4,8 +4,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 import { getLogger, LogCategories } from '../../common/logger';
 import { workerEnv } from '../env';
-// @ts-ignore
-const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+import { gfm } from 'joplin-turndown-plugin-gfm';
 
 const MAX_HTML_SIZE = workerEnv.MAX_HTML_TRANSFORM_CHARS;
 const logger = getLogger(LogCategories.INFRA.WORKER);
@@ -50,7 +49,7 @@ export const html2md = (
 
   try {
     turndownService.remove(['i', 'script', 'iframe', 'style']);
-    turndownService.use(turndownPluginGfm.gfm);
+    turndownService.use(gfm);
 
     // add custom handling for media tag
     turndownService.addRule('media', {
@@ -79,7 +78,6 @@ export const html2md = (
     }
 
     const md = turndownService.turndown(processedHtml);
-    // const { text, imageList } = matchMdImg(md);
 
     return {
       rawText: simpleMarkdownText(md),

@@ -14,6 +14,7 @@ export type ImageType = {
 
 export type UploadedFileResult = {
   key: string;
+  previewUrl?: string;
 };
 
 export type UploadFileHandler = (data: {
