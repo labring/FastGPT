@@ -162,6 +162,11 @@ export async function authDatasetCollection({
     isRoot: isRootFromHeader
   });
 
+  // collection 与 dataset 必须属于同一团队；否则说明对象归属已经损坏，不能继续按 datasetId 授权。
+  if (String(collection.teamId) !== String(dataset.teamId)) {
+    return Promise.reject(DatasetErrEnum.unAuthDataset);
+  }
+
   return {
     userId,
     teamId,

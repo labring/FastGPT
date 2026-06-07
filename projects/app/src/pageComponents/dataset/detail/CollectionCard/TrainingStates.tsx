@@ -287,11 +287,9 @@ const ProgressView = ({
 };
 
 const ErrorView = ({
-  datasetId,
   collectionId,
   refreshTrainingDetail
 }: {
-  datasetId: string;
   collectionId: string;
   refreshTrainingDetail: () => void;
 }) => {
@@ -321,7 +319,7 @@ const ErrorView = ({
   });
 
   const { runAsync: getData, loading: getDataLoading } = useRequest(
-    (data: { datasetId: string; collectionId: string; dataId: string }) => {
+    (data: { collectionId: string; dataId: string }) => {
       return getTrainingDataDetail(data);
     },
     {
@@ -332,7 +330,7 @@ const ErrorView = ({
     }
   );
   const { runAsync: deleteData, loading: deleteLoading } = useRequest(
-    (data: { datasetId: string; collectionId: string; dataId: string }) => {
+    (data: { collectionId: string; dataId: string }) => {
       return deleteTrainingData(data);
     },
     {
@@ -343,7 +341,7 @@ const ErrorView = ({
     }
   );
   const { runAsync: updateData, loading: updateLoading } = useRequest(
-    (data: { datasetId: string; collectionId: string; dataId: string; q?: string; a?: string }) => {
+    (data: { collectionId: string; dataId: string; q?: string; a?: string }) => {
       return updateTrainingData(data);
     },
     {
@@ -364,7 +362,6 @@ const ErrorView = ({
         onCancel={() => setEditChunk(undefined)}
         onSave={(data) => {
           updateData({
-            datasetId,
             collectionId,
             dataId: editChunk._id,
             ...data
@@ -407,7 +404,7 @@ const ErrorView = ({
                       color={'myGray.600'}
                       leftIcon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
                       fontSize={'mini'}
-                      onClick={() => updateData({ datasetId, collectionId, dataId: item._id })}
+                      onClick={() => updateData({ collectionId, dataId: item._id })}
                     >
                       {t('dataset:dataset.ReTrain')}
                     </Button>
@@ -418,7 +415,7 @@ const ErrorView = ({
                       color={'myGray.600'}
                       leftIcon={<MyIcon name={'edit'} w={4} />}
                       fontSize={'mini'}
-                      onClick={() => getData({ datasetId, collectionId, dataId: item._id })}
+                      onClick={() => getData({ collectionId, dataId: item._id })}
                     >
                       {t('dataset:dataset.Edit_Chunk')}
                     </Button>
@@ -430,7 +427,7 @@ const ErrorView = ({
                       leftIcon={<MyIcon name={'delete'} w={4} />}
                       fontSize={'mini'}
                       onClick={() => {
-                        deleteData({ datasetId, collectionId, dataId: item._id });
+                        deleteData({ collectionId, dataId: item._id });
                       }}
                     >
                       {t('dataset:dataset.Delete_Chunk')}
@@ -509,12 +506,10 @@ const EditView = ({
 };
 
 const TrainingStates = ({
-  datasetId,
   collectionId,
   defaultTab = 'states',
   onClose
 }: {
-  datasetId: string;
   collectionId: string;
   defaultTab?: 'states' | 'errors';
   onClose: () => void;
@@ -534,7 +529,7 @@ const TrainingStates = ({
 
   // All retry logic
   const { runAsync: handleRetryAll, loading: retrying } = useRequest(
-    () => updateTrainingData({ datasetId, collectionId }),
+    () => updateTrainingData({ collectionId }),
     {
       manual: true,
       onSuccess: () => {
@@ -581,7 +576,6 @@ const TrainingStates = ({
         {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
         {tab === 'errors' && (
           <ErrorView
-            datasetId={datasetId}
             collectionId={collectionId}
             refreshTrainingDetail={refreshTrainingDetail}
           />

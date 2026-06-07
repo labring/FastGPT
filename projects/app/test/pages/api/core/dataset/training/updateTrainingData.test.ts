@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '@/pages/api/core/dataset/training/updateTrainingData';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -7,6 +7,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 const datasetId = '507f1f77bcf86cd799439011';
 const collectionId = '507f1f77bcf86cd799439012';
 const dataId = '507f1f77bcf86cd799439013';
+const foreignDatasetId = '507f1f77bcf86cd799439014';
 
 vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   MongoDatasetTraining: {
@@ -21,14 +22,20 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 }));
 
 describe('updateTrainingData', () => {
-  it('should retry all error data when dataId is not provided', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(authDatasetCollection).mockResolvedValue({
-      teamId: 'team1'
+      collection: {
+        _id: collectionId,
+        teamId: 'team1',
+        datasetId
+      }
     });
+  });
 
+  it('should retry all error data when dataId is not provided', async () => {
     const req = {
       body: {
-        datasetId,
         collectionId
       }
     };
@@ -51,17 +58,12 @@ describe('updateTrainingData', () => {
   });
 
   it('should update single training data with image', async () => {
-    vi.mocked(authDatasetCollection).mockResolvedValue({
-      teamId: 'team1'
-    });
-
     vi.mocked(MongoDatasetTraining.findOne).mockResolvedValue({
       imageId: 'image1'
     });
 
     const req = {
       body: {
-        datasetId,
         collectionId,
         dataId,
         q: 'question',
@@ -76,6 +78,7 @@ describe('updateTrainingData', () => {
       {
         teamId: 'team1',
         datasetId,
+        collectionId,
         _id: dataId
       },
       {
@@ -91,15 +94,10 @@ describe('updateTrainingData', () => {
   });
 
   it('should update single training data without image', async () => {
-    vi.mocked(authDatasetCollection).mockResolvedValue({
-      teamId: 'team1'
-    });
-
     vi.mocked(MongoDatasetTraining.findOne).mockResolvedValue({});
 
     const req = {
       body: {
-        datasetId,
         collectionId,
         dataId,
         q: 'question',
@@ -114,6 +112,7 @@ describe('updateTrainingData', () => {
       {
         teamId: 'team1',
         datasetId,
+        collectionId,
         _id: dataId
       },
       {
@@ -128,20 +127,48 @@ describe('updateTrainingData', () => {
   });
 
   it('should reject when data not found', async () => {
-    vi.mocked(authDatasetCollection).mockResolvedValue({
-      teamId: 'team1'
-    });
-
     vi.mocked(MongoDatasetTraining.findOne).mockResolvedValue(null);
 
     const req = {
       body: {
-        datasetId,
         collectionId,
         dataId
       }
     };
 
     await expect(handler(req as any)).rejects.toBe('data not found');
+  });
+
+  it('should ignore legacy request datasetId and use the authorized collection datasetId', async () => {
+    vi.mocked(MongoDatasetTraining.findOne).mockResolvedValue({});
+
+    const req = {
+      body: {
+        datasetId: foreignDatasetId,
+        collectionId,
+        dataId,
+        q: 'question'
+      }
+    };
+
+    await handler(req as any);
+
+    expect(MongoDatasetTraining.findOne).toHaveBeenCalledWith({
+      teamId: 'team1',
+      datasetId,
+      collectionId,
+      _id: dataId
+    });
+    expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(
+      {
+        teamId: 'team1',
+        datasetId,
+        collectionId,
+        _id: dataId
+      },
+      expect.objectContaining({
+        q: 'question'
+      })
+    );
   });
 });

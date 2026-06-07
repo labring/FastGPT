@@ -9,13 +9,15 @@ import {
   UpdateTrainingDataResponseSchema,
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
-  const { datasetId, collectionId, dataId, q, a, chunkIndex } = UpdateTrainingDataBodySchema.parse(
-    req.body
-  );
+  const { collectionId, dataId, q, a, chunkIndex } = parseApiInput({
+    req,
+    bodySchema: UpdateTrainingDataBodySchema
+  }).body;
 
-  const { teamId } = await authDatasetCollection({
+  const { collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -23,13 +25,17 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     per: WritePermissionVal
   });
 
+  const trainingMatch = {
+    teamId: collection.teamId,
+    datasetId: collection.datasetId,
+    collectionId: collection._id
+  };
+
   // If dataId is not passed, all error data in this collection will be retried.
   if (!dataId) {
     await MongoDatasetTraining.updateMany(
       {
-        teamId,
-        datasetId,
-        collectionId,
+        ...trainingMatch,
         errorMsg: { $exists: true, $ne: null }
       },
       {
@@ -42,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   }
 
   // Single data retry logic
-  const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId });
+  const data = await MongoDatasetTraining.findOne({ ...trainingMatch, _id: dataId });
 
   if (!data) {
     return Promise.reject('data not found');
@@ -52,8 +58,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   if (data.imageId && q) {
     await MongoDatasetTraining.updateOne(
       {
-        teamId,
-        datasetId,
+        ...trainingMatch,
         _id: dataId
       },
       {
@@ -69,8 +74,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   } else {
     await MongoDatasetTraining.updateOne(
       {
-        teamId,
-        datasetId,
+        ...trainingMatch,
         _id: dataId
       },
       {

@@ -9,6 +9,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ReTrainingCollectionBodySchema,
   ReTrainingCollectionResponseSchema,
@@ -16,9 +17,10 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
 async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionResponseType> {
-  const { collectionId: inputCollectionId, ...data } = ReTrainingCollectionBodySchema.parse(
-    req.body
-  );
+  const { collectionId: inputCollectionId, ...data } = parseApiInput({
+    req,
+    bodySchema: ReTrainingCollectionBodySchema
+  }).body;
 
   const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
@@ -41,6 +43,9 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
       createCollectionParams: {
         ...collection,
         ...data,
+        datasetId: collection.datasetId,
+        teamId: collection.teamId,
+        tmbId: collection.tmbId,
         parentId: collection.parentId ?? undefined,
         updateTime: new Date(),
         tags: await collectionTagsToTagLabel({

@@ -64,7 +64,6 @@ export type CreateCollectionResponseType = z.infer<typeof CreateCollectionRespon
  * Route: POST /core/dataset/collection/create/reTrainingCollection
  * ============================================================================ */
 export const ReTrainingCollectionBodySchema = DatasetCollectionStoreDataSchema.extend({
-  datasetId: z.string().meta({ description: '数据集 ID' }),
   collectionId: z.string().meta({ description: '需要重新训练的集合 ID' })
 });
 export type ReTrainingCollectionBodyType = z.infer<typeof ReTrainingCollectionBodySchema>;

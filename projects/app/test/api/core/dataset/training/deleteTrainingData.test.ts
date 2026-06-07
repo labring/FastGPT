@@ -42,7 +42,6 @@ describe('delete training data test', () => {
     const res = await Call<deleteTrainingDataBody, {}, deleteTrainingDataResponse>(handler, {
       auth: root,
       body: {
-        datasetId: dataset._id,
         collectionId: collection._id,
         dataId: trainingData._id
       }
@@ -56,5 +55,63 @@ describe('delete training data test', () => {
 
     expect(res.code).toBe(200);
     expect(deletedTrainingData).toBeNull();
+  });
+
+  it('should ignore legacy datasetId and only delete data from the authorized collection', async () => {
+    const root = await getRootUser();
+    const [dataset, foreignDataset] = await Promise.all([
+      MongoDataset.create({
+        name: 'test',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      }),
+      MongoDataset.create({
+        name: 'foreign',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      })
+    ]);
+    const [collection, foreignCollection] = await Promise.all([
+      MongoDatasetCollection.create({
+        name: 'test',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      }),
+      MongoDatasetCollection.create({
+        name: 'foreign',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: foreignDataset._id
+      })
+    ]);
+    const foreignTrainingData = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: foreignDataset._id,
+      collectionId: foreignCollection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.chunk
+    });
+
+    const res = await Call<deleteTrainingDataBody, {}, deleteTrainingDataResponse>(handler, {
+      auth: root,
+      body: {
+        datasetId: foreignDataset._id,
+        collectionId: collection._id,
+        dataId: foreignTrainingData._id
+      } as any
+    });
+
+    const existingTrainingData = await MongoDatasetTraining.findById(foreignTrainingData._id);
+
+    expect(res.code).toBe(200);
+    expect(existingTrainingData).toBeTruthy();
   });
 });
