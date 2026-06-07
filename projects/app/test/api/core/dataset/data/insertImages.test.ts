@@ -171,6 +171,14 @@ describe('POST /api/core/dataset/data/insertImages', () => {
       data: [{ imageId: 'dataset/team/cat.png' }],
       session: 'session'
     });
+    expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
+      buffer: Buffer.from('image-bytes'),
+      uploadKey: 'dataset/team/cat.png',
+      mimetype: 'image/png',
+      filename: 'cat.png',
+      expiredTime: expect.any(Date)
+    });
+    expect(mockUploadImage2S3Bucket.mock.calls[0][1]).not.toHaveProperty('base64Img');
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
   });
 
