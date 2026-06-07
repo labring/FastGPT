@@ -10,6 +10,7 @@ import {
   getSchemaValueType,
   str2OpenApiSchema
 } from '@fastgpt/global/core/app/jsonschema';
+import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 
@@ -572,6 +573,63 @@ describe('getSchemaValueType', () => {
 });
 
 describe('str2OpenApiSchema', () => {
+  it('should dereference local refs without resolving remote refs', async () => {
+    const openApiJson = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {
+        '/users': {
+          post: {
+            operationId: 'createUser',
+            requestBody: {
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/User'
+                  }
+                }
+              }
+            },
+            responses: { '200': { description: 'OK' } }
+          }
+        }
+      },
+      components: {
+        schemas: {
+          User: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' }
+            }
+          }
+        }
+      }
+    });
+
+    const result = await str2OpenApiSchema(openApiJson);
+
+    expect(result.pathData[0].request.content['application/json'].schema.properties.name).toEqual({
+      type: 'string'
+    });
+  });
+
+  it('should reject remote refs without resolving them', async () => {
+    const openApiJson = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {},
+      components: {
+        schemas: {
+          Leak: {
+            $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+          }
+        }
+      }
+    });
+
+    await expect(str2OpenApiSchema(openApiJson)).rejects.toBe('common:plugin.Invalid Schema');
+  });
+
   it('should parse valid OpenAPI 3.0 JSON schema', async () => {
     const openApiJson = JSON.stringify({
       openapi: '3.0.0',
@@ -889,5 +947,40 @@ paths:
     const result = await str2OpenApiSchema(openApiJson);
 
     expect(result.pathData[0].params).toHaveLength(2);
+  });
+});
+
+describe('bundleOpenAPISchema', () => {
+  it('should bundle local refs from an already loaded schema object', async () => {
+    const result = await bundleOpenAPISchema({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {},
+      components: {
+        schemas: {
+          User: { type: 'object', properties: { name: { type: 'string' } } },
+          Payload: { $ref: '#/components/schemas/User' }
+        }
+      }
+    });
+
+    expect(result.components.schemas.Payload).toEqual({ $ref: '#/components/schemas/User' });
+  });
+
+  it('should reject remote refs when bundling an already loaded schema object', async () => {
+    await expect(
+      bundleOpenAPISchema({
+        openapi: '3.0.0',
+        info: { title: 'Test API', version: '1.0.0' },
+        paths: {},
+        components: {
+          schemas: {
+            Leak: {
+              $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+            }
+          }
+        }
+      })
+    ).rejects.toThrow('Unable to resolve $ref pointer');
   });
 });

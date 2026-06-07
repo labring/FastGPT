@@ -7,11 +7,11 @@ import {
   type FlowNodeOutputItemType
 } from '../workflow/type/io';
 import SwaggerParser from '@apidevtools/swagger-parser';
-import yaml from 'js-yaml';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
+import { parseOpenAPISchemaString } from '../../common/string/swagger';
 
 export const JsonSchemaPropertiesItemSchema = z.object({
   // 基本类型定义
@@ -193,14 +193,13 @@ export const jsonSchema2NodeOutput = ({
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
-    const data = (() => {
-      try {
-        return JSON.parse(yamlStr);
-      } catch (jsonError) {
-        return yaml.load(yamlStr, { schema: yaml.FAILSAFE_SCHEMA });
+    const data = parseOpenAPISchemaString(yamlStr);
+    const jsonSchema = (await SwaggerParser.dereference(data, {
+      resolve: {
+        file: false,
+        http: false
       }
-    })();
-    const jsonSchema = (await SwaggerParser.dereference(data)) as OpenAPIV3.Document;
+    })) as OpenAPIV3.Document;
 
     const serverPath = (() => {
       if (jsonSchema.servers && jsonSchema.servers.length > 0) {
