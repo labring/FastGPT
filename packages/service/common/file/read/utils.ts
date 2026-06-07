@@ -79,7 +79,8 @@ export const readFileContentByBuffer = async ({
     readRawContentFromBuffer({
       extension,
       encoding,
-      buffer
+      buffer,
+      imageKeyOptions
     });
   const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
     const url = global.systemEnv.customPdfParse?.url;

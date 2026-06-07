@@ -12,6 +12,16 @@ export type ImageType = {
   mime: string;
 };
 
+export type UploadedFileResult = {
+  key: string;
+};
+
+export type UploadFileHandler = (data: {
+  name: string;
+  mime: string;
+  buffer: ArrayBuffer;
+}) => Promise<UploadedFileResult>;
+
 export type TextItem = {
   text: string;
   x: number;

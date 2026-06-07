@@ -12,6 +12,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import type { DispatchSubAppResponse } from '../../type';
+import { getFileS3Key } from '../../../../../../../common/s3/utils';
 
 type FileReadParams = {
   files: { id: string; url: string }[];
@@ -87,7 +88,10 @@ export const dispatchFileRead = async ({
             buffer,
             encoding,
             customPdfParse,
-            getFormatText: true
+            getFormatText: true,
+            imageKeyOptions: {
+              prefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
+            }
           });
 
           // Add to buffer

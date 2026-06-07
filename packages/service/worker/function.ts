@@ -7,6 +7,9 @@ import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { serviceEnv } from '../env';
+import { uploadImage2S3Bucket } from '../common/s3/utils';
+import { normalizeMimeType, resolveMimeType } from '../common/s3/utils/mime';
+import path from 'node:path';
 
 export const text2Chunks = (props: SplitProps) => {
   // Test env, not run worker
@@ -27,6 +30,10 @@ type ReadFileWorkerProps = {
   buffer?: ArrayBuffer;
   sharedBuffer?: SharedArrayBuffer;
   bufferSize: number;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
 };
 
 const getReadFileWorker = () =>
@@ -43,6 +50,10 @@ export const readRawContentFromBuffer = (props: {
   extension: string;
   encoding: string;
   buffer: Buffer;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
 }) => {
   const bufferSize = props.buffer.length;
   const sourceArrayBuffer = props.buffer.buffer;
@@ -50,6 +61,28 @@ export const readRawContentFromBuffer = (props: {
     props.buffer.byteOffset === 0 &&
     props.buffer.byteLength === sourceArrayBuffer.byteLength &&
     sourceArrayBuffer instanceof ArrayBuffer;
+
+  const uploadFile = props.imageKeyOptions?.prefix
+    ? async ({ name, mime, buffer }: { name: string; mime: string; buffer: ArrayBuffer }) => {
+        const mimetype = normalizeMimeType(mime);
+        if (!mimetype.startsWith('image/')) {
+          throw new Error(`Unsupported worker uploadFile mime type: ${mimetype}`);
+        }
+        // uploadFile 是 worker 通用能力，主线程只接受文件名，避免 worker 传入路径片段越过 prefix。
+        const filename = path.basename(name);
+        const key = await uploadImage2S3Bucket('private', {
+          buffer: Buffer.from(buffer),
+          uploadKey: `${props.imageKeyOptions!.prefix}/${filename}`,
+          mimetype: resolveMimeType([filename], mimetype),
+          filename,
+          expiredTime: props.imageKeyOptions?.expiredTime
+        });
+
+        return {
+          key
+        };
+      }
+    : undefined;
 
   if (canTransferBuffer) {
     /**
@@ -61,9 +94,11 @@ export const readRawContentFromBuffer = (props: {
         extension: props.extension,
         encoding: props.encoding,
         buffer: sourceArrayBuffer,
-        bufferSize
+        bufferSize,
+        imageKeyOptions: props.imageKeyOptions
       },
-      [sourceArrayBuffer]
+      [sourceArrayBuffer],
+      { uploadFile }
     );
   }
 
@@ -71,10 +106,15 @@ export const readRawContentFromBuffer = (props: {
   const sharedArray = new Uint8Array(sharedBuffer);
   sharedArray.set(props.buffer);
 
-  return getReadFileWorker().run({
-    extension: props.extension,
-    encoding: props.encoding,
-    sharedBuffer,
-    bufferSize
-  });
+  return getReadFileWorker().run(
+    {
+      extension: props.extension,
+      encoding: props.encoding,
+      sharedBuffer,
+      bufferSize,
+      imageKeyOptions: props.imageKeyOptions
+    },
+    undefined,
+    { uploadFile }
+  );
 };

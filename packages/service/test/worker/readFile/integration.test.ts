@@ -1,6 +1,19 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { JSZip } from '@fastgpt/service/core/ai/skill/package';
+
+const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
+  mockUploadImage2S3Bucket: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/s3/utils')>();
+  return {
+    ...mod,
+    uploadImage2S3Bucket: mockUploadImage2S3Bucket
+  };
+});
 
 /*
  * 真实 spawn 测试：使用 projects/app/worker/readFile.js 构建产物，
@@ -52,6 +65,73 @@ const parseText = (text: string) =>
 const getPositiveIntegerEnv = (name: string, defaultValue: number) => {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value > 0 ? value : defaultValue;
+};
+
+const createDocxWithImage = async () => {
+  const zip = new JSZip();
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+    'base64'
+  );
+
+  zip.file(
+    '[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`
+  );
+  zip.file(
+    '_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`
+  );
+  zip.file(
+    'word/_rels/document.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdImage1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>
+</Relationships>`
+  );
+  zip.file(
+    'word/document.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body>
+    <w:p><w:r><w:t>hello docx image</w:t></w:r></w:p>
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <wp:docPr id="1" name="Picture 1"/>
+            <a:graphic>
+              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                <pic:pic>
+                  <pic:blipFill>
+                    <a:blip r:embed="rIdImage1"/>
+                  </pic:blipFill>
+                </pic:pic>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>`
+  );
+  zip.file('word/media/image1.png', png);
+
+  return zip.generateAsync({ type: 'nodebuffer' });
 };
 
 const destroyReadFilePool = async () => {
@@ -121,6 +201,31 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Alice');
     expect(result.rawText).toContain('30');
     expect(result.rawText).toContain('Shanghai');
+  });
+
+  it('解析带图片 docx 时通过主线程 uploadFile handler 上传图片', async () => {
+    mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/test/docx-parsed/image.png');
+
+    const result = await readRawContentFromBuffer({
+      extension: 'docx',
+      encoding: 'utf-8',
+      buffer: await createDocxWithImage(),
+      imageKeyOptions: {
+        prefix: 'dataset/test/docx-parsed'
+      }
+    });
+
+    expect(result.rawText).toContain('hello docx image');
+    expect(result.rawText).toContain('dataset/test/docx-parsed/image.png');
+    expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith(
+      'private',
+      expect.objectContaining({
+        buffer: expect.any(Buffer),
+        uploadKey: expect.stringMatching(/^dataset\/test\/docx-parsed\/.+\.png$/),
+        mimetype: 'image/png',
+        filename: expect.stringMatching(/\.png$/)
+      })
+    );
   });
 
   itIfPdfFixture(
