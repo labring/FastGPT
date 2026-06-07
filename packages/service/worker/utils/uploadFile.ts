@@ -78,15 +78,20 @@ export const createWorkerUploadFileHandler = ({
     new Promise((resolve, reject) => {
       const requestId = crypto.randomUUID();
       pendingUploadFileRequests.set(requestId, { taskId, resolve, reject });
-      parentPort?.postMessage(
-        {
-          id: taskId,
-          type: 'uploadFile',
-          requestId,
-          data
-        },
-        [data.buffer]
-      );
+      try {
+        parentPort?.postMessage(
+          {
+            id: taskId,
+            type: 'uploadFile',
+            requestId,
+            data
+          },
+          [data.buffer]
+        );
+      } catch (error) {
+        pendingUploadFileRequests.delete(requestId);
+        reject(error);
+      }
     });
 
   return {

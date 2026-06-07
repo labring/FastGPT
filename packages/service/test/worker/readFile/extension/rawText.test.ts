@@ -154,6 +154,27 @@ describe('readFileRawText performance', () => {
     expect(result).not.toHaveProperty('imageList');
   });
 
+  it('should reject oversized base64 image before upload', async () => {
+    const oversizedBase64 = 'A'.repeat(Math.ceil((40 * 1024 * 1024 + 1) / 3) * 4);
+    const content = `段落\n\n![alt](data:image/png;base64,${oversizedBase64})\n`;
+    const uploadFile = vi.fn(async () => ({
+      key: 'dataset/file-parsed/image.png'
+    }));
+
+    const result = await readFileRawText(
+      {
+        extension: 'md',
+        buffer: Buffer.from(content, 'utf8'),
+        encoding: 'utf-8'
+      },
+      { uploadFile }
+    );
+
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(result.rawText).toContain('段落');
+    expect(result.rawText).not.toContain('data:image/png;base64');
+  });
+
   it('should process 200 base64 images without carrying imageList', async () => {
     const base64Data =
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';

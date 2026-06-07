@@ -37,12 +37,17 @@ const processBase64Images = async (
         return `src=${quote}${quote}`;
       }
 
-      const { key } = await uploadBase64Image({
-        mime,
-        base64: base64Data,
-        uploadFile: options.uploadFile
-      });
-      return `src=${quote}${key}${quote}`;
+      try {
+        const { key } = await uploadBase64Image({
+          mime,
+          base64: base64Data,
+          uploadFile: options.uploadFile
+        });
+        return `src=${quote}${key}${quote}`;
+      } catch (error) {
+        logger.warn('Failed to upload parsed HTML base64 image', { mime, error });
+        return `src=${quote}${quote}`;
+      }
     },
     htmlBase64UploadConcurrency
   );
