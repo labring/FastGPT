@@ -88,7 +88,12 @@ export const DeleteCollectionQuerySchema = z.object({
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
 export const DeleteCollectionBodySchema = z.object({
-  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' })
+  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' }),
+  apiFileIds: z
+    .array(z.string())
+    .optional()
+    .meta({ description: 'API 文件 ID 列表（需配合 datasetId 使用）' }),
+  datasetId: z.string().optional().meta({ description: '数据集 ID（配合 apiFileIds 使用）' })
 });
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
@@ -192,8 +197,8 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
       customPdfParse: z.boolean().meta({ description: '自定义 PDF 解析' }),
       imageIndex: z.boolean().meta({ description: '图片索引' }),
       autoIndexes: z.boolean().meta({ description: '自动索引' }),
-      small2bigIndexes: z.boolean().meta({ description: '小到大索引' }),
-      hypeIndexes: z.boolean().meta({ description: '虚拟索引' })
+      small2bigIndexes: z.boolean().optional().meta({ description: '小到大索引' }),
+      hypeIndexes: z.boolean().optional().meta({ description: '虚拟索引' })
     })
     .meta({ description: '高级训练配置' }),
   queuedCounts: TrainingCountsSchema.meta({ description: '排队中数量' }),

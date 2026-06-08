@@ -134,7 +134,9 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     advancedTraining: {
       customPdfParse: !!collection.customPdfParse,
       imageIndex: !!collection.imageIndex,
-      autoIndexes: !!collection.autoIndexes
+      autoIndexes: !!collection.autoIndexes,
+      small2bigIndexes: !!collection.small2bigIndexes,
+      hypeIndexes: !!collection.hypeIndexes
     },
     queuedCounts,
     trainingCounts,

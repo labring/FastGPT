@@ -1,9 +1,11 @@
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -17,11 +19,36 @@ import {
 
 async function handler(req: ApiRequestProps) {
   const { id } = DeleteCollectionQuerySchema.parse(req.query);
-  const { collectionIds } = DeleteCollectionBodySchema.parse(req.body);
+  const { collectionIds, apiFileIds, datasetId } = DeleteCollectionBodySchema.parse(req.body);
 
-  const deletedIds = id ? [id] : collectionIds;
+  let deletedIds: string[];
 
-  if (!Array.isArray(deletedIds)) {
+  if (id) {
+    deletedIds = [id];
+  } else if (collectionIds && collectionIds.length > 0) {
+    deletedIds = collectionIds;
+  } else if (apiFileIds && apiFileIds.length > 0 && datasetId) {
+    // 通过 apiFileId 删除：从请求头直接解析 teamId，再配合 datasetId 利用已有索引查询
+    const { teamId: authTeamId } = await parseHeaderCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
+    const collectionsByApiFile = await MongoDatasetCollection.find(
+      { teamId: authTeamId, datasetId, apiFileId: { $in: apiFileIds }, deleteTime: null },
+      '_id'
+    ).lean();
+
+    if (collectionsByApiFile.length === 0) {
+      return Promise.reject(DatasetErrEnum.unExistCollection);
+    }
+
+    deletedIds = collectionsByApiFile.map((c) => String(c._id));
+  } else {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  if (!Array.isArray(deletedIds) || deletedIds.length === 0) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
