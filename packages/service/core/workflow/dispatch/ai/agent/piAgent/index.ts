@@ -57,7 +57,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useAgentSandbox = false,
-      aiChatVision
+      aiChatVision,
+      aiChatReasoning = true
     }
   } = props;
   // Dataset search: resolve from composite or individual fields
@@ -267,22 +268,147 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Collect text deltas to build answerText
     let answerText = '';
     let currentTextItem: AIChatItemValueItemType | null = null;
+    let currentReasoningItem: AIChatItemValueItemType | null = null;
+
+    // Streaming parser for <think>...</think> tags in text content
+    // Some models (e.g. MiniMax) emit thinking content as XML tags within the text stream
+    // rather than using the standard reasoning_content / thinking delta API.
+    let thinkTagBuffer = '';
+    let inThinkTag = false;
+
+    /**
+     * Process a chunk of text through the <think> tag parser.
+     * Routes content inside <think>...</think> as reasoning_content,
+     * and content outside as regular text.
+     */
+    const processTextChunk = (chunk: string) => {
+      thinkTagBuffer += chunk;
+
+      // Process the buffer character by character to detect tag boundaries
+      while (thinkTagBuffer.length > 0) {
+        if (inThinkTag) {
+          const closeIdx = thinkTagBuffer.indexOf('</think>');
+          if (closeIdx === -1) {
+            // No closing tag yet — send all as reasoning
+            if (thinkTagBuffer.length > 0) {
+              const reasoningText = thinkTagBuffer;
+              thinkTagBuffer = '';
+              if (aiChatReasoning) {
+                if (!currentReasoningItem) {
+                  currentReasoningItem = { reasoning: { content: '' } };
+                  assistantResponses.push(currentReasoningItem);
+                }
+                currentReasoningItem.reasoning!.content += reasoningText;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({ reasoning_content: reasoningText })
+                });
+              }
+            }
+            break;
+          } else {
+            // Send content before closing tag as reasoning
+            const reasoningText = thinkTagBuffer.substring(0, closeIdx);
+            thinkTagBuffer = thinkTagBuffer.substring(closeIdx + '</think>'.length);
+            inThinkTag = false;
+            if (aiChatReasoning && reasoningText.length > 0) {
+              if (!currentReasoningItem) {
+                currentReasoningItem = { reasoning: { content: '' } };
+                assistantResponses.push(currentReasoningItem);
+              }
+              currentReasoningItem.reasoning!.content += reasoningText;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ reasoning_content: reasoningText })
+              });
+            }
+            // Reset reasoning item so next reasoning starts fresh
+            currentReasoningItem = null;
+          }
+        } else {
+          const openIdx = thinkTagBuffer.indexOf('<think>');
+          if (openIdx === -1) {
+            // Check for partial opening tag at the end
+            const partialLen = Math.min(thinkTagBuffer.length, '<think>'.length - 1);
+            let partialMatch = false;
+            for (let i = 1; i <= partialLen; i++) {
+              if ('<think>'.startsWith(thinkTagBuffer.substring(thinkTagBuffer.length - i))) {
+                // Keep the partial match in buffer for next chunk
+                const safeText = thinkTagBuffer.substring(0, thinkTagBuffer.length - i);
+                if (safeText.length > 0) {
+                  answerText += safeText;
+                  if (!currentTextItem) {
+                    currentTextItem = { text: { content: '' } };
+                    assistantResponses.push(currentTextItem);
+                  }
+                  currentTextItem.text!.content += safeText;
+                  workflowStreamResponse?.({
+                    event: SseResponseEventEnum.answer,
+                    data: textAdaptGptResponse({ text: safeText })
+                  });
+                }
+                thinkTagBuffer = thinkTagBuffer.substring(thinkTagBuffer.length - i);
+                partialMatch = true;
+                break;
+              }
+            }
+            if (!partialMatch) {
+              // No tag at all — send all as text
+              if (thinkTagBuffer.length > 0) {
+                answerText += thinkTagBuffer;
+                if (!currentTextItem) {
+                  currentTextItem = { text: { content: '' } };
+                  assistantResponses.push(currentTextItem);
+                }
+                currentTextItem.text!.content += thinkTagBuffer;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({ text: thinkTagBuffer })
+                });
+                thinkTagBuffer = '';
+              }
+            }
+            break;
+          } else {
+            // Send content before opening tag as text
+            const textBefore = thinkTagBuffer.substring(0, openIdx);
+            thinkTagBuffer = thinkTagBuffer.substring(openIdx + '<think>'.length);
+            inThinkTag = true;
+            if (textBefore.length > 0) {
+              answerText += textBefore;
+              if (!currentTextItem) {
+                currentTextItem = { text: { content: '' } };
+                assistantResponses.push(currentTextItem);
+              }
+              currentTextItem.text!.content += textBefore;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ text: textBefore })
+              });
+            }
+            // Reset text item so text after </think> starts fresh
+            currentTextItem = null;
+          }
+        }
+      }
+    };
 
     agent.subscribe((event: AgentEvent) => {
       if (event.type === 'message_update') {
         const e = event.assistantMessageEvent;
         if (e.type === 'text_delta') {
-          // Create a new text item at the start of each turn's text output,
-          // so that tools executed between turns are interleaved correctly.
-          if (!currentTextItem) {
-            currentTextItem = { text: { content: '' } };
-            assistantResponses.push(currentTextItem);
+          processTextChunk(e.delta);
+        } else if (e.type === 'thinking_delta') {
+          // Send reasoning/thinking content as reasoning_content in answer events
+          if (!aiChatReasoning) return;
+          if (!currentReasoningItem) {
+            currentReasoningItem = { reasoning: { content: '' } };
+            assistantResponses.push(currentReasoningItem);
           }
-          answerText += e.delta;
-          currentTextItem.text!.content += e.delta;
+          currentReasoningItem.reasoning!.content += e.delta;
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ text: e.delta })
+            data: textAdaptGptResponse({ reasoning_content: e.delta })
           });
         }
       } else if (event.type === 'turn_end') {
@@ -290,6 +416,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         // Tool items have already been pushed to assistantResponses by buildAgentTools
         // during tool execution between turns, so they appear in the correct position.
         currentTextItem = null;
+        currentReasoningItem = null;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {
           getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] Turn error: ${errMsg}`);

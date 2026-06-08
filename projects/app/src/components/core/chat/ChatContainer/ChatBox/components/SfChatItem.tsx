@@ -136,7 +136,13 @@ const AIContentCard = React.memo(function AIContentCard({
           isLastValue &&
           isChatting &&
           !value.text?.content?.trim() &&
-          !value.reasoning?.content?.trim()
+          !value.reasoning?.content?.trim() &&
+          !value.plan &&
+          !value.stepTitle &&
+          !value.tool &&
+          !value.tools &&
+          !value.interactive &&
+          !value.skills
         ) {
           return (
             <Flex key={key} alignItems={'center'} gap={2}>
