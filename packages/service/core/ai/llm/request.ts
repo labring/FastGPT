@@ -634,7 +634,9 @@ export const createCompleteResponse = async ({
   const { content, reasoningContent } = (() => {
     const content = response.choices?.[0]?.message?.content || '';
     const reasoningContent: string =
-      (response.choices?.[0]?.message as any)?.reasoning_content || '';
+      (response.choices?.[0]?.message as any)?.reasoning_content ||
+      (response.choices?.[0]?.message as any)?.reasoning ||
+      '';
 
     // API already parse reasoning content
     if (reasoningContent || !modelData.reasoning) {

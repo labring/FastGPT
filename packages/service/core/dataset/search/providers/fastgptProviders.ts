@@ -141,7 +141,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
       const msg = choice?.message;
       const rawContent = msg?.content || '';
       const finishReason = choice?.finish_reason;
-      const reasoningContent = (msg as any)?.reasoning_content;
+      const reasoningContent = (msg as any)?.reasoning_content || (msg as any)?.reasoning;
 
       // 处理 thinking 内容：API 已返回 reasoning_content 则直接用；
       // 否则若模型是 reasoning 类型，从 content 中解析 <think> 标签
@@ -180,7 +180,8 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
           const retryChoice = retryResponse.choices[0];
           const retryMsg = retryChoice?.message;
           const retryRawContent = retryMsg?.content || '';
-          const retryReasoningContent = (retryMsg as any)?.reasoning_content;
+          const retryReasoningContent =
+            (retryMsg as any)?.reasoning_content || (retryMsg as any)?.reasoning;
 
           let retryContent = retryRawContent;
           let retryReasoning: string | undefined = retryReasoningContent || undefined;
@@ -282,7 +283,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
         if (!delta) continue;
 
         const rawContent = delta.content || '';
-        const reasoningContent = (delta as any)?.reasoning_content;
+        const reasoningContent = (delta as any)?.reasoning_content || (delta as any)?.reasoning;
 
         let content = rawContent;
         let reasoning: string | undefined = reasoningContent || undefined;
@@ -338,7 +339,8 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
           const retryChoice = retryResponse.choices[0];
           const retryMsg = retryChoice?.message;
           const retryRawContent = retryMsg?.content || '';
-          const retryReasoningContent = (retryMsg as any)?.reasoning_content;
+          const retryReasoningContent =
+            (retryMsg as any)?.reasoning_content || (retryMsg as any)?.reasoning;
 
           let retryContent = retryRawContent;
           let retryReasoning: string | undefined = retryReasoningContent || undefined;
