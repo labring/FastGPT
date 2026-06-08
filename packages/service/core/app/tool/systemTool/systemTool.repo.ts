@@ -330,7 +330,7 @@ export class SystemToolRepo {
         {
           versionName: 1
         }
-      );
+      ).sort({ time: -1, _id: -1 });
 
       return appVersions.map((item) => ({
         version: String(item._id),

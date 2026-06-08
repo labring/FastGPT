@@ -241,13 +241,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
 describe('SystemToolRepo.getVersions', () => {
   it('returns app version ids and names for workflow tools', async () => {
-    mocks.findSystemTool.mockResolvedValue({
-      pluginId: 'commercial-workflow-tool',
-      customConfig: {
-        associatedPluginId: '507f1f77bcf86cd799439011'
-      }
-    });
-    mocks.findAppVersions.mockResolvedValue([
+    const sortedAppVersions = [
       {
         _id: '507f1f77bcf86cd799439012',
         versionName: 'Workflow v2'
@@ -256,7 +250,18 @@ describe('SystemToolRepo.getVersions', () => {
         _id: '507f1f77bcf86cd799439013',
         versionName: 'Workflow v1'
       }
-    ]);
+    ];
+    const sortAppVersions = vi.fn().mockResolvedValue(sortedAppVersions);
+
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-workflow-tool',
+      customConfig: {
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+    mocks.findAppVersions.mockReturnValue({
+      sort: sortAppVersions
+    });
 
     const versions = await SystemToolRepo.getInstance().getVersions({
       pluginId: 'commercial-workflow-tool'
@@ -272,6 +277,7 @@ describe('SystemToolRepo.getVersions', () => {
         versionDescription: 'Workflow v1'
       }
     ]);
+    expect(sortAppVersions).toHaveBeenCalledWith({ time: -1, _id: -1 });
   });
 
   it('lists commercial plugin versions from commercial source', async () => {
