@@ -1,7 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createSkill, updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controller';
+import {
+  createSkill,
+  updateCurrentStorage,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/agentSkills/controller';
 import { buildSkillMd, generateSkillMd } from '@fastgpt/service/core/agentSkills/skillMdBuilder';
 import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
@@ -196,6 +200,9 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     );
 
     await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
+
+    // Bump parent folder's updateTime so it rises to the top of the list
+    await updateParentFoldersUpdateTime({ parentId, session });
 
     return newSkillId;
   });

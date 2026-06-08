@@ -390,10 +390,16 @@ async function getParents(
 }
 
 /**
- * Update parent folders' updateTime recursively (fire-and-forget)
+ * Update parent folders' updateTime recursively
  */
-export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {
-  mongoSessionRun(async (session) => {
+export const updateParentFoldersUpdateTime = ({
+  parentId,
+  session
+}: {
+  parentId?: string | null;
+  session?: ClientSession;
+}) => {
+  const run = async (session: ClientSession) => {
     const existsId = new Set<string>();
     let currentId: string | null | undefined = parentId;
     while (true) {
@@ -409,7 +415,11 @@ export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string 
 
       currentId = parentSkill.parentId ?? null;
     }
-  }).catch((err) => {
-    logger.error('Failed to update parent folder updateTime', { error: err });
-  });
+  };
+
+  if (session) {
+    return run(session);
+  } else {
+    return mongoSessionRun(run);
+  }
 };

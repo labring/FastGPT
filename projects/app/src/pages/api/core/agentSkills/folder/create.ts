@@ -5,7 +5,10 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createSkillFolder } from '@fastgpt/service/core/agentSkills/controller';
+import {
+  createSkillFolder,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/agentSkills/controller';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -58,6 +61,9 @@ async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
       resource: folder,
       resourceType: PerResourceTypeEnum.agentSkill
     });
+
+    // Bump parent folder's updateTime so it rises to the top of the list
+    await updateParentFoldersUpdateTime({ parentId, session });
 
     return folder._id.toString();
   });
