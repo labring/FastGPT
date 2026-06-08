@@ -63,7 +63,10 @@ export const openAPIDocument = createDocument({
         TagsMap.datasetData,
         TagsMap.datasetFile,
         TagsMap.datasetTraining,
-        TagsMap.datasetApiDataset
+        TagsMap.datasetApiDataset,
+        TagsMap.datasetTag,
+        TagsMap.datasetSynonym,
+        TagsMap.datasetCollaborator
       ]
     },
     {

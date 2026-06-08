@@ -118,10 +118,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail, refetchDatasetTraining } =
+    useContextSelector(DatasetPageContext, (v) => v);
 
   // collection list
   const [searchText, setSearchText] = useState('');
@@ -136,7 +134,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     data: collections,
     Pagination,
     total,
-    getData,
+    getData: _getDataRaw,
     isLoading: isGetting,
     pageNum,
     pageSize
@@ -153,6 +151,14 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     // defaultRequest: false,
     refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder]
   });
+
+  const getData = useCallback(
+    async (num: number) => {
+      await _getDataRaw(num);
+      refetchDatasetTraining();
+    },
+    [_getDataRaw, refetchDatasetTraining]
+  );
 
   const displayedCollections = useMemo(() => {
     const hasValueFilter = Object.values(filterTagValues).some((v) => v.length > 0);

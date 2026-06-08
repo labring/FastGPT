@@ -90,6 +90,7 @@ import type {
   GetDatasetTrainingQueueResponse,
   RebuildEmbeddingBody,
   UpdateTrainingDataBody,
+  RetryErrorCollectionsBody,
   GetTrainingDataDetailBody,
   GetTrainingDataDetailResponse,
   DeleteTrainingDataBody,
@@ -463,6 +464,8 @@ export const deleteTrainingData = (data: DeleteTrainingDataBody) =>
   POST(`/core/dataset/training/deleteTrainingData`, data);
 export const updateTrainingData = (data: UpdateTrainingDataBody) =>
   PUT(`/core/dataset/training/updateTrainingData`, data);
+export const retryErrorCollections = (data: RetryErrorCollectionsBody) =>
+  PUT(`/core/dataset/training/retryErrorCollections`, data);
 export const getTrainingDataDetail = (data: GetTrainingDataDetailBody) =>
   POST<GetTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
 export const getTrainingError = (data: GetTrainingErrorBody) =>

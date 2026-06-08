@@ -70,6 +70,7 @@ export function initGlobalVariables() {
   }
 
   global.datasetParseQueueLen = global.datasetParseQueueLen ?? 0;
+  global.datasetParseNonGpuQueueLen = global.datasetParseNonGpuQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   global.small2bigQueueLen = global.small2bigQueueLen ?? 0;

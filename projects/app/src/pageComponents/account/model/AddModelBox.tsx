@@ -21,6 +21,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -766,11 +767,13 @@ const VoicesField = React.memo(function VoicesField({
 export const ModelEditModal = ({
   modelData,
   onSuccess,
-  onClose
+  onClose,
+  isNormalUser = false
 }: {
   modelData: GetModelDetailResponse;
   onSuccess: () => void;
   onClose: () => void;
+  isNormalUser?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs, getModelProviders } = useSystemStore();
@@ -904,28 +907,40 @@ export const ModelEditModal = ({
   const CustomApi = useMemo(
     () => (
       <>
-        <GridItem colSpan={[1, 2]}>
-          <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
+        <GridItem>
+          <Flex alignItems={'center'} gap={1} mb={2}>
+            <FormLabel
+              required={isNormalUser}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              color={'myGray.900'}
+            >
               {t('account:model.request_url')}
-            </Box>
+            </FormLabel>
             <QuestionTip label={t('account:model.request_url_tip')} />
           </Flex>
-          <Input {...register('requestUrl')} {...InputStyles} />
+          <Input {...register('requestUrl', { required: isNormalUser })} {...InputStyles} />
         </GridItem>
-        <GridItem colSpan={[1, 2]}>
-          <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
+        <GridItem>
+          <Flex alignItems={'center'} gap={1} mb={2}>
+            <FormLabel
+              required={isNormalUser}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              color={'myGray.900'}
+            >
               {t('account:model.request_auth')}
-            </Box>
+            </FormLabel>
             <QuestionTip label={t('account:model.request_auth_tip')} />
           </Flex>
-          <Input {...register('requestAuth')} {...InputStyles} />
+          <Input {...register('requestAuth', { required: isNormalUser })} {...InputStyles} />
         </GridItem>
       </>
     ),
-    [register, t]
+    [isNormalUser, register, t]
   );
+
+  const isShared = useWatch({ control, name: 'isShared' });
 
   return (
     <MyModal
@@ -941,32 +956,27 @@ export const ModelEditModal = ({
     >
       <ModalBody px={'32px'} py={0}>
         <Section title={t('account:model.basic_config_section')}>
-          <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
-            <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
-                <Input
-                  {...register('model', { required: true })}
-                  {...InputStyles}
-                  isReadOnly={!isCustom}
-                />
-              </Field>
-              <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
-                <Input {...register('name', { required: true })} {...InputStyles} />
-              </Field>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
+              <Input
+                {...register('model', { required: true })}
+                {...InputStyles}
+                isReadOnly={!isCustom}
+              />
+            </Field>
+            <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
+              <Input {...register('name', { required: true })} {...InputStyles} />
+            </Field>
+            <GridItem colSpan={[1, 2]}>
               <ProviderField
                 control={control}
                 setValue={setValue}
                 providerList={providerList}
                 t={t}
               />
-              <SwitchField
-                label={t('common:permission.Public')}
-                tip={t('common:permission.Public Tip')}
-                field={'isShared'}
-                register={register}
-              />
-            </Grid>
-          </Flex>
+            </GridItem>
+            {CustomApi}
+          </Grid>
         </Section>
 
         {isLLMModel && (
@@ -1221,7 +1231,6 @@ export const ModelEditModal = ({
               />
             )}
             {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
-            {CustomApi}
             <SwitchField
               label={t('account:model.test_mode')}
               tip={t('account:model.test_mode_tip')}
@@ -1231,7 +1240,34 @@ export const ModelEditModal = ({
           </Grid>
         </Section>
       </ModalBody>
-      <ModalFooter display={'flex'} w="full" px={'32px'} py={0} mt={4}>
+      <ModalFooter display={'flex'} w="full" px={'32px'} py={0} mt={4} alignItems={'center'}>
+        <Flex alignItems={'center'} gap={2} mr={'auto'}>
+          <Flex alignItems={'center'} bg={'myGray.100'} borderRadius={'full'} p={'2px'}>
+            {[
+              { value: true, label: t('account:model.permission_public') },
+              { value: false, label: t('account:model.permission_private') }
+            ].map((item) => (
+              <Box
+                key={String(item.value)}
+                px={3}
+                py={'4px'}
+                borderRadius={'full'}
+                cursor={'pointer'}
+                fontSize={'sm'}
+                fontWeight={'500'}
+                bg={isShared === item.value ? 'white' : 'transparent'}
+                boxShadow={isShared === item.value ? 'sm' : 'none'}
+                color={isShared === item.value ? 'primary.700' : 'myGray.500'}
+                transition={'all 0.15s'}
+                onClick={() => setValue('isShared', item.value)}
+              >
+                {item.label}
+              </Box>
+            ))}
+          </Flex>
+          <QuestionTip label={t('account:model.permission_tip')} />
+        </Flex>
+
         {!modelData.isCustom && (
           <Button
             isLoading={loadingDefaultConfig}
@@ -1244,7 +1280,7 @@ export const ModelEditModal = ({
           </Button>
         )}
 
-        <Box ml="auto">
+        <Box>
           <Button variant={'whiteBase'} mr={3} size={'md'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>

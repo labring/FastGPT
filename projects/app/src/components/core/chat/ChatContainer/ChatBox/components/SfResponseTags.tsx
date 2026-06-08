@@ -62,7 +62,6 @@ const ResponseTags = ({
   const durationSeconds = historyItem.durationSeconds || 0;
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
-  const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
   const {
     totalQuoteList: quotes = [],
     llmModuleAccount = 0,
@@ -161,7 +160,7 @@ const ResponseTags = ({
         historyItem={historyItem}
         datasetReadPerMap={datasetReadPerMap}
         onOpenCiteModal={onOpenCiteModal}
-        isShowFullText={isShowFullText}
+        isShowCite={isShowCite}
         chatType={chatType}
       />
 

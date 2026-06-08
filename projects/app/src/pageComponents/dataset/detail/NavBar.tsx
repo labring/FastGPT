@@ -270,8 +270,6 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           <Flex
             justifyContent={'flex-end'}
             alignItems={'center'}
-            pl={4}
-            pr={4}
             visibility={
               currentTab === TabEnum.collectionCard || (isDataCardTab && collection && sourceLabel)
                 ? 'visible'

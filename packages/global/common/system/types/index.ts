@@ -164,6 +164,8 @@ export type SystemEnvType = {
   tokenWorkers: number; // token count max worker
 
   datasetParseMaxProcess: number;
+  datasetParseNonGpuMaxProcess?: number; // 非 GPU 文件解析最大并发数，默认 20
+  gpuParseFileExtensions?: string[]; // 使用 GPU 解析队列的文件后缀列表，默认 ['.pdf']
   vectorMaxProcess: number;
   qaMaxProcess: number;
   hypeMaxProcess?: number;

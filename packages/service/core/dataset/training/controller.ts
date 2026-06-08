@@ -259,6 +259,7 @@ export const pushDatasetToParseQueue = async ({
   datasetId,
   collectionId,
   billId,
+  useGpuQueue,
   session
 }: {
   teamId: string;
@@ -266,6 +267,7 @@ export const pushDatasetToParseQueue = async ({
   datasetId: string;
   collectionId: string;
   billId: string;
+  useGpuQueue?: boolean;
   session: ClientSession;
 }) => {
   await MongoDatasetTraining.create(
@@ -276,7 +278,8 @@ export const pushDatasetToParseQueue = async ({
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.parse
+        mode: TrainingModeEnum.parse,
+        useGpuQueue: !!useGpuQueue
       }
     ],
     { session, ordered: true }

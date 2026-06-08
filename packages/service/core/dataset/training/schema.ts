@@ -101,7 +101,11 @@ const TrainingDataSchema = new Schema({
     default: []
   },
 
-  errorMsg: String
+  errorMsg: String,
+  useGpuQueue: {
+    type: Boolean,
+    default: false
+  }
 });
 
 TrainingDataSchema.virtual('dataset', {

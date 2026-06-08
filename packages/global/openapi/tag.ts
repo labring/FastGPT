@@ -38,6 +38,9 @@ export const TagsMap = {
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',
   datasetFile: '文件管理',
+  datasetTag: '标签管理',
+  datasetSynonym: '同义词管理',
+  datasetCollaborator: '权限管理',
 
   // Plugin
   pluginToolTag: '工具标签',

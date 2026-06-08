@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   HStack,
-  IconButton,
   Table,
   TableContainer,
   Tbody,
@@ -19,7 +18,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { putSystemModel } from '@/web/core/ai/config';
+import { clientInitData } from '@/web/common/system/staticData';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -174,37 +175,22 @@ const ModelListTable = ({
           <Tr color={'myGray.600'}>
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '180px' : undefined}>
               <HStack>
-                {permissionConfig && hasManagePer && hasSelectableModel && (
-                  <Checkbox mr={1} isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
+                {permissionConfig && hasManagePer && (
+                  <Box w="20px" mr={1}>
+                    {hasSelectableModel && (
+                      <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
+                    )}
+                  </Box>
                 )}
-                <Box>{t('common:model.name')}</Box>
-                <MyTooltip label={t('account:model.model_id')}>
-                  <IconButton
-                    aria-label="Toggle model ID"
-                    icon={
-                      <MyIcon
-                        name={showModelId ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                        w={'14px'}
-                      />
-                    }
-                    variant={'transparentBase'}
-                    size={'sm'}
-                    minW={'20px'}
-                    h={'20px'}
-                    onClick={() => setShowModelId((prev) => !prev)}
-                  />
-                </MyTooltip>
+                <HStack spacing={1} cursor={'pointer'} onClick={() => setShowModelId(!showModelId)}>
+                  <Box>{showModelId ? t('account:model.model_id') : t('common:model.name')}</Box>
+                  <MyIcon name={'modal/changePer'} w={'1rem'} />
+                </HStack>
               </HStack>
             </Th>
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
               {t('common:model.model_type')}
             </Th>
-            {permissionConfig && (
-              <>
-                <Th fontSize={'xs'}>{t('common:permission.Owner')}</Th>
-                <Th fontSize={'xs'}>{t('common:permission.Permission')}</Th>
-              </>
-            )}
             {showTrainedModelColumns ? (
               <>
                 <Th
@@ -275,6 +261,12 @@ const ModelListTable = ({
                   )}
                 </HStack>
               </Th>
+            )}
+            {permissionConfig && (
+              <>
+                <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
+                <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
+              </>
             )}
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '240px' : undefined}>
               {t('account_model:action')}
@@ -368,41 +360,29 @@ const ModelTableRow = ({
     <Tr _hover={{ bg: 'myGray.50' }}>
       <Td fontSize={'sm'}>
         <HStack>
-          {permissionConfig && item.permission.hasManagePer && (
-            <Checkbox
-              mr={1}
-              isChecked={isSelected(item)}
-              onChange={() => toggleSelect(item)}
-            ></Checkbox>
+          {permissionConfig && (
+            <Box w="20px" mr={1}>
+              {item.permission.hasManagePer && (
+                <Checkbox
+                  isChecked={isSelected(item)}
+                  onChange={() => toggleSelect(item)}
+                ></Checkbox>
+              )}
+            </Box>
           )}
           <Avatar src={item.avatar} w={'1.2rem'} />
-          <CopyBox value={item.name} color={'myGray.900'}>
-            {item.name}
+          <CopyBox
+            value={showModelId ? item.id : item.name}
+            color={'myGray.900'}
+            fontWeight={'500'}
+          >
+            {showModelId ? item.id : item.name}
           </CopyBox>
         </HStack>
-        {showModelId && (
-          <Box mt={1} maxW={'260px'}>
-            <CopyBox value={item.id} color={'myGray.500'} fontSize={'xs'}>
-              {item.id}
-            </CopyBox>
-          </Box>
-        )}
       </Td>
       <Td>
         <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
       </Td>
-      {permissionConfig && (
-        <>
-          <Td fontSize={'sm'} color={'myGray.700'}>
-            {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
-          </Td>
-          <Td fontSize={'sm'}>
-            <MyTag type="borderFill" colorSchema={item.isShared ? 'green' : 'gray'}>
-              {item.isShared ? t('common:permission.Public') : t('common:permission.Private')}
-            </MyTag>
-          </Td>
-        </>
-      )}
       {showTrainedModelColumns ? (
         <>
           <Td fontSize={'sm'} color={'myGray.700'}>
@@ -477,6 +457,20 @@ const ModelTableRow = ({
           )}
         </Td>
       )}
+      {permissionConfig && (
+        <>
+          <Td fontSize={'sm'} color={'myGray.700'}>
+            {item.sourceMember?.name || (item.isCustom ? '-' : 'System')}
+          </Td>
+          <Td fontSize={'sm'}>
+            <MyTag type="borderFill" colorSchema={item.isShared ? 'blue' : 'gray'}>
+              {item.isShared
+                ? t('account:model.permission_public')
+                : t('account:model.permission_private')}
+            </MyTag>
+          </Td>
+        </>
+      )}
       <Td fontSize={'sm'}>
         <ModelTableActionCell
           item={item}
@@ -523,15 +517,19 @@ const ModelTableActionCell = ({
     <HStack spacing={2}>
       {showPermissionButton && (
         <LazyCollaboratorProvider
-          selectedHint={t('account_model:model_permission_config_hint')}
+          selectedHint={item.isShared ? t('account_model:model_permission_public_hint') : undefined}
           defaultRole={ReadRoleVal}
           onGetCollaboratorList={() => getModelCollaborators(item.id)}
-          onUpdateCollaborators={({ collaborators }) =>
-            updateModelCollaborators({
+          onUpdateCollaborators={async ({ collaborators }) => {
+            await updateModelCollaborators({
               collaborators,
               modelIds: [item.id]
-            })
-          }
+            });
+            if (item.isShared && collaborators.some((clb) => clb.permission !== OwnerRoleVal)) {
+              await putSystemModel({ id: item.id, isShared: false });
+              clientInitData(undefined, { forceRefresh: true });
+            }
+          }}
           permission={userPermission}
         >
           {({ onOpenManageModal }) => (

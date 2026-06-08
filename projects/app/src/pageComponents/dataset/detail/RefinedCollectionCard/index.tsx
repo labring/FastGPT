@@ -26,7 +26,8 @@ import {
   postLinkCollectionSync,
   getCollectionSource,
   postCheckDuplicateCollection,
-  downloadCollectionsAsZip
+  downloadCollectionsAsZip,
+  retryErrorCollections
 } from '@/web/core/dataset/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -89,7 +90,10 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, allDatasetTags } = useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, allDatasetTags, datasetHasError } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
   const { feConfigs } = useSystemStore();
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
@@ -402,6 +406,21 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
+  const { runAsync: onRetryAllErrors, loading: isRetryingAll } = useRequest(
+    () =>
+      retryErrorCollections({
+        datasetId: datasetDetail._id
+      }),
+    {
+      manual: true,
+      onSuccess: () => {
+        getData(pageNum);
+      },
+      successToast: t('dataset:retry_all_success'),
+      errorToast: t('dataset:retry_failed')
+    }
+  );
+
   // Silent polling for processing collections (10s interval) - doesn't show loading
   useRequest(
     async () => {
@@ -447,7 +466,12 @@ const CollectionCard = () => {
   });
 
   const isLoading =
-    isUpdating || isSyncing || isDownloading || (isGetting && !isPollingRef.current) || isDropping;
+    isUpdating ||
+    isSyncing ||
+    isDownloading ||
+    isRetryingAll ||
+    (isGetting && !isPollingRef.current) ||
+    isDropping;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
@@ -532,7 +556,7 @@ const CollectionCard = () => {
                           {renderSortIcon('dataAmount')}
                         </HStack>
                       </Th>
-                      <Th py={4} w="100px">
+                      <Th py={4} w="200px">
                         <HStack spacing={1}>
                           <Box>{t('common:Status')}</Box>
                           <StatusFilter
@@ -540,6 +564,25 @@ const CollectionCard = () => {
                             onChange={setStatusFilter}
                             hideNotExist
                           />
+                          {datasetHasError && (
+                            <Box ml={3}>
+                              <MyTooltip label={t('dataset:retry_all_errors_tip')}>
+                                <Box
+                                  color="#156AD9"
+                                  fontSize={'xs'}
+                                  lineHeight={'16px'}
+                                  h={'16px'}
+                                  cursor={'pointer'}
+                                  onClick={(e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    onRetryAllErrors();
+                                  }}
+                                >
+                                  {t('dataset:retry_all_errors')}
+                                </Box>
+                              </MyTooltip>
+                            </Box>
+                          )}
                         </HStack>
                       </Th>
                       {feConfigs?.isPlus && (
@@ -668,7 +711,7 @@ const CollectionCard = () => {
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
-                        <Td py={2} w="100px">
+                        <Td py={2} w="200px">
                           {collection.statusKey === 'folder' ? (
                             <Box fontSize={'xs'} color={'myWhite.1000'}>
                               {collection.statusText}

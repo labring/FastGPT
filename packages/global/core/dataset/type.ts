@@ -307,6 +307,7 @@ export const DatasetTrainingSchema = z.object({
     .meta({ description: '向量索引' }),
   retryCount: z.number().meta({ description: '重试次数' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
+  useGpuQueue: z.boolean().optional().meta({ description: '是否使用GPU队列' }),
   dataMetadata: z.record(z.string(), z.any()).optional().meta({ description: '数据元数据' }),
 
   userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true })
@@ -375,8 +376,8 @@ export const DatasetTagSchema = z.object({
 export type DatasetTagType = z.infer<typeof DatasetTagSchema>;
 
 export const TagUsageSchema = z.object({
-  tagId: z.string().meta({ description: '标签 ID' }),
-  collections: z.array(z.string()).meta({ description: '集合 ID' })
+  tagId: ObjectIdSchema.meta({ description: '标签 ID' }),
+  collections: z.array(ObjectIdSchema).meta({ description: '集合 ID' })
 });
 export type TagUsageType = z.infer<typeof TagUsageSchema>;
 

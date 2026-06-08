@@ -63,7 +63,7 @@ export const SimpleCitationDisplay = React.memo(
     historyItem,
     datasetReadPerMap,
     onOpenCiteModal,
-    isShowFullText,
+    isShowCite,
     chatType
   }: {
     historyItem: ChatSiteItemType;
@@ -75,11 +75,14 @@ export const SimpleCitationDisplay = React.memo(
       datasetId?: string;
       quoteId?: string;
     }) => void;
-    isShowFullText?: boolean;
+    isShowCite?: boolean;
     chatType?: ChatTypeEnum;
   }) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = React.useState(false);
+
+    if (!isShowCite) return null;
+
     const { totalQuoteList: quoteList = [], toolCiteLinks = [] } = useMemo(
       () => addStatisticalDataToHistoryItem(historyItem),
       [historyItem]
@@ -179,7 +182,12 @@ export const SimpleCitationDisplay = React.memo(
                   opacity={item.noPermission ? 0.5 : 1}
                   onClick={() => {
                     if (item.noPermission) return;
-                    if (onOpenCiteModal && isShowFullText && 'collectionId' in item && chatType === ChatTypeEnum.share) {
+                    if (
+                      onOpenCiteModal &&
+                      isShowCite &&
+                      'collectionId' in item &&
+                      chatType === ChatTypeEnum.share
+                    ) {
                       onOpenCiteModal({
                         collectionId: item.collectionId,
                         sourceId: item.sourceId,
@@ -325,6 +333,7 @@ const ChatItem = (props: Props) => {
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+  const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
   const chatStatusMap = useMemo(() => {
     if (!statusBoxData?.status) return;
@@ -484,7 +493,11 @@ const ChatItem = (props: Props) => {
                   isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                   isChatting={isChatting}
                 />
-                <SimpleCitationDisplay historyItem={chat} datasetReadPerMap={datasetReadPerMap} />
+                <SimpleCitationDisplay
+                  historyItem={chat}
+                  datasetReadPerMap={datasetReadPerMap}
+                  isShowCite={isShowCite}
+                />
                 <Box color={'myWhite.700'} mt={2} fontSize={'0.85rem'}>
                   {t('app:chat_item_cost_time')} {chat.durationSeconds}s
                 </Box>

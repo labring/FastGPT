@@ -12,7 +12,10 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getCollectionSource } from '@/web/core/dataset/api/collection';
-import { DatasetCollectionTypeEnum, ApiDatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ApiDatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DocumentViewer from './DocumentViewer';
 import ReferencePanelDownloadButton from './DownloadButton';
@@ -27,6 +30,7 @@ type CollectionMeta = {
   collectionType?: string;
   datasetType?: string;
   fileName?: string;
+  apiDatasetBaseUrl?: string;
 };
 
 const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
@@ -176,6 +180,12 @@ const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
         return;
       }
 
+      if (isApiDataset && collectionMeta.apiDatasetBaseUrl) {
+        const fullUrl = `${collectionMeta.apiDatasetBaseUrl.replace(/\/+$/, '')}${value}`;
+        window.open(fullUrl, '_blank');
+        return;
+      }
+
       if (value.startsWith('/')) {
         window.open(`${location.origin}${value}`, '_blank');
       } else {
@@ -193,6 +203,8 @@ const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
     metadata.chatId,
     metadata.outLinkAuthData,
     chatItemDataId,
+    isApiDataset,
+    collectionMeta.apiDatasetBaseUrl,
     toast,
     t
   ]);

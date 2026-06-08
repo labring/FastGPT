@@ -96,6 +96,7 @@
   "evaluation_model": "評測模型",
   "evaluation_model_tip": "用於應用評測，及評測數據集中針對數據質量的評測。",
   "model_permission_config_hint": "若無協作者，默認全部成員可用",
+  "model_permission_public_hint": "當前為公開狀態，添加協作者後，將自動切換為私有狀態",
   "action": "操作",
   "train": "訓練",
   "train_model_generate_new": "訓練模型（生成新模型）",

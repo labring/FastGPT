@@ -171,6 +171,28 @@ export const GetDatasetTrainingQueueResponseSchema = z.object({
   trainingCount: z.number().meta({
     example: 12,
     description: '训练队列中的数据条数'
+  }),
+  errorCount: z.number().meta({
+    example: 3,
+    description: '存在错误的训练数据条数'
   })
 });
 export type GetDatasetTrainingQueueResponse = z.infer<typeof GetDatasetTrainingQueueResponseSchema>;
+
+/* ============================================================================
+ * API: 批量重试多个集合内所有错误数据
+ * Route: PUT /api/core/dataset/training/retryErrorCollections
+ * ============================================================================ */
+export const RetryErrorCollectionsBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  }),
+  collectionIds: z.array(ObjectIdSchema).min(1).optional().meta({
+    description: '需要重试的集合 ID 列表，不传则重试该知识库下所有错误集合'
+  })
+});
+export type RetryErrorCollectionsBody = z.infer<typeof RetryErrorCollectionsBodySchema>;
+
+export const RetryErrorCollectionsResponseSchema = z.object({});
+export type RetryErrorCollectionsResponse = z.infer<typeof RetryErrorCollectionsResponseSchema>;
