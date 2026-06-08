@@ -201,11 +201,11 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
 
     await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
+    // Bump parent folder's updateTime so it rises to the top of the list
+    await updateParentFoldersUpdateTime({ parentId, session });
+
     return newSkillId;
   });
-
-  // Bump parent folder's updateTime so it rises to the top of the list
-  updateParentFoldersUpdateTime({ parentId });
 
   (async () => {
     addAuditLog({

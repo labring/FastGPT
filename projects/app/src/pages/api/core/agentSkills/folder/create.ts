@@ -62,11 +62,11 @@ async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
       resourceType: PerResourceTypeEnum.agentSkill
     });
 
+    // Bump parent folder's updateTime so it rises to the top of the list
+    await updateParentFoldersUpdateTime({ parentId, session });
+
     return folder._id.toString();
   });
-
-  // Bump parent folder's updateTime so it rises to the top of the list
-  updateParentFoldersUpdateTime({ parentId });
 
   // Add audit log
   (async () => {
