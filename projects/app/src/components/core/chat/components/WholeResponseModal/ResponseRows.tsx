@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
@@ -337,8 +338,42 @@ const ReadFilesRows = ({ activeModule }: { activeModule: ChatHistoryItemResType 
   );
 };
 
-export const WorkflowResultRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
+export const WorkflowResultRows = ({
+  activeModule,
+  contentHeight
+}: {
+  activeModule: ChatHistoryItemResType;
+  contentHeight?: number;
+}) => {
   const { t } = useSafeTranslation();
+  const codeJsonMaxHeight =
+    activeModule.moduleType === FlowNodeTypeEnum.code && contentHeight
+      ? `${Math.floor(contentHeight * 0.8)}px`
+      : undefined;
+  const codeJsonContentBoxProps = codeJsonMaxHeight
+    ? {
+        sx: {
+          '& .markdown > div': {
+            display: 'flex',
+            flexDirection: 'column',
+            maxH: codeJsonMaxHeight,
+            overflow: 'hidden',
+            borderRadius: 'md'
+          },
+          '& .markdown .code-header': {
+            flexShrink: 0
+          },
+          '& .markdown pre': {
+            flex: '1 1 auto',
+            minH: 0,
+            overflow: 'auto !important',
+            margin: '0 !important',
+            borderBottomLeftRadius: 'var(--chakra-radii-md)',
+            borderBottomRightRadius: 'var(--chakra-radii-md)'
+          }
+        }
+      }
+    : undefined;
 
   return (
     <>
@@ -373,8 +408,16 @@ export const WorkflowResultRows = ({ activeModule }: { activeModule: ChatHistory
       <Row label={t('chat:tool_input')} value={activeModule.toolInput} />
       <Row label={t('chat:tool_output')} value={activeModule.pluginOutput} />
       <Row label={t('common:core.chat.response.text output')} value={activeModule.textOutput} />
-      <Row label={t('workflow:response.Custom inputs')} value={activeModule.customInputs} />
-      <Row label={t('workflow:response.Custom outputs')} value={activeModule.customOutputs} />
+      <Row
+        label={t('workflow:response.Custom inputs')}
+        value={activeModule.customInputs}
+        contentBoxProps={codeJsonContentBoxProps}
+      />
+      <Row
+        label={t('workflow:response.Custom outputs')}
+        value={activeModule.customOutputs}
+        contentBoxProps={codeJsonContentBoxProps}
+      />
       <Row label={t('workflow:response.Code log')} value={activeModule.codeLog} />
       <ReadFilesRows activeModule={activeModule} />
       <Row

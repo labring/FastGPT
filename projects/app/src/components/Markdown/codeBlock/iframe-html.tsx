@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
   Box,
@@ -18,6 +18,9 @@ import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { codeLight } from './CodeLight';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import styles from '../index.module.scss';
+
+const PANEL_HEIGHT = '60vh';
 
 const StyledButton = ({
   label,
@@ -85,16 +88,36 @@ const IframeHtmlCodeBlock = ({
   children,
   className,
   codeBlock,
-  match
+  match,
+  showAnimation,
+  autoPreviewHtmlCodeBlock
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
   codeBlock?: boolean;
   match: RegExpExecArray | null;
+  showAnimation?: boolean;
+  autoPreviewHtmlCodeBlock?: boolean;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const [viewMode, setViewMode] = useState<'source' | 'iframe'>('source');
+  const code = String(children);
+  const lang = match?.[1]?.toLowerCase();
+  const isHtmlBlock = lang === 'html' || lang === 'htm';
+  const streamFinished = !showAnimation;
+  const htmlLooksNearlyDone = /<\/(?:body|html)\s*>/i.test(code);
+  // 已完成的聊天 HTML 块直接展示结果；流式中的 HTML 块先留在源码视图。
+  const shouldAutoPreviewOnMount = !!autoPreviewHtmlCodeBlock && isHtmlBlock && streamFinished;
+  // 流式阶段避免每个 token 都重新跑语法高亮，保持代码增长和滚动都更轻。
+  const showPlainStreamingCode = !!autoPreviewHtmlCodeBlock && isHtmlBlock && showAnimation;
+  const [viewMode, setViewMode] = useState<'source' | 'iframe'>(
+    shouldAutoPreviewOnMount ? 'iframe' : 'source'
+  );
+  const [userOverride, setUserOverride] = useState(false);
+  // 自动切换只执行一次；用户主动点过 Tab 后不再覆盖他的选择。
+  const autoSwitchedRef = useRef(shouldAutoPreviewOnMount);
+  const prevShowAnimationRef = useRef(showAnimation);
+  const streamingCodeRef = useRef<HTMLElement | null>(null);
   const isPreview = viewMode === 'iframe';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -113,7 +136,7 @@ const IframeHtmlCodeBlock = ({
   const Iframe = useMemo(
     () => (
       <iframe
-        srcDoc={String(children)}
+        srcDoc={code}
         sandbox="allow-popups"
         referrerPolicy="no-referrer"
         style={{
@@ -124,13 +147,65 @@ const IframeHtmlCodeBlock = ({
         }}
       />
     ),
-    [children]
+    [code]
   );
+
+  const handleSelectViewMode = (mode: 'source' | 'iframe') => {
+    // Code/Preview 是用户明确选择，后续流式完成不应再强制跳 Tab。
+    setUserOverride(true);
+    setViewMode(mode);
+  };
+
+  useEffect(() => {
+    const wasStreaming = prevShowAnimationRef.current;
+    prevShowAnimationRef.current = showAnimation;
+
+    if (!autoPreviewHtmlCodeBlock) return;
+    if (!isHtmlBlock) return;
+    if (!showAnimation) return;
+    if (wasStreaming) return;
+
+    // 新一轮 HTML 流式开始时回到 Code，让用户看到源码持续写入。
+    autoSwitchedRef.current = false;
+    setUserOverride(false);
+    setViewMode('source');
+  }, [autoPreviewHtmlCodeBlock, isHtmlBlock, showAnimation]);
+
+  useEffect(() => {
+    if (!autoPreviewHtmlCodeBlock) return;
+    if (!isHtmlBlock) return;
+    if (!streamFinished && !htmlLooksNearlyDone) return;
+    if (userOverride) return;
+    if (autoSwitchedRef.current) return;
+
+    // HTML 主体接近完成时就自动预览；没有明显结束标签时仍等流式结束兜底。
+    autoSwitchedRef.current = true;
+    setViewMode('iframe');
+  }, [
+    autoPreviewHtmlCodeBlock,
+    code,
+    htmlLooksNearlyDone,
+    isHtmlBlock,
+    streamFinished,
+    userOverride
+  ]);
+
+  useEffect(() => {
+    if (!showPlainStreamingCode) return;
+    if (isPreview) return;
+
+    const node = streamingCodeRef.current;
+    if (!node) return;
+
+    // 源码面板有固定高度，流式写入时需要跟随到底部才能看到最新代码。
+    node.scrollTop = node.scrollHeight;
+  }, [code, isPreview, showPlainStreamingCode]);
 
   if (codeBlock) {
     return (
       <Box
         ref={Ref}
+        className={styles.htmlCodeBlock}
         my={3}
         borderRadius={'md'}
         overflow={'hidden'}
@@ -143,6 +218,8 @@ const IframeHtmlCodeBlock = ({
           px={4}
           color={'white'}
           userSelect={'none'}
+          position="relative"
+          zIndex={2}
           alignItems="center"
           fontSize={'sm'}
           gap={1.5}
@@ -163,19 +240,14 @@ const IframeHtmlCodeBlock = ({
             color={isPreview ? 'myGray.800' : 'rgba(255, 255, 255, 0.9)'}
           >
             {codeBoxName}
-            <Flex
-              cursor="pointer"
-              onClick={() => copyData(String(children))}
-              alignItems="center"
-              ml={2}
-            >
+            <Flex cursor="pointer" onClick={() => copyData(code)} alignItems="center" ml={2}>
               <Icon name="copy" width="14px" />
             </Flex>
           </Box>
           <StyledButton
             label={t('common:Code')}
             iconName="code"
-            onClick={() => setViewMode('source')}
+            onClick={() => handleSelectViewMode('source')}
             isActive={viewMode === 'source'}
             viewMode={viewMode}
             isMobile={isMobile}
@@ -183,7 +255,7 @@ const IframeHtmlCodeBlock = ({
           <StyledButton
             label={t('common:Preview')}
             iconName="preview"
-            onClick={() => setViewMode('iframe')}
+            onClick={() => handleSelectViewMode('iframe')}
             isActive={viewMode === 'iframe'}
             viewMode={viewMode}
             isMobile={isMobile}
@@ -197,12 +269,42 @@ const IframeHtmlCodeBlock = ({
           />
         </Flex>
         {isPreview ? (
-          <Box w={width} h="60vh">
+          <Box w={width} h={PANEL_HEIGHT} maxH={PANEL_HEIGHT} overflow="auto">
             {Iframe}
           </Box>
+        ) : showPlainStreamingCode ? (
+          <Box
+            as="pre"
+            ref={(node: HTMLPreElement | null) => {
+              streamingCodeRef.current = node;
+            }}
+            m={0}
+            p="1em"
+            h={PANEL_HEIGHT}
+            maxH={PANEL_HEIGHT}
+            overflow="auto"
+            bg="#1e1e1e"
+            color="#d4d4d4"
+            fontSize="1em"
+            lineHeight="1.5"
+            whiteSpace="pre"
+            fontFamily="monospace"
+          >
+            {code.replace(/&nbsp;/g, ' ')}
+          </Box>
         ) : (
-          <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
-            {String(children).replace(/&nbsp;/g, ' ')}
+          <SyntaxHighlighter
+            style={codeLight as any}
+            language={match?.[1]}
+            PreTag="pre"
+            customStyle={{
+              margin: 0,
+              height: PANEL_HEIGHT,
+              maxHeight: PANEL_HEIGHT,
+              overflow: 'auto'
+            }}
+          >
+            {code.replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         )}
 

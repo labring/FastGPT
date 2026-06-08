@@ -49,6 +49,7 @@ const RenderText = React.memo(function RenderText({
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
       isDisabled={isDisabled}
+      autoPreviewHtmlCodeBlock
     />
   );
 });

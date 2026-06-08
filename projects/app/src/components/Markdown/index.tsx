@@ -35,6 +35,7 @@ type Props = {
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
   className?: string;
+  autoPreviewHtmlCodeBlock?: boolean;
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -51,6 +52,7 @@ const MarkdownRender = ({
   isDisabled,
   forbidZhFormat,
   className,
+  autoPreviewHtmlCodeBlock,
 
   chatAuthData,
   onOpenCiteModal
@@ -59,7 +61,14 @@ const MarkdownRender = ({
     return {
       img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
       pre: RewritePre,
-      code: (props: any) => <Code {...props} markdownClassName={className} />,
+      code: (props: any) => (
+        <Code
+          {...props}
+          showAnimation={showAnimation}
+          autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+          markdownClassName={className}
+        />
+      ),
       table: MarkdownTable as any,
       a: (props: any) => (
         <A
@@ -70,7 +79,7 @@ const MarkdownRender = ({
         />
       )
     };
-  }, [chatAuthData, onOpenCiteModal, showAnimation]);
+  }, [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
@@ -95,7 +104,7 @@ const MarkdownRender = ({
       >
         {formatSource}
       </ReactMarkdown>
-      {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} />}
+      {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} zIndex={1} />}
     </Box>
   );
 };
@@ -104,7 +113,14 @@ export default React.memo(Markdown);
 
 /* Custom dom */
 function Code(e: any) {
-  const { className, codeBlock, children, markdownClassName } = e;
+  const {
+    className,
+    codeBlock,
+    children,
+    showAnimation,
+    autoPreviewHtmlCodeBlock,
+    markdownClassName
+  } = e;
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
@@ -126,9 +142,19 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.iframe) {
       return <IframeCodeBlock code={strChildren} />;
     }
-    if (codeType === CodeClassNameEnum.html || codeType === CodeClassNameEnum.svg) {
+    if (
+      codeType === CodeClassNameEnum.html ||
+      (autoPreviewHtmlCodeBlock && codeType === CodeClassNameEnum.htm) ||
+      codeType === CodeClassNameEnum.svg
+    ) {
       return (
-        <IframeHtmlCodeBlock className={className} codeBlock={codeBlock} match={match}>
+        <IframeHtmlCodeBlock
+          className={className}
+          codeBlock={codeBlock}
+          match={match}
+          showAnimation={showAnimation}
+          autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+        >
           {children}
         </IframeHtmlCodeBlock>
       );
@@ -145,7 +171,17 @@ function Code(e: any) {
         {children}
       </CodeLight>
     );
-  }, [codeType, className, codeBlock, match, children, strChildren, markdownClassName]);
+  }, [
+    autoPreviewHtmlCodeBlock,
+    codeType,
+    className,
+    codeBlock,
+    match,
+    children,
+    showAnimation,
+    strChildren,
+    markdownClassName
+  ]);
 
   return Component;
 }

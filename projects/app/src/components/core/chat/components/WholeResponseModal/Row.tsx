@@ -44,12 +44,14 @@ export const Row = ({
   label,
   value,
   rawDom,
-  rawDomBoxProps
+  rawDomBoxProps,
+  contentBoxProps
 }: {
   label: string;
   value?: string | number | boolean | object;
   rawDom?: ReactNode;
   rawDomBoxProps?: BoxProps;
+  contentBoxProps?: BoxProps;
 }) => {
   const { t } = useSafeTranslation();
   const val = value || rawDom;
@@ -87,9 +89,11 @@ export const Row = ({
           })}
     >
       <Box
+        {...contentBoxProps}
         sx={{
           '& .markdown': { fontSize: '12px !important' },
-          '& .markdown pre': { fontSize: '12px !important' }
+          '& .markdown pre': { fontSize: '12px !important' },
+          ...contentBoxProps?.sx
         }}
       >
         <Markdown source={formatValue} />

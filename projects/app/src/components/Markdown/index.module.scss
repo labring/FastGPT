@@ -9,6 +9,9 @@
   animation: blink 0.6s infinite;
   vertical-align: baseline;
 }
+.waitingAnimation > .htmlCodeBlock:last-child::after {
+  display: none;
+}
 
 .animation {
   height: 20px;
