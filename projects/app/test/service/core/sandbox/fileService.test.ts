@@ -123,6 +123,62 @@ describe('listSandboxDirectory', () => {
     await listSandboxDirectory(sandbox, '/some/path');
     expect(listDirectory).toHaveBeenCalledWith('/some/path');
   });
+
+  it('过滤掉名称中包含 -> 的符号链接条目', async () => {
+    // Simulate the parseLsOutput bug: symlink with " -> target" in name
+    const entries = [
+      makeDirectoryEntry('real-file.ts', { size: 100 }),
+      makeDirectoryEntry('image-size -> ../image-size/bin/image-size.js', {
+        isDirectory: true,
+        path: '/workspace/image-size -> ../image-size/bin/image-size.js'
+      })
+    ];
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries)
+    });
+    const result = await listSandboxDirectory(sandbox, '/workspace');
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('real-file.ts');
+  });
+
+  it('过滤掉 node_modules 目录', async () => {
+    const entries = [
+      makeDirectoryEntry('src', { isDirectory: true, path: '/workspace/src' }),
+      makeDirectoryEntry('node_modules', { isDirectory: true, path: '/workspace/node_modules' })
+    ];
+    const listDirectory = vi
+      .fn()
+      .mockResolvedValueOnce(entries)
+      .mockResolvedValueOnce([makeDirectoryEntry('index.ts', { path: '/workspace/src/index.ts' })]);
+    const sandbox = makeSandbox({ listDirectory });
+    const result = await listSandboxDirectory(sandbox, '/workspace', true);
+    // Should have 'src' with its child, but not 'node_modules'
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('src');
+    expect(result[0].children).toHaveLength(1);
+    // listDirectory should only be called for /workspace and /workspace/src, NOT for node_modules
+    expect(listDirectory).toHaveBeenCalledTimes(2);
+  });
+
+  it('递归列出时子目录列出失败不会抛出异常', async () => {
+    // First call: top-level listing succeeds
+    // Second call: good-dir listing succeeds (returns empty)
+    // Third call: bad-dir listing fails
+    const listDirectory = vi
+      .fn()
+      .mockResolvedValueOnce([
+        makeDirectoryEntry('good-dir', { isDirectory: true, path: '/workspace/good-dir' }),
+        makeDirectoryEntry('bad-dir', { isDirectory: true, path: '/workspace/bad-dir' })
+      ])
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('list failed'));
+    const sandbox = makeSandbox({ listDirectory });
+    const result = await listSandboxDirectory(sandbox, '/workspace', true);
+    // Should still get both top-level entries; bad-dir has empty children
+    expect(result).toHaveLength(2);
+    expect(result[0].children).toEqual([]);
+    expect(result[1].children).toEqual([]);
+  });
 });
 
 // ─── writeSandboxFile ──────────────────────────────────────────────────────
@@ -388,6 +444,61 @@ describe('addDirectoryToArchive', () => {
     // depth=21 超过 MAX_ARCHIVE_DEPTH(20)，应直接返回不做任何操作
     await addDirectoryToArchive(sandbox, archive, '/w', '', 21);
     expect(listDirectory).not.toHaveBeenCalled();
+    expect(archive.append).not.toHaveBeenCalled();
+  });
+
+  it('跳过符号链接目录条目', async () => {
+    const archive = makeArchive();
+    const entries = [
+      makeDirectoryEntry('main.py', { size: 10 }),
+      makeDirectoryEntry('image-size -> ../image-size/bin/image-size.js', {
+        isDirectory: true,
+        path: '/workspace/image-size -> ../image-size/bin/image-size.js'
+      })
+    ];
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries),
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('/workspace/main.py', 'code')])
+    });
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    // Only main.py should be appended
+    expect(archive.append).toHaveBeenCalledTimes(1);
+    expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'main.py' });
+  });
+
+  it('跳过 node_modules 目录', async () => {
+    const archive = makeArchive();
+    const entries = [
+      makeDirectoryEntry('node_modules', { isDirectory: true, path: '/workspace/node_modules' }),
+      makeDirectoryEntry('main.py', { size: 10 })
+    ];
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries),
+      readFiles: vi.fn().mockResolvedValue([makeReadResult('/workspace/main.py', 'code')])
+    });
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    expect(archive.append).toHaveBeenCalledTimes(1);
+    expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'main.py' });
+  });
+
+  it('listDirectory 失败时优雅跳过', async () => {
+    const archive = makeArchive();
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockRejectedValue(new Error('Directory not found'))
+    });
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    expect(archive.append).not.toHaveBeenCalled();
+  });
+
+  it('readFiles 返回空数组时跳过该文件', async () => {
+    const archive = makeArchive();
+    const entries = [makeDirectoryEntry('main.py', { size: 10 })];
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries),
+      readFiles: vi.fn().mockResolvedValue([])
+    });
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    // Empty results array should be skipped, no append called
     expect(archive.append).not.toHaveBeenCalled();
   });
 });

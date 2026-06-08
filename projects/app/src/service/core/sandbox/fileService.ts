@@ -18,6 +18,19 @@ export type SandboxFileContent = {
 
 const MAX_RECURSIVE_DEPTH = 20;
 
+// The sandbox-adapter (v0.0.36) parseLsOutput has a bug: for symlinks it both
+// marks isDirectory=true and captures the " -> target" suffix in the entry name.
+// Detect these misreported entries so we can skip them instead of crashing.
+function isSymlinkEntry(entry: { name: string; isDirectory: boolean }): boolean {
+  return entry.isDirectory && entry.name.includes(' -> ');
+}
+
+// Skip node_modules during recursive listing: they contain symlinks in .bin/
+// and are irrelevant to sandbox users browsing their workspace files.
+function isNodeModulesEntry(entry: { name: string }): boolean {
+  return entry.name === 'node_modules';
+}
+
 export async function listSandboxDirectory(
   sandbox: SandboxClient,
   path: string,
@@ -25,8 +38,13 @@ export async function listSandboxDirectory(
   depth: number = 0
 ): Promise<SandboxFileEntry[]> {
   const entries = await sandbox.provider.listDirectory(path);
-  const result: SandboxFileEntry[] = await Promise.all(
+  const results = await Promise.all(
     entries.map(async (entry) => {
+      // Skip symlinks misidentified as directories by the adapter
+      if (isSymlinkEntry(entry)) return null;
+      // Skip node_modules: they contain symlinks and are irrelevant to users
+      if (isNodeModulesEntry(entry)) return null;
+
       const item: SandboxFileEntry = {
         name: entry.name,
         path: entry.path,
@@ -34,12 +52,22 @@ export async function listSandboxDirectory(
         size: entry.isFile ? entry.size : undefined
       };
       if (recursive && entry.isDirectory && depth < MAX_RECURSIVE_DEPTH) {
-        item.children = await listSandboxDirectory(sandbox, entry.path, true, depth + 1);
+        try {
+          item.children = await listSandboxDirectory(sandbox, entry.path, true, depth + 1);
+        } catch (err) {
+          // Gracefully skip directories that cannot be listed
+          // (e.g., symlink targets that don't exist, permission errors)
+          console.warn('[listSandboxDirectory] failed to list directory, skipping', {
+            path: entry.path,
+            error: (err as Error)?.message
+          });
+          item.children = [];
+        }
       }
       return item;
     })
   );
-  return result;
+  return results.filter((item): item is SandboxFileEntry => item !== null);
 }
 
 export async function writeSandboxFile(
@@ -100,20 +128,39 @@ export async function addDirectoryToArchive(
 ): Promise<void> {
   if (depth > MAX_ARCHIVE_DEPTH) return;
 
-  const entries = await sandbox.provider.listDirectory(dirPath);
+  try {
+    const entries = await sandbox.provider.listDirectory(dirPath);
 
-  for (const entry of entries) {
-    const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
+    for (const entry of entries) {
+      // Skip symlinks misidentified as directories by the adapter
+      if (isSymlinkEntry(entry)) continue;
+      // Skip node_modules to avoid symlink-heavy subtrees
+      if (isNodeModulesEntry(entry)) continue;
 
-    if (entry.isDirectory) {
-      await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
-    } else {
-      const results = await sandbox.provider.readFiles([entry.path]);
-      const result = results[0];
+      const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
 
-      if (!result.error) {
-        archive.append(Buffer.from(result.content), { name: entryArchivePath });
+      if (entry.isDirectory) {
+        await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
+      } else {
+        const results = await sandbox.provider.readFiles([entry.path]);
+        if (results.length === 0) {
+          console.warn('[addDirectoryToArchive] readFiles returned empty results', {
+            path: entry.path
+          });
+          continue;
+        }
+        const result = results[0];
+
+        if (!result.error) {
+          archive.append(Buffer.from(result.content), { name: entryArchivePath });
+        }
       }
     }
+  } catch (err) {
+    // If listing fails (e.g., symlink target doesn't exist), skip silently
+    console.warn('[addDirectoryToArchive] failed to list directory, skipping', {
+      dirPath,
+      error: (err as Error)?.message
+    });
   }
 }
