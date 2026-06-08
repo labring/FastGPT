@@ -257,7 +257,9 @@ const EditChannelModal = ({
             <Input
               mt={1}
               {...register('key')}
+              type={'password'}
               placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
+              autoComplete="new-password"
             />
           </Box>
         </ModalBody>

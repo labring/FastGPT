@@ -249,16 +249,19 @@ const Field = ({
   label,
   tip,
   children,
-  colSpan = 1
+  colSpan = 1,
+  required
 }: {
   label: string;
   tip?: string;
   children: React.ReactNode;
   colSpan?: number | number[];
+  required?: boolean;
 }) => (
   <GridItem colSpan={colSpan}>
     <Flex alignItems={'center'} gap={1} mb={2}>
       <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+        {required && <Box as={'span'} color={'red.500'}>*</Box>}
         {label}
       </Box>
       {tip && <QuestionTip label={tip} />}
@@ -306,7 +309,7 @@ const ProviderField = React.memo(function ProviderField({
   });
 
   return (
-    <Field label={t('common:model.provider')}>
+    <Field label={t('common:model.provider')} required>
       <MySelect
         value={provider}
         onChange={(value) => setValue('provider', value)}
@@ -953,14 +956,14 @@ export const ModelEditModal = ({
       <ModalBody px={'32px'} py={0}>
         <Section title={t('account:model.basic_config_section')}>
           <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-            <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
+            <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')} required>
               <Input
                 {...register('model', { required: true })}
                 {...InputStyles}
                 isReadOnly={!isCustom}
               />
             </Field>
-            <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
+            <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')} required>
               <Input {...register('name', { required: true })} {...InputStyles} />
             </Field>
             <GridItem colSpan={[1, 2]}>
@@ -978,7 +981,7 @@ export const ModelEditModal = ({
         {isLLMModel && (
           <Section title={t('account:model.params_config_section')}>
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
-              <Field label={t('common:core.ai.Max context')}>
+              <Field label={t('common:core.ai.Max context')} required>
                 <MyNumberInput
                   register={register}
                   isRequired
@@ -990,6 +993,7 @@ export const ModelEditModal = ({
               <Field
                 label={t('common:core.chat.response.module maxToken')}
                 tip={t('account_model:maxToken_tip')}
+                required
               >
                 <MyNumberInput
                   register={register}
@@ -1000,7 +1004,7 @@ export const ModelEditModal = ({
                 />
               </Field>
 
-              <Field label={t('account:model.max_quote')}>
+              <Field label={t('account:model.max_quote')} required>
                 <MyNumberInput
                   register={register}
                   isRequired
@@ -1048,7 +1052,7 @@ export const ModelEditModal = ({
                 field={'normalization'}
                 register={register}
               />
-              <Field label={t('account_model:batch_size')}>
+              <Field label={t('account_model:batch_size')} required>
                 <MyNumberInput
                   register={register}
                   isRequired
@@ -1061,6 +1065,7 @@ export const ModelEditModal = ({
               <Field
                 label={t('account:model.default_token')}
                 tip={t('account:model.default_token_tip')}
+                required
               >
                 <MyNumberInput
                   register={register}
@@ -1069,7 +1074,7 @@ export const ModelEditModal = ({
                   {...NumberInputStyles}
                 />
               </Field>
-              <Field label={t('common:core.ai.Max context')}>
+              <Field label={t('common:core.ai.Max context')} required>
                 <MyNumberInput
                   register={register}
                   isRequired
