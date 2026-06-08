@@ -46,6 +46,8 @@ type SandboxToolResult = {
   response: string;
   usages: any[];
   assistantResponses?: AIChatItemValueItemType[];
+  /** Skill names detected when reading SKILL.md files */
+  skillNames?: string[];
 };
 
 type SandboxSkillsCapabilityParams = {
@@ -154,17 +156,33 @@ export function collectSkillReferenceResponses({
   workflowStreamResponse?: WorkflowResponseType;
   showSkillReferences: boolean;
   toolCallId: string;
-}): AIChatItemValueItemType[] {
-  if (!showSkillReferences) return [];
+}): { skillItems: AIChatItemValueItemType[]; skillNames: string[] } {
+  if (!showSkillReferences) return { skillItems: [], skillNames: [] };
 
-  const skillResponses: AIChatItemValueItemType[] = [];
+  const skillItems: AIChatItemValueItemType[] = [];
+  const skillNames: string[] = [];
   for (const filePath of paths) {
     if (!filePath.endsWith('/SKILL.md')) continue;
 
-    const skill = sandboxContext.deployedSkills.find(
-      (s) => s.skillMdPath === filePath || filePath.startsWith(s.directory + '/')
-    );
+    // Find the most specific skill match by longest directory/prefix.
+    // Array.find() returns the first match, which may be a broader parent
+    // when skill directories nest (e.g. /skill-a/ and /skill-a/sub-plugin/).
+    let skill: (typeof sandboxContext.deployedSkills)[number] | undefined;
+    let bestMatchLength = 0;
+    for (const s of sandboxContext.deployedSkills) {
+      if (s.skillMdPath === filePath || filePath.startsWith(s.directory + '/')) {
+        const matchLen = s.skillMdPath === filePath ? filePath.length : s.directory.length;
+        if (matchLen > bestMatchLength) {
+          bestMatchLength = matchLen;
+          skill = s;
+        }
+      }
+    }
     if (!skill) continue;
+
+    if (!skillNames.includes(skill.name)) {
+      skillNames.push(skill.name);
+    }
 
     // Use toolCallId from the triggering tool call for correlation
     workflowStreamResponse?.({
@@ -181,7 +199,7 @@ export function collectSkillReferenceResponses({
       }
     });
 
-    skillResponses.push({
+    skillItems.push({
       skills: [
         {
           id: toolCallId,
@@ -193,7 +211,7 @@ export function collectSkillReferenceResponses({
       ]
     });
   }
-  return skillResponses;
+  return { skillItems, skillNames };
 }
 
 export async function createSandboxSkillsCapability(
@@ -230,6 +248,14 @@ export async function createSandboxSkillsCapability(
   const systemPrompt = canExposeGetFileUrl
     ? `${buildSkillsContextPrompt(skillsMeta, defaults.workDirectory)}\n\n${buildGetFileUrlPromptSection()}`
     : buildSkillsContextPrompt(skillsMeta, defaults.workDirectory);
+
+  // Build a path→name map so callers can pre-resolve tool display names
+  // before SSE emission when sandbox_read_file reads SKILL.md files.
+  const skillPathMap: Record<string, string> = {};
+  for (const s of skillsMeta) {
+    if (s.skillMdPath) skillPathMap[s.skillMdPath] = s.name;
+    if (s.directory) skillPathMap[s.directory + '/'] = s.name;
+  }
 
   // --- Lazy-init state ---
   let sandboxContext: AgentSandboxContext | null = null;
@@ -345,7 +371,8 @@ export async function createSandboxSkillsCapability(
           logger.error('[Agent Sandbox] Release failed', { error: err });
         });
       }
-    }
+    },
+    skillPathMap
   };
 }
 
@@ -365,7 +392,7 @@ async function buildSessionHandler(
       const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
       if (!parsed.success) return { response: parsed.error.message, usages: [] };
 
-      const assistantResponses = collectSkillReferenceResponses({
+      const { skillItems: assistantResponses, skillNames } = collectSkillReferenceResponses({
         paths: parsed.data.paths,
         sandboxContext,
         workflowStreamResponse,
@@ -375,7 +402,8 @@ async function buildSessionHandler(
 
       return {
         ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
-        ...(assistantResponses.length > 0 && { assistantResponses })
+        ...(assistantResponses.length > 0 && { assistantResponses }),
+        ...(skillNames.length > 0 && { skillNames })
       };
     },
     [SandboxToolIds.writeFile]: async () => {

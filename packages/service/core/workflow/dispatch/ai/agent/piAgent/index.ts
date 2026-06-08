@@ -125,6 +125,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
+    // Merge skill path maps from all capabilities for pre-resolving tool display names
+    const skillPathMap: Record<string, string> = Object.assign(
+      {},
+      ...capabilities.map((c) => c.skillPathMap ?? {})
+    );
 
     // Get sub apps — pi-agent-core manages reasoning, no plan tool needed.
     // Skill capability owns the sandbox session: the model uses skill tools
@@ -213,7 +218,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubApp,
       getSubAppInfo,
       capabilityToolCallHandler,
-      nodeResponses
+      nodeResponses,
+      assistantResponses,
+      skillPathMap
     });
 
     /* ===== Restore session messages from last AI history ===== */
@@ -259,18 +266,30 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
     // Collect text deltas to build answerText
     let answerText = '';
+    let currentTextItem: AIChatItemValueItemType | null = null;
 
     agent.subscribe((event: AgentEvent) => {
       if (event.type === 'message_update') {
         const e = event.assistantMessageEvent;
         if (e.type === 'text_delta') {
+          // Create a new text item at the start of each turn's text output,
+          // so that tools executed between turns are interleaved correctly.
+          if (!currentTextItem) {
+            currentTextItem = { text: { content: '' } };
+            assistantResponses.push(currentTextItem);
+          }
           answerText += e.delta;
+          currentTextItem.text!.content += e.delta;
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
             data: textAdaptGptResponse({ text: e.delta })
           });
         }
       } else if (event.type === 'turn_end') {
+        // Reset text item tracker at turn boundary; next text_delta starts a new item.
+        // Tool items have already been pushed to assistantResponses by buildAgentTools
+        // during tool execution between turns, so they appear in the correct position.
+        currentTextItem = null;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {
           getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] Turn error: ${errMsg}`);
@@ -296,11 +315,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Surface API errors that pi-agent-core stores instead of throwing
     if (agent.state.errorMessage) {
       throw new Error(agent.state.errorMessage);
-    }
-
-    // Build assistant responses
-    if (answerText) {
-      assistantResponses.push({ text: { content: answerText } });
     }
 
     return {

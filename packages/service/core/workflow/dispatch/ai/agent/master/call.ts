@@ -44,6 +44,7 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
 import type { CapabilityToolCallHandlerType } from '../capability/type';
+import { resolveSkillDisplayName } from '../piAgent/toolAdapter';
 
 type Response = {
   stepResponse?: {
@@ -55,6 +56,8 @@ type Response = {
   assistantMessages: ChatCompletionMessageParam[];
   masterMessages: ChatCompletionMessageParam[];
   capabilityAssistantResponses?: AIChatItemValueItemType[];
+  /** Tool calls collected from onToolCall for persisting to chat history */
+  collectedTools?: AIChatItemValueItemType[];
 
   nodeResponse: ChatHistoryItemResType;
 };
@@ -87,6 +90,8 @@ export const masterCall = async ({
 
   // Capability tool call handler
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
+  // Map from file path prefix to skill name for pre-resolving tool display names
+  skillPathMap?: Record<string, string>;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -100,6 +105,7 @@ export const masterCall = async ({
     stream,
     workflowStreamResponse,
     usagePush,
+    skillPathMap,
     params: {
       modelId,
       // Dataset search configuration
@@ -113,6 +119,7 @@ export const masterCall = async ({
   const startTime = Date.now();
   const childrenResponses: ChatHistoryItemResType[] = [];
   const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
+  const collectedTools: AIChatItemValueItemType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -266,13 +273,30 @@ export const masterCall = async ({
         return;
       }
 
+      // When sandbox_read_file reads SKILL.md, resolve skill names so the
+      // frontend shows "加载 xxx 技能" immediately during streaming.
+      const toolArgs = parseJsonArgs(call.function.arguments);
+      const skillDisplayName = resolveSkillDisplayName(toolArgs ?? {}, skillPathMap);
+      const toolName = skillDisplayName ?? subApp?.name ?? call.function.name;
+
+      // Persist tool call to chat history (SSE also streams it for real-time display)
+      collectedTools.push({
+        tool: {
+          id: call.id,
+          toolName,
+          toolAvatar: subApp?.avatar || '',
+          functionName: call.function.name,
+          params: call.function.arguments ?? ''
+        }
+      });
+
       stepStreamResponse?.({
         id: call.id,
         event: SseResponseEventEnum.toolCall,
         data: {
           tool: {
             id: call.id,
-            toolName: subApp?.name || call.function.name,
+            toolName,
             toolAvatar: subApp?.avatar || '',
             functionName: call.function.name,
             params: call.function.arguments ?? ''
@@ -502,6 +526,14 @@ export const masterCall = async ({
             if (capResult.assistantResponses?.length) {
               capabilityAssistantResponses.push(...capResult.assistantResponses);
             }
+            // When sandbox_read_file loads SKILL.md, update the tool display name
+            // to reflect which skills are being loaded (e.g. "加载 pptx 技能")
+            if (capResult.skillNames?.length) {
+              const toolItem = collectedTools.find((item) => item.tool?.id === callId);
+              if (toolItem?.tool) {
+                toolItem.tool.toolName = `加载 ${capResult.skillNames.join('，')} 技能`;
+              }
+            }
             const subInfo = getSubAppInfo(toolId);
             childrenResponses.push({
               nodeId: callId,
@@ -673,6 +705,12 @@ export const masterCall = async ({
         }
       });
 
+      // Update collected tool item with response so it persists correctly
+      const collectedTool = collectedTools.find((item) => item.tool?.id === call.id);
+      if (collectedTool?.tool) {
+        collectedTool.tool.response = response;
+      }
+
       return {
         response,
         assistantMessages: [],
@@ -766,7 +804,8 @@ export const masterCall = async ({
       assistantMessages,
       nodeResponse,
       masterMessages: masterMessages.concat(assistantMessages),
-      capabilityAssistantResponses
+      capabilityAssistantResponses,
+      collectedTools
     };
   }
 
@@ -778,6 +817,7 @@ export const masterCall = async ({
     assistantMessages,
     nodeResponse,
     masterMessages: filterMemoryMessages(completeMessages),
-    capabilityAssistantResponses
+    capabilityAssistantResponses,
+    collectedTools
   };
 };

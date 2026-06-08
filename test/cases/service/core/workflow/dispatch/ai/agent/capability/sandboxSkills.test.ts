@@ -66,7 +66,7 @@ describe('collectSkillReferenceResponses', () => {
       providerSandboxId: 'sandbox-123'
     }) as AgentSandboxContext;
 
-  it('should return empty array when showSkillReferences is false', () => {
+  it('should return empty arrays when showSkillReferences is false', () => {
     const context = createMockSandboxContext([
       {
         id: 'skill-1',
@@ -85,7 +85,7 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'call-1'
     });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ skillItems: [], skillNames: [] });
   });
 
   it('should skip paths that do not end with /SKILL.md', () => {
@@ -107,7 +107,7 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'call-1'
     });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ skillItems: [], skillNames: [] });
   });
 
   it('should collect skill reference for matching SKILL.md path', () => {
@@ -129,8 +129,9 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'tool-call-123'
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
+    expect(result.skillItems).toHaveLength(1);
+    expect(result.skillNames).toEqual(['TestSkill']);
+    expect(result.skillItems[0]).toEqual({
       skills: [
         {
           id: 'tool-call-123',
@@ -162,8 +163,9 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'call-1'
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].skills?.[0].skillName).toBe('TestSkill');
+    expect(result.skillItems).toHaveLength(1);
+    expect(result.skillNames).toEqual(['TestSkill']);
+    expect(result.skillItems[0].skills?.[0].skillName).toBe('TestSkill');
   });
 
   it('should call workflowStreamResponse with skillCall event', () => {
@@ -230,9 +232,10 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'multi-call'
     });
 
-    expect(result).toHaveLength(2);
-    expect(result[0].skills?.[0].skillName).toBe('Skill1');
-    expect(result[1].skills?.[0].skillName).toBe('Skill2');
+    expect(result.skillItems).toHaveLength(2);
+    expect(result.skillNames).toEqual(['Skill1', 'Skill2']);
+    expect(result.skillItems[0].skills?.[0].skillName).toBe('Skill1');
+    expect(result.skillItems[1].skills?.[0].skillName).toBe('Skill2');
   });
 
   it('should skip SKILL.md paths with no matching skill', () => {
@@ -254,7 +257,40 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'call-1'
     });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ skillItems: [], skillNames: [] });
+  });
+
+  it('should prefer most specific skill directory when paths nest', () => {
+    const context = createMockSandboxContext([
+      {
+        id: 'skill-a',
+        name: 'SkillA',
+        description: 'Parent skill',
+        avatar: '',
+        skillMdPath: '/work/skill-a/SKILL.md',
+        directory: '/work/skill-a'
+      },
+      {
+        id: 'skill-b',
+        name: 'SkillB',
+        description: 'Nested sub-plugin',
+        avatar: '',
+        skillMdPath: '/work/skill-a/sub-plugin/SKILL.md',
+        directory: '/work/skill-a/sub-plugin'
+      }
+    ]);
+
+    const result = collectSkillReferenceResponses({
+      paths: ['/work/skill-a/sub-plugin/SKILL.md'],
+      sandboxContext: context,
+      showSkillReferences: true,
+      toolCallId: 'nested-call'
+    });
+
+    // Should only match the more specific sub-plugin skill, not both
+    expect(result.skillItems).toHaveLength(1);
+    expect(result.skillNames).toEqual(['SkillB']);
+    expect(result.skillItems[0].skills?.[0].skillName).toBe('SkillB');
   });
 
   it('should use empty string for missing avatar', () => {
@@ -276,6 +312,6 @@ describe('collectSkillReferenceResponses', () => {
       toolCallId: 'call-1'
     });
 
-    expect(result[0].skills?.[0].skillAvatar).toBe('');
+    expect(result.skillItems[0].skills?.[0].skillAvatar).toBe('');
   });
 });

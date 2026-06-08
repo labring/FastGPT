@@ -243,6 +243,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
+    // Merge skill path maps from all capabilities for pre-resolving tool display names
+    const skillPathMap: Record<string, string> = Object.assign(
+      {},
+      ...capabilities.map((c) => c.skillPathMap ?? {})
+    );
 
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
@@ -476,7 +481,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
               filesMap,
-              capabilityToolCallHandler
+              capabilityToolCallHandler,
+              skillPathMap
             });
             nodeResponses.push(result.nodeResponse);
 
@@ -497,6 +503,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             if (result.capabilityAssistantResponses?.length) {
               assistantResponses.push(
                 ...result.capabilityAssistantResponses.map((item) => ({
+                  ...item,
+                  stepId: step.id
+                }))
+              );
+            }
+            // Persist tool calls so they survive page refresh.
+            // GPTMessages2Chats already produces tools from LLM tool_calls when
+            // the model supports native function calling; collectedTools fills
+            // the gap for models that embed tool calls in text/thinking content.
+            const stepHasToolsFromGPT = assistantResponse.some(
+              (item: AIChatItemValueItemType) => (item.tools?.length ?? 0) > 0 || item.tool
+            );
+            if (!stepHasToolsFromGPT && result.collectedTools?.length) {
+              assistantResponses.push(
+                ...result.collectedTools.map((item) => ({
                   ...item,
                   stepId: step.id
                 }))
@@ -559,7 +580,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           getSubApp,
           completionTools: agentCompletionTools,
           filesMap,
-          capabilityToolCallHandler
+          capabilityToolCallHandler,
+          skillPathMap
         });
         nodeResponses.push(result.nodeResponse);
         masterMessages = result.masterMessages;
@@ -575,6 +597,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         assistantResponses.push(...assistantResponse);
         if (result.capabilityAssistantResponses?.length) {
           assistantResponses.push(...result.capabilityAssistantResponses);
+        }
+        // Persist tool calls so they survive page refresh.
+        // GPTMessages2Chats already produces tools from LLM tool_calls when
+        // the model supports native function calling; collectedTools fills
+        // the gap for models that embed tool calls in text/thinking content.
+        const masterHasToolsFromGPT = assistantResponse.some(
+          (item: AIChatItemValueItemType) => (item.tools?.length ?? 0) > 0 || item.tool
+        );
+        if (!masterHasToolsFromGPT && result.collectedTools?.length) {
+          assistantResponses.push(...result.collectedTools);
         }
 
         // 触发了 plan

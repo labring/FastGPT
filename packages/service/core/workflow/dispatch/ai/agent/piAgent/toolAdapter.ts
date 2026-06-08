@@ -1,5 +1,8 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { ReadFileToolSchema } from '../sub/file/utils';
 import { DatasetSearchToolSchema } from '../sub/dataset/utils';
@@ -51,6 +54,44 @@ export type ToolDispatchContext = Pick<
   datasetParams?: AppFormEditFormType['dataset'];
 };
 
+/**
+ * When sandbox_read_file reads SKILL.md files, resolve the display name
+ * to "加载 foo，bar 技能" so the frontend shows it immediately during streaming.
+ */
+export function resolveSkillDisplayName(
+  args: Record<string, any>,
+  skillPathMap?: Record<string, string>
+): string | undefined {
+  if (!skillPathMap) return undefined;
+  const paths: unknown[] | undefined = args?.paths;
+  if (!paths?.length) return undefined;
+
+  const skillNames: string[] = [];
+  for (const filePath of paths) {
+    // Guard against non-string and path traversal inputs from LLM-generated args
+    if (typeof filePath !== 'string') continue;
+    if (filePath.includes('..')) continue;
+
+    if (!filePath.endsWith('/SKILL.md')) continue;
+    // Find the most specific (longest) matching key to avoid false positives
+    // when skill directories nest (e.g. /skill-a/ and /skill-a/sub-plugin/).
+    let bestMatchName: string | undefined;
+    let bestMatchLength = 0;
+    for (const [key, name] of Object.entries(skillPathMap)) {
+      if (filePath === key || filePath.startsWith(key)) {
+        if (key.length > bestMatchLength) {
+          bestMatchLength = key.length;
+          bestMatchName = name;
+        }
+      }
+    }
+    if (bestMatchName && !skillNames.includes(bestMatchName)) {
+      skillNames.push(bestMatchName);
+    }
+  }
+  return skillNames.length > 0 ? `加载 ${skillNames.join('，')} 技能` : undefined;
+}
+
 export async function buildAgentTools({
   completionTools,
   ctx,
@@ -58,7 +99,9 @@ export async function buildAgentTools({
   getSubApp,
   getSubAppInfo,
   capabilityToolCallHandler,
-  nodeResponses
+  nodeResponses,
+  assistantResponses,
+  skillPathMap
 }: {
   completionTools: ChatCompletionTool[];
   ctx: ToolDispatchContext;
@@ -67,6 +110,8 @@ export async function buildAgentTools({
   getSubAppInfo: GetSubAppInfoFnType;
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   nodeResponses: ChatHistoryItemResType[];
+  assistantResponses: AIChatItemValueItemType[];
+  skillPathMap?: Record<string, string>;
 }): Promise<AgentTool[]> {
   const { Type } = await import('@mariozechner/pi-ai');
 
@@ -181,6 +226,18 @@ export async function buildAgentTools({
               toolRes: capResult.response
             });
             if (capResult.usages?.length) usagePush(capResult.usages);
+            // Persist skill assistantResponses (e.g. skill references from SKILL.md reads)
+            if (capResult.assistantResponses?.length) {
+              assistantResponses.push(...capResult.assistantResponses);
+            }
+            // When sandbox_read_file loads SKILL.md, update the tool display name
+            // to reflect which skills are being loaded (e.g. "加载 pptx 技能")
+            if (capResult.skillNames?.length) {
+              const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
+              if (toolItem?.tool) {
+                toolItem.tool.toolName = `加载 ${capResult.skillNames.join('，')} 技能`;
+              }
+            }
             return { response: capResult.response, usages: capResult.usages };
           }
 
@@ -334,27 +391,52 @@ export async function buildAgentTools({
       }
     };
 
-    // Wrap execute to also emit SSE toolCall event before execution
+    // Wrap execute to emit SSE toolCall event and persist tool to chat history
+    // before execution. Pushing to assistantResponses here (during agent run)
+    // ensures tools are interleaved with text items in chronological order.
     const wrappedExecute = async (
       callId: string,
       args: Record<string, any>,
       signal?: AbortSignal
     ) => {
       const subAppInfo = getSubAppInfo(toolId);
+      // When sandbox_read_file reads SKILL.md, resolve skill names so the
+      // frontend shows "加载 xxx 技能" immediately during streaming.
+      const skillDisplayName = resolveSkillDisplayName(args, skillPathMap);
+      const toolName = skillDisplayName ?? subAppInfo?.name ?? toolId;
+
+      assistantResponses.push({
+        tool: {
+          id: callId,
+          toolName,
+          toolAvatar: subAppInfo?.avatar || '',
+          functionName: toolId,
+          params: JSON.stringify(args)
+        }
+      });
       workflowStreamResponse?.({
         id: callId,
         event: SseResponseEventEnum.toolCall,
         data: {
           tool: {
             id: callId,
-            toolName: subAppInfo?.name || toolId,
+            toolName,
             toolAvatar: subAppInfo?.avatar || '',
             functionName: toolId,
             params: JSON.stringify(args)
           }
         }
       });
-      return execute(callId, args, signal);
+      const result = await execute(callId, args, signal);
+      // Update tool item in assistantResponses with the response so the
+      // output is visible alongside the input when expanding the tool block.
+      const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
+      if (toolItem?.tool) {
+        toolItem.tool.response = Array.isArray(result?.content)
+          ? result.content.map((c) => c.text).join('\n')
+          : (result as any)?.response ?? String(result);
+      }
+      return result;
     };
 
     tools.push({

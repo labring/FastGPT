@@ -5,6 +5,8 @@ export type CapabilityToolCallResult = {
   response: string;
   usages?: any[];
   assistantResponses?: AIChatItemValueItemType[];
+  /** Skill names loaded by this tool call (e.g. ["pptx", "pdf"]) */
+  skillNames?: string[];
 };
 
 export type CapabilityToolCallHandlerType = (
@@ -28,6 +30,10 @@ export type AgentCapability = {
   ) => Promise<CapabilityToolCallResult | null>;
   // Resource cleanup (called in finally)
   dispose?: () => Promise<void>;
+  // Map from file path (or directory prefix) to skill display name.
+  // Used to pre-resolve tool display names before SSE emission when
+  // sandbox_read_file reads SKILL.md files.
+  skillPathMap?: Record<string, string>;
 };
 
 // Create a composite tool call handler that tries each capability in order
