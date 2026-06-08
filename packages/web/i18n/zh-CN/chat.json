@@ -200,6 +200,7 @@
   "sandbox_status_lazyInit": "初始化沙箱...",
   "skill_calling": "正在调用技能：{{name}}",
   "ai_reasoning_done": "已深度思考（用时 {{seconds}} 秒）",
+  "ai_reasoning_done_simple": "已深度思考",
   "click_contextual_preview": "点击查看上下文预览",
   "contextual": "{{num}}条上下文",
   "contextual_preview": "上下文预览 {{num}} 条",

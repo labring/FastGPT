@@ -77,6 +77,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   isLastResponseValue,
   isDisabled,
   durationSeconds,
+  reasoningDuration,
   defaultExpanded = false
 }: {
   content: string;
@@ -84,11 +85,13 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
   isLastResponseValue: boolean;
   isDisabled?: boolean;
   durationSeconds?: number;
+  reasoningDuration?: number;
   defaultExpanded?: boolean;
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
   const isDone = !showAnimation;
+  const effectiveDuration = reasoningDuration ?? durationSeconds;
 
   return (
     <Accordion allowToggle defaultIndex={defaultExpanded && isLastResponseValue ? 0 : undefined}>
@@ -102,8 +105,10 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
               lineHeight={'18px'}
               fontWeight={500}
             >
-              {isDone && durationSeconds
-                ? t('chat:ai_reasoning_done', { seconds: Math.round(durationSeconds) })
+              {isDone
+                ? effectiveDuration
+                  ? t('chat:ai_reasoning_done', { seconds: Math.round(effectiveDuration) })
+                  : t('chat:ai_reasoning_done_simple')
                 : t('chat:ai_reasoning')}
             </Box>
             {showAnimation && <MyIcon name={'common/loading'} w={'14px'} />}
@@ -581,6 +586,7 @@ const AIResponseBox = ({
         content={value.reasoning.content}
         isDisabled={disableStreamingInteraction}
         durationSeconds={durationSeconds}
+        reasoningDuration={value.reasoning.duration}
         defaultExpanded={reasoningDefaultExpanded}
       />
     );

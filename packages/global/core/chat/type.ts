@@ -210,7 +210,8 @@ export const AIChatItemValueSchema = z.object({
     .nullish(),
   reasoning: z
     .object({
-      content: z.string()
+      content: z.string(),
+      duration: z.number().optional()
     })
     .nullish(),
   tools: z.array(ToolModuleResponseItemSchema).nullish(),

@@ -269,6 +269,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     let answerText = '';
     let currentTextItem: AIChatItemValueItemType | null = null;
     let currentReasoningItem: AIChatItemValueItemType | null = null;
+    let reasoningStartTime: number | null = null;
 
     // Streaming parser for <think>...</think> tags in text content
     // Some models (e.g. MiniMax) emit thinking content as XML tags within the text stream
@@ -322,7 +323,12 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
                 data: textAdaptGptResponse({ reasoning_content: reasoningText })
               });
             }
-            // Reset reasoning item so next reasoning starts fresh
+            // Record duration and reset reasoning item so next reasoning starts fresh
+            if (currentReasoningItem && reasoningStartTime) {
+              currentReasoningItem.reasoning!.duration =
+                Math.round((Date.now() - reasoningStartTime) / 1000) || 1;
+              reasoningStartTime = null;
+            }
             currentReasoningItem = null;
           }
         } else {
@@ -374,6 +380,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
             const textBefore = thinkTagBuffer.substring(0, openIdx);
             thinkTagBuffer = thinkTagBuffer.substring(openIdx + '<think>'.length);
             inThinkTag = true;
+            reasoningStartTime = Date.now();
             if (textBefore.length > 0) {
               answerText += textBefore;
               if (!currentTextItem) {
@@ -404,6 +411,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           if (!currentReasoningItem) {
             currentReasoningItem = { reasoning: { content: '' } };
             assistantResponses.push(currentReasoningItem);
+            reasoningStartTime = Date.now();
           }
           currentReasoningItem.reasoning!.content += e.delta;
           workflowStreamResponse?.({
@@ -416,6 +424,12 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         // Tool items have already been pushed to assistantResponses by buildAgentTools
         // during tool execution between turns, so they appear in the correct position.
         currentTextItem = null;
+        // Close reasoning item with duration if one is active
+        if (currentReasoningItem && reasoningStartTime) {
+          currentReasoningItem.reasoning!.duration =
+            Math.round((Date.now() - reasoningStartTime) / 1000) || 1;
+          reasoningStartTime = null;
+        }
         currentReasoningItem = null;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {
