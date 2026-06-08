@@ -7,30 +7,32 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useContextSelector } from 'use-context-selector';
 
 /**
- * 移动端侧边抽屉内的快捷应用入口。
- * 点击后进入普通应用聊天，保持“首页”菜单只表示首页聊天本身。
+ * 移动端侧边抽屉内的最近使用应用入口。
+ * 仅展示最近 2 个真实使用的应用；当前正在使用的应用会由页面上下文提前占位到列表前方。
  */
-const ChatSliderQuickAppList = () => {
+const ChatSliderRecentAppList = () => {
   const { appId: activeAppId, setChatId } = useChatStore();
 
-  const quickAppList = useContextSelector(
-    ChatPageContext,
-    (v) => v.chatSettings?.quickAppList || []
-  );
+  const recentlyUsedApps = useContextSelector(ChatPageContext, (v) => v.myApps.slice(0, 2));
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
+    ChatPageContext,
+    (v) => v.upsertRecentlyUsedAppPlaceholder
+  );
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
-  if (quickAppList.length === 0) return null;
+  if (recentlyUsedApps.length === 0) return null;
 
   return (
     <Flex flexDir="column" gap="4px">
-      {quickAppList.map((app) => {
-        const isActive = pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && activeAppId === app._id;
+      {recentlyUsedApps.map((app) => {
+        const isActive =
+          pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && activeAppId === app.appId;
 
         return (
           <Flex
-            key={app._id}
+            key={app.appId}
             p="8px"
             gap={2}
             h="44px"
@@ -45,7 +47,8 @@ const ChatSliderQuickAppList = () => {
               color: 'primary.600'
             }}
             onClick={() => {
-              handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app._id);
+              upsertRecentlyUsedAppPlaceholder(app);
+              handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId);
               onCloseSlider();
               setChatId();
             }}
@@ -61,4 +64,4 @@ const ChatSliderQuickAppList = () => {
   );
 };
 
-export default ChatSliderQuickAppList;
+export default ChatSliderRecentAppList;

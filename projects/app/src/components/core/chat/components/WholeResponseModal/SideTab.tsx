@@ -184,7 +184,8 @@ export const WholeResponseSideTab = ({
           flexDirection={'column'}
           gap={1}
           bg={isMobile ? 'myGray.100' : ''}
-          m={isMobile ? 3 : 0}
+          m={0}
+          mb={isMobile ? 3 : 0}
           borderRadius={'md'}
           w={isMobile ? 'auto' : '180px'}
         >

@@ -87,7 +87,30 @@ const ChatContextProvider = ({
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
   const historyAppId = String(params.appId ?? '');
 
-  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
+  const {
+    isOpen: isOpenSlider,
+    onClose: onCloseSlider,
+    onOpen: openSlider
+  } = useDisclosure();
+  const openSliderTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const onOpenSlider = useCallback(() => {
+    if (openSliderTimerRef.current) {
+      clearTimeout(openSliderTimerRef.current);
+    }
+
+    openSliderTimerRef.current = setTimeout(() => {
+      openSlider();
+      openSliderTimerRef.current = undefined;
+    }, 0);
+  }, [openSlider]);
+
+  useEffect(() => {
+    return () => {
+      if (openSliderTimerRef.current) {
+        clearTimeout(openSliderTimerRef.current);
+      }
+    };
+  }, []);
 
   const {
     ScrollData,

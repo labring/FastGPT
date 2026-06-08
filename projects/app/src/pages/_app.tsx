@@ -31,6 +31,29 @@ const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/d
 const openAPIReferenceRoutes = ['/openapi', '/devapidoc'];
 // 哪些路由不需要 Layout
 const routesWithoutLayout = openAPIReferenceRoutes;
+type PatchedReleasePointerCapture = typeof Element.prototype.releasePointerCapture & {
+  __fastgptPatched?: boolean;
+};
+const patchReleasePointerCapture = () => {
+  const originalReleasePointerCapture =
+    Element.prototype.releasePointerCapture as PatchedReleasePointerCapture;
+  if (!originalReleasePointerCapture || originalReleasePointerCapture.__fastgptPatched) {
+    return;
+  }
+
+  const patchedReleasePointerCapture: typeof Element.prototype.releasePointerCapture = function (
+    pointerId
+  ) {
+    if (this.hasPointerCapture?.(pointerId)) {
+      return originalReleasePointerCapture.call(this, pointerId);
+    }
+  };
+
+  const patchedReleasePointerCaptureWithFlag =
+    patchedReleasePointerCapture as PatchedReleasePointerCapture;
+  patchedReleasePointerCaptureWithFlag.__fastgptPatched = true;
+  Element.prototype.releasePointerCapture = patchedReleasePointerCaptureWithFlag;
+};
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -38,6 +61,8 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
   // Forbid touch scale
   useEffect(() => {
+    patchReleasePointerCapture();
+
     document.addEventListener(
       'wheel',
       function (e) {

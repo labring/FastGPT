@@ -82,8 +82,9 @@ const ChatController = ({
 
   const isLogMode = chatType === 'log';
   const isFooter = variant === 'footer';
-  const renderTooltip = (label: string, children: React.ReactNode) =>
-    isFooter ? <>{children}</> : <MyTooltip label={label}>{children}</MyTooltip>;
+  const renderTooltip = (label: string, children: React.ReactNode) => (
+    <MyTooltip label={label}>{children}</MyTooltip>
+  );
   const iconStyle = isFooter ? footerIconStyle : controlIconStyle;
   const activeFeedbackStyle = isFooter
     ? {
@@ -243,80 +244,90 @@ const ChatController = ({
               {isLogMode ? (
                 <>
                   {!!chat.userGoodFeedback && (
-                    <Box position={'relative'}>
-                      <MyIcon
-                        {...iconStyle}
-                        color={'green.500'}
-                        name={'core/chat/feedback/goodLight'}
-                        cursor={'not-allowed'}
-                      />
-                      {!chat.isFeedbackRead && (
-                        <Box
-                          position={'absolute'}
-                          top={'-2px'}
-                          right={'-2px'}
-                          w={'8px'}
-                          h={'8px'}
-                          bg={'red.500'}
-                          borderRadius={'full'}
-                          border={'1px solid white'}
+                    <MyTooltip label={t('chat:feedback_helpful')}>
+                      <Box position={'relative'}>
+                        <MyIcon
+                          {...iconStyle}
+                          color={'green.500'}
+                          name={'core/chat/feedback/goodLight'}
+                          cursor={'not-allowed'}
                         />
-                      )}
-                    </Box>
+                        {!chat.isFeedbackRead && (
+                          <Box
+                            position={'absolute'}
+                            top={'-2px'}
+                            right={'-2px'}
+                            w={'8px'}
+                            h={'8px'}
+                            bg={'red.500'}
+                            borderRadius={'full'}
+                            border={'1px solid white'}
+                          />
+                        )}
+                      </Box>
+                    </MyTooltip>
                   )}
 
                   {!!chat.userBadFeedback && (
-                    <Box position={'relative'}>
-                      <MyIcon
-                        {...iconStyle}
-                        color={'yellow.500'}
-                        name={'core/chat/feedback/badLight'}
-                        cursor={'not-allowed'}
-                      />
-                      {!chat.isFeedbackRead && (
-                        <Box
-                          position={'absolute'}
-                          top={'-2px'}
-                          right={'-2px'}
-                          w={'8px'}
-                          h={'8px'}
-                          bg={'red.500'}
-                          borderRadius={'full'}
-                          border={'1px solid white'}
+                    <MyTooltip label={t('chat:feedback_unhelpful')}>
+                      <Box position={'relative'}>
+                        <MyIcon
+                          {...iconStyle}
+                          color={'yellow.500'}
+                          name={'core/chat/feedback/badLight'}
+                          cursor={'not-allowed'}
                         />
-                      )}
-                    </Box>
+                        {!chat.isFeedbackRead && (
+                          <Box
+                            position={'absolute'}
+                            top={'-2px'}
+                            right={'-2px'}
+                            w={'8px'}
+                            h={'8px'}
+                            bg={'red.500'}
+                            borderRadius={'full'}
+                            border={'1px solid white'}
+                          />
+                        )}
+                      </Box>
+                    </MyTooltip>
                   )}
                 </>
               ) : (
                 <>
                   {!!onAddUserLike && (
-                    <MyIcon
-                      {...iconStyle}
-                      {...(!!chat.userGoodFeedback
-                        ? activeFeedbackStyle
-                        : {
-                            _hover: { color: 'primary.600' }
-                          })}
-                      borderRight={isFooter ? undefined : !onAddUserDislike ? 'none' : 'base'}
-                      borderRightRadius={isFooter ? undefined : !onAddUserDislike ? 'sm' : 'none'}
-                      name={'core/chat/feedback/goodLight'}
-                      onClick={onAddUserLike}
-                    />
+                    <MyTooltip label={t('chat:feedback_helpful')}>
+                      <MyIcon
+                        {...iconStyle}
+                        {...(!!chat.userGoodFeedback
+                          ? activeFeedbackStyle
+                          : {
+                              _hover: { color: 'primary.600' }
+                            })}
+                        borderRight={isFooter ? undefined : !onAddUserDislike ? 'none' : 'base'}
+                        borderRightRadius={
+                          isFooter ? undefined : !onAddUserDislike ? 'sm' : 'none'
+                        }
+                        name={'core/chat/feedback/goodLight'}
+                        onClick={onAddUserLike}
+                      />
+                    </MyTooltip>
                   )}
                   {!!onAddUserDislike && (
-                    <MyIcon
-                      {...iconStyle}
-                      {...(!!chat.userBadFeedback
-                        ? activeBadFeedbackStyle
-                        : {
-                            _hover: { color: 'primary.600' }
-                          })}
-                      borderRight={isFooter ? undefined : 'none'}
-                      borderRightRadius={isFooter ? undefined : 'sm'}
-                      name={'core/chat/feedback/badLight'}
-                      onClick={onAddUserDislike}
-                    />
+                    <MyTooltip label={t('chat:feedback_unhelpful')}>
+                      <MyIcon
+                        {...iconStyle}
+                        {...(!!chat.userBadFeedback
+                          ? activeBadFeedbackStyle
+                          : {
+                              _hover: { color: 'primary.600' }
+                            })}
+                        borderRight={isFooter ? undefined : 'none'}
+                        borderRightRadius={isFooter ? undefined : 'sm'}
+                        name={'core/chat/feedback/badLight'}
+                        onClick={onAddUserDislike}
+                      />
+                    </MyTooltip>
                   )}
                 </>
               )}

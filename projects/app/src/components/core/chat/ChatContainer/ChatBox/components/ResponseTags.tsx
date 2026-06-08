@@ -27,14 +27,6 @@ export type CitationRenderItem = {
 
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
-const getCitationGridSpan = (text: string) => {
-  const textWidthUnits = Array.from(text).reduce((sum, char) => {
-    return sum + (/[\u4E00-\u9FFF]/.test(char) ? 2 : 1);
-  }, 0);
-
-  return Math.min(Math.max(Math.ceil(textWidthUnits / 7), 1), 5);
-};
-
 const CitationListCard = React.memo(function CitationListCard({
   items,
   isPc,
@@ -128,10 +120,9 @@ const CitationListCard = React.memo(function CitationListCard({
               )}
             </Flex>
 
-            <Box
+            <Flex
               mt={'4px'}
-              display={'grid'}
-              gridTemplateColumns={'repeat(5, minmax(0, 1fr))'}
+              flexWrap={'wrap'}
               gap={'4px'}
             >
               {items.map((item) => (
@@ -140,7 +131,7 @@ const CitationListCard = React.memo(function CitationListCard({
                     alignItems={'center'}
                     minW={0}
                     w={'max-content'}
-                    gridColumn={`span ${getCitationGridSpan(item.displayText)}`}
+                    maxW={'100%'}
                     px={'8px'}
                     py={'6px'}
                     borderRadius={'8px'}
@@ -156,13 +147,13 @@ const CitationListCard = React.memo(function CitationListCard({
                     }}
                   >
                     <MyIcon name={item.icon as any} mr={2} flexShrink={0} w={'14px'} />
-                    <Box minW={0} whiteSpace={'nowrap'}>
+                    <Box className={'textEllipsis'} minW={0}>
                       {item.displayText}
                     </Box>
                   </Flex>
                 </MyTooltip>
               ))}
-            </Box>
+            </Flex>
           </Box>
 
           {!expanded && isOverflow && (

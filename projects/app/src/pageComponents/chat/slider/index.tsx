@@ -233,7 +233,8 @@ const ActionButton: React.FC<{
             bg: 'transparent',
             color: 'myGray.500',
             _hover: {
-              bg: isCollapsed ? 'myGray.200' : 'primary.100'
+              bg: 'transparent',
+              color: 'myGray.500'
             }
           })}
       onClick={onClick}
@@ -281,7 +282,7 @@ const NavigationSection = () => {
       <AnimatePresence mode="wait">
         {isCollapsed ? (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={'12px'}>
+            <Flex flexDir="column" gap={0}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -305,7 +306,7 @@ const NavigationSection = () => {
           </AnimatedSection>
         ) : (
           <AnimatedSection show={true}>
-            <Flex flexDir="column" gap={'12px'}>
+            <Flex flexDir="column" gap={0}>
               {feConfigs.isPlus && (
                 <>
                   {isEnableHome && (
@@ -473,6 +474,10 @@ const ChatSlider = ({ activeAppId }: Props) => {
   const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
+  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
+    ChatPageContext,
+    (v) => v.upsertRecentlyUsedAppPlaceholder
+  );
 
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
@@ -530,8 +535,10 @@ const ChatSlider = ({ activeAppId }: Props) => {
                 ? { bg: 'primary.100', color: 'primary.600' }
                 : {
                     _hover: { bg: 'primary.100' },
-                    onClick: () =>
-                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId)
+                    onClick: () => {
+                      upsertRecentlyUsedAppPlaceholder(item);
+                      handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId);
+                    }
                   })}
             >
               <Avatar src={item.avatar} w={'20px'} h={'20px'} borderRadius={'6px'} />

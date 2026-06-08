@@ -38,7 +38,9 @@ const ChatVariableCard = ({ children }: { children: React.ReactNode }) => {
       boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
       p={4}
     >
-      {children}
+      <Flex flexDirection={'column'} gap={4}>
+        {children}
+      </Flex>
     </Card>
   );
 };
@@ -48,7 +50,6 @@ const ChatVariableTip = ({ children }: { children: React.ReactNode }) => {
     <Flex
       color={'primary.600'}
       bg={'primary.50'}
-      mb={4}
       px={3}
       py={2}
       gap={2}
@@ -109,7 +110,15 @@ export const ChatVariableFields = ({
   isUnChange: boolean;
 }) => {
   return (
-    <>
+    <Flex
+      flexDirection={'column'}
+      gap={4}
+      sx={{
+        '& > *': {
+          mb: '0 !important'
+        }
+      }}
+    >
       {variables.map((item) => (
         <LabelAndFormRender
           {...item}
@@ -122,7 +131,7 @@ export const ChatVariableFields = ({
           bg={'white'}
         />
       ))}
-    </>
+    </Flex>
   );
 };
 
@@ -136,7 +145,7 @@ const ChatVariableStartButton = ({
   const { t } = useTranslation();
 
   return (
-    <Flex justifyContent={'flex-end'} mt={6}>
+    <Flex justifyContent={'flex-end'}>
       <Button
         w={'69px'}
         h={'36px'}

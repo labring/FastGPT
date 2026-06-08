@@ -2,6 +2,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 
@@ -46,24 +47,28 @@ const HumanChatBubbleActions = ({
         </Box>
       )}
       <Flex alignItems={'center'} gap={1}>
-        <MyIcon
-          w={'16px'}
-          p={'4px'}
-          cursor="pointer"
-          name={'copy'}
-          color={'myGray.400'}
-          _hover={{ color: 'primary.600' }}
-          onClick={() => copyData(chatText)}
-        />
-        <MyIcon
-          w={'16px'}
-          p={'4px'}
-          cursor="pointer"
-          name={'edit'}
-          color={'myGray.400'}
-          _hover={{ color: 'primary.600' }}
-          onClick={onEdit}
-        />
+        <MyTooltip label={t('common:Copy')}>
+          <MyIcon
+            w={'16px'}
+            p={'4px'}
+            cursor="pointer"
+            name={'copy'}
+            color={'myGray.400'}
+            _hover={{ color: 'primary.600' }}
+            onClick={() => copyData(chatText)}
+          />
+        </MyTooltip>
+        <MyTooltip label={t('common:Edit')}>
+          <MyIcon
+            w={'16px'}
+            p={'4px'}
+            cursor="pointer"
+            name={'edit'}
+            color={'myGray.400'}
+            _hover={{ color: 'primary.600' }}
+            onClick={onEdit}
+          />
+        </MyTooltip>
       </Flex>
     </Flex>
   );

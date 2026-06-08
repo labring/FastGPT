@@ -2,6 +2,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
@@ -44,15 +45,17 @@ const AIChatBubbleActions = ({
           <ChatController {...chatControllerProps} variant="footer" />
 
           {showRetry && (
-            <MyIcon
-              name={'common/retryLight'}
-              w={'16px'}
-              p={'4px'}
-              cursor={'pointer'}
-              color={'myGray.400'}
-              _hover={{ color: 'primary.600' }}
-              onClick={onRetry}
-            />
+            <MyTooltip label={t('common:core.chat.retry')}>
+              <MyIcon
+                name={'common/retryLight'}
+                w={'16px'}
+                p={'4px'}
+                cursor={'pointer'}
+                color={'myGray.400'}
+                _hover={{ color: 'primary.600' }}
+                onClick={onRetry}
+              />
+            </MyTooltip>
           )}
 
           {showWholeResponse && (

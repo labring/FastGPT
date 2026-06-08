@@ -11,10 +11,30 @@ export const hasAiProcessingContent = (item: AIChatItemValueItemType) => {
   const tools = item.tools || (item.tool ? [item.tool] : undefined);
   return Boolean(
     (item.reasoning?.content && !item.hideReason) ||
+      (item.agentPlanUpdate?.reasoningText && !item.hideReason) ||
       tools?.length ||
       item.skills?.length ||
       item.plan ||
       item.planStatus?.status === 'generating'
+  );
+};
+
+export const hasAiFoldableProcessingContent = (item: AIChatItemValueItemType) => {
+  if (item.hideInUI) return false;
+
+  const tools = item.tools || (item.tool ? [item.tool] : undefined);
+  return Boolean(
+    (item.reasoning?.content && !item.hideReason) ||
+      (item.agentPlanUpdate?.reasoningText && !item.hideReason) ||
+      tools?.length
+  );
+};
+
+export const hasAiStandaloneProcessingContent = (item: AIChatItemValueItemType) => {
+  if (item.hideInUI) return false;
+
+  return Boolean(
+    item.skills?.length || item.plan || item.planStatus?.status === 'generating'
   );
 };
 

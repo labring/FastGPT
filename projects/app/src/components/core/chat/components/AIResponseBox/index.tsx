@@ -32,8 +32,11 @@ const AIResponseBox = ({
   onOpenCiteModal,
   wrapProcessing = true,
   showProcessing = true,
+  showFoldableProcessing: showFoldableProcessingProp = true,
+  showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
-  showInteractive = true
+  showInteractive = true,
+  defaultExpandProcessing = true
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -44,36 +47,44 @@ const AIResponseBox = ({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   wrapProcessing?: boolean;
   showProcessing?: boolean;
+  showFoldableProcessing?: boolean;
+  showStandaloneProcessing?: boolean;
   showAnswer?: boolean;
   showInteractive?: boolean;
+  defaultExpandProcessing?: boolean;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
   const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
-  const reasoningContent = value.reasoning?.content || '';
+  const reasoningContent = value.reasoning?.content || value.agentPlanUpdate?.reasoningText || '';
   const textContent = value.text?.content || '';
 
   if (value.hideInUI) return null;
 
   const responseBlocks: React.ReactNode[] = [];
-  const processingBlocks: React.ReactNode[] = [];
+  const foldableProcessingBlocks: React.ReactNode[] = [];
+  const standaloneProcessingBlocks: React.ReactNode[] = [];
 
-  if (showProcessing && reasoningContent && !value.hideReason) {
-    processingBlocks.push(
+  const showFoldableProcessing = showProcessing && showFoldableProcessingProp;
+  const showStandaloneProcessing = showProcessing && showStandaloneProcessingProp;
+
+  if (showFoldableProcessing && reasoningContent && !value.hideReason) {
+    foldableProcessingBlocks.push(
       <RenderReasoningContent
         key="reasoning"
         isChatting={isChatting}
         isLastResponseValue={isLastResponseValue && !textContent && !tools}
         content={reasoningContent}
         isDisabled={disableStreamingInteraction}
+        defaultExpanded={defaultExpandProcessing && isLastResponseValue && !textContent && !tools}
       />
     );
   }
 
-  if (showProcessing && tools && showRunningStatus) {
-    processingBlocks.push(
+  if (showFoldableProcessing && tools && showRunningStatus) {
+    foldableProcessingBlocks.push(
       <Box key="tools">
         {tools.map((tool) => (
           <Box key={tool.id} _notLast={{ mb: 2 }}>
@@ -84,8 +95,8 @@ const AIResponseBox = ({
     );
   }
 
-  if (showProcessing && skills && showSkillReferences && showRunningStatus) {
-    processingBlocks.push(
+  if (showStandaloneProcessing && skills && showSkillReferences && showRunningStatus) {
+    standaloneProcessingBlocks.push(
       <Box key="skills">
         {skills.map((skill) => (
           <Box key={skill.id} _notLast={{ mb: 2 }}>
@@ -96,28 +107,36 @@ const AIResponseBox = ({
     );
   }
 
-  if (showProcessing && 'plan' in value && value.plan) {
-    processingBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
+  if (showStandaloneProcessing && 'plan' in value && value.plan) {
+    standaloneProcessingBlocks.push(<RenderPlan key="plan" plan={value.plan} />);
   }
 
-  if (showProcessing && 'planStatus' in value && value.planStatus?.status === 'generating') {
-    processingBlocks.push(<RenderPlanStatus key="planStatus" planStatus={value.planStatus} />);
+  if (
+    showStandaloneProcessing &&
+    'planStatus' in value &&
+    value.planStatus?.status === 'generating'
+  ) {
+    standaloneProcessingBlocks.push(
+      <RenderPlanStatus key="planStatus" planStatus={value.planStatus} />
+    );
   }
 
-  if (processingBlocks.length > 0) {
+  if (foldableProcessingBlocks.length > 0) {
     if (wrapProcessing) {
       responseBlocks.push(
         <RenderProcessingCollapse
           key="processing"
           isProcessing={isChatting && isLastResponseValue && !textContent && !value.interactive}
         >
-          {processingBlocks}
+          {foldableProcessingBlocks}
         </RenderProcessingCollapse>
       );
     } else {
-      responseBlocks.push(...processingBlocks);
+      responseBlocks.push(...foldableProcessingBlocks);
     }
   }
+
+  responseBlocks.push(...standaloneProcessingBlocks);
 
   if (showAnswer && value.text && textContent) {
     responseBlocks.push(
@@ -171,7 +190,7 @@ const AIResponseBox = ({
 
   if (responseBlocks.length > 1) {
     return (
-      <Flex flexDirection={'column'} gap={4}>
+      <Flex flexDirection={'column'} gap={2}>
         {responseBlocks}
       </Flex>
     );

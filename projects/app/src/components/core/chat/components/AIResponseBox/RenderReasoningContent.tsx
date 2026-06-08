@@ -10,9 +10,8 @@ import {
   HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useSize } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import React, { useRef, useState } from 'react';
+import React from 'react';
 
 const reasoningTypography = {
   fontSize: '14px',
@@ -26,22 +25,20 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
   content,
   isChatting,
   isLastResponseValue,
-  isDisabled
+  isDisabled,
+  defaultExpanded = isLastResponseValue
 }: {
   content: string;
   isChatting: boolean;
   isLastResponseValue: boolean;
   isDisabled?: boolean;
+  defaultExpanded?: boolean;
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
-  const [contentExpanded, setContentExpanded] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const contentSize = useSize(contentRef);
-  const contentOverflow = (contentSize?.height || 0) > 80;
 
   return (
-    <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
+    <Accordion allowToggle defaultIndex={defaultExpanded ? 0 : undefined}>
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
         <AccordionButton
           w={'auto'}
@@ -64,58 +61,27 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
           <AccordionIcon ml={1} color={'myGray.500'} />
         </AccordionButton>
         <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
-          <Box
-            position={'relative'}
-            maxH={contentExpanded ? 'none' : '80px'}
-            overflow={contentExpanded ? 'visible' : 'hidden'}
-            ml={1.5}
-            pl={3}
-            borderLeft={'1px solid'}
-            borderColor={'myGray.200'}
-            sx={{
-              '.markdown': {
-                ...reasoningTypography,
-                wordBreak: 'normal',
-                overflowWrap: 'anywhere'
-              },
-              '.markdown *': {
-                letterSpacing: reasoningTypography.letterSpacing,
-                wordBreak: 'normal',
-                overflowWrap: 'anywhere'
-              }
-            }}
-          >
-            <Box ref={contentRef}>
+          <Box position={'relative'} ml={1.5}>
+            <Box
+              pl={3}
+              borderLeft={'1px solid'}
+              borderColor={'myGray.200'}
+              sx={{
+                '.markdown': {
+                  ...reasoningTypography,
+                  wordBreak: 'normal',
+                  overflowWrap: 'anywhere'
+                },
+                '.markdown *': {
+                  letterSpacing: reasoningTypography.letterSpacing,
+                  wordBreak: 'normal',
+                  overflowWrap: 'anywhere'
+                }
+              }}
+            >
               <Markdown source={content} showAnimation={showAnimation} isDisabled={isDisabled} />
             </Box>
-            {!contentExpanded && contentOverflow && (
-              <Box
-                position={'absolute'}
-                left={0}
-                right={0}
-                bottom={0}
-                h={'32px'}
-                bgGradient={'linear(to-b, rgba(255,255,255,0), rgba(255,255,255,1.0))'}
-                pointerEvents={'none'}
-              />
-            )}
           </Box>
-          {!contentExpanded && contentOverflow && (
-            <Box
-              as={'button'}
-              type="button"
-              mt={2}
-              ml={1.5}
-              px={'8px'}
-              color={'primary.600'}
-              fontSize={'14px'}
-              fontWeight={500}
-              cursor={'pointer'}
-              onClick={() => setContentExpanded(true)}
-            >
-              {t('chat:log.error.expand')}
-            </Box>
-          )}
         </AccordionPanel>
       </AccordionItem>
     </Accordion>

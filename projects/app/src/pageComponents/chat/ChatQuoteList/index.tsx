@@ -17,9 +17,11 @@ const ChatQuoteList = ({
   onClose: () => void;
 }) => {
   const [activeMetadata, setActiveMetadata] = useState<GetQuoteProps>(metadata);
+  const [canBackToQuoteList, setCanBackToQuoteList] = useState(false);
 
   useEffect(() => {
     setActiveMetadata(metadata);
+    setCanBackToQuoteList(false);
   }, [metadata]);
 
   if ('collectionId' in activeMetadata) {
@@ -28,7 +30,14 @@ const ChatQuoteList = ({
         rawSearch={rawSearch}
         metadata={activeMetadata}
         onClose={onClose}
-        onBack={'collectionIdList' in metadata ? () => setActiveMetadata(metadata) : undefined}
+        onBack={
+          canBackToQuoteList
+            ? () => {
+                setActiveMetadata(metadata);
+                setCanBackToQuoteList(false);
+              }
+            : undefined
+        }
       />
     );
   } else if ('collectionIdList' in activeMetadata) {
@@ -39,6 +48,7 @@ const ChatQuoteList = ({
         onClose={onClose}
         onOpenCollectionQuote={(nextMetadata: GetCollectionQuoteDataProps) => {
           setActiveMetadata(nextMetadata);
+          setCanBackToQuoteList(true);
         }}
       />
     );

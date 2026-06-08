@@ -77,24 +77,28 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
             bottom: 0,
             left: 0,
             zIndex: 1401,
-            outline: 'none'
+            outline: 'none',
+            height: 'fit-content',
+            maxHeight: 'min(82dvh, 560px)'
           }}
         >
           <Box
             bg="white"
             borderTopRadius="16px"
             px={4}
-            pb="42px"
-            maxH="min(72dvh, 560px)"
+            pb="calc(16px + env(safe-area-inset-bottom))"
+            h="fit-content"
+            maxH="min(82dvh, 560px)"
             display="flex"
             flexDirection="column"
+            overflow="hidden"
           >
             <Flex justifyContent="center" py="16px" flexShrink={0}>
               <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
 
             {!activeProvider ? (
-              <Box pb={4} flex="1 1 0" minH={0} overflowY="auto">
+              <Box pb={4} flex="0 1 auto" minH={0} overflowY="auto">
                 {providerGroups.map((provider) => (
                   <Flex
                     key={provider.id}
@@ -124,7 +128,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                 ))}
               </Box>
             ) : (
-              <Flex flexDirection="column" flex="1 1 0" minH={0}>
+              <Flex flexDirection="column" flex="0 1 auto" minH={0}>
                 <Flex h="48px" alignItems="center" flexShrink={0}>
                   <IconButton
                     aria-label="Back"
@@ -164,7 +168,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     onClick={onClose}
                   />
                 </Flex>
-                <Box pb={4} flex="1 1 0" minH={0} overflowY="auto">
+                <Box pb={4} flex="0 1 auto" minH={0} overflowY="auto">
                   {activeProvider.children.map((model) => {
                     const isSelected = model.model === value;
 

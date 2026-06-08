@@ -243,8 +243,8 @@ const MySelect = <T = any,>(
           _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
         >
-          <Flex alignItems={'center'} justifyContent="space-between" w="100%">
-            <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} justifyContent="space-between" w="100%" minW={0}>
+            <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
                 <>{valueLabel}</>

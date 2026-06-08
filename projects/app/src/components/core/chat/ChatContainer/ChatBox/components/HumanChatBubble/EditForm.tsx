@@ -85,14 +85,7 @@ const HumanChatBubbleEditForm = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
-  const defaultFileUrls = new Set(defaultFiles.map((file) => file.url || file.id));
-  const filesChanged =
-    fileList.length !== defaultFiles.length ||
-    fileList.some((file) => !defaultFileUrls.has(file.url || file.id));
-  const canSubmit =
-    !hasFileUploading &&
-    trimmedValue.length > 0 &&
-    (trimmedValue !== defaultValue.trim() || filesChanged);
+  const canSubmit = !hasFileUploading && trimmedValue.length > 0;
 
   useRequest(uploadFiles, {
     manual: false,
