@@ -19,6 +19,8 @@ import { useLatest, useMount } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
+type RecentlyUsedAppPlaceholderInput = Partial<GetRecentlyUsedAppsResponseType[number]>;
+
 export type ChatPageContextValue = {
   // Pane & collapse
   pane: ChatSidebarPaneEnum;
@@ -38,7 +40,7 @@ export type ChatPageContextValue = {
   isInitedUser: boolean;
   userInfo: UserType | null;
   myApps: GetRecentlyUsedAppsResponseType;
-  upsertRecentlyUsedAppPlaceholder: (app: GetRecentlyUsedAppsResponseType[number]) => void;
+  upsertRecentlyUsedAppPlaceholder: (app: RecentlyUsedAppPlaceholderInput) => void;
   refreshRecentlyUsed: () => void;
 };
 
@@ -135,13 +137,18 @@ export const ChatPageContextProvider = ({
 
   const homeAppId = chatSettings?.appId;
   const upsertRecentlyUsedAppPlaceholder = useCallback(
-    (app: GetRecentlyUsedAppsResponseType[number]) => {
-      if (!app.appId || !app.name || !app.avatar) return;
-      if (app.appId === homeAppId) return;
+    (app: RecentlyUsedAppPlaceholderInput) => {
+      const { appId, name, avatar } = app;
+      if (!appId || !name || !avatar) return;
+      if (appId === homeAppId) return;
 
       setRecentlyUsedAppPlaceholders((state) => [
-        app,
-        ...state.filter((item) => item.appId !== app.appId)
+        {
+          appId,
+          name,
+          avatar
+        },
+        ...state.filter((item) => item.appId !== appId)
       ]);
     },
     [homeAppId]
