@@ -88,9 +88,7 @@ const Chat = () => {
           position="relative"
           pr={showReferencePanel ? 0 : undefined}
           insertProps={
-            showReferencePanel
-              ? { borderRadius: '0', borderWidth: '0' }
-              : { borderRadius: '8px' }
+            showReferencePanel ? { borderRadius: '0', borderWidth: '0' } : { borderRadius: '8px' }
           }
         >
           {/* home chat window */}
@@ -299,12 +297,14 @@ export async function getServerSideProps(context: any) {
       appId,
       teamId,
       fromPublish,
-      showRunningStatus: fromPublish ? (chatQuoteReaderConfig?.showRunningStatus ?? true) : true,
-      showSkillReferences: fromPublish ? (chatQuoteReaderConfig?.showSkillReferences ?? false) : false,
-      showCite: fromPublish ? (chatQuoteReaderConfig?.showCite ?? false) : true,
-      showFullText: fromPublish ? (chatQuoteReaderConfig?.showFullText ?? false) : true,
-      canDownloadSource: fromPublish ? (chatQuoteReaderConfig?.canDownloadSource ?? true) : true,
-      showWholeResponse: fromPublish ? (chatQuoteReaderConfig?.showWholeResponse ?? true) : true,
+      showRunningStatus: fromPublish ? chatQuoteReaderConfig?.showRunningStatus ?? true : true,
+      showSkillReferences: fromPublish
+        ? chatQuoteReaderConfig?.showSkillReferences ?? false
+        : false,
+      showCite: fromPublish ? chatQuoteReaderConfig?.showCite ?? false : true,
+      showFullText: fromPublish ? chatQuoteReaderConfig?.showFullText ?? false : true,
+      canDownloadSource: fromPublish ? chatQuoteReaderConfig?.canDownloadSource ?? true : true,
+      showWholeResponse: fromPublish ? chatQuoteReaderConfig?.showWholeResponse ?? true : true,
       ...(await serviceSideProps(context, [
         'file',
         'app',

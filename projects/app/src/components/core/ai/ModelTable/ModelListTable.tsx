@@ -178,18 +178,11 @@ const ModelListTable = ({
                 {permissionConfig && hasManagePer && (
                   <Box w="20px" mr={1}>
                     {hasSelectableModel && (
-                      <Checkbox
-                        isChecked={isSelecteAll}
-                        onChange={selectAllTrigger}
-                      ></Checkbox>
+                      <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
                     )}
                   </Box>
                 )}
-                <HStack
-                  spacing={1}
-                  cursor={'pointer'}
-                  onClick={() => setShowModelId(!showModelId)}
-                >
+                <HStack spacing={1} cursor={'pointer'} onClick={() => setShowModelId(!showModelId)}>
                   <Box>{showModelId ? t('account:model.model_id') : t('common:model.name')}</Box>
                   <MyIcon name={'modal/changePer'} w={'1rem'} />
                 </HStack>
@@ -524,9 +517,7 @@ const ModelTableActionCell = ({
     <HStack spacing={2}>
       {showPermissionButton && (
         <LazyCollaboratorProvider
-          selectedHint={
-            item.isShared ? t('account_model:model_permission_public_hint') : undefined
-          }
+          selectedHint={item.isShared ? t('account_model:model_permission_public_hint') : undefined}
           defaultRole={ReadRoleVal}
           onGetCollaboratorList={() => getModelCollaborators(item.id)}
           onUpdateCollaborators={async ({ collaborators }) => {
@@ -534,10 +525,7 @@ const ModelTableActionCell = ({
               collaborators,
               modelIds: [item.id]
             });
-            if (
-              item.isShared &&
-              collaborators.some((clb) => clb.permission !== OwnerRoleVal)
-            ) {
+            if (item.isShared && collaborators.some((clb) => clb.permission !== OwnerRoleVal)) {
               await putSystemModel({ id: item.id, isShared: false });
               clientInitData(undefined, { forceRefresh: true });
             }

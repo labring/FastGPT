@@ -131,7 +131,12 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
       isCentered
     >
       <MyBox isLoading={loading}>
-        <Flex flexDirection={'column'} h={fileMode === FileSelectMode.Partial ? '547px' : 'auto'} py={2} px={4}>
+        <Flex
+          flexDirection={'column'}
+          h={fileMode === FileSelectMode.Partial ? '547px' : 'auto'}
+          py={2}
+          px={4}
+        >
           {/* 全部文件 / 部分文件 切换卡片 */}
           <SimpleGrid columns={2} spacing={4} mb={4} flexShrink={0}>
             <Box
@@ -228,7 +233,11 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
                     {parent?.parentId ? (
                       <>{t('dataset:filename')}</>
                     ) : (
-                      <Checkbox className="checkbox" isChecked={isSelectAll} onChange={handleSelectAll}>
+                      <Checkbox
+                        className="checkbox"
+                        isChecked={isSelectAll}
+                        onChange={handleSelectAll}
+                      >
                         <Box>{t('dataset:Select_all')}</Box>
                       </Checkbox>
                     )}
@@ -262,7 +271,9 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
                               setSelectFiles(fileList.filter((file) => file.id !== item.id));
                             } else {
                               if (isChecked) {
-                                setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                                setSelectFiles((state) =>
+                                  state.filter((file) => file.id !== item.id)
+                                );
                               } else {
                                 setSelectFiles((state) => [...state, item]);
                               }
@@ -282,7 +293,9 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
                               setSelectFiles(fileList.filter((file) => file.id !== item.id));
                             } else {
                               if (isChecked) {
-                                setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                                setSelectFiles((state) =>
+                                  state.filter((file) => file.id !== item.id)
+                                );
                               } else {
                                 setSelectFiles((state) => [...state, item]);
                               }
@@ -310,17 +323,14 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
             </>
           )}
 
-          <Box
-            display={'flex'}
-            justifyContent={'end'}
-            flexShrink={0}
-            pt={3}
-          >
+          <Box display={'flex'} justifyContent={'end'} flexShrink={0} pt={3}>
             <Button variant="outline" mr={3} onClick={onClose}>
               {t('common:Cancel')}
             </Button>
             <Button
-              isDisabled={fileMode === FileSelectMode.Partial && selectFiles.length === 0 && !isSelectAll}
+              isDisabled={
+                fileMode === FileSelectMode.Partial && selectFiles.length === 0 && !isSelectAll
+              }
               isLoading={onSubmitLoading}
               onClick={onclickSubmit}
             >

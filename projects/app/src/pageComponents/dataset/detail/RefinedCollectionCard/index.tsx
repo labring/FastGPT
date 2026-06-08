@@ -90,7 +90,10 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, allDatasetTags, datasetHasError } = useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, allDatasetTags, datasetHasError } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
   const { feConfigs } = useSystemStore();
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
@@ -367,10 +370,7 @@ const CollectionCard = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[-:T]/g, '')
-          .slice(0, 14);
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
         a.download = `collections-${timestamp}.zip`;
         document.body.appendChild(a);
         a.click();
@@ -466,7 +466,12 @@ const CollectionCard = () => {
   });
 
   const isLoading =
-    isUpdating || isSyncing || isDownloading || isRetryingAll || (isGetting && !isPollingRef.current) || isDropping;
+    isUpdating ||
+    isSyncing ||
+    isDownloading ||
+    isRetryingAll ||
+    (isGetting && !isPollingRef.current) ||
+    isDropping;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
@@ -561,9 +566,7 @@ const CollectionCard = () => {
                           />
                           {datasetHasError && (
                             <Box ml={3}>
-                              <MyTooltip
-                                label={t('dataset:retry_all_errors_tip')}
-                              >
+                              <MyTooltip label={t('dataset:retry_all_errors_tip')}>
                                 <Box
                                   color="#156AD9"
                                   fontSize={'xs'}

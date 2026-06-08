@@ -12,7 +12,12 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat, convertMdImagesToHtml, resolveImgStreamPlaceholder } from './utils';
+import {
+  CodeClassNameEnum,
+  mdTextFormat,
+  convertMdImagesToHtml,
+  resolveImgStreamPlaceholder
+} from './utils';
 import { useCreation } from 'ahooks';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';

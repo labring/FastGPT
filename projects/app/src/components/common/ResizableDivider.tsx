@@ -21,18 +21,22 @@ const ResizableDivider = ({
   const startXRef = useRef(0);
   const startWidthRef = useRef(defaultWidth);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    setIsDragging(true);
-    startXRef.current = e.clientX;
-    startWidthRef.current = currentWidth;
-    e.preventDefault();
-  }, [currentWidth]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      setIsDragging(true);
+      startXRef.current = e.clientX;
+      startWidthRef.current = currentWidth;
+      e.preventDefault();
+    },
+    [currentWidth]
+  );
 
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const delta = direction === 'right' ? startXRef.current - e.clientX : e.clientX - startXRef.current;
+      const delta =
+        direction === 'right' ? startXRef.current - e.clientX : e.clientX - startXRef.current;
       const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidthRef.current + delta));
       setCurrentWidth(newWidth);
       onResize?.(newWidth);

@@ -42,7 +42,13 @@ const DocumentViewer = ({
       appId: queryParams.appId,
       ...queryParams.outLinkAuthData
     };
-  }, [collectionId, chatItemDataId, queryParams.appId, queryParams.chatId, queryParams.outLinkAuthData]);
+  }, [
+    collectionId,
+    chatItemDataId,
+    queryParams.appId,
+    queryParams.chatId,
+    queryParams.outLinkAuthData
+  ]);
 
   const currentData = useCreation(() => {
     return initialQuoteData;
@@ -52,22 +58,19 @@ const DocumentViewer = ({
   onMetaChangeRef.current = onMetaChange;
   const metaCapturedRef = useRef(false);
 
-  const wrappedGetCollectionQuote = useCallback(
-    async (data: any) => {
-      const res = await getCollectionQuote(data);
-      if (!metaCapturedRef.current && 'collectionType' in res) {
-        metaCapturedRef.current = true;
-        onMetaChangeRef.current?.({
-          collectionType: (res as any).collectionType,
-          datasetType: (res as any).datasetType,
-          fileName: (res as any).fileName,
-          apiDatasetBaseUrl: (res as any).apiDatasetBaseUrl
-        });
-      }
-      return res;
-    },
-    []
-  );
+  const wrappedGetCollectionQuote = useCallback(async (data: any) => {
+    const res = await getCollectionQuote(data);
+    if (!metaCapturedRef.current && 'collectionType' in res) {
+      metaCapturedRef.current = true;
+      onMetaChangeRef.current?.({
+        collectionType: (res as any).collectionType,
+        datasetType: (res as any).datasetType,
+        fileName: (res as any).fileName,
+        apiDatasetBaseUrl: (res as any).apiDatasetBaseUrl
+      });
+    }
+    return res;
+  }, []);
 
   const { dataList, isLoading, ScrollData, itemRefs } = useLinkedScroll(wrappedGetCollectionQuote, {
     params: linkedScrollParams,

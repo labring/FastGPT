@@ -245,7 +245,14 @@ const DatasetParamsModal = ({
         )}
       </>
     ),
-    [queryExtensionModelList, showModelTitle, t, hasDatabaseKnowledge, generateSqlModelWatch, setValue]
+    [
+      queryExtensionModelList,
+      showModelTitle,
+      t,
+      hasDatabaseKnowledge,
+      generateSqlModelWatch,
+      setValue
+    ]
   );
 
   const embeddingModelFormItem = useMemo(

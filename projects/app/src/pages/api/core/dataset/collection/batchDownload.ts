@@ -102,10 +102,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   res.setHeader('Content-Type', 'application/zip');
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[-:T]/g, '')
-    .slice(0, 14);
+  const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
   res.setHeader('Content-Disposition', `attachment; filename="collections-${timestamp}.zip"`);
   res.setHeader('Cache-Control', 'no-cache');
 

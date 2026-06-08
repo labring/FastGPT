@@ -29,7 +29,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const getNodeList = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeList);
   const nodeAmount = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeAmount);
   const { t } = useTranslation();
-  const { defaultModels, llmModelList, reRankModelList, embeddingModelList, feConfigs } = useSystemStore();
+  const { defaultModels, llmModelList, reRankModelList, embeddingModelList, feConfigs } =
+    useSystemStore();
   const showDatasetSearchParams = feConfigs.show_dataset_search_params;
 
   const [data, setData] = useState<AppDatasetSearchParamsType>({
@@ -391,7 +392,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                     list={llmModelList.map((item) => ({ value: item.id, label: item.name }))}
                     onChange={(val: string) => {
                       if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
-                        setAgenticSearchConfig((prev) => ({ ...prev, agenticSearchLLMModelId: val }));
+                        setAgenticSearchConfig((prev) => ({
+                          ...prev,
+                          agenticSearchLLMModelId: val
+                        }));
                         updateNodeInput(NodeInputKeyEnum.datasetAgenticSearchLLMModelId, val);
                       } else {
                         setData((prev) => ({ ...prev, datasetSearchExtensionModelId: val }));
@@ -410,7 +414,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                 <FormLabel w="96px" color={'myGray.600'}>
                   {t('common:core.ai.model.Vector Model')}
                   {retrievalMode === DatasetRetrievalModeEnum.agentic && (
-                    <QuestionTip ml={1} label={t('app:smart_customer_service_embedding_model_tip')} />
+                    <QuestionTip
+                      ml={1}
+                      label={t('app:smart_customer_service_embedding_model_tip')}
+                    />
                   )}
                 </FormLabel>
                 <Box flex="1">

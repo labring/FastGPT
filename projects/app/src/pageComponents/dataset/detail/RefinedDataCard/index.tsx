@@ -23,10 +23,7 @@ import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useMemoizedFn } from 'ahooks';
-import {
-  delOneDatasetDataById,
-  getDatasetCollectionById
-} from '@/web/core/dataset/api';
+import { delOneDatasetDataById, getDatasetCollectionById } from '@/web/core/dataset/api';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
