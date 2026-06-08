@@ -28,7 +28,7 @@ async function handler(req: ApiRequestProps): Promise<void> {
     bodySchema: KeepAliveBodySchema
   }).body;
 
-  await getSandboxClient({ appId, userId, chatId, teamId });
+  await getSandboxClient({ appId, userId, chatId, teamId }, { restoreArchived: false });
 }
 
 export default NextAPI(handler);

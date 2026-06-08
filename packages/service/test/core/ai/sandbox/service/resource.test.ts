@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   },
   buildSandboxResourceAdapter: vi.fn(),
   deleteSessionVolume: vi.fn(),
+  deleteWorkspaceArchive: vi.fn(),
   deleteSandboxResourceRecord: vi.fn(),
   findSandboxResourcesByAppId: vi.fn(),
   findSandboxResourcesByChatIds: vi.fn(),
@@ -31,6 +32,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
   deleteSessionVolume: mocks.deleteSessionVolume
+}));
+
+vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
+  getS3SandboxSource: () => ({
+    deleteWorkspaceArchive: mocks.deleteWorkspaceArchive
+  })
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
@@ -65,6 +72,8 @@ describe('sandbox resource service', () => {
       delete: vi.fn(async () => undefined)
     });
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
+
+    mocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
     mocks.deleteSandboxResourceRecord.mockResolvedValue(undefined);
     mocks.findSandboxResourcesByAppId.mockResolvedValue([]);
     mocks.findSandboxResourcesByChatIds.mockResolvedValue([]);
@@ -90,6 +99,9 @@ describe('sandbox resource service', () => {
     const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
     expect(adapter.delete).toHaveBeenCalledTimes(1);
     expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
+    expect(mocks.deleteWorkspaceArchive).toHaveBeenCalledWith({
+      sandboxId: 'sandbox-1'
+    });
     expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Failed to delete sandbox volume',
@@ -106,6 +118,18 @@ describe('sandbox resource service', () => {
 
     const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
     expect(adapter.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
+    expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
+  });
+
+  it('skips FastGPT volume deletion for Sealos resources', async () => {
+    const resource = {
+      ...createResource(),
+      provider: 'sealosdevbox'
+    };
+
+    await deleteSandboxResource(resource);
+
     expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
     expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
   });

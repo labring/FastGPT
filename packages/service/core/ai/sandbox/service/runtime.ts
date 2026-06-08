@@ -14,13 +14,19 @@ import { ensureConnectedSandboxRunning } from '../provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from './resource';
 import { upsertRunningSandboxInstance } from '../instance/repository';
 import type { SandboxProviderType } from '../type';
+import {
+  assertSandboxNotArchivedOrBusy,
+  SandboxArchiveStateError,
+  restoreArchivedSandboxBeforeUse
+} from './archive';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-type UnionIdType = {
-  appId: string;
-  userId: string;
-  chatId: string;
+export type SandboxClientQuery = {
+  sandboxId?: string;
+  appId?: string;
+  userId?: string;
+  chatId?: string;
   teamId?: string;
 };
 
@@ -37,6 +43,7 @@ type SandboxClientOptions = {
   resourceLimits?: ResourceLimits;
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateSpec;
+  restoreArchived?: boolean;
 };
 
 /**
@@ -75,7 +82,7 @@ export class SandboxClient {
   async ensureAvailable() {
     // 先写 running 记录是有意设计：运行态入口需要先占位并暴露资源归属，
     // 后续 provider ready 检查失败时会由调用方返回错误，后台兜底检查/cron 再修正不可用实例。
-    await upsertRunningSandboxInstance({
+    const instance = await upsertRunningSandboxInstance({
       provider: this.providerName,
       sandboxId: this.sandboxId,
       appId: this.appId,
@@ -93,6 +100,13 @@ export class SandboxClient {
         volumeEnabled: !!this.opts?.vmConfig
       }
     });
+    if (!instance) {
+      await assertSandboxNotArchivedOrBusy({
+        provider: this.providerName,
+        sandboxId: this.sandboxId
+      });
+      throw new SandboxArchiveStateError('archiving');
+    }
     await ensureConnectedSandboxRunning(this.provider);
   }
 
@@ -152,21 +166,13 @@ export class SandboxClient {
   }
 }
 
-type ExplicitSandboxIdType = {
-  sandboxId: string;
-  appId?: string;
-  userId?: string;
-  chatId?: string;
-  teamId?: string;
-};
-
-function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
-  if ('sandboxId' in props) {
+export function resolveSandboxId(props: SandboxClientQuery): string {
+  if (props.sandboxId) {
     return props.sandboxId;
   }
 
-  const sandboxUserId = props.chatId === 'edit-debug' ? '' : props.userId;
-  return generateSandboxId(props.appId, sandboxUserId, props.chatId);
+  const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
+  return generateSandboxId(props.appId ?? '', sandboxUserId, props.chatId ?? '');
 }
 
 /**
@@ -176,16 +182,51 @@ function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
  * 返回前会准备 volume 配置并确保 sandbox 可用。
  */
 export const getSandboxClient = async (
-  props: ExplicitSandboxIdType | UnionIdType,
+  props: SandboxClientQuery,
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
+  const { appId, userId, chatId, teamId } = props;
   const sandboxId = resolveSandboxId(props);
+  const providerName = opts.providerName ?? serviceEnv.AGENT_SANDBOX_PROVIDER;
+  let vmConfig: VolumeManagerResult | undefined;
 
-  const vmConfig = await getSessionVolumeConfig(sandboxId);
+  if (opts.restoreArchived === false) {
+    await assertSandboxNotArchivedOrBusy({
+      provider: providerName,
+      sandboxId
+    });
+  } else {
+    vmConfig = providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    await restoreArchivedSandboxBeforeUse({
+      provider: providerName,
+      sandboxId,
+      appId,
+      userId,
+      chatId,
+      resourceLimit: opts.resourceLimits
+        ? {
+            cpuCount: opts.resourceLimits.cpuCount,
+            memoryMiB: opts.resourceLimits.memoryMiB,
+            diskGiB: opts.resourceLimits.diskGiB
+          }
+        : undefined,
+      vmConfig: vmConfig ?? null,
+      storage: vmConfig?.storage,
+      createConfig: opts.createConfig
+    });
+  }
+  vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
   const sandbox = new SandboxClient(
-    { ...props, sandboxId },
+    {
+      sandboxId,
+      appId,
+      userId,
+      chatId,
+      teamId
+    },
     {
       ...opts,
+      providerName,
       vmConfig
     }
   );

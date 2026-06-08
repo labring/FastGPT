@@ -11,7 +11,8 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET
 };
 
 const loadSandboxConfigModule = async () => {
@@ -36,6 +37,7 @@ const defaultOpenSandboxDockerNetworkPolicy = {
 describe('sandbox provider config', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret');
   });
 
   afterEach(() => {
@@ -59,6 +61,7 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.unstubAllGlobals();
   });
 

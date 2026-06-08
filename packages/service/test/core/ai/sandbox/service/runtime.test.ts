@@ -19,6 +19,12 @@ const mocks = vi.hoisted(() => ({
   stopSandboxResource: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   upsertRunningSandboxInstance: vi.fn(),
+  findSandboxArchiveStateBySandboxId: vi.fn(),
+  findSandboxInstanceArchiveState: vi.fn(),
+  markSandboxRestored: vi.fn(),
+  markSandboxRestoring: vi.fn(),
+  rollbackSandboxRestoring: vi.fn(),
+  clearSandboxArchiveState: vi.fn(),
   findSandboxAppIdBySandboxId: vi.fn(),
   mongoAppFindById: vi.fn(),
   mongoAgentSkillsFindById: vi.fn(),
@@ -55,6 +61,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   findSandboxAppIdBySandboxId: mocks.findSandboxAppIdBySandboxId,
+  findSandboxArchiveStateBySandboxId: mocks.findSandboxArchiveStateBySandboxId,
+  findSandboxInstanceArchiveState: mocks.findSandboxInstanceArchiveState,
+  markSandboxRestored: mocks.markSandboxRestored,
+  markSandboxRestoring: mocks.markSandboxRestoring,
+  rollbackSandboxRestoring: mocks.rollbackSandboxRestoring,
+  clearSandboxArchiveState: mocks.clearSandboxArchiveState,
   upsertRunningSandboxInstance: mocks.upsertRunningSandboxInstance
 }));
 
@@ -88,9 +100,16 @@ const createProvider = () =>
 
 describe('sandbox runtime service', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
-    mocks.upsertRunningSandboxInstance.mockResolvedValue(undefined);
+
+    mocks.upsertRunningSandboxInstance.mockResolvedValue({ sandboxId: 'sandbox-doc' });
+    mocks.findSandboxArchiveStateBySandboxId.mockResolvedValue(null);
+    mocks.findSandboxInstanceArchiveState.mockResolvedValue(null);
+    mocks.markSandboxRestored.mockResolvedValue({ sandboxId: 'sandbox-doc' });
+    mocks.markSandboxRestoring.mockResolvedValue(null);
+    mocks.rollbackSandboxRestoring.mockResolvedValue(undefined);
+    mocks.clearSandboxArchiveState.mockResolvedValue(undefined);
     mocks.ensureConnectedSandboxRunning.mockResolvedValue(undefined);
     mocks.deleteSandboxResource.mockResolvedValue(undefined);
     mocks.stopSandboxResource.mockResolvedValue(undefined);
@@ -105,7 +124,7 @@ describe('sandbox runtime service', () => {
     const client = await getSandboxClient({ sandboxId: 'sandbox-ready-check' });
 
     expect(client.getSandboxId()).toBe('sandbox-ready-check');
-    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('sandbox-ready-check');
+    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
     expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
       'sealosdevbox',
       'sandbox-ready-check',
@@ -120,6 +139,85 @@ describe('sandbox runtime service', () => {
         metadata: {
           volumeEnabled: false
         }
+      })
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1);
+  });
+
+  it('prepares FastGPT volume only for OpenSandbox runtime', async () => {
+    const vmConfig = {
+      volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
+      storage: { mountPath: '/workspace' }
+    };
+    mocks.getSessionVolumeConfig.mockResolvedValue(vmConfig);
+
+    await getSandboxClient(
+      { sandboxId: 'opensandbox-volume' },
+      {
+        providerName: 'opensandbox'
+      }
+    );
+
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('opensandbox-volume');
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledTimes(1);
+    expect(mocks.findSandboxInstanceArchiveState).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: 'opensandbox-volume'
+    });
+    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'opensandbox',
+        sandboxId: 'opensandbox-volume',
+        storage: { mountPath: '/workspace' }
+      })
+    );
+  });
+
+  it('blocks archived sandbox when restore is disabled', async () => {
+    mocks.findSandboxInstanceArchiveState.mockResolvedValueOnce({
+      provider: 'sealosdevbox',
+      sandboxId: 'archived-sandbox',
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+
+    await expect(
+      getSandboxClient({ sandboxId: 'archived-sandbox' }, { restoreArchived: false })
+    ).rejects.toThrow('Sandbox is archived');
+    expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
+  });
+
+  it('allows archiving sandbox access so activity can cancel archive deletion', async () => {
+    mocks.findSandboxInstanceArchiveState.mockResolvedValueOnce({
+      _id: 'archiving-doc-id',
+      provider: 'sealosdevbox',
+      sandboxId: 'archiving-sandbox',
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        archive: {
+          state: 'archiving'
+        }
+      }
+    });
+
+    await expect(getSandboxClient({ sandboxId: 'archiving-sandbox' })).resolves.toMatchObject({
+      provider: expect.anything()
+    });
+
+    expect(mocks.clearSandboxArchiveState).toHaveBeenCalledWith({
+      provider: 'sealosdevbox',
+      sandboxId: 'archiving-sandbox',
+      _id: 'archiving-doc-id'
+    });
+    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: 'archiving-sandbox'
       })
     );
     expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1);

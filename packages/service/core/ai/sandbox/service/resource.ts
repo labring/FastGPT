@@ -9,6 +9,7 @@ import {
 } from '../instance/repository';
 import { buildSandboxResourceAdapter } from '../provider/adapter';
 import { deleteSessionVolume } from '../volume/service';
+import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -34,8 +35,18 @@ export async function deleteSandboxResource(
 ): Promise<void> {
   const sandbox = buildSandboxResourceAdapter(resource);
 
+  await getS3SandboxSource()
+    .deleteWorkspaceArchive({
+      sandboxId: resource.sandboxId
+    })
+    .catch((err) => {
+      logger.error('Failed to delete sandbox archive', {
+        sandboxId: resource.sandboxId,
+        error: err
+      });
+    });
   await sandbox.delete();
-  if (!opts.keepVolume) {
+  if (!opts.keepVolume && resource.provider === 'opensandbox') {
     await deleteSessionVolume(resource.sandboxId).catch((err) => {
       logger.error('Failed to delete sandbox volume', {
         sandboxId: resource.sandboxId,

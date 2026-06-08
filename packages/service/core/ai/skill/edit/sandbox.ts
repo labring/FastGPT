@@ -364,14 +364,17 @@ export async function createEditDebugSandbox(
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     type: SandboxTypeEnum.editDebug
   });
-  if (staleProviderInstances.length > 0) {
+  const staleHotProviderInstances = staleProviderInstances.filter(
+    (instance) => instance.metadata?.archive?.state === undefined
+  );
+  if (staleHotProviderInstances.length > 0) {
     addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
       skillId,
       provider: providerConfig.provider,
-      staleProviders: staleProviderInstances.map((item) => item.provider)
+      staleProviders: staleHotProviderInstances.map((item) => item.provider)
     });
     await Promise.all(
-      staleProviderInstances.map(async (instance) => {
+      staleHotProviderInstances.map(async (instance) => {
         await deleteSandboxResource(instance).catch((error) => {
           addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
             sandboxId: instance.sandboxId,
@@ -459,7 +462,6 @@ export async function createEditDebugSandbox(
         tmbId,
         skillId,
         sessionId,
-        provider: providerConfig.provider,
         image: sandboxInfo.image,
         providerCreatedAt: sandboxInfo.createdAt,
         storage: {

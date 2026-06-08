@@ -68,9 +68,9 @@ describe('storage', () => {
 
   describe('getSkillSizeLimits', () => {
     it('should derive all skill size limits from the upload env value in MB', () => {
-      const originalMaxUploadSize = serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE;
+      const originalMaxUploadSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE;
 
-      serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = 1;
+      serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = 1;
 
       try {
         expect(getSkillSizeLimits()).toEqual({
@@ -80,7 +80,7 @@ describe('storage', () => {
           maxSandboxPackageBytes: 1 * 1024 * 1024
         });
       } finally {
-        serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = originalMaxUploadSize;
+        serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = originalMaxUploadSize;
       }
     });
   });
@@ -147,8 +147,8 @@ describe('storage', () => {
     });
 
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
-      const originalMaxUploadSize = serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE;
-      serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = 1;
+      const originalMaxUploadSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE;
+      serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = 1;
 
       try {
         const { maxUploadBytes } = getSkillSizeLimits();
@@ -166,7 +166,7 @@ describe('storage', () => {
         expect(getS3SkillSource).not.toHaveBeenCalled();
         expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
-        serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE = originalMaxUploadSize;
+        serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = originalMaxUploadSize;
       }
     });
   });

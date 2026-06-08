@@ -6,6 +6,7 @@ import {
   deleteSandboxInstanceRecord,
   deleteSandboxResourceRecord,
   findInactiveRunningSandboxResources,
+  findSandboxResourcesToArchive,
   findSandboxAppIdBySandboxId,
   findSandboxInstanceByAppChatType,
   findSandboxInstanceBySandboxId,
@@ -16,6 +17,10 @@ import {
   findSandboxResourcesByAppId,
   findSandboxResourcesByChatIds,
   findSkillRelatedSandboxResources,
+  markSandboxArchived,
+  markSandboxArchiving,
+  markSandboxRestored,
+  markSandboxRestoring,
   markSandboxResourceStopped,
   updateSandboxInstanceRecordBySandboxId,
   upsertRunningSandboxInstance
@@ -228,6 +233,84 @@ describe('sandbox instance helpers', () => {
 
     await deleteSandboxInstanceRecord(inactiveDoc._id);
     await expect(MongoSandboxInstance.exists({ _id: inactiveDoc._id })).resolves.toBeNull();
+  });
+
+  it('archives inactive stopped records and restores them into the current provider', async () => {
+    const inactiveBefore = new Date('2026-02-01T00:00:00.000Z');
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      appId: `instance-helper-${getNanoid()}`,
+      userId: 'user-1',
+      chatId: 'archive-chat',
+      type: SandboxTypeEnum.sessionRuntime,
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date(),
+      metadata: {
+        image: { repository: 'image' }
+      }
+    });
+
+    await expect(
+      findSandboxResourcesToArchive({
+        inactiveBefore,
+        limit: 10
+      })
+    ).resolves.toEqual([expect.objectContaining({ sandboxId })]);
+
+    const archiving = await markSandboxArchiving(doc, inactiveBefore);
+    expect(archiving).toMatchObject({
+      sandboxId,
+      metadata: {
+        archive: {
+          state: 'archiving'
+        }
+      }
+    });
+    await markSandboxArchived(doc);
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+
+    await expect(
+      findSandboxResourcesToArchive({
+        inactiveBefore,
+        limit: 10
+      })
+    ).resolves.not.toContainEqual(expect.objectContaining({ sandboxId }));
+
+    const restoringDoc = await markSandboxRestoring(doc);
+    expect(restoringDoc).toMatchObject({ provider: 'opensandbox' });
+
+    const restoredDoc = await markSandboxRestored(restoringDoc!, {
+      provider: 'sealosdevbox',
+      appId: doc.appId,
+      userId: 'user-1',
+      chatId: 'restore-provider-chat',
+      metadata: {
+        volumeEnabled: false
+      }
+    });
+
+    expect(restoredDoc).toMatchObject({
+      provider: 'sealosdevbox',
+      status: SandboxStatusEnum.running,
+      metadata: {
+        volumeEnabled: false
+      }
+    });
+    const stored = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+    expect(stored?.provider).toBe('sealosdevbox');
+    expect(stored?.metadata?.archive).toBeUndefined();
+    expect(stored?.metadata?.provider).toBeUndefined();
+    expect(stored?.storage).toBeUndefined();
   });
 
   it('supports repository optional provider and update branches', async () => {

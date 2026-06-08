@@ -21,12 +21,12 @@ const mbToBytes = (value: number) => value * MB_TO_BYTES;
 /**
  * Get skill size limits from the single Skill package size environment variable.
  *
- * AGENT_SKILL_MAX_UPLOAD_SIZE follows the existing upload-file convention and is configured in MB.
+ * AGENT_SANDBOX_ARCHIVE_MAX_SIZE follows the existing upload-file convention and is configured in MB.
  * Runtime checks compare File/Buffer byte lengths, so this function exposes byte values only. The
  * derived fields keep call sites explicit about which boundary they are enforcing.
  */
 export function getSkillSizeLimits(): SkillSizeLimits {
-  const maxPackageBytes = mbToBytes(serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE);
+  const maxPackageBytes = mbToBytes(serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE);
 
   return {
     maxUploadBytes: maxPackageBytes,

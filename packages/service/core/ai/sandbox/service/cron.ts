@@ -4,6 +4,9 @@ import { setCron } from '../../../../common/system/cron';
 import { subMinutes } from 'date-fns';
 import { findInactiveRunningSandboxResources } from '../instance/repository';
 import { stopSandboxResources } from './resource';
+import { checkTimerLock } from '../../../../common/system/timerLock/utils';
+import { TimerIdEnum } from '../../../../common/system/timerLock/constants';
+import { archiveInactiveSandboxes } from './archive';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -23,5 +26,17 @@ export const cronJob = async () => {
     logger.info('Found running sandboxes inactive > 5 min', { count: instances.length });
 
     await stopSandboxResources(instances);
+  });
+
+  setCron('0 */12 * * *', async () => {
+    const locked = await checkTimerLock({
+      timerId: TimerIdEnum.archiveInactiveSandboxes,
+      lockMinuted: 11 * 60
+    });
+    if (!locked) return;
+
+    await archiveInactiveSandboxes().catch((error) => {
+      logger.error('Sandbox archive cron failed', { error });
+    });
   });
 };

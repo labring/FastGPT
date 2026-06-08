@@ -72,7 +72,7 @@ SandboxInstanceSchema.index(
     }
   }
 );
-SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1 });
+SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
 SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
 SandboxInstanceSchema.index(
   { appId: 1, chatId: 1 },

@@ -56,7 +56,7 @@ export const serviceEnv = createEnv({
 
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
-    AGENT_SANDBOX_PROXY_SECRET: z.string().min(32).optional(),
+    AGENT_SANDBOX_PROXY_SECRET: z.string().optional(),
     IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
@@ -75,10 +75,8 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-
-    // Skill 配置
-    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50).meta({
-      description: 'Skill 包大小上限（MB），用于上传、解压、下载和 sandbox 打包校验'
+    AGENT_SANDBOX_ARCHIVE_MAX_SIZE: NumSchema.default(10).meta({
+      description: 'Agent sandbox 归档及 Skill 包大小上限（MB），用于目录、归档包及上传解压校验'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
 
@@ -308,6 +306,10 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 
 export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
+
+if (hasAgentSandboxConfigFromEnv(process.env) && !serviceEnv.AGENT_SANDBOX_PROXY_SECRET) {
+  throw new Error('AGENT_SANDBOX_PROXY_SECRET is required when Agent Sandbox is enabled.');
+}
 
 /**
  * 判断系统是否显式配置了 Agent 虚拟机能力。
