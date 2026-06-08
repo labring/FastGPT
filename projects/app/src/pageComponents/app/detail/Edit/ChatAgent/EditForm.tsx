@@ -182,20 +182,10 @@ const EditForm = ({
 
   // ===== AI 模型 =====
   const selectedModel = getWebLLMModel(appForm.aiSettings.modelId);
-  const isReasoningSupported = useMemo(() => selectedModel?.reasoning ?? false, [selectedModel]);
   const tokenLimit = useMemo(
     () => selectedModel?.quoteMaxToken || DEFAULT_VALUES.TOKEN_LIMIT,
     [selectedModel?.quoteMaxToken]
   );
-
-  useEffect(() => {
-    if (!isReasoningSupported) {
-      setAppForm((state) => ({
-        ...state,
-        aiSettings: { ...state.aiSettings, aiChatReasoning: false }
-      }));
-    }
-  }, [isReasoningSupported, setAppForm]);
 
   useEffect(() => {
     if (!selectedModel?.vision) {
@@ -326,13 +316,13 @@ const EditForm = ({
             <Box flex={1}>
               <SettingLLMModel
                 bg="myGray.50"
-                defaultData={{ modelId: appForm.aiSettings.modelId }}
+                defaultData={appForm.aiSettings}
                 showMaxToken={false}
                 showTemperature={false}
                 showTopP={false}
                 showStopSign={false}
                 showResponseFormat={false}
-                showReasoning={false}
+                showReasoning={true}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
@@ -348,25 +338,6 @@ const EditForm = ({
                 }}
               />
             </Box>
-          </FormItem>
-
-          {/* 深度思考 */}
-          <FormItem
-            label={t('app:smart_customer_service_deep_thinking')}
-            tooltip={!isReasoningSupported ? t('app:model_not_support_reasoning') : undefined}
-          >
-            <MyTooltip label={!isReasoningSupported ? t('app:model_not_support_reasoning') : ''}>
-              <Switch
-                isChecked={appForm.aiSettings.aiChatReasoning ?? false}
-                isDisabled={!isReasoningSupported}
-                onChange={(e) =>
-                  setAppForm((state) => ({
-                    ...state,
-                    aiSettings: { ...state.aiSettings, aiChatReasoning: e.target.checked }
-                  }))
-                }
-              />
-            </MyTooltip>
           </FormItem>
 
           {/* 提示词 */}

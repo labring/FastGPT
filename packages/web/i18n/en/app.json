@@ -352,6 +352,7 @@
   "publish_success": "Published successfully.",
   "question_guide_tip": "Three relevant question suggestions will be automatically generated for you after the conversation.",
   "reasoning_response": "Output reasoning",
+  "hide_ai_thinking": "Hide AI thinking",
   "raw_params": "original parameters",
   "recharge": "Go to recharge",
   "reference_variable": "Reference variables",

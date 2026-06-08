@@ -387,6 +387,7 @@
   "question_guide_tip": "对话结束后，会为你生成 3 个引导性问题。",
   "raw_params": "原始参数",
   "reasoning_response": "输出思考",
+  "hide_ai_thinking": "隐藏 AI 思考",
   "recharge": "去充值",
   "reference_variable": "引用变量",
   "refresh_templates": "换一批",
