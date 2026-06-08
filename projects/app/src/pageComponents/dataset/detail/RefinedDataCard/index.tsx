@@ -585,7 +585,7 @@ const RefinedDataCard = () => {
                         key={item._id}
                         data-id={item._id}
                         p={3}
-                        pb={!isFolded ? 9 : 3}
+                        pb={3}
                         userSelect={isFolded ? 'none' : 'auto'}
                         border={'sm'}
                         position={'relative'}
@@ -598,49 +598,122 @@ const RefinedDataCard = () => {
                           bg: 'primary.50',
                           borderColor: 'blue.600',
                           boxShadow: 'lg',
-                          '& .footer': { visibility: 'visible' }
+                          '& .action-buttons': { visibility: 'visible' }
                         }}
                         onClick={() => handleCardClick(item._id)}
                       >
                         {/* Header - 序号和字符数 */}
-                        <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
-                          <Flex
-                            alignItems={'center'}
-                            h={'24px'}
-                            mb={2}
-                            cursor={'pointer'}
-                            borderRadius={'sm'}
-                            _hover={{
-                              bg: 'rgba(206, 221, 255, 0.3)'
-                            }}
-                            onClick={(e) => handleToggleFold(item._id, e)}
-                          >
-                            <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                              #{item.chunkIndex ?? '-'}
-                            </Box>
-                            <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
-                              {item.imageSize ? (
-                                <>{formatFileSize(item.imageSize)}</>
-                              ) : (
-                                <>
-                                  {getTextValidLength((item?.q || '') + (item?.a || ''))}{' '}
-                                  {t('common:unit.character')}
-                                </>
-                              )}
-                            </Box>
-                            <Box flex={1} />
-                            {!isFolded && (
-                              <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500} mr={1}>
-                                {t('dataset:collapse')}
+                        <Flex
+                          alignItems={'center'}
+                          h={'24px'}
+                          mb={2}
+                        >
+                          <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
+                            <Flex
+                              alignItems={'center'}
+                              cursor={'pointer'}
+                              borderRadius={'sm'}
+                              _hover={{
+                                bg: 'rgba(206, 221, 255, 0.3)'
+                              }}
+                              onClick={(e) => handleToggleFold(item._id, e)}
+                            >
+                              <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                                #{item.chunkIndex ?? '-'}
                               </Box>
-                            )}
-                            <MyIcon
-                              name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
-                              w={'14px'}
-                              color={'myGray.500'}
-                            />
-                          </Flex>
-                        </MyTooltip>
+                              <Box ml={3} color={'myGray.500'} fontSize={'xs'} fontWeight={500}>
+                                {item.imageSize ? (
+                                  <>{formatFileSize(item.imageSize)}</>
+                                ) : (
+                                  <>
+                                    {getTextValidLength((item?.q || '') + (item?.a || ''))}{' '}
+                                    {t('common:unit.character')}
+                                  </>
+                                )}
+                              </Box>
+                            </Flex>
+                          </MyTooltip>
+                          <Box flex={1} />
+                          {/* 编辑和删除按钮 */}
+                          {canWrite && (
+                            <Flex
+                              className="action-buttons"
+                              alignItems={'center'}
+                              gap={2}
+                              mr={2}
+                              visibility={activeCardId === item._id ? 'visible' : 'hidden'}
+                            >
+                              <MyTooltip
+                                label={
+                                  item.trainingStatus === 'training'
+                                    ? t('dataset:training_cannot_edit')
+                                    : ''
+                                }
+                              >
+                                <IconButton
+                                  display={'flex'}
+                                  p={1}
+                                  boxShadow={'1'}
+                                  icon={<MyIcon name={'edit'} w={'14px'} />}
+                                  variant={'whiteBase'}
+                                  size={'xsSquare'}
+                                  aria-label={'edit'}
+                                  isDisabled={item.trainingStatus === 'training'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingDataId(item._id);
+                                  }}
+                                />
+                              </MyTooltip>
+                              <PopoverConfirm
+                                Trigger={
+                                  <IconButton
+                                    display={'flex'}
+                                    p={1}
+                                    boxShadow={'1'}
+                                    icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                                    variant={'whiteDanger'}
+                                    size={'xsSquare'}
+                                    aria-label={'delete'}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  />
+                                }
+                                content={
+                                  collection?.trainingType ===
+                                  DatasetCollectionDataProcessModeEnum.template
+                                    ? t('dataset:confirm_delete_faq')
+                                    : t('dataset:confirm_delete_chunk')
+                                }
+                                type="delete"
+                                onConfirm={() => onDeleteOneData(item._id)}
+                              />
+                            </Flex>
+                          )}
+                          <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
+                            <Flex
+                              alignItems={'center'}
+                              cursor={'pointer'}
+                              borderRadius={'sm'}
+                              _hover={{
+                                bg: 'rgba(206, 221, 255, 0.3)'
+                              }}
+                              onClick={(e) => handleToggleFold(item._id, e)}
+                            >
+                              {!isFolded && (
+                                <Box color={'myGray.500'} fontSize={'xs'} fontWeight={500} mr={1}>
+                                  {t('dataset:collapse')}
+                                </Box>
+                              )}
+                              <MyIcon
+                                name={isFolded ? 'core/chat/chevronRight' : 'core/chat/chevronDown'}
+                                w={'14px'}
+                                color={'myGray.500'}
+                              />
+                            </Flex>
+                          </MyTooltip>
+                        </Flex>
 
                         {/* Data content */}
                         <Box
@@ -699,66 +772,6 @@ const RefinedDataCard = () => {
                           )}
                         </Box>
 
-                        {/* Footer - 编辑和删除按钮 */}
-                        {canWrite && (
-                          <Flex
-                            className="footer"
-                            position={'absolute'}
-                            bottom={2}
-                            right={2}
-                            overflow={'hidden'}
-                            alignItems={'center'}
-                            visibility={activeCardId === item._id ? 'visible' : 'hidden'}
-                            gap={2}
-                          >
-                            <MyTooltip
-                              label={
-                                item.trainingStatus === 'training'
-                                  ? t('dataset:training_cannot_edit')
-                                  : ''
-                              }
-                            >
-                              <IconButton
-                                display={'flex'}
-                                p={1}
-                                boxShadow={'1'}
-                                icon={<MyIcon name={'edit'} w={'14px'} />}
-                                variant={'whiteBase'}
-                                size={'xsSquare'}
-                                aria-label={'edit'}
-                                isDisabled={item.trainingStatus === 'training'}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingDataId(item._id);
-                                }}
-                              />
-                            </MyTooltip>
-                            <PopoverConfirm
-                              Trigger={
-                                <IconButton
-                                  display={'flex'}
-                                  p={1}
-                                  boxShadow={'1'}
-                                  icon={<MyIcon name={'common/trash'} w={'14px'} />}
-                                  variant={'whiteDanger'}
-                                  size={'xsSquare'}
-                                  aria-label={'delete'}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              }
-                              content={
-                                collection?.trainingType ===
-                                DatasetCollectionDataProcessModeEnum.template
-                                  ? t('dataset:confirm_delete_faq')
-                                  : t('dataset:confirm_delete_chunk')
-                              }
-                              type="delete"
-                              onConfirm={() => onDeleteOneData(item._id)}
-                            />
-                          </Flex>
-                        )}
                       </Card>
                     );
                   })}

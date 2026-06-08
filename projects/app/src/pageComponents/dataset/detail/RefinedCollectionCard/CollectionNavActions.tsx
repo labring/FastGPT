@@ -363,18 +363,34 @@ const CollectionNavActions = () => {
         </Button>
       )}
 
-      {/* 权限按钮 */}
+      {/* 更多按钮 */}
       {datasetDetail.permission.hasManagePer && (
-        <Button variant={'whiteBase'} onClick={() => setEditPerOpen(true)}>
-          {t('common:permission.Permission')}
-        </Button>
-      )}
-
-      {/* 编辑按钮 */}
-      {datasetDetail.permission.hasManagePer && (
-        <Button variant={'whiteBase'} onClick={() => setShowCreateModal(true)}>
-          {t('common:Edit')}
-        </Button>
+        <MyMenu
+          offset={[0, 5]}
+          Button={
+            <Button variant={'whiteBase'}>
+              {t('common:More')}
+            </Button>
+          }
+          menuList={[
+            {
+              children: [
+                {
+                  icon: 'key',
+                  type: 'grayBg' as const,
+                  label: t('common:permission.Permission'),
+                  onClick: () => setEditPerOpen(true)
+                },
+                {
+                  icon: 'edit',
+                  type: 'grayBg' as const,
+                  label: t('common:Edit'),
+                  onClick: () => setShowCreateModal(true)
+                }
+              ]
+            }
+          ]}
+        />
       )}
 
       {/* 添加按钮（dataset：子菜单） */}

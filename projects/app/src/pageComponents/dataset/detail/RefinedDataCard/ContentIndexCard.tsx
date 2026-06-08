@@ -155,14 +155,16 @@ const ContentIndexCard: React.FC<ContentIndexCardProps> = ({
       )}
 
       {/* Action Buttons */}
+      {/* 使用 top+bottom+alignItems 实现垂直居中，避免 transform 创建层叠上下文导致 Popover 浮层被遮挡 */}
       {!isEditing && !isNew && (
         <Flex
           className="action-buttons"
           position={'absolute'}
-          top={'50%'}
+          top={0}
           right={2}
+          bottom={0}
           gap={1}
-          transform={'translateY(-50%)'}
+          alignItems={'center'}
         >
           {/* Edit Button */}
           <IconButton

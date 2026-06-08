@@ -204,6 +204,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 rootName={t('common:core.dataset.Dataset')}
                 showReturnIcon
                 forbidLastClick
+                hoverStyle={{ bg: 'rgba(50, 136, 250, 0.06)' }}
                 onClick={(id) => {
                   if (!id) {
                     router.push('/dataset/list');
@@ -229,6 +230,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 paths={combinedCollectionPaths}
                 rootName={t('common:core.dataset.Dataset')}
                 showReturnIcon
+                hoverStyle={{ bg: 'rgba(50, 136, 250, 0.06)' }}
                 onClick={(id) => {
                   if (!id) {
                     router.push('/dataset/list');
@@ -248,6 +250,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 paths={paths}
                 rootName={t('common:core.dataset.Dataset')}
                 showReturnIcon
+                hoverStyle={{ bg: 'rgba(50, 136, 250, 0.06)' }}
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);
                 }}
