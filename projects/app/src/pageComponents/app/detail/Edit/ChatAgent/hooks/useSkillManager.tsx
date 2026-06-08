@@ -189,7 +189,7 @@ export const useSkillManager = ({
         return toolId;
       }
 
-      const toolTemplate = await getToolPreviewNode({ appId: toolId });
+      const toolTemplate = await getToolPreviewNode({ appId: toolId, versionId: '' });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,

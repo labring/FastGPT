@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -7,20 +7,23 @@ import {
   TeamToolDetailSchema,
   type GetTeamToolDetailQueryType,
   type GetTeamToolDetailResponseType
-} from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
+} from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type detailQuery = GetTeamToolDetailQueryType;
 
-export type detailBody = {};
+export type detailBody = Record<string, never>;
 
 export type detailResponse = GetTeamToolDetailResponseType;
 
-async function handler(
-  req: ApiRequestProps<detailBody, detailQuery>,
-  res: ApiResponseType<any>
-): Promise<detailResponse> {
-  const { toolId, source, version } = GetTeamToolDetailQuerySchema.parse(req.query);
+async function handler(req: ApiRequestProps<detailBody, detailQuery>): Promise<detailResponse> {
+  const {
+    query: { toolId, source, version }
+  } = parseApiInput({
+    req,
+    querySchema: GetTeamToolDetailQuerySchema
+  });
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });

@@ -238,7 +238,7 @@ const HomeChatWindow = () => {
 
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
-          const node = await getToolPreviewNode({ appId: toolId });
+          const node = await getToolPreviewNode({ appId: toolId, versionId: '' });
           node.inputs = node.inputs.map((input) => {
             const tool = availableTools.find((tool) => tool.pluginId === toolId);
             const value = tool?.inputs?.[input.key];
@@ -433,9 +433,7 @@ const HomeChatWindow = () => {
           >
             <IconButton
               aria-label="Open history"
-              icon={
-                <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
-              }
+              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />}
               variant="unstyled"
               {...mobileChatHeaderIconButtonStyle}
               onClick={onOpenSlider}

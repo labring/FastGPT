@@ -190,7 +190,7 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getToolPreviewNode({ appId: template.id });
+      const res = await getToolPreviewNode({ appId: template.id, versionId: '' });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       /* Invalid plugin check

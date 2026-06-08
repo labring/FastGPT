@@ -13,6 +13,7 @@ import { SystemToolSystemSecretStatusEnum } from '../constants';
 export const SystemToolBaseSchema = z.object({
   id: z.string(),
   version: z.string(),
+  versionLabel: z.string().optional(),
   etag: z.string().optional()
 });
 
@@ -102,8 +103,14 @@ export const SystemToolDetailSchema = z.object({
 export type SystemToolDetailType = z.infer<typeof SystemToolDetailSchema>;
 
 export const SystemToolVersionSchema = z.object({
-  version: z.string(),
-  versionDescription: z.string().optional()
+  version: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '工具版本标识。工作流工具为关联应用版本 ID，普通插件工具为插件版本号'
+  }),
+  versionDescription: z.string().optional().meta({
+    example: 'Workflow v1',
+    description: '工具版本展示名。工作流工具为关联应用版本名称'
+  })
 });
 
 export type SystemToolVersionType = z.infer<typeof SystemToolVersionSchema>;

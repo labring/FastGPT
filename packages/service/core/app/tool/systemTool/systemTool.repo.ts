@@ -172,7 +172,8 @@ export class SystemToolRepo {
         name: dbTool.customConfig.name,
         status: dbTool.status,
         toolDescription: dbTool.customConfig.toolDescription ?? dbTool.customConfig.intro ?? '',
-        version: dbTool.customConfig.version ?? '',
+        version: appVersion.versionId,
+        versionLabel: appVersion.versionName,
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
         author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
@@ -318,13 +319,8 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
     const { pluginId: rawPluginId, source: pluginSource } = splitCombineToolId(pluginId);
-    if (pluginSource === AppToolSourceEnum.commercial) {
-      const tool = await this.getSystemToolRecord(pluginId);
-
-      if (!tool || !tool.customConfig?.associatedPluginId) {
-        return Promise.reject('Plugin is not associated with a app');
-      }
-
+    const tool = await MongoSystemTool.findOne({ pluginId });
+    if (tool?.customConfig?.associatedPluginId) {
       const { associatedPluginId } = tool.customConfig;
       const appVersions = await MongoAppVersion.find(
         {
@@ -334,10 +330,11 @@ export class SystemToolRepo {
         {
           versionName: 1
         }
-      );
+      ).sort({ time: -1, _id: -1 });
 
       return appVersions.map((item) => ({
-        version: item.versionName
+        version: String(item._id),
+        versionDescription: item.versionName
       }));
     }
 
@@ -345,7 +342,7 @@ export class SystemToolRepo {
 
     const versions = await pluginClient.listPluginVersions({
       pluginId: parentToolId,
-      source
+      source: pluginSource === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : source
     });
 
     return versions.map((item) => ({

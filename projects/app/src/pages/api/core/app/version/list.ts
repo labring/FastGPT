@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -23,7 +23,7 @@ async function handler(
   }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  await authApp({ appId, req, per: ReadPermissionVal, authToken: true });
 
   const match = {
     appId,

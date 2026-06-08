@@ -12,6 +12,7 @@ export const TagsMap = {
   mcpTools: 'MCP 工具管理',
   httpTools: 'HTTP 工具管理',
   mcpServer: 'MCP 发布管理',
+  appSystemTool: '系统工具',
 
   /* 核心-AI 相关 */
   aiSkill: 'AI技能管理',

@@ -3,9 +3,11 @@ import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
+  listPluginVersions: vi.fn(),
   getTool: vi.fn(),
   findSystemTools: vi.fn(),
   findSystemTool: vi.fn(),
+  findAppVersions: vi.fn(),
   findAppById: vi.fn(),
   getAppLatestVersion: vi.fn(),
   getAppVersionById: vi.fn(),
@@ -15,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
     listTools: mocks.listTools,
+    listPluginVersions: mocks.listPluginVersions,
     getTool: mocks.getTool
   }
 }));
@@ -38,6 +41,12 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: mocks.getAppLatestVersion,
   getAppVersionById: mocks.getAppVersionById,
   checkIsLatestVersion: mocks.checkIsLatestVersion
+}));
+
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    find: mocks.findAppVersions
+  }
 }));
 
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
@@ -158,7 +167,11 @@ describe('SystemToolRepo.getSystemToolList', () => {
     mocks.listTools.mockResolvedValue([
       createPluginTool({ pluginId: 'no-secret', name: 'No secret' }),
       createPluginTool({ pluginId: 'need-secret', name: 'Need secret', hasSecret: true }),
-      createPluginTool({ pluginId: 'configured-secret', name: 'Configured secret', hasSecret: true })
+      createPluginTool({
+        pluginId: 'configured-secret',
+        name: 'Configured secret',
+        hasSecret: true
+      })
     ]);
     mocks.findSystemTools.mockResolvedValue([
       createToolConfig({ pluginId: 'no-secret', pluginOrder: 1, tags: [] }),
@@ -186,7 +199,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
 });
 
 describe('SystemToolRepo.getSystemToolDetail', () => {
-  it('returns saved author for workflow tools', async () => {
+  it('returns app version id and label for workflow tools', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-workflow-tool',
       status: 'Normal',
@@ -210,6 +223,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     });
     mocks.getAppLatestVersion.mockResolvedValue({
       versionId: 'latest-version',
+      versionName: 'Latest Version',
       nodes: []
     });
     mocks.checkIsLatestVersion.mockResolvedValue(true);
@@ -220,5 +234,64 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
     expect(tool.author).toBe('Custom Author');
     expect(tool.hasTokenFee).toBe(true);
+    expect(tool.version).toBe('latest-version');
+    expect(tool.versionLabel).toBe('Latest Version');
+  });
+});
+
+describe('SystemToolRepo.getVersions', () => {
+  it('returns app version ids and names for workflow tools', async () => {
+    const sortedAppVersions = [
+      {
+        _id: '507f1f77bcf86cd799439012',
+        versionName: 'Workflow v2'
+      },
+      {
+        _id: '507f1f77bcf86cd799439013',
+        versionName: 'Workflow v1'
+      }
+    ];
+    const sortAppVersions = vi.fn().mockResolvedValue(sortedAppVersions);
+
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-workflow-tool',
+      customConfig: {
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+    mocks.findAppVersions.mockReturnValue({
+      sort: sortAppVersions
+    });
+
+    const versions = await SystemToolRepo.getInstance().getVersions({
+      pluginId: 'commercial-workflow-tool'
+    });
+
+    expect(versions).toEqual([
+      {
+        version: '507f1f77bcf86cd799439012',
+        versionDescription: 'Workflow v2'
+      },
+      {
+        version: '507f1f77bcf86cd799439013',
+        versionDescription: 'Workflow v1'
+      }
+    ]);
+    expect(sortAppVersions).toHaveBeenCalledWith({ time: -1, _id: -1 });
+  });
+
+  it('lists commercial plugin versions from commercial source', async () => {
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.listPluginVersions.mockResolvedValue([{ version: '2.0.0' }, { version: '1.0.0' }]);
+
+    const versions = await SystemToolRepo.getInstance().getVersions({
+      pluginId: 'commercial-search'
+    });
+
+    expect(mocks.listPluginVersions).toHaveBeenCalledWith({
+      pluginId: 'search',
+      source: 'commercial'
+    });
+    expect(versions).toEqual([{ version: '2.0.0' }, { version: '1.0.0' }]);
   });
 });

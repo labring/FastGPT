@@ -78,6 +78,8 @@ describe('getToolPreviewNode', () => {
       inputList: secrets
     });
     expect(result.inputs[1]?.key).toBe('city');
+    expect(result.version).toBe('1.0.0');
+    expect(result.versionLabel).toBe('1.0.0');
   });
 
   it('keeps inputs unchanged when system tool has no secrets', async () => {
@@ -116,6 +118,76 @@ describe('getToolPreviewNode', () => {
 
     expect(result.inputs).toHaveLength(1);
     expect(result.inputs[0]?.key).toBe('city');
+    expect(result.version).toBe('');
+    expect(result.versionLabel).toBeUndefined();
+  });
+
+  it('returns latest version id when requested explicitly', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputs: [],
+      outputs: []
+    });
+
+    const result = await getToolPreviewNode({
+      pluginId: 'systemTool-weather',
+      getLatestVersion: true,
+      lang: 'en'
+    });
+
+    expect(result.version).toBe('1.0.0');
+    expect(result.versionLabel).toBe('1.0.0');
+  });
+
+  it('uses latest data but returns empty version when versionId is an empty string', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputs: [],
+      outputs: []
+    });
+
+    const result = await getToolPreviewNode({
+      pluginId: 'systemTool-weather',
+      versionId: '',
+      lang: 'en'
+    });
+
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'system'
+    });
+    expect(result.version).toBe('');
+    expect(result.versionLabel).toBeUndefined();
   });
 
   it('returns plugin module preview for commercial workflow tools', async () => {
@@ -124,6 +196,7 @@ describe('getToolPreviewNode', () => {
       version: 'workflow-version',
       status: 1,
       source: 'system',
+      versionLabel: 'Workflow v1',
       isToolSet: false,
       avatar: 'workflow.svg',
       name: 'Workflow Tool',
@@ -159,5 +232,7 @@ describe('getToolPreviewNode', () => {
     expect(result.toolConfig).toBeUndefined();
     expect(result.isFolder).toBe(false);
     expect(result.inputs[0]?.key).toBe('query');
+    expect(result.version).toBe('workflow-version');
+    expect(result.versionLabel).toBe('Workflow v1');
   });
 });

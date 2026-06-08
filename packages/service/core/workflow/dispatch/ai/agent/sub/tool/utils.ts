@@ -116,6 +116,7 @@ export const getAgentRuntimeTools = async ({
         const [toolNode] = await Promise.all([
           getChildAppPreviewNode({
             appId: tool.id,
+            versionId: '',
             lang
           }),
           ...(authAppId

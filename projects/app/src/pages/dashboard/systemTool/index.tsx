@@ -21,7 +21,7 @@ import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetai
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
-import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/dto';
+import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';

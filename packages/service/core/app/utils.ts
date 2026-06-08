@@ -140,7 +140,10 @@ export async function rewriteAppWorkflowToDetail({
     nodes.map(async (node) => {
       // Tool node
       if (node.pluginId) {
-        const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
+        const result = await loadToolNode({
+          id: node.pluginId,
+          versionId: node.version ?? ''
+        });
         if (result.success) {
           const preview = result.data!;
           node.avatar = preview.avatar ?? node.avatar;
