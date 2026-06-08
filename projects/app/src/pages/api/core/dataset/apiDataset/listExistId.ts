@@ -26,7 +26,8 @@ async function handler(
   const collections = await MongoDatasetCollection.find(
     {
       teamId: dataset.teamId,
-      datasetId: dataset._id
+      datasetId: dataset._id,
+      deleteTime: { $exists: false }
     },
     '_id apiFileId'
   ).lean();

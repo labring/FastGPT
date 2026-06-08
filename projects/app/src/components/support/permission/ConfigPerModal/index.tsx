@@ -25,6 +25,8 @@ import type {
   CollaboratorItemType
 } from '@fastgpt/global/support/permission/collaborator';
 import { PermissionEffectScopeEnum } from '@fastgpt/global/support/permission/constant';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type ConfigPerModalProps = {
   avatar?: string;
@@ -61,6 +63,7 @@ const ConfigPerModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const {
     isOpen: isChangeOwnerModalOpen,
     onOpen: onOpenChangeOwnerModal,
@@ -174,7 +177,14 @@ const ConfigPerModal = ({
                         onConfirmPermission({
                           collaborators,
                           permissionEffectScope: localEffectScope
-                        }).then(() => onClose());
+                        })
+                          .then(() => onClose())
+                          .catch((err) => {
+                            toast({
+                              title: getErrText(err),
+                              status: 'error'
+                            });
+                          });
                       }}
                     >
                       {t('common:Confirm')}

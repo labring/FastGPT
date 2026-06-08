@@ -215,8 +215,13 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return fileId;
   };
 
+  const getFileContentUrl = async () => {
+    return Promise.reject('getFileContentUrl not supported for feishu dataset');
+  };
+
   return {
     getFileContent,
+    getFileContentUrl,
     listFiles,
     getFilePreviewUrl,
     getFileDetail,

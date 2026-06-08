@@ -886,24 +886,6 @@ const CollectionCard = () => {
                             const isLink = collection.type === DatasetCollectionTypeEnum.link;
 
                             const permissionItem = (() => {
-                              const isPermissionSyncDisabled =
-                                datasetDetail?.apiDatasetServer?.apiServer?.permissionSync === true;
-
-                              if (isPermissionSyncDisabled) {
-                                return {
-                                  label: (
-                                    <MyTooltip label={t('dataset:permission_sync_disabled_tip')}>
-                                      <Flex alignItems={'center'} opacity={0.4}>
-                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                        {t('common:Permission')}
-                                      </Flex>
-                                    </MyTooltip>
-                                  ),
-                                  onClick: undefined,
-                                  menuItemStyles: { cursor: 'not-allowed' }
-                                };
-                              }
-
                               return {
                                 label: (
                                   <Flex

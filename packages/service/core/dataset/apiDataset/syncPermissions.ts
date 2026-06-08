@@ -32,20 +32,19 @@ export async function syncExternalFilePermissions({
   teamId: string;
   externalPermissions: FilePermissionType[];
 }) {
-  if (!externalPermissions || externalPermissions.length === 0) return;
+  let resolvedCollaborators: CollaboratorItemType[] = [];
 
-  // 1. Batch resolve usernames to tmbIds
-  const usernames = externalPermissions.map((p) => p.username);
-  const usernameTmbIdMap = await getTmbIdsByUsernames(usernames, teamId);
+  if (externalPermissions && externalPermissions.length > 0) {
+    // 1. Batch resolve usernames to tmbIds
+    const usernames = externalPermissions.map((p) => p.username);
+    const usernameTmbIdMap = await getTmbIdsByUsernames(usernames, teamId);
 
-  const resolvedCollaborators: CollaboratorItemType[] = [];
-  for (const { username, permission } of externalPermissions) {
-    const tmbId = usernameTmbIdMap.get(username);
-    if (!tmbId) continue;
-    resolvedCollaborators.push({ tmbId, permission });
+    for (const { username, permission } of externalPermissions) {
+      const tmbId = usernameTmbIdMap.get(username);
+      if (!tmbId) continue;
+      resolvedCollaborators.push({ tmbId, permission });
+    }
   }
-
-  if (resolvedCollaborators.length === 0) return;
 
   const oldClbs = await getResourceOwnedClbs({
     resourceType: PerResourceTypeEnum.collection,

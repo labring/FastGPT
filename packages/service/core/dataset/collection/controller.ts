@@ -61,7 +61,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDataset } from '../schema';
 import { MongoResourcePermission } from '../../../support/permission/schema';
-import { getResourceOwnedClbs } from '../../../support/permission/controller';
+import {
+  getResourceOwnedClbs,
+  getDatasetEffectiveClbs
+} from '../../../support/permission/controller';
 import { pickCollaboratorIdFields } from '../../../support/permission/utils';
 import type { AnyBulkWriteOperation } from '../../../common/mongo';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
@@ -414,7 +417,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     apiFileId,
     apiFileParentId,
     tableSchema,
-    forbid
+    forbid,
+    skipPermissionCreate
   } = props;
 
   const collectionTags = await createOrGetCollectionTags({
@@ -426,7 +430,9 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
 
   // Determine inheritPermission based on parent's permissionEffectScope
   let inheritPermission = true;
-  if (parentId) {
+  if (skipPermissionCreate) {
+    inheritPermission = false;
+  } else if (parentId) {
     // Parent is a collection
     const parentCollection = await MongoDatasetCollection.findOne(
       { _id: parentId },
@@ -481,12 +487,19 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     if (inheritPermission && props.type === DatasetCollectionTypeEnum.folder) {
       // folder 类型：继承父级协作者，并将创建者设为 owner
       // 父级可能是另一个 collection（有 parentId）或 dataset（无 parentId）
-      const parentClbs = await getResourceOwnedClbs({
-        resourceId: parentId || datasetId,
-        resourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
-        teamId,
-        session
-      });
+      // dataset 需要获取有效权限（含继承链），collection 直接取协作者
+      const parentClbs = parentId
+        ? await getResourceOwnedClbs({
+            resourceId: parentId,
+            resourceType: PerResourceTypeEnum.collection,
+            teamId,
+            session
+          })
+        : await getDatasetEffectiveClbs({
+            datasetId,
+            teamId,
+            session
+          });
 
       const collaborators = [
         ...parentClbs

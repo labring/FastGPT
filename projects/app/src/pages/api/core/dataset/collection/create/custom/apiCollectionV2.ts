@@ -13,7 +13,12 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  WritePermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
+import { getDatasetEffectiveClbs } from '@fastgpt/service/support/permission/controller';
+import { replaceResourceClbs } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
@@ -105,6 +110,13 @@ async function handler(req: ApiRequestProps<CustomApiCollectionV2Body>) {
 }
 
 export default NextAPI(handler);
+
+// 图片文件扩展名集合
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
+const isImageFile = (fileName: string): boolean => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ext ? IMAGE_EXTENSIONS.has(ext) : false;
+};
 
 export const createApiDatasetCollection = async ({
   datasetId,
@@ -244,6 +256,9 @@ export const createApiDatasetCollection = async ({
     file: APIFileItemType & { apiFileParentId?: string };
   }[] = [];
 
+  // Track ROOT_FOLDER mongoId for dataset permission sync
+  let rootFolderMongoId: string | undefined;
+
   await mongoSessionRun(async (session) => {
     const processTree = async (
       nodes: TreeNode<APIFileItemType & { apiFileParentId?: string }>[],
@@ -280,6 +295,11 @@ export const createApiDatasetCollection = async ({
             mongoId = folderCollection._id.toString();
           }
 
+          // Track ROOT_FOLDER for permission sync
+          if (file.id === RootCollectionId) {
+            rootFolderMongoId = mongoId;
+          }
+
           await processTree(children, mongoId);
         }
 
@@ -294,8 +314,10 @@ export const createApiDatasetCollection = async ({
               );
             }
           } else {
+            const isImage = isImageFile(file.name);
             const result = await createCollectionAndInsertData({
               dataset,
+              ...(isImage ? { imageIds: [file.id] } : {}),
               createCollectionParams: {
                 ...baseCreateParams,
                 datasetId,
@@ -308,7 +330,10 @@ export const createApiDatasetCollection = async ({
                 ...(parentMongoId && { parentId: parentMongoId }),
                 metadata: {
                   relatedImgId: file.id
-                }
+                },
+                ...(isImage
+                  ? { trainingType: DatasetCollectionDataProcessModeEnum.imageParse }
+                  : {})
               },
               session
             });
@@ -326,6 +351,39 @@ export const createApiDatasetCollection = async ({
     const tree = buildTree(uniqueFiles, (f) => f.apiFileParentId);
     await processTree(tree, undefined);
   });
+
+  // Sync ROOT_FOLDER permissions with dataset effective collaborators
+  if (rootFolderMongoId) {
+    try {
+      const collaborators = await getDatasetEffectiveClbs({
+        teamId,
+        datasetId: dataset._id
+      });
+
+      if (collaborators.length > 0) {
+        await mongoSessionRun(async (session) => {
+          await replaceResourceClbs({
+            teamId,
+            resourceId: rootFolderMongoId!,
+            resourceType: PerResourceTypeEnum.collection,
+            collaborators: collaborators as any,
+            session
+          });
+
+          await MongoDatasetCollection.updateOne(
+            { _id: rootFolderMongoId },
+            { $set: { inheritPermission: true } },
+            { session }
+          );
+        });
+      }
+    } catch (error) {
+      addLog.warn('[ApiCollectionV2] ROOT_FOLDER permission sync failed', {
+        datasetId: dataset._id,
+        error
+      });
+    }
+  }
 
   // Sync external permissions after session commits (to avoid nested mongoSessionRun)
   if (isPermissionSync && permissionSyncItems.length > 0) {
