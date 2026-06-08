@@ -63,16 +63,30 @@ export function resolveSkillDisplayName(
   skillPathMap?: Record<string, string>
 ): string | undefined {
   if (!skillPathMap) return undefined;
-  const paths: string[] | undefined = args?.paths;
+  const paths: unknown[] | undefined = args?.paths;
   if (!paths?.length) return undefined;
 
   const skillNames: string[] = [];
   for (const filePath of paths) {
+    // Guard against non-string and path traversal inputs from LLM-generated args
+    if (typeof filePath !== 'string') continue;
+    if (filePath.includes('..')) continue;
+
     if (!filePath.endsWith('/SKILL.md')) continue;
+    // Find the most specific (longest) matching key to avoid false positives
+    // when skill directories nest (e.g. /skill-a/ and /skill-a/sub-plugin/).
+    let bestMatchName: string | undefined;
+    let bestMatchLength = 0;
     for (const [key, name] of Object.entries(skillPathMap)) {
       if (filePath === key || filePath.startsWith(key)) {
-        if (!skillNames.includes(name)) skillNames.push(name);
+        if (key.length > bestMatchLength) {
+          bestMatchLength = key.length;
+          bestMatchName = name;
+        }
       }
+    }
+    if (bestMatchName && !skillNames.includes(bestMatchName)) {
+      skillNames.push(bestMatchName);
     }
   }
   return skillNames.length > 0 ? `加载 ${skillNames.join('，')} 技能` : undefined;
@@ -418,7 +432,9 @@ export async function buildAgentTools({
       // output is visible alongside the input when expanding the tool block.
       const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
       if (toolItem?.tool) {
-        toolItem.tool.response = result.content.map((c) => c.text).join('\n');
+        toolItem.tool.response = Array.isArray(result?.content)
+          ? result.content.map((c) => c.text).join('\n')
+          : (result as any)?.response ?? String(result);
       }
       return result;
     };

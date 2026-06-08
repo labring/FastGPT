@@ -260,6 +260,39 @@ describe('collectSkillReferenceResponses', () => {
     expect(result).toEqual({ skillItems: [], skillNames: [] });
   });
 
+  it('should prefer most specific skill directory when paths nest', () => {
+    const context = createMockSandboxContext([
+      {
+        id: 'skill-a',
+        name: 'SkillA',
+        description: 'Parent skill',
+        avatar: '',
+        skillMdPath: '/work/skill-a/SKILL.md',
+        directory: '/work/skill-a'
+      },
+      {
+        id: 'skill-b',
+        name: 'SkillB',
+        description: 'Nested sub-plugin',
+        avatar: '',
+        skillMdPath: '/work/skill-a/sub-plugin/SKILL.md',
+        directory: '/work/skill-a/sub-plugin'
+      }
+    ]);
+
+    const result = collectSkillReferenceResponses({
+      paths: ['/work/skill-a/sub-plugin/SKILL.md'],
+      sandboxContext: context,
+      showSkillReferences: true,
+      toolCallId: 'nested-call'
+    });
+
+    // Should only match the more specific sub-plugin skill, not both
+    expect(result.skillItems).toHaveLength(1);
+    expect(result.skillNames).toEqual(['SkillB']);
+    expect(result.skillItems[0].skills?.[0].skillName).toBe('SkillB');
+  });
+
   it('should use empty string for missing avatar', () => {
     const context = createMockSandboxContext([
       {
