@@ -66,6 +66,7 @@ const ChatItem = (props: Props) => {
   );
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
@@ -307,8 +308,8 @@ const ChatItem = (props: Props) => {
               key={i}
               className="chat-box-card"
               w={'100%'}
-              maxW={isPc ? '700px' : 'calc(100% - 25px)'}
-              mx={isPc ? 'auto' : 0}
+              maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+              mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
             >
               <HumanChatBubble
@@ -327,8 +328,8 @@ const ChatItem = (props: Props) => {
             key={i}
             className="chat-box-card"
             w={'100%'}
-            maxW={isPc ? '700px' : 'calc(100% - 25px)'}
-            mx={isPc ? 'auto' : 0}
+            maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+            mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
             textAlign={styleMap.textAlign}
           >
             <AIChatBubble

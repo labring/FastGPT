@@ -100,6 +100,12 @@ export const useSkillChatTest = ({
         onDeleteChatItem={handleDeleteChatItem}
         onStopChat={handleStopChat}
         InputLeftComponent={InputLeftComponent}
+        pl={'16px'}
+        pr={0}
+        pb={'16px'}
+        maxW={'100%'}
+        boxBodyProps={{ px: 0, maxW: '100%', mx: 0 }}
+        inputBodyProps={{ maxW: '100%', mx: 0, pl: 0, pr: 0 }}
       />
     ),
     [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat, InputLeftComponent]

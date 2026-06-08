@@ -20,6 +20,7 @@ type ContextProps = {
   showRunningStatus: boolean;
   showSkillReferences: boolean;
   showWholeResponse: boolean;
+  showPoints?: boolean;
   showAvatar?: boolean;
 };
 type ChatBoxDataType = {
@@ -105,6 +106,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   showRunningStatus: true,
   showSkillReferences: true,
   showWholeResponse: true,
+  showPoints: false,
   ChatBoxRef: null,
   // @ts-ignore
   variablesForm: undefined,
@@ -147,6 +149,7 @@ const ChatItemContextProvider = ({
   showRunningStatus,
   showSkillReferences,
   showWholeResponse,
+  showPoints = false,
   showAvatar = true
 }: {
   children: ReactNode;
@@ -235,6 +238,7 @@ const ChatItemContextProvider = ({
       showRunningStatus,
       showSkillReferences,
       showWholeResponse,
+      showPoints,
       showAvatar,
 
       datasetCiteData,
@@ -257,6 +261,7 @@ const ChatItemContextProvider = ({
     showSkillReferences,
     isShowFullText,
     showWholeResponse,
+    showPoints,
     showAvatar,
     datasetCiteData,
     setCiteModalData,

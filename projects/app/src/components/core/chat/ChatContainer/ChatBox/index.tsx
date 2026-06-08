@@ -66,7 +66,8 @@ const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayou
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 type Props = OutLinkChatAuthProps &
-  ChatProviderProps & {
+  ChatProviderProps &
+  BoxProps & {
     isReady: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
@@ -105,7 +106,10 @@ const ChatBox = ({
   onTriggerRefresh,
   onDeleteChatItem,
   onStopChat,
-  onMarkChatRead
+  onMarkChatRead,
+  boxBodyProps,
+  inputBodyProps,
+  ...props
 }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -559,6 +563,7 @@ const ChatBox = ({
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
+      {...props}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
@@ -587,9 +592,11 @@ const ChatBox = ({
             chatForm={chatForm}
             chatType={chatType}
             recordsListProps={recordsListProps}
+            maxW={props.maxW}
+            boxBodyProps={boxBodyProps}
           />
           {canRenderChatInput && (
-            <Box {...ChatInputWrapperStyle}>
+            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
               {showWorkorder && <WorkorderEntrance />}
               <Box position="relative">
                 <ScrollToBottomButton

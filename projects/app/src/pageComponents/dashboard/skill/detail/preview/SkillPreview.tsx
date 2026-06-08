@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Menu, MenuButton, MenuList, MenuItem, Button } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
@@ -10,54 +9,7 @@ import { useSkillChatTest } from './useSkillChatTest';
 import { getSkillDebugRecords } from '@/web/core/skill/api';
 import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
-
-const ModelSelector = ({
-  value,
-  list,
-  onChange
-}: {
-  value: string;
-  list: { label: string; value: string }[];
-  onChange: (val: string) => void;
-}) => {
-  const currentLabel = list.find((item) => item.value === value)?.label || value;
-
-  return (
-    <Menu>
-      <MenuButton
-        as={Button}
-        size="sm"
-        h="36px"
-        bg="myGray.50"
-        border="0.5px solid"
-        borderColor="myGray.250"
-        borderRadius="semilg"
-        px={3}
-        fontWeight="medium"
-        color="myGray.600"
-        fontSize="14px"
-        rightIcon={<MyIcon name="core/chat/chevronDown" w="18px" color="myGray.600" />}
-        _hover={{ bg: '#f1f2f4' }}
-        _active={{ bg: '#eef0f2' }}
-      >
-        {currentLabel}
-      </MenuButton>
-      <MenuList minW="200px" zIndex={99}>
-        {list.map((item) => (
-          <MenuItem
-            key={item.value}
-            onClick={() => onChange(item.value)}
-            fontSize="sm"
-            color="myGray.800"
-            bg={item.value === value ? 'myGray.100' : 'transparent'}
-          >
-            {item.label}
-          </MenuItem>
-        ))}
-      </MenuList>
-    </Menu>
-  );
-};
+import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 
 const SkillPreview = () => {
   const { skillId, sandboxState, chatId } = useContextSelector(SkillDetailContext, (v) => ({
@@ -78,7 +30,7 @@ const SkillPreview = () => {
 
   const ModelSelectorInput = useMemo(() => {
     return (
-      <ModelSelector
+      <ChatAIModelSelector
         value={selectedModel}
         list={modelSelectList}
         onChange={(val) => setSelectedModel(val)}
@@ -137,6 +89,7 @@ const Render = () => {
       showRunningStatus={true}
       showSkillReferences={true}
       showWholeResponse={false}
+      showPoints={true}
       showAvatar={false}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams} fetchFn={skillFetchFn}>

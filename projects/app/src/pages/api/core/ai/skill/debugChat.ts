@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -67,6 +70,7 @@ import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@/service/core/workflow/streamResponseContext';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
@@ -318,6 +322,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Execute workflow
     const {
+      flatNodeResponses,
       assistantResponses,
       system_memories,
       durationSeconds,
@@ -357,7 +362,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseDetail: true,
       nodeResponseWriteConfig: {
         persistToDb: true,
-        retainInMemory: false
+        retainInMemory: true
       }
     });
 
@@ -375,11 +380,36 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Save chat records (using skillId as virtual appId)
     const newTitle = getChatTitleFromChatMessage(userQuestion);
+
+    const computedFlowResponses = (flatNodeResponses || []).map((item) => {
+      if (item.totalPoints && item.totalPoints > 0) return item;
+
+      if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
+        try {
+          const { totalPoints } = formatModelChars2Points({
+            model: item.model,
+            inputTokens: item.inputTokens ?? 0,
+            outputTokens: item.outputTokens ?? 0
+          });
+          if (totalPoints > 0) {
+            return {
+              ...item,
+              totalPoints
+            };
+          }
+        } catch (e) {
+          logger.error('recompute debug points error', { error: e });
+        }
+      }
+      return item;
+    });
+
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: computedFlowResponses,
       customFeedbacks
     };
 

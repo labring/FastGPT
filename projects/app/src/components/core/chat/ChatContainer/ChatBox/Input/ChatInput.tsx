@@ -1,4 +1,4 @@
-import type { FlexProps } from '@chakra-ui/react';
+import type { FlexProps, BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
 import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -39,17 +39,7 @@ const fileTypeFilter = (file: File) => {
   );
 };
 
-const ChatInput = ({
-  lastInteractive,
-  onSendMessage,
-  onStop,
-  onStopChat,
-  onStopSettled,
-  disableSend,
-  TextareaDom,
-  resetInputVal,
-  chatForm
-}: {
+type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
   onStop: () => void;
@@ -59,7 +49,20 @@ const ChatInput = ({
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
-}) => {
+};
+
+const ChatInput = ({
+  lastInteractive,
+  onSendMessage,
+  onStop,
+  onStopChat,
+  onStopSettled,
+  disableSend,
+  TextareaDom,
+  resetInputVal,
+  chatForm,
+  ...props
+}: ChatInputProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc } = useSystem();
@@ -79,6 +82,7 @@ const ChatInput = ({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const inputBodyProps = useContextSelector(ChatBoxContext, (v) => v.inputBodyProps);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
@@ -481,9 +485,10 @@ const ChatInput = ({
   return (
     <Box
       w={'100%'}
-      maxW={['100%', '780px']}
-      mx={'auto'}
-      pb={['calc(16px + env(safe-area-inset-bottom))', 4]}
+      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+      pb={0}
+      {...props}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
