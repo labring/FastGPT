@@ -30,7 +30,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 
@@ -52,6 +51,8 @@ const AppChatWindow = () => {
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const chatWindowTitle =
+    chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
@@ -61,8 +62,13 @@ const AppChatWindow = () => {
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
+  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
+  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
+    ChatPageContext,
+    (v) => v.upsertRecentlyUsedAppPlaceholder
+  );
 
   const { loading } = useRequest(
     async () => {
@@ -72,6 +78,14 @@ const AppChatWindow = () => {
       res.userAvatar = userInfo?.avatar;
 
       setChatBoxData(res);
+      const isHomeApp = pane === ChatSidebarPaneEnum.HOME || res.appId === chatSettings?.appId;
+      if (!isHomeApp) {
+        upsertRecentlyUsedAppPlaceholder({
+          appId: res.appId,
+          name: res.app.name,
+          avatar: res.app.avatar
+        });
+      }
 
       resetVariables({
         variables: res.variables,
@@ -142,12 +156,15 @@ const AppChatWindow = () => {
     [
       appId,
       chatId,
+      pane,
+      chatSettings?.appId,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChatRef,
       isShowCite,
       showSkillReferences,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      upsertRecentlyUsedAppPlaceholder
     ]
   );
 
@@ -183,7 +200,7 @@ const AppChatWindow = () => {
       >
         {isPc ? (
           <ChatWindowHeader
-            title={chatBoxData.title}
+            title={chatWindowTitle}
             history={chatRecords}
             chatType={ChatTypeEnum.chat}
           />
@@ -205,15 +222,13 @@ const AppChatWindow = () => {
             />
 
             <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
-              <Avatar src={chatBoxData.app.avatar} w="20px" borderRadius="6px" />
               <Box
-                ml={2}
                 fontSize="16px"
                 fontWeight={500}
                 color="myGray.900"
                 className="textEllipsis"
               >
-                {chatBoxData.app.name}
+                {chatWindowTitle}
               </Box>
             </Flex>
 
@@ -223,7 +238,7 @@ const AppChatWindow = () => {
           </Flex>
         )}
 
-        <Box flex={'1 0 0'} bg={'white'} pb={4}>
+        <Box flex={'1 0 0'} bg={'white'}>
           {isPlugin ? (
             <CustomPluginRunBox
               appId={appId}

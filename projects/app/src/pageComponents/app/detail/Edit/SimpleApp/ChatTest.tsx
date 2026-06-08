@@ -74,7 +74,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
         position={'relative'}
         flexDirection={'column'}
         h={'full'}
-        py={4}
+        pt={4}
+        pb={0}
         {...cardStyles}
         boxShadow={'3'}
       >

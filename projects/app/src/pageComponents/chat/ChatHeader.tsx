@@ -119,6 +119,10 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
   const { t } = useTranslation();
 
   const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
+  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
+    ChatPageContext,
+    (v) => v.upsertRecentlyUsedAppPlaceholder
+  );
 
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
 
@@ -136,6 +140,10 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   const onclickApp = (id: string) => {
+    const app = myApps.find((item) => item.appId === id);
+    if (app) {
+      upsertRecentlyUsedAppPlaceholder(app);
+    }
     handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, id);
     onCloseDrawer();
   };
@@ -225,6 +233,11 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
             value={appId}
             onSelect={(item) => {
               if (!item) return;
+              upsertRecentlyUsedAppPlaceholder({
+                appId: item.id,
+                name: item.name,
+                avatar: item.avatar
+              });
               onclickApp(item.id);
             }}
             server={getAppList}

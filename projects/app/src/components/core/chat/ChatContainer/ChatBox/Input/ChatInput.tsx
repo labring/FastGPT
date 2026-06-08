@@ -300,7 +300,7 @@ const ChatInput = ({
         gap={[0, 1]}
       >
         {/* 左侧自定义按钮组 */}
-        <Flex alignItems={'center'} gap={2} flex={'1 0 0'} w={0}>
+        <Flex alignItems={'center'} gap={2} flex={'1 1 0'} minW={0} w={0}>
           {InputLeftComponent}
         </Flex>
 
@@ -523,7 +523,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={4} pb={0} />
+      <ComplianceTip type={'chat'} pt={4} pb={['calc(12px + env(safe-area-inset-bottom))', 3]} />
     </Box>
   );
 };

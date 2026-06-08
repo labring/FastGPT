@@ -19,6 +19,8 @@ import { useLatest, useMount } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
+type RecentlyUsedAppPlaceholderInput = Partial<GetRecentlyUsedAppsResponseType[number]>;
+
 export type ChatPageContextValue = {
   // Pane & collapse
   pane: ChatSidebarPaneEnum;
@@ -38,6 +40,7 @@ export type ChatPageContextValue = {
   isInitedUser: boolean;
   userInfo: UserType | null;
   myApps: GetRecentlyUsedAppsResponseType;
+  upsertRecentlyUsedAppPlaceholder: (app: RecentlyUsedAppPlaceholderInput) => void;
   refreshRecentlyUsed: () => void;
 };
 
@@ -54,6 +57,7 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   isInitedUser: false,
   userInfo: null,
   myApps: [],
+  upsertRecentlyUsedAppPlaceholder: () => {},
   refreshRecentlyUsed: () => {}
 });
 
@@ -74,6 +78,8 @@ export const ChatPageContextProvider = ({
   };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
+  const [recentlyUsedAppPlaceholders, setRecentlyUsedAppPlaceholders] =
+    useState<GetRecentlyUsedAppsResponseType>([]);
 
   // Get recently used apps
   const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
@@ -128,6 +134,36 @@ export const ChatPageContextProvider = ({
       }
     }
   );
+
+  const homeAppId = chatSettings?.appId;
+  const upsertRecentlyUsedAppPlaceholder = useCallback(
+    (app: RecentlyUsedAppPlaceholderInput) => {
+      const { appId, name, avatar } = app;
+      if (!appId || !name || !avatar) return;
+      if (appId === homeAppId) return;
+
+      setRecentlyUsedAppPlaceholders((state) => [
+        {
+          appId,
+          name,
+          avatar
+        },
+        ...state.filter((item) => item.appId !== appId)
+      ]);
+    },
+    [homeAppId]
+  );
+
+  const mergedMyApps = useMemo(() => {
+    const appMap = new Map<string, GetRecentlyUsedAppsResponseType[number]>();
+
+    [...recentlyUsedAppPlaceholders, ...myApps].forEach((app) => {
+      if (app.appId === homeAppId) return;
+      appMap.set(app.appId, app);
+    });
+
+    return Array.from(appMap.values());
+  }, [homeAppId, myApps, recentlyUsedAppPlaceholders]);
 
   const lastestPane = useLatest(pane);
   const handlePaneChange = useCallback(
@@ -194,7 +230,8 @@ export const ChatPageContextProvider = ({
       logos,
       isInitedUser: true,
       userInfo,
-      myApps,
+      myApps: mergedMyApps,
+      upsertRecentlyUsedAppPlaceholder,
       refreshRecentlyUsed
     }),
     [
@@ -206,7 +243,8 @@ export const ChatPageContextProvider = ({
       refreshChatSetting,
       logos,
       userInfo,
-      myApps,
+      mergedMyApps,
+      upsertRecentlyUsedAppPlaceholder,
       refreshRecentlyUsed
     ]
   );

@@ -291,10 +291,12 @@ const HomeChatWindow = () => {
       <>
         {/* 模型选择 */}
         {isPc && availableModels.length > 0 && (
-          <Box w={['0', '128px']} flex={['1 1 0', '0 0 128px']} minW={0}>
+          <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
               cacheModel={false}
               h={'36px'}
+              w={'fit-content'}
+              maxW={'300px'}
               boxShadow={'none'}
               size="sm"
               bg={'myGray.50'}

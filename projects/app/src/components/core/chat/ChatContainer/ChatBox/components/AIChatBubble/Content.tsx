@@ -7,10 +7,15 @@ import type {
 import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import AIResponseBox from '../../../../components/AIResponseBox';
 import RenderProcessingCollapse from '../../../../components/AIResponseBox/RenderProcessingCollapse';
+import RenderProcessingPreview, {
+  getProcessingPreviewLabelKey
+} from '../../../../components/AIResponseBox/RenderProcessingPreview';
 import {
   hasAiAnswerContent,
+  hasAiFoldableProcessingContent,
   hasAiInteractiveContent,
-  hasAiProcessingContent
+  hasAiProcessingContent,
+  hasAiStandaloneProcessingContent
 } from './utils';
 
 type AIChatBubbleContentProps = {
@@ -35,15 +40,21 @@ const AIChatBubbleContent = ({
     index,
     wrapProcessing,
     showProcessing = true,
+    showFoldableProcessing,
+    showStandaloneProcessing,
     showAnswer = true,
-    showInteractive = true
+    showInteractive = true,
+    defaultExpandProcessing = true
   }: {
     value: AIChatItemValueItemType;
     index: number;
     wrapProcessing: boolean;
     showProcessing?: boolean;
+    showFoldableProcessing?: boolean;
+    showStandaloneProcessing?: boolean;
     showAnswer?: boolean;
     showInteractive?: boolean;
+    defaultExpandProcessing?: boolean;
   }) => {
     const isLastResponse = isLastChild && index === chatValue.length - 1;
 
@@ -58,8 +69,11 @@ const AIChatBubbleContent = ({
         onOpenCiteModal={onOpenCiteModal}
         wrapProcessing={wrapProcessing}
         showProcessing={showProcessing}
+        showFoldableProcessing={showFoldableProcessing}
+        showStandaloneProcessing={showStandaloneProcessing}
         showAnswer={showAnswer}
         showInteractive={showInteractive}
+        defaultExpandProcessing={defaultExpandProcessing}
       />
     );
   };
@@ -67,39 +81,41 @@ const AIChatBubbleContent = ({
   const contentBlocks: React.ReactNode[] = [];
   let processingGroup: Array<{ value: AIChatItemValueItemType; index: number }> = [];
 
-  const flushProcessingGroup = (isProcessing: boolean) => {
+  const flushProcessingGroup = () => {
     if (processingGroup.length === 0) return;
 
     const group = processingGroup;
     processingGroup = [];
-
-    if (group.length === 1) {
-      const { value, index } = group[0];
-      contentBlocks.push(
-        <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
-          {renderValue({
-            value,
-            index,
-            wrapProcessing: false,
-            showAnswer: false,
-            showInteractive: false
-          })}
-        </Box>
-      );
-      return;
-    }
+    const previewItem = group[group.length - 1];
+    const isProcessing =
+      isChatting && isLastChild && group.some(({ index }) => index === chatValue.length - 1);
 
     contentBlocks.push(
-      <Box key={`${dataId}-processing-${group[0].index}`} _notFirst={{ mt: 4 }}>
-        <RenderProcessingCollapse isProcessing={isProcessing}>
+      <Box key={`${dataId}-processing-${group[0].index}`} _notFirst={{ mt: 2 }}>
+        <RenderProcessingCollapse
+          isProcessing={isProcessing}
+          label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
+          preview={
+            previewItem
+              ? (
+                  <RenderProcessingPreview
+                    value={previewItem.value}
+                    showAnimation={isProcessing}
+                  />
+                )
+              : undefined
+          }
+        >
           {group.map(({ value, index }) => (
-            <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
+            <Box key={`${dataId}-ai-${index}`}>
               {renderValue({
                 value,
                 index,
                 wrapProcessing: false,
                 showAnswer: false,
-                showInteractive: false
+                showInteractive: false,
+                showStandaloneProcessing: false,
+                defaultExpandProcessing: false
               })}
             </Box>
           ))}
@@ -112,29 +128,37 @@ const AIChatBubbleContent = ({
     if (value.hideInUI) return;
 
     const hasProcessing = hasAiProcessingContent(value);
+    const hasFoldableProcessing = hasAiFoldableProcessingContent(value);
+    const hasStandaloneProcessing = hasAiStandaloneProcessingContent(value);
     const hasAnswer = hasAiAnswerContent(value);
     const hasInteractive = hasAiInteractiveContent(value);
 
     if (!hasProcessing && !hasAnswer && !hasInteractive) return;
 
-    if (hasProcessing) {
+    if (hasFoldableProcessing) {
       processingGroup.push({ value, index });
 
-      if (!hasAnswer && !hasInteractive) {
+      if (!hasStandaloneProcessing && !hasAnswer && !hasInteractive) {
         return;
       }
     }
 
-    flushProcessingGroup(isChatting && isLastChild && !hasAnswer && !hasInteractive);
+    flushProcessingGroup();
 
     contentBlocks.push(
-      <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 4 }}>
-        {renderValue({ value, index, wrapProcessing: true, showProcessing: false })}
+      <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 2 }}>
+        {renderValue({
+          value,
+          index,
+          wrapProcessing: true,
+          showFoldableProcessing: false,
+          showStandaloneProcessing: hasStandaloneProcessing
+        })}
       </Box>
     );
   });
 
-  flushProcessingGroup(isChatting && isLastChild);
+  flushProcessingGroup();
 
   return (
     <Flex flexDirection={'column'} fontSize={'16px'} lineHeight={1.75}>

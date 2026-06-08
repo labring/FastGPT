@@ -46,6 +46,10 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
+    ChatPageContext,
+    (v) => v.upsertRecentlyUsedAppPlaceholder
+  );
   const wideLogoUrl = useContextSelector(ChatPageContext, (v) => v.chatSettings?.wideLogoUrl);
   const homeTabTitle = useContextSelector(ChatPageContext, (v) => v.chatSettings?.homeTabTitle);
 
@@ -255,7 +259,14 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
                 _hover={{
                   borderColor: 'primary.300'
                 }}
-                onClick={() => handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId)}
+                onClick={() => {
+                  upsertRecentlyUsedAppPlaceholder({
+                    appId: app.appId,
+                    name: app.name,
+                    avatar: app.avatar
+                  });
+                  handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId);
+                }}
               >
                 <HStack minW={0}>
                   <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />

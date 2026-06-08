@@ -178,10 +178,10 @@ const ChatRecordsList = ({
               >
                 <Box
                   pt={
-                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? 0 : '20px'
+                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? 0 : '8px'
                   }
                   pb={
-                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '20px' : '40px'
+                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '4px' : '32px'
                   }
                 >
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (

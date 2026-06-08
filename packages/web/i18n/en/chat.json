@@ -35,6 +35,8 @@
   "completion_finish_reason": "Reason for completion",
   "completion_finish_stop": "Completed normally",
   "completion_finish_tool_calls": "Tool calls",
+  "feedback_helpful": "Helpful",
+  "feedback_unhelpful": "Not helpful",
   "compress_llm_messages": "Context compression",
   "compress_llm_usage": "Text compression input and output tokens",
   "compress_llm_usage_point": "Text compression points consumption",

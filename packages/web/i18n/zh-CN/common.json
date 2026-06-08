@@ -374,7 +374,7 @@
   "core.chat.Select dataset Desc": "选择一个知识库存储预期答案",
   "core.chat.Send Message": "发送",
   "core.chat.Speaking": "我在听，请说...",
-  "core.chat.Type a message": "输入问题，发送 [Enter]/换行 [Ctrl(Alt/Shift) + Enter]",
+  "core.chat.Type a message": "发消息给FastGPT",
   "core.chat.Unpin": "取消置顶",
   "core.chat.error.Chat error": "对话出现异常",
   "core.chat.error.Messages empty": "接口内容为空，可能文本超长了~",

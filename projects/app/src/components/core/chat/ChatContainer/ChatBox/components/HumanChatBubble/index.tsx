@@ -49,9 +49,10 @@ const HumanChatBubble = ({ chatValue, chatTime, onEditSubmit, children }: HumanC
 
   return (
     <Box
-      display={'inline-block'}
+      display={'flex'}
+      justifyContent={'flex-end'}
       position={'relative'}
-      w={'fit-content'}
+      w={'100%'}
       maxW={'100%'}
       _hover={{
         '& .chat-controller-hover': {
@@ -59,26 +60,28 @@ const HumanChatBubble = ({ chatValue, chatTime, onEditSubmit, children }: HumanC
         }
       }}
     >
-      <Card
-        {...MessageCardStyle}
-        bg={'primary.50'}
-        color={'myGray.900'}
-        px={4}
-        pt={3}
-        pb={MessageCardStyle.py}
-        borderRadius={'12px'}
-        textAlign={'left'}
-        maxW={'100%'}
-      >
-        <HumanChatBubbleContent chatValue={chatValue} />
-        {children}
-      </Card>
-      <HumanChatBubbleActions
-        chatText={chatText}
-        chatTime={chatTime}
-        isAlwaysVisible={!isPc}
-        onEdit={() => setIsEditing(true)}
-      />
+      <Box position={'relative'} w={'fit-content'} maxW={'100%'}>
+        <Card
+          {...MessageCardStyle}
+          bg={'primary.50'}
+          color={'myGray.900'}
+          px={4}
+          pt={3}
+          pb={MessageCardStyle.py}
+          borderRadius={'12px'}
+          textAlign={'left'}
+          maxW={'100%'}
+        >
+          <HumanChatBubbleContent chatValue={chatValue} />
+          {children}
+        </Card>
+        <HumanChatBubbleActions
+          chatText={chatText}
+          chatTime={chatTime}
+          isAlwaysVisible={!isPc}
+          onEdit={() => setIsEditing(true)}
+        />
+      </Box>
       {!isPc && isEditing && (
         <HumanChatBubbleEditDrawer
           isOpen={isEditing}

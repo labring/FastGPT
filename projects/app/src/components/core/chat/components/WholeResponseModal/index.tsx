@@ -30,6 +30,15 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       size={'xl'}
       h={['90vh', '80vh']}
       maxH={['90vh', '700px']}
+      headerStyles={{
+        px: [5, 8],
+        pt: [6, 8]
+      }}
+      bodyStyles={{
+        px: [5, 8],
+        pt: [4, 6],
+        pb: [5, 8]
+      }}
       title={
         <Flex alignItems={'center'} gap={2}>
           <Box fontSize={'20px'} lineHeight={'26px'} letterSpacing={'0.15px'} fontWeight={500}>

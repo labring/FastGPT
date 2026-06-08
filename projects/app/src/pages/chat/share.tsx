@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -9,7 +9,6 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
 import PageContainer from '@/components/PageContainer';
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { LANG_KEY, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'next-i18next';
@@ -39,11 +38,14 @@ import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatHistorySidebar from '@/pageComponents/chat/slider/ChatSliderSidebar';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import ChatLanguageSelector from '@/pageComponents/chat/LanguageSelector';
+import ChatWindowHeader from '@/pageComponents/chat/ChatWindow/ChatWindowHeader';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import ToolMenu from '@/pageComponents/chat/ToolMenu';
+import { mobileChatHeaderIconButtonStyle } from '@/pageComponents/chat/ChatWindow/headerIconButtonStyle';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -96,18 +98,21 @@ const OutLink = (props: Props) => {
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+  const chatWindowTitle =
+    chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -303,17 +308,67 @@ const OutLink = (props: Props) => {
                 flexDirection={'column'}
               >
                 {/* header */}
-                {showHead === '1' ? (
-                  <ChatHeader
-                    chatSettings={undefined}
-                    pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}
-                    history={chatRecords}
-                    totalRecordsCount={totalRecordsCount}
-                    showHistory={showHistory === '1'}
-                    reserveSpace={showWorkorder !== undefined}
-                    hideMenu={hideMenu === '1'}
-                  />
-                ) : null}
+                {showHead === '1' &&
+                  (isPc ? (
+                    !isPlugin && (
+                      <ChatWindowHeader
+                        title={chatWindowTitle}
+                        history={chatRecords}
+                        chatType={ChatTypeEnum.share}
+                      />
+                    )
+                  ) : (
+                    <Flex
+                      h="48px"
+                      px={4}
+                      bg="white"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      color="myGray.600"
+                    >
+                      {showHistory === '1' ? (
+                        <IconButton
+                          aria-label="Open history"
+                          icon={
+                            <MyIcon
+                              name="core/chat/sidebar/menu"
+                              w="20px"
+                              h="20px"
+                              color="currentColor"
+                            />
+                          }
+                          variant="unstyled"
+                          {...mobileChatHeaderIconButtonStyle}
+                          onClick={onOpenSlider}
+                        />
+                      ) : (
+                        <Box minW="36px" />
+                      )}
+
+                      <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
+                        <Box
+                          fontSize="16px"
+                          fontWeight={500}
+                          color="myGray.900"
+                          className="textEllipsis"
+                        >
+                          {chatWindowTitle}
+                        </Box>
+                      </Flex>
+
+                      {hideMenu === '1' ? (
+                        <Box minW="36px" />
+                      ) : (
+                        <Box minW="36px">
+                          <ToolMenu
+                            history={chatRecords}
+                            reserveSpace={showWorkorder !== undefined}
+                            chatType={ChatTypeEnum.share}
+                          />
+                        </Box>
+                      )}
+                    </Flex>
+                  ))}
                 {/* chat box */}
                 <Box flex={1} bg={'white'}>
                   {isPlugin ? (

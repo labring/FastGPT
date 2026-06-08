@@ -71,6 +71,37 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   );
 });
 
+const SelectedModelLabel = React.memo(function SelectedModelLabel({
+  model,
+  avatar,
+  avatarSize,
+  noOfLines
+}: {
+  model: SystemModelItemType;
+  avatar?: string;
+  avatarSize: string;
+  noOfLines?: ResponsiveValue<number>;
+}) {
+  return (
+    <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
+      <Avatar
+        borderRadius={'0'}
+        mr={2}
+        src={avatar || HUGGING_FACE_ICON}
+        w={avatarSize}
+        fallbackSrc={HUGGING_FACE_ICON}
+        flexShrink={0}
+      />
+      <ModelOptionLabel
+        name={model.name}
+        noOfLines={noOfLines}
+        showTestModeTip={isTestModeModel(model)}
+        showMultimodalTip={isMultimodalEmbeddingModel(model)}
+      />
+    </Flex>
+  );
+});
+
 const OneRowSelector = ({
   list,
   onChange,
@@ -173,14 +204,12 @@ const OneRowSelector = ({
           list={avatarList}
           valueLabel={
             selectedModelData ? (
-              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
-                <ModelOptionLabel
-                  name={selectedModelData.name}
-                  noOfLines={noOfLines}
-                  showTestModeTip={isTestModeModel(selectedModelData)}
-                  showMultimodalTip={isMultimodalEmbeddingModel(selectedModelData)}
-                />
-              </Flex>
+              <SelectedModelLabel
+                model={selectedModelData}
+                avatar={getModelProvider(selectedModelData.provider)?.avatar}
+                avatarSize={avatarSize}
+                noOfLines={noOfLines}
+              />
             ) : undefined
           }
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
@@ -212,6 +241,7 @@ const MultipleRowSelector = ({
     ttsModelList,
     sttModelList,
     reRankModelList,
+    getModelProvider,
     getModelProviders,
     getMyModelList
   } = useSystemStore();
@@ -311,16 +341,14 @@ const MultipleRowSelector = ({
     if (!selectedModelData) return <>{t('common:not_model_config')}</>;
 
     return (
-      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
-        <ModelOptionLabel
-          name={selectedModelData.name}
-          noOfLines={noOfLines}
-          showTestModeTip={isTestModeModel(selectedModelData)}
-          showMultimodalTip={isMultimodalEmbeddingModel(selectedModelData)}
-        />
-      </Flex>
+      <SelectedModelLabel
+        model={selectedModelData}
+        avatar={getModelProvider(selectedModelData.provider)?.avatar}
+        avatarSize={avatarSize}
+        noOfLines={noOfLines}
+      />
     );
-  }, [loading, props.value, t, selectedModelData, noOfLines]);
+  }, [loading, props.value, t, selectedModelData, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box

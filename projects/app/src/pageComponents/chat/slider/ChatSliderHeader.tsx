@@ -11,7 +11,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
-import ChatSliderQuickAppList from '@/pageComponents/chat/slider/ChatSliderQuickAppList';
+import ChatSliderRecentAppList from '@/pageComponents/chat/slider/ChatSliderQuickAppList';
 
 type Props = {
   title?: string;
@@ -69,8 +69,8 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
             bg={isHomePane ? 'primary.100' : 'transparent'}
             color={isHomePane ? 'primary.600' : 'myGray.500'}
             _hover={{
-              bg: 'primary.100',
-              color: 'primary.600'
+              bg: isHomePane ? 'primary.100' : 'transparent',
+              color: isHomePane ? 'primary.600' : 'myGray.500'
             }}
             onClick={() => {
               handlePaneChange(ChatSidebarPaneEnum.HOME);
@@ -94,8 +94,8 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
           bg={isAllAppsPane ? 'primary.100' : 'transparent'}
           color={isAllAppsPane ? 'primary.600' : 'myGray.500'}
           _hover={{
-            bg: 'primary.100',
-            color: 'primary.600'
+            bg: isAllAppsPane ? 'primary.100' : 'transparent',
+            color: isAllAppsPane ? 'primary.600' : 'myGray.500'
           }}
           onClick={() => {
             handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
@@ -109,7 +109,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
           </Box>
         </Flex>
 
-        <ChatSliderQuickAppList />
+        <ChatSliderRecentAppList />
       </Flex>
     </>
   );
