@@ -489,4 +489,16 @@ describe('addDirectoryToArchive', () => {
     await addDirectoryToArchive(sandbox, archive, '/workspace', '');
     expect(archive.append).not.toHaveBeenCalled();
   });
+
+  it('readFiles 返回空数组时跳过该文件', async () => {
+    const archive = makeArchive();
+    const entries = [makeDirectoryEntry('main.py', { size: 10 })];
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries),
+      readFiles: vi.fn().mockResolvedValue([])
+    });
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    // Empty results array should be skipped, no append called
+    expect(archive.append).not.toHaveBeenCalled();
+  });
 });

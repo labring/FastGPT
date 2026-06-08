@@ -54,9 +54,13 @@ export async function listSandboxDirectory(
       if (recursive && entry.isDirectory && depth < MAX_RECURSIVE_DEPTH) {
         try {
           item.children = await listSandboxDirectory(sandbox, entry.path, true, depth + 1);
-        } catch {
+        } catch (err) {
           // Gracefully skip directories that cannot be listed
           // (e.g., symlink targets that don't exist, permission errors)
+          console.warn('[listSandboxDirectory] failed to list directory, skipping', {
+            path: entry.path,
+            error: (err as Error)?.message
+          });
           item.children = [];
         }
       }
@@ -139,6 +143,12 @@ export async function addDirectoryToArchive(
         await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
       } else {
         const results = await sandbox.provider.readFiles([entry.path]);
+        if (results.length === 0) {
+          console.warn('[addDirectoryToArchive] readFiles returned empty results', {
+            path: entry.path
+          });
+          continue;
+        }
         const result = results[0];
 
         if (!result.error) {
@@ -146,7 +156,11 @@ export async function addDirectoryToArchive(
         }
       }
     }
-  } catch {
+  } catch (err) {
     // If listing fails (e.g., symlink target doesn't exist), skip silently
+    console.warn('[addDirectoryToArchive] failed to list directory, skipping', {
+      dirPath,
+      error: (err as Error)?.message
+    });
   }
 }
