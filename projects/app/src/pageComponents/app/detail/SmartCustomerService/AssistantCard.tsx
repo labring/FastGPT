@@ -73,31 +73,39 @@ const AssistantCard = () => {
           {/* 按钮移到标题右侧，只显示图标，顺序为：编辑、对话、权限 */}
           <HStack spacing={2} ml={2}>
             {appDetail.permission.hasManagePer && (
-              <IconButton
-                size={['smSquare', 'mdSquare']}
-                variant={'whitePrimary'}
-                icon={<MyIcon name={'edit'} w={'16px'} />}
-                aria-label={'edit'}
-                onClick={onOpenInfoEdit}
-              />
+              <MyTooltip label={t('app:app_detail_edit')}>
+                <IconButton
+                  size={['smSquare', 'mdSquare']}
+                  variant={'whitePrimary'}
+                  icon={<MyIcon name={'edit'} w={'16px'} />}
+                  aria-label={'edit'}
+                  onClick={onOpenInfoEdit}
+                />
+              </MyTooltip>
             )}
-            <IconButton
-              size={['smSquare', 'mdSquare']}
-              variant={'whitePrimary'}
-              icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
-              aria-label={'chat'}
-              onClick={() =>
-                router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
-              }
-            />
-            {appDetail.permission.hasManagePer && (
+            <MyTooltip label={t('app:app_detail_chat')}>
               <IconButton
                 size={['smSquare', 'mdSquare']}
                 variant={'whitePrimary'}
-                icon={<MyIcon name={'key'} w={'16px'} />}
-                aria-label={'permission'}
-                onClick={() => setEditPerAppId(appDetail._id)}
+                icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
+                aria-label={'chat'}
+                onClick={() =>
+                  router.push(
+                    `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`
+                  )
+                }
               />
+            </MyTooltip>
+            {appDetail.permission.hasManagePer && (
+              <MyTooltip label={t('app:app_detail_permission')}>
+                <IconButton
+                  size={['smSquare', 'mdSquare']}
+                  variant={'whitePrimary'}
+                  icon={<MyIcon name={'key'} w={'16px'} />}
+                  aria-label={'permission'}
+                  onClick={() => setEditPerAppId(appDetail._id)}
+                />
+              </MyTooltip>
             )}
           </HStack>
         </Flex>

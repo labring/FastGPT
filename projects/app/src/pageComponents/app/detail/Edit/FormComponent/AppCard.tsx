@@ -15,6 +15,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import TagsEditModal from '../../TagsEditModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -107,24 +108,28 @@ const AppCard = ({
           {/* Right Action Icons */}
           <HStack spacing={2} ml={4}>
             {appDetail.permission.hasManagePer && (
+              <MyTooltip label={t('app:app_detail_edit')}>
+                <IconButton
+                  variant={'whitePrimary'}
+                  size={'mdSquare'}
+                  icon={<MyIcon name={'edit'} w={'16px'} />}
+                  aria-label={'edit'}
+                  onClick={onOpenInfoEdit}
+                />
+              </MyTooltip>
+            )}
+            <MyTooltip label={t('app:app_detail_chat')}>
               <IconButton
                 variant={'whitePrimary'}
-                size={'mdSquare'}
-                icon={<MyIcon name={'edit'} w={'16px'} />}
-                aria-label={'settings'}
-                onClick={onOpenInfoEdit}
+                w="32px"
+                h="32px"
+                icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
+                aria-label={'chat'}
+                onClick={() =>
+                  router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
+                }
               />
-            )}
-            <IconButton
-              variant={'whitePrimary'}
-              w="32px"
-              h="32px"
-              icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
-              aria-label={'chat'}
-              onClick={() =>
-                router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
-              }
-            />
+            </MyTooltip>
             {appDetail.permission.isOwner && (
               <>
                 {configToWorkflow ? (

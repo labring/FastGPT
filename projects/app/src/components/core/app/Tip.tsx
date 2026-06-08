@@ -88,7 +88,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       icon: '/imgs/app/appEntryIcon.svg',
       title: t('app:entry_point'),
       desc: t('app:entry_point_tip'),
-      imgUrl: '/imgs/app/appEntry.svg'
+      imgUrl: getImagePath('/imgs/app/appEntry.svg')
     }
   });
   const data = map.current[type];
