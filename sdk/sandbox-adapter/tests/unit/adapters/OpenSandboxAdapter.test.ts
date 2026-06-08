@@ -482,6 +482,28 @@ describe('OpenSandboxAdapter', () => {
     });
   });
 
+  describe('Endpoints', () => {
+    it('parses full URL endpoints without prepending another protocol', async () => {
+      const adapter = makeAdapter();
+      (
+        adapter as unknown as {
+          _sandbox: {
+            getEndpoint: (port: number) => Promise<{ endpoint: string }>;
+          };
+        }
+      )._sandbox = {
+        getEndpoint: vi.fn(async () => ({
+          endpoint: 'http://127.0.0.1:18080/proxy/abc'
+        }))
+      };
+
+      await expect(adapter.getEndpoint(1318)).resolves.toMatchObject({
+        protocol: 'http',
+        url: 'http://127.0.0.1:18080/proxy/abc'
+      });
+    });
+  });
+
   describe('Wait Until Ready', () => {
     it('should timeout when sandbox not ready', async () => {
       const adapter = makeAdapter();
@@ -632,51 +654,25 @@ describe('OpenSandboxAdapter', () => {
       expect(mockReadBytes).toHaveBeenCalledWith('/test.txt');
     });
 
-    it('should accept upload 500 with matching size for large files without reading content', async () => {
-      const adapter = makeAdapter();
-      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
-        statusCode: 500
-      });
-      const data = new Uint8Array(1024 * 1024 + 1);
-      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
-      const mockGetFileInfo = vi.fn().mockResolvedValue({
-        '/large.bin': { path: '/large.bin', size: data.byteLength }
-      });
-      const mockReadBytes = vi.fn();
-
-      (adapter as any).sandbox = {
-        files: {
-          writeFiles: mockWriteFiles,
-          getFileInfo: mockGetFileInfo,
-          readBytes: mockReadBytes
-        }
-      };
-
-      const result = await adapter.writeFiles([{ path: '/large.bin', data }]);
-
-      expect(result[0].error).toBeNull();
-      expect(result[0].bytesWritten).toBe(data.byteLength);
-      expect(mockReadBytes).not.toHaveBeenCalled();
-    });
-
     it('should fall back to command stat when OpenSandbox file info also fails', async () => {
       const adapter = makeAdapter();
       const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
         statusCode: 500
       });
-      const data = new Uint8Array(1024 * 1024 + 1);
+      const data = new TextEncoder().encode('fallback');
       const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
       const mockGetFileInfo = vi.fn().mockRejectedValue(new Error('Get file info failed'));
       const mockRun = vi.fn(async (_command, _options, handlers) => {
         handlers.onStdout({ text: `${data.byteLength}\n` });
         return {};
       });
+      const mockReadBytes = vi.fn().mockResolvedValue(data);
 
       (adapter as any).sandbox = {
         files: {
           writeFiles: mockWriteFiles,
           getFileInfo: mockGetFileInfo,
-          readBytes: vi.fn()
+          readBytes: mockReadBytes
         },
         commands: {
           run: mockRun
@@ -688,6 +684,7 @@ describe('OpenSandboxAdapter', () => {
       expect(result[0].error).toBeNull();
       expect(result[0].bytesWritten).toBe(data.byteLength);
       expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(mockReadBytes).toHaveBeenCalledWith('/large.bin');
     });
 
     it('should keep upload 500 as error when committed file size mismatches', async () => {

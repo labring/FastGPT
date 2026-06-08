@@ -12,6 +12,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_MAX_FILE_SIZE: process.env.AGENT_SANDBOX_MAX_FILE_SIZE,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET
 };
 
@@ -37,7 +38,7 @@ const defaultOpenSandboxDockerNetworkPolicy = {
 describe('sandbox provider config', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret-123456789012345678901234');
   });
 
   afterEach(() => {
@@ -61,6 +62,7 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
+    vi.stubEnv('AGENT_SANDBOX_MAX_FILE_SIZE', originalEnv.AGENT_SANDBOX_MAX_FILE_SIZE);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.unstubAllGlobals();
   });
@@ -89,6 +91,20 @@ describe('sandbox provider config', () => {
       provider: 'e2b',
       apiKey: 'e2b-token'
     });
+  });
+
+  it('does not default sandbox provider when env is empty', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+
+    const { getConfiguredSandboxProvider, getSandboxProviderConfig } =
+      await loadSandboxConfigModule();
+
+    expect(getConfiguredSandboxProvider).toThrow(
+      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+    );
+    expect(getSandboxProviderConfig).toThrow(
+      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+    );
   });
 
   it('keeps e2b runtime create config when runtime adapter config is requested', async () => {
@@ -142,7 +158,8 @@ describe('sandbox provider config', () => {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
-        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318'
+        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
+        FASTGPT_IDE_MAX_FILE_BYTES: '10485760'
       }
     });
 
@@ -204,6 +221,30 @@ describe('sandbox provider config', () => {
       vi.doUnmock('@fastgpt/service/env');
       vi.resetModules();
     }
+  });
+
+  it('allows empty proxy secret before agent sandbox credentials are configured', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
+    vi.resetModules();
+
+    const { serviceEnv } = await import('@fastgpt/service/env');
+
+    expect(serviceEnv.AGENT_SANDBOX_PROXY_SECRET).toBeUndefined();
+  });
+
+  it('rejects short proxy secret when agent sandbox is configured', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'short');
+    vi.resetModules();
+
+    await expect(import('@fastgpt/service/env')).rejects.toThrow(
+      'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters'
+    );
   });
 
   it('parses opensandbox config and runtime create config from env', async () => {
@@ -352,19 +393,6 @@ describe('sandbox provider config', () => {
         runtime: 'invalid' as 'docker'
       })
     ).toThrow('Invalid runtime: invalid');
-  });
-
-  it('requires opensandbox api key for docker runtime', async () => {
-    const { validateSandboxConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'opensandbox',
-        baseUrl: 'http://opensandbox.local',
-        apiKey: '',
-        runtime: 'docker'
-      })
-    ).toThrow('Sandbox provider apiKey is required for opensandbox');
   });
 
   it('throws for unsupported provider in config switch', async () => {

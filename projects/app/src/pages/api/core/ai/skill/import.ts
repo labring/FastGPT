@@ -4,7 +4,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
-import { getZipFileList } from '@fastgpt/service/core/ai/skill/package';
+import { validateZipStructure } from '@fastgpt/service/core/ai/skill/package';
 import {
   ImportSkillBodySchema,
   type ImportSkillBody,
@@ -16,7 +16,6 @@ import {
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { multer } from '@fastgpt/service/common/file/multer';
-import { getSkillSizeLimits } from '@fastgpt/service/core/ai/skill/sandbox/config';
 import fs from 'fs/promises';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -24,6 +23,7 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
 
   try {
     // Read env limit before multer so both use the same value
-    const { maxUploadBytes: maxArchiveSize, maxUncompressedBytes } = getSkillSizeLimits();
+    const maxArchiveSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
     // Convert bytes to MB for multer (multer expects MB)
     const maxArchiveSizeMB = Math.ceil(maxArchiveSize / 1024 / 1024);
 
@@ -106,10 +106,11 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     // Directly read the ZIP archive buffer from disk without any in-memory decompression
     const zipBuffer = await fs.readFile(file.path);
 
-    // Light-weight integrity validation to ensure the uploaded ZIP is a valid skill package containing SKILL.md
-    const filesList = await getZipFileList(zipBuffer);
-    const hasSkillMd = filesList.some((path) => path.toLowerCase().endsWith('skill.md'));
-    if (!hasSkillMd) {
+    // Light-weight structure validation: the package must contain an exact SKILL.md entry.
+    const validation = await validateZipStructure(zipBuffer, {
+      maxUncompressedBytes: maxArchiveSize
+    });
+    if (!validation.valid) {
       return Promise.reject(SkillErrEnum.invalidSkillPackage);
     }
 

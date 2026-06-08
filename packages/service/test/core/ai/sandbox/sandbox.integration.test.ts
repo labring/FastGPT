@@ -14,7 +14,13 @@ import { delay } from '@fastgpt/global/common/system/utils';
 
 const { Types } = connectionMongo;
 
-const hasSandboxEnv = !!process.env.AGENT_SANDBOX_PROVIDER;
+const hasSandboxEnv =
+  !!process.env.AGENT_SANDBOX_PROVIDER &&
+  (process.env.AGENT_SANDBOX_PROVIDER === 'e2b'
+    ? !!process.env.AGENT_SANDBOX_E2B_API_KEY
+    : process.env.AGENT_SANDBOX_PROVIDER === 'sealosdevbox'
+      ? !!process.env.AGENT_SANDBOX_SEALOS_BASEURL
+      : !!process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
 const runFullIntegration = process.env.SANDBOX_INTEGRATION_FULL === 'true';
 
 vi.mock('@fastgpt/service/env', () => ({

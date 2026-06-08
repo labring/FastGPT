@@ -12,6 +12,7 @@ import {
 } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo } from './types';
+import { serviceEnv } from '../../../../env';
 
 export type { DeployedSkillInfo } from './types';
 
@@ -189,6 +190,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     throw new Error(`Failed to create skill directories inside sandbox: ${mkdirResult.stderr}`);
   }
 
+  const maxPackageBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
   const results = await Promise.all(
     deployableSkills.map(async ({ skill, version, targetDir }) => {
       try {
@@ -197,6 +199,8 @@ export const injectAgentSkillFilesToSandbox = async ({
         const quotedTargetDir = shellQuote(targetDir);
         const unzipCommand = `(${[
           `cd ${quotedTargetDir}`,
+          `unzip -Z -t package.zip | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
+          `unzip -Z1 package.zip | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
           `unzip -o -q package.zip`,
           `rm -f package.zip`
         ].join(' && ')})`;

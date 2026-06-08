@@ -17,6 +17,7 @@ import {
   findSandboxResourcesByAppId,
   findSandboxResourcesByChatIds,
   findSkillRelatedSandboxResources,
+  isSandboxStillArchiving,
   markSandboxArchived,
   markSandboxArchiving,
   markSandboxRestored,
@@ -81,15 +82,6 @@ describe('sandbox instance helpers', () => {
     });
 
     expect(staleRecords.map((item) => String(item._id))).toEqual([String(oldProviderDoc._id)]);
-  });
-
-  it('builds lookup by sandbox id and object id', () => {
-    const objectId = String(new MongoSandboxInstance()._id);
-
-    expect(buildSandboxInstanceLookup('plain-id')).toEqual({ $or: [{ sandboxId: 'plain-id' }] });
-    expect(buildSandboxInstanceLookup(objectId)).toEqual({
-      $or: [{ sandboxId: objectId }, { _id: objectId }]
-    });
   });
 
   it('upserts running instance and supports common repository queries', async () => {
@@ -269,6 +261,14 @@ describe('sandbox instance helpers', () => {
         }
       }
     });
+    await expect(isSandboxStillArchiving(archiving!, inactiveBefore)).resolves.toBe(true);
+    await expect(
+      upsertRunningSandboxInstance({
+        provider: doc.provider,
+        sandboxId
+      })
+    ).resolves.toBeNull();
+
     await markSandboxArchived(doc);
     await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
       status: SandboxStatusEnum.stopped,
@@ -287,10 +287,15 @@ describe('sandbox instance helpers', () => {
     ).resolves.not.toContainEqual(expect.objectContaining({ sandboxId }));
 
     const restoringDoc = await markSandboxRestoring(doc);
-    expect(restoringDoc).toMatchObject({ provider: 'opensandbox' });
+    expect(restoringDoc).toMatchObject({
+      metadata: {
+        archive: {
+          state: 'restoring'
+        }
+      }
+    });
 
-    const restoredDoc = await markSandboxRestored(restoringDoc!, {
-      provider: 'sealosdevbox',
+    const restoredDoc = await markSandboxRestored(doc, {
       appId: doc.appId,
       userId: 'user-1',
       chatId: 'restore-provider-chat',
@@ -300,14 +305,14 @@ describe('sandbox instance helpers', () => {
     });
 
     expect(restoredDoc).toMatchObject({
-      provider: 'sealosdevbox',
+      provider: 'opensandbox',
       status: SandboxStatusEnum.running,
       metadata: {
         volumeEnabled: false
       }
     });
     const stored = await MongoSandboxInstance.findOne({ sandboxId }).lean();
-    expect(stored?.provider).toBe('sealosdevbox');
+    expect(stored?.provider).toBe('opensandbox');
     expect(stored?.metadata?.archive).toBeUndefined();
     expect(stored?.metadata?.provider).toBeUndefined();
     expect(stored?.storage).toBeUndefined();

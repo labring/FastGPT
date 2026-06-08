@@ -9,6 +9,7 @@ use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::protocol::{JsonRpcError, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
@@ -19,6 +20,15 @@ use crate::workspace::{
 const DEFAULT_EXCLUDED_NAMES: &[&str] = &["node_modules", ".git", ".next", "dist", "build", ".bun"];
 const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
+const DEFAULT_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+
+fn max_file_bytes() -> u64 {
+    std::env::var("FASTGPT_IDE_MAX_FILE_BYTES")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_MAX_FILE_BYTES)
+}
 
 fn default_exclude_names() -> HashSet<String> {
     DEFAULT_EXCLUDED_NAMES
@@ -199,8 +209,20 @@ async fn handle_read_file(params: Option<serde_json::Value>) -> Result<serde_jso
         .await
         .map_err(|e| e.to_string())?;
     let metadata = file.metadata().await.map_err(|e| e.to_string())?;
+    if metadata.is_dir() {
+        return Err("Cannot read a directory as a file".to_string());
+    }
 
-    let mut content_bytes = Vec::with_capacity(metadata.len() as usize);
+    let file_size = metadata.len();
+    let max_file_bytes = max_file_bytes();
+    if file_size > max_file_bytes {
+        return Err(format!(
+            "File is too large to read ({} bytes > {} bytes)",
+            file_size, max_file_bytes
+        ));
+    }
+
+    let mut content_bytes = Vec::with_capacity(file_size as usize);
     use tokio::io::AsyncReadExt;
     file.read_to_end(&mut content_bytes)
         .await
@@ -258,6 +280,14 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
     let raw_bytes = base64::engine::general_purpose::STANDARD
         .decode(content_b64)
         .map_err(|e| e.to_string())?;
+    let max_file_bytes = max_file_bytes();
+    if raw_bytes.len() as u64 > max_file_bytes {
+        return Err(format!(
+            "File is too large to write ({} bytes > {} bytes)",
+            raw_bytes.len(),
+            max_file_bytes
+        ));
+    }
 
     if let Some(parent) = clean_path.parent() {
         tokio::fs::create_dir_all(parent)
@@ -578,22 +608,43 @@ pub async fn handle_fs_session<S>(
 {
     let (mut ws_sink, mut ws_source) = ws_stream.split();
     let (outbound_tx, mut outbound_rx) = tokio::sync::mpsc::channel::<Message>(100);
+    let (close_tx, mut close_rx) = tokio::sync::oneshot::channel::<Option<CloseFrame>>();
     let _watcher = start_fs_watcher(outbound_tx.clone());
 
     let mut send_task = tokio::spawn(async move {
-        while let Some(message) = outbound_rx.recv().await {
-            if ws_sink.send(message).await.is_err() {
-                break;
+        loop {
+            tokio::select! {
+                biased;
+                close_reason = &mut close_rx => {
+                    if let Ok(frame) = close_reason {
+                        let _ = ws_sink.send(Message::Close(frame)).await;
+                    }
+                    break;
+                }
+                message = outbound_rx.recv() => {
+                    let Some(message) = message else {
+                        break;
+                    };
+                    if ws_sink.send(message).await.is_err() {
+                        break;
+                    }
+                }
             }
         }
     });
 
+    let mut close_tx = Some(close_tx);
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = ws_source.next().await {
             let text_opt = match msg {
                 Message::Text(t) => Some(t.to_string()),
                 Message::Binary(b) => String::from_utf8(b.to_vec()).ok(),
-                Message::Close(_) => break,
+                Message::Close(frame) => {
+                    if let Some(tx) = close_tx.take() {
+                        let _ = tx.send(frame);
+                    }
+                    break;
+                }
                 _ => None,
             };
 
@@ -621,8 +672,19 @@ pub async fn handle_fs_session<S>(
         _ = &mut recv_task => {},
     }
 
-    send_task.abort();
-    recv_task.abort();
+    if !send_task.is_finished() {
+        let _ = tokio::time::timeout(Duration::from_millis(200), &mut send_task).await;
+    }
+    if !recv_task.is_finished() {
+        let _ = tokio::time::timeout(Duration::from_millis(200), &mut recv_task).await;
+    }
+
+    if !send_task.is_finished() {
+        send_task.abort();
+    }
+    if !recv_task.is_finished() {
+        recv_task.abort();
+    }
 }
 
 #[cfg(test)]
@@ -692,9 +754,11 @@ mod tests {
         let tree_res = resp.result.unwrap();
         let files = tree_res.get("files").unwrap().as_array().unwrap();
         assert!(!files.is_empty());
-        let first_node = &files[0];
-        assert_eq!(first_node.get("name").unwrap().as_str(), Some("src_test"));
-        assert_eq!(first_node.get("type").unwrap().as_str(), Some("directory"));
+        let src_node = files
+            .iter()
+            .find(|node| node.get("name").and_then(|value| value.as_str()) == Some("src_test"))
+            .expect("src_test node should be present");
+        assert_eq!(src_node.get("type").unwrap().as_str(), Some("directory"));
 
         // 5. 测试非法方法名 (fs/invalid_method) - 应返回标准错误
         let invalid_req = JsonRpcRequest {
@@ -754,6 +818,17 @@ mod tests {
         let resp = handle_fs_request(move_req, "write").await;
         assert!(resp.result.is_none());
         assert!(resp.error.unwrap().message.contains("workspace root"));
+    }
+
+    #[test]
+    fn test_max_file_bytes_reads_positive_env() {
+        unsafe {
+            std::env::set_var("FASTGPT_IDE_MAX_FILE_BYTES", "2048");
+        }
+        assert_eq!(max_file_bytes(), 2048);
+        unsafe {
+            std::env::remove_var("FASTGPT_IDE_MAX_FILE_BYTES");
+        }
     }
 
     #[test]

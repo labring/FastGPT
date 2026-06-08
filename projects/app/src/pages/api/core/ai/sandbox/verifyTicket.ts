@@ -66,8 +66,7 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 }
 
 /**
- * 校验 Ticket 并实时置换返回 Sandbox 的真实内网/公网 Endpoint 物理寻址参数
- * 该接口属于 Proxy 反向向主站发起的高安全内部通道，实现对客户端 100% 隐藏内网网络拓扑
+ * 校验 proxy ticket，并返回 IDE Agent 的代理连接地址和一次性 agent 口令。
  */
 async function handler(req: ApiRequestProps) {
   const secret = authAgentSandboxProxy(req);
@@ -77,7 +76,6 @@ async function handler(req: ApiRequestProps) {
     querySchema: VerifyTicketQuerySchema
   }).query;
 
-  // 1. JWT 验签并解密租户凭证
   let decoded: z.infer<typeof SandboxTicketClaimsSchema>;
   try {
     decoded = SandboxTicketClaimsSchema.parse(jwt.verify(ticket, secret));
@@ -87,18 +85,12 @@ async function handler(req: ApiRequestProps) {
 
   const { appId, userId, chatId, teamId } = decoded;
 
-  // 2. 实时查询并确保沙盒处于可用拉起状态
   const sandbox = await getSandboxClient({ appId, userId, chatId, teamId });
-  const sandboxId = sandbox.getSandboxId();
   const agentPassword = await readIdeAgentPassword(sandbox);
 
-  // 3. 实时提取 Endpoint
   const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort());
 
   return {
-    sandbox_ip: endpoint.host,
-    sandbox_port: endpoint.port,
-    sandbox_id: sandboxId,
     sandbox_url: endpoint.url,
     agent_token: agentPassword
   };

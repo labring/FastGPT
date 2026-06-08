@@ -12,7 +12,8 @@ import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY || '/home/devbox/workspace';
 
-  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
+  const parsedDefaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
+  const defaultImage = parsedDefaultImage.repository ? parsedDefaultImage : undefined;
 
   return {
     provider: 'sealosdevbox',
@@ -22,8 +23,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
     skillsRootPath: getSandboxSkillsRootPath(workDirectory),
     buildConfig(input = {}) {
       const createConfig = input.createConfig ?? {};
-      const image =
-        input.image ?? createConfig.image ?? (defaultImage.repository ? defaultImage : undefined);
+      const image = input.image ?? createConfig.image ?? defaultImage;
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
 import {
   createSkillPackage,
   validateZipStructure,
   extractSkillPackage,
-  standardizeSkillPackageBySkillMdName,
-  JSZip
+  standardizeSkillPackageBySkillMdName
 } from '@fastgpt/service/core/ai/skill/package';
 
 describe('zipBuilder', () => {
@@ -159,6 +159,18 @@ ${largeMarkdown}`;
       expect(result.valid).toBe(false);
       expect(result.hasSkillMd).toBe(false);
       expect(result.error).toContain('SKILL.md');
+    });
+
+    it('should reject unsafe zip entry paths', async () => {
+      const zip = new JSZip();
+      zip.file('SKILL.md', '---\nname: test\n---');
+      zip.file('../escape.txt', 'escape');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateZipStructure(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Unsafe ZIP entry path');
     });
   });
 

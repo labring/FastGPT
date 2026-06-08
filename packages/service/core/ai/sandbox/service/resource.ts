@@ -23,7 +23,13 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
   const sandbox = buildSandboxResourceAdapter(resource);
 
   await sandbox.stop();
-  await markSandboxResourceStopped(resource);
+  const stoppedResult = await markSandboxResourceStopped(resource);
+  if (resource.lastActiveAt && stoppedResult?.matchedCount === 0) {
+    logger.warn('Skip marking sandbox stopped because record changed after stop', {
+      sandboxId: resource.sandboxId,
+      provider: resource.provider
+    });
+  }
 }
 
 /**
@@ -35,16 +41,6 @@ export async function deleteSandboxResource(
 ): Promise<void> {
   const sandbox = buildSandboxResourceAdapter(resource);
 
-  await getS3SandboxSource()
-    .deleteWorkspaceArchive({
-      sandboxId: resource.sandboxId
-    })
-    .catch((err) => {
-      logger.error('Failed to delete sandbox archive', {
-        sandboxId: resource.sandboxId,
-        error: err
-      });
-    });
   await sandbox.delete();
   if (!opts.keepVolume && resource.provider === 'opensandbox') {
     await deleteSessionVolume(resource.sandboxId).catch((err) => {
@@ -55,6 +51,16 @@ export async function deleteSandboxResource(
     });
   }
   await deleteSandboxResourceRecord(resource);
+  await getS3SandboxSource()
+    .deleteWorkspaceArchive({
+      sandboxId: resource.sandboxId
+    })
+    .catch((err) => {
+      logger.error('Failed to delete sandbox archive', {
+        sandboxId: resource.sandboxId,
+        error: err
+      });
+    });
 }
 
 /**

@@ -52,7 +52,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const [isDragging, setIsDragging] = useState(false);
-  const maxUploadBytes = feConfigs?.limit?.agentSkillMaxUploadBytes;
+  const maxUploadBytes = feConfigs?.limit?.agentSandboxArchiveMaxBytes;
   const { register, handleSubmit, setValue, watch } = useForm<ImportSkillFormType>({
     defaultValues: {
       name: '',

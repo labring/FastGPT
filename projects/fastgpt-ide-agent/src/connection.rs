@@ -3,10 +3,9 @@ use std::sync::Arc;
 use tokio::net::TcpStream;
 
 use crate::fs::handle_fs_session;
-use crate::terminal::handle_terminal_session;
-
 const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
+use crate::terminal::handle_terminal_session;
 
 fn ws_config() -> tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
     tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
@@ -17,22 +16,7 @@ fn ws_config() -> tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
 fn extract_token(
     req: &tokio_tungstenite::tungstenite::handshake::server::Request,
 ) -> Option<String> {
-    // 1. 尝试从 Query 提取
-    if let Some(query) = req.uri().query() {
-        let token = query.split('&').find_map(|p| {
-            let (key, value) = p.split_once('=')?;
-            (key == "token" || key == "access_token").then(|| value.to_string())
-        });
-        if token.is_some() {
-            return token;
-        }
-    }
-    // 2. 尝试从 Authorization Header 提取
-    req.headers()
-        .get(tokio_tungstenite::tungstenite::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .filter(|s| s.to_lowercase().starts_with("bearer "))
-        .map(|s| s[7..].to_string())
+    extract_query_value(req, "token")
 }
 
 fn extract_query_value(

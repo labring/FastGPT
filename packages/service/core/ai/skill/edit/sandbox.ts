@@ -2,8 +2,7 @@ import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
-import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT } from '../package';
-import { getSkillSizeLimits } from '../sandbox/config';
+import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT, validateZipStructure } from '../package';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import {
   getSandboxProviderConfig,
@@ -76,12 +75,9 @@ export async function createEditDebugSandbox(
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
   validateSandboxConfig(providerConfig);
 
-  const sandboxImage = image || runtimeProfile.defaultImage;
-
   addLog.info('[Sandbox] Creating edit-debug sandbox', {
     skillId,
-    teamId,
-    image: sandboxImage
+    teamId
   });
 
   const skill = await MongoAgentSkills.findOne({
@@ -122,7 +118,7 @@ export async function createEditDebugSandbox(
     runtime: true,
     sessionId,
     createConfig: {
-      image: sandboxImage,
+      ...(image ? { image } : {}),
       entrypoint,
       metadata: runtimeMetadata
     }
@@ -147,8 +143,10 @@ export async function createEditDebugSandbox(
   });
 
   const targetVersionId = currentVersion._id.toString();
-  const shouldUnzipFromS3 =
+  let shouldUnzipFromS3 =
     !existingInstance || existingInstance.metadata?.versionId !== targetVersionId;
+  const existingArchiveState = existingInstance?.metadata?.archive?.state;
+  const shouldRecoverArchivedInstance = existingArchiveState !== undefined;
 
   const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
     try {
@@ -188,6 +186,48 @@ export async function createEditDebugSandbox(
       sandbox = connected.sandbox;
 
       const existingMetadata = instance.metadata || {};
+      const workspaceHasContent = await hasWorkspaceContent(sandbox);
+      if (!workspaceHasContent) {
+        addLog.warn(
+          '[Sandbox] Existing edit-debug sandbox workspace is empty, redeploying package',
+          {
+            sandboxId: instance.sandboxId
+          }
+        );
+
+        onProgress?.({ sandboxId: instance.sandboxId, phase: 'downloadingPackage' });
+        const packageBuffer = await downloadSkillPackage({
+          storageKey: currentVersion.storageKey
+        });
+        await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
+
+        await updateSandboxInstanceRecordBySandboxId({
+          provider: providerConfig.provider,
+          sandboxId: instance.sandboxId,
+          appId: skillId,
+          userId: '',
+          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+          metadata: {
+            ...existingMetadata,
+            versionId: targetVersionId,
+            storage: {
+              key: currentVersion.storageKey,
+              uploadedAt: new Date()
+            }
+          }
+        });
+
+        onProgress?.({
+          sandboxId: instance.sandboxId,
+          phase: 'ready'
+        });
+
+        return {
+          sandboxId: instance.sandboxId,
+          status: { state: 'Running' }
+        };
+      }
+
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
@@ -213,6 +253,7 @@ export async function createEditDebugSandbox(
         stack: error instanceof Error ? error.stack : undefined
       });
 
+      shouldUnzipFromS3 = true;
       await forceCleanupStaleSandbox(instance);
       return null;
     } finally {
@@ -228,7 +269,15 @@ export async function createEditDebugSandbox(
     packageBuffer: Buffer
   ) => {
     onProgress?.({ sandboxId, phase: 'uploadingPackage' });
+    const prepareSkillsRootResult = await sandbox.execute(
+      `mkdir -p ${shellQuote(runtimeProfile.skillsRootPath)}`
+    );
+    if (prepareSkillsRootResult.exitCode !== 0) {
+      throw new Error(`Failed to prepare skill directory: ${prepareSkillsRootResult.stderr}`);
+    }
+
     const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
+    const maxPackageBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
 
     const writeResults = await sandbox.writeFiles([
       {
@@ -245,6 +294,8 @@ export async function createEditDebugSandbox(
 
     const unzipCmd = [
       `cd ${shellQuote(runtimeProfile.workDirectory)}`,
+      `unzip -Z -t ${shellQuote(zipPath)} | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
+      `unzip -Z1 ${shellQuote(zipPath)} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
       `unzip -o -q ${shellQuote(zipPath)} -d .`,
       `rm -f ${shellQuote(zipPath)}`,
       `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
@@ -254,6 +305,28 @@ export async function createEditDebugSandbox(
     if (extractResult.exitCode !== 0) {
       throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
     }
+  };
+
+  const cleanWorkspace = async (sandbox: ISandbox) => {
+    // 已有实例重部署时先清空工作区；保留挂载点本身，避免 volume 根目录权限问题。
+    const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
+
+    const cleanResult = await sandbox.execute(cleanCmd);
+    if (cleanResult.exitCode !== 0) {
+      throw new Error(`Failed to clean workspace processes and files: ${cleanResult.stderr}`);
+    }
+  };
+
+  const hasWorkspaceContent = async (sandbox: ISandbox): Promise<boolean> => {
+    const quotedWorkDirectory = shellQuote(runtimeProfile.workDirectory);
+    const result = await sandbox.execute(
+      `mkdir -p ${quotedWorkDirectory} && test -n "$(find ${quotedWorkDirectory} -mindepth 1 -print -quit 2>/dev/null)"`
+    );
+
+    if (result.exitCode === 0) return true;
+    if (result.exitCode === 1) return false;
+
+    throw new Error(`Failed to inspect workspace content: ${result.stderr || result.stdout}`);
   };
 
   const reloadExistingEditDebugSandbox = async (
@@ -273,13 +346,7 @@ export async function createEditDebugSandbox(
 
     onProgress?.({ sandboxId: instance.sandboxId, phase: 'deployingSkills' });
 
-    // 清空工作区目录，但不删除挂载点本身以防 Permission denied
-    const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
-
-    const cleanResult = await sandbox.execute(cleanCmd);
-    if (cleanResult.exitCode !== 0) {
-      throw new Error(`Failed to clean workspace processes and files: ${cleanResult.stderr}`);
-    }
+    await cleanWorkspace(sandbox);
 
     await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
 
@@ -313,7 +380,7 @@ export async function createEditDebugSandbox(
     };
   };
 
-  if (existingInstance) {
+  if (existingInstance && !shouldRecoverArchivedInstance) {
     // 切换历史版本或还原草稿时，如果版本不一致，且容器可用，直接在现有实例中执行热更新（清理 workspace 文件并重新 unzip）
     const existingVersionId = existingInstance.metadata?.versionId;
 
@@ -349,13 +416,19 @@ export async function createEditDebugSandbox(
         if (connectedSandbox) {
           try {
             await disconnectSandbox(connectedSandbox);
-          } catch (e) {}
+          } catch {}
         }
       }
     } else {
       const reusedSandbox = await reuseExistingEditDebugSandbox(existingInstance);
       if (reusedSandbox) return reusedSandbox;
     }
+  } else if (existingInstance) {
+    // 归档记录必须交给 runtime restore，不能按“远端容器不存在”清理，否则会删除 S3 归档并创建空 volume。
+    addLog.info('[Sandbox] Existing edit-debug sandbox is archived, restoring via runtime client', {
+      sandboxId: existingInstance.sandboxId,
+      archiveState: existingArchiveState
+    });
   }
 
   const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
@@ -421,7 +494,7 @@ export async function createEditDebugSandbox(
 
     const sandboxInfo = await getReadySandboxInfo(client.provider, {
       sandboxId: sessionId,
-      image: createConfig.image ?? sandboxImage,
+      image: createConfig.image,
       entrypoint: createConfig.entrypoint,
       status: client.provider.status
     });
@@ -440,6 +513,9 @@ export async function createEditDebugSandbox(
       const packageBuffer = await downloadSkillPackage({
         storageKey: currentVersion.storageKey
       });
+      if (existingInstance) {
+        await cleanWorkspace(client.provider);
+      }
       await uploadAndDecompressPackage(client.provider, sessionId, packageBuffer);
     } else {
       addLog.info(
@@ -462,7 +538,7 @@ export async function createEditDebugSandbox(
         tmbId,
         skillId,
         sessionId,
-        image: sandboxInfo.image,
+        ...(sandboxInfo.image ? { image: sandboxInfo.image } : {}),
         providerCreatedAt: sandboxInfo.createdAt,
         storage: {
           key: currentVersion.storageKey,
@@ -521,7 +597,7 @@ export async function packageSkillInSandbox(params: {
   workDirectory?: string;
 }): Promise<Buffer> {
   const { sandboxId, workDirectory } = params;
-  const { maxSandboxPackageBytes: maxBytes } = getSkillSizeLimits();
+  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
 
   const providerConfig = getSandboxProviderConfig();
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
@@ -568,23 +644,25 @@ export async function packageSkillInSandbox(params: {
     }
 
     const { customExcludes, pruneClause } = parseGitignoreRules(gitignoreContents);
-    const allExcludes = Array.from(new Set(['package.zip', ...customExcludes]));
+    const packageZipExcludes = ['package.zip', '*/package.zip'];
+    const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
+    const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
     const sizeCheckCmd = pruneClause
-      ? `cd ${quotedTargetDir} && find . \\( ${pruneClause} \\) -prune -o -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
-      : `cd ${quotedTargetDir} && find . -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
+      ? `cd ${quotedTargetDir} && find . \\( ${pruneClause} \\) -prune -o -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
+      : `cd ${quotedTargetDir} && find . -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
     const sizeResult = await newSandbox.execute(sizeCheckCmd);
 
     if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
       const dirBytes = parseInt(sizeResult.stdout.trim(), 10);
       if (!isNaN(dirBytes) && dirBytes > maxBytes) {
         throw new Error(
-          `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
+          `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
         );
       }
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `cd ${quotedTargetDir} && zip -r package.zip . ${excludeArgs}`;
+    const zipCommand = `cd ${quotedTargetDir} && zip -r -y package.zip . ${excludeArgs}`;
     const zipResult = await newSandbox.execute(zipCommand);
 
     if (zipResult.exitCode !== 0) {
@@ -604,7 +682,23 @@ export async function packageSkillInSandbox(params: {
       }
 
       const content = file.content;
-      return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
+      const zipBuffer = Buffer.from(
+        content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8')
+      );
+      if (zipBuffer.length > maxBytes) {
+        throw new Error(
+          `Skill package size (${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
+        );
+      }
+
+      const validation = await validateZipStructure(zipBuffer, {
+        maxUncompressedBytes: maxBytes
+      });
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Invalid skill package structure');
+      }
+
+      return zipBuffer;
     } finally {
       await newSandbox.execute(`rm -f ${shellQuote(zipFilePath)}`).catch((cleanupError) => {
         addLog.warn('[Sandbox] Failed to cleanup package zip', {

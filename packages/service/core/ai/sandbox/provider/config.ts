@@ -40,6 +40,14 @@ function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
 }
 
+export function getConfiguredSandboxProvider(): SandboxProviderType {
+  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+  if (!provider) {
+    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+  }
+  return provider;
+}
+
 /**
  * 获取当前或指定 provider 的连接配置。
  *
@@ -47,7 +55,7 @@ function assertNever(value: never): never {
  * 适合权限校验、历史资源查询等只需要 provider 名称的场景。
  */
 export function getSandboxProviderConfig(
-  provider: SandboxProviderType = serviceEnv.AGENT_SANDBOX_PROVIDER
+  provider: SandboxProviderType = getConfiguredSandboxProvider()
 ): SandboxProviderConfig {
   return getSandboxAdapterConfig({ provider }).providerConfig;
 }
@@ -86,7 +94,7 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
  * SandboxRuntimeProfile.buildConfig，避免这里再散落 provider 运行时分支。
  */
 export function getSandboxAdapterConfig({
-  provider = serviceEnv.AGENT_SANDBOX_PROVIDER,
+  provider = getConfiguredSandboxProvider(),
   runtime = false,
   resourceLimits,
   vmConfig,
@@ -106,7 +114,8 @@ export function getSandboxAdapterConfig({
       ? buildBaseSandboxRuntimeEnv({
           sessionId,
           workDirectory: profile.workDirectory,
-          ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR
+          ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR,
+          ideAgentMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024
         })
       : undefined;
 
@@ -130,8 +139,8 @@ export function getSandboxAdapterConfig({
               createConfig,
               entrypoint: createConfig?.entrypoint ?? (profile.entrypoint || undefined),
               env: {
-                ...baseEnv,
-                ...createConfig?.env
+                ...createConfig?.env,
+                ...baseEnv
               }
             })
           : undefined
@@ -153,8 +162,8 @@ export function getSandboxAdapterConfig({
               createConfig,
               sessionId,
               env: {
-                ...baseEnv,
-                ...createConfig?.env
+                ...createConfig?.env,
+                ...baseEnv
               }
             })
           : undefined

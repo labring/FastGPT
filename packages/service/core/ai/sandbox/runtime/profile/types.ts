@@ -27,11 +27,11 @@ export type SandboxRuntimeCreateConfigInput = {
  * FastGPT 对某个 sandbox provider 的运行态契约。
  *
  * provider 连接认证仍由 provider/config.ts 负责；这里只维护工作目录、技能根目录、
- * 默认镜像、入口脚本，以及统一 createConfig 到 provider create spec 的转换。
+ * 可选默认镜像、入口脚本，以及统一 createConfig 到 provider create spec 的转换。
  */
 export type SandboxRuntimeProfile = {
   provider: SandboxProviderType;
-  defaultImage: SandboxImageConfigType;
+  defaultImage?: SandboxImageConfigType;
   workDirectory: string;
   entrypoint: string;
   skillsRootPath: string;

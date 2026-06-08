@@ -31,6 +31,11 @@ const SkillPreview = () => {
   const ModelSelectorInput = useMemo(() => {
     return (
       <ChatAIModelSelector
+        h={'36px'}
+        boxShadow={'none'}
+        size={'sm'}
+        bg={'myGray.50'}
+        rounded={'10px'}
         value={selectedModel}
         list={modelSelectList}
         onChange={(val) => setSelectedModel(val)}

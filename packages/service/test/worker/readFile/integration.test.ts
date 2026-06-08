@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
+import JSZip from 'jszip';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import XLSX from 'xlsx';
-import { JSZip } from '@fastgpt/service/core/ai/skill/package';
 
 const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
   mockUploadImage2S3Bucket: vi.fn()

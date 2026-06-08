@@ -7,9 +7,6 @@ use tracing::{debug, error};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SandboxAddress {
-    pub sandbox_ip: String,
-    pub sandbox_port: Option<u16>,
-    pub sandbox_id: String,
     pub sandbox_url: Option<String>,
     pub agent_token: Option<String>,
 }
@@ -131,7 +128,7 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
         return Err(format!("Ticket rejected by App: {}", err_text));
     }
 
-    // 4. 反序列化置换出的真实物理地址 (兼容 FastGPT 标准 API 返回包裹格式)
+    // 4. 反序列化 FastGPT 标准 API 响应包裹。
     let app_res = response
         .json::<AppResponse<SandboxAddress>>()
         .await
@@ -149,10 +146,7 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
 
     let address = app_res.data;
 
-    debug!(
-        "[Auth] Ticket resolved successfully. target_ip: {}",
-        address.sandbox_ip
-    );
+    debug!("[Auth] Ticket resolved successfully.");
     Ok(address)
 }
 

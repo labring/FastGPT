@@ -45,8 +45,11 @@ describe('sandbox keepalive API', () => {
   });
 
   it('refreshes runtime sandbox without triggering archived restore', async () => {
-    await handler(createReq(), createRes());
+    const req = createReq();
 
+    await handler(req, createRes());
+
+    expect(mocks.authAgentSandboxProxy).toHaveBeenCalledWith(req);
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
       {
         appId: 'app-1',

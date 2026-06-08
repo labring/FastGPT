@@ -1,4 +1,3 @@
-import { serviceEnv } from '../../../../env';
 import {
   createSandbox,
   type ISandbox,
@@ -35,7 +34,6 @@ export function buildSandboxAdapter(
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
           useServerProxy: providerConfig.useServerProxy,
-          replaceDockerInternalWithLocalhost: serviceEnv.AGENT_SANDBOX_REPLACE_DOCKER_INTERNAL,
           sessionId: props.sandboxId
         },
         props.createConfig

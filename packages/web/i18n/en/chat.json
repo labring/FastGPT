@@ -189,7 +189,6 @@
   "sandbox_upload_too_large_desc": "{{name}} exceeds the {{size}} MB upload limit.",
   "sandbox_uploading": "Uploading...",
   "sandbox_video_not_supported": "Your browser does not support video playback.",
-  "sandox.files": "Sandbox files",
   "search_results": "Search results",
   "select": "Select",
   "select_file": "Upload File",

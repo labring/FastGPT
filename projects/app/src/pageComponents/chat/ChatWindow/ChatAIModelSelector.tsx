@@ -53,7 +53,7 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} gap={1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} gap={1} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>

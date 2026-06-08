@@ -53,16 +53,19 @@ export const normalizeEntrypoint = (entrypoint?: string | string[]) => {
 export function buildBaseSandboxRuntimeEnv({
   sessionId,
   workDirectory,
-  ideAgentBindAddr
+  ideAgentBindAddr,
+  ideAgentMaxFileBytes
 }: {
   sessionId: string;
   workDirectory: string;
   ideAgentBindAddr: string;
+  ideAgentMaxFileBytes: number;
 }): Record<string, string> {
   return {
     FASTGPT_SESSION_ID: sessionId,
     FASTGPT_WORKDIR: workDirectory,
     IDE_AGENT_ENABLED: 'true',
-    IDE_AGENT_BIND_ADDR: ideAgentBindAddr
+    IDE_AGENT_BIND_ADDR: ideAgentBindAddr,
+    FASTGPT_IDE_MAX_FILE_BYTES: String(ideAgentMaxFileBytes)
   };
 }

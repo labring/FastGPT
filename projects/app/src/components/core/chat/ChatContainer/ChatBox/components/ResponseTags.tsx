@@ -215,10 +215,7 @@ const ResponseTags = ({
   const durationSeconds = historyItem.durationSeconds || 0;
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
-  const {
-    totalQuoteList: quoteList = [],
-    toolCiteLinks = [],
-  } = useMemo(() => {
+  const { totalQuoteList: quoteList = [], toolCiteLinks = [] } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
       ...(!isShowCite

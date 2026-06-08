@@ -1,9 +1,11 @@
 use std::env;
 use std::io::{Read, Write};
 use std::thread;
+use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::workspace::get_workspace_root;
@@ -60,7 +62,9 @@ where
 
     let (mut ws_sink, mut ws_source) = ws_stream.split();
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(100);
+    let (outbound_tx, mut rx) = tokio::sync::mpsc::channel::<Message>(100);
+    let (close_tx, mut close_rx) = tokio::sync::oneshot::channel::<Option<CloseFrame>>();
+    let pty_tx = outbound_tx.clone();
     // PTY reader 是长生命周期阻塞循环，使用专用 OS 线程，避免占用 Tokio blocking pool。
     thread::spawn(move || {
         let mut buffer = [0u8; 4096];
@@ -68,7 +72,10 @@ where
             match pty_reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
-                    if tx.blocking_send(buffer[..n].to_vec()).is_err() {
+                    if pty_tx
+                        .blocking_send(Message::Binary(buffer[..n].to_vec().into()))
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -81,13 +88,28 @@ where
     let master = pair.master;
 
     let mut send_task = tokio::spawn(async move {
-        while let Some(bytes) = rx.recv().await {
-            if ws_sink.send(Message::Binary(bytes.into())).await.is_err() {
-                break;
+        loop {
+            tokio::select! {
+                biased;
+                close_reason = &mut close_rx => {
+                    if let Ok(frame) = close_reason {
+                        let _ = ws_sink.send(Message::Close(frame)).await;
+                    }
+                    break;
+                }
+                message = rx.recv() => {
+                    let Some(message) = message else {
+                        break;
+                    };
+                    if ws_sink.send(message).await.is_err() {
+                        break;
+                    }
+                }
             }
         }
     });
 
+    let mut close_tx = Some(close_tx);
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = ws_source.next().await {
             match msg {
@@ -113,7 +135,12 @@ where
                     }
                     let _ = pty_writer.flush();
                 }
-                Message::Close(_) => break,
+                Message::Close(frame) => {
+                    if let Some(tx) = close_tx.take() {
+                        let _ = tx.send(frame);
+                    }
+                    break;
+                }
                 _ => {}
             }
         }
@@ -124,8 +151,19 @@ where
         _ = &mut recv_task => {},
     }
 
-    send_task.abort();
-    recv_task.abort();
+    if !send_task.is_finished() {
+        let _ = tokio::time::timeout(Duration::from_millis(200), &mut send_task).await;
+    }
+    if !recv_task.is_finished() {
+        let _ = tokio::time::timeout(Duration::from_millis(200), &mut recv_task).await;
+    }
+
+    if !send_task.is_finished() {
+        send_task.abort();
+    }
+    if !recv_task.is_finished() {
+        recv_task.abort();
+    }
 
     // 回收子进程资源以杜绝僵尸进程，触发 PTY Reader 的 EOF 以正常退出阻塞线程
     let _ = child.kill();

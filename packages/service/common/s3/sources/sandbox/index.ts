@@ -1,6 +1,6 @@
 import type { Readable } from 'node:stream';
-import streamConsumer from 'node:stream/consumers';
 import { S3PrivateBucket } from '../../buckets/private';
+import { readStreamToBuffer } from '../../utils';
 
 const SANDBOX_WORKSPACE_ARCHIVE_FILENAME = 'package.zip';
 
@@ -24,10 +24,24 @@ export class S3SandboxSource extends S3PrivateBucket {
     });
   }
 
-  async downloadWorkspaceArchive(params: { sandboxId: string }): Promise<Buffer> {
+  async downloadWorkspaceArchive(params: {
+    sandboxId: string;
+    maxBytes?: number;
+  }): Promise<Buffer> {
     const key = getWorkspaceArchiveKey(params.sandboxId);
     const response = await this.client.downloadObject({ key });
-    return streamConsumer.buffer(response.body);
+    if (!response.body) {
+      throw new Error(`Failed to download sandbox archive: ${params.sandboxId}`);
+    }
+
+    return readStreamToBuffer({
+      stream: response.body,
+      maxBytes: params.maxBytes,
+      exceededMessage:
+        params.maxBytes === undefined
+          ? undefined
+          : `Sandbox archive exceeds maximum allowed size (${params.maxBytes} bytes)`
+    });
   }
 
   deleteWorkspaceArchive(params: { sandboxId: string }) {

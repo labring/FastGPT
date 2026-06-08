@@ -173,8 +173,17 @@ export const MultipleRowSelect = ({
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
   const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
 
+  const [menuWidth, setMenuWidth] = useState(0);
+  const [buttonWidth, setButtonWidth] = useState<number | undefined>();
+
   useEffect(() => {
     if (isOpen) {
+      if (MenuRef.current?.[0]) {
+        setMenuWidth(MenuRef.current[0].offsetWidth);
+      }
+      if (ButtonRef.current) {
+        setButtonWidth(ButtonRef.current.clientWidth);
+      }
       for (let i = 0; i < MenuRef.current.length; i++) {
         const menu = MenuRef.current[i];
         const selectedItem = SelectedItemRef.current[i];
@@ -185,7 +194,7 @@ export const MultipleRowSelect = ({
     }
   }, [isOpen]);
 
-  const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
+  const minWidth = `${menuWidth || 0}px`;
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -240,9 +249,8 @@ export const MultipleRowSelect = ({
         <MenuList
           className={ButtonProps?.className}
           minW={(() => {
-            const w = ButtonRef.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
+            if (buttonWidth) {
+              return `${buttonWidth}px !important`;
             }
 
             const width = ButtonProps?.width;

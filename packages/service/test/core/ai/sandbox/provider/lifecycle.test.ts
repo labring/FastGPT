@@ -335,15 +335,14 @@ describe('sandbox provider lifecycle', () => {
     });
     mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
 
-    await expect(
-      connectReadySandboxByInstance(sealosConfig, { sandboxId: 'stable-session-id' })
-    ).resolves.toMatchObject({
-      sandboxInfo: {
-        id: 'provider-sandbox-id',
-        status: { state: 'Running' },
-        image: { repository: '' }
-      }
+    const connected = await connectReadySandboxByInstance(sealosConfig, {
+      sandboxId: 'stable-session-id'
     });
+    expect(connected.sandboxInfo).toMatchObject({
+      id: 'provider-sandbox-id',
+      status: { state: 'Running' }
+    });
+    expect(connected.sandboxInfo).not.toHaveProperty('image');
 
     expect(sandbox.ensureRunning).toHaveBeenCalledTimes(1);
     expect(sandbox.waitUntilReady).toHaveBeenCalledTimes(1);

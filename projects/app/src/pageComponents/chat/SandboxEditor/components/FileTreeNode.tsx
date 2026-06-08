@@ -109,6 +109,7 @@ const FileTreeNode = ({
             setSelectedPath(node.path);
             openFile(node.path);
           } else {
+            setSelectedPath(node.path);
             toggleDirectory(node);
           }
         }}
@@ -227,6 +228,7 @@ const RenameInput = ({
 }) => {
   const [value, setValue] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -246,6 +248,8 @@ const RenameInput = ({
   }, [initialName, type]);
 
   const handleSubmit = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const trimmed = value.trim();
     if (!trimmed || trimmed === initialName) {
       onCancel();
@@ -273,8 +277,12 @@ const RenameInput = ({
       onBlur={handleSubmit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
+          e.preventDefault();
           handleSubmit();
         } else if (e.key === 'Escape') {
+          e.preventDefault();
+          if (finishedRef.current) return;
+          finishedRef.current = true;
           onCancel();
         }
       }}
@@ -297,6 +305,7 @@ export const InlineCreateNode = ({
 }) => {
   const [val, setVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -306,6 +315,8 @@ export const InlineCreateNode = ({
   }, []);
 
   const handleSubmit = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const trimmed = val.trim();
     if (!trimmed) {
       onCancel();
@@ -368,8 +379,12 @@ export const InlineCreateNode = ({
         onBlur={handleSubmit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
+            e.preventDefault();
             handleSubmit();
           } else if (e.key === 'Escape') {
+            e.preventDefault();
+            if (finishedRef.current) return;
+            finishedRef.current = true;
             onCancel();
           }
         }}

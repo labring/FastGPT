@@ -9,14 +9,16 @@ type Props = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  canWrite?: boolean;
 };
 
-const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData }: Props) => {
+const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData, canWrite = true }: Props) => {
   // 1. 挂载逻辑自适应终端 Hook
   const { containerRef } = useInteractiveTerminal({
     appId,
     chatId,
-    outLinkAuthData
+    outLinkAuthData,
+    canWrite
   });
 
   return (

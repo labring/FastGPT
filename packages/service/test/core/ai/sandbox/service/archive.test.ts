@@ -9,6 +9,7 @@ const archiveMocks = vi.hoisted(() => ({
   },
   uploadWorkspaceArchive: vi.fn(),
   downloadWorkspaceArchive: vi.fn(),
+  deleteWorkspaceArchive: vi.fn(),
   getSandboxAdapterConfig: vi.fn(),
   connectToSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
@@ -16,15 +17,15 @@ const archiveMocks = vi.hoisted(() => ({
   getSessionVolumeConfig: vi.fn(),
   deleteSessionVolume: vi.fn(),
   clearSandboxArchiveState: vi.fn(),
-  findSandboxArchiveStateBySandboxId: vi.fn(),
   findSandboxInstanceArchiveState: vi.fn(),
   findSandboxResourcesToArchive: vi.fn(),
+  isSandboxStillArchiving: vi.fn(),
   markSandboxArchived: vi.fn(),
   markSandboxArchiving: vi.fn(),
   markSandboxRestored: vi.fn(),
   markSandboxRestoring: vi.fn(),
-  rollbackSandboxRestoring: vi.fn(),
   markSandboxResourceStopped: vi.fn(),
+  rollbackSandboxRestoring: vi.fn(),
   buildSandboxResourceAdapter: vi.fn()
 }));
 
@@ -42,7 +43,8 @@ vi.mock('@fastgpt/service/common/logger', () => ({
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   getS3SandboxSource: () => ({
     uploadWorkspaceArchive: archiveMocks.uploadWorkspaceArchive,
-    downloadWorkspaceArchive: archiveMocks.downloadWorkspaceArchive
+    downloadWorkspaceArchive: archiveMocks.downloadWorkspaceArchive,
+    deleteWorkspaceArchive: archiveMocks.deleteWorkspaceArchive
   })
 }));
 
@@ -66,15 +68,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   clearSandboxArchiveState: archiveMocks.clearSandboxArchiveState,
-  findSandboxArchiveStateBySandboxId: archiveMocks.findSandboxArchiveStateBySandboxId,
   findSandboxInstanceArchiveState: archiveMocks.findSandboxInstanceArchiveState,
   findSandboxResourcesToArchive: archiveMocks.findSandboxResourcesToArchive,
+  isSandboxStillArchiving: archiveMocks.isSandboxStillArchiving,
   markSandboxArchived: archiveMocks.markSandboxArchived,
   markSandboxArchiving: archiveMocks.markSandboxArchiving,
   markSandboxRestored: archiveMocks.markSandboxRestored,
   markSandboxRestoring: archiveMocks.markSandboxRestoring,
-  rollbackSandboxRestoring: archiveMocks.rollbackSandboxRestoring,
-  markSandboxResourceStopped: archiveMocks.markSandboxResourceStopped
+  markSandboxResourceStopped: archiveMocks.markSandboxResourceStopped,
+  rollbackSandboxRestoring: archiveMocks.rollbackSandboxRestoring
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
@@ -86,7 +88,7 @@ import {
   restoreArchivedSandboxBeforeUse
 } from '@fastgpt/service/core/ai/sandbox/service/archive';
 
-const archiveNow = new Date('2026-02-10T00:00:00.000Z');
+const inactiveBefore = new Date('2026-02-03T00:00:00.000Z');
 
 const createResource = (overrides: Partial<any> = {}) => ({
   _id: 'resource-id',
@@ -123,6 +125,7 @@ const createSandbox = () =>
         error: null
       }
     ]),
+    stop: vi.fn(async () => undefined),
     deleteFiles: vi.fn(async () => [
       {
         path: '/workspace/.fastgpt-sandbox-archive.zip',
@@ -149,15 +152,24 @@ describe('sandbox archive service', () => {
     archiveMocks.deleteSessionVolume.mockResolvedValue(undefined);
     archiveMocks.uploadWorkspaceArchive.mockResolvedValue(undefined);
     archiveMocks.downloadWorkspaceArchive.mockResolvedValue(Buffer.from('zip'));
+    archiveMocks.deleteWorkspaceArchive.mockReturnValue(undefined);
     archiveMocks.disconnectSandbox.mockResolvedValue(undefined);
     archiveMocks.clearSandboxArchiveState.mockResolvedValue(undefined);
-    archiveMocks.findSandboxArchiveStateBySandboxId.mockResolvedValue(null);
     archiveMocks.markSandboxArchived.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    archiveMocks.isSandboxStillArchiving.mockResolvedValue(true);
     archiveMocks.markSandboxRestored.mockImplementation(async (resource, params) => ({
       ...resource,
       ...params,
       metadata: {
         volumeEnabled: params.metadata?.volumeEnabled
+      }
+    }));
+    archiveMocks.markSandboxRestoring.mockImplementation(async (resource) => ({
+      ...resource,
+      metadata: {
+        archive: {
+          state: 'restoring'
+        }
       }
     }));
     archiveMocks.rollbackSandboxRestoring.mockResolvedValue(undefined);
@@ -168,7 +180,7 @@ describe('sandbox archive service', () => {
     });
   });
 
-  it('archives via provider lifecycle and deletes remote resource only after second inactive check', async () => {
+  it('archives via provider lifecycle, deletes remote resource, then exposes archived state', async () => {
     const resource = createResource();
     const sandbox = createSandbox();
     const remoteResource = { delete: vi.fn(async () => undefined), stop: vi.fn() };
@@ -177,20 +189,57 @@ describe('sandbox archive service', () => {
     archiveMocks.findSandboxInstanceArchiveState.mockResolvedValue(resource);
     archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
 
-    await archiveSandboxResource(resource, archiveNow);
+    await archiveSandboxResource(resource, inactiveBefore);
 
-    expect(archiveMocks.connectToSandbox).toHaveBeenCalledWith(
-      { provider: 'opensandbox' },
-      resource.sandboxId,
-      { image: { repository: 'image' } }
-    );
     expect(archiveMocks.uploadWorkspaceArchive).toHaveBeenCalledWith({
       sandboxId: resource.sandboxId,
       body: Buffer.from('zip-content')
     });
+    expect(archiveMocks.isSandboxStillArchiving).toHaveBeenCalledWith(resource, inactiveBefore);
     expect(remoteResource.delete).toHaveBeenCalledTimes(1);
-    expect(archiveMocks.deleteSessionVolume).toHaveBeenCalledWith(resource.sandboxId);
     expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(resource);
+  });
+
+  it('clears archiving state so cron can retry when remote cleanup fails', async () => {
+    const resource = createResource();
+    const sandbox = createSandbox();
+    const remoteResource = {
+      delete: vi.fn(async () => Promise.reject(new Error('delete failed'))),
+      stop: vi.fn()
+    };
+    archiveMocks.markSandboxArchiving.mockResolvedValue(resource);
+    archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
+
+    const result = await archiveSandboxResource(resource, inactiveBefore);
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'Failed to delete remote resource: delete failed'
+    });
+    expect(remoteResource.delete).toHaveBeenCalledTimes(1);
+    expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
+    expect(archiveMocks.clearSandboxArchiveState).toHaveBeenCalledWith(resource);
+    expect(remoteResource.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not clear archive state after remote resource has been deleted', async () => {
+    const resource = createResource();
+    const sandbox = createSandbox();
+    const remoteResource = { delete: vi.fn(async () => undefined), stop: vi.fn() };
+    archiveMocks.markSandboxArchiving.mockResolvedValue(resource);
+    archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
+    archiveMocks.markSandboxArchived.mockRejectedValueOnce(new Error('mongo failed'));
+
+    const result = await archiveSandboxResource(resource, inactiveBefore);
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'mongo failed'
+    });
+    expect(remoteResource.delete).toHaveBeenCalledTimes(1);
+    expect(archiveMocks.clearSandboxArchiveState).not.toHaveBeenCalled();
   });
 
   it('aborts cleanup when second inactive check detects user activity', async () => {
@@ -199,78 +248,100 @@ describe('sandbox archive service', () => {
     const remoteResource = { delete: vi.fn(), stop: vi.fn(async () => undefined) };
     archiveMocks.markSandboxArchiving.mockResolvedValue(resource);
     archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.isSandboxStillArchiving.mockResolvedValue(false);
     archiveMocks.findSandboxInstanceArchiveState.mockResolvedValue({
       ...resource,
-      lastActiveAt: new Date('2026-02-09T00:00:00.000Z')
+      lastActiveAt: new Date('2026-02-04T00:00:00.000Z')
     });
     archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
 
-    await archiveSandboxResource(resource, archiveNow);
+    await archiveSandboxResource(resource, inactiveBefore);
 
     expect(archiveMocks.clearSandboxArchiveState).toHaveBeenCalledWith(resource);
-    expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
+    expect(archiveMocks.deleteWorkspaceArchive).toHaveBeenCalledWith({
+      sandboxId: resource.sandboxId
+    });
+    expect(archiveMocks.isSandboxStillArchiving).toHaveBeenCalledWith(resource, inactiveBefore);
     expect(remoteResource.delete).not.toHaveBeenCalled();
     expect(remoteResource.stop).not.toHaveBeenCalled();
+    expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
   });
 
-  it('restores archive from an old provider record into the current provider', async () => {
-    const oldProviderResource = createResource({
-      provider: 'opensandbox',
+  it('restores archive from the current provider record before runtime use', async () => {
+    const archivedResource = createResource({
       metadata: {
         archive: {
           state: 'archived'
         }
       }
     });
-    const restoringDoc = {
-      ...oldProviderResource,
-      metadata: {
-        archive: {
-          state: 'restoring'
-        }
-      }
-    };
     const sandbox = createSandbox();
-    archiveMocks.findSandboxInstanceArchiveState.mockResolvedValue(null);
-    archiveMocks.findSandboxArchiveStateBySandboxId.mockResolvedValue(oldProviderResource);
-    archiveMocks.markSandboxRestoring.mockResolvedValue(restoringDoc);
+    archiveMocks.findSandboxInstanceArchiveState.mockResolvedValue(archivedResource);
     archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
 
     await restoreArchivedSandboxBeforeUse({
-      provider: 'sealosdevbox',
-      sandboxId: oldProviderResource.sandboxId,
+      provider: 'opensandbox',
+      sandboxId: archivedResource.sandboxId,
       appId: 'app-1',
       userId: 'user-1',
       chatId: 'chat-1'
     });
 
-    expect(archiveMocks.findSandboxArchiveStateBySandboxId).toHaveBeenCalledWith(
-      oldProviderResource.sandboxId
-    );
-    expect(archiveMocks.markSandboxRestoring).toHaveBeenCalledWith({
-      provider: 'opensandbox',
-      sandboxId: oldProviderResource.sandboxId,
-      _id: oldProviderResource._id
-    });
-    expect(archiveMocks.getSandboxAdapterConfig).toHaveBeenCalledWith(
+    expect(archiveMocks.downloadWorkspaceArchive).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'sealosdevbox'
+        sandboxId: archivedResource.sandboxId
       })
     );
-    expect(archiveMocks.downloadWorkspaceArchive).toHaveBeenCalledWith({
-      sandboxId: oldProviderResource.sandboxId
-    });
+    expect(sandbox.writeFiles).toHaveBeenCalledWith([
+      {
+        path: '/workspace/.fastgpt-sandbox-restore.zip',
+        data: Buffer.from('zip')
+      }
+    ]);
+    expect(archiveMocks.markSandboxRestoring).toHaveBeenCalledWith(archivedResource);
     expect(archiveMocks.markSandboxRestored).toHaveBeenCalledWith(
-      restoringDoc,
       expect.objectContaining({
-        provider: 'sealosdevbox',
+        sandboxId: archivedResource.sandboxId,
+        metadata: {
+          archive: {
+            state: 'restoring'
+          }
+        }
+      }),
+      expect.objectContaining({
         appId: 'app-1',
         userId: 'user-1',
         chatId: 'chat-1',
+        storage: { mountPath: '/workspace' },
         metadata: {
-          volumeEnabled: false
+          volumeEnabled: true
         }
       })
     );
+  });
+
+  it('stops restored sandbox and rejects when the archive record is deleted during restore', async () => {
+    const archivedResource = createResource({
+      metadata: {
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+    const sandbox = createSandbox();
+    archiveMocks.findSandboxInstanceArchiveState
+      .mockResolvedValueOnce(archivedResource)
+      .mockResolvedValueOnce(null);
+    archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.markSandboxRestored.mockResolvedValueOnce(null);
+
+    await expect(
+      restoreArchivedSandboxBeforeUse({
+        provider: 'opensandbox',
+        sandboxId: archivedResource.sandboxId
+      })
+    ).rejects.toThrow('Sandbox archive record was deleted during restore');
+
+    expect(sandbox.stop).toHaveBeenCalledTimes(1);
   });
 });

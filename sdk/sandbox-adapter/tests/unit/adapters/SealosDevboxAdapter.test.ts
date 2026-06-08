@@ -533,6 +533,7 @@ describe('SealosDevboxAdapter', () => {
   it('should download file through SealosDevbox api.downloadFile', async () => {
     const fileContent = new TextEncoder().encode('downloaded content');
     const fetchMock = vi.fn(async () => ({
+      ok: true,
       arrayBuffer: async () => fileContent.buffer
     }));
     vi.stubGlobal('fetch', fetchMock);

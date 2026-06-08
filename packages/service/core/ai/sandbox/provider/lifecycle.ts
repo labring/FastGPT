@@ -134,7 +134,7 @@ export async function getReadySandboxInfo(
   sandbox: ISandbox,
   fallback: {
     sandboxId: string;
-    image: SandboxInfo['image'];
+    image?: SandboxInfo['image'];
     entrypoint?: SandboxInfo['entrypoint'];
     status?: SandboxInfo['status'];
     createdAt?: SandboxInfo['createdAt'];
@@ -153,7 +153,7 @@ export async function getReadySandboxInfo(
 
   return {
     id: sandbox.id ?? fallback.sandboxId,
-    image: fallback.image,
+    ...(fallback.image ? { image: fallback.image } : {}),
     entrypoint: fallback.entrypoint ?? [],
     status: fallback.status ?? sandbox.status,
     createdAt: fallback.createdAt ?? new Date()
@@ -180,7 +180,6 @@ export async function connectReadySandboxByInstance(
   try {
     const sandboxInfo = await getReadySandboxInfo(sandbox, {
       sandboxId: instance.sandboxId,
-      image: { repository: '' },
       status: sandbox.status
     });
     return {

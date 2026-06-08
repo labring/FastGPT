@@ -73,6 +73,7 @@ const EditorWorkspace = ({
   const [workspaceHeight, setWorkspaceHeight] = useState<number>(0);
   const [terminalHeight, setTerminalHeight] = useState<number>(200);
   const hasInitializedHeight = useRef(false);
+  const canUseTerminal = showTerminalBtn && canWrite;
 
   useEffect(() => {
     if (!workspaceRef.current) return;
@@ -282,7 +283,7 @@ const EditorWorkspace = ({
         flexDirection="column"
       >
         {mainEditorNode}
-        {showTerminalBtn && (
+        {canUseTerminal && (
           <Box
             h={showTerminal ? `${terminalHeight}px` : '40px'}
             w="100%"
@@ -334,21 +335,11 @@ const EditorWorkspace = ({
                   variant="unstyled"
                   aria-label="Toggle Terminal"
                   icon={
-                    <Box
-                      as="svg"
-                      width="8px"
-                      height="10px"
-                      viewBox="0 0 8 10"
-                      fill="none"
-                      transform={showTerminal ? 'none' : 'rotate(180deg)'}
-                      transition="transform 0.15s"
+                    <MyIcon
+                      name={showTerminal ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                      w="14px"
                       color="myGray.600"
-                    >
-                      <path
-                        d="M4.42062 4.51676C4.15877 4.73032 3.77277 4.71526 3.5287 4.47119L0.195363 1.13785C-0.0649862 0.877503 -0.0649862 0.455493 0.195363 0.195144C0.455712 -0.0652056 0.877722 -0.0652056 1.13807 0.195144L4.00005 3.05712L6.86203 0.195144C7.12238 -0.0652056 7.54439 -0.0652056 7.80474 0.195144C8.06509 0.455493 8.06509 0.877503 7.80474 1.13785L4.4714 4.47119L4.42062 4.51676ZM4.42062 9.18342C4.15877 9.39699 3.77277 9.38193 3.5287 9.13785L0.195363 5.80452C-0.0649862 5.54417 -0.0649862 5.12216 0.195363 4.86181C0.455712 4.60146 0.877722 4.60146 1.13807 4.86181L4.00005 7.72379L6.86203 4.86181C7.12238 4.60146 7.54439 4.60146 7.80474 4.86181C8.06509 5.12216 8.06509 5.54417 7.80474 5.80452L4.4714 9.13785L4.42062 9.18342Z"
-                        fill="currentColor"
-                      />
-                    </Box>
+                    />
                   }
                   onClick={(e) => {
                     e.stopPropagation();
@@ -369,6 +360,7 @@ const EditorWorkspace = ({
                   appId={appId}
                   chatId={chatId}
                   outLinkAuthData={outLinkAuthData}
+                  canWrite={canWrite}
                 />
               </Box>
             )}

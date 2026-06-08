@@ -24,16 +24,18 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   downloadSkillPackage: vi.fn(),
-  DEFAULT_GITIGNORE_CONTENT: '# mock gitignore'
+  DEFAULT_GITIGNORE_CONTENT: '# mock gitignore',
+  validateZipStructure: vi.fn(async () => ({
+    valid: true,
+    hasSkillMd: true,
+    files: []
+  }))
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/sandbox/config', () => ({
-  getSkillSizeLimits: () => ({
-    maxUploadBytes: 1024 * 1024,
-    maxUncompressedBytes: 1024 * 1024,
-    maxDownloadBytes: 1024 * 1024,
-    maxSandboxPackageBytes: 1024 * 1024
-  })
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: {
+    AGENT_SANDBOX_ARCHIVE_MAX_SIZE: 1
+  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
@@ -62,7 +64,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
     provider: 'opensandbox',
     workDirectory: '/workspace',
     skillsRootPath: '/workspace/skills',
-    defaultImage: 'test-image',
     entrypoint: 'sleep infinity',
     buildConfig: vi.fn()
   })
@@ -73,6 +74,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/lifecycle', () => ({
   connectToSandbox: mocks.connectToSandbox,
   disconnectSandbox: mocks.disconnectSandbox,
   getReadySandboxInfo: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
+  buildSandboxAdapter: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
@@ -114,22 +119,19 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {}
-}));
-
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: vi.fn()
 }));
 
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { downloadSkillPackage, validateZipStructure } from '@fastgpt/service/core/ai/skill/package';
 import {
   createEditDebugSandbox,
   packageSkillInSandbox
 } from '@fastgpt/service/core/ai/skill/edit/sandbox';
 import { getReadySandboxInfo } from '@fastgpt/service/core/ai/sandbox/provider/lifecycle';
+import { buildSandboxAdapter } from '@fastgpt/service/core/ai/sandbox/provider/adapter';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import { deleteSandboxResource } from '@fastgpt/service/core/ai/sandbox/service/resource';
 import {
@@ -200,6 +202,31 @@ describe('packageSkillInSandbox', () => {
     );
 
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/package.zip']);
+    expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    expect(validateZipStructure).toHaveBeenCalledWith(Buffer.from(zipContent), {
+      maxUncompressedBytes: 1024 * 1024
+    });
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+
+  it('throws when the final package zip exceeds the archive limit', async () => {
+    const zipContent = new Uint8Array(1024 * 1024 + 1);
+    const sandbox = createSandbox({
+      readFilesResult: [
+        {
+          path: '/workspace/package.zip',
+          content: zipContent,
+          error: null
+        }
+      ]
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
+      'Skill package size'
+    );
+
+    expect(validateZipStructure).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
@@ -282,6 +309,11 @@ temp_data.csv
 describe('createEditDebugSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(buildSandboxAdapter).mockReturnValue({
+      getInfo: vi.fn(async () => ({
+        status: { state: 'Running' }
+      }))
+    } as any);
   });
 
   it('uploads zip packages and decompresses inside the sandbox so Chinese skill directory names are preserved', async () => {
@@ -293,7 +325,10 @@ describe('createEditDebugSandbox', () => {
         if (command === "mkdir -p '/workspace'") {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
-        if (command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'") {
+        if (
+          command === "mkdir -p '/workspace/skills'" ||
+          command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'"
+        ) {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
         if (command.includes('unzip')) {
@@ -353,200 +388,34 @@ describe('createEditDebugSandbox', () => {
         data: packageBuffer
       }
     ]);
+    expect(provider.execute).toHaveBeenCalledWith("mkdir -p '/workspace/skills'");
     expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 
-  it('performs hot reload when existingInstance with mismatched version is found', async () => {
-    const packageBuffer = Buffer.from('zip');
+  it('restores current-provider archived edit-debug sandbox through runtime client instead of hot reuse', async () => {
     const skillId = 'skill-1';
     const provider = {
       status: { state: 'Running' },
       execute: vi.fn(async (command: string) => {
+        if (command === "mkdir -p '/workspace'") {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
         return { exitCode: 0, stdout: '', stderr: '' };
       }),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: entry.data.length,
-          error: null
-        }))
-      )
+      writeFiles: vi.fn()
     };
-
-    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
-      _id: skillId,
-      name: '测试的',
-      currentVersionId: 'version-new'
-    } as any);
-    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
-      _id: 'version-new',
-      storageKey: 'storage-key-new'
-    } as any);
-
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce({
-      _id: 'instance-1',
-      sandboxId: 'sandbox-1',
-      metadata: {
-        versionId: 'version-old',
-        storage: {
-          key: 'storage-key-old'
-        }
-      }
-    } as any);
-
-    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
-
-    const { connectReadySandboxByInstance } =
-      await import('@fastgpt/service/core/ai/sandbox/provider/lifecycle');
-    vi.mocked(connectReadySandboxByInstance).mockResolvedValueOnce({
-      sandbox: provider
-    } as any);
-
-    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
-      _id: 'instance-1'
-    } as any);
-
-    await expect(
-      createEditDebugSandbox({
-        skillId,
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      })
-    ).resolves.toMatchObject({
-      sandboxId: 'sandbox-1',
-      status: { state: 'Running' }
-    });
-
-    expect(provider.execute).toHaveBeenCalledWith(
-      expect.stringContaining("find '/workspace' -mindepth 1")
-    );
-
-    expect(provider.writeFiles).toHaveBeenCalledWith([
-      {
-        path: '/workspace/skills/package.zip',
-        data: packageBuffer
-      }
-    ]);
-
-    expect(provider.execute).toHaveBeenCalledWith(
-      expect.stringContaining("unzip -o -q '/workspace/skills/package.zip' -d .")
-    );
-
-    expect(updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: expect.objectContaining({
-          versionId: 'version-new',
-          storage: expect.objectContaining({
-            key: 'storage-key-new'
-          })
-        })
-      })
-    );
-
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
-  });
-
-  it('falls back to full container recreation when mismatched instance is offline', async () => {
-    const packageBuffer = Buffer.from('zip');
-    const skillId = 'skill-1';
-    const newProvider = {
-      status: { state: 'Running' },
-      execute: vi.fn(async (command: string) => {
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: entry.data.length,
-          error: null
-        }))
-      )
-    };
-
-    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
-      _id: skillId,
-      name: '测试的',
-      currentVersionId: 'version-new'
-    } as any);
-    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
-      _id: 'version-new',
-      storageKey: 'storage-key-new'
-    } as any);
-
-    const existingInstance = {
-      _id: 'instance-old',
-      sandboxId: 'sandbox-old',
-      metadata: {
-        versionId: 'version-old',
-        storage: {
-          key: 'storage-key-old'
-        }
-      }
-    };
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(existingInstance as any);
-
-    const { connectReadySandboxByInstance } =
-      await import('@fastgpt/service/core/ai/sandbox/provider/lifecycle');
-    vi.mocked(connectReadySandboxByInstance).mockRejectedValueOnce(new Error('connection failed'));
-
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
-    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
-    vi.mocked(getSandboxClient).mockResolvedValueOnce({
-      provider: newProvider,
-      delete: vi.fn()
-    } as any);
-    vi.mocked(getReadySandboxInfo).mockResolvedValueOnce({
-      image: 'test-image',
-      createdAt: new Date('2026-01-01T00:00:00.000Z'),
-      status: { state: 'Running' }
-    } as any);
-    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
-      _id: 'doc-new'
-    } as any);
-
-    await expect(
-      createEditDebugSandbox({
-        skillId,
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      })
-    ).resolves.toMatchObject({
-      sandboxId: 'edit-debug-skill-1',
-      status: { state: 'Running' }
-    });
-
-    expect(deleteSandboxResource).toHaveBeenCalledWith(existingInstance, { keepVolume: true });
-
-    expect(deleteSandboxInstanceRecord).toHaveBeenCalledWith('instance-old');
-
-    expect(newProvider.execute).toHaveBeenCalledWith(expect.stringContaining('mkdir -p'));
-    expect(newProvider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(newProvider);
-  });
-
-  it('keeps archived stale provider records so runtime can restore them by sandboxId', async () => {
-    const packageBuffer = Buffer.from('zip');
-    const skillId = 'skill-1';
-    const provider = {
-      status: { state: 'Running' },
-      execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: entry.data.length,
-          error: null
-        }))
-      )
-    };
-    const archivedStaleInstance = {
-      _id: 'archived-instance',
-      provider: 'opensandbox',
+    const archivedInstance = {
+      _id: 'archived-current-provider-instance',
+      provider: 'test-provider',
       sandboxId: `edit-debug-${skillId}`,
       metadata: {
         archive: {
           state: 'archived'
+        },
+        versionId: 'version-1',
+        storage: {
+          key: 'storage-key'
         }
       }
     };
@@ -560,12 +429,9 @@ describe('createEditDebugSandbox', () => {
       _id: 'version-1',
       storageKey: 'storage-key'
     } as any);
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([
-      archivedStaleInstance as any
-    ]);
+    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
-    vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
       delete: vi.fn()
@@ -576,16 +442,36 @@ describe('createEditDebugSandbox', () => {
       status: { state: 'Running' }
     } as any);
     vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce({
-      _id: 'doc-new'
+      _id: 'doc-restored'
     } as any);
 
-    await createEditDebugSandbox({
-      skillId,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
+    const { connectReadySandboxByInstance } =
+      await import('@fastgpt/service/core/ai/sandbox/provider/lifecycle');
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: { state: 'Running' }
     });
 
+    expect(connectReadySandboxByInstance).not.toHaveBeenCalled();
     expect(deleteSandboxResource).not.toHaveBeenCalled();
     expect(deleteSandboxInstanceRecord).not.toHaveBeenCalled();
+    expect(getSandboxClient).toHaveBeenCalledWith(
+      {
+        appId: skillId,
+        userId: '',
+        chatId: 'edit-debug'
+      },
+      expect.objectContaining({
+        createConfig: expect.any(Object)
+      })
+    );
+    expect(downloadSkillPackage).not.toHaveBeenCalled();
   });
 });

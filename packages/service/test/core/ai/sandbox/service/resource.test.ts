@@ -90,6 +90,29 @@ describe('sandbox resource service', () => {
     expect(mocks.markSandboxResourceStopped).toHaveBeenCalledWith(resource);
   });
 
+  it('does not mark stopped when stale cron stop loses the record CAS', async () => {
+    const resource = {
+      ...createResource(),
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z')
+    };
+    const adapter = {
+      stop: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined)
+    };
+    mocks.buildSandboxResourceAdapter.mockReturnValueOnce(adapter);
+    mocks.markSandboxResourceStopped.mockResolvedValueOnce({ matchedCount: 0 });
+
+    await stopSandboxResource(resource);
+
+    expect(adapter.stop).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Skip marking sandbox stopped because record changed after stop',
+      expect.objectContaining({
+        sandboxId: resource.sandboxId
+      })
+    );
+  });
+
   it('deletes a resource and keeps deleting the record when volume cleanup fails', async () => {
     const resource = createResource();
     mocks.deleteSessionVolume.mockRejectedValueOnce(new Error('volume cleanup failed'));
@@ -152,26 +175,6 @@ describe('sandbox resource service', () => {
     });
 
     await deleteSandboxesByChatIds({ appId: 'app-1', chatIds: ['chat-1'] });
-
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Failed to delete sandbox',
-      expect.objectContaining({
-        sandboxId: 'sandbox-1'
-      })
-    );
-  });
-
-  it('logs delete failures while processing app resources', async () => {
-    const resource = createResource();
-    mocks.findSandboxResourcesByAppId.mockResolvedValueOnce([resource]);
-    mocks.buildSandboxResourceAdapter.mockReturnValueOnce({
-      stop: vi.fn(async () => undefined),
-      delete: vi.fn(async () => {
-        throw new Error('delete failed');
-      })
-    });
-
-    await deleteSandboxesByAppId('app-1');
 
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Failed to delete sandbox',

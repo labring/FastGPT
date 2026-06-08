@@ -39,6 +39,7 @@
     "@emotion/react": "catalog:",
     "@emotion/styled": "catalog:",
     "@fastgpt-sdk/otel": "workspace:*",
+    "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",

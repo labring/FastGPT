@@ -1,13 +1,8 @@
-import { isValidObjectId } from 'mongoose';
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { MongoSandboxInstance } from './schema';
-import type {
-  SandboxArchiveStateType,
-  SandboxInstanceSchemaType,
-  SandboxProviderType
-} from '../type';
+import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
 
 /**
  * 可直接用于 stop/delete 的实例记录最小字段。
@@ -24,21 +19,12 @@ export type SandboxResourceDoc = Pick<
 export type SandboxResourceRef = {
   provider: SandboxProviderType;
   sandboxId: string;
+  status?: SandboxStatusType;
+  lastActiveAt?: Date;
   _id?: unknown;
 };
 
-const BUSY_ARCHIVE_STATES: SandboxArchiveStateType[] = ['archiving', 'restoring'];
-const ACTIVE_ARCHIVE_STATES: SandboxArchiveStateType[] = ['archiving', 'archived', 'restoring'];
-const RUNTIME_BLOCKED_ARCHIVE_STATES: SandboxArchiveStateType[] = ['archived', 'restoring'];
-
-/**
- * 构造支持 sandboxId 或 Mongo ObjectId 的查询条件。
- *
- * 对外 API 允许用户传入展示用 sandboxId，也兼容部分历史接口传入实例 _id 的情况。
- */
-export const buildSandboxInstanceLookup = (sandboxId: string) => ({
-  $or: [{ sandboxId }, ...(isValidObjectId(sandboxId) ? [{ _id: sandboxId }] : [])]
-});
+export const buildSandboxInstanceLookup = (sandboxId: string) => ({ sandboxId });
 
 const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) => {
   if (resource._id !== undefined) {
@@ -66,12 +52,7 @@ export async function upsertRunningSandboxInstance(params: {
   metadata?: Record<string, unknown>;
 }) {
   const { provider, sandboxId, appId, userId, chatId, storage, limit, metadata } = params;
-  const archiveStateFilter = {
-    $or: [
-      { 'metadata.archive.state': { $exists: false } },
-      { 'metadata.archive.state': { $nin: RUNTIME_BLOCKED_ARCHIVE_STATES } }
-    ]
-  };
+  const archiveStateFilter = { 'metadata.archive.state': { $exists: false } };
   const runningUpdate = {
     $set: {
       status: SandboxStatusEnum.running,
@@ -136,26 +117,32 @@ export async function upsertRunningSandboxInstance(params: {
  * 将一条资源记录标记为 stopped。
  *
  * resource service 在远端 stop 成功后调用这里同步本地状态。
+ * 当调用方传入 lastActiveAt/status 时，使用 CAS 避免用户请求刚刷新活跃时间后又被旧 cron 结果覆盖。
  */
 export async function markSandboxResourceStopped(resource: SandboxResourceRef) {
-  return MongoSandboxInstance.updateOne(buildSandboxResourceRecordFilter(resource), {
-    $set: { status: SandboxStatusEnum.stopped }
-  });
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      ...(resource.status ? { status: resource.status } : {}),
+      ...(resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {}),
+      'metadata.archive.state': { $exists: false }
+    },
+    {
+      $set: { status: SandboxStatusEnum.stopped }
+    }
+  );
 }
 
 /**
  * 查询可被 5 分钟 cron 暂停的运行中 sandbox。
  *
- * 正在归档或恢复的实例由对应流程管理生命周期，stop cron 不能插入中间状态。
+ * 正在归档或已归档的实例由归档流程管理生命周期，stop cron 不能插入中间状态。
  */
 export async function findInactiveRunningSandboxResources(inactiveBefore: Date) {
   return MongoSandboxInstance.find({
     status: SandboxStatusEnum.running,
     lastActiveAt: { $lt: inactiveBefore },
-    $or: [
-      { 'metadata.archive.state': { $exists: false } },
-      { 'metadata.archive.state': { $nin: BUSY_ARCHIVE_STATES } }
-    ]
+    'metadata.archive.state': { $exists: false }
   }).lean<SandboxResourceDoc[]>();
 }
 
@@ -244,24 +231,6 @@ export async function findSandboxInstanceArchiveState(params: {
 }
 
 /**
- * 按 sandboxId 查询任意 provider 下的 archive 状态。
- *
- * 仅用于当前 provider 没有本地记录时的兜底判断：archive 数据是 provider 无关的，
- * 但已有当前 provider 记录时必须以当前资源映射为准，避免覆盖正常运行实例。
- */
-export async function findSandboxArchiveStateBySandboxId(sandboxId: string) {
-  return MongoSandboxInstance.findOne(
-    {
-      sandboxId,
-      'metadata.archive.state': { $in: ACTIVE_ARCHIVE_STATES }
-    },
-    'provider sandboxId status lastActiveAt metadata'
-  )
-    .sort({ lastActiveAt: -1 })
-    .lean<SandboxResourceDoc | null>();
-}
-
-/**
  * 查询超过指定时间未活跃、尚未冷归档的 stopped sandbox。
  *
  * 一周后的实例应先由 5 分钟 cron 标记为 stopped，再由归档任务统一处理。
@@ -278,10 +247,7 @@ export async function findSandboxResourcesToArchive(params: {
     provider: { $in: providers },
     status: SandboxStatusEnum.stopped,
     lastActiveAt: { $lt: inactiveBefore },
-    $or: [
-      { 'metadata.archive.state': { $exists: false } },
-      { 'metadata.archive.state': { $nin: ACTIVE_ARCHIVE_STATES } }
-    ]
+    'metadata.archive.state': { $exists: false }
   })
     .sort({ lastActiveAt: 1 })
     .limit(limit)
@@ -293,16 +259,17 @@ export async function findSandboxResourcesToArchive(params: {
  *
  * 条件里必须包含 lastActiveAt，避免 keepalive/用户请求刚刷新活跃时间后仍被归档。
  */
-export async function markSandboxArchiving(resource: SandboxResourceRef, inactiveBefore: Date) {
+export async function markSandboxArchiving(resource: SandboxResourceDoc, inactiveBefore: Date) {
+  if (resource.lastActiveAt >= inactiveBefore) {
+    return null;
+  }
+
   return MongoSandboxInstance.findOneAndUpdate(
     {
       ...buildSandboxResourceRecordFilter(resource),
       status: SandboxStatusEnum.stopped,
-      lastActiveAt: { $lt: inactiveBefore },
-      $or: [
-        { 'metadata.archive.state': { $exists: false } },
-        { 'metadata.archive.state': { $nin: ACTIVE_ARCHIVE_STATES } }
-      ]
+      lastActiveAt: resource.lastActiveAt,
+      'metadata.archive.state': { $exists: false }
     },
     {
       $set: {
@@ -316,30 +283,63 @@ export async function markSandboxArchiving(resource: SandboxResourceRef, inactiv
 /**
  * 标记归档成功。
  *
- * 只在远端资源已经删除成功后调用。此时即使有并发访问清理了 archiving 状态，也必须
- * 写回 archived，避免本地记录误认为仍是热实例而丢失 S3 恢复路径。
+ * 只有仍处于同一轮 archiving 的 stopped 记录才能切到 archived。
  */
-export async function markSandboxArchived(resource: SandboxResourceRef) {
-  return MongoSandboxInstance.updateOne(buildSandboxResourceRecordFilter(resource), {
-    $set: {
+export async function markSandboxArchived(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
       status: SandboxStatusEnum.stopped,
-      'metadata.archive.state': 'archived',
-      'metadata.archive.archivedAt': new Date()
+      lastActiveAt: resource.lastActiveAt,
+      'metadata.archive.state': 'archiving'
+    },
+    {
+      $set: {
+        status: SandboxStatusEnum.stopped,
+        'metadata.archive.state': 'archived',
+        'metadata.archive.archivedAt': new Date()
+      }
     }
+  );
+}
+
+/**
+ * 删除远端资源前做二次确认。
+ *
+ * 归档期间运行态会阻塞 archiving 状态；这里再用原始 lastActiveAt 做一次 CAS 式确认，
+ * 避免处理已经被外部修改过的记录。
+ */
+export async function isSandboxStillArchiving(resource: SandboxResourceDoc, inactiveBefore: Date) {
+  if (resource.lastActiveAt >= inactiveBefore) {
+    return false;
+  }
+
+  const doc = await MongoSandboxInstance.exists({
+    ...buildSandboxResourceRecordFilter(resource),
+    status: SandboxStatusEnum.stopped,
+    lastActiveAt: resource.lastActiveAt,
+    'metadata.archive.state': 'archiving'
   });
+  return !!doc;
 }
 
 /**
  * 清理 archive 状态。
  *
- * 用于归档被用户活跃打断、恢复成功后回到正常热实例等场景。
+ * 只用于归档在删除远端资源前被用户活跃打断或失败的场景；恢复成功由 markSandboxRestored 处理。
  */
 export async function clearSandboxArchiveState(resource: SandboxResourceRef) {
-  return MongoSandboxInstance.updateOne(buildSandboxResourceRecordFilter(resource), {
-    $unset: {
-      'metadata.archive': ''
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'archiving'
+    },
+    {
+      $unset: {
+        'metadata.archive': ''
+      }
     }
-  });
+  );
 }
 
 /**
@@ -364,23 +364,25 @@ export async function markSandboxRestoring(resource: SandboxResourceRef) {
  * 恢复失败时退回 archived，保留 S3 归档供用户下次重试。
  */
 export async function rollbackSandboxRestoring(resource: SandboxResourceRef) {
-  return MongoSandboxInstance.updateOne(buildSandboxResourceRecordFilter(resource), {
-    $set: {
-      'metadata.archive.state': 'archived'
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'restoring'
+    },
+    {
+      $set: {
+        'metadata.archive.state': 'archived'
+      }
     }
-  });
+  );
 }
 
 /**
  * 将恢复成功的归档记录切回热实例。
- *
- * provider 可以和归档记录不同：这用于 provider 切换后，把旧 provider 的 archived
- * 记录迁移到当前 provider，避免重新插入时撞上 app/chat 唯一索引，也避免留下旧资源映射。
  */
 export async function markSandboxRestored(
   resource: SandboxResourceRef,
   params: {
-    provider: SandboxProviderType;
     appId?: string;
     userId?: string;
     chatId?: string;
@@ -409,7 +411,6 @@ export async function markSandboxRestored(
     },
     {
       $set: {
-        provider: params.provider,
         status: SandboxStatusEnum.running,
         lastActiveAt: new Date(),
         ...(params.appId !== undefined ? { appId: params.appId } : {}),
@@ -550,7 +551,7 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
 /**
  * 查询团队可访问的 sandbox 实例。
  *
- * 通过 metadata.teamId 做权限边界，支持 sandboxId 或实例 _id 两种输入。
+ * 通过 metadata.teamId 做权限边界，只接受业务 sandboxId。
  */
 export async function findSandboxInstanceBySandboxIdAndTeam(params: {
   provider?: SandboxProviderType;

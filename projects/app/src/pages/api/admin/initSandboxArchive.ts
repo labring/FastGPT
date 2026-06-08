@@ -1,0 +1,174 @@
+import { NextAPI } from '@/service/middleware/entry';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { findSandboxResourcesToArchive } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { archiveSandboxResource } from '@fastgpt/service/core/ai/sandbox/service/archive';
+import { getLogger } from '@fastgpt/service/common/logger';
+import { getConfiguredSandboxProvider } from '@fastgpt/service/core/ai/sandbox/provider/config';
+import type { SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
+import { subDays } from 'date-fns';
+import z from 'zod';
+
+const logger = getLogger(['initSandboxArchive']);
+
+const InitSandboxArchiveBodySchema = z.object({
+  runArchive: z.boolean().optional(),
+  inactiveDays: z.number().min(0).optional(),
+  inactiveBefore: z.coerce.date().optional()
+});
+
+interface ArchiveFailure {
+  sandboxId: string;
+  error: string;
+}
+
+interface ArchiveResult {
+  total: number;
+  successCount: number;
+  failCount: number;
+  failures: ArchiveFailure[];
+}
+
+interface MigrationResult {
+  statusUpdateCount: number;
+  lastActiveUpdatedCount: number;
+  archiveTriggered: boolean;
+  archiveResult: ArchiveResult | null;
+  duration: number;
+  activeProvider?: string;
+}
+
+/**
+ * AI 沙盒冷归档与状态数据迁移脚本
+ *
+ * 职责：
+ * 1. 状态纠错（拼写错误）：由于历史版本中 sandbox 状态拼写为 `'stoped'`，将其批量修正为 `'stopped'`。
+ * 2. 补全 `lastActiveAt`：对缺失 `lastActiveAt` 字段的历史沙盒数据，通过 MongoDB 聚合更新，
+ *    默认采用实例的创建时间 `createdAt`。若 `createdAt` 也不存在，则使用当前运行时间填充。
+ * 3. 触发即时归档（可选）：当 `runArchive` 为 true 时，针对时间条件超期的沙盒执行真正的归档处理。
+ *
+ * 完备性设计：迁移 API 只负责字段修正与执行结果汇总，真实归档流程复用核心 service，
+ * 避免脚本层复制归档/恢复协议导致后续逻辑分叉。
+ */
+export async function migrateSandboxArchiveData(params: {
+  runArchive?: boolean;
+  inactiveDays?: number;
+  inactiveBefore?: Date;
+}): Promise<MigrationResult> {
+  const startTime = Date.now();
+
+  const realNow = new Date();
+  let calculatedInactiveBefore = subDays(realNow, 7);
+
+  if (params.inactiveBefore instanceof Date && !Number.isNaN(params.inactiveBefore.getTime())) {
+    calculatedInactiveBefore = params.inactiveBefore;
+  } else if (params.inactiveDays !== undefined) {
+    calculatedInactiveBefore = subDays(realNow, params.inactiveDays);
+  }
+
+  logger.info('========================================');
+  logger.info('Starting Sandbox Archive Data Migration');
+  logger.info(`Run immediate archive: ${!!params.runArchive}`);
+  logger.info(`Inactive boundary time: ${calculatedInactiveBefore.toISOString()}`);
+  logger.info('========================================');
+
+  // 1. 将 status 从 'stoped' 批量更新为 'stopped'
+  logger.info("Updating sandbox status from 'stoped' to 'stopped'...");
+  const statusUpdateResult = await MongoSandboxInstance.updateMany(
+    { status: 'stoped' },
+    { $set: { status: 'stopped' } }
+  );
+  logger.info(`Successfully updated status for ${statusUpdateResult.modifiedCount} records.`);
+
+  // 2. 使用聚合管道高效补全 lastActiveAt 字段，规避 Node.js OOM
+  logger.info('Filling missing lastActiveAt fields using database aggregation pipeline...');
+  const lastActiveResult = await MongoSandboxInstance.updateMany(
+    { lastActiveAt: { $exists: false } },
+    [
+      {
+        $set: {
+          lastActiveAt: { $ifNull: ['$createdAt', new Date()] }
+        }
+      }
+    ]
+  );
+  logger.info(
+    `Successfully filled lastActiveAt for ${lastActiveResult.modifiedCount} records (matched: ${lastActiveResult.matchedCount}).`
+  );
+
+  // 3. 执行冷归档并收集明确指标
+  let archiveTriggered = false;
+  let archiveResult: ArchiveResult | null = null;
+  let activeProvider: SandboxProviderType | undefined;
+
+  if (params.runArchive) {
+    activeProvider = getConfiguredSandboxProvider();
+    logger.info(`Active Sandbox Provider: ${activeProvider}`);
+    logger.info('Running immediate sandbox archiving task...');
+    archiveTriggered = true;
+
+    const resources = await findSandboxResourcesToArchive({
+      inactiveBefore: calculatedInactiveBefore,
+      limit: 20,
+      providers: [activeProvider]
+    });
+
+    logger.info(`Found ${resources.length} sandboxes to archive`);
+
+    let successCount = 0;
+    let failCount = 0;
+    const failures: ArchiveFailure[] = [];
+
+    for (const resource of resources) {
+      const res = await archiveSandboxResource(resource, calculatedInactiveBefore);
+      if (res.success) {
+        successCount++;
+      } else {
+        failCount++;
+        failures.push({
+          sandboxId: resource.sandboxId,
+          error: res.error || 'Unknown error'
+        });
+      }
+    }
+
+    archiveResult = {
+      total: resources.length,
+      successCount,
+      failCount,
+      failures
+    };
+    logger.info('Archive task executed successfully', { archiveResult });
+  }
+
+  const duration = Date.now() - startTime;
+  logger.info('========================================');
+  logger.info('Sandbox Archive Data Migration Completed!');
+  logger.info(`Duration: ${duration}ms`);
+  logger.info('========================================');
+
+  return {
+    statusUpdateCount: statusUpdateResult.modifiedCount,
+    lastActiveUpdatedCount: lastActiveResult.modifiedCount,
+    archiveTriggered,
+    archiveResult,
+    duration,
+    activeProvider
+  };
+}
+
+export default NextAPI(async function handler(req) {
+  // 仅限 Root 超级管理员证书鉴权执行
+  await authCert({ req, authRoot: true });
+
+  const { body } = parseApiInput({ req, bodySchema: InitSandboxArchiveBodySchema });
+
+  const result = await migrateSandboxArchiveData({
+    runArchive: body.runArchive,
+    inactiveDays: body.inactiveDays,
+    inactiveBefore: body.inactiveBefore
+  });
+
+  return result;
+});

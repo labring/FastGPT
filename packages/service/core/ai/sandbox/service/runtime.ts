@@ -1,6 +1,5 @@
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { serviceEnv } from '../../../../env';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
   type ExecuteResult,
@@ -10,6 +9,7 @@ import {
 } from '@fastgpt-sdk/sandbox-adapter';
 import { getSessionVolumeConfig, type VolumeManagerResult } from '../volume/service';
 import { buildRuntimeSandboxAdapter } from '../provider/adapter';
+import { getConfiguredSandboxProvider } from '../provider/config';
 import { ensureConnectedSandboxRunning } from '../provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from './resource';
 import { upsertRunningSandboxInstance } from '../instance/repository';
@@ -22,13 +22,17 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-export type SandboxClientQuery = {
-  sandboxId?: string;
-  appId?: string;
-  userId?: string;
-  chatId?: string;
-  teamId?: string;
-};
+export type SandboxClientQuery =
+  | {
+      sandboxId: string;
+      teamId?: string;
+    }
+  | {
+      appId: string;
+      userId?: string;
+      chatId: string;
+      teamId?: string;
+    };
 
 type SandboxClientProps = {
   sandboxId: string;
@@ -45,6 +49,8 @@ type SandboxClientOptions = {
   createConfig?: SandboxCreateSpec;
   restoreArchived?: boolean;
 };
+
+type NormalizedSandboxClientQuery = SandboxClientProps;
 
 /**
  * 当前会话运行态 sandbox client。
@@ -69,7 +75,7 @@ export class SandboxClient {
     this.userId = props.userId;
     this.chatId = props.chatId;
 
-    this.providerName = opts.providerName ?? serviceEnv.AGENT_SANDBOX_PROVIDER;
+    this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
     this.provider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
   }
 
@@ -167,12 +173,32 @@ export class SandboxClient {
 }
 
 export function resolveSandboxId(props: SandboxClientQuery): string {
-  if (props.sandboxId) {
-    return props.sandboxId;
+  return normalizeSandboxClientQuery(props).sandboxId;
+}
+
+function normalizeSandboxClientQuery(props: SandboxClientQuery): NormalizedSandboxClientQuery {
+  if ('sandboxId' in props) {
+    if (!props.sandboxId) {
+      throw new Error('sandboxId is required');
+    }
+    return {
+      sandboxId: props.sandboxId,
+      teamId: props.teamId
+    };
+  }
+
+  if (!props.appId || !props.chatId) {
+    throw new Error('appId and chatId are required when sandboxId is not provided');
   }
 
   const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
-  return generateSandboxId(props.appId ?? '', sandboxUserId, props.chatId ?? '');
+  return {
+    sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
+    appId: props.appId,
+    userId: props.userId,
+    chatId: props.chatId,
+    teamId: props.teamId
+  };
 }
 
 /**
@@ -185,9 +211,9 @@ export const getSandboxClient = async (
   props: SandboxClientQuery,
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
-  const { appId, userId, chatId, teamId } = props;
-  const sandboxId = resolveSandboxId(props);
-  const providerName = opts.providerName ?? serviceEnv.AGENT_SANDBOX_PROVIDER;
+  const sandboxContext = normalizeSandboxClientQuery(props);
+  const { sandboxId, appId, userId, chatId, teamId } = sandboxContext;
+  const providerName = opts.providerName ?? getConfiguredSandboxProvider();
   let vmConfig: VolumeManagerResult | undefined;
 
   if (opts.restoreArchived === false) {
@@ -216,20 +242,11 @@ export const getSandboxClient = async (
     });
   }
   vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-  const sandbox = new SandboxClient(
-    {
-      sandboxId,
-      appId,
-      userId,
-      chatId,
-      teamId
-    },
-    {
-      ...opts,
-      providerName,
-      vmConfig
-    }
-  );
+  const sandbox = new SandboxClient(sandboxContext, {
+    ...opts,
+    providerName,
+    vmConfig
+  });
   await sandbox.ensureAvailable();
   return sandbox;
 };

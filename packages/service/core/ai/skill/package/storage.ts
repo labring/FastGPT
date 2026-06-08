@@ -6,9 +6,10 @@
  */
 
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
-import { getSkillSizeLimits } from '../sandbox/config';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ClientSession } from '../../../../common/mongo';
+import { serviceEnv } from '../../../../env';
+import { readStreamToBuffer } from '../../../../common/s3/utils';
 
 export type SkillStorageInfo = {
   key: string;
@@ -34,9 +35,9 @@ export async function uploadSkillPackage(
   params: UploadSkillPackageParams
 ): Promise<SkillStorageInfo> {
   const { teamId, skillId, packageObjectId, zipBuffer } = params;
-  const { maxUploadBytes } = getSkillSizeLimits();
+  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
 
-  if (zipBuffer.length > maxUploadBytes) {
+  if (zipBuffer.length > maxBytes) {
     throw new Error(SkillErrEnum.archiveTooLarge);
   }
 
@@ -73,7 +74,7 @@ export async function removeSkillPackageTTL(
  */
 export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
   const { storageKey } = params;
-  const { maxDownloadBytes } = getSkillSizeLimits();
+  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
 
   const bucket = getS3SkillSource();
 
@@ -85,21 +86,11 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
     throw new Error(`Failed to download skill package: ${storageKey}`);
   }
 
-  // 流式累加并检查上限，防止异常对象导致 OOM。
-  const chunks: Buffer[] = [];
-  let totalSize = 0;
-  for await (const chunk of response.body) {
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    totalSize += buf.length;
-    if (totalSize > maxDownloadBytes) {
-      throw new Error(
-        `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
-      );
-    }
-    chunks.push(buf);
-  }
-
-  return Buffer.concat(chunks);
+  return readStreamToBuffer({
+    stream: response.body,
+    maxBytes,
+    exceededMessage: `Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
+  });
 }
 
 /**

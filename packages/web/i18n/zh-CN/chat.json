@@ -189,7 +189,6 @@
   "sandbox_upload_too_large_desc": "{{name}} 超过 {{size}} MB 上传限制。",
   "sandbox_uploading": "上传中...",
   "sandbox_video_not_supported": "当前浏览器不支持视频播放。",
-  "sandox.files": "虚拟机文件",
   "search_results": "搜索结果",
   "select": "选择",
   "select_file": "上传文件",

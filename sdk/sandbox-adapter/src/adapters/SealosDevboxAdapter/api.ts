@@ -152,9 +152,19 @@ export class DevboxApi {
     if (params.timeoutSeconds != null) queryParams.timeoutSeconds = String(params.timeoutSeconds);
     if (params.container) queryParams.container = params.container;
 
-    const res = await fetch(this.url(`/api/v1/devbox/${name}/files/download`, queryParams), {
+    const url = this.url(`/api/v1/devbox/${name}/files/download`, queryParams);
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${this.token}` }
     });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new DevboxApiError(
+        `Devbox file download failed: HTTP ${res.status}${body ? ` ${body}` : ''}`,
+        res.status,
+        body,
+        url
+      );
+    }
     return res.arrayBuffer();
   }
 }

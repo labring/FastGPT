@@ -2,7 +2,7 @@ import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { Types } from '../../../../common/mongo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { updateCurrentVersion } from '../manage';
-import { removeSkillPackageTTL, validateZipStructure, uploadSkillPackage } from '../package';
+import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
 import { packageSkillInSandbox } from './sandbox';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from './config';
 import { createVersion } from '../version';
@@ -61,10 +61,6 @@ export async function saveDeploySkillFromSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: runtimeProfile.workDirectory
     });
-    const validation = await validateZipStructure(packageBuffer);
-    if (!validation.valid) {
-      throw new Error(validation.error || 'Invalid skill package structure');
-    }
   } catch (error: any) {
     return Promise.reject(
       new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)

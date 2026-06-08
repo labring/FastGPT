@@ -57,7 +57,7 @@ const SkillHistoriesPopover = ({ publishButton }: { publishButton: React.ReactNo
       </PopoverAnchor>
       <Portal>
         <PopoverContent
-          w="368px"
+          w="min(368px, calc(100vw - 32px))"
           minH="368px"
           maxH="min(592px, calc(100vh - 120px))"
           boxShadow="3.5"

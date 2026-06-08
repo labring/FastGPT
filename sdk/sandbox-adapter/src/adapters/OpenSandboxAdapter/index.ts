@@ -64,11 +64,6 @@ export interface OpenSandboxConnectionConfig {
   /** Route execd traffic through the OpenSandbox server proxy */
   useServerProxy?: boolean;
   /**
-   * Rewrite OpenSandbox local endpoint host when sandbox-proxy runs on the host
-   * instead of inside Docker/Kubernetes.
-   */
-  replaceDockerInternalWithLocalhost?: boolean;
-  /**
    * Sandbox runtime type.
    * @default 'docker'
    */
@@ -354,7 +349,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         this.connectionConfig.baseUrl
       );
     }
-    if (!cfg.image) {
+    if (!cfg.image?.repository) {
       throw new ConnectionError(
         'Cannot create sandbox: createConfig.image is required for opensandbox provider',
         this.connectionConfig.baseUrl
@@ -559,6 +554,19 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     const sdkEndpoint = (await this.sandbox.getEndpoint(port)) as SdkEndpoint;
 
     const raw = sdkEndpoint.endpoint;
+    try {
+      const url = new URL(raw);
+      const parsedPort = url.port ? Number.parseInt(url.port, 10) : undefined;
+      return {
+        host: url.hostname,
+        port: Number.isFinite(parsedPort) ? parsedPort! : port,
+        protocol: url.protocol === 'https:' ? 'https' : 'http',
+        url: raw
+      };
+    } catch {
+      // OpenSandbox docker runtime may return "host:port" or path-based host strings.
+    }
+
     const colonIdx = raw.lastIndexOf(':');
     const hasPathBeforeColon = colonIdx !== -1 && raw.slice(0, colonIdx).includes('/');
 
@@ -578,46 +586,6 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       protocol: 'https',
       url: `https://${raw}`
     };
-  }
-
-  private async getDirectEndpointOrigin(port: number): Promise<string> {
-    if (!this.id) {
-      throw new SandboxStateError(
-        'Sandbox not initialized. Call create() or connect() first.',
-        'UnExist',
-        'Running'
-      );
-    }
-
-    const headers: Record<string, string> = {
-      ...this._connection.headers,
-      Accept: 'application/json'
-    };
-
-    const response = await this._connection.fetch(
-      `${this._connection.getBaseUrl()}/sandboxes/${this.id}/endpoints/${port}?use_server_proxy=false`,
-      { method: 'GET', headers }
-    );
-
-    if (!response.ok) {
-      throw new ConnectionError(
-        `OpenSandbox endpoint lookup failed: HTTP ${response.status}`,
-        this.connectionConfig.baseUrl
-      );
-    }
-
-    const data = (await response.json()) as { endpoint?: string };
-    if (!data.endpoint) {
-      throw new ConnectionError('OpenSandbox returned no endpoint', this.connectionConfig.baseUrl);
-    }
-
-    let hostPort = data.endpoint.replace(/\/proxy\/\d+\/?$/, '');
-    if (this.connectionConfig.replaceDockerInternalWithLocalhost) {
-      hostPort = hostPort.replace(/^host\.docker\.internal\b/, 'localhost');
-    }
-
-    const url = new URL(/^https?:\/\//.test(hostPort) ? hostPort : `http://${hostPort}`);
-    return url.origin;
   }
 
   async getInfo(): Promise<SandboxInfo | null> {

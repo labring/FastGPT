@@ -8,9 +8,18 @@ type UseTerminalProps = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  canWrite?: boolean;
 };
 
-export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTerminalProps) => {
+const MAX_RECONNECT_ATTEMPTS = 3;
+const STABLE_CONNECTION_MS = 2000;
+
+export const useInteractiveTerminal = ({
+  appId,
+  chatId,
+  outLinkAuthData,
+  canWrite = true
+}: UseTerminalProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -22,6 +31,8 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
     let isDestroyed = false;
     let ws: WebSocket | null = null;
     let reconnectTimer: any = null;
+    let stableConnectionTimer: any = null;
+    let reconnectCount = 0;
 
     // 实例化 Xterm 终端
     const term = new Terminal({
@@ -58,6 +69,13 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
     termRef.current = term;
+
+    if (!canWrite) {
+      term.write('\r\n\x1b[1;31mTerminal requires write permission.\x1b[0m\r\n');
+      return () => {
+        term.dispose();
+      };
+    }
 
     // 自适应尺寸变化信号器 (发送符合 Rust Agent 契约的 13 字节大端协议数据)
     const sendResize = (cols: number, rows: number) => {
@@ -103,9 +121,12 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
             ws?.close();
             return;
           }
-          term.write(
-            '\r\n\x1b[1;36m💡 System: Connected to Sandbox Terminal Session\x1b[0m\r\n\r\n'
-          );
+          stableConnectionTimer = setTimeout(() => {
+            if (!isDestroyed && wsRef.current === ws && ws?.readyState === WebSocket.OPEN) {
+              reconnectCount = 0;
+            }
+          }, STABLE_CONNECTION_MS);
+          term.write('\r\n\x1b[1;36mSystem: Connected to Sandbox Terminal Session\x1b[0m\r\n\r\n');
           try {
             fitAddon.fit();
             sendResize(term.cols, term.rows);
@@ -116,6 +137,7 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
 
         ws.onmessage = (event) => {
           if (isDestroyed) return;
+          reconnectCount = 0;
           if (event.data instanceof ArrayBuffer) {
             term.write(new Uint8Array(event.data));
           } else if (typeof event.data === 'string') {
@@ -127,9 +149,20 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
           if (wsRef.current !== ws) return;
 
           wsRef.current = null;
+          if (stableConnectionTimer) {
+            clearTimeout(stableConnectionTimer);
+            stableConnectionTimer = null;
+          }
           if (!isDestroyed) {
+            if (reconnectCount >= MAX_RECONNECT_ATTEMPTS) {
+              term.write(
+                `\r\n\x1b[1;31mTerminal: Connection lost (code: ${event.code}, reason: ${event.reason || 'none'}). Reconnect stopped.\x1b[0m\r\n`
+              );
+              return;
+            }
+            reconnectCount++;
             term.write(
-              `\r\n\x1b[1;33m⚠️ Terminal: Connection lost (code: ${event.code}, reason: ${event.reason || 'none'}). Reconnecting in 3s...\x1b[0m\r\n`
+              `\r\n\x1b[1;33mTerminal: Connection lost (code: ${event.code}, reason: ${event.reason || 'none'}). Reconnecting in 3s...\x1b[0m\r\n`
             );
             reconnectTimer = setTimeout(connect, 3000);
           }
@@ -142,8 +175,15 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
       } catch (err: any) {
         console.error('[SandboxTerminal] Connection error:', err);
         if (!isDestroyed) {
+          if (reconnectCount >= MAX_RECONNECT_ATTEMPTS) {
+            term.write(
+              `\r\n\x1b[1;31mError: Connection failed: ${err.message}. Reconnect stopped.\x1b[0m\r\n`
+            );
+            return;
+          }
+          reconnectCount++;
           term.write(
-            `\r\n\x1b[1;31m✖ Error: Connection failed: ${err.message}. Retrying in 5s...\x1b[0m\r\n`
+            `\r\n\x1b[1;31mError: Connection failed: ${err.message}. Retrying in 5s...\x1b[0m\r\n`
           );
           reconnectTimer = setTimeout(connect, 5000);
         }
@@ -186,11 +226,15 @@ export const useInteractiveTerminal = ({ appId, chatId, outLinkAuthData }: UseTe
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
       }
+      if (stableConnectionTimer) {
+        clearTimeout(stableConnectionTimer);
+      }
       term.dispose();
     };
   }, [
     appId,
     chatId,
+    canWrite,
     outLinkAuthData?.shareId,
     outLinkAuthData?.outLinkUid,
     outLinkAuthData?.teamId,

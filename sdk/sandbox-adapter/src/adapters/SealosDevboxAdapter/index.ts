@@ -97,7 +97,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
     return this.removeUndefined({
       name: this._id,
-      image: spec.image ? formatImageSpec(spec.image) : undefined,
+      image: spec.image?.repository ? formatImageSpec(spec.image) : undefined,
       env: Object.keys(env).length > 0 ? env : undefined,
       labels: spec.labels,
       upstreamID: spec.upstreamID,

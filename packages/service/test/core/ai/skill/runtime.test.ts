@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import JSZip from 'jszip';
 import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
@@ -15,7 +16,7 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { uploadSkillPackage, JSZip } from '@fastgpt/service/core/ai/skill/package';
+import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
@@ -231,6 +232,9 @@ description: Zeta skill
     expect(unzipCommands).toHaveLength(1);
     expect(unzipCommands[0]).toContain(`cd '${skill1TargetDir}'`);
     expect(unzipCommands[0]).toContain(`cd '${skill2TargetDir}'`);
+    expect(unzipCommands[0]).not.toContain('unzip -tq package.zip >/dev/null');
+    expect(unzipCommands[0]).toContain('unzip -Z -t package.zip');
+    expect(unzipCommands[0]).toContain('unzip -Z1 package.zip');
     expect(unzipCommands[0]).toContain('unzip -o -q package.zip');
 
     const findSkillCommands = sandbox.execute.mock.calls

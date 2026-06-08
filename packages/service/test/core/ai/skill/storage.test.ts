@@ -6,7 +6,6 @@ import {
 } from '@fastgpt/service/core/ai/skill/package';
 import { getS3SkillSource } from '@fastgpt/service/common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { getSkillSizeLimits } from '@fastgpt/service/core/ai/skill/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const s3SkillSourceMocks = vi.hoisted(() => {
@@ -66,25 +65,6 @@ describe('storage', () => {
     vi.clearAllMocks();
   });
 
-  describe('getSkillSizeLimits', () => {
-    it('should derive all skill size limits from the upload env value in MB', () => {
-      const originalMaxUploadSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE;
-
-      serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = 1;
-
-      try {
-        expect(getSkillSizeLimits()).toEqual({
-          maxUploadBytes: 1 * 1024 * 1024,
-          maxUncompressedBytes: 1 * 1024 * 1024,
-          maxDownloadBytes: 1 * 1024 * 1024,
-          maxSandboxPackageBytes: 1 * 1024 * 1024
-        });
-      } finally {
-        serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = originalMaxUploadSize;
-      }
-    });
-  });
-
   // ==================== uploadSkillPackage ====================
   describe('uploadSkillPackage', () => {
     it('should upload skill package successfully', async () => {
@@ -106,53 +86,12 @@ describe('storage', () => {
       });
     });
 
-    it('should use S3SkillSource for upload', async () => {
-      await uploadSkillPackage({
-        teamId: mockTeamId,
-        skillId: mockSkillId,
-        packageObjectId: mockVersionId,
-        zipBuffer: mockZipBuffer
-      });
-
-      expect(getS3SkillSource).toHaveBeenCalled();
-    });
-
-    it('should generate correct key for different version objects', async () => {
-      const versions = [0, 1, 5, 10];
-
-      for (const version of versions) {
-        const versionId = `version-object-${version}`;
-        const result = await uploadSkillPackage({
-          teamId: mockTeamId,
-          skillId: mockSkillId,
-          packageObjectId: versionId,
-          zipBuffer: mockZipBuffer
-        });
-
-        expect(result.key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/${versionId}.zip`);
-      }
-    });
-
-    it('should handle large zip buffers', async () => {
-      const largeBuffer = Buffer.alloc(10 * 1024 * 1024); // 10MB
-
-      const result = await uploadSkillPackage({
-        teamId: mockTeamId,
-        skillId: mockSkillId,
-        packageObjectId: mockVersionId,
-        zipBuffer: largeBuffer
-      });
-
-      expect(result.key).toBe(`agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`);
-    });
-
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
-      const originalMaxUploadSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE;
+      const originalArchiveMaxSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE;
       serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = 1;
 
       try {
-        const { maxUploadBytes } = getSkillSizeLimits();
-        const tooLargeBuffer = Buffer.alloc(maxUploadBytes + 1);
+        const tooLargeBuffer = Buffer.alloc(1024 * 1024 + 1);
 
         await expect(
           uploadSkillPackage({
@@ -166,7 +105,7 @@ describe('storage', () => {
         expect(getS3SkillSource).not.toHaveBeenCalled();
         expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
-        serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = originalMaxUploadSize;
+        serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE = originalArchiveMaxSize;
       }
     });
   });

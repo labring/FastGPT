@@ -1,8 +1,6 @@
 import type { FileWriteEntry } from '@/types';
 import { isReadableStreamData, uint8ArrayToCleanArrayBuffer } from '@/utils/files';
 
-const VERIFY_UPLOAD_CONTENT_MAX_BYTES = 1024 * 1024;
-
 type ReplayableWriteData = Exclude<FileWriteEntry['data'], ReadableStream<Uint8Array>>;
 
 export type CommittedUploadVerificationDeps = {
@@ -55,7 +53,7 @@ export const isUploadFalseNegativeCandidate = (error: unknown): boolean => {
  * OpenSandbox `/files/upload` can return 500 after the file has already been committed. This
  * function only converts that failure to success when committed file state is strong enough:
  * non-upload errors stay failures; metadata writes stay failures; streams are not replayable;
- * large files use size-only confirmation; small files must match byte-for-byte.
+ * committed content must match byte-for-byte.
  */
 export const verifyCommittedUpload = async ({
   entry,
@@ -77,12 +75,6 @@ export const verifyCommittedUpload = async ({
 
   const committedSize = await getCommittedFileSize(normalizedPath);
   if (committedSize !== bytesWritten) return false;
-
-  // Large files avoid a second full read. The false-negative symptom happens after the server
-  // writes the file, so matching size is the bounded-cost acceptance signal.
-  if (bytesWritten > VERIFY_UPLOAD_CONTENT_MAX_BYTES) {
-    return true;
-  }
 
   const expectedBytes = await toWriteEntryBytes(entry.data);
   const actualBytes = await readCommittedFileBytes(normalizedPath);

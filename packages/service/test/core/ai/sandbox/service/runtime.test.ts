@@ -19,12 +19,8 @@ const mocks = vi.hoisted(() => ({
   stopSandboxResource: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   upsertRunningSandboxInstance: vi.fn(),
-  findSandboxArchiveStateBySandboxId: vi.fn(),
-  findSandboxInstanceArchiveState: vi.fn(),
-  markSandboxRestored: vi.fn(),
-  markSandboxRestoring: vi.fn(),
-  rollbackSandboxRestoring: vi.fn(),
-  clearSandboxArchiveState: vi.fn(),
+  assertSandboxNotArchivedOrBusy: vi.fn(),
+  restoreArchivedSandboxBeforeUse: vi.fn(),
   findSandboxAppIdBySandboxId: vi.fn(),
   mongoAppFindById: vi.fn(),
   mongoAgentSkillsFindById: vi.fn(),
@@ -61,14 +57,23 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   findSandboxAppIdBySandboxId: mocks.findSandboxAppIdBySandboxId,
-  findSandboxArchiveStateBySandboxId: mocks.findSandboxArchiveStateBySandboxId,
-  findSandboxInstanceArchiveState: mocks.findSandboxInstanceArchiveState,
-  markSandboxRestored: mocks.markSandboxRestored,
-  markSandboxRestoring: mocks.markSandboxRestoring,
-  rollbackSandboxRestoring: mocks.rollbackSandboxRestoring,
-  clearSandboxArchiveState: mocks.clearSandboxArchiveState,
   upsertRunningSandboxInstance: mocks.upsertRunningSandboxInstance
 }));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/service/archive', () => {
+  class SandboxArchiveStateError extends Error {
+    constructor(readonly state: string) {
+      super(`Sandbox is ${state}`);
+      this.name = 'SandboxArchiveStateError';
+    }
+  }
+
+  return {
+    SandboxArchiveStateError,
+    assertSandboxNotArchivedOrBusy: mocks.assertSandboxNotArchivedOrBusy,
+    restoreArchivedSandboxBeforeUse: mocks.restoreArchivedSandboxBeforeUse
+  };
+});
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
@@ -104,12 +109,8 @@ describe('sandbox runtime service', () => {
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
 
     mocks.upsertRunningSandboxInstance.mockResolvedValue({ sandboxId: 'sandbox-doc' });
-    mocks.findSandboxArchiveStateBySandboxId.mockResolvedValue(null);
-    mocks.findSandboxInstanceArchiveState.mockResolvedValue(null);
-    mocks.markSandboxRestored.mockResolvedValue({ sandboxId: 'sandbox-doc' });
-    mocks.markSandboxRestoring.mockResolvedValue(null);
-    mocks.rollbackSandboxRestoring.mockResolvedValue(undefined);
-    mocks.clearSandboxArchiveState.mockResolvedValue(undefined);
+    mocks.assertSandboxNotArchivedOrBusy.mockResolvedValue(undefined);
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValue(undefined);
     mocks.ensureConnectedSandboxRunning.mockResolvedValue(undefined);
     mocks.deleteSandboxResource.mockResolvedValue(undefined);
     mocks.stopSandboxResource.mockResolvedValue(undefined);
@@ -160,7 +161,15 @@ describe('sandbox runtime service', () => {
 
     expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('opensandbox-volume');
     expect(mocks.getSessionVolumeConfig).toHaveBeenCalledTimes(1);
-    expect(mocks.findSandboxInstanceArchiveState).toHaveBeenCalledWith({
+    expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'opensandbox',
+        sandboxId: 'opensandbox-volume',
+        vmConfig,
+        storage: { mountPath: '/workspace' }
+      })
+    );
+    expect(mocks.assertSandboxNotArchivedOrBusy).not.toHaveBeenCalledWith({
       provider: 'opensandbox',
       sandboxId: 'opensandbox-volume'
     });
@@ -174,17 +183,7 @@ describe('sandbox runtime service', () => {
   });
 
   it('blocks archived sandbox when restore is disabled', async () => {
-    mocks.findSandboxInstanceArchiveState.mockResolvedValueOnce({
-      provider: 'sealosdevbox',
-      sandboxId: 'archived-sandbox',
-      status: 'stopped',
-      lastActiveAt: new Date(),
-      metadata: {
-        archive: {
-          state: 'archived'
-        }
-      }
-    });
+    mocks.assertSandboxNotArchivedOrBusy.mockRejectedValueOnce(new Error('Sandbox is archived'));
 
     await expect(
       getSandboxClient({ sandboxId: 'archived-sandbox' }, { restoreArchived: false })
@@ -192,35 +191,13 @@ describe('sandbox runtime service', () => {
     expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
   });
 
-  it('allows archiving sandbox access so activity can cancel archive deletion', async () => {
-    mocks.findSandboxInstanceArchiveState.mockResolvedValueOnce({
-      _id: 'archiving-doc-id',
-      provider: 'sealosdevbox',
-      sandboxId: 'archiving-sandbox',
-      status: 'stopped',
-      lastActiveAt: new Date(),
-      metadata: {
-        archive: {
-          state: 'archiving'
-        }
-      }
-    });
+  it('blocks archiving sandbox access before runtime can recreate it', async () => {
+    mocks.restoreArchivedSandboxBeforeUse.mockRejectedValueOnce(new Error('Sandbox is archiving'));
 
-    await expect(getSandboxClient({ sandboxId: 'archiving-sandbox' })).resolves.toMatchObject({
-      provider: expect.anything()
-    });
-
-    expect(mocks.clearSandboxArchiveState).toHaveBeenCalledWith({
-      provider: 'sealosdevbox',
-      sandboxId: 'archiving-sandbox',
-      _id: 'archiving-doc-id'
-    });
-    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sandboxId: 'archiving-sandbox'
-      })
+    await expect(getSandboxClient({ sandboxId: 'archiving-sandbox' })).rejects.toThrow(
+      'Sandbox is archiving'
     );
-    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1);
+    expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
   });
 
   it('builds sandbox id from app/user/chat triplet and omits user for edit-debug chat', async () => {
@@ -248,6 +225,13 @@ describe('sandbox runtime service', () => {
         createConfig: expect.anything()
       })
     );
+  });
+
+  it('rejects incomplete app/chat query instead of deriving a shared empty sandbox id', async () => {
+    await expect(getSandboxClient({ appId: 'app-1' } as any)).rejects.toThrow(
+      'appId and chatId are required'
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
   });
 
   it('passes resource limits into running instance records and command timeout into exec', async () => {

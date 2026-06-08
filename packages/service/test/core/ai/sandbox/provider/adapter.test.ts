@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  createSandbox: vi.fn((provider: string, connectionConfig: unknown, createConfig?: unknown) => ({
+    provider,
+    connectionConfig,
+    createConfig
+  }))
+}));
+
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
@@ -11,17 +19,8 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
-    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token',
-    AGENT_SANDBOX_REPLACE_DOCKER_INTERNAL: false
+    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token'
   }
-}));
-
-const mocks = vi.hoisted(() => ({
-  createSandbox: vi.fn((provider: string, connectionConfig: unknown, createConfig?: unknown) => ({
-    provider,
-    connectionConfig,
-    createConfig
-  }))
 }));
 
 vi.mock('@fastgpt-sdk/sandbox-adapter', () => ({
