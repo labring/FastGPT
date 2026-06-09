@@ -4,6 +4,7 @@ import type { GetHelperBotFilePreviewParamsType } from '@fastgpt/global/openapi/
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3HelperBotSource } from '@fastgpt/service/common/s3/sources/helperbot';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { isAuthorizedHelperBotFileS3Key } from '@fastgpt/service/common/s3/utils';
 
 async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>): Promise<string> {
   const { key, mode } = req.body;
@@ -12,9 +13,7 @@ async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>):
     authToken: true
   });
 
-  const { type, chatId, userId: uid, filename } = getS3HelperBotSource().parseKey(key);
-
-  if (userId !== uid) {
+  if (!isAuthorizedHelperBotFileS3Key({ key, userId })) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

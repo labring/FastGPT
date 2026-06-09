@@ -9,6 +9,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
+import { HelperBotTypeEnumSchema } from '@fastgpt/global/core/chat/helperBot/type';
 
 export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from './security/token';
 
@@ -263,6 +264,135 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   source: T
 ): key is `${T}/${string}` {
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
+}
+
+/**
+ * 解析聊天文件的 S3 key。
+ *
+ * 聊天文件 key 的授权边界由 appId、uid、chatId 共同决定。任何签名或读取前都应先解析
+ * 这些路径段并与已鉴权上下文绑定，避免只校验一个无关 app 后签发任意 object key。
+ */
+export function parseChatFileS3Key(key: string): {
+  appId: string;
+  uid: string;
+  chatId: string;
+  filename: string;
+} | null {
+  if (!isS3ObjectKey(key, 'chat')) return null;
+
+  const [, appId, uid, chatId, ...filenameParts] = key.split('/');
+  const filename = filenameParts.join('/');
+
+  if (!appId || !uid || !chatId || !filename) return null;
+
+  return {
+    appId,
+    uid,
+    chatId,
+    filename
+  };
+}
+
+/**
+ * 判断聊天文件 key 是否属于已鉴权的 app 与聊天用户。
+ */
+export function isAuthorizedChatFileS3Key({
+  key,
+  appId,
+  uid
+}: {
+  key: string;
+  appId: string;
+  uid: string;
+}) {
+  const parsedKey = parseChatFileS3Key(key);
+
+  return (
+    !!parsedKey &&
+    String(parsedKey.appId) === String(appId) &&
+    String(parsedKey.uid) === String(uid)
+  );
+}
+
+/**
+ * 解析数据集文件的 S3 key。
+ *
+ * 数据集文件的第二段是 datasetId。调用方应基于解析出的 datasetId 做权限校验，而不是把
+ * S3 对象存在性当作访问权限。
+ */
+export function parseDatasetFileS3Key(key: string): {
+  datasetId: string;
+  filename: string;
+} | null {
+  if (!isS3ObjectKey(key, 'dataset')) return null;
+
+  const [, datasetId, ...filenameParts] = key.split('/');
+  const filename = filenameParts.join('/');
+
+  if (!datasetId || !filename) return null;
+
+  return {
+    datasetId,
+    filename
+  };
+}
+
+/**
+ * 判断数据集文件 key 是否属于指定 dataset。
+ */
+export function isAuthorizedDatasetFileS3Key({
+  key,
+  datasetId
+}: {
+  key: string;
+  datasetId: string;
+}) {
+  const parsedKey = parseDatasetFileS3Key(key);
+
+  return !!parsedKey && String(parsedKey.datasetId) === String(datasetId);
+}
+
+/**
+ * 解析 HelperBot 文件 key。
+ *
+ * HelperBot 文件 key 的第一段是固定 source，后续才是 type/user/chat 维度。
+ */
+export function parseHelperBotFileS3Key(key: string): {
+  type: HelperBotTypeEnumType;
+  userId: string;
+  chatId: string;
+  filename: string;
+} | null {
+  if (!isS3ObjectKey(key, 'helperBot')) return null;
+
+  const [, type, userId, chatId, ...filenameParts] = key.split('/');
+  const filename = filenameParts.join('/');
+  const parsedType = HelperBotTypeEnumSchema.safeParse(type);
+
+  if (!parsedType.success || !userId || !chatId || !filename) return null;
+
+  return {
+    type: parsedType.data,
+    userId,
+    chatId,
+    filename
+  };
+}
+
+/**
+ * 判断 HelperBot 文件 key 是否属于当前用户。
+ */
+export function isAuthorizedHelperBotFileS3Key({ key, userId }: { key: string; userId: string }) {
+  const parsedKey = parseHelperBotFileS3Key(key);
+
+  return !!parsedKey && String(parsedKey.userId) === String(userId);
+}
+
+/**
+ * 判断临时文件 key 是否属于指定团队。
+ */
+export function isAuthorizedTempFileS3Key({ key, teamId }: { key: string; teamId: string }) {
+  return isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`);
 }
 
 export function sanitizeS3ObjectKey(key: string) {

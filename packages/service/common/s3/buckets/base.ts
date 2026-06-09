@@ -233,6 +233,13 @@ export class S3BaseBucket {
     }
   }
 
+  /**
+   * 为对象 key 生成外部可访问 URL。
+   *
+   * 该方法只负责存储层签名，不做 team/app/dataset/user 的业务归属校验。任何 API 边界或
+   * 用户可控 key 调用到这里前，必须先使用 common/s3/utils 中的授权绑定 helper 校验 key
+   * 属于当前已鉴权资源。
+   */
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 

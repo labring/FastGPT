@@ -4,7 +4,10 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addHours } from 'date-fns';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
+import {
+  isAuthorizedTempFileS3Key,
+  jwtSignS3DownloadToken
+} from '@fastgpt/service/common/s3/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
@@ -29,7 +32,7 @@ async function handler(
   });
 
   const result = keys
-    .filter((key) => isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`))
+    .filter((key) => isAuthorizedTempFileS3Key({ key, teamId }))
     .map((key) => ({
       key,
       previewUrl: jwtSignS3DownloadToken({

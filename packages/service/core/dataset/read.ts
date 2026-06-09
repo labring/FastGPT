@@ -16,8 +16,9 @@ import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
-import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
+import { getFileS3Key, isS3ObjectKey, isAuthorizedDatasetFileS3Key } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -191,6 +192,10 @@ export const readDatasetSourceRawText = async ({
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     if (!datasetId || !isS3ObjectKey(sourceId, 'dataset')) {
       return Promise.reject('datasetId is required for S3 files');
+    }
+
+    if (!isAuthorizedDatasetFileS3Key({ key: sourceId, datasetId })) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
     }
 
     const { filename, rawText } = await getS3DatasetSource().getDatasetFileRawText({

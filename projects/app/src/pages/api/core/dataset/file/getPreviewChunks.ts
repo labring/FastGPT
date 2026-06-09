@@ -2,12 +2,10 @@ import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import {
-  OwnerPermissionVal,
-  WritePermissionVal
-} from '@fastgpt/global/support/permission/constant';
-import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/utils';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize
@@ -42,14 +40,21 @@ async function handler(
     throw new Error('sourceId is empty');
   }
 
+  if (
+    type === DatasetSourceReadTypeEnum.fileLocal &&
+    !isAuthorizedDatasetFileS3Key({ key: sourceId, datasetId })
+  ) {
+    return Promise.reject(CommonErrEnum.unAuthFile);
+  }
+
   const fileAuthRes =
     type === DatasetSourceReadTypeEnum.fileLocal
-      ? await authCollectionFile({
+      ? await authDatasetFileKey({
           req,
           authToken: true,
           authApiKey: true,
           fileId: sourceId,
-          per: OwnerPermissionVal
+          per: WritePermissionVal
         })
       : undefined;
 
