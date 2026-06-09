@@ -1314,7 +1314,7 @@ describe('pushChatRecords', () => {
       }
     });
 
-    it('should update interactive chat without appending inline responseData rows', async () => {
+    it('should update interactive chat with node responses already owned by the existing AI item', async () => {
       // Create an AI chat item
       await MongoChatItem.create({
         chatId: 'test-chat-id',
@@ -1354,10 +1354,25 @@ describe('pushChatRecords', () => {
           totalPoints: 10
         }
       });
+      await MongoChatItemResponse.create({
+        teamId: testTeamId,
+        appId: testAppId,
+        chatId: 'test-chat-id',
+        chatItemDataId: 'data-id-1',
+        data: {
+          id: 'new-root',
+          nodeId: 'new-root',
+          moduleType: FlowNodeTypeEnum.agent,
+          moduleName: 'New Agent',
+          runningTime: 0.5,
+          totalPoints: 5
+        }
+      });
 
       const props = createMockProps(
         {
           aiContent: {
+            dataId: 'data-id-1',
             obj: ChatRoleEnum.AI,
             value: [],
             responseData: [
@@ -1406,9 +1421,11 @@ describe('pushChatRecords', () => {
         chatId: props.chatId
       }).sort({ _id: 1 });
 
-      expect(responses).toHaveLength(1);
+      expect(responses).toHaveLength(2);
       const existingResponse = responses.find((item) => item.data.id === 'existing-root');
       expect(existingResponse?.data.moduleType).toBe(FlowNodeTypeEnum.chatNode);
+      expect(responses.map((item) => item.chatItemDataId)).toEqual(['data-id-1', 'data-id-1']);
+      expect(responses.map((item) => item.data.id)).toEqual(['existing-root', 'new-root']);
 
       const records = await getChatItems({
         appId: testAppId,
@@ -1419,7 +1436,7 @@ describe('pushChatRecords', () => {
       });
       const aiRecord = records.histories.find((item) => item.obj === ChatRoleEnum.AI);
 
-      expect(aiRecord?.responseData?.map((item) => item.id)).toEqual(['existing-root']);
+      expect(aiRecord?.responseData?.map((item) => item.id)).toEqual(['existing-root', 'new-root']);
     });
   });
 });

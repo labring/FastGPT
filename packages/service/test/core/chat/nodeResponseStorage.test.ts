@@ -666,7 +666,7 @@ describe('WorkflowNodeResponseWriter', () => {
 
     expect(writer.isFullyFlushed).toBe(true);
     expect(writer.getSummary()).toEqual({
-      citeCollectionIds: [],
+      citeCollectionIds: ['collection-from-dropped-row'],
       errorCount: 1,
       lastError: 'root failed',
       totalPoints: 8
@@ -710,7 +710,7 @@ describe('WorkflowNodeResponseWriter', () => {
     ]);
 
     expect(writer.getSummary()).toEqual({
-      citeCollectionIds: [],
+      citeCollectionIds: ['collection-1'],
       errorCount: 1,
       lastError: 'failed',
       totalPoints: 10

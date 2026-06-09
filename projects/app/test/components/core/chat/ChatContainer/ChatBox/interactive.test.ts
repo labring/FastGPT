@@ -6,6 +6,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   getInteractiveByHistories,
+  resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 
@@ -222,5 +223,57 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
       ...histories[2],
       status: ChatStatusEnum.loading
     });
+  });
+});
+
+describe('resolveInteractiveResponseChatItemId', () => {
+  it('uses the previous AI dataId for interactive submit', () => {
+    const interactive = createUserSelectInteractive();
+
+    expect(
+      resolveInteractiveResponseChatItemId({
+        histories: [
+          createAiRecord(undefined, { dataId: 'old-ai-1' }),
+          createHumanRecord('human-2'),
+          createAiRecord(interactive, { dataId: 'old-ai-2' })
+        ],
+        interactive,
+        interactiveVal: 'A',
+        responseChatItemId: 'new-response-id'
+      })
+    ).toBe('old-ai-2');
+  });
+
+  it('keeps the new responseChatItemId for agent plan query', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'agentPlanAskQuery',
+      params: {
+        content: 'Need more detail',
+        options: ['A', 'B', 'C']
+      }
+    } as WorkflowInteractiveResponseType;
+
+    expect(
+      resolveInteractiveResponseChatItemId({
+        histories: [createAiRecord(interactive, { dataId: 'old-ai-1' })],
+        interactive,
+        interactiveVal: 'new user question',
+        responseChatItemId: 'new-response-id'
+      })
+    ).toBe('new-response-id');
+  });
+
+  it('falls back to the new responseChatItemId when no previous AI item exists', () => {
+    const interactive = createUserInputInteractive();
+
+    expect(
+      resolveInteractiveResponseChatItemId({
+        histories: [createHumanRecord('human-1')],
+        interactive,
+        interactiveVal: JSON.stringify({ name: 'FastGPT' }),
+        responseChatItemId: 'new-response-id'
+      })
+    ).toBe('new-response-id');
   });
 });

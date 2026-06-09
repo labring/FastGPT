@@ -1,8 +1,5 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import {
-  filterPublicNodeResponseData,
-  getChildrenResponses
-} from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData, getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
@@ -26,8 +23,8 @@ export const getWorkflowFinalResponseData = ({
 /**
  * 按 completions 参数过滤最终 responseData。
  *
- * `responseAllData` 直接返回完整详情；否则复用前端公开字段过滤逻辑，按 `responseDetail`
- * 控制引用内容等敏感/大字段是否透出。
+ * `responseAllData` 直接返回完整详情；否则保留前端拼树需要的最小字段，按
+ * `responseDetail` 控制引用内容等敏感/大字段是否透出。
  */
 export const filterWorkflowFinalResponseData = ({
   responseData,
@@ -40,8 +37,8 @@ export const filterWorkflowFinalResponseData = ({
 }) =>
   responseAllData
     ? responseData
-    : filterPublicNodeResponseData({
-        nodeRespones: responseData,
+    : filterNodeResponseTreeData({
+        nodeResponses: responseData,
         responseDetail
       });
 

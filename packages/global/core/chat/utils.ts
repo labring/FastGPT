@@ -302,10 +302,101 @@ export const getHistoryPreview = (
   });
 };
 
+const publicNodeMap: Record<string, boolean> = {
+  [FlowNodeTypeEnum.appModule]: true,
+  [FlowNodeTypeEnum.pluginModule]: true,
+  [FlowNodeTypeEnum.datasetSearchNode]: true,
+  [FlowNodeTypeEnum.agent]: true,
+  [FlowNodeTypeEnum.pluginOutput]: true,
+  [FlowNodeTypeEnum.runApp]: true,
+  [FlowNodeTypeEnum.toolCall]: true,
+  [FlowNodeTypeEnum.tool]: true
+};
+
+const publicNodeResponseFields: Record<string, boolean> = {
+  pluginOutput: true,
+  runningTime: true,
+  toolId: true
+};
+
+const treeNodeResponseFields: Record<string, boolean> = {
+  ...publicNodeResponseFields,
+  parentId: true,
+  moduleNameArgs: true,
+  totalPoints: true,
+  childTotalPoints: true,
+  childResponseCount: true,
+  errorText: true
+};
+
+const getNodeResponseFieldMap = ({
+  responseDetail,
+  keepTreeFields
+}: {
+  responseDetail: boolean;
+  keepTreeFields: boolean;
+}) => {
+  const fields = keepTreeFields ? treeNodeResponseFields : publicNodeResponseFields;
+
+  return responseDetail
+    ? {
+        quoteList: true,
+        ...fields
+      }
+    : fields;
+};
+
+const filterNodeResponseData = ({
+  nodeResponses = [],
+  responseDetail = false,
+  keepTreeFields = false
+}: {
+  nodeResponses?: ChatHistoryItemResType[];
+  responseDetail?: boolean;
+  keepTreeFields?: boolean;
+}) => {
+  const fieldMap = getNodeResponseFieldMap({ responseDetail, keepTreeFields });
+
+  return nodeResponses
+    .filter((item) => publicNodeMap[item.moduleType])
+    .map((item) => {
+      const obj: DispatchNodeResponseType = {};
+      for (const key in item) {
+        const childField = key as (typeof childrenResponseFields)[number];
+        if (childrenResponseFields.includes(childField)) {
+          const childResponses = item[childField] as ChatHistoryItemResType[] | undefined;
+          obj[childField] = filterNodeResponseData({
+            nodeResponses: childResponses,
+            responseDetail,
+            keepTreeFields
+          });
+        } else if (fieldMap[key]) {
+          // @ts-expect-error Dynamic public field copy is constrained by fieldMap.
+          obj[key] = item[key];
+        }
+      }
+
+      if (keepTreeFields) {
+        return {
+          id: item.id,
+          nodeId: item.nodeId,
+          moduleName: item.moduleName,
+          moduleType: item.moduleType,
+          ...obj
+        } as ChatHistoryItemResType;
+      }
+
+      return {
+        moduleType: item.moduleType,
+        ...obj
+      } as ChatHistoryItemResType;
+    });
+};
+
 /**
  * 过滤工作流节点对外可见的响应字段。
  *
- * 公共 API 和分享场景不应直接暴露完整 nodeResponse，只保留可展示、可计费统计的字段。
+ * 公共 API 和分享场景不应直接暴露完整 nodeResponse，只保留旧契约中的展示字段。
  * childrenResponses 与历史 detail 字段会递归过滤，保证新旧数据结构返回口径一致。
  */
 export const filterPublicNodeResponseData = ({
@@ -314,62 +405,30 @@ export const filterPublicNodeResponseData = ({
 }: {
   nodeRespones?: ChatHistoryItemResType[];
   responseDetail?: boolean;
-}) => {
-  const publicNodeMap: Record<string, any> = {
-    [FlowNodeTypeEnum.appModule]: true,
-    [FlowNodeTypeEnum.pluginModule]: true,
-    [FlowNodeTypeEnum.datasetSearchNode]: true,
-    [FlowNodeTypeEnum.agent]: true,
-    [FlowNodeTypeEnum.pluginOutput]: true,
-    [FlowNodeTypeEnum.runApp]: true,
-    [FlowNodeTypeEnum.toolCall]: true,
-    [FlowNodeTypeEnum.tool]: true
-  };
+}) =>
+  filterNodeResponseData({
+    nodeResponses: nodeRespones,
+    responseDetail
+  });
 
-  const commonFields = {
-    parentId: true,
-    moduleNameArgs: true,
-    pluginOutput: true,
-    runningTime: true,
-    toolId: true,
-    totalPoints: true,
-    childTotalPoints: true,
-    childResponseCount: true,
-    errorText: true
-  };
-  const filedMap: Record<string, boolean> = responseDetail
-    ? {
-        quoteList: true,
-        ...commonFields
-      }
-    : commonFields;
-
-  return nodeRespones
-    .filter((item) => publicNodeMap[item.moduleType])
-    .map((item) => {
-      const obj: DispatchNodeResponseType = {};
-      for (const key in item) {
-        const childField = key as (typeof childrenResponseFields)[number];
-        if (childrenResponseFields.includes(childField)) {
-          const childResponses = item[childField] as ChatHistoryItemResType[] | undefined;
-          obj[childField] = filterPublicNodeResponseData({
-            nodeRespones: childResponses,
-            responseDetail
-          });
-        } else if (filedMap[key]) {
-          // @ts-expect-error Dynamic public field copy is constrained by filedMap.
-          obj[key] = item[key];
-        }
-      }
-      return {
-        id: item.id,
-        nodeId: item.nodeId,
-        moduleName: item.moduleName,
-        moduleType: item.moduleType,
-        ...obj
-      } as ChatHistoryItemResType;
-    });
-};
+/**
+ * 过滤前端树形详情需要的 nodeResponse 字段。
+ *
+ * 与 public/share 过滤不同，SSE 和 completion response 需要保留 `id/parentId` 等树形归属
+ * 字段，否则乱序 child 无法在前端挂回 parent；但仍过滤 toolInput/toolRes 等大字段或敏感字段。
+ */
+export const filterNodeResponseTreeData = ({
+  nodeResponses = [],
+  responseDetail = false
+}: {
+  nodeResponses?: ChatHistoryItemResType[];
+  responseDetail?: boolean;
+}) =>
+  filterNodeResponseData({
+    nodeResponses,
+    responseDetail,
+    keepTreeFields: true
+  });
 
 // Remove dataset cite in ai response
 export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(

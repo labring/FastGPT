@@ -68,6 +68,10 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
+import {
+  getInteractiveResponseStatus,
+  resolveResponseChatItemId
+} from '@fastgpt/service/core/chat/interactiveResponseDataId';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -93,7 +97,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { detail = false, retainDatasetCite = false, variables = {} } = completionProps;
 
   const startTime = Date.now();
-
   const originIp = getIpFromRequest(req);
 
   try {
@@ -245,11 +248,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const saveChatId = chatId || getNanoid(24);
+    const interactiveStatus = getInteractiveResponseStatus({
+      interactive,
+      userContent: userQuestion
+    });
+    const finalResponseChatItemId = await resolveResponseChatItemId({
+      appId: String(app._id),
+      chatId: saveChatId,
+      responseChatItemId,
+      interactive,
+      userContent: userQuestion
+    });
     await validateChatRoundDataIds({
       appId: String(app._id),
       chatId: saveChatId,
       userContent: userQuestion,
-      responseChatItemId
+      responseChatItemId:
+        !interactive || interactiveStatus === 'query' ? finalResponseChatItemId : undefined
     });
 
     const source = (() => {
@@ -305,7 +320,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           uid: String(outLinkUserId || tmbId),
 
           chatId: saveChatId,
-          responseChatItemId,
+          responseChatItemId: finalResponseChatItemId,
           runtimeNodes,
           runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
           variables,
@@ -333,7 +348,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
-      dataId: responseChatItemId,
+      dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,

@@ -32,6 +32,7 @@ import { formatChatValue2InputType, stripChatValueFileUrls } from '../utils/chat
 import {
   getInteractiveByHistories,
   refreshSubmittedFormInteractiveValues,
+  resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '../utils/interactive';
 import { shouldAppendResumeInteractive } from '../utils/resume';
@@ -529,7 +530,12 @@ export const useChatGenerate = ({
           const requestVariables = formatChatRequestVariables({ variableList, variables });
 
           const humanChatId = getNanoid(24);
-          const responseChatId = getNanoid(24);
+          const responseChatId = resolveInteractiveResponseChatItemId({
+            histories: history,
+            interactive,
+            interactiveVal: text,
+            responseChatItemId: getNanoid(24)
+          });
 
           if (autoTTSResponse) {
             await startSegmentedAudio();

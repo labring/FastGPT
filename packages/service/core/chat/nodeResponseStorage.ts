@@ -293,6 +293,23 @@ const getChildStats = (
 export const getNodeResponseChildStats = (children: ChatHistoryItemResType[] = []): ChildStats =>
   getChildStats(normalizeChildResponseTree(children));
 
+const collectCiteCollectionIds = (
+  response: ChatHistoryItemResType,
+  collectionIds = new Set<string>()
+) => {
+  if (response.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
+    response.quoteList?.forEach((quote) => {
+      if (quote.collectionId) {
+        collectionIds.add(quote.collectionId);
+      }
+    });
+  }
+
+  getChildrenResponses(response).forEach((child) => collectCiteCollectionIds(child, collectionIds));
+
+  return Array.from(collectionIds);
+};
+
 const getResponseChildStats = (
   response: ChatHistoryItemResType,
   children: ChatHistoryItemResType[]
@@ -518,14 +535,8 @@ export class WorkflowNodeResponseWriter {
         totalPoints: 0
       };
 
-      if (row.data.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
-        // citeCollectionIds 用于保存聊天记录引用来源；quote 文本本身已在写库前瘦身。
-        row.data.quoteList?.forEach((quote) => {
-          if (quote.collectionId) {
-            contribution.citeCollectionIds.push(quote.collectionId);
-          }
-        });
-      }
+      // citeCollectionIds 用于保存聊天记录引用来源；内联 children 里的搜索节点也要兼容收集。
+      contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
 
       // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。
       const id = getRowResponseId(row);

@@ -12,6 +12,7 @@ import {
   concatHistories,
   getChatTitleFromChatMessage,
   getHistoryPreview,
+  filterNodeResponseTreeData,
   filterPublicNodeResponseData,
   removeEmptyUserInput,
   getPluginOutputsFromChatResponses,
@@ -185,12 +186,10 @@ describe('filterPublicNodeResponseData', () => {
     const result = filterPublicNodeResponseData({ nodeRespones: nodeResponses });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: '2',
-      nodeId: 'node2',
-      moduleName: 'Dataset Search'
+    expect(result[0]).toEqual({
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      runningTime: 0.5
     });
-    expect(result[0].moduleType).toBe(FlowNodeTypeEnum.datasetSearchNode);
   });
 
   it('should return empty array for undefined input', () => {
@@ -250,9 +249,6 @@ describe('filterPublicNodeResponseData', () => {
 
     expect(result).toEqual([
       {
-        id: '1',
-        nodeId: 'node1',
-        moduleName: 'Sandbox',
         moduleType: FlowNodeTypeEnum.tool,
         runningTime: 0.8,
         toolId: SANDBOX_SHELL_TOOL_NAME
@@ -308,10 +304,6 @@ describe('filterPublicNodeResponseData', () => {
     expect(result).toHaveLength(1);
     expect(result[0].childrenResponses).toEqual([
       {
-        id: 'dataset',
-        parentId: 'agent',
-        nodeId: 'dataset-node',
-        moduleName: 'Dataset Search',
         moduleType: FlowNodeTypeEnum.datasetSearchNode,
         quoteList: [
           {
@@ -327,11 +319,85 @@ describe('filterPublicNodeResponseData', () => {
         ]
       }
     ]);
-    expect(result[0]).toMatchObject({
-      id: 'agent',
-      childTotalPoints: 2,
-      childResponseCount: 1
+    expect(result[0]).toEqual({
+      moduleType: FlowNodeTypeEnum.agent,
+      childrenResponses: result[0].childrenResponses
     });
+  });
+});
+
+describe('filterNodeResponseTreeData', () => {
+  it('keeps tree identity fields needed by SSE responseData merge', () => {
+    const nodeResponses: ChatHistoryItemResType[] = [
+      {
+        id: 'agent',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        totalPoints: 2,
+        childTotalPoints: 1,
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'dataset',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: 'quote-1',
+                q: 'private question',
+                a: 'private answer',
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceName: 'source',
+                chunkIndex: 0,
+                score: []
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = filterNodeResponseTreeData({
+      nodeResponses,
+      responseDetail: true
+    });
+
+    expect(result).toEqual([
+      {
+        id: 'agent',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        totalPoints: 2,
+        childTotalPoints: 1,
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'dataset',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: 'quote-1',
+                q: 'private question',
+                a: 'private answer',
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceName: 'source',
+                chunkIndex: 0,
+                score: []
+              }
+            ]
+          }
+        ]
+      }
+    ]);
   });
 });
 

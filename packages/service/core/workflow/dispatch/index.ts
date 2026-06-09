@@ -27,7 +27,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
 import {
   filterWorkflowEdges,
   getReferenceVariableValue,
@@ -1043,8 +1043,8 @@ export class WorkflowQueue {
       if (this.data.apiVersion === 'v2' && persistedNodeResponses.length > 0) {
         const filteredResponses = this.data.responseAllData
           ? persistedNodeResponses
-          : filterPublicNodeResponseData({
-              nodeRespones: persistedNodeResponses,
+          : filterNodeResponseTreeData({
+              nodeResponses: persistedNodeResponses,
               responseDetail: this.data.responseDetail
             });
 

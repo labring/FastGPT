@@ -110,6 +110,7 @@ export const getScheduleTriggerApp = async () => {
           },
           aiContent: {
             obj: ChatRoleEnum.AI,
+            dataId: responseChatItemId,
             value: assistantResponses,
             memories: system_memories,
             customFeedbacks

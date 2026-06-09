@@ -158,6 +158,35 @@ export const getInteractiveByHistories = (
   };
 };
 
+/**
+ * 解析前端本轮请求应该携带的 responseChatItemId。
+ *
+ * interactive submit 会把运行结果追加回上一轮 AI 消息，前端也需要沿用上一轮 AI 的 dataId；
+ * agentPlanAskQuery 属于继续提问，会产生新 AI 消息，因此继续使用本轮新生成的 id。
+ */
+export const resolveInteractiveResponseChatItemId = ({
+  histories,
+  interactive,
+  interactiveVal,
+  responseChatItemId
+}: {
+  histories: ChatSiteItemType[];
+  interactive?: WorkflowInteractiveResponseType;
+  interactiveVal: string;
+  responseChatItemId: string;
+}) => {
+  if (!interactive) return responseChatItemId;
+
+  const status = checkInteractiveResponseStatus({
+    interactive,
+    input: interactiveVal
+  });
+  if (status === 'query') return responseChatItemId;
+
+  const previousAiItem = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
+  return previousAiItem?.dataId || responseChatItemId;
+};
+
 export const rewriteHistoriesByInteractiveResponse = ({
   histories,
   interactiveVal,
