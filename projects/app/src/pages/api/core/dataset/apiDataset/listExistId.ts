@@ -27,7 +27,7 @@ async function handler(
     {
       teamId: dataset.teamId,
       datasetId: dataset._id,
-      deleteTime: { $exists: false }
+      deleteTime: null
     },
     '_id apiFileId'
   ).lean();
