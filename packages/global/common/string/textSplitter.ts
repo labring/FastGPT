@@ -74,12 +74,7 @@ const markdownTableSplit = (props: SplitProps): SplitResponse => {
   }
 
   const header = splitText2Lines[0];
-  const headerSize = header.split('|').length - 2;
-
-  const mdSplitString = `| ${new Array(headerSize > 0 ? headerSize : 1)
-    .fill(0)
-    .map(() => '---')
-    .join(' | ')} |`;
+  const mdSplitString = splitText2Lines[1];
 
   const chunks: string[] = [];
   const defaultChunk = `${header}

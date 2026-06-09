@@ -201,6 +201,12 @@ describe('readFileContentByBuffer', () => {
   it('should return formatText when getFormatText is true', async () => {
     const buffer = Buffer.from('content');
 
+    mockReadRawContentFromBuffer.mockResolvedValueOnce({
+      rawText: 'raw-text-with-|',
+      formatText: '| escaped\\|cell |',
+      imageList: []
+    });
+
     const result = await readFileContentByBuffer({
       teamId,
       tmbId,
@@ -210,7 +216,7 @@ describe('readFileContentByBuffer', () => {
       getFormatText: true
     });
 
-    expect(result.rawText).toBeDefined();
+    expect(result.rawText).toBe('| escaped\\|cell |');
   });
 
   it('should return rawText when getFormatText is false', async () => {

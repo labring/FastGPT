@@ -378,3 +378,30 @@ dsgsgfsgs22sddddddd`,
 
   expect(formatChunks(data)).toEqual(formatResult(mock.result));
 });
+
+it('should preserve escaped pipe in markdown table cells when splitting', async () => {
+  const text = `| 项目系数 | 垫付首年考核费 \\| cc | 4.90% |
+| --- | --- | --- |
+| 项目系数 | 投资回报率 \\| abcd | 6.86% |
+| 项目系数 | 当年运营管理成本,cc | 1,500,000.00 |`;
+
+  const data = await rawText2Chunks({
+    rawText: text,
+    chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
+    chunkTriggerMinSize: 10,
+    maxSize: 10000,
+    chunkSize: 80,
+    backupParse: false
+  });
+
+  expect(data.length).toBeGreaterThan(1);
+
+  for (const chunk of data) {
+    const lines = chunk.q.split('\n');
+    expect(lines[0]).toBe('| 项目系数 | 垫付首年考核费 \\| cc | 4.90% |');
+    expect(lines[1]).toBe('| --- | --- | --- |');
+    expect(lines[1]).not.toBe('| --- | --- | --- | --- |');
+  }
+
+  expect(data.map((chunk) => chunk.q).join('\n')).toContain('投资回报率 \\| abcd');
+});

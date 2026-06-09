@@ -64,7 +64,6 @@
     "next": "catalog:",
     "nextjs-cors": "2.2.1",
     "node-cron": "^3.0.3",
-    "node-xlsx": "^0.24.0",
     "p-limit": "^7.2.0",
     "papaparse": "5.4.1",
     "pg": "^8.10.0",
@@ -76,6 +75,7 @@
     "turndown": "^7.1.2",
     "undici": "^7.18.2",
     "winston": "^3.17.0",
+    "xlsx": "0.18.5",
     "zod": "catalog:"
   },
   "devDependencies": {

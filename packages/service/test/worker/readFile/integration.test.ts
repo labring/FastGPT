@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import path from 'path';
 import { existsSync, readFileSync } from 'fs';
+import XLSX from 'xlsx';
 import { JSZip } from '@fastgpt/service/core/ai/skill/package';
 
 const { mockUploadImage2S3Bucket } = vi.hoisted(() => ({
@@ -229,6 +230,26 @@ describeIfEnabled('readFile worker (real spawn integration)', () => {
     expect(result.rawText).toContain('Alice');
     expect(result.rawText).toContain('30');
     expect(result.rawText).toContain('Shanghai');
+  });
+
+  it('解析 xlsx 时应转义 Markdown 表格分隔符', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['name|alias', 'fullwidth｜pipe'],
+      ['Alice|A', '保留｜字符']
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readRawContentFromBuffer({
+      extension: 'xlsx',
+      encoding: 'utf-8',
+      buffer
+    });
+
+    expect(result.rawText).toContain('name|alias,fullwidth｜pipe');
+    expect(result.formatText).toContain('| name\\|alias | fullwidth｜pipe |');
+    expect(result.formatText).toContain('| Alice\\|A | 保留｜字符 |');
   });
 
   it('解析带图片 docx 时通过主线程 uploadFile handler 上传图片', async () => {
