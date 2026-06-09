@@ -129,7 +129,6 @@ function Code(e: any) {
     children,
     showAnimation,
     autoPreviewHtmlCodeBlock,
-    chatItemDataId,
     markdownClassName
   } = e;
   const match = /language-(\w+)/.exec(className || '');
@@ -165,7 +164,6 @@ function Code(e: any) {
           match={match}
           showAnimation={showAnimation}
           autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-          chatItemDataId={chatItemDataId}
         >
           {children}
         </IframeHtmlCodeBlock>
@@ -185,7 +183,6 @@ function Code(e: any) {
     );
   }, [
     autoPreviewHtmlCodeBlock,
-    chatItemDataId,
     codeType,
     className,
     codeBlock,

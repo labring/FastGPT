@@ -19,35 +19,8 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { codeLight } from './CodeLight';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import styles from '../index.module.scss';
-import {
-  clearCachedHtmlBlockViewMode,
-  getCachedHtmlBlockViewModeRecord,
-  setCachedHtmlBlockViewMode
-} from './iframe-html-view-mode-cache';
 
-const HTML_CODE_BLOCK_MAX_HEIGHT_RATIO = 0.6;
-const HTML_CODE_BLOCK_FONT_SIZE = 14;
-const HTML_CODE_BLOCK_LINE_HEIGHT = 1.5;
-const HTML_CODE_BLOCK_VERTICAL_PADDING = HTML_CODE_BLOCK_FONT_SIZE * 2;
-
-/** 与 SyntaxHighlighter pre 一致的上限：60vh。 */
-const getMaxSourcePanelHeight = () => {
-  if (typeof window === 'undefined') return Number.MAX_SAFE_INTEGER;
-  return window.innerHeight * HTML_CODE_BLOCK_MAX_HEIGHT_RATIO;
-};
-
-/** 在未渲染源码面板时，按行数估算 Code 面板高度。 */
-const estimateSourcePanelHeight = (code: string) => {
-  const lineCount = Math.max(code.split('\n').length, 1);
-  const contentHeight =
-    lineCount * HTML_CODE_BLOCK_FONT_SIZE * HTML_CODE_BLOCK_LINE_HEIGHT +
-    HTML_CODE_BLOCK_VERTICAL_PADDING;
-
-  return Math.min(contentHeight, getMaxSourcePanelHeight());
-};
-
-const clampSourcePanelHeight = (height: number) =>
-  Math.min(Math.max(height, 0), getMaxSourcePanelHeight());
+type HtmlCodeBlockViewMode = 'source' | 'iframe';
 
 const StyledButton = ({
   label,
@@ -61,7 +34,7 @@ const StyledButton = ({
   iconName: IconNameType;
   onClick: () => void;
   isActive?: boolean;
-  viewMode: 'source' | 'iframe';
+  viewMode: HtmlCodeBlockViewMode;
   isMobile?: boolean;
 }) => {
   const isPreview = viewMode === 'iframe';
@@ -111,14 +84,28 @@ const StyledButton = ({
   );
 };
 
+const HtmlPreviewIframe = ({ code }: { code: string }) => (
+  <iframe
+    srcDoc={code}
+    sandbox="allow-popups"
+    referrerPolicy="no-referrer"
+    style={{
+      display: 'block',
+      width: '100%',
+      height: '100%',
+      border: 'none',
+      background: 'white'
+    }}
+  />
+);
+
 const IframeHtmlCodeBlock = ({
   children,
   className,
   codeBlock,
   match,
   showAnimation,
-  autoPreviewHtmlCodeBlock,
-  chatItemDataId
+  autoPreviewHtmlCodeBlock
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
@@ -126,44 +113,24 @@ const IframeHtmlCodeBlock = ({
   match: RegExpExecArray | null;
   showAnimation?: boolean;
   autoPreviewHtmlCodeBlock?: boolean;
-  chatItemDataId?: string;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const code = String(children);
   const lang = match?.[1]?.toLowerCase();
   const isHtmlBlock = lang === 'html' || lang === 'htm';
-  const streamFinished = !showAnimation;
-  const htmlLooksNearlyDone = /<\/(?:body|html)\s*>/i.test(code);
-  // 已完成的聊天 HTML 块直接展示结果；流式中的 HTML 块先留在源码视图。
-  const shouldAutoPreviewOnMount = !!autoPreviewHtmlCodeBlock && isHtmlBlock && streamFinished;
-  const cachedViewModeRecord = getCachedHtmlBlockViewModeRecord(chatItemDataId, code);
-  const hasCachedViewMode = cachedViewModeRecord !== undefined;
-  const hasUserViewChoice = cachedViewModeRecord?.isUserChoice === true;
+  const shouldAutoPreview = !!autoPreviewHtmlCodeBlock && isHtmlBlock;
   // 流式阶段仍展示源码高亮；只额外接管滚动，让最新输出保持可见。
   const showStreamingSourceCode = !!autoPreviewHtmlCodeBlock && isHtmlBlock && showAnimation;
-  const [viewMode, setViewMode] = useState<'source' | 'iframe'>(() => {
-    if (cachedViewModeRecord) return cachedViewModeRecord.mode;
-    if (shouldAutoPreviewOnMount) return 'iframe';
+  const [viewMode, setViewMode] = useState<HtmlCodeBlockViewMode>(() => {
+    if (shouldAutoPreview && !showAnimation) return 'iframe';
     return 'source';
   });
-  const currentViewMode = hasUserViewChoice ? cachedViewModeRecord.mode : viewMode;
-  const userOverrideRef = useRef(hasUserViewChoice);
+  const userOverrideRef = useRef(false);
   // 自动切换只执行一次；用户主动点过 Tab 后不再覆盖他的选择。
-  const autoSwitchedRef = useRef(hasCachedViewMode || shouldAutoPreviewOnMount);
-  const prevShowAnimationRef = useRef(showAnimation);
-  const streamingCodeRef = useRef<HTMLElement | null>(null);
-  const sourcePreRef = useRef<HTMLPreElement | null>(null);
-  const estimatedSourcePanelHeight = useMemo(() => estimateSourcePanelHeight(code), [code]);
-  const [measuredSourcePanelHeight, setMeasuredSourcePanelHeight] = useState<{
-    code: string;
-    height: number;
-  } | null>(null);
-  const sourcePanelHeight =
-    measuredSourcePanelHeight?.code === code
-      ? measuredSourcePanelHeight.height
-      : estimatedSourcePanelHeight;
-  const isPreview = currentViewMode === 'iframe';
+  const autoSwitchedRef = useRef(shouldAutoPreview && !showAnimation);
+  const streamingCodeRef = useRef<HTMLPreElement | null>(null);
+  const isPreview = viewMode === 'iframe';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -177,7 +144,6 @@ const IframeHtmlCodeBlock = ({
           <pre
             {...props}
             ref={(node) => {
-              sourcePreRef.current = node;
               if (showStreamingSourceCode) {
                 streamingCodeRef.current = node;
               }
@@ -196,83 +162,32 @@ const IframeHtmlCodeBlock = ({
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
 
-  const FullscreenIframe = useMemo(
-    () => (
-      <iframe
-        srcDoc={code}
-        sandbox="allow-popups"
-        referrerPolicy="no-referrer"
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          background: 'white'
-        }}
-      />
-    ),
-    [code]
-  );
-
-  const handleSelectViewMode = (mode: 'source' | 'iframe') => {
+  const handleSelectViewMode = (mode: HtmlCodeBlockViewMode) => {
     // Code/Preview 是用户明确选择，后续流式完成不应再强制跳 Tab。
-    setCachedHtmlBlockViewMode(chatItemDataId, code, mode);
     userOverrideRef.current = true;
     autoSwitchedRef.current = true;
     setViewMode(mode);
   };
 
   useEffect(() => {
-    const wasStreaming = prevShowAnimationRef.current;
-    prevShowAnimationRef.current = showAnimation;
-
-    if (!autoPreviewHtmlCodeBlock) return;
-    if (!isHtmlBlock) return;
+    if (!shouldAutoPreview) return;
     if (!showAnimation) return;
-    if (wasStreaming) return;
+    if (userOverrideRef.current) return;
 
-    // 新一轮 HTML 流式开始时回到 Code，让用户看到源码持续写入。
-    clearCachedHtmlBlockViewMode(chatItemDataId);
     autoSwitchedRef.current = false;
-    userOverrideRef.current = false;
     setViewMode('source');
-  }, [autoPreviewHtmlCodeBlock, chatItemDataId, isHtmlBlock, showAnimation]);
+  }, [shouldAutoPreview, showAnimation]);
 
   useEffect(() => {
-    if (!autoPreviewHtmlCodeBlock) return;
-    if (!isHtmlBlock) return;
-    if (!streamFinished && !htmlLooksNearlyDone) return;
-    if (getCachedHtmlBlockViewModeRecord(chatItemDataId, code)?.isUserChoice) return;
+    if (!shouldAutoPreview) return;
+    if (showAnimation) return;
     if (userOverrideRef.current) return;
     if (autoSwitchedRef.current) return;
 
-    // HTML 主体接近完成时就自动预览；没有明显结束标签时仍等流式结束兜底。
+    // 仅以上层流式结束信号为准，避免 HTML 结束标签提前出现时切走源码视图。
     autoSwitchedRef.current = true;
-    setCachedHtmlBlockViewMode(chatItemDataId, code, 'iframe', { isUserChoice: false });
     setViewMode('iframe');
-  }, [
-    autoPreviewHtmlCodeBlock,
-    chatItemDataId,
-    code,
-    htmlLooksNearlyDone,
-    isHtmlBlock,
-    streamFinished
-  ]);
-
-  useEffect(() => {
-    if (isPreview) return;
-
-    const node = sourcePreRef.current;
-    if (!node) return;
-
-    const observer = new ResizeObserver(() => {
-      setMeasuredSourcePanelHeight({
-        code,
-        height: clampSourcePanelHeight(node.offsetHeight)
-      });
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [code, isPreview]);
+  }, [shouldAutoPreview, showAnimation]);
 
   useEffect(() => {
     if (!showStreamingSourceCode) return;
@@ -334,40 +249,29 @@ const IframeHtmlCodeBlock = ({
             label={t('common:Code')}
             iconName="code"
             onClick={() => handleSelectViewMode('source')}
-            isActive={currentViewMode === 'source'}
-            viewMode={currentViewMode}
+            isActive={viewMode === 'source'}
+            viewMode={viewMode}
             isMobile={isMobile}
           />
           <StyledButton
             label={t('common:Preview')}
             iconName="preview"
             onClick={() => handleSelectViewMode('iframe')}
-            isActive={currentViewMode === 'iframe'}
-            viewMode={currentViewMode}
+            isActive={viewMode === 'iframe'}
+            viewMode={viewMode}
             isMobile={isMobile}
           />
           <StyledButton
             label={t('common:FullScreen')}
             iconName="fullScreen"
             onClick={onOpen}
-            viewMode={currentViewMode}
+            viewMode={viewMode}
             isMobile={isMobile}
           />
         </Flex>
         {isPreview ? (
-          <Box className="code-block-body" h={`${sourcePanelHeight}px`}>
-            <iframe
-              srcDoc={code}
-              sandbox="allow-popups"
-              referrerPolicy="no-referrer"
-              style={{
-                display: 'block',
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                background: 'white'
-              }}
-            />
+          <Box className="code-block-body" h={'60vh'}>
+            <HtmlPreviewIframe code={code} />
           </Box>
         ) : (
           <SyntaxHighlighter
@@ -403,7 +307,7 @@ const IframeHtmlCodeBlock = ({
               </ModalHeader>
 
               <ModalBody p={0} flex="1">
-                {FullscreenIframe}
+                <HtmlPreviewIframe code={code} />
               </ModalBody>
             </ModalContent>
           </Modal>
