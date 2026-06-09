@@ -12,7 +12,7 @@ import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
   SearchDatasetTestBodySchema,
@@ -63,8 +63,8 @@ export async function handler(
 
   // Search-test images must be temp objects created by this team. Client-supplied keys are not
   // proof of ownership, so reject dataset/chat/foreign-team keys before any S3 read happens.
-  const validQueryImageKeys = queryImageUrls.filter(
-    (key) => isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`)
+  const validQueryImageKeys = queryImageUrls.filter((key) =>
+    isAuthorizedTempFileS3Key({ key, teamId })
   );
 
   if (validQueryImageKeys.length !== queryImageUrls.length) {

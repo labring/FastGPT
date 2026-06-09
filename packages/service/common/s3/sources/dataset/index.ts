@@ -18,10 +18,10 @@ import { addHours } from 'date-fns';
 import { getLogger, LogCategories } from '../../../logger';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readFileContentByBuffer } from '../../../file/read/utils';
-import path from 'node:path';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
 import { datasetAllowedExtensions } from '../../utils/uploadConstraints';
 import { getFileS3Key, truncateFilename } from '../../utils';
+import { isAuthorizedDatasetFileS3Key } from '../../utils';
 import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
 
@@ -102,8 +102,12 @@ export class S3DatasetSource extends S3PrivateBucket {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, datasetId } =
       GetDatasetFileContentParamsSchema.parse(params);
+
+    if (!isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
+      return Promise.reject('Invalid dataset file key');
+    }
 
     const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
       customPdfParse,
