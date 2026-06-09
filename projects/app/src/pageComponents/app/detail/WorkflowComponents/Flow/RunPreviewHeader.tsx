@@ -1,11 +1,9 @@
 import React from 'react';
 import { Box, Flex, IconButton, type IconButtonProps } from '@chakra-ui/react';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
-import MarkdownExportButton from '@/pageComponents/chat/MarkdownExportButton';
 
 const RunPreviewHeader = ({
   title,
@@ -13,7 +11,6 @@ const RunPreviewHeader = ({
   chatIdLabel,
   restartLabel,
   closeLabel,
-  history,
   SandboxEntryIcon,
   onCopyChatId,
   onOpenSandboxModal,
@@ -25,7 +22,6 @@ const RunPreviewHeader = ({
   chatIdLabel: string;
   restartLabel: string;
   closeLabel: string;
-  history: ChatItemMiniType[];
   SandboxEntryIcon: React.ComponentType<
     Omit<IconButtonProps, 'name' | 'onClick' | 'aria-label'> & { onOpen: () => void }
   >;
@@ -34,12 +30,10 @@ const RunPreviewHeader = ({
   onRestart: () => void;
   onClose: () => void;
 }) => {
-  const hasHistory = history.length > 0;
-
   return (
     <Flex
       minH="56px"
-      px={5}
+      px="24px"
       bg="white"
       fontWeight={500}
       color="myGray.900"
@@ -53,9 +47,8 @@ const RunPreviewHeader = ({
         </Box>
       </MyTooltip>
 
-      <Flex position="absolute" right={5} alignItems="center" gap={2}>
+      <Flex position="absolute" right="24px" alignItems="center" gap={2}>
         <ChatVariableButton chatType={ChatTypeEnum.test} />
-        {hasHistory && <MarkdownExportButton history={history} />}
         <SandboxEntryIcon onOpen={onOpenSandboxModal} />
         <MyTooltip label={restartLabel}>
           <IconButton

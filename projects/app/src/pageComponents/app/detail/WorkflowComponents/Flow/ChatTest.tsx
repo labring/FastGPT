@@ -137,7 +137,6 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             chatIdLabel={chatId ? t('common:chat_chatId', { chatId }) : ''}
             restartLabel={t('common:core.chat.Restart')}
             closeLabel={t('common:Close')}
-            history={chatRecords}
             SandboxEntryIcon={SandboxEntryIcon}
             onCopyChatId={() => copyData(chatId)}
             onOpenSandboxModal={onOpenSandboxModal}

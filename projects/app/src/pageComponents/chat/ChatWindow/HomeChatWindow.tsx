@@ -52,6 +52,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -100,6 +101,12 @@ const HomeChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId, outLinkAuthData });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -425,6 +432,7 @@ const HomeChatWindow = () => {
             title={chatBoxData?.title}
             history={chatRecords}
             chatType={ChatTypeEnum.home}
+            rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
           />
         ) : (
           <Flex
@@ -487,6 +495,7 @@ const HomeChatWindow = () => {
             onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>
+        <SandboxEditorModal />
       </Flex>
     </Flex>
   );

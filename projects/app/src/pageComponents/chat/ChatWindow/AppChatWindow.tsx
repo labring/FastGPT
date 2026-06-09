@@ -32,6 +32,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -61,6 +62,12 @@ const AppChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId, outLinkAuthData });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
@@ -204,6 +211,7 @@ const AppChatWindow = () => {
             title={chatWindowTitle}
             history={chatRecords}
             chatType={ChatTypeEnum.chat}
+            rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
           />
         ) : (
           <Flex
@@ -264,6 +272,7 @@ const AppChatWindow = () => {
             />
           )}
         </Box>
+        <SandboxEditorModal />
       </Flex>
     </Flex>
   );
