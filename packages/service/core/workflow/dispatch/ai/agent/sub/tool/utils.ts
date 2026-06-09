@@ -420,12 +420,32 @@ export const getAgentRuntimeTools = async ({
       const jsonSchema = param.valueType
         ? valueTypeJsonSchemaMap[param.valueType] || toolValueTypeList[0].jsonSchema
         : toolValueTypeList[0].jsonSchema;
-
-      properties[param.key] = {
+      const enumValues =
+        param.list?.map((item) => item.value).filter(Boolean) ||
+        param.enum?.split('\n').filter(Boolean);
+      const schema = {
         ...jsonSchema,
-        description: param.toolDescription || '',
-        enum: param.enum?.split('\n').filter(Boolean) || undefined
+        description: param.toolDescription || ''
       };
+
+      if (!enumValues?.length) {
+        properties[param.key] = schema;
+        return;
+      }
+
+      properties[param.key] =
+        schema.type === 'array'
+          ? {
+              ...schema,
+              items: {
+                ...(schema.items && typeof schema.items === 'object' ? schema.items : {}),
+                enum: enumValues
+              }
+            }
+          : {
+              ...schema,
+              enum: enumValues
+            };
     });
 
     return {
