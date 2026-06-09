@@ -23,6 +23,7 @@ import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import ChatBoxContextProvider from '@/components/core/chat/ChatContainer/ChatBox/Provider';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatHistory = dynamic(
@@ -81,6 +82,10 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
   const isAssistant = chat?.app.type === AppTypeEnum.assistant;
+
+  // Sandbox: Status Hook is responsible for network sync, UI Hook handles modal rendering
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({ appId, chatId });
 
   return (
     <>
@@ -151,6 +156,9 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
               badTotal={badTotal}
               notFoundTotal={notFoundTotal}
               showNotFoundKnowledgeTab={isAssistant}
+              leftElement={
+                <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
+              }
             />
           </Flex>
         )}
@@ -189,6 +197,7 @@ const DetailLogsModal = ({ appId, chatId, onClose, title }: Props) => {
           )}
         </Flex>
       </MyBox>
+      <SandboxEditorModal />
     </>
   );
 };
