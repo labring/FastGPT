@@ -3,4 +3,187 @@ title: Plugin System Overview
 description: FastGPT plugin system overview
 ---
 
-> The plugin system documentation only applies to FastGPT plugin system version 1.0 and later.
+> This document applies to FastGPT Plugin v1.0.0 and later.
+
+## Background
+
+FastGPT capabilities were previously maintained inside the FastGPT main service and organized as a Monorepo. System plugins also existed as a sub-repository under `FastGPT/packages/plugin`.
+
+As the number of system tools and community contributions grew, the old structure exposed several problems:
+
+1. System plugins had to be released together with the FastGPT main service, which slowed plugin iteration.
+2. Community contributors needed to run the full FastGPT application and submit PRs directly to the main repository.
+3. Custom plugins required maintaining a FastGPT fork and manually handling upgrades and merges.
+4. The Next.js/webpack build model was not suitable for mounting new plugins at runtime.
+
+System plugins have therefore been split into a standalone repository:
+
+[FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
+
+FastGPT Plugin v1.0.0 systematically refactors the plugin project so plugin installation, version management, runtime isolation, and operations configuration share one model.
+
+## Design Goals
+
+The main goals of FastGPT Plugin are:
+
+1. Decoupling and modularization: system tools, model presets, app templates, and future capabilities such as RAG algorithms, Agent strategies, and third-party integrations can evolve independently.
+2. Unified plugin package protocol: `.pkg` files manage plugin installation, updates, and distribution, with extension points reserved for future plugin types.
+3. Runtime isolation: plugin execution is managed by a unified runtime. Each plugin version has its own process pool, queue, and runtime configuration.
+4. Lower development complexity: contributors can develop, debug, check, and package system tools independently through the CLI and SDK.
+5. Plugin Marketplace: official and community plugins can be displayed and distributed through Marketplace.
+
+## Core Concepts
+
+| Name | Description |
+| --- | --- |
+| Plugin | An independent, reusable capability module. Plugins can have different types, such as tools, model presets, and dataset sources. |
+| Plugin package | The packaged `.pkg` file for a plugin. All plugin types are installed, updated, and managed through plugin packages. |
+| Tool | A plugin type that usually wraps third-party services, internal APIs, or local computation and can be called by workflows and Agents. |
+| Tool suite | A plugin that exposes multiple related child tools while sharing plugin metadata and secret configuration. |
+| Plugin Marketplace | A centralized platform where users can search, download, and install plugins. |
+| Runtime | The backend implementation responsible for executing plugin code. The current default runtime is `local-pool`. |
+| Pod | A single plugin child process in the local process pool. One plugin service can own multiple Pods. |
+
+## Repository Structure
+
+`fastgpt-plugin` is a pnpm workspace Monorepo designed with Clean Architecture and DDD as references.
+
+```text
+fastgpt-plugin/
+├── apps/
+│   ├── cli/                    # CLI for plugin development, build, check, pack, and debug
+│   ├── server/                 # FastGPT Plugin HTTP service
+│   └── debug-runtime-monitor/  # Local runtime monitoring and debugging panel
+├── packages/
+│   ├── domain/                 # Domain entities, value objects, and port definitions
+│   ├── usecase/                # Application use cases for plugins, tools, models, runtime, and more
+│   ├── interface-adapter/      # HTTP contracts, DTOs, and auth adapters
+│   ├── infrastructure/         # Hono, Mongo, S3, Redis, runtime, logging, metrics, and other implementations
+│   └── shared/                 # Cross-layer pure utilities
+├── sdk/
+│   ├── client/                 # Client SDK for calling the FastGPT Plugin service
+│   └── factory/                # Plugin author SDK
+├── test/                       # Cross-package test utilities and fixtures
+└── docs/                       # Project documentation
+```
+
+Core dependency direction:
+
+- `domain` defines business concepts and ports. It is the innermost layer and does not depend on application entrypoints or infrastructure.
+- `usecase` orchestrates business flows and depends on `domain` entities, value objects, and ports.
+- `interface-adapter` defines HTTP contracts, DTOs, and auth inputs/outputs. It converts external protocols into structures the application can understand.
+- `infrastructure` implements ports and runtime capabilities, including the HTTP framework, database, object storage, Redis, plugin runtime, logging, and metrics.
+- `apps/*` are composition roots that assemble dependencies, register routes, start processes, or provide development commands.
+- `sdk/*` is published for external users and provides service calls and plugin development capabilities.
+
+For system tool development, see [System Tool Development Guide](./system-tool-development.en.mdx). For model presets, see [Add Model Presets](./model-presets.en.mdx).
+
+## Repository Responsibilities
+
+The FastGPT Plugin ecosystem mainly involves these repositories:
+
+| Repository | Purpose |
+| --- | --- |
+| `labring/fastgpt-plugin` | Plugin service, SDK, CLI, debug monitor, and infrastructure code. |
+| `fastgpt-official-plugins` | Plugins maintained or reviewed by FastGPT officials. |
+| `fastgpt-community-plugins` | Community third-party plugins. |
+| `fastgpt-business-plugins` | Private plugins, customer-customized plugins, and commercial delivery. |
+
+The `fastgpt-plugin` repository only provides development, build, check, packaging, and server runtime capabilities. Specific plugin source code is usually placed in the official, community, or business plugin repositories.
+
+## Marketplace And Usage Boundaries
+
+FastGPT Marketplace is the plugin distribution channel for centrally displaying and distributing official and community plugins. Current boundaries:
+
+- Marketplace is a SaaS distribution service and does not provide a private deployment version.
+- Community plugins must first be submitted to the Community Plugins repository, pass basic review, and then enter Marketplace.
+- The FastGPT cloud service does not yet support direct custom plugin uploads by users.
+- Third-party custom plugins are currently mainly used through self-deployment or administrator upload in the business edition.
+
+## Plugin Installation And Management
+
+The FastGPT Plugin service is responsible for plugin package management, runtime registration, plugin call forwarding, and system-level configuration. The FastGPT main service invokes plugins through the plugin runtime interface, and the plugin service dispatches each call to the corresponding runtime.
+
+System plugins can be installed in two main ways:
+
+1. System-level installation: the root user uploads a `.pkg` file on the plugin management page or installs a plugin from Marketplace. The installed plugin is visible to the whole system.
+2. Team-level installation: reserved for team administrators or members with plugin management permission. The plugin is visible only within that team.
+
+After a plugin is installed, the service saves the plugin package file, parses plugin metadata, and registers the plugin with the runtime when it is enabled. System administrators can manage plugin status, system secrets, and runtime parameters.
+
+Plugin statuses include:
+
+- Normal: the plugin is available for normal use.
+- Pending offline: existing workflows continue to run, but the plugin can no longer be added to new workflows.
+- Offline: the plugin cannot be used.
+
+System-level plugins can configure system secrets for other users in the system to reuse when invoking the plugin. Secrets are hosted by the plugin service. Callers reference them through plugin configuration and never access plaintext secrets directly.
+
+## `.pkg` Plugin Package Protocol
+
+New system tools no longer depend on the legacy built-in source directory `modules/tool/packages`; they are delivered through unified `.pkg` files.
+
+Build artifacts usually include:
+
+- `dist/index.js`
+- `dist/manifest.json`
+- icon files
+- optional `README.md`
+- optional `assets/**`
+
+`.pkg` files are used for upload, installation, listing, and version management. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in the build output for FastGPT pages, workflows, and Agents.
+
+## local-pool Runtime
+
+The current default runtime is the local process pool, `local-pool`. It manages Pods and request queues per plugin service.
+
+After a plugin call enters a service, scheduling proceeds as follows:
+
+1. Prefer an existing available Pod and dispatch the request immediately.
+2. If no Pod is available and `pods + pendingPods < maxPods`, create a new Pod first and dispatch the current request after startup succeeds.
+3. If `maxPods` has been reached, startup backoff is active, or a Pod cannot be created temporarily, the request enters a bounded queue.
+4. When a Pod is released, startup succeeds, configuration is updated, or a crash is recovered, the queue continues to drain.
+5. When queue length reaches `maxQueueSize`, new requests are rejected. Requests also fail after waiting longer than `queueTimeout`.
+
+Each tool plugin can configure four runtime parameters:
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| Minimum worker nodes | `0` | Values above `0` warm up Pods and try to keep at least this many Pods available. |
+| Maximum worker nodes | `5` | The service can scale out to this limit when no Pod is available. |
+| Node timeout | `120000ms` | Timeout for one plugin call inside a Pod. |
+| Maximum concurrent requests per node | `10` | Maximum concurrent requests one Pod can process. |
+
+Environment variables provide default runtime parameters and global limits:
+
+| Environment variable | Description |
+| --- | --- |
+| `POOL_HEALTH_CHECK_INTERVAL` | Health check interval in milliseconds. |
+| `POOL_MAX_TOTAL_PODS` | Total limit for all plugin Pods in the current server process. |
+| `POOL_SERVICE_MIN_PODS` | Default minimum worker nodes for one plugin. |
+| `POOL_SERVICE_MAX_PODS` | Default maximum worker nodes for one plugin. |
+| `POOL_SERVICE_IDLE_TIMEOUT` | Pod idle recycle time in milliseconds. |
+| `POOL_SERVICE_POD_TIMEOUT` | Execution timeout for one plugin call in milliseconds. |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | Default maximum concurrent requests for one Pod. |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | Maximum requests one Pod can process before replacement. |
+| `POOL_SERVICE_MAX_QUEUE_SIZE` | Maximum request queue capacity for one plugin service. |
+| `POOL_SERVICE_QUEUE_TIMEOUT` | Maximum time a request can wait in queue for an available Pod, in milliseconds. |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Base delay for exponential backoff after Pod startup timeout, in milliseconds. |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Maximum delay for exponential backoff after Pod startup timeout, in milliseconds. |
+
+Pod startup errors are recorded and classified. Consecutive non-timeout startup failures trigger startup circuit breaking after the threshold is reached, preventing more Pods from being created. Startup timeouts are usually treated as resource pressure, enter exponential backoff, and retry later.
+
+## Development And Distribution
+
+System tool plugins are developed with `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory`.
+
+Developers use the CLI to create single-tool or tool-suite skeletons, and use the SDK to declare `manifest`, `inputSchema`, `outputSchema`, `secretSchema`, and handler logic. After development, run tests, build, check, and pack to generate a `.pkg` file.
+
+Continue with [System Tool Development Guide](./system-tool-development.en.mdx) to develop system tools.
+
+## References
+
+- [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
+- [FastGPT Plugin System Design](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/design.md)
+- [FastGPT Plugin Architecture](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/architecture.md)
+- [System Plugin Development Guide](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/how-to-devlop-plugin.en.md)
