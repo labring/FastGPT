@@ -112,7 +112,9 @@ export const masterCall = async ({
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
       useAgentSandbox = false,
-      aiChatVision
+      aiChatVision,
+      // Deep thinking (reasoning)
+      aiChatReasoning = true
     }
   } = props;
 
@@ -251,6 +253,7 @@ export const masterCall = async ({
     // childrenInteractiveParams
 
     onReasoning({ text }) {
+      if (!aiChatReasoning) return;
       stepStreamResponse?.({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({

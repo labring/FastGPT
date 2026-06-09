@@ -4,7 +4,11 @@ import { FlowNodeTemplateTypeEnum, NodeInputKeyEnum } from '../workflow/constant
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
-import { DatasetSearchModeEnum, DatasetRetrievalModeEnum, RerankMethodEnum } from '../dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetRetrievalModeEnum,
+  RerankMethodEnum
+} from '../dataset/constants';
 import type { AppFormEditFormType } from './formEdit/type';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum, AssistantGlobalVarKey } from './constants';
@@ -16,7 +20,8 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
     aiSettings: {
       modelId: '',
       isResponseAnswerText: true,
-      maxHistories: 6
+      maxHistories: 6,
+      aiChatReasoning: true
     },
     dataset: {
       datasets: [],
@@ -56,7 +61,10 @@ export const appWorkflow2Form = ({
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent
     ) {
-      defaultAppForm.aiSettings.modelId = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModelId);
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.aiSystemPrompt
@@ -121,8 +129,14 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
-      const rerankModel1 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModelId);
-      const rerankModel2 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModelId);
+      const rerankModel1 = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankModelId
+      );
+      const rerankModel2 = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetAgenticSearchRerankModelId
+      );
       // 使用两种是因为两种检索方式使用不同的key
       defaultAppForm.dataset.rerankModelId = rerankModel1 || rerankModel2;
       defaultAppForm.dataset.rerankMethod =

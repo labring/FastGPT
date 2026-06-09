@@ -57,7 +57,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useAgentSandbox = false,
-      aiChatVision
+      aiChatVision,
+      aiChatReasoning = true
     }
   } = props;
   // Dataset search: resolve from composite or individual fields
@@ -267,22 +268,169 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     // Collect text deltas to build answerText
     let answerText = '';
     let currentTextItem: AIChatItemValueItemType | null = null;
+    let currentReasoningItem: AIChatItemValueItemType | null = null;
+    // Separate timers for the two independent reasoning content paths:
+    // - xmlReasoningStartTime: set when <think> tag opens (processTextChunk)
+    // - deltaReasoningStartTime: set when thinking_delta event first arrives
+    // This prevents timing overwrite in hybrid mode where a model emits both
+    // thinking_delta events and <think> XML tags within the text stream.
+    let xmlReasoningStartTime: number | null = null;
+    let deltaReasoningStartTime: number | null = null;
+
+    // Streaming parser for <think>...</think> tags in text content
+    // Some models (e.g. MiniMax) emit thinking content as XML tags within the text stream
+    // rather than using the standard reasoning_content / thinking delta API.
+    let thinkTagBuffer = '';
+    let inThinkTag = false;
+
+    /**
+     * Process a chunk of text through the <think> tag parser.
+     * Routes content inside <think>...</think> as reasoning_content,
+     * and content outside as regular text.
+     */
+    const processTextChunk = (chunk: string) => {
+      thinkTagBuffer += chunk;
+
+      // Process the buffer character by character to detect tag boundaries
+      while (thinkTagBuffer.length > 0) {
+        if (inThinkTag) {
+          const closeIdx = thinkTagBuffer.indexOf('</think>');
+          if (closeIdx === -1) {
+            // No closing tag yet — send all as reasoning
+            if (thinkTagBuffer.length > 0) {
+              const reasoningText = thinkTagBuffer;
+              thinkTagBuffer = '';
+              if (aiChatReasoning) {
+                if (!currentReasoningItem) {
+                  currentReasoningItem = { reasoning: { content: '' } };
+                  assistantResponses.push(currentReasoningItem);
+                }
+                currentReasoningItem.reasoning!.content += reasoningText;
+                // Also accumulate in answerText for backward compatibility
+                answerText += reasoningText;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({ reasoning_content: reasoningText })
+                });
+              }
+            }
+            break;
+          } else {
+            // Send content before closing tag as reasoning
+            const reasoningText = thinkTagBuffer.substring(0, closeIdx);
+            thinkTagBuffer = thinkTagBuffer.substring(closeIdx + '</think>'.length);
+            inThinkTag = false;
+            if (aiChatReasoning && reasoningText.length > 0) {
+              if (!currentReasoningItem) {
+                currentReasoningItem = { reasoning: { content: '' } };
+                assistantResponses.push(currentReasoningItem);
+              }
+              currentReasoningItem.reasoning!.content += reasoningText;
+              // Also accumulate in answerText for backward compatibility
+              answerText += reasoningText;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ reasoning_content: reasoningText })
+              });
+            }
+            // Record duration and reset reasoning item so next reasoning starts fresh
+            if (currentReasoningItem && xmlReasoningStartTime) {
+              currentReasoningItem.reasoning!.duration =
+                Math.round((Date.now() - xmlReasoningStartTime) / 1000) || 1;
+              xmlReasoningStartTime = null;
+            }
+            currentReasoningItem = null;
+          }
+        } else {
+          const openIdx = thinkTagBuffer.indexOf('<think>');
+          if (openIdx === -1) {
+            // Check for partial opening tag at the end
+            const partialLen = Math.min(thinkTagBuffer.length, '<think>'.length - 1);
+            let partialMatch = false;
+            for (let i = 1; i <= partialLen; i++) {
+              if ('<think>'.startsWith(thinkTagBuffer.substring(thinkTagBuffer.length - i))) {
+                // Keep the partial match in buffer for next chunk
+                const safeText = thinkTagBuffer.substring(0, thinkTagBuffer.length - i);
+                if (safeText.length > 0) {
+                  answerText += safeText;
+                  if (!currentTextItem) {
+                    currentTextItem = { text: { content: '' } };
+                    assistantResponses.push(currentTextItem);
+                  }
+                  currentTextItem.text!.content += safeText;
+                  workflowStreamResponse?.({
+                    event: SseResponseEventEnum.answer,
+                    data: textAdaptGptResponse({ text: safeText })
+                  });
+                }
+                thinkTagBuffer = thinkTagBuffer.substring(thinkTagBuffer.length - i);
+                partialMatch = true;
+                break;
+              }
+            }
+            if (!partialMatch) {
+              // No tag at all — send all as text
+              if (thinkTagBuffer.length > 0) {
+                answerText += thinkTagBuffer;
+                if (!currentTextItem) {
+                  currentTextItem = { text: { content: '' } };
+                  assistantResponses.push(currentTextItem);
+                }
+                currentTextItem.text!.content += thinkTagBuffer;
+                workflowStreamResponse?.({
+                  event: SseResponseEventEnum.answer,
+                  data: textAdaptGptResponse({ text: thinkTagBuffer })
+                });
+                thinkTagBuffer = '';
+              }
+            }
+            break;
+          } else {
+            // Send content before opening tag as text
+            const textBefore = thinkTagBuffer.substring(0, openIdx);
+            thinkTagBuffer = thinkTagBuffer.substring(openIdx + '<think>'.length);
+            inThinkTag = true;
+            xmlReasoningStartTime = Date.now();
+            if (textBefore.length > 0) {
+              answerText += textBefore;
+              if (!currentTextItem) {
+                currentTextItem = { text: { content: '' } };
+                assistantResponses.push(currentTextItem);
+              }
+              currentTextItem.text!.content += textBefore;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ text: textBefore })
+              });
+            }
+            // Reset text item so text after </think> starts fresh
+            currentTextItem = null;
+          }
+        }
+      }
+    };
 
     agent.subscribe((event: AgentEvent) => {
       if (event.type === 'message_update') {
         const e = event.assistantMessageEvent;
         if (e.type === 'text_delta') {
-          // Create a new text item at the start of each turn's text output,
-          // so that tools executed between turns are interleaved correctly.
-          if (!currentTextItem) {
-            currentTextItem = { text: { content: '' } };
-            assistantResponses.push(currentTextItem);
+          processTextChunk(e.delta);
+        } else if (e.type === 'thinking_delta') {
+          // Send reasoning/thinking content as reasoning_content in answer events
+          if (!aiChatReasoning) return;
+          if (!currentReasoningItem) {
+            currentReasoningItem = { reasoning: { content: '' } };
+            assistantResponses.push(currentReasoningItem);
+            deltaReasoningStartTime = Date.now();
           }
+          currentReasoningItem.reasoning!.content += e.delta;
+          // Also accumulate in answerText for backward compatibility with API
+          // consumers (e.g. step calls in master/call.ts) that read answerText
+          // directly rather than reconstructing it from assistantResponses.
           answerText += e.delta;
-          currentTextItem.text!.content += e.delta;
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ text: e.delta })
+            data: textAdaptGptResponse({ reasoning_content: e.delta })
           });
         }
       } else if (event.type === 'turn_end') {
@@ -290,6 +438,52 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         // Tool items have already been pushed to assistantResponses by buildAgentTools
         // during tool execution between turns, so they appear in the correct position.
         currentTextItem = null;
+        // Close reasoning item with duration if one is active.
+        // Use whichever timer was set — the two reasoning paths are mutually
+        // exclusive within a single turn, so at most one timer is non-null.
+        if (currentReasoningItem) {
+          const timer = deltaReasoningStartTime ?? xmlReasoningStartTime;
+          if (timer) {
+            currentReasoningItem.reasoning!.duration = Math.round((Date.now() - timer) / 1000) || 1;
+          }
+        }
+        deltaReasoningStartTime = null;
+        xmlReasoningStartTime = null;
+        currentReasoningItem = null;
+        // Drain residual thinkTagBuffer at turn boundary.
+        // Two cases:
+        // - !inThinkTag: partial <think> tag prefix in buffer → flush as text
+        // - inThinkTag: reasoning content without closing </think> → flush as reasoning
+        if (thinkTagBuffer.length > 0) {
+          if (inThinkTag) {
+            // Buffer has reasoning content whose closing </think> tag never arrived
+            if (aiChatReasoning) {
+              if (!currentReasoningItem) {
+                currentReasoningItem = { reasoning: { content: '' } };
+                assistantResponses.push(currentReasoningItem);
+              }
+              currentReasoningItem.reasoning!.content += thinkTagBuffer;
+              answerText += thinkTagBuffer;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ reasoning_content: thinkTagBuffer })
+              });
+            }
+          } else {
+            answerText += thinkTagBuffer;
+            if (!currentTextItem) {
+              currentTextItem = { text: { content: '' } };
+              assistantResponses.push(currentTextItem);
+            }
+            currentTextItem.text!.content += thinkTagBuffer;
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({ text: thinkTagBuffer })
+            });
+          }
+        }
+        thinkTagBuffer = '';
+        inThinkTag = false;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {
           getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] Turn error: ${errMsg}`);

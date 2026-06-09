@@ -127,6 +127,10 @@ const AIChatSettingsModal = ({
     const modelData = getWebLLMModel(e);
     if (modelData) {
       setValue('maxToken', modelData.maxResponse / 2);
+      // auto-disable reasoning when switching to a model that doesn't support it
+      if (!modelData.reasoning) {
+        setValue(NodeInputKeyEnum.aiChatReasoning, false);
+      }
     }
 
     setRefresh(!refresh);
@@ -417,13 +421,12 @@ const AIChatSettingsModal = ({
         {supportParams.reasoning && showReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
-              <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>
+              <Flex alignItems={'center'}>{t('app:hide_ai_thinking')}</Flex>
               <Switch
-                isChecked={reasoning || false}
+                isChecked={reasoning === false}
                 size={'sm'}
                 onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue(NodeInputKeyEnum.aiChatReasoning, value);
+                  setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
                 }}
               />
             </Box>

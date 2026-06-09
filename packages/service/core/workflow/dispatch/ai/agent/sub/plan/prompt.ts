@@ -69,13 +69,20 @@ ${selectedDataset.map((item) => `- ${item.name} (ID: ${item.datasetId})`).join('
 </preset_resources>`
       : '';
 
+  const langInstruction =
+    lang === 'zh-CN'
+      ? '\n\n**Important**: Please think and reason in Simplified Chinese (简体中文).'
+      : lang === 'zh-Hant'
+        ? '\n\n**Important**: Please think and reason in Traditional Chinese (繁體中文).'
+        : '';
+
   if (!userSystemPrompt && !presetDatasetPrompt) {
-    return '';
+    return langInstruction.trim();
   }
 
   const list = [userSystemPrompt, presetDatasetPrompt];
 
-  return `${list.filter(Boolean).join('\n\n')}
+  return `${list.filter(Boolean).join('\n\n')}${langInstruction}
 
 **Important**: If the background information contains tool references (@ToolName), please prioritize using those tools.`;
 };

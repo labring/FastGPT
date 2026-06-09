@@ -8,6 +8,7 @@
   "ai_reasoning": "Reasoning",
   "back_to_text": "Return to input",
   "ai_reasoning_done": "Deep thinking completed (took {{seconds}} seconds)",
+  "ai_reasoning_done_simple": "Deep thinking completed",
   "balance_not_enough_pause": "Workflow paused due to insufficient AI points",
   "chat.quote.No Data": "Unable to find the file.",
   "chat.quote.deleted": "The data has been deleted.",

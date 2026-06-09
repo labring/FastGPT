@@ -66,6 +66,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
   // Sandbox (Computer Use)
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
+  // Deep thinking (reasoning)
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean;
 }>;
 
 type Response = DispatchNodeResultType<{

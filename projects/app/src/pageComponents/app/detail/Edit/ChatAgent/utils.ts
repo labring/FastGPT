@@ -65,6 +65,7 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
       defaultAppForm.aiSettings.useAgentSandbox = inputMap.get(NodeInputKeyEnum.useAgentSandbox);
+      defaultAppForm.aiSettings.aiChatReasoning = inputMap.get(NodeInputKeyEnum.aiChatReasoning);
 
       const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
       if (tools) {
@@ -194,6 +195,13 @@ export function agentForm2AppWorkflow(
               value: true
             },
             {
+              key: NodeInputKeyEnum.aiChatReasoning,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: data.aiSettings.aiChatReasoning ?? true
+            },
+            {
               key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
@@ -319,7 +327,8 @@ export const getEmptyAgentConfig = (t: any) => {
       aiSettings: {
         modelId: '',
         maxHistories: 6,
-        isResponseAnswerText: true
+        isResponseAnswerText: true,
+        aiChatReasoning: true
       },
       dataset: {
         ...defaultAppForm.dataset,

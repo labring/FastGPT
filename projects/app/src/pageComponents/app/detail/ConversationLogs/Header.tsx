@@ -15,6 +15,7 @@ type Props = {
   badTotal?: number;
   notFoundTotal?: number;
   showNotFoundKnowledgeTab?: boolean;
+  leftElement?: React.ReactNode;
 };
 
 const Header = ({
@@ -26,7 +27,8 @@ const Header = ({
   goodTotal = 0,
   badTotal = 0,
   notFoundTotal = 0,
-  showNotFoundKnowledgeTab = true
+  showNotFoundKnowledgeTab = true,
+  leftElement
 }: Props) => {
   const { t } = useTranslation();
 
@@ -81,9 +83,12 @@ const Header = ({
       color={'myGray.900'}
       position={'relative'}
     >
-      <Text maxW={'240px'} className="textEllipsis" title={title}>
-        {title}
-      </Text>
+      <Flex alignItems={'center'}>
+        {leftElement}
+        <Text maxW={'240px'} className="textEllipsis" title={title}>
+          {title}
+        </Text>
+      </Flex>
       <FillRowTabs<ChatLogsFilterEnum>
         list={tabList}
         position={'absolute'}
