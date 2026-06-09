@@ -2,7 +2,6 @@
   "title": "系统工具",
   "description": "系统工具的使用、开发与提交说明。",
   "pages": [
-    "dev_system_tool",
     "upload_system_tool"
   ]
 }

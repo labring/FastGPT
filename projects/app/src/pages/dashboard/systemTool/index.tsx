@@ -109,7 +109,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   mr={4}
                   onClick={() =>
                     window.open(
-                      getDocPath('/guide/build/tools/system-plugins/dev_system_tool'),
+                      getDocPath('/plugin/system-tool-development'),
                       '_blank'
                     )
                   }
