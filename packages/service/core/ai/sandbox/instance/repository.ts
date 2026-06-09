@@ -515,6 +515,135 @@ export async function deleteSandboxInstanceRecord(instanceId: unknown) {
 }
 
 /**
+ * 将旧 provider 的归档记录迁移到当前 provider/sandboxId。
+ *
+ * edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；provider 切换后，
+ * archive restore 入口只按当前 provider + sandboxId 查询归档状态。这里仅迁移 Mongo 索引记录，
+ * 不触碰 S3 归档对象；如果新 provider 已有上次失败留下的
+ * 占位记录，则把归档 metadata 转移过去并删除旧记录，释放 appId/chatId 唯一键。
+ */
+export async function migrateArchivedSandboxInstanceRecord(params: {
+  source: SandboxResourceRef;
+  provider: SandboxProviderType;
+  appId: string;
+  userId: string;
+  chatId: string;
+  type: SandboxTypeEnum;
+}) {
+  const { source, provider, appId, userId, chatId, type } = params;
+  const sourceFilter = {
+    ...buildSandboxResourceRecordFilter(source),
+    'metadata.archive.state': 'archived'
+  };
+  const baseSet = {
+    provider,
+    sandboxId: source.sandboxId,
+    appId,
+    userId,
+    chatId,
+    type,
+    status: SandboxStatusEnum.stopped,
+    lastActiveAt: new Date()
+  };
+  const isMongoDuplicateKeyError = (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 11000;
+
+  try {
+    return await MongoSandboxInstance.findOneAndUpdate(
+      sourceFilter,
+      {
+        $set: baseSet
+      },
+      { new: true }
+    ).lean<SandboxResourceDoc | null>();
+  } catch (error) {
+    if (!isMongoDuplicateKeyError(error)) throw error;
+
+    const target = await MongoSandboxInstance.findOne({
+      provider,
+      sandboxId: source.sandboxId
+    }).lean<Pick<SandboxInstanceSchemaType, '_id'> | null>();
+    if (!target) throw error;
+
+    type ArchivedSandboxMigrationDoc = Pick<
+      SandboxInstanceSchemaType,
+      'appId' | 'userId' | 'chatId' | 'type' | 'metadata' | 'storage' | 'limit'
+    > & { _id: unknown };
+
+    const sourceDoc = await MongoSandboxInstance.findOneAndUpdate(
+      sourceFilter,
+      {
+        $unset: {
+          appId: '',
+          userId: '',
+          chatId: '',
+          type: ''
+        }
+      },
+      { new: false }
+    ).lean<ArchivedSandboxMigrationDoc | null>();
+    if (!sourceDoc?.metadata?.archive) return null;
+
+    const rollbackSourceBusinessKeys = async () => {
+      await MongoSandboxInstance.updateOne(
+        {
+          _id: sourceDoc._id,
+          'metadata.archive.state': 'archived'
+        },
+        {
+          $set: {
+            ...(sourceDoc.appId !== undefined ? { appId: sourceDoc.appId } : {}),
+            ...(sourceDoc.userId !== undefined ? { userId: sourceDoc.userId } : {}),
+            ...(sourceDoc.chatId !== undefined ? { chatId: sourceDoc.chatId } : {}),
+            ...(sourceDoc.type !== undefined ? { type: sourceDoc.type } : {})
+          }
+        }
+      );
+    };
+
+    let migratedDoc: SandboxResourceDoc | null = null;
+    try {
+      migratedDoc = await MongoSandboxInstance.findOneAndUpdate(
+        {
+          _id: target._id,
+          'metadata.archive.state': { $exists: false }
+        },
+        {
+          $set: {
+            ...baseSet,
+            ...(sourceDoc.storage !== undefined ? { storage: sourceDoc.storage } : {}),
+            ...(sourceDoc.limit !== undefined ? { limit: sourceDoc.limit } : {}),
+            metadata: sourceDoc.metadata
+          }
+        },
+        { new: true }
+      ).lean<SandboxResourceDoc | null>();
+    } catch (targetUpdateError) {
+      await rollbackSourceBusinessKeys();
+      throw targetUpdateError;
+    }
+
+    if (!migratedDoc) {
+      const existingArchivedTarget = await MongoSandboxInstance.findOne({
+        _id: target._id,
+        'metadata.archive.state': 'archived'
+      }).lean<SandboxResourceDoc | null>();
+      if (!existingArchivedTarget) {
+        await rollbackSourceBusinessKeys();
+        return null;
+      }
+      migratedDoc = existingArchivedTarget;
+    }
+
+    await MongoSandboxInstance.deleteOne({ _id: sourceDoc._id });
+    return migratedDoc;
+  }
+}
+
+/**
  * 更新指定 sandboxId 的业务归属和 metadata。
  *
  * provider 可选；传入 provider 时可以避免同 sandboxId 在不同 provider 下的历史记录互相影响。

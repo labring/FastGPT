@@ -276,7 +276,8 @@ export const LeftHeader = () => {
       h={'64px'}
       alignItems={'center'}
       justifyContent={'space-between'}
-      px={'24px'}
+      pl={'24px'}
+      pr={0}
       bg={'transparent'}
       userSelect={'none'}
     >

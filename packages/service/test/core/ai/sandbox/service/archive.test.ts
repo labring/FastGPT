@@ -106,7 +106,7 @@ const createResource = (overrides: Partial<any> = {}) => ({
 
 const createSandbox = () =>
   ({
-    execute: vi.fn(async (command: string) => ({
+    execute: vi.fn(async (command: string, _options?: unknown) => ({
       stdout: command.includes('wc -l') ? '1\n' : command.includes("awk '{s+=$7}") ? '12\n' : '',
       stderr: '',
       exitCode: 0
@@ -198,6 +198,10 @@ describe('sandbox archive service', () => {
     expect(archiveMocks.isSandboxStillArchiving).toHaveBeenCalledWith(resource, inactiveBefore);
     expect(remoteResource.delete).toHaveBeenCalledTimes(1);
     expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(resource);
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('zip -r'), {
+      timeoutMs: 600_000,
+      maxOutputBytes: 8 * 1024
+    });
   });
 
   it('clears archiving state so cron can retry when remote cleanup fails', async () => {
@@ -298,6 +302,10 @@ describe('sandbox archive service', () => {
         data: Buffer.from('zip')
       }
     ]);
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('unzip -o -q'), {
+      timeoutMs: 600_000,
+      maxOutputBytes: 8 * 1024
+    });
     expect(archiveMocks.markSandboxRestoring).toHaveBeenCalledWith(archivedResource);
     expect(archiveMocks.markSandboxRestored).toHaveBeenCalledWith(
       expect.objectContaining({

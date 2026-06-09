@@ -20,6 +20,7 @@ import {
   isSandboxStillArchiving,
   markSandboxArchived,
   markSandboxArchiving,
+  migrateArchivedSandboxInstanceRecord,
   markSandboxRestored,
   markSandboxRestoring,
   markSandboxResourceStopped,
@@ -225,6 +226,124 @@ describe('sandbox instance helpers', () => {
 
     await deleteSandboxInstanceRecord(inactiveDoc._id);
     await expect(MongoSandboxInstance.exists({ _id: inactiveDoc._id })).resolves.toBeNull();
+  });
+
+  it('migrates archived records to the current provider without deleting archive metadata', async () => {
+    const appId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      appId,
+      userId: 'user-1',
+      chatId: 'record-only-chat',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+
+    const migratedDoc = await migrateArchivedSandboxInstanceRecord({
+      source: {
+        provider: 'opensandbox',
+        sandboxId,
+        _id: doc._id
+      },
+      provider: 'sealosdevbox',
+      appId,
+      userId: '',
+      chatId: 'record-only-chat',
+      type: SandboxTypeEnum.editDebug
+    });
+
+    expect(migratedDoc).toMatchObject({
+      provider: 'sealosdevbox',
+      sandboxId,
+      appId,
+      userId: '',
+      chatId: 'record-only-chat',
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+    const migratedExists = await MongoSandboxInstance.exists({ _id: doc._id });
+    expect(String(migratedExists?._id)).toBe(String(doc._id));
+    await expect(MongoSandboxInstance.countDocuments({ sandboxId })).resolves.toBe(1);
+  });
+
+  it('moves archived metadata into an existing current-provider placeholder record', async () => {
+    const appId = `instance-helper-${getNanoid()}`;
+    const chatId = `placeholder-chat-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const oldDoc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      appId,
+      userId: 'user-1',
+      chatId,
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        archive: {
+          state: 'archived'
+        },
+        skillId: appId
+      }
+    });
+    const placeholderDoc = await MongoSandboxInstance.create({
+      provider: 'sealosdevbox',
+      sandboxId,
+      appId: `placeholder-${appId}`,
+      userId: '',
+      chatId: `placeholder-${chatId}`,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      metadata: {
+        volumeEnabled: false
+      }
+    });
+
+    const migratedDoc = await migrateArchivedSandboxInstanceRecord({
+      source: {
+        provider: 'opensandbox',
+        sandboxId,
+        _id: oldDoc._id
+      },
+      provider: 'sealosdevbox',
+      appId,
+      userId: '',
+      chatId,
+      type: SandboxTypeEnum.editDebug
+    });
+
+    expect(String(migratedDoc?._id)).toBe(String(placeholderDoc._id));
+    expect(migratedDoc).toMatchObject({
+      provider: 'sealosdevbox',
+      sandboxId,
+      appId,
+      userId: '',
+      chatId,
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archived'
+        },
+        skillId: appId
+      }
+    });
+    await expect(MongoSandboxInstance.exists({ _id: oldDoc._id })).resolves.toBeNull();
   });
 
   it('archives inactive stopped records and restores them into the current provider', async () => {

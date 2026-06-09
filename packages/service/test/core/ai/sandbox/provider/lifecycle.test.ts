@@ -234,7 +234,7 @@ describe('sandbox provider lifecycle', () => {
       const connectPromise = connectToSandbox(sealosConfig, 'sandbox-retry-timeout');
       const assertion = expect(connectPromise).rejects.toThrow('outer retryable failure');
 
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(300_000);
 
       await assertion;
       expect(sandbox.execute).toHaveBeenCalled();

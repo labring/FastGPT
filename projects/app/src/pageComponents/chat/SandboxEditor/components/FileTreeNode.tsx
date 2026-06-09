@@ -109,7 +109,6 @@ const FileTreeNode = ({
             setSelectedPath(node.path);
             openFile(node.path);
           } else {
-            setSelectedPath(node.path);
             toggleDirectory(node);
           }
         }}

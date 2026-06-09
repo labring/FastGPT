@@ -33,6 +33,7 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export const SANDBOX_ARCHIVE_INACTIVE_DAYS = 7;
 export const SANDBOX_ARCHIVE_CRON_LIMIT = 20;
+const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 
 const TEMP_ARCHIVE_FILE = '.fastgpt-sandbox-archive.zip';
 const RESTORE_ARCHIVE_FILE = '.fastgpt-sandbox-restore.zip';
@@ -173,11 +174,11 @@ async function createWorkspaceArchive(params: {
 
   const [sizeResult, entryCountResult] = await Promise.all([
     runSandboxCommand(sandbox, sizeCheckCmd, {
-      timeoutMs: 15 * 60 * 1000,
+      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
       maxOutputBytes: 8 * 1024
     }),
     runSandboxCommand(sandbox, entryCountCmd, {
-      timeoutMs: 15 * 60 * 1000,
+      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
       maxOutputBytes: 8 * 1024
     })
   ]);
@@ -194,7 +195,7 @@ async function createWorkspaceArchive(params: {
     sandbox,
     `cd ${quotedWorkDirectory} && zip -r -y -q ${quotedArchiveFile} . ${archiveTempFileZipExcludes}`,
     {
-      timeoutMs: 15 * 60 * 1000,
+      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
       maxOutputBytes: 8 * 1024
     }
   );
@@ -254,7 +255,7 @@ async function restoreWorkspaceArchive(params: {
       ].join(' && ');
 
   await runSandboxCommand(sandbox, restoreCommand, {
-    timeoutMs: 15 * 60 * 1000,
+    timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   }).catch(async (error) => {
     await sandbox.deleteFiles([archivePath]).catch(() => undefined);

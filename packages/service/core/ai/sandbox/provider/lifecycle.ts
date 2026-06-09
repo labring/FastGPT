@@ -11,7 +11,7 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
 
-const SANDBOX_COMMAND_READY_TIMEOUT_MS = 120_000;
+const SANDBOX_COMMAND_READY_TIMEOUT_MS = 300_000;
 const SANDBOX_COMMAND_READY_INTERVAL_MS = 1_000;
 const SANDBOX_COMMAND_READY_PROBE_TIMEOUT_MS = 5_000;
 

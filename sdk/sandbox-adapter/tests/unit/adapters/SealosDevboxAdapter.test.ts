@@ -107,6 +107,27 @@ describe('SealosDevboxAdapter', () => {
     });
   });
 
+  it('should clamp command timeout to Devbox supported range', async () => {
+    const adapter = new SealosDevboxAdapter(CONFIG);
+    const execMock = vi.fn(async () => ({
+      code: 200,
+      message: 'ok',
+      data: {
+        stdout: '',
+        stderr: '',
+        exitCode: 0
+      }
+    }));
+    (adapter as any).api = { exec: execMock };
+
+    await adapter.execute('long task', { timeoutMs: 900_000 });
+
+    expect(execMock).toHaveBeenCalledWith('devbox-1', {
+      command: ['sh', '-lc', "cd '/home/devbox/workspace/' && long task"],
+      timeoutSeconds: 600
+    });
+  });
+
   it('should allow an explicit httpgate domain override for non-code-server endpoints', async () => {
     vi.stubGlobal(
       'fetch',

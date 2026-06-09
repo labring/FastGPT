@@ -398,12 +398,17 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
   // ==================== Command Execution ====================
 
+  private getCommandTimeoutSeconds(timeoutMs?: number): number | undefined {
+    if (timeoutMs === undefined || timeoutMs <= 0) return undefined;
+    return Math.min(Math.max(Math.ceil(timeoutMs / 1000), 1), 600);
+  }
+
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const cmd = this.buildCommand(command, this.normalizePath(options?.workingDirectory));
     try {
       const res = await this.api.exec(this._id, {
         command: cmd,
-        timeoutSeconds: options?.timeoutMs ? Math.ceil(options.timeoutMs / 1000) : undefined
+        timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
       });
 
       if (!res.data) {

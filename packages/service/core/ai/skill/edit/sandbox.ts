@@ -27,6 +27,7 @@ import {
   deleteSandboxInstanceRecord,
   findSandboxInstanceByAppChatType,
   findSandboxResourcesByAppChatTypeExcludeProvider,
+  migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -147,6 +148,18 @@ export async function createEditDebugSandbox(
     !existingInstance || existingInstance.metadata?.versionId !== targetVersionId;
   const existingArchiveState = existingInstance?.metadata?.archive?.state;
   const shouldRecoverArchivedInstance = existingArchiveState !== undefined;
+  let archivedRestoreRecord: {
+    _id: unknown;
+    provider: string;
+    sandboxId: string;
+  } | null =
+    existingArchiveState === 'archived' && existingInstance
+      ? {
+          _id: existingInstance._id,
+          provider: existingInstance.provider,
+          sandboxId: existingInstance.sandboxId
+        }
+      : null;
 
   const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
     try {
@@ -158,6 +171,43 @@ export async function createEditDebugSandbox(
       });
     }
     await deleteSandboxInstanceRecord(instance._id);
+  };
+
+  /**
+   * edit-debug 是可从当前 skill package 重建的临时工作区。
+   * 当历史归档记录存在但 S3 对象已缺失时，只在本入口降级重建，避免普通运行态 sandbox 静默丢数据。
+   */
+  const isMissingSandboxArchiveError = (error: unknown): boolean => {
+    const pending: unknown[] = [error];
+    const visited = new Set<unknown>();
+
+    while (pending.length > 0) {
+      const current = pending.shift();
+      if (!current || typeof current !== 'object' || visited.has(current)) continue;
+      visited.add(current);
+
+      const errorLike = current as Error & {
+        code?: unknown;
+        Code?: unknown;
+        cause?: unknown;
+        commandError?: unknown;
+      };
+      const errorName = errorLike.name;
+      const errorCode = errorLike.code ?? errorLike.Code;
+      const message = errorLike.message ?? '';
+
+      if (
+        errorName === 'NoSuchKey' ||
+        errorCode === 'NoSuchKey' ||
+        (message.includes('NoSuchKey') && message.includes('specified key does not exist'))
+      ) {
+        return true;
+      }
+
+      pending.push(errorLike.cause, errorLike.commandError);
+    }
+
+    return false;
   };
 
   const reuseExistingEditDebugSandbox = async (
@@ -437,25 +487,42 @@ export async function createEditDebugSandbox(
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     type: SandboxTypeEnum.editDebug
   });
-  const staleHotProviderInstances = staleProviderInstances.filter(
-    (instance) => instance.metadata?.archive?.state === undefined
-  );
-  if (staleHotProviderInstances.length > 0) {
+  if (staleProviderInstances.length > 0) {
     addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
       skillId,
       provider: providerConfig.provider,
-      staleProviders: staleHotProviderInstances.map((item) => item.provider)
+      staleProviders: staleProviderInstances.map((item) => item.provider)
     });
     await Promise.all(
-      staleHotProviderInstances.map(async (instance) => {
-        await deleteSandboxResource(instance).catch((error) => {
-          addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
-            sandboxId: instance.sandboxId,
-            provider: instance.provider,
-            error
+      staleProviderInstances.map(async (instance) => {
+        if (instance.metadata?.archive?.state === undefined) {
+          await deleteSandboxResource(instance).catch((error) => {
+            addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
+              sandboxId: instance.sandboxId,
+              provider: instance.provider,
+              error
+            });
           });
-        });
-        await deleteSandboxInstanceRecord(instance._id);
+          await deleteSandboxInstanceRecord(instance._id);
+        } else {
+          // edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；只需迁移 Mongo 索引记录。
+          const migratedInstance = await migrateArchivedSandboxInstanceRecord({
+            source: instance,
+            provider: providerConfig.provider,
+            appId: skillId,
+            userId: '',
+            chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+            type: SandboxTypeEnum.editDebug
+          });
+          if (migratedInstance) {
+            shouldUnzipFromS3 = false;
+            archivedRestoreRecord = {
+              _id: migratedInstance._id,
+              provider: migratedInstance.provider,
+              sandboxId: migratedInstance.sandboxId
+            };
+          }
+        }
       })
     );
   }
@@ -479,16 +546,41 @@ export async function createEditDebugSandbox(
 
   try {
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
-    const client = await getSandboxClient(
-      {
-        appId: skillId,
-        userId: '',
-        chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
-      },
-      {
-        createConfig
+    const createRuntimeSandboxClient = () =>
+      getSandboxClient(
+        {
+          appId: skillId,
+          userId: '',
+          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+        },
+        {
+          createConfig
+        }
+      );
+
+    let client: SandboxClient;
+    try {
+      client = await createRuntimeSandboxClient();
+    } catch (error) {
+      if (!archivedRestoreRecord || !isMissingSandboxArchiveError(error)) {
+        throw error;
       }
-    );
+
+      addLog.warn(
+        '[Sandbox] Archived edit-debug package is missing, rebuilding from skill package',
+        {
+          sandboxId: archivedRestoreRecord.sandboxId,
+          provider: archivedRestoreRecord.provider,
+          error
+        }
+      );
+
+      await deleteSandboxInstanceRecord(archivedRestoreRecord._id);
+      archivedRestoreRecord = null;
+      shouldUnzipFromS3 = true;
+
+      client = await createRuntimeSandboxClient();
+    }
     sandboxClient = client;
     sandbox = client.provider;
 
