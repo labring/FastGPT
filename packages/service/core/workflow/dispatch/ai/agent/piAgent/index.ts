@@ -451,20 +451,36 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         xmlReasoningStartTime = null;
         currentReasoningItem = null;
         // Drain residual thinkTagBuffer at turn boundary.
-        // If a partial <think> tag was buffered when the stream ended (e.g.
-        // interrupted mid-tag), flush the buffer content as regular text rather
-        // than discarding it, so no output is silently lost.
-        if (thinkTagBuffer.length > 0 && !inThinkTag) {
-          answerText += thinkTagBuffer;
-          if (!currentTextItem) {
-            currentTextItem = { text: { content: '' } };
-            assistantResponses.push(currentTextItem);
+        // Two cases:
+        // - !inThinkTag: partial <think> tag prefix in buffer → flush as text
+        // - inThinkTag: reasoning content without closing </think> → flush as reasoning
+        if (thinkTagBuffer.length > 0) {
+          if (inThinkTag) {
+            // Buffer has reasoning content whose closing </think> tag never arrived
+            if (aiChatReasoning) {
+              if (!currentReasoningItem) {
+                currentReasoningItem = { reasoning: { content: '' } };
+                assistantResponses.push(currentReasoningItem);
+              }
+              currentReasoningItem.reasoning!.content += thinkTagBuffer;
+              answerText += thinkTagBuffer;
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ reasoning_content: thinkTagBuffer })
+              });
+            }
+          } else {
+            answerText += thinkTagBuffer;
+            if (!currentTextItem) {
+              currentTextItem = { text: { content: '' } };
+              assistantResponses.push(currentTextItem);
+            }
+            currentTextItem.text!.content += thinkTagBuffer;
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.answer,
+              data: textAdaptGptResponse({ text: thinkTagBuffer })
+            });
           }
-          currentTextItem.text!.content += thinkTagBuffer;
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ text: thinkTagBuffer })
-          });
         }
         thinkTagBuffer = '';
         inThinkTag = false;
