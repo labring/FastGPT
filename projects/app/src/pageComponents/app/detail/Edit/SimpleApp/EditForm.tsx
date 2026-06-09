@@ -41,7 +41,7 @@ import SandboxTipTag from '../../components/SandboxTipTag';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));

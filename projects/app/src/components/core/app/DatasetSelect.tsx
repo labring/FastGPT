@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Grid, Flex, Box, Checkbox, VStack, IconButton } from '@chakra-ui/react';
 import { ChevronRightIcon, CloseIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -45,7 +45,8 @@ export const DatasetSelect = ({
   const isSmartGenerateScene = scene === 'smartGenerate';
 
   // The vector model of the first selected dataset
-  const activeVectorModel = selectedDatasets[0]?.vectorModel?.id;
+  const activeVectorModelId = selectedDatasets[0]?.vectorModel?.id;
+  const activeVectorModelName = selectedDatasets[0]?.vectorModel?.name;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
@@ -64,7 +65,7 @@ export const DatasetSelect = ({
     }
     return isSmartGenerateScene
       ? isEmptyDatabase(item)
-      : !!activeVectorModel && activeVectorModel !== item.vectorModel?.id;
+      : !!activeVectorModelId && activeVectorModelId !== item.vectorModel?.id;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
@@ -73,10 +74,10 @@ export const DatasetSelect = ({
     }
 
     // 如果知识库被禁用且向量模型不匹配，显示详细的向量模型信息
-    if (isDatasetDisabled(item) && activeVectorModel && item.vectorModel?.id) {
+    if (isDatasetDisabled(item) && activeVectorModelId && item.vectorModel?.id) {
       return t('app:vector_model_mismatch', {
-        model1: item.vectorModel.id,
-        model2: activeVectorModel
+        model1: item.vectorModel.name,
+        model2: activeVectorModelName
       });
     }
 

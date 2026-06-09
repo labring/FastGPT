@@ -51,7 +51,7 @@ const ToolSelectModal = dynamic(
 );
 const ReferenceRender = dynamic(() => import('../render/RenderInput/templates/Reference'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 
 /* ======== Helper: get current renderType of an input ======== */
 const getRenderType = (input: FlowNodeInputItemType) =>

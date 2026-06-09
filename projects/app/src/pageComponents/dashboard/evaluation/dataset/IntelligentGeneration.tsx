@@ -27,7 +27,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 
 const formatDatasetList = (datasetList: DatasetListItemType[]) =>
   datasetList.filter((v) => !isDatabaseDataset(v.type));

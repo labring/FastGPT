@@ -13,7 +13,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 
 export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   inputs = [],
