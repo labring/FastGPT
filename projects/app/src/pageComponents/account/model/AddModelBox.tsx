@@ -1112,9 +1112,11 @@ export const ModelEditModal = ({
               <Field
                 label={t('account_model:rerank_max_token')}
                 tip={t('account_model:rerank_max_token_tip')}
+                required
               >
                 <MyNumberInput
                   register={register}
+                  isRequired
                   name="maxToken"
                   min={1000}
                   {...NumberInputStyles}
