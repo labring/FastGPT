@@ -306,6 +306,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
                   assistantResponses.push(currentReasoningItem);
                 }
                 currentReasoningItem.reasoning!.content += reasoningText;
+                // Also accumulate in answerText for backward compatibility
+                answerText += reasoningText;
                 workflowStreamResponse?.({
                   event: SseResponseEventEnum.answer,
                   data: textAdaptGptResponse({ reasoning_content: reasoningText })
@@ -324,6 +326,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
                 assistantResponses.push(currentReasoningItem);
               }
               currentReasoningItem.reasoning!.content += reasoningText;
+              // Also accumulate in answerText for backward compatibility
+              answerText += reasoningText;
               workflowStreamResponse?.({
                 event: SseResponseEventEnum.answer,
                 data: textAdaptGptResponse({ reasoning_content: reasoningText })
@@ -420,6 +424,10 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
             deltaReasoningStartTime = Date.now();
           }
           currentReasoningItem.reasoning!.content += e.delta;
+          // Also accumulate in answerText for backward compatibility with API
+          // consumers (e.g. step calls in master/call.ts) that read answerText
+          // directly rather than reconstructing it from assistantResponses.
+          answerText += e.delta;
           workflowStreamResponse?.({
             event: SseResponseEventEnum.answer,
             data: textAdaptGptResponse({ reasoning_content: e.delta })
@@ -442,6 +450,24 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         deltaReasoningStartTime = null;
         xmlReasoningStartTime = null;
         currentReasoningItem = null;
+        // Drain residual thinkTagBuffer at turn boundary.
+        // If a partial <think> tag was buffered when the stream ended (e.g.
+        // interrupted mid-tag), flush the buffer content as regular text rather
+        // than discarding it, so no output is silently lost.
+        if (thinkTagBuffer.length > 0 && !inThinkTag) {
+          answerText += thinkTagBuffer;
+          if (!currentTextItem) {
+            currentTextItem = { text: { content: '' } };
+            assistantResponses.push(currentTextItem);
+          }
+          currentTextItem.text!.content += thinkTagBuffer;
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({ text: thinkTagBuffer })
+          });
+        }
+        thinkTagBuffer = '';
+        inThinkTag = false;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {
           getLogger(LogCategories.MODULE.AI.AGENT).error(`[piAgent] Turn error: ${errMsg}`);
