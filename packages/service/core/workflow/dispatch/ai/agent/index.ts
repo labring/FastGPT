@@ -178,6 +178,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       appId: runningAppInfo.id,
       userId: uid,
       chatId,
+      sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
       useAgentSandbox,
       skillIds,

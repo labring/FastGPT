@@ -19,6 +19,7 @@ import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
@@ -319,7 +320,7 @@ describe('debugChat handler — parameter validation', () => {
     // Create sandbox instance
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
-      sandboxId: getNanoid(),
+      sandboxId: getEditDebugSandboxId(skillId),
       appId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,

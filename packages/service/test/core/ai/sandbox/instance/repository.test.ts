@@ -8,6 +8,7 @@ import {
   findInactiveRunningSandboxResources,
   findSandboxAppIdBySandboxId,
   findSandboxInstanceByAppChatType,
+  findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
   findSandboxResourcesByAppChatType,
@@ -148,6 +149,14 @@ describe('sandbox instance helpers', () => {
     await expect(findSandboxAppIdBySandboxId(`instance-helper-${getNanoid()}`)).resolves.toBe(
       undefined
     );
+    await expect(
+      findSandboxInstanceBySandboxId({
+        provider: 'opensandbox',
+        sandboxId,
+        appId,
+        type: SandboxTypeEnum.editDebug
+      })
+    ).resolves.toMatchObject({ sandboxId });
     await expect(
       findSandboxResourcesByAppChatType({
         provider: 'opensandbox',

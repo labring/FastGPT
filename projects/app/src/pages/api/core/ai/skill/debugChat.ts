@@ -19,7 +19,6 @@ import {
   getLastInteractiveValue,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
@@ -31,9 +30,9 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
+import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { findSandboxInstanceBySandboxId } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
   FlowNodeTypeEnum,
@@ -53,6 +52,11 @@ import {
   type SkillDebugChatBody
 } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { resolveResponseChatItemId } from '@fastgpt/service/core/chat/interactiveResponseDataId';
+import {
+  createWorkflowStreamResponseContext,
+  type WorkflowStreamResponseContext
+} from '@/service/core/workflow/streamResponseContext';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
@@ -184,12 +188,13 @@ export function buildDebugRuntimeNodes(
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let skillId = '';
+  let streamResponseContext: WorkflowStreamResponseContext | undefined;
 
   try {
     const {
       skillId: parsedSkillId,
       chatId,
-      responseChatItemId = getNanoid(),
+      responseChatItemId: responseChatItemIdFromBody = getNanoid(),
       messages = [],
       model,
       systemPrompt = ''
@@ -224,10 +229,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Verify edit-debug sandbox exists for this skill
     const providerConfig = getSandboxProviderConfig();
-    const sandboxInstance = await findSandboxInstanceByAppChatType({
+    const editDebugSandboxId = getEditDebugSandboxId(skillId);
+    const sandboxInstance = await findSandboxInstanceBySandboxId({
       provider: providerConfig.provider,
+      sandboxId: editDebugSandboxId,
       appId: skillId,
-      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       type: SandboxTypeEnum.editDebug
     });
     if (!sandboxInstance) {
@@ -255,6 +261,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
+    const responseChatItemId = await resolveResponseChatItemId({
+      appId: skillId,
+      chatId,
+      responseChatItemId: responseChatItemIdFromBody,
+      interactive,
+      userContent: userQuestion
+    });
 
     // Build the minimal workflow
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
@@ -263,12 +276,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       systemPrompt
     );
 
-    // Setup SSE response
-    const workflowResponseWrite = getWorkflowResponseWrite({
+    streamResponseContext = await createWorkflowStreamResponseContext({
+      req,
       res,
+      stream: true,
       detail: true,
-      streamResponse: true,
-      id: chatId,
+      teamId,
+      appId: skillId,
+      chatId,
+      responseId: chatId,
       showNodeStatus: true
     });
 
@@ -289,20 +305,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       mode: 'test',
       usageSource: UsageSourceEnum.fastgpt,
 
-      // Agent sandbox routing always uses appId/userId/chatId. Edit-debug sandboxes are
-      // created with userId='' and the fixed edit-debug chatId, while chat records still
-      // use the request chatId below.
-      uid: '',
+      uid: tmbId,
 
       runningAppInfo: {
         id: skillId,
         name: skill.name,
         teamId,
-        tmbId
+        tmbId,
+        sandboxId: editDebugSandboxId
       },
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      chatId,
       responseChatItemId,
       runtimeNodes,
       runtimeEdges,
@@ -313,10 +327,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       histories: newHistories,
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      workflowStreamResponse: workflowResponseWrite,
+      workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
       nodeResponseWriteConfig: {
-        persistToDb: false,
+        persistToDb: true,
         retainInMemory: false
       }
     });
@@ -324,11 +338,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
 
     // Send finish signals
-    workflowResponseWrite({
+    streamResponseContext.responseWrite({
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
     });
-    workflowResponseWrite({
+    streamResponseContext.responseWrite({
       event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
@@ -365,9 +379,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       await pushChatRecords(saveParams);
     }
+
+    await streamResponseContext.flushResume();
   } catch (err: any) {
     logger.error('Skill debug chat error', { error: err, skillId });
-    sseErrRes(res, err);
+    if (streamResponseContext) {
+      streamResponseContext.writeStreamError(err);
+    } else {
+      sseErrRes(res, err);
+    }
+    await streamResponseContext?.flushResume();
   }
 
   res.end();

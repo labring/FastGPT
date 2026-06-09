@@ -78,7 +78,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     lang: workflowProps.lang,
     appId: workflowProps.runningAppInfo.id,
     userId: workflowProps.uid,
-    chatId: workflowProps.chatId
+    chatId: workflowProps.chatId,
+    sandboxId: workflowProps.runningAppInfo.sandboxId
   });
   // ToolCall 的一次运行会横跨 LLM loop、真实工具执行、SSE 预览和运行详情落库。
   // 这里按职责拆成 hook，toolCall.ts 只保留主流程编排。

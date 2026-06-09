@@ -144,6 +144,30 @@ export async function findSandboxAppIdBySandboxId(sandboxId: string) {
 }
 
 /**
+ * 按显式 sandboxId 查询单条 sandbox 实例。
+ *
+ * 适用于调用方已经拥有稳定 sandboxId 的场景，避免再把资源定位退回
+ * appId/userId/chatId 推导规则。
+ */
+export async function findSandboxInstanceBySandboxId(params: {
+  provider?: SandboxProviderType;
+  sandboxId: string;
+  appId?: string;
+  type?: SandboxTypeEnum;
+  status?: SandboxStatusType;
+}) {
+  const { provider, sandboxId, appId, type, status } = params;
+
+  return MongoSandboxInstance.findOne({
+    ...(provider ? { provider } : {}),
+    sandboxId,
+    ...(appId ? { appId } : {}),
+    ...(type ? { type } : {}),
+    ...(status ? { status } : {})
+  });
+}
+
+/**
  * 按 app/chat/type 查询单条 sandbox 实例。
  *
  * provider 可选是为了兼容“当前 provider 查询”和“只按业务归属查询”两类场景。

@@ -138,7 +138,8 @@ export const useToolRunner = ({
           args: call.function.arguments ?? '',
           appId: workflowProps.runningAppInfo.id,
           userId: workflowProps.uid,
-          chatId: workflowProps.chatId
+          chatId: workflowProps.chatId,
+          sandboxId: workflowProps.runningAppInfo.sandboxId
         });
 
         const flowResponse = getSandboxToolWorkflowResponse({

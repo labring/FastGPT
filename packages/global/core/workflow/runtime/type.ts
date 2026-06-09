@@ -76,6 +76,8 @@ export type ChatDispatchProps = {
     tmbId: string; // App tmbId
     name: string;
     isChildApp?: boolean;
+    /** 显式指定本轮工作流使用的 sandbox 资源，避免由 appId/userId/chatId 重新生成。 */
+    sandboxId?: string;
   };
   runningUserInfo: {
     username: string;

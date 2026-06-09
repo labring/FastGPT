@@ -13,11 +13,10 @@ import {
   type SkillDebugSessionStopResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: ApiRequestProps): Promise<SkillDebugSessionStopResponse> {
-  const { skillId } = parseApiInput({
+  const { skillId, chatId } = parseApiInput({
     req,
     bodySchema: SkillDebugSessionControlBodySchema
   }).body;
@@ -32,7 +31,7 @@ async function handler(req: ApiRequestProps): Promise<SkillDebugSessionStopRespo
 
   const runtimeStatusParams = {
     appId: skillId,
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+    chatId
   };
 
   await setAgentRuntimeStop(runtimeStatusParams);

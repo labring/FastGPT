@@ -152,7 +152,15 @@ export class SandboxClient {
   }
 }
 
-function resolveSandboxId(props: { sandboxId: string } | UnionIdType): string {
+type ExplicitSandboxIdType = {
+  sandboxId: string;
+  appId?: string;
+  userId?: string;
+  chatId?: string;
+  teamId?: string;
+};
+
+function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
   if ('sandboxId' in props) {
     return props.sandboxId;
   }
@@ -168,12 +176,7 @@ function resolveSandboxId(props: { sandboxId: string } | UnionIdType): string {
  * 返回前会准备 volume 配置并确保 sandbox 可用。
  */
 export const getSandboxClient = async (
-  props:
-    | {
-        sandboxId: string;
-        teamId?: string;
-      }
-    | UnionIdType,
+  props: ExplicitSandboxIdType | UnionIdType,
   opts: {
     providerName?: SandboxProviderType;
     resourceLimits?: ResourceLimits;
