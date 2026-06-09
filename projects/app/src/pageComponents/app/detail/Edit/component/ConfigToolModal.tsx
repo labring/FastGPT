@@ -1,7 +1,6 @@
 import { Button, Flex, HStack, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React from 'react';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { childAppSystemKey } from '../FormComponent/ToolSelector/ToolSelectModal';
@@ -59,12 +58,13 @@ const ConfigToolModal = ({
         <HStack mb={4} spacing={1} fontSize={'sm'}>
           <MyIcon name={'common/info'} color={'primary.600'} w={'1.25rem'} />
           <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
-          {!!(configTool?.courseUrl || configTool?.userGuide) && (
+          {!!(configTool?.courseUrl || configTool?.readmeUrl || configTool?.userGuide) && (
             <UseGuideModal
               title={configTool?.name}
               iconSrc={configTool?.avatar}
               text={configTool?.userGuide}
               link={configTool?.courseUrl}
+              readmeUrl={configTool?.readmeUrl}
             >
               {({ onClick }) => (
                 <Box cursor={'pointer'} color={'primary.500'} onClick={onClick}>
@@ -135,6 +135,7 @@ const ConfigToolModal = ({
                             hasSystemSecret={configTool?.hasSystemSecret}
                             secretCost={configTool?.systemKeyCost}
                             courseUrl={configTool?.courseUrl}
+                            readmeUrl={configTool?.readmeUrl}
                             parentId={configTool?.pluginId}
                             onClose={setFalseSecretModal}
                             onSubmit={(data) => {

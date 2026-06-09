@@ -26,6 +26,7 @@ import { getAppToolTemplates } from '@/web/core/app/api/tool';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 export type ToolParamsFormType = {
   type: SystemToolSecretInputTypeEnum;
@@ -39,6 +40,7 @@ const SecretInputModal = ({
   isFolder,
   inputConfig,
   courseUrl,
+  readmeUrl,
   onClose,
   onSubmit
 }: {
@@ -48,6 +50,7 @@ const SecretInputModal = ({
   hasSystemSecret?: boolean;
   secretCost?: number;
   courseUrl?: string;
+  readmeUrl?: string;
   onClose: () => void;
   onSubmit: (data: ToolParamsFormType) => void;
 }) => {
@@ -176,36 +179,46 @@ const SecretInputModal = ({
                   ]
                 : []),
               {
-                title: courseUrl ? (
-                  <HStack
-                    spacing={2}
-                    color={'myGray.900'}
-                    fontWeight={'500'}
-                    whiteSpace={'nowrap'}
-                    fontSize={'sm'}
-                    lineHeight={1}
-                  >
-                    <Box>{t('app:manual_secret')}</Box>
+                title:
+                  courseUrl || readmeUrl ? (
                     <HStack
-                      spacing={1}
-                      color={'primary.600'}
-                      justifyContent={'flex-end'}
-                      _hover={{
-                        textDecoration: 'underline',
-                        cursor: 'point'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(courseUrl, '_blank');
-                      }}
+                      spacing={2}
+                      color={'myGray.900'}
+                      fontWeight={'500'}
+                      whiteSpace={'nowrap'}
+                      fontSize={'sm'}
+                      lineHeight={1}
                     >
-                      <MyIcon name={'book'} w={'14px'} />
-                      <Box fontSize={'sm'}>{t('app:secret_get_course')}</Box>
+                      <Box>{t('app:manual_secret')}</Box>
+                      <UseGuideModal
+                        title={t('app:manual_secret')}
+                        iconSrc="key"
+                        link={courseUrl}
+                        readmeUrl={readmeUrl}
+                      >
+                        {({ onClick }) => (
+                          <HStack
+                            spacing={1}
+                            color={'primary.600'}
+                            justifyContent={'flex-end'}
+                            _hover={{
+                              textDecoration: 'underline',
+                              cursor: 'pointer'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onClick();
+                            }}
+                          >
+                            <MyIcon name={'book'} w={'14px'} />
+                            <Box fontSize={'sm'}>{t('app:secret_get_course')}</Box>
+                          </HStack>
+                        )}
+                      </UseGuideModal>
                     </HStack>
-                  </HStack>
-                ) : (
-                  t('app:manual_secret')
-                ),
+                  ) : (
+                    t('app:manual_secret')
+                  ),
                 desc: t('app:tool_active_manual_config_desc'),
                 value: SystemToolSecretInputTypeEnum.manual,
                 children:

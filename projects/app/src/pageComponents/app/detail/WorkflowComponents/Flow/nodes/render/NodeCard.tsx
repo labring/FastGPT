@@ -262,13 +262,27 @@ const NodeCard = (props: Props) => {
     {
       onSuccess(res) {
         if (!res) return;
-        // Execute forcibly updates the courseUrl field
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'courseUrl',
-          value: res?.courseUrl
-        });
+        // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
+        onChangeNode([
+          {
+            nodeId,
+            type: 'attr',
+            key: 'courseUrl',
+            value: res?.courseUrl
+          },
+          {
+            nodeId,
+            type: 'attr',
+            key: 'readmeUrl',
+            value: res?.readmeUrl
+          },
+          {
+            nodeId,
+            type: 'attr',
+            key: 'userGuide',
+            value: res?.userGuide
+          }
+        ]);
       },
       manual: false
     }
@@ -367,6 +381,7 @@ const NodeCard = (props: Props) => {
                     <NodeActionButtons
                       nodeTemplate={nodeTemplate}
                       courseUrl={node?.courseUrl}
+                      readmeUrl={node?.readmeUrl}
                       rtDoms={rtDoms}
                     />
 
@@ -392,6 +407,7 @@ const NodeCard = (props: Props) => {
                       nodeId={nodeId}
                       isFolder={node?.isFolder}
                       courseUrl={node?.courseUrl}
+                      readmeUrl={node?.readmeUrl}
                       hasSystemSecret={node?.hasSystemSecret}
                       pluginId={node?.pluginId}
                       systemKeyCost={node?.systemKeyCost}
@@ -778,7 +794,8 @@ const MenuRender = React.memo(function MenuRender({
           currentCost: node.data.currentCost,
           systemKeyCost: node.data.systemKeyCost,
           hasTokenFee: node.data.hasTokenFee,
-          hasSystemSecret: node.data.hasSystemSecret
+          hasSystemSecret: node.data.hasSystemSecret,
+          readmeUrl: node.data.readmeUrl
         };
 
         return [
@@ -926,10 +943,12 @@ const NodeActionButtons = React.memo<{
     name?: string;
     avatar?: string;
     courseUrl?: string;
+    readmeUrl?: string;
   };
   courseUrl?: string;
+  readmeUrl?: string;
   rtDoms?: React.ReactNode[];
-}>(({ nodeTemplate, courseUrl, rtDoms }) => {
+}>(({ nodeTemplate, courseUrl, readmeUrl, rtDoms }) => {
   const { t } = useTranslation();
 
   const buttons = useMemo(() => {
@@ -950,14 +969,18 @@ const NodeActionButtons = React.memo<{
       );
     }
 
-    if (courseUrl || nodeTemplate?.userGuide) {
+    const guideReadmeUrl = nodeTemplate?.readmeUrl || readmeUrl;
+    const guideCourseUrl = nodeTemplate?.courseUrl || courseUrl;
+
+    if (guideCourseUrl || guideReadmeUrl || nodeTemplate?.userGuide) {
       result.push(
         <UseGuideModal
           key="userGuide"
           title={nodeTemplate?.name}
           iconSrc={nodeTemplate?.avatar}
           text={nodeTemplate?.userGuide}
-          link={nodeTemplate?.courseUrl || courseUrl}
+          link={guideCourseUrl}
+          readmeUrl={guideReadmeUrl}
         >
           {({ onClick }) => (
             <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
@@ -973,7 +996,7 @@ const NodeActionButtons = React.memo<{
     }
 
     return result;
-  }, [nodeTemplate, courseUrl, rtDoms, t]);
+  }, [nodeTemplate, courseUrl, readmeUrl, rtDoms, t]);
 
   if (buttons.length === 0) {
     return null;
@@ -1042,6 +1065,7 @@ const NodeSecret = React.memo(function NodeSecret({
   nodeId,
   isFolder,
   courseUrl,
+  readmeUrl,
   hasSystemSecret,
   pluginId,
   systemKeyCost,
@@ -1050,6 +1074,7 @@ const NodeSecret = React.memo(function NodeSecret({
   nodeId: string;
   isFolder?: boolean;
   courseUrl?: string;
+  readmeUrl?: string;
   hasSystemSecret?: boolean;
   pluginId?: string;
   systemKeyCost?: number;
@@ -1098,6 +1123,7 @@ const NodeSecret = React.memo(function NodeSecret({
             onCloseToolParamConfigModal();
           }}
           courseUrl={courseUrl}
+          readmeUrl={readmeUrl}
           inputConfig={inputConfig}
           hasSystemSecret={hasSystemSecret}
           parentId={pluginId}

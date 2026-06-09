@@ -20,10 +20,10 @@ import MyMenu from '../../../common/MyMenu';
 import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
-import Markdown from '../../../common/Markdown';
 import { useRequest } from '../../../../hooks/useRequest';
 import {
   ParamSection,
+  ReadmeBox,
   SubToolAccordionItem,
   useToolDetail,
   drawerScrollbarStyles,
@@ -88,21 +88,17 @@ const ToolDetailDrawer = ({
     }
   }, [selectedTool.id]);
 
-  useEffect(() => {
-    if (!selectedVersion && toolVersions[0]?.version) {
-      setSelectedVersion(toolVersions[0].version);
-    }
-  }, [selectedVersion, toolVersions]);
+  const activeVersion = selectedVersion || toolVersions[0]?.version;
 
   // Use tool detail hook
   const { parentTool, isToolSet, subTools, readmeContent, loadingDetail } = useToolDetail({
     toolId: selectedTool.id,
-    version: selectedVersion,
+    version: activeVersion,
     tags: selectedTool.tags || undefined,
     onFetchDetail
   });
 
-  const currentVersion = selectedVersion || parentTool?.version || selectedTool.version;
+  const currentVersion = activeVersion || parentTool?.version || selectedTool.version;
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
@@ -266,7 +262,12 @@ const ToolDetailDrawer = ({
                 ]}
                 value={activeTab}
                 onChange={(value) => {
-                  if (value === 'guide' && parentTool?.courseUrl) {
+                  if (
+                    value === 'guide' &&
+                    parentTool?.courseUrl &&
+                    !parentTool?.readme &&
+                    !parentTool?.userGuide
+                  ) {
                     window.open(parentTool?.courseUrl, '_blank');
                   } else {
                     setActiveTab(value as 'guide' | 'params');
@@ -280,21 +281,11 @@ const ToolDetailDrawer = ({
             <Box mt={4}>
               {activeTab === 'guide' && (
                 <VStack align="stretch" spacing={4} flex="1" minH="0">
-                  {(readmeContent || parentTool?.userGuide) && (
-                    <Box
-                      px={4}
-                      py={3}
-                      border="1px solid"
-                      borderColor="myGray.200"
-                      borderRadius="md"
-                      bg="myGray.50"
-                      fontSize="sm"
-                      color="myGray.900"
-                      flex="1"
-                      overflowY="auto"
-                    >
-                      <Markdown source={readmeContent || parentTool?.userGuide || ''} />
-                    </Box>
+                  {(parentTool?.readme || readmeContent || parentTool?.userGuide) && (
+                    <ReadmeBox
+                      source={readmeContent || parentTool?.userGuide || ''}
+                      courseUrl={parentTool?.courseUrl}
+                    />
                   )}
                 </VStack>
               )}

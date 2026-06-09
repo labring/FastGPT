@@ -175,6 +175,8 @@ export const appWorkflow2Form = ({
         templateType: FlowNodeTemplateTypeEnum.other,
         pluginData: node.pluginData,
         courseUrl: node.pluginData?.courseUrl,
+        readmeUrl: node.pluginData?.readmeUrl,
+        userGuide: node.pluginData?.userGuide,
         toolConfig: node.toolConfig,
         hasSystemSecret: node.hasSystemSecret,
         systemKeyCost: node.systemKeyCost,
@@ -609,6 +611,9 @@ export function form2AppWorkflow(
             },
             toolConfig: tool.toolConfig,
             pluginData: tool.pluginData,
+            courseUrl: tool.courseUrl,
+            readmeUrl: tool.readmeUrl,
+            userGuide: tool.userGuide,
             inputs: tool.inputs.map((input) => {
               // Special key value
               if (input.key === NodeInputKeyEnum.forbidStream) {

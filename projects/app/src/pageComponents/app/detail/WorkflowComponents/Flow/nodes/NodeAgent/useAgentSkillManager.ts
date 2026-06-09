@@ -25,7 +25,7 @@ export const useAgentSkillManager = ({
   );
   const selectedTools: SelectedToolItemType[] = useMemo(
     () => (Array.isArray(toolsInput?.value) ? toolsInput!.value : []),
-    [toolsInput?.value]
+    [toolsInput]
   );
 
   const fileLinkInput = useMemo(() => inputs.find((i) => i.key === 'fileLink'), [inputs]);
