@@ -309,6 +309,7 @@ const CodeLight = ({
 
     return (
       <Box
+        className="code-block-wrapper"
         my={3}
         borderRadius={'md'}
         overflow={'overlay'}

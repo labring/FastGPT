@@ -36,6 +36,7 @@ type Props = {
   forbidZhFormat?: boolean;
   className?: string;
   autoPreviewHtmlCodeBlock?: boolean;
+  chatItemDataId?: string;
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -53,6 +54,7 @@ const MarkdownRender = ({
   forbidZhFormat,
   className,
   autoPreviewHtmlCodeBlock,
+  chatItemDataId,
 
   chatAuthData,
   onOpenCiteModal
@@ -66,6 +68,7 @@ const MarkdownRender = ({
           {...props}
           showAnimation={showAnimation}
           autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+          chatItemDataId={chatItemDataId}
           markdownClassName={className}
         />
       ),
@@ -79,7 +82,14 @@ const MarkdownRender = ({
         />
       )
     };
-  }, [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]);
+  }, [
+    autoPreviewHtmlCodeBlock,
+    chatAuthData,
+    chatItemDataId,
+    className,
+    onOpenCiteModal,
+    showAnimation
+  ]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
@@ -119,6 +129,7 @@ function Code(e: any) {
     children,
     showAnimation,
     autoPreviewHtmlCodeBlock,
+    chatItemDataId,
     markdownClassName
   } = e;
   const match = /language-(\w+)/.exec(className || '');
@@ -154,6 +165,7 @@ function Code(e: any) {
           match={match}
           showAnimation={showAnimation}
           autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+          chatItemDataId={chatItemDataId}
         >
           {children}
         </IframeHtmlCodeBlock>
@@ -173,6 +185,7 @@ function Code(e: any) {
     );
   }, [
     autoPreviewHtmlCodeBlock,
+    chatItemDataId,
     codeType,
     className,
     codeBlock,

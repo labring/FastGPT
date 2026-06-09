@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { useSize } from 'ahooks';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -64,12 +65,16 @@ export const ResponseBox = React.memo(function ResponseBox({
     onClose: onCloseMobileModal
   } = useDisclosure();
 
+  const contentPanelRef = useRef<HTMLDivElement>(null);
+  const contentPanelSize = useSize(contentPanelRef);
+
   return (
     <>
       {isPc && !useMobile ? (
         <Flex
           overflow={'hidden'}
           height={'100%'}
+          minH={0}
           bg={'myGray.25'}
           border={'1px solid'}
           borderColor={'myGray.200'}
@@ -90,11 +95,12 @@ export const ResponseBox = React.memo(function ResponseBox({
               onChange={setCurrentNodeId}
             />
           </Box>
-          <Box flex={'1 0 0'} w={0} height={'100%'}>
+          <Box ref={contentPanelRef} flex={'1 0 0'} w={0} h={'100%'} minH={0} overflow={'hidden'}>
             <WholeResponseContent
               dataId={dataId}
               activeModule={activeModule}
               hideTabs={hideTabs}
+              contentHeight={contentPanelSize?.height}
               onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
@@ -155,11 +161,12 @@ export const ResponseBox = React.memo(function ResponseBox({
                   {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>
-              <Box flex={'1 0 0'}>
+              <Box ref={contentPanelRef} flex={'1 0 0'} minH={0} overflow={'hidden'}>
                 <WholeResponseContent
                   dataId={dataId}
                   activeModule={activeModule}
                   hideTabs={hideTabs}
+                  contentHeight={contentPanelSize?.height}
                   onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>

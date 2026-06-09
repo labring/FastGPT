@@ -1,9 +1,11 @@
+import { type CSSProperties } from 'react';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
@@ -352,26 +354,10 @@ export const WorkflowResultRows = ({
       : undefined;
   const codeJsonContentBoxProps = codeJsonMaxHeight
     ? {
-        sx: {
-          '& .markdown > div': {
-            display: 'flex',
-            flexDirection: 'column',
-            maxH: codeJsonMaxHeight,
-            overflow: 'hidden',
-            borderRadius: 'md'
-          },
-          '& .markdown .code-header': {
-            flexShrink: 0
-          },
-          '& .markdown pre': {
-            flex: '1 1 auto',
-            minH: 0,
-            overflow: 'auto !important',
-            margin: '0 !important',
-            borderBottomLeftRadius: 'var(--chakra-radii-md)',
-            borderBottomRightRadius: 'var(--chakra-radii-md)'
-          }
-        }
+        className: styles.codeJsonConstrained,
+        style: {
+          '--code-json-max-height': codeJsonMaxHeight
+        } as CSSProperties
       }
     : undefined;
 
