@@ -135,11 +135,13 @@ describe('dispatchParallelRun', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
     expect(result.data[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
-    expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe('parallelRun1_task_0');
+    expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe(
+      'parallel-parent-response_task_0'
+    );
     expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('parallel-parent-response');
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
-      id: 'parallelRun1_task_0',
+      id: 'parallel-parent-response_task_0',
       childResponseCount: 2,
       childTotalPoints: 6,
       childrenResponses: undefined
@@ -190,22 +192,39 @@ describe('dispatchParallelRun', () => {
     );
 
     expect(runWorkflowMock.mock.calls.map((call) => call[0].nodeResponseParentId)).toEqual([
-      'parallelRun1_task_0_attempt_0',
-      'parallelRun1_task_0_attempt_1'
+      'parallel-parent-response_task_0_attempt_0',
+      'parallel-parent-response_task_0_attempt_1'
     ]);
     expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(2);
     expect(nodeResponseWriter.recordWithParent.mock.calls.map((call) => call[0][0].id)).toEqual([
-      'parallelRun1_task_0_attempt_0',
-      'parallelRun1_task_0_attempt_1'
+      'parallel-parent-response_task_0_attempt_0',
+      'parallel-parent-response_task_0_attempt_1'
     ]);
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
-      id: 'parallelRun1_task_0_attempt_0',
+      id: 'parallel-parent-response_task_0_attempt_0',
       error: expect.any(String)
     });
     expect(nodeResponseWriter.recordWithParent.mock.calls[1][0][0]).toMatchObject({
-      id: 'parallelRun1_task_0_attempt_1',
+      id: 'parallel-parent-response_task_0_attempt_1',
       loopOutputValue: 'done'
     });
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
+  });
+
+  it('无父 nodeResponseId 时保持旧的 nodeId 前缀', async () => {
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'done'
+          })
+        ]
+      })
+    );
+
+    await dispatchParallelRun(makeProps());
+
+    expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe('parallelRun1_task_0');
   });
 });

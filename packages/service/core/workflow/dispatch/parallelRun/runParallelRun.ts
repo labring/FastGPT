@@ -66,6 +66,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
+  const taskResponseIdPrefix = props.nodeResponseParentId || node.nodeId;
 
   const taskResults = await batchRun(
     loopInputArray,
@@ -88,8 +89,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         });
         const taskResponseId =
           maxRetryAttempts > 0
-            ? `${node.nodeId}_task_${index}_attempt_${attempt}`
-            : `${node.nodeId}_task_${index}`;
+            ? `${taskResponseIdPrefix}_task_${index}_attempt_${attempt}`
+            : `${taskResponseIdPrefix}_task_${index}`;
 
         try {
           const response = await runWorkflow({
