@@ -1567,12 +1567,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     };
   }
 
-  data.runtimeEdges = filterOrphanEdges({
-    edges: data.runtimeEdges,
-    nodes: data.runtimeNodes,
-    workflowId: data.runningAppInfo.id
-  });
-
   return observeWorkflowRun(
     {
       mode: data.mode,
@@ -1602,6 +1596,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               nodes: data.runtimeNodes,
               edges: data.runtimeEdges,
               lang: data.lang
+            });
+            // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
+            // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
+            // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。
+            data.runtimeEdges = filterOrphanEdges({
+              edges: data.runtimeEdges,
+              nodes: data.runtimeNodes,
+              workflowId: data.runningAppInfo.id
             });
             // Init default value
             data.retainDatasetCite = data.retainDatasetCite ?? true;

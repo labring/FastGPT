@@ -881,6 +881,39 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
 
+  it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
+    const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCPTool',
+      avatar: 'avatar.png',
+      toolConfig: {
+        // 模拟前端 preview 后的 ToolSet 节点：保留工具名，但没有完整 inputSchema。
+        mcpToolSet: { toolId: 'mcp-tool-1', toolList: [{ name: 'tool1', description: 'desc' }] }
+      }
+    } as any);
+    const parentNode = makeNode('parent', FlowNodeTypeEnum.toolCall);
+    const nodes = [parentNode, toolSetNode];
+    // 交互暂停会保存 ToolSet 展开后的运行态边；续跑时 store nodes 里仍只有 ToolSet。
+    const edges = [
+      makeEdge('parent', 'ts20', { sourceHandle: 'selectedTools', targetHandle: 'selectedTools' })
+    ];
+
+    const fullSchema = { type: 'object', properties: { city: { type: 'string' } } };
+    mockMongoAppFindOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
+    });
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'tool1', description: 'desc', inputSchema: fullSchema }
+    ]);
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
+
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
+    expect(filteredEdges).toHaveLength(1);
+    expect(filteredEdges[0].target).toBe('ts20');
+  });
+
   it('should skip MCP toolSet when app not found', async () => {
     const toolSetNode = makeNode('ts3', FlowNodeTypeEnum.toolSet, {
       pluginId: 'missing-app',
