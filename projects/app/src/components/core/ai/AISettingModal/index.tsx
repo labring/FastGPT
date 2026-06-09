@@ -423,7 +423,7 @@ const AIChatSettingsModal = ({
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:hide_ai_thinking')}</Flex>
               <Switch
-                isChecked={!reasoning}
+                isChecked={reasoning === false}
                 size={'sm'}
                 onChange={(e) => {
                   setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);

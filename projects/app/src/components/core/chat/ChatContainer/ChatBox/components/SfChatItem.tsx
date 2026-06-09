@@ -140,9 +140,9 @@ const AIContentCard = React.memo(function AIContentCard({
           !value.plan &&
           !value.stepTitle &&
           !value.tool &&
-          !value.tools &&
+          !value.tools?.length &&
           !value.interactive &&
-          !value.skills
+          !value.skills?.length
         ) {
           return (
             <Flex key={key} alignItems={'center'} gap={2}>

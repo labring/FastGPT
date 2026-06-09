@@ -269,7 +269,13 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     let answerText = '';
     let currentTextItem: AIChatItemValueItemType | null = null;
     let currentReasoningItem: AIChatItemValueItemType | null = null;
-    let reasoningStartTime: number | null = null;
+    // Separate timers for the two independent reasoning content paths:
+    // - xmlReasoningStartTime: set when <think> tag opens (processTextChunk)
+    // - deltaReasoningStartTime: set when thinking_delta event first arrives
+    // This prevents timing overwrite in hybrid mode where a model emits both
+    // thinking_delta events and <think> XML tags within the text stream.
+    let xmlReasoningStartTime: number | null = null;
+    let deltaReasoningStartTime: number | null = null;
 
     // Streaming parser for <think>...</think> tags in text content
     // Some models (e.g. MiniMax) emit thinking content as XML tags within the text stream
@@ -324,10 +330,10 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
               });
             }
             // Record duration and reset reasoning item so next reasoning starts fresh
-            if (currentReasoningItem && reasoningStartTime) {
+            if (currentReasoningItem && xmlReasoningStartTime) {
               currentReasoningItem.reasoning!.duration =
-                Math.round((Date.now() - reasoningStartTime) / 1000) || 1;
-              reasoningStartTime = null;
+                Math.round((Date.now() - xmlReasoningStartTime) / 1000) || 1;
+              xmlReasoningStartTime = null;
             }
             currentReasoningItem = null;
           }
@@ -380,7 +386,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
             const textBefore = thinkTagBuffer.substring(0, openIdx);
             thinkTagBuffer = thinkTagBuffer.substring(openIdx + '<think>'.length);
             inThinkTag = true;
-            reasoningStartTime = Date.now();
+            xmlReasoningStartTime = Date.now();
             if (textBefore.length > 0) {
               answerText += textBefore;
               if (!currentTextItem) {
@@ -411,7 +417,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           if (!currentReasoningItem) {
             currentReasoningItem = { reasoning: { content: '' } };
             assistantResponses.push(currentReasoningItem);
-            reasoningStartTime = Date.now();
+            deltaReasoningStartTime = Date.now();
           }
           currentReasoningItem.reasoning!.content += e.delta;
           workflowStreamResponse?.({
@@ -424,12 +430,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         // Tool items have already been pushed to assistantResponses by buildAgentTools
         // during tool execution between turns, so they appear in the correct position.
         currentTextItem = null;
-        // Close reasoning item with duration if one is active
-        if (currentReasoningItem && reasoningStartTime) {
-          currentReasoningItem.reasoning!.duration =
-            Math.round((Date.now() - reasoningStartTime) / 1000) || 1;
-          reasoningStartTime = null;
+        // Close reasoning item with duration if one is active.
+        // Use whichever timer was set — the two reasoning paths are mutually
+        // exclusive within a single turn, so at most one timer is non-null.
+        if (currentReasoningItem) {
+          const timer = deltaReasoningStartTime ?? xmlReasoningStartTime;
+          if (timer) {
+            currentReasoningItem.reasoning!.duration = Math.round((Date.now() - timer) / 1000) || 1;
+          }
         }
+        deltaReasoningStartTime = null;
+        xmlReasoningStartTime = null;
         currentReasoningItem = null;
         const errMsg = (event.message as any).errorMessage as string | undefined;
         if (errMsg) {

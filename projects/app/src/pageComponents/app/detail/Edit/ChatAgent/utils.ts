@@ -327,7 +327,8 @@ export const getEmptyAgentConfig = (t: any) => {
       aiSettings: {
         modelId: '',
         maxHistories: 6,
-        isResponseAnswerText: true
+        isResponseAnswerText: true,
+        aiChatReasoning: true
       },
       dataset: {
         ...defaultAppForm.dataset,
