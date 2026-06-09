@@ -51,6 +51,7 @@ const RawSourceBox = ({
     teamId,
     teamToken
   });
+  const displaySourceName = sourceName || t('common:unknow_source');
 
   return (
     <MyTooltip
@@ -71,14 +72,16 @@ const RawSourceBox = ({
           : {})}
         {...props}
       >
-        <MyIcon name={icon as any} w={['1rem', '1.25rem']} mr={2} />
-        <Box
-          maxW={['200px', '300px']}
-          className={props.className ?? 'textEllipsis'}
-          wordBreak={'break-all'}
-        >
-          {sourceName || t('common:unknow_source')}
-        </Box>
+        <MyIcon name={icon as any} w={['1rem', '1.25rem']} mr={2} flexShrink={0} />
+        <MyTooltip label={displaySourceName} shouldWrapChildren={false}>
+          <Box
+            maxW={['200px', '300px']}
+            className={props.className ?? 'textEllipsis'}
+            wordBreak={'break-all'}
+          >
+            {displaySourceName}
+          </Box>
+        </MyTooltip>
       </Box>
     </MyTooltip>
   );

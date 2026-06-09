@@ -12,6 +12,7 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUtilsContext } from './context/workflowUtilsContext';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 const ExportConfigPopover = dynamic(
@@ -164,12 +165,16 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
 
   const Render = useMemo(() => {
     return (
-      <HStack flex={1} justifyContent={'space-between'}>
-        <HStack>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
-          <Box>
-            <HStack spacing={1}>
-              <Box color={'myGray.900'}>{appDetail.name}</Box>
+      <HStack w={'full'} minW={0} justifyContent={'space-between'}>
+        <HStack minW={0} flex={1}>
+          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
+          <Box minW={0} flex={1}>
+            <HStack spacing={1} minW={0}>
+              <MyTooltip label={appDetail.name} shouldWrapChildren={false}>
+                <Box color={'myGray.900'} className="textEllipsis" maxW={'full'}>
+                  {appDetail.name}
+                </Box>
+              </MyTooltip>
             </HStack>
             {showSaveStatus && (
               <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
@@ -199,6 +204,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
             icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
             w={'34px'}
             h={'34px'}
+            flexShrink={0}
             bg={'white'}
             border={'1px solid'}
             borderColor={'myGray.250'}

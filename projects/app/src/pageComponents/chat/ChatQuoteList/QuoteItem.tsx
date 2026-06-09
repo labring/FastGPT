@@ -48,16 +48,18 @@ const QuoteItem = ({
     >
       <Flex gap={2} alignItems={'center'} pb={'8px'}>
         <Box alignItems={'center'} fontSize={'10px'} fontWeight={500} display={'inline-flex'}>
-          <Flex gap={1}>
+          <Flex gap={1} minW={0}>
             <MyIcon name={icon as any} flexShrink={0} w={'12px'} />
-            <Box
-              className={'textEllipsis'}
-              wordBreak={'break-all'}
-              flex={'1 0 0'}
-              color={'myGray.900'}
-            >
-              {sourceName}
-            </Box>
+            <MyTooltip label={sourceName} shouldWrapChildren={false}>
+              <Box
+                className={'textEllipsis'}
+                wordBreak={'break-all'}
+                flex={'1 0 0'}
+                color={'myGray.900'}
+              >
+                {sourceName}
+              </Box>
+            </MyTooltip>
           </Flex>
         </Box>
       </Flex>

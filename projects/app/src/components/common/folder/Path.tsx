@@ -112,6 +112,7 @@ const FolderPath = (props: {
 
     const shouldTruncate = !isLast && item.parentName.length > 10;
     const displayName = shouldTruncate ? `${item.parentName.slice(0, 10)}...` : item.parentName;
+    const shouldPreviewName = item.parentName.length > 10;
 
     const pathBox = (
       <Box
@@ -139,7 +140,7 @@ const FolderPath = (props: {
 
     return (
       <Flex key={item.parentId || index} alignItems={'center'}>
-        {shouldTruncate ? <MyTooltip label={item.parentName}>{pathBox}</MyTooltip> : pathBox}
+        {shouldPreviewName ? <MyTooltip label={item.parentName}>{pathBox}</MyTooltip> : pathBox}
         {!isLast && <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />}
       </Flex>
     );
