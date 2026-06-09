@@ -21,11 +21,14 @@ export const ListAppTemplateQuerySchema = z.object({
     description: '随机返回数量'
   }),
   type: z
-    .union([z.enum(AppTypeEnum), z.literal('all')])
+    .preprocess(
+      (value) => (value === '' ? 'all' : value),
+      z.union([z.enum(AppTypeEnum), z.literal('all')])
+    )
     .optional()
     .meta({
       example: 'all',
-      description: '应用类型'
+      description: '应用类型；空字符串按 all 处理'
     }),
   excludeIds: z.string().optional().meta({
     example: '["template-a","template-b"]',
