@@ -661,3 +661,102 @@ export const onOptimizeCode = async ({
     abortCtrl: controller
   });
 };
+
+export type CopilotToolCallEvent = {
+  id: string;
+  functionName: string;
+  params: string; // accumulated JSON string
+  response?: string;
+};
+
+type LlmMessage = {
+  role: string;
+  content?: string | null;
+  tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
+  [key: string]: unknown;
+};
+
+export type OnWorkflowCopilotProps = {
+  model: string;
+  /** 完整 LLM 对话历史（前端维护，不含 system prompt；后端重建 system） */
+  messages: LlmMessage[];
+  currentWorkflow: {
+    nodes: Array<{ nodeId: string; flowNodeType: string; name: string }>;
+    edges: Array<{ source: string; target: string }>;
+  };
+  onText: (text: string) => void;
+  onToolCall: (tool: CopilotToolCallEvent) => void;
+  onToolParams: (data: { id: string; params: string }) => void;
+  onToolResponse: (tool: CopilotToolCallEvent) => void;
+  abortController?: AbortController;
+};
+
+export const onWorkflowCopilot = async ({
+  model,
+  messages,
+  currentWorkflow,
+  onText,
+  onToolCall,
+  onToolParams,
+  onToolResponse,
+  abortController
+}: OnWorkflowCopilotProps) => {
+  const controller = abortController || new AbortController();
+
+  await new Promise<void>((resolve, reject) => {
+    fetchEventSource(getWebReqUrl('/api/core/workflow/copilot'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ model, messages, currentWorkflow }),
+      openWhenHidden: true,
+      async onopen(res) {
+        if (!res.ok || res.status !== 200) {
+          try {
+            reject(await res.clone().json());
+          } catch {
+            reject(new Error(`HTTP ${res.status}`));
+          }
+        }
+      },
+      onmessage({ event, data }) {
+        if (data === '[DONE]') {
+          return resolve();
+        }
+        let parsed: any;
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          return;
+        }
+        if (event === SseResponseEventEnum.answer) {
+          const text = parsed.choices?.[0]?.delta?.content;
+          if (text) onText(text);
+        } else if (event === SseResponseEventEnum.toolCall && parsed.tool) {
+          onToolCall({
+            id: parsed.tool.id,
+            functionName: parsed.tool.functionName,
+            params: parsed.tool.params ?? ''
+          });
+        } else if (event === SseResponseEventEnum.toolParams && parsed.tool) {
+          onToolParams({ id: parsed.tool.id, params: parsed.tool.params ?? '' });
+        } else if (event === SseResponseEventEnum.toolResponse && parsed.tool) {
+          onToolResponse({
+            id: parsed.tool.id,
+            functionName: parsed.tool.functionName,
+            params: parsed.tool.params ?? '',
+            response: parsed.tool.response ?? ''
+          });
+        }
+      },
+      onclose() {
+        resolve();
+      },
+      onerror(err) {
+        reject(err);
+        throw err; // stop retrying
+      }
+    });
+  });
+};

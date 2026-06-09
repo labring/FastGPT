@@ -5,6 +5,7 @@ import {
   Flex,
   Button,
   Input,
+  Textarea,
   SimpleGrid,
   Table,
   Thead,
@@ -49,6 +50,12 @@ import {
   type HttpToolType,
   HttpToolTypeEnum
 } from '@fastgpt/global/core/app/tool/httpTool/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import {
+  WORKFLOW_COPILOT_TASK_STORAGE_KEY,
+  type WorkflowCopilotGenerationTask
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/copilot/constants';
 
 type FormType = {
   avatar: string;
@@ -59,6 +66,7 @@ type FormType = {
   mcpUrl?: string;
   mcpHeaderSecret?: any;
   mcpToolList?: any[];
+  workflowGenerationRequirement?: string;
 };
 
 export type CreateAppType =
@@ -73,6 +81,7 @@ const CreateAppsPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
+  const { llmModelList, defaultModels } = useSystemStore();
   const { query } = router;
   const { parentId, appType } = query;
 
@@ -80,7 +89,11 @@ const CreateAppsPage = () => {
     (appType as CreateAppType) || AppTypeEnum.chatAgent
   );
   const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
+  const [copilotModel, setCopilotModel] = useState(
+    defaultModels.llm?.id || llmModelList[0]?.id || ''
+  );
   const isToolType = ToolTypeList.includes(selectedAppType);
+  const modelList = llmModelList.map((m) => ({ label: m.name, value: m.id }));
 
   const { data: templateData, loading: isLoadingTemplates } = useRequest(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type: selectedAppType }),
@@ -97,7 +110,8 @@ const CreateAppsPage = () => {
       createType: HttpToolTypeEnum.batch,
       mcpUrl: '',
       mcpHeaderSecret: {},
-      mcpToolList: []
+      mcpToolList: [],
+      workflowGenerationRequirement: ''
     }
   });
   const avatar = watch('avatar');
@@ -105,6 +119,7 @@ const CreateAppsPage = () => {
   const mcpUrl = watch('mcpUrl');
   const mcpHeaderSecret = watch('mcpHeaderSecret');
   const mcpToolList = watch('mcpToolList');
+  const workflowGenerationRequirement = watch('workflowGenerationRequirement');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -178,6 +193,39 @@ const CreateAppsPage = () => {
         edges: emptyTemplate[appType].edges,
         chatConfig: emptyTemplate[appType].chatConfig
       });
+    },
+    {
+      onSuccess(id) {
+        router.push(`/app/detail?appId=${id}`);
+      },
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
+    }
+  );
+
+  const { runAsync: onClickSmartGenerate, loading: isCreatingSmartWorkflow } = useRequest(
+    async ({ avatar, name, workflowGenerationRequirement }: FormType) => {
+      const emptyTemplate = getEmptyAppsTemplate(t);
+      const id = await postCreateApp({
+        parentId: parentId as string,
+        avatar,
+        name: name?.trim() || t('app:unnamed_app'),
+        type: AppTypeEnum.workflow,
+        modules: emptyTemplate[AppTypeEnum.workflow].nodes,
+        edges: emptyTemplate[AppTypeEnum.workflow].edges,
+        chatConfig: emptyTemplate[AppTypeEnum.workflow].chatConfig
+      });
+
+      const task: WorkflowCopilotGenerationTask = {
+        appId: id,
+        requirement: workflowGenerationRequirement?.trim() || '',
+        model: copilotModel,
+        createdAt: Date.now()
+      };
+
+      sessionStorage.setItem(WORKFLOW_COPILOT_TASK_STORAGE_KEY, JSON.stringify(task));
+
+      return id;
     },
     {
       onSuccess(id) {
@@ -302,6 +350,43 @@ const CreateAppsPage = () => {
               )}
             </Flex>
           </Box>
+          {selectedAppType === AppTypeEnum.workflow && (
+            <Box mb={5}>
+              <Flex justifyContent={'space-between'} alignItems={'center'} mb={2.5}>
+                <Box color={'myGray.900'} fontWeight={'medium'}>
+                  智能生成
+                </Box>
+                <Button
+                  size={'sm'}
+                  variant={'primary'}
+                  isLoading={isCreatingSmartWorkflow}
+                  isDisabled={!workflowGenerationRequirement?.trim() || !copilotModel}
+                  onClick={handleSubmit((data) => onClickSmartGenerate(data))}
+                >
+                  确认生成
+                </Button>
+              </Flex>
+              {modelList.length > 0 && (
+                <Box mb={2.5}>
+                  <AIModelSelector
+                    w={'100%'}
+                    value={copilotModel}
+                    list={modelList}
+                    onChange={setCopilotModel}
+                  />
+                </Box>
+              )}
+              <Textarea
+                minH={'170px'}
+                resize={'vertical'}
+                bg={'myWhite.600'}
+                placeholder={
+                  '业务背景：请描述业务场景、服务对象、已有系统或数据来源。\n\n核心流程：请描述用户从发起请求到完成业务目标的主要步骤。\n\n要求：请描述节点、分支、工具等要求。'
+                }
+                {...register('workflowGenerationRequirement')}
+              />
+            </Box>
+          )}
           {templateData?.list && templateData.list.length > 0 && (
             <Box>
               <Flex justifyContent={'space-between'} mb={2.5}>
