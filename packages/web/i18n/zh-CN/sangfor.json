@@ -15,6 +15,8 @@
   "get_license_file_visit": "获取授权文件请访问：",
   "activate_system_continue_use": "激活系统后才可继续使用，获取授权文件请访问：",
   "sangfor_auth_center": "深信服授权中心",
+  "get_license_file_email_prefix": "获取授权文件请发送邮件到：",
+  "activate_system_continue_use_email_prefix": "激活系统后才可继续使用，获取授权文件请发送邮件到：",
   "current_system_gateway_id": "当前系统的网关ID为：",
   "copy_device_info_text": "复制设备信息文本",
   "export_device_info_file": "导出设备信息文件",

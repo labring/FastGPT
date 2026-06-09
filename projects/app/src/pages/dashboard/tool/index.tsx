@@ -179,7 +179,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           <Flex alignItems="center" gap={3} flexShrink={0}>
             {isPc && (
               <SearchInput
-                maxW={['auto', '250px']}
+                w={['180px']}
                 value={searchKey}
                 bg={'white'}
                 onChange={(e) => setSearchKey(e.target.value)}

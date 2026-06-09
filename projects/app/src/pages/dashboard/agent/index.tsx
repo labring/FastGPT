@@ -124,8 +124,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} position={'relative'}>
+            <Flex alignItems={'center'} flex={'1'}>
               {!isPc ? (
                 MenuIcon
               ) : paths.length > 0 ? (
@@ -151,7 +151,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               )}
             </Flex>
             {isPc && paths.length === 0 && (
-              <Box mx={'auto'}>
+              <Flex position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
                 <MyTabs
                   tabs={agentTabList}
                   value={activeAgentTab}
@@ -162,16 +162,16 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              </Box>
+              </Flex>
             )}
             <Flex
-              ml={!(isPc && paths.length === 0) ? 'auto' : undefined}
+              ml={'auto'}
               alignItems={'center'}
-              gap={3}
+              gap={2}
             >
               {isPc && (
                 <SearchInput
-                  maxW={['auto', '250px']}
+                  w={'180px'}
                   value={searchKey}
                   bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
@@ -185,7 +185,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   folderDetail?.type !== AppTypeEnum.httpPlugin
                 : userInfo?.team.permission.hasAppCreatePer) && (
                 <>
-                  <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={5}>
+                  <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={4}>
                     {t('app:new_folder')}
                   </Button>
                   <MyMenu
