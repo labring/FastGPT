@@ -5,353 +5,402 @@ description: FastGPT 系统插件开发指南（工具篇）
 
 ## 介绍
 
-FastGPT 系统插件项目从 4.10.0 版本后移动到独立的`fastgpt-plugin`项目中，采用纯代码的模式进行工具编写。
-在 4.14.0 版本插件市场更新后，系统工具开发流程有所改变，请依照最新文档贡献代码。
+本文面向 FastGPT v4.15.0 之后的系统工具开发。新版 FastGPT Plugin 服务把系统工具、模型预设等能力统一抽象为可安装、可更新、可运行隔离的插件包，插件最终以 `.pkg` 文件交付给 FastGPT Plugin 服务。
 
-你可以在`fastgpt-plugin`项目中进行独立开发和调试好插件后，直接向 FastGPT 官方提交 PR 即可，无需运行 FastGPT 主服务。
+当前稳定支持的系统工具插件类型有两种：
 
-目前系统插件仅支持“工具”这一种类型。
+- 单工具：一个插件只暴露一个工具，使用 `defineTool()` 声明。
+- 工具集：一个插件暴露多个相关子工具，使用 `defineToolSet()` 声明。
 
-## 概念
+系统工具插件运行在 FastGPT Plugin 服务提供的运行时中。FastGPT 主服务通过插件服务调用工具，插件代码通过 `@fastgpt-plugin/sdk-factory` 描述输入、输出、密钥配置和执行逻辑。
 
-- 工具(Tool)：最小的运行单元，每个工具都有唯一 ID 和特定的输入和输出。
-- 工具集(Toolset)：工具的集合，可以包含多个工具。
+## 与旧版机制的区别
 
-在`fastgpt-plugin`中，你可以每次创建一个工具/工具集，每次提交时，仅接收一个工具/工具集。如需开发多个，可以创建多个 PR 进行提交。
+1. 插件包协议从旧的内置系统工具目录升级为统一 `.pkg` 格式，便于安装、版本管理、热更新和后续扩展其他插件类型。
+2. 插件运行时由服务端统一管理，当前默认运行时是 `local-pool`，每个插件版本拥有独立进程池、队列和运行时配置。
+3. 插件元信息、输入输出 schema、密钥 schema 和图标资源都会进入构建产物，供 FastGPT 页面、工作流和 Agent 调用使用。
+4. 工具开发使用 `@fastgpt-plugin/cli` 和 `@fastgpt-plugin/sdk-factory`，不再以旧版 `config.ts`、`versionList` 和 `bun run build:pkg` 作为主要开发方式。
+
+## 开发前准备
+
+开始编码前先明确这些信息：
+
+| 信息 | 说明 |
+| --- | --- |
+| 插件类型 | `tool` 或 `tool-suite`。 |
+| 插件 ID | `pluginId`，全局稳定唯一，发布后保持不变。 |
+| 子工具 ID | 工具集需要，`children[].id` 发布后保持不变。 |
+| 中英文名称 | `name.en` 和 `name.zh-CN`。 |
+| 中英文描述 | `description.en` 和 `description.zh-CN`。 |
+| 输入 | 每个字段的类型、约束、默认值、UI 标题和说明。 |
+| 输出 | 每个字段的类型、含义和下游使用方式。 |
+| 密钥 | API Key、Base URL、账号密码等，通过 `secretSchema` 描述。 |
+| 外部 API | 请求方式、鉴权方式、超时、限流、错误响应和测试账号。 |
+| 文件能力 | 需要上传文件时使用 `ctx.invoke.uploadFile()`。 |
+| 流式输出 | 需要展示中间进度时使用 `ctx.streamResponse()`。 |
+| 测试样例 | 至少包含成功路径、参数错误、鉴权失败和上游失败。 |
+
+影响插件 ID、鉴权方式、计费或上架安全性的信息需要先确认。其他信息可以使用合理默认值继续推进，并在提交说明中记录假设。
 
 ## 1. 准备开发环境
 
-### 1.1 安装 Bun
+推荐环境：
 
-- 安装 [Bun](https://bun.sh/), FastGPT-plugin 使用 Bun 作为包管理器
+- Node.js 版本满足目标插件仓库要求。
+- `pnpm`，当前 `fastgpt-plugin` 仓库使用 pnpm workspace。
+- Git。
+- GitHub CLI `gh`，用于 fork、创建仓库和提交 PR。
 
-### 1.2 Fork FastGPT-plugin 仓库
-
-Fork 本仓库 `https://github.com/labring/fastgpt-plugin`
-
-### 1.3 搭建开发脚手架
-
-<Tabs items={['通过 Bunx 一键搭建','手动搭建']}>
-<Tab value="通过 Bunx 一键搭建">
-注意：由于使用了 bun 特有的 API，必须使用 bunx 进行安装，使用 npx/npx 等会报错
-
-创建一个新的目录，在该目录下执行：
-```bash
-bunx @fastgpt-sdk/plugin-cli
-```
-
-上述命令会在当前目录下创建 fastgpt-plugin 目录，并且添加两个 remote:
-- upstream 指向官方仓库
-- origin 指向你自己的仓库
-
-默认使用 sparse-checkout 避免拉取所有的官方插件代码
-
-</Tab>
-<Tab value="手动搭建">
-- 本地在一个新建目录下初始化一个 `git`:
+开发社区插件时，先 fork 并 clone 社区插件仓库：
 
 ```bash
-git init
+gh repo fork labring/fastgpt-community-plugins --clone
+cd fastgpt-community-plugins
+pnpm install
 ```
 
-如果配置了 Git SSH Key, 则可以：
+在 `fastgpt-plugin` 仓库内调试 CLI 或 SDK 时，先安装依赖并构建 CLI/SDK：
+
 ```bash
-git remote add origin git@github.com:[your-name]/fastgpt-plugin.git
-git remote add upstream git@github.com:labring/fastgpt-plugin.git
+pnpm install
+pnpm build:sdk-factory
+pnpm build:cli
 ```
 
-否则使用 https:
+## 2. 创建插件骨架
+
+单工具插件：
+
 ```bash
-git remote add origin https://github.com/[your-name]/fastgpt-plugin.git
-git remote add upstream https://github.com/labring/fastgpt-plugin.git
+pnpx @fastgpt-plugin/cli create my-tool --type tool --cwd packages/tools
 ```
 
-- (可选）使用稀疏检出 (Sparse-checkout) 以避免拉取所有插件代码，如果不进行稀疏检出，则会拉取所有官方插件
+工具集插件：
+
 ```bash
-git sparse-checkout init --no-cone
-git sparse-checkout add "/*" "!/modules/tool/packages/*"
-git pull
+pnpx @fastgpt-plugin/cli create my-tool-suite --type tool-suite --cwd packages/tools
 ```
 
-使用命令创建新工具
+也可以进入目标目录后交互式创建：
+
 ```bash
-bun i
-bun run new:tool
+pnpx @fastgpt-plugin/cli create
 ```
 
-</Tab>
-</Tabs>
+CLI 会创建插件目录，并生成常见文件：
 
-## 2. 编写工具代码
+| 文件 | 作用 |
+| --- | --- |
+| `index.ts` | 插件入口，默认导出 `defineTool()` 或 `defineToolSet()`。 |
+| `package.json` | 插件依赖和 `build`、`build:dev`、`pack`、`test` 脚本。 |
+| `tsconfig.json` | TypeScript 配置。 |
+| `vitest.config.ts` | 测试配置。 |
+| `README.md` | 插件说明。 |
+| `logo.svg` | 插件主图标。 |
 
-### 2.1 工具代码结构
+## 3. 实现单工具
 
-依据提示分别选择创建工具/工具集，以及目录名（使用 camelCase 小驼峰法命名）。
-
-系统工具 (Tool) 文件结构如下:
-
-```plaintext
-src // 源代码，处理逻辑
-└── index.ts
-test // 测试样例
-└── index.test.ts
-config.ts // 配置，配置工具的名称、描述、类型、图标等
-index.ts // 入口，不要改这个文件
-logo.svg // Logo，替换成你的工具的 Logo
-README.md // （可选）README 文件，用于展示工具的使用说明和示例
-assets/ // （可选）assets 目录，用于存放工具的资源文件，如图片、音频等
-package.json // npm 包
-```
-
-工具集(toolset) 的文件结构如下：
-
-```plaintext
-children
-└── tool // 这个里面的结构就和上面的 tool 一致，但是没有 README 和 assets 目录
-config.ts
-index.ts
-logo.svg
-README.md
-assets/
-package.json
-```
-
-### 2.2 修改 config.ts
-
-- **name** 和 **description** 字段为中文和英文两种语言
-- **courseUrl**（可选） 密钥获取链接，或官网链接，教程链接等，如果提供 README.md，则可以写到 README 里面
-- **author** 开发者名
-- **tags** 工具默认的标签，有如下可选标签(枚举类型)
-	- tools: 工具
-	- search: 搜索
-	- multimodal: 多模态
-	- communication: 通讯
-	- finance: 金融
-	- design: 设计
-	- productivity: 生产力
-	- news: 新闻
-	- entertainment: 娱乐
-	- social: 社交
-	- scientific: 科学
-	- other: 其他
-- **secretInputList**: 密钥输入列表，其用于配置工具的`激活信息`,通常包含`密钥`、`Endpoint`、`Port`等。(见下面的 secretInputList 参数格式)
-- **versionList** (工具中配置)用于版本管理，是一个列表，其中的元素格式:
-	- value：版本号，建议使用 semver
-	- description: 描述
-	- inputs 入参（见下面的 inputs 参数格式）
-	- outputs 返回值 (见下面的 outputs 参数格式)
-
-对于 ToolSet 下的 tool 来说，无需填写 `type`、`courseUrl`、`author`，这几个字段会继承 ToolSet 的配置。
-
-#### secretInputList 参数格式
-
-一般格式:
-```ts
-{
-  key: 'key', // 唯一键
-  label: '前端显示的 label',
-  description: '前端显示的 description', // 可选
-  inputType: 'input' | 'secret' | 'switch' | 'select' | 'numberInput', // 前端输入框的类型
-  // secret: 密钥输入框，密钥将在保存时进行对称加密保存在节点内或数据库中
-  // switch: 开关
-  // select: 下拉选择框
-  // numberInput: 数字输入框
-  // input: 普通输入框
-}
-```
-
-下面的例子是 dalle3 的相关配置：可以参考 [dalle3 的 config.ts](https://github.com/labring/fastgpt-plugin/blob/main/modules/tool/packages/dalle3/config.ts)
+系统工具入口必须默认导出 SDK factory 实例：
 
 ```ts
-{
-  // 其他配置
-  secretInputConfig: [
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType,
+  type SecretSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const secretSchema = z.object({
+  apiKey: z.string().min(1).meta({
+    title: 'API Key',
+    isSecret: true
+  } satisfies SecretSchemaMetaType)
+});
+
+const handler = createToolHandler({
+  inputSchema: z.object({
+    query: z.string().min(1).meta({
+      title: 'Query',
+      description: 'Search keyword'
+    } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    result: z.string().meta({
+      title: 'Result'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input, ctx) => {
+    return {
+      result: input.query
+    };
+  }
+});
+
+export default defineTool({
+  manifest: {
+    pluginId: 'example-search',
+    version: '1.0.0',
+    name: {
+      en: 'Example Search',
+      'zh-CN': '示例搜索'
+    },
+    description: {
+      en: 'Search example data',
+      'zh-CN': '搜索示例数据'
+    },
+    versionDescription: {
+      en: 'Initial version',
+      'zh-CN': '初始版本'
+    },
+    tags: ['tools']
+  },
+  handler
+});
+```
+
+核心规则：
+
+- `pluginId`、子工具 `id`、输入字段名、输出字段名发布后保持稳定。
+- `manifest.name`、`manifest.description` 和 `versionDescription` 使用 `{ en, 'zh-CN' }`。
+- 输入、输出和密钥都用 Zod schema 描述。
+- 输入字段补充 `InputSchemaMetaType`，输出字段补充 `OutputSchemaMetaType`。
+- 密钥字段补充 `SecretSchemaMetaType`，敏感字段设置 `isSecret: true`。
+- handler 返回值必须匹配 `outputSchema`。
+- 外部 API 错误需要转成可定位的错误信息，并避免输出密钥、令牌和完整敏感响应。
+- 调用宿主文件上传能力时，使用 `ctx.invoke.uploadFile()`，并优先保留返回的 `err`。
+- 展示进度时，使用 `ctx.streamResponse()`。
+
+## 4. 实现工具集
+
+工具集使用 `defineToolSet()`，把共用信息放在顶层 `manifest` 和 `secretSchema`，每个子工具在 `children` 中声明独立 `id`、名称、描述和 handler。
+
+```ts
+import {
+  createToolHandler,
+  defineToolSet,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType,
+  type SecretSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const secretSchema = z.object({
+  apiKey: z.string().meta({
+    title: 'API Key',
+    isSecret: true
+  } satisfies SecretSchemaMetaType)
+});
+
+const searchHandler = createToolHandler({
+  inputSchema: z.object({
+    query: z.string().meta({
+      title: 'Query'
+    } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    items: z.array(z.string()).meta({
+      title: 'Items'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input) => ({ items: [input.query] })
+});
+
+const summaryHandler = createToolHandler({
+  inputSchema: z.object({
+    content: z.string().meta({
+      title: 'Content'
+    } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    summary: z.string().meta({
+      title: 'Summary'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input) => ({ summary: input.content.slice(0, 100) })
+});
+
+export default defineToolSet({
+  manifest: {
+    pluginId: 'text-tools',
+    version: '1.0.0',
+    name: {
+      en: 'Text Tools',
+      'zh-CN': '文本工具集'
+    },
+    description: {
+      en: 'Search and summarize text',
+      'zh-CN': '搜索和总结文本'
+    }
+  },
+  children: [
     {
-      key: 'url',
-      label: 'Dalle3 接口基础地址',
-      description: '例如：https://api.openai.com',
-      inputType: 'input',
-      required: true
+      id: 'search',
+      name: { en: 'Search', 'zh-CN': '搜索' },
+      description: { en: 'Search text', 'zh-CN': '搜索文本' },
+      toolDescription: 'Search text by query',
+      handler: searchHandler
     },
     {
-      key: 'authorization',
-      label: '接口凭证（不需要 Bearer）',
-      description: 'sk-xxxx',
-      required: true,
-      inputType: 'secret'
-    }
-  ]
-}
-```
-
-#### inputs 参数格式
-
-一般格式:
-
-```ts
-{
-  key: '本工具内唯一的 key，和 src/index.ts 中的 InputType 定义相同',
-  label: '前端显示的 label',
-  renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference], // 前端输入框的类型
-  valueType: WorkflowIOValueTypeEnum.string, // 数据类型
-  toolDescription: '工具调用时用到的描述' // 如果需要设置成工具调用参数，需要设置这个字段
-}
-```
-
-dalle3 的 inputs 参数格式如下：
-```ts
-{
-//...
-  versionList: [
-    {
-      // 其他配置
-      inputs: [
-        {
-          key: 'prompt',
-          label: '绘图提示词',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-          toolDescription: '绘图提示词'
-        }
-      ],
-    }
-    // ...
-  ]
-}
-```
-
-#### outputs 参数格式
-```ts
-{
-  key: 'link', // 唯一键值对
-  valueType: WorkflowIOValueTypeEnum.string, // 具体可以看这个 Enum 的类型定义
-  label: '图片访问链接', // 名字
-  description: '图片访问链接' // 描述，可选
-}
-```
-
-dalle3 的 outputs 参数格式如下：
-
-
-```ts
-{
-  // ...
-  versionList: [
-    {
-      // ...
-      outputs: [
-        {
-          valueType: WorkflowIOValueTypeEnum.string,
-          key: 'link',
-          label: '图片访问链接',
-          description: '图片访问链接'
-        },
-        {
-          type: FlowNodeOutputTypeEnum.error,
-          valueType: WorkflowIOValueTypeEnum.string,
-          key: 'system_error',
-          label: '错误信息'
-        }
-      ]
+      id: 'summary',
+      name: { en: 'Summary', 'zh-CN': '总结' },
+      description: { en: 'Summarize text', 'zh-CN': '总结文本' },
+      toolDescription: 'Summarize text content',
+      handler: summaryHandler
     }
   ],
-}
+  secretSchema
+});
 ```
 
-### 2.3 编写处理逻辑
+## 5. 图标规范
 
-在 `[your-tool-name]/src/index.ts` 为入口编写处理逻辑，需要注意：
+CLI 构建时会扫描插件根目录中的图标并写入构建后的 `manifest.json`。
 
-1. 使用 zod 进行类型定义，导出为 InputType 和 OutputType 两个 Schema。
-2. 入口函数为 `tool`，可以定义其他的函数。
+| 场景 | 文件名 |
+| --- | --- |
+| 主插件图标 | `logo.svg`、`logo.png`、`logo.jpg`、`logo.jpeg`、`logo.webp` 或 `logo.gif` |
+| 工具集子工具图标 | `<childId>.logo.svg`、`<childId>.logo.png` 等 |
 
-```ts
-import { format } from 'date-fns';
-import { z } from 'zod';
+注意事项：
 
-export const InputType = z.object({
-  formatStr: z.string().optional()
-});
+- 图标文件放在插件根目录。
+- 子工具图标的 `<childId>` 与 `children[].id` 完全一致。
+- 同一个图标只保留一个扩展名，避免扫描结果不明确。
+- 子工具没有独立图标时，默认复用主插件图标。
+- 构建后检查 `dist/manifest.json` 中的 `icon` 字段。
 
-export const OutputType = z.object({
-  time: z.string()
-});
+## 6. 本地调试
 
-export async function tool(props: z.infer<typeof InputType>): Promise<z.infer<typeof OutputType>> {
-  const formatStr = props.formatStr || 'yyyy-MM-dd HH:mm:ss';
+先进入插件目录安装依赖：
 
-  return {
-    time: format(new Date(), formatStr)
-  };
-}
-```
-
-上述例子给出了一个传入 formatStr （格式化字符串）并且返回当前时间的简单样例，如需安装包，可以在`/modules/tools/packages/[your-tool-name]`路径下，使用`bun install PACKAGE` 进行安装。
-
-## 4. 构建/打包
-
-FastGPT v4.14.0 后，打包方式变为系统插件打包为一个 `.pkg` 文件，使用命令：
 ```bash
-bun run build:pkg
+cd packages/tools/my-tool
+pnpm install
 ```
-将本地所有插件构建打包为 `.pkg` 文件，构建目录为 `dist/pkgs`
 
-## 5. 单元测试
+查看插件和可调试工具信息：
 
-FastGPT-plugin 使用 Vitest 作为单测框架。
+```bash
+pnpx @fastgpt-plugin/cli debug .
+```
 
-### 5.1 编写单测样例
+执行一次单工具调试：
 
-在 `test/index.test.ts` 中编写测试样例，使用 `bun run test index.test.ts 完整路径` 即可运行测试。
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
+```
 
-> 注意：不要把你的 secret 密钥等写到测试样例中
->
-> 使用 Agent 工具编写测试样例时，可能 Agent 工具会修改您的处理逻辑甚至修改整个测试框架的逻辑。
+执行工具集中的某个子工具：
 
-### 5.2 查看测试样例覆盖率（coverage)
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --tool search --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
+```
 
-浏览器打开 coverage/index.html 可以插件各个模块的覆盖率
+输入、密钥和系统变量较大时，使用文件传入：
 
-提交插件给官方仓库，必须编写单元测试样例，并且达到：
-- 90% 以上代码覆盖率
-- 100% 函数覆盖率
-- 100% 分支条件覆盖率
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file secrets.json --system-var-file system-var.json
+```
 
-## 6. E2E （端到端）测试
+本地 debug 的边界：
 
-对于简单的工具，可能并不需要进行 E2E 测试，而如果工具过于复杂，官方人员可能会要求您完成 E2E 测试。
+- `ctx.invoke.uploadFile()` 使用本地虚拟实现，默认输出到 `.fastgpt-plugin-debug/uploads`。
+- 本地 debug 用于快速验证插件逻辑和 schema。
+- 本地 debug 不模拟生产子进程池、真实 Node.js IPC、网络环境、服务端超时和队列调度。
+- 上架官方插件前仍需在测试环境中手动安装插件并完成端到端测试。
 
-### 6.1 部署 E2E 测试环境
+## 7. 构建、检查和打包
 
-1. 参考 [快速开始本地开发](../../../../self-host/dev.mdx)，在本地部署一套 FastGPT 开发环境
-2. `cd runtime && cp .env.template .env.local` 复制环境变量样例文件，连接到上一步部署的 Minio, Mongo, Redis 中
-3. `bun run dev` 运行开发环境，修改 FastGPT 的环境变量，连接到你刚刚启动的 fastgpt-plugin
+插件目录中通常可以直接运行：
 
-### 6.2 从 Scalar 进行测试
+```bash
+pnpm run test
+pnpm run build
+pnpx @fastgpt-plugin/cli check --entry . --output ./dist
+pnpm run pack
+```
 
-运行 fastgpt-plugin 开发环境
+也可以显式传入目录：
 
-浏览器打开`http://localhost:PORT/openapi`可进入`fastgpt-plugin`的 OpenAPI 页面，进行 API 调试。
-PORT 为你的 fastgpt-plugin 的端口
+```bash
+pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
+pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
+pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
+```
 
-![](/imgs/plugin-openapi.png)
+构建产物应包含：
 
-可以先通过`/tool/list`接口，获取工具列表，找到需要调试的工具的`toolId`。紧接着，通过`/tool/runStream`来运行工具获取实际结果。
+- `dist/index.js`
+- `dist/manifest.json`
+- 图标文件
+- 可选的 `README.md`
+- 可选的 `assets/**`
 
-![](/imgs/plugin-openapi2.png)
+打包后会生成 `.pkg` 文件。上传、安装和上架都应使用该 `.pkg` 文件。
 
-### 6.3 在开发环境下 e2e 测试（有热更新）
+## 8. 验证清单
 
-默认情况下，fastgpt-plugin 会自动加载在 modules/tool/packages/ 下的所有工具，并自动监听文件修改并进行热更新。
-可以在 FastGPT 中使用这些工具
+提交前至少确认：
 
-### 6.4 在开发环境下上传工具进行 e2e 测试（没有热更新）
+- `index.ts` 默认导出正确。
+- `manifest.pluginId`、`manifest.version`、中英文名称和描述完整。
+- 工具集的 `children[].id` 稳定且没有重复。
+- `inputSchema` 覆盖所有用户输入，并有必要的类型和范围约束。
+- `outputSchema` 与 handler 返回值一致。
+- `secretSchema` 覆盖全部密钥配置，敏感字段设置 `isSecret: true`。
+- 外部 API 的成功、失败、空响应、超时和鉴权失败都有处理。
+- 错误信息可定位问题，并且不会泄露密钥或敏感响应。
+- `pnpm run test` 通过，或明确说明无法测试的原因。
+- `build`、`check`、`pack` 通过。
+- `dist/manifest.json` 中图标和 schema 符合预期。
+- `.pkg` 能在测试环境中安装并完成真实调用。
 
-设置 FastGPT-plugin 的环境变量 `DISABLE_DEV_TOOLS=true` 会禁用自动加载开发环境下的工具，此时可以测试工具的上传。
+## 9. 发布流程
 
-## 7. 提交工具至官方目录
+社区插件通常先在插件目录创建并推送独立 GitHub 仓库：
 
-完毕上述所有内容后，向官方仓库 `https://github.com/labring/fastgpt-plugin` 提交 PR。
-官方人员审核通过后即可收录为 FastGPT 的官方插件。
+```bash
+cd packages/tools/my-tool
+git init
+git add .
+git commit -m "feat: add my-tool plugin"
+gh repo create --public --source=. --remote=origin --push
+```
 
-如无需官方收录，则可以参考 [上传系统工具](upload_system_tool) 在自己部署的 FastGPT 中使用。
+然后回到 `fastgpt-community-plugins` 仓库，提交 submodule 或引用更新，并向 `labring/fastgpt-community-plugins` 提 PR。
+
+官方插件需要完成代码 review、构建、检查、测试、打包、测试环境安装，以及外部 API、密钥配置、错误路径和并发调用测试。上架前需要关注 SSRF、密钥泄露、任意文件访问、命令执行和依赖风险。
+
+商业插件发布到私有仓库，按客户交付流程管理版本、密钥、安装包和验收记录。
+
+如无需官方收录，可参考 [上传系统工具](upload_system_tool) 在自己部署的 FastGPT 中使用。
+
+## 常见问题
+
+### `tool` 和 `tool-suite` 如何选择？
+
+单一能力使用 `tool`。多个共享鉴权、共享上游 API、业务上强相关的能力使用 `tool-suite`。
+
+### 插件版本如何管理？
+
+`manifest.version` 使用语义化版本。修复兼容性问题升级 patch，新增兼容功能升级 minor，修改输入输出字段、子工具 ID 或用户配置方式时升级 major，并提前评估已有工作流兼容性。
+
+### 可以把 API Key 写在代码或环境变量里吗？
+
+插件应通过 `secretSchema` 声明密钥，并通过 `ctx.secrets` 读取。代码仓库、测试快照、错误日志和 README 中都不应出现真实密钥。
+
+### 本地 debug 通过后还需要测试环境验证吗？
+
+需要。本地 debug 用于快速验证插件逻辑和 schema，测试环境验证用于确认真实安装、运行时、宿主反向调用、网络和权限行为。
+
+## 参考
+
+- [FastGPT Plugin 仓库](https://github.com/labring/fastgpt-plugin)
+- [系统插件开发指南](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/how-to-devlop-plugin.md)
+- [SDK Factory 使用指南](https://github.com/labring/fastgpt-plugin/blob/main/sdk/factory/README.md)
+- [CLI 使用指南](https://github.com/labring/fastgpt-plugin/blob/main/apps/cli/README.md)

@@ -5,79 +5,166 @@ description: FastGPT 系统插件设计方案
 
 ## 背景
 
-原先 FastGPT 的各项功能均在 FastGPT 的 Next.js 的框架内，通过 Monorepo 的方式进行组织。系统插件也作为一个 sub-repo 存在于 FastGPT/packages/plugin 下。
+原先 FastGPT 的各项功能均在 FastGPT 的 Next.js 框架内，通过 Monorepo 方式组织。系统插件也曾作为一个子仓库存在于 `FastGPT/packages/plugin` 下。
 
-然而随着用户的增加，这种组织模式的弊端凸显：
+随着系统工具数量和社区贡献增加，旧结构暴露出几个问题：
 
-1. 虽然 FastGPT 以每周一次的频率进行发版，但同样，系统插件必须伴随 FastGPT 的发版而发版，极大限制了系统插件的迭代速率。
-2. 如果社区希望为 FastGPT 提供插件，则需要将 FastGPT 整个应用运行起来，并且直接向主仓库发起 PR。
-3. 如果社区希望使用自定义的插件，则需要维护一个 FastGPT 的 fork 版本，并且手动维护更新和代码的合并，增加了开发的难度。
-4. 由于 Next.js/webpack 的限制，无法在运行时挂载新的插件，实现热插拔。
+1. 系统插件必须伴随 FastGPT 主服务一起发版，限制了插件迭代速度。
+2. 社区贡献插件需要运行完整 FastGPT 应用，并直接向主仓库提交 PR。
+3. 使用自定义插件需要维护 FastGPT fork，手动处理升级和合并。
+4. Next.js/webpack 构建模型不适合在运行时挂载新插件。
 
-## 设计方案
+因此，系统插件被拆分到独立仓库：
 
-因而，我们决定将系统插件拆分出来，到一个独立的 repository 中。
+[FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
 
-[FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+FastGPT Plugin v1.0.0 对插件系统进行了系统性重构，目标是让插件的安装、版本管理、运行隔离和运维配置形成统一模型。
 
-拆分出来，主要有如下的目的：
+## 设计目标
 
-1. 解耦合，模块化：不只是系统工具可以作为热加载的模块，也可以是其他的插件，例如知识库的插件，RAG 等等。
-2. FastGPT-plugin 可以快速迭代，版本不依赖于 FastGPT：FastGPT-plugin 可以更高频率的发版，支持热插拔可以在不发版的情况下更新插件。
-3. 降低开发复杂度（不需要运行 FastGPT 环境）：贡献插件时只需要独立运行 FastGPT-plugin 中提供的调试套件即可。
-4. 插件市场：后续可以实现插件市场，用户可以通过插件市场发布、获取自己需要的插件。
+FastGPT Plugin 的核心目标：
 
-## 技术选型
+1. 解耦和模块化：系统工具、模型预设、App 模板等能力可以独立迭代，后续也能扩展 RAG 算法、Agent 策略和第三方接入。
+2. 插件包统一协议：使用 `.pkg` 文件管理插件安装、更新和分发，为后续插件类型预留扩展空间。
+3. 运行隔离：通过运行时统一管理插件执行，每个插件版本拥有独立进程池、队列和运行配置。
+4. 降低开发复杂度：贡献系统工具时可以通过 CLI 和 SDK 独立开发、调试、检查和打包。
+5. 插件市场：通过 Marketplace 集中展示和分发官方及社区插件。
 
-1. 使用 ts-rest 作为 RPC 框架进行交互，提供 sdk 供 FastGPT 主项目调用
-2. 使用 zod 进行类型验证
-3. 用 bun 进行编译，每个工具编译为单一的 `.pkg` 文件，支持热插拔。
+## 核心概念
 
-## 项目结构
+| 名称 | 说明 |
+| --- | --- |
+| 插件 | 独立、可复用的功能模块，可以有不同类型，例如工具、模型预设、知识库来源等。 |
+| 插件包 | 插件打包后的 `.pkg` 文件。不同类型插件都通过插件包完成安装、更新和管理。 |
+| 工具 | 一类插件，通常封装第三方服务、内部接口或本地计算逻辑，可被工作流和 Agent 调用。 |
+| 工具集 | 一个插件暴露多个相关子工具，共享插件元信息和密钥配置。 |
+| 插件市场 | 集中管理插件的平台，用户可以在其中搜索、下载和安装插件。 |
+| 运行时 | 负责执行插件代码的后端实现，当前默认运行时是 `local-pool`。 |
+| Pod | 本地进程池中的单个插件子进程。一个插件 service 可以拥有多个 Pod。 |
 
-- **modules**
-  - **tool** FastGPT 系统工具
-    - **API** 接口实现逻辑
-    - **packages** 系统工具目录（每一个都是一个 package）
-      - getTime
-      - dalle3
-      - ……
-    - **type** 类型定义
-    - **utils** 工具
-- **scripts** 脚本（编译、创建新工具）
-- **sdk** : SDK 定义，供外部调用，发布到了 npm
-- **runtime** : 运行时，express 服务
-- **lib** : 库文件，提供工具函数和类库
-- **test** : 测试相关
+## 仓库结构
 
-系统工具的结构可以参考 [如何开发系统插件](../../guide/build/tools/system-plugins/dev_system_tool.mdx)。
+`fastgpt-plugin` 使用 pnpm workspace 组织 monorepo，参考 Clean Architecture 和 DDD 分层设计。
 
-## 技术细节
+```text
+fastgpt-plugin/
+├── apps/
+│   ├── cli/                    # 插件开发、构建、检查、打包、调试命令行
+│   ├── server/                 # FastGPT Plugin HTTP 服务
+│   └── debug-runtime-monitor/  # 本地运行时监控调试面板
+├── packages/
+│   ├── domain/                 # 领域实体、值对象、端口定义
+│   ├── usecase/                # 插件、工具、模型、runtime 等应用用例
+│   ├── interface-adapter/      # HTTP contract、DTO、鉴权适配
+│   ├── infrastructure/         # Hono、Mongo、S3、Redis、运行时、日志、指标等实现
+│   └── shared/                 # 跨层复用的纯工具函数
+├── sdk/
+│   ├── client/                 # 调用 FastGPT Plugin 服务的客户端 SDK
+│   └── factory/                # 插件作者侧 SDK
+├── test/                       # 跨包测试工具与 fixtures
+└── docs/                       # 项目文档
+```
 
-### ts-rest 构建 contract，自动构建 openapi 对象，导出 client
+核心依赖方向：
 
-[ts-rest](https://ts-rest.com/) 是一个 ts 的 restful API 框架。构建 contract 后，可以根据 contract 的定义
-编写处理逻辑，自动生成 openapi 对象、通过 createClient 导出 client 进行请求。
+- `domain` 定义业务概念和端口，是最内层，不依赖应用入口和基础设施。
+- `usecase` 负责编排业务流程，依赖 `domain` 的实体、值对象和端口。
+- `interface-adapter` 定义 HTTP 合约、DTO、鉴权输入输出，负责把外部协议转换为应用可理解的数据结构。
+- `infrastructure` 实现端口和运行环境能力，包括 HTTP 框架、数据库、对象存储、Redis、插件运行时、日志与指标。
+- `apps/*` 是组合根，负责装配依赖、注册路由、启动进程或提供开发命令。
+- `sdk/*` 面向外部使用者发布，提供服务调用和插件开发能力。
 
-类似的 `tRPC` 也是一个 ts 的 RPC 框架。然而 tRPC 使用自己的一套请求格式，导致其他工具不方便接入。而使用 ts-rest 本质就是对 RESTful API 的简单封装，也能直接生成 openapi 对象。
+系统工具开发结构可以参考 [如何开发系统插件](../../guide/build/tools/system-plugins/dev_system_tool.mdx)。
 
-### zod 类型校验
+## 插件安装与管理
 
-我们使用 zod 来实现类型校验。zod 可以实现在运行时的类型校验，也可以提供更高级的功能，例如参数转换，对象合并等。
+FastGPT Plugin 服务负责插件包管理、运行时注册、插件调用转发和系统级配置管理。FastGPT 主服务通过插件运行时接口调用插件，插件服务负责把调用分发到对应运行时。
 
-### 使用 worker 实现插件的并行运行以及环境隔离
+系统插件安装主要有两种方式：
 
-为了保证插件之间不会相互干扰，同时提高并发处理能力，FastGPT-plugin 采用 Worker 线程来实现插件的执行。每个工具在被调用时都会在独立的 Worker 中运行，这带来几个重要的优势：
+1. 系统级安装：root 用户在插件管理页面上传 `.pkg` 文件，或从插件市场安装。安装后全系统可见。
+2. 团队级安装：预留给团队管理员或有插件管理权限的成员，仅团队内可见。
 
-1. 环境隔离：每个插件都是一个独立的 Worker 进程，插件之间不会影响。
-2. 并行处理：每个插件可以并行处理，提高整体性能。
+插件安装后会保存插件包文件、解析插件元信息，并在插件启用时注册到运行时。系统管理员可以管理插件状态、系统密钥和运行时参数。
 
-### 使用 bun 进行打包
+插件状态包括：
 
-将插件 bundle 为一个单一的 `.pkg` 文件是一个重要的设计。这样可以将插件发布出来直接通过网络挂载等的形式使用。
+- 正常：插件正常使用。
+- 即将下线：不影响已有工作流运行，但无法再被新增到工作流中。
+- 已下线：插件无法正常使用。
 
-## 未来规划
+系统级插件可以配置“系统密钥”，供系统内其他用户在调用插件时复用。密钥由插件服务托管，调用方通过插件配置引用，不直接接触明文密钥。
 
-1. 可视化开发工具：提供可视化的插件开发和调试工具，降低开发门槛。
-2. 插件市场：建立插件市场，允许开发者发布和分享自己的插件。
-3. 更多插件类型：除了系统工具外，扩展到知识库插件、模型插件、RAG 插件等更多类型。
+## `.pkg` 插件包协议
+
+新版系统工具不再依赖旧的 `modules/tool/packages` 内置源码目录，而是使用统一 `.pkg` 文件交付。
+
+构建产物通常包含：
+
+- `dist/index.js`
+- `dist/manifest.json`
+- 图标文件
+- 可选的 `README.md`
+- 可选的 `assets/**`
+
+`.pkg` 文件用于上传、安装、上架和版本管理。插件元信息、输入输出 schema、密钥 schema 和图标资源都会进入构建产物，供 FastGPT 页面、工作流和 Agent 调用使用。
+
+## local-pool 运行时
+
+当前默认运行时是本地进程池，即 `local-pool`。它按单插件 service 维度管理 Pod 和请求队列。
+
+一次插件调用进入 service 后，调度顺序如下：
+
+1. 优先选择已有可用 Pod，立即派发请求。
+2. 没有可用 Pod 且 `pods + pendingPods < maxPods` 时，先创建新 Pod，启动成功后派发当前请求。
+3. 达到 `maxPods`、处于启动退避期或暂时无法创建 Pod 时，请求进入有界队列等待。
+4. Pod 释放、创建成功、配置更新或崩溃恢复时，队列继续被消费。
+5. 队列长度达到 `maxQueueSize` 后，新请求会被拒绝；请求等待超过 `queueTimeout` 后会超时失败。
+
+每个工具插件可以单独配置 4 个运行参数：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| 最小工作节点数 | `0` | 大于 `0` 时会预热 Pod，并尽量维持不少于该数量的 Pod。 |
+| 最大工作节点数 | `5` | 没有可用 Pod 时可扩容到该上限。 |
+| 节点超时时间 | `120000ms` | 单次插件调用在 Pod 内执行的超时时间。 |
+| 每节点最大并发数 | `10` | 单个 Pod 同时处理的最大并发请求数。 |
+
+环境变量提供默认运行参数和全局限制：
+
+| 环境变量 | 说明 |
+| --- | --- |
+| `POOL_HEALTH_CHECK_INTERVAL` | 健康检查间隔，单位毫秒。 |
+| `POOL_MAX_TOTAL_PODS` | 当前 server 进程内所有插件 Pod 的总上限。 |
+| `POOL_SERVICE_MIN_PODS` | 单插件默认最小工作节点数。 |
+| `POOL_SERVICE_MAX_PODS` | 单插件默认最大工作节点数。 |
+| `POOL_SERVICE_IDLE_TIMEOUT` | Pod 空闲回收时间，单位毫秒。 |
+| `POOL_SERVICE_POD_TIMEOUT` | 单次插件调用执行超时时间，单位毫秒。 |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | 单个 Pod 默认最大并发请求数。 |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | 单个 Pod 最大处理请求数；超过后自动替换。 |
+| `POOL_SERVICE_MAX_QUEUE_SIZE` | 单插件 service 请求队列最大容量。 |
+| `POOL_SERVICE_QUEUE_TIMEOUT` | 请求在队列中等待可用 Pod 的最长时间，单位毫秒。 |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Pod 启动超时后的指数退避基础延迟，单位毫秒。 |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Pod 启动超时后的指数退避最大延迟，单位毫秒。 |
+
+Pod 启动错误会被记录并分类。连续非超时启动失败达到阈值后会触发启动熔断，阻止继续创建 Pod；启动超时通常按资源繁忙处理，会进入指数退避后重试。
+
+## 开发与分发
+
+系统工具插件使用 `@fastgpt-plugin/cli` 和 `@fastgpt-plugin/sdk-factory` 开发。
+
+开发者通过 CLI 创建单工具或工具集骨架，使用 SDK 声明 `manifest`、`inputSchema`、`outputSchema`、`secretSchema` 和 handler。插件开发完成后运行测试、构建、检查和打包，最终生成 `.pkg` 文件。
+
+社区插件、官方插件和商业插件的分工：
+
+| 仓库 | 作用 |
+| --- | --- |
+| `labring/fastgpt-plugin` | 插件服务、SDK、CLI、调试监视器和基础设施代码。 |
+| `fastgpt-official-plugins` | 官方维护或审核通过的插件。 |
+| `fastgpt-community-plugins` | 社区第三方插件。 |
+| `fastgpt-business-plugins` | 私有插件、客户定制插件和商业交付插件。 |
+
+## 参考
+
+- [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
+- [系统插件开发指南](../../guide/build/tools/system-plugins/dev_system_tool.mdx)
