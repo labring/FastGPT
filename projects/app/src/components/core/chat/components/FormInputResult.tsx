@@ -104,7 +104,7 @@ const FormInputResult = React.memo(function FormInputResult({
                 {files.map((file, index) => (
                   <HStack
                     key={`${file.url}-${index}`}
-                    bg={'white'}
+                    bg={'myGray.50'}
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                     borderRadius={'sm'}

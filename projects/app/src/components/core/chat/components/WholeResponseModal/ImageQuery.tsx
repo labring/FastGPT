@@ -43,7 +43,6 @@ const ImageQuery = ({
       border={'1px solid'}
       borderColor={'myGray.200'}
       borderRadius={'6px'}
-      bg={'myGray.50'}
       color={'myGray.900'}
       minH={'32px'}
       px={3}

@@ -11,7 +11,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuoteList from '../../ChatContainer/ChatBox/components/QuoteList';
 import FormInputResult from '../FormInputResult';
 import { agentPlanStatusMap } from './constants';
-import { Row } from './Row';
+import { responseRowValueBoxStyles, Row } from './Row';
 
 const ImageQuery = dynamic(() => import('./ImageQuery'));
 
@@ -179,9 +179,10 @@ export const AiChatRows = ({
       <Row label={t('chat:reasoning_content')} value={activeModule.reasoningText} />
       <Row
         label={t('common:core.chat.response.module historyPreview')}
+        rawDomBoxProps={responseRowValueBoxStyles}
         rawDom={
           activeModule.historyPreview ? (
-            <Box px={3} py={2} border={'base'} borderRadius={'md'}>
+            <Box>
               {activeModule.historyPreview.map((item, i) => (
                 <Box
                   key={i}
@@ -220,8 +221,9 @@ export const DatasetSearchRows = ({
       {activeModule.searchMode && (
         <Row
           label={t('common:core.dataset.search.search mode')}
+          rawDomBoxProps={responseRowValueBoxStyles}
           rawDom={
-            <Flex border={'base'} borderRadius={'md'} p={2}>
+            <Flex>
               <Box>{t(DatasetSearchModeMap[activeModule.searchMode]?.title as any)}</Box>
               {activeModule.embeddingWeight && (
                 <>{`(${t('chat:response_hybrid_weight', {
@@ -258,8 +260,9 @@ export const DatasetSearchRows = ({
         <>
           <Row
             label={t('common:core.chat.response.search using reRank')}
+            rawDomBoxProps={responseRowValueBoxStyles}
             rawDom={
-              <Box border={'base'} borderRadius={'md'} p={2}>
+              <Box>
                 {activeModule.searchUsingReRank ? (
                   activeModule.rerankModel ? (
                     <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
