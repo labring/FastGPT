@@ -10,7 +10,6 @@ import {
   shouldWorkflowStop,
   waitForWorkflowComplete
 } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/workflowStatus', () => ({
@@ -72,16 +71,16 @@ describe('debugSession/stop', () => {
     });
     expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
       appId: skillId,
-      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+      chatId
     });
     expect(vi.mocked(waitForWorkflowComplete)).toHaveBeenCalledWith({
       appId: skillId,
-      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+      chatId,
       timeout: 5000
     });
     expect(vi.mocked(shouldWorkflowStop)).toHaveBeenCalledWith({
       appId: skillId,
-      chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+      chatId
     });
   });
 
