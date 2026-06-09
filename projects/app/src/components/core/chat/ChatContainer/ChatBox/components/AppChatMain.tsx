@@ -51,10 +51,10 @@ const AppChatMain = ({
       h={0}
       w={'100%'}
       overflow={'overlay'}
-      px={[4, 0]}
+      px={[4, 6]}
       pb={6}
     >
-      <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+      <Box maxW={'700px'} h={'100%'} mx={'auto'}>
         {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
         <Box id="variable-input">

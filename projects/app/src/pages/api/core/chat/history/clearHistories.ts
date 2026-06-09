@@ -5,43 +5,45 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /* clear all chat histories of an app */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId, shareId, outLinkUid, teamId, teamToken } = ClearChatHistoriesSchema.parse(
-    req.query
-  );
+  const { query } = parseApiInput({ req, querySchema: ClearChatHistoriesSchema });
+  const { appId, shareId, outLinkUid, teamId, teamToken } = query;
 
-  const { tmbId, uid, authType } = await authChatCrud({
+  const { appId: authAppId, tmbId, uid, authType } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
-    ...req.query
+    ...query
   });
+  const matchAppId = appId || authAppId;
+  if (!matchAppId) return Promise.reject('Param are error');
 
   const match = await (async () => {
     if (shareId && outLinkUid && authType === 'outLink') {
       return {
-        appId,
+        appId: matchAppId,
         outLinkUid: uid
       };
     }
     if (teamId && teamToken && authType === 'teamDomain') {
       return {
-        appId,
+        appId: matchAppId,
         outLinkUid: uid
       };
     }
     if (authType === 'token') {
       return {
-        appId,
+        appId: matchAppId,
         tmbId,
         source: ChatSourceEnum.online
       };
     }
     if (authType === 'apikey') {
       return {
-        appId,
+        appId: matchAppId,
         source: ChatSourceEnum.api
       };
     }
@@ -54,7 +56,7 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   await MongoChat.updateMany(
     {
-      appId,
+      ...match,
       chatId: { $in: list.map((item) => item.chatId) }
     },
     {

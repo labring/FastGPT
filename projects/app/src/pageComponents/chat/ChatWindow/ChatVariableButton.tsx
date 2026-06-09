@@ -59,7 +59,7 @@ const ChatVariableContent = ({
         isUnChange={chatType === ChatTypeEnum.log}
       />
       {showSubmitButton && (
-        <Flex justifyContent="flex-end" mt={8}>
+        <Flex justifyContent="flex-end" pt={8}>
           <Button
             w="69px"
             h="32px"
@@ -112,7 +112,7 @@ export const ChatVariableDrawer = ({
             <Flex justifyContent="center" py="16px">
               <Drawer.Handle style={{ backgroundColor: 'var(--chakra-colors-myGray-400)' }} />
             </Flex>
-            <Flex alignItems="center" mb={4}>
+            <Flex alignItems="center" pb={4}>
               <Box fontSize="16px" fontWeight={600} color="myGray.900">
                 {t('common:core.module.Variable')}
               </Box>
@@ -245,7 +245,7 @@ const ChatVariableButton = ({ chatType }: ChatVariableButtonProps) => {
               maxH={popoverMaxHeight}
             >
               <Box bg="white" p="24px" h="100%" overflowY="auto" overflowX="hidden">
-                <Box fontSize="16px" lineHeight="24px" fontWeight={600} color="myGray.900" mb={6}>
+                <Box fontSize="16px" lineHeight="24px" fontWeight={600} color="myGray.900" pb={6}>
                   {label}
                 </Box>
                 <ChatVariableContent

@@ -177,7 +177,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
             {/* QUICK APPS */}
             <Box fontWeight={'500'}>
-              <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
+              <Flex fontWeight={'500'} fontSize="14px" pb={2} alignItems={'center'} gap={2}>
                 <Box>{t('chat:setting.home.quick_apps')}</Box>
               </Flex>
 
@@ -235,7 +235,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
               <Flex
                 fontWeight={'500'}
                 fontSize="14px"
-                mb={2}
+                pb={2}
                 justifyContent={'space-between'}
                 alignItems={'center'}
                 gap={2}
@@ -322,7 +322,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
             {/* SLOGAN */}
             <Box fontWeight={'500'}>
-              <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
+              <Flex fontWeight={'500'} fontSize="14px" pb={2} alignItems={'center'} gap={2}>
                 <Box>{t('chat:setting.home.slogan')}</Box>
 
                 <Button
@@ -347,7 +347,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
             {/* DIALOGUE TIPS */}
             <Box fontWeight={'500'}>
-              <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
+              <Flex fontWeight={'500'} fontSize="14px" pb={2} alignItems={'center'} gap={2}>
                 <Box>{t('chat:setting.home.dialogue_tips')}</Box>
 
                 <Button
@@ -392,7 +392,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                 </Flex>
 
                 <Box fontWeight={'500'}>
-                  <Flex fontWeight={'500'} fontSize="14px" mb={2} alignItems={'center'} gap={2}>
+                  <Flex fontWeight={'500'} fontSize="14px" pb={2} alignItems={'center'} gap={2}>
                     <Box>{t('chat:setting.home.home_tab_title')}</Box>
 
                     <Button
@@ -418,7 +418,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
                 {/* LOGO */}
                 <Box fontWeight={'500'}>
-                  <Flex fontWeight={'500'} fontSize="14px" alignItems={'center'} gap={2} mb={2}>
+                  <Flex fontWeight={'500'} fontSize="14px" alignItems={'center'} gap={2} pb={2}>
                     <Box>{t('chat:setting.copyright.logo')}</Box>
 
                     <Button

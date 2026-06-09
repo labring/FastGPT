@@ -90,6 +90,7 @@ const AIChatBubble = ({
       {showFooterActions && (
         <AIChatBubbleActions
           chatControllerProps={chatControllerProps}
+          historyItem={chat}
           questionGuides={isLastChild ? questionGuides : []}
           showWholeResponse={canShowWholeResponse}
           onOpenWholeModal={onOpenWholeModal}

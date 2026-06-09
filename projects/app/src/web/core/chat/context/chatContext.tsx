@@ -197,7 +197,7 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        appId: historyAppId,
+        ...(historyAppId ? { appId: historyAppId } : {}),
         chatId,
         ...outLinkAuthData
       }),
@@ -213,7 +213,7 @@ const ChatContextProvider = ({
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        appId: historyAppId,
+        ...(historyAppId ? { appId: historyAppId } : {}),
         ...outLinkAuthData
       }),
     {

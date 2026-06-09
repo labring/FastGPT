@@ -61,6 +61,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     <Flex
       bg={'myGray.100'}
       color={'myGray.600'}
+      gap={1}
       py={0.5}
       pl={2}
       pr={3}
@@ -68,7 +69,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       whiteSpace={'nowrap'}
     >
       <MyIcon name={data.icon as any} w={'0.8rem'} color={'myGray.500'} />
-      <Box ml={1} fontSize={'mini'}>
+      <Box fontSize={'mini'}>
         {data.label}
       </Box>
     </Flex>

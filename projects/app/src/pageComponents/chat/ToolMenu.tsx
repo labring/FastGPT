@@ -35,6 +35,7 @@ const ToolMenu = ({
 
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
   const variables = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
@@ -108,6 +109,7 @@ const ToolMenu = ({
                 icon: 'core/chat/chatLight',
                 label: t('common:core.chat.New Chat'),
                 onClick: () => {
+                  clearChatRecords();
                   onChangeChatId();
                   setSandboxExists(false);
                 }

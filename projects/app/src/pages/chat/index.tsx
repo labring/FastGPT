@@ -152,8 +152,9 @@ const ChatContent = (props: ChatPageProps) => {
   const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
   const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
 
-  // 优先使用 store 中的 appId：handlePaneChange 会同步写入，比 page props 更早与 chatId 对齐
-  const currentAppId = storeAppId || pageAppId;
+  // URL appId 是入口的明确目标，优先级高于 sessionStorage 中可能残留的上一应用 appId。
+  const currentAppId = pageAppId || storeAppId;
+  const currentChatId = storeAppId === currentAppId ? chatId : '';
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId: currentAppId, source: ChatSourceEnum.online }),
@@ -164,9 +165,9 @@ const ChatContent = (props: ChatPageProps) => {
     return {
       appId: currentAppId,
       type: GetChatTypeEnum.normal,
-      chatId
+      chatId: currentChatId
     };
-  }, [currentAppId, chatId]);
+  }, [currentAppId, currentChatId]);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {

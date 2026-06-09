@@ -70,6 +70,7 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
       {!isPc && !hideMobileHeader && (
         <Flex
           py={4}
+          px={3}
           color="myGray.900"
           gap={2}
           alignItems={'center'}
@@ -77,7 +78,6 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
           justifyContent={'space-between'}
         >
           <MyIcon
-            ml={3}
             w="20px"
             color="myGray.500"
             name="core/chat/sidebar/menu"

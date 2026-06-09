@@ -27,6 +27,7 @@ const ChatSliderList = () => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
@@ -244,6 +245,7 @@ const ChatSliderList = () => {
                             onClick: () => {
                               onDelHistory(item.id);
                               if (item.id === activeChatId) {
+                                clearChatRecords();
                                 onChangeChatId();
                                 setCiteModalData(undefined);
                               }

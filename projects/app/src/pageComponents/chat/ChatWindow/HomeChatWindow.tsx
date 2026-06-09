@@ -359,10 +359,12 @@ const HomeChatWindow = () => {
                     _notLast={{ mb: 1 }}
                     borderRadius={'md'}
                   >
-                    <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
-                    <Flex alignItems="center" gap={2}>
-                      <Avatar src={tool.avatar} w={5} borderRadius="xs" />
-                      <Box fontSize="sm">{tool.name}</Box>
+                    <Flex alignItems="center" gap={3} minW={0}>
+                      <Checkbox size={'sm'} isChecked={isSelected} />
+                      <Flex alignItems="center" gap={2} minW={0}>
+                        <Avatar src={tool.avatar} w={5} borderRadius="xs" />
+                        <Box fontSize="sm">{tool.name}</Box>
+                      </Flex>
                     </Flex>
                   </MenuItem>
                 );
@@ -440,7 +442,7 @@ const HomeChatWindow = () => {
               {...mobileChatHeaderIconButtonStyle}
               onClick={onOpenSlider}
             />
-            <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
+            <Flex alignItems="center" gap={1} minW={0} onClick={onOpenModelDrawer}>
               <Box
                 fontSize="16px"
                 fontWeight={500}
@@ -450,7 +452,7 @@ const HomeChatWindow = () => {
               >
                 {selectedModelData?.name || selectedModel}
               </Box>
-              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" ml={1} />
+              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" />
             </Flex>
             <Box minW="36px">
               <ToolMenu history={chatRecords} chatType={ChatTypeEnum.home} />

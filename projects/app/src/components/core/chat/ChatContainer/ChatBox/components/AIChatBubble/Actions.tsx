@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React from 'react';
+import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -8,9 +8,15 @@ import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { ChatTypeEnum } from '../../constants';
+import type { ChatSiteItemType } from '../../type';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
+  historyItem: ChatSiteItemType;
   questionGuides: string[];
   showWholeResponse: boolean;
   onOpenWholeModal: () => void;
@@ -19,6 +25,7 @@ type AIChatBubbleActionsProps = {
 
 const AIChatBubbleActions = ({
   chatControllerProps,
+  historyItem,
   questionGuides,
   showWholeResponse,
   onOpenWholeModal,
@@ -26,8 +33,21 @@ const AIChatBubbleActions = ({
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { onRetry } = chatControllerProps;
+  const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const { useAgentSandbox } = useMemo(
+    () => addStatisticalDataToHistoryItem(historyItem),
+    [historyItem]
+  );
+  const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   return (
     <Box mt={4} maxW={'100%'}>
@@ -72,6 +92,29 @@ const AIChatBubbleActions = ({
               <Box>{t('chat:run_detail')}</Box>
             </Flex>
           )}
+
+          {isPc && useAgentSandbox && (
+            <Flex
+              alignItems={'center'}
+              gap={'4px'}
+              p={'4px'}
+              cursor={'pointer'}
+              color={'myGray.400'}
+              _hover={{ color: 'primary.600' }}
+              onClick={onOpenSandboxModal}
+            >
+              <MyIcon
+                name={'core/chat/monitor'}
+                w={'16px'}
+                sx={{
+                  '& path': {
+                    fill: 'currentColor'
+                  }
+                }}
+              />
+              <Box>{t('app:use_agent_sandbox')}</Box>
+            </Flex>
+          )}
         </Flex>
 
         {durationSeconds > 0 && (
@@ -112,6 +155,8 @@ const AIChatBubbleActions = ({
           ))}
         </Flex>
       )}
+
+      <SandboxEditorModal />
     </Box>
   );
 };

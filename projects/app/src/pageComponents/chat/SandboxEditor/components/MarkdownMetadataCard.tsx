@@ -78,7 +78,6 @@ const renderValue = (val: any) => {
 const MarkdownMetadataCard = ({ metadata }: Props) => {
   return (
     <Box
-      mb={6}
       p={4}
       bg="myGray.25"
       borderRadius="6px"

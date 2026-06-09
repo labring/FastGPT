@@ -56,6 +56,7 @@ const AppChatWindow = () => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
@@ -244,7 +245,10 @@ const AppChatWindow = () => {
               appId={appId}
               chatId={chatId}
               outLinkAuthData={outLinkAuthData}
-              onNewChat={() => onChangeChatId(getNanoid())}
+              onNewChat={() => {
+                clearChatRecords();
+                onChangeChatId(getNanoid());
+              }}
               onStartChat={onStartChat}
             />
           ) : (

@@ -12,7 +12,7 @@ const DesktopHomeLayout = ({ inputSlot }: DesktopHomeLayoutProps) => {
     <Flex h="100%" flexDir="column" justifyContent="center" w="100%">
       <DesktopHomeHero />
 
-      <Box mt={5} w="100%">
+      <Box mt="32px" w="100%">
         <QuickApps />
       </Box>
 

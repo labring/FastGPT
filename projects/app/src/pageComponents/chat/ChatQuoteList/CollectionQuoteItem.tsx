@@ -75,7 +75,7 @@ const CollectionQuoteItem = ({
         }}
       >
         {updated && (
-          <Flex mt={2}>
+          <Flex pt={2}>
             <Box
               bg={'green.50'}
               border={'1px solid'}

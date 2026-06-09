@@ -16,13 +16,13 @@ import {
 } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn, useSize } from 'ahooks';
-import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
 import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
+import ChatErrorCard from './ChatErrorCard';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -211,32 +211,37 @@ const ChatItem = (props: Props) => {
   );
 
   return (
-    <Box data-chat-id={chat.dataId}>
+    <Flex data-chat-id={chat.dataId} direction={'column'} gap={4}>
       {/* Workflow status */}
-      {!isHumanMessage && isChatLog && !!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
-        <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-          <Flex
-            alignItems={'center'}
-            px={3}
-            py={'1.5px'}
-            borderRadius="md"
-            bg={chatStatusMap.bg}
-            fontSize={'sm'}
-          >
-            <Box
-              className={styles.statusAnimation}
-              bg={chatStatusMap.color}
-              w="8px"
-              h="8px"
-              borderRadius={'50%'}
-              mt={'1px'}
-            />
-            <Box ml={2} color={'myGray.600'}>
-              {statusBoxData.name}
-            </Box>
+      {!isHumanMessage &&
+        isChatLog &&
+        !!chatStatusMap &&
+        statusBoxData &&
+        isLastChild &&
+        showRunningStatus && (
+          <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+            <Flex
+              alignItems={'center'}
+              px={3}
+              py={'1.5px'}
+              borderRadius="md"
+              bg={chatStatusMap.bg}
+              fontSize={'sm'}
+            >
+              <Box
+                className={styles.statusAnimation}
+                bg={chatStatusMap.color}
+                w="8px"
+                h="8px"
+                borderRadius={'50%'}
+                mt={'1px'}
+              />
+              <Box ml={2} color={'myGray.600'}>
+                {statusBoxData.name}
+              </Box>
+            </Flex>
           </Flex>
-        </Flex>
-      )}
+        )}
 
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
@@ -279,12 +284,10 @@ const ChatItem = (props: Props) => {
             <>
               {/* error message */}
               {!!chat.errorMsg && (
-                <Box mt={2}>
-                  <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
-                  <Box fontSize={'xs'} color={'myGray.500'}>
-                    {chat.errorMsg}
-                  </Box>
-                </Box>
+                <ChatErrorCard
+                  title={`${t('chat:log.error.error_prefix')}- ${t('common:core.module.template.ai_chat')}`}
+                  message={chat.errorMsg}
+                />
               )}
               {children}
             </>
@@ -294,7 +297,6 @@ const ChatItem = (props: Props) => {
           return (
             <Box
               key={i}
-              mt={['6px', 2]}
               className="chat-box-card"
               w={'100%'}
               maxW={isPc ? '700px' : 'calc(100% - 25px)'}
@@ -315,7 +317,6 @@ const ChatItem = (props: Props) => {
         return (
           <Box
             key={i}
-            mt={['6px', 2]}
             className="chat-box-card"
             w={'100%'}
             maxW={isPc ? '700px' : 'calc(100% - 25px)'}
@@ -417,7 +418,7 @@ const ChatItem = (props: Props) => {
           )}
         </Box>
       )}
-    </Box>
+    </Flex>
   );
 };
 

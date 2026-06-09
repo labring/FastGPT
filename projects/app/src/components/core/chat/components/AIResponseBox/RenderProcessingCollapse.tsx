@@ -32,7 +32,7 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
       onChange={(index) => setIsExpanded(Array.isArray(index) ? index.length > 0 : index === 0)}
     >
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
-        <Box w={'full'} pb={'4px'} borderBottom={'1px solid'} borderBottomColor={'myGray.200'}>
+        <Box w={'full'} pb={'4px'} borderBottom={'1px solid'} borderBottomColor={'myGray.100'}>
           <AccordionButton
             w={'auto'}
             display={'inline-flex'}

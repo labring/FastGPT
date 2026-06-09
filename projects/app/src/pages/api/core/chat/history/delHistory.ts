@@ -5,22 +5,29 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 /* delete single chat history (soft delete) */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId, chatId } = parseApiInput({ req, querySchema: DelChatHistorySchema }).query;
+  const { query } = parseApiInput({ req, querySchema: DelChatHistorySchema });
+  const { appId, chatId } = query;
 
-  await authChatCrud({
-    ...req.query,
+  const { appId: authAppId, authType, uid } = await authChatCrud({
+    ...query,
     req,
     authToken: true,
     authApiKey: true
   });
+  const matchAppId = appId || authAppId;
+  if (!matchAppId) return Promise.reject('Param are error');
 
   await MongoChat.updateOne(
     {
-      appId,
-      chatId
+      appId: matchAppId,
+      chatId,
+      ...(authType === AuthUserTypeEnum.outLink || authType === AuthUserTypeEnum.teamDomain
+        ? { outLinkUid: uid }
+        : {})
     },
     {
       $set: {

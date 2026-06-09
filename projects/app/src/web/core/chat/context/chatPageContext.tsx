@@ -96,8 +96,8 @@ export const ChatPageContextProvider = ({
 
   // Initialize chat page state
   useMount(async () => {
-    if (routeAppId) setAppId(routeAppId);
     setSource('online');
+    if (routeAppId) setAppId(routeAppId);
   });
 
   // Sync appId to store as route/appId changes

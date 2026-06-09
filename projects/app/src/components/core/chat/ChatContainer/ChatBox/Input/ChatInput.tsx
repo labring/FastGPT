@@ -426,7 +426,7 @@ const ChatInput = ({
       w={'100%'}
       maxW={['100%', '780px']}
       mx={'auto'}
-      pb={0}
+      pb={['calc(12px + env(safe-area-inset-bottom))', 3]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -523,7 +523,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={4} pb={['calc(12px + env(safe-area-inset-bottom))', 3]} />
+      <ComplianceTip type={'chat'} pt={4} pb={0} />
     </Box>
   );
 };

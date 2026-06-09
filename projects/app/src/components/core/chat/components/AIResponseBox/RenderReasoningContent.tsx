@@ -61,7 +61,7 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
           <AccordionIcon ml={1} color={'myGray.500'} />
         </AccordionButton>
         <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
-          <Box position={'relative'} ml={1.5}>
+          <Box position={'relative'} ml={'7.5px'}>
             <Box
               pl={3}
               borderLeft={'1px solid'}

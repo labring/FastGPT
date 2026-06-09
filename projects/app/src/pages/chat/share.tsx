@@ -102,6 +102,7 @@ const OutLink = (props: Props) => {
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -376,7 +377,10 @@ const OutLink = (props: Props) => {
                       appId={appId}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
-                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onNewChat={() => {
+                        clearChatRecords();
+                        onChangeChatId(getNanoid());
+                      }}
                       onStartChat={startChat}
                     />
                   ) : (
