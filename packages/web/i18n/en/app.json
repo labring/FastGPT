@@ -753,5 +753,15 @@
   "logs_timespan_1": "T+1",
   "logs_timespan_3": "T+3",
   "logs_timespan_7": "T+7",
-  "logs_timespan_14": "T+14"
+  "logs_timespan_14": "T+14",
+  "create_workflow": "Create Workflow",
+  "create_smart_qa": "Create Smart Q&A",
+  "create_agent": "Create Agent",
+  "create_mode_manual": "Manual",
+  "create_mode_copilot": "AI Generate",
+  "workflow_model_label": "Model",
+  "workflow_requirement_label": "Requirements",
+  "workflow_requirement_default": "Business Background:\nTrigger Conditions:\nCore Process:\nData Input:\nOutput Requirements:",
+  "workflow_requirement_tooltip_title": "Example:",
+  "workflow_requirement_tooltip_example": "[Business Background]\nWe are a SaaS enterprise service company. Customers submit after-sales tickets via WeCom, email, and website forms.\nPain points: High ticket volume, low efficiency in manual classification and assignment, slow response to urgent issues.\n[Trigger Conditions]\nThe workflow starts when a customer message is received from any of the following channels:\n- WeCom customer service group @bot\n- New email received in after-sales mailbox\n- Website \"Technical Support\" form submission\n[Core Process]\n1. Receive ticket: Extract customer info (company name, contact, priority flag)\n2. Intent recognition: Classify ticket type (technical issue/account problem/feature inquiry/complaint/business cooperation)\n3. Urgency assessment: Combine keywords (\"outage\"/\"cannot login\"/\"urgent\"/\"paid customer\") + customer tier\n4. Smart handling:\n- Technical issue → Search knowledge base → If match > 0.8, auto-reply with solution\n- Account problem → Query internal CRM → Generate diagnostic report\n- Feature inquiry → Search product manual → Generate reply with cited sources\n- Complaint → Log to Feishu Bitable → Notify customer success manager\n- Business cooperation → Transfer to sales → Auto-send confirmation email to customer\n5. Human fallback: If knowledge base misses or customer replies \"unresolved\" → Create Jira ticket assigned to on-call engineer\n6. Closed-loop feedback: Auto-send satisfaction survey after resolution, write results to CRM\n[Data Input]\n- User input: Ticket title, detailed description, attachments (screenshots/logs)\n- System data: Customer tier (free/standard/enterprise/flagship), historical ticket count, SLA agreement\n- Knowledge base: Product FAQ, technical troubleshooting guide, API docs\n[Output Requirements]\n- Reply format: WeCom Markdown card / Email HTML\n- Tone: Professional, concise; technical issues must include numbered troubleshooting steps\n- Must include: Knowledge base citation (doc name + paragraph), response time commitment (e.g. \"Engineer will respond within 2 hours\")\n[Exception Handling]\n- If customer sends 3 consecutive messages unresolved: Auto-escalate to supervisor group and @on-call manager\n- If knowledge base retrieval confidence < 0.6: Do not auto-reply, transfer to human directly\n- If API call timeout (>5s): Return friendly message \"Querying, please wait\", retry asynchronously"
 }

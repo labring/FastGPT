@@ -9,6 +9,7 @@ import { useContextSelector } from 'use-context-selector';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
 import SearchButton from '../../Workflow/components/SearchButton';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowInitContext, WorkflowBufferDataContext } from '../context/workflowInitContext';
 import ContextMenu from './components/ContextMenu';
 import FlowController from './components/FlowController';
@@ -20,6 +21,7 @@ import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
+import { useTranslation } from 'next-i18next';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
@@ -71,7 +73,18 @@ const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
 
-const Workflow = () => {
+type WorkflowProps = {
+  isCopilotOpen?: boolean;
+  onToggleCopilot?: () => void;
+  nodesInteractive?: boolean;
+};
+
+const Workflow = ({
+  isCopilotOpen = false,
+  onToggleCopilot,
+  nodesInteractive = true
+}: WorkflowProps) => {
+  const { t } = useTranslation();
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
@@ -154,6 +167,28 @@ const Workflow = () => {
             />
           </Box>
           <SearchButton />
+          {/* <Box position={'absolute'} top={44} left={6} zIndex={1}>
+            <MyTooltip
+              shouldWrapChildren={false}
+              label={t('workflow:vibe_workflow_tip')}
+              placement="right"
+            >
+              <IconButton
+                icon={<MyIcon name="optimizer" w={5} />}
+                w={9}
+                h={9}
+                borderRadius={'50%'}
+                bg={isCopilotOpen ? 'myGray.100' : 'white'}
+                color={isCopilotOpen ? 'primary.500' : 'myGray.500'}
+                _hover={{ bg: 'myGray.100', color: 'primary.500' }}
+                aria-label={'vibe workflow copilot'}
+                boxShadow={
+                  '0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'
+                }
+                onClick={onToggleCopilot}
+              />
+            </MyTooltip>
+          </Box> */}
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
           <NodeTemplatesPopover />
         </>
@@ -171,16 +206,19 @@ const Workflow = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionRadius={50}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgeChange}
-          onConnect={customOnConnect}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
-          onEdgeMouseEnter={onEdgeMouseEnter}
-          onEdgeMouseLeave={onEdgeMouseLeave}
+          onNodesChange={nodesInteractive ? handleNodesChange : undefined}
+          onEdgesChange={nodesInteractive ? handleEdgeChange : undefined}
+          onConnect={nodesInteractive ? customOnConnect : undefined}
+          onConnectStart={nodesInteractive ? onConnectStart : undefined}
+          onConnectEnd={nodesInteractive ? onConnectEnd : undefined}
+          onEdgeMouseEnter={nodesInteractive ? onEdgeMouseEnter : undefined}
+          onEdgeMouseLeave={nodesInteractive ? onEdgeMouseLeave : undefined}
+          nodesDraggable={nodesInteractive}
+          nodesConnectable={nodesInteractive}
+          elementsSelectable={nodesInteractive}
           panOnScrollSpeed={2}
-          onPaneContextMenu={onPaneContextMenu}
-          onPaneClick={onPaneClick}
+          onPaneContextMenu={nodesInteractive ? onPaneContextMenu : undefined}
+          onPaneClick={nodesInteractive ? onPaneClick : undefined}
           snapToGrid
           style={{ background: '#F7F8FA' }}
           {...(workflowControlMode === 'select'
@@ -193,7 +231,7 @@ const Workflow = () => {
                 panOnScroll: true
               }
             : {})}
-          onNodeDragStop={onNodeDragStop}
+          onNodeDragStop={nodesInteractive ? onNodeDragStop : undefined}
           noWheelClassName={
             !movingCanvas || workflowControlMode === 'drag' ? 'nowheel' : 'nowheel-moving'
           }
@@ -204,7 +242,7 @@ const Workflow = () => {
             setMovingCanvas(false);
           }}
         >
-          {!!menu && <ContextMenu />}
+          {!!menu && nodesInteractive && <ContextMenu />}
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>

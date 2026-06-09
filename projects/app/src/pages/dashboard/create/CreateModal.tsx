@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
-import { Box, Flex, Button, ModalBody, Input, Grid, Card, ModalFooter } from '@chakra-ui/react';
-import MyCard from '@/components/MyCard';
+import React, { useState } from 'react';
+import { Box, Flex, Button, ModalBody, Input, ModalFooter, Textarea } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
@@ -18,12 +17,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getTemplateMarketItemDetail,
-  getTemplateMarketItemList
-} from '@/web/core/app/api/template';
+import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { TabEnum } from '@/pageComponents/app/detail/context';
@@ -31,11 +26,20 @@ import SmartCustomerServiceForm from './SmartCustomerServiceForm';
 import type { SmartCustomerServiceFormType } from './SmartCustomerServiceForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { updateDatasetSearchNodesLimit } from '@/web/core/app/utils';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import {
+  WORKFLOW_COPILOT_TASK_STORAGE_KEY,
+  type WorkflowCopilotGenerationTask
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/copilot/constants';
+import SfRadio from '@/components/SF/SfRadio';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 type FormType = {
   avatar: string;
   name: string;
+  intro?: string;
   smartCustomerService?: SmartCustomerServiceFormType;
+  workflowGenerationRequirement?: string;
 };
 
 export type CreateAppType =
@@ -43,6 +47,15 @@ export type CreateAppType =
   | AppTypeEnum.workflow
   | AppTypeEnum.assistant
   | AppTypeEnum.chatAgent;
+
+type CreateMode = 'manual' | 'copilot';
+
+const MODAL_TITLE: Record<CreateAppType, string> = {
+  [AppTypeEnum.workflow]: 'app:create_workflow',
+  [AppTypeEnum.assistant]: 'app:create_smart_qa',
+  [AppTypeEnum.chatAgent]: 'app:create_agent',
+  [AppTypeEnum.simple]: 'app:create_agent'
+};
 
 const CreateModal = ({
   onClose,
@@ -58,45 +71,39 @@ const CreateModal = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { feConfigs } = useSystemStore();
-
-  const typeData = createAppTypeMap[type];
-  const shouldRequestTemplates = useMemo(() => {
-    return type !== AppTypeEnum.assistant;
-  }, [type]);
-
-  const { data: templateData, loading: isRequestTemplates } = useRequest(
-    () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
-    {
-      manual: !shouldRequestTemplates,
-      refreshDeps: [type]
-    }
+  const { llmModelList, defaultModels } = useSystemStore();
+  const [copilotModel, setCopilotModel] = useState(
+    defaultModels.llm?.id || llmModelList[0]?.id || ''
   );
-  const templateList = templateData?.list ?? [];
+  const [createMode, setCreateMode] = useState<CreateMode>('manual');
+  const modelList = llmModelList.map((m) => ({ label: m.name, value: m.id }));
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
-      avatar: typeData.icon,
+      avatar: createAppTypeMap[type].icon,
       name: '',
-      smartCustomerService: {
-        datasets: []
-      }
+      intro: '',
+      smartCustomerService: { datasets: [] },
+      workflowGenerationRequirement: t('app:workflow_requirement_default')
     }
   });
 
   const avatar = watch('avatar');
   const smartCustomerService = watch('smartCustomerService');
+  const workflowGenerationRequirement = watch('workflowGenerationRequirement');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
-      onSuccess(avatar) {
-        setValue('avatar', avatar);
+      onSuccess(newAvatar) {
+        setValue('avatar', newAvatar);
       }
     });
 
   const { runAsync: onclickCreate, loading: isCreating } = useRequest(
-    async ({ avatar, name, smartCustomerService }: FormType, templateId?: string) => {
-      // Handle smart customer service type
+    async (
+      { avatar, name, intro, smartCustomerService, workflowGenerationRequirement }: FormType,
+      mode: CreateMode = 'manual'
+    ) => {
       if (type === AppTypeEnum.assistant) {
         const templateDetail = await getTemplateMarketItemDetail('community-assistant');
         const template = templateDetail.workflow;
@@ -106,7 +113,6 @@ const CreateModal = ({
               if (input.key === NodeInputKeyEnum.datasetSelectList) {
                 input.value = smartCustomerService?.datasets || [];
               }
-              // 重置创建模板中的配置的重排模型默认值
               if (input.key === NodeInputKeyEnum.datasetSearchRerankModelId) {
                 input.value = '';
               }
@@ -114,14 +120,12 @@ const CreateModal = ({
           }
           return node;
         });
-
-        // Update limit based on the updated nodes
         const finalNodes = updateDatasetSearchNodesLimit(updatedNodes);
-
         return postCreateApp({
           parentId: parentId as string,
           avatar,
           name,
+          intro: intro?.trim() || undefined,
           type,
           modules: finalNodes,
           edges: template.edges,
@@ -129,46 +133,35 @@ const CreateModal = ({
         });
       }
 
-      // From template
-      if (templateId) {
-        const templateDetail = await getTemplateMarketItemDetail(templateId);
-        // assistant 类型不会走到这个分支,所以直接使用原始 nodes
-        const nodes = templateDetail.workflow.nodes || [];
-
-        return postCreateApp({
-          parentId: parentId as string,
-          avatar: templateDetail.avatar,
-          name,
-          type,
-          modules: nodes,
-          edges: templateDetail.workflow.edges || [],
-          chatConfig: templateDetail.workflow.chatConfig || {},
-          templateId: templateDetail.templateId
-        });
-      }
-
-      // From empty template
       const emptyTemplate = emptyTemplates[type as keyof typeof emptyTemplates];
-      // assistant 类型不会走到这个分支,所以直接使用原始 nodes
       const nodes = emptyTemplate?.nodes ?? [];
 
-      return postCreateApp({
+      const appId = await postCreateApp({
         parentId: parentId as string,
         avatar,
         name,
+        intro: intro?.trim() || undefined,
         type,
         modules: nodes,
         edges: emptyTemplate?.edges ?? [],
         chatConfig: emptyTemplate?.chatConfig ?? {}
       });
+
+      if (mode === 'copilot') {
+        const task: WorkflowCopilotGenerationTask = {
+          appId,
+          requirement: workflowGenerationRequirement?.trim() || '',
+          model: copilotModel,
+          createdAt: Date.now()
+        };
+        sessionStorage.setItem(WORKFLOW_COPILOT_TASK_STORAGE_KEY, JSON.stringify(task));
+      }
+
+      return appId;
     },
     {
       onSuccess(id: string) {
-        if (type === AppTypeEnum.assistant) {
-          router.push(`/app/detail?appId=${id}&currentTab=${TabEnum.appEdit}`);
-        } else {
-          router.push(`/app/detail?appId=${id}`);
-        }
+        router.push(`/app/detail?appId=${id}&currentTab=${TabEnum.appEdit}`);
         onSuccess?.();
         onClose();
       },
@@ -177,195 +170,168 @@ const CreateModal = ({
     }
   );
 
-  // 统一的底部按钮组件
-  const renderFooterButtons = () => {
-    const isSmartCustomerService = type === AppTypeEnum.assistant;
-    const isDatasetsEmpty = isSmartCustomerService && smartCustomerService?.datasets?.length === 0;
-
-    const isDisabled = isDatasetsEmpty;
-    const tooltipLabel = isDatasetsEmpty ? t('app:files_cascader_select_first') : '';
-
-    return (
-      <ModalFooter gap={4}>
-        <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        {type === AppTypeEnum.assistant && (
-          <MyTooltip label={tooltipLabel} isDisabled={!isDisabled}>
-            <Button
-              variant={'primary'}
-              onClick={handleSubmit((data) => onclickCreate(data))}
-              isLoading={isCreating}
-              isDisabled={isDisabled}
-            >
-              {t('common:Confirm')}
-            </Button>
-          </MyTooltip>
-        )}
-      </ModalFooter>
-    );
-  };
+  const isDatasetsEmpty =
+    type === AppTypeEnum.assistant && (smartCustomerService?.datasets?.length ?? 0) === 0;
+  const isWorkflowCopilot = type === AppTypeEnum.workflow && createMode === 'copilot';
+  const isCopilotDisabled = isWorkflowCopilot
+    ? !workflowGenerationRequirement?.trim() || !copilotModel
+    : false;
+  const isConfirmDisabled = isDatasetsEmpty || isCopilotDisabled;
+  const tooltipLabel = isDatasetsEmpty ? t('app:files_cascader_select_first') : '';
 
   return (
     <MyModal
-      iconSrc={typeData.icon}
-      title={t(typeData.title)}
+      title={t(MODAL_TITLE[type])}
       onClose={onClose}
       isOpen
       isCentered={!isPc}
-      w={'800px'}
-      maxW={['90vw', '800px']}
-      isLoading={isCreating || isRequestTemplates}
+      w={'600px'}
+      maxW={['90vw', '600px']}
+      isLoading={isCreating}
     >
       <ModalBody>
-        {/* 智能客服类型显示特殊表单 */}
-        {type === AppTypeEnum.assistant ? (
-          <>
-            <FormLabel color={'myGray.900'}>{t('common:core.app.Name and avatar')}</FormLabel>
-            <Flex mt={2} alignItems={'center'}>
-              <MyTooltip label={t('common:set_avatar')}>
-                <Avatar
-                  flexShrink={0}
-                  src={avatar}
-                  w={['28px', '36px']}
-                  h={['28px', '36px']}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  onClick={handleAvatarSelectorOpen}
-                />
-              </MyTooltip>
-              <Input
-                flex={1}
-                ml={3}
-                autoFocus
-                {...register('name', {
-                  required: t('common:core.app.error.App name can not be empty')
-                })}
-              />
-            </Flex>
-            <SmartCustomerServiceForm
-              value={smartCustomerService!}
-              onChange={(data) => setValue('smartCustomerService', data)}
+        {/* 工作流：类型选择 */}
+        {type === AppTypeEnum.workflow && (
+          <Box mb={4}>
+            <SfRadio
+              list={[
+                { title: t('app:create_mode_manual'), value: 'manual' },
+                { title: t('app:create_mode_copilot'), value: 'copilot' }
+              ]}
+              value={createMode}
+              onChange={(v) => setCreateMode(v as CreateMode)}
             />
-          </>
-        ) : (
-          <>
-            <Box color={'myGray.800'}>{t('common:input_name')}</Box>
-            <Flex mt={2} alignItems={'center'}>
-              <MyTooltip label={t('common:set_avatar')}>
-                <Avatar
-                  flexShrink={0}
-                  src={avatar}
-                  w={['28px', '36px']}
-                  h={['28px', '36px']}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  onClick={handleAvatarSelectorOpen}
-                />
-              </MyTooltip>
-              <Input
-                flex={1}
-                ml={3}
-                autoFocus
-                {...register('name', {
-                  required: t('common:core.app.error.App name can not be empty')
-                })}
-              />
-            </Flex>
-            <Flex mt={[4, 7]} mb={3}>
-              <Box color={'myGray.900'} fontWeight={'bold'} fontSize={'sm'}>
-                {t('app:create_by_template')}
-              </Box>
-              <Box flex={1} />
-              <Flex
-                onClick={() => {
-                  router.push({
-                    pathname: '/dashboard/templateMarket',
-                    query: {
-                      appType: type,
-                      parentId
-                    }
-                  });
-                  onClose();
-                }}
-                alignItems={'center'}
-                cursor={'pointer'}
-                color={'myGray.600'}
-                fontSize={'xs'}
-                _hover={{ color: 'blue.700' }}
-              >
-                {t('common:core.app.switch_to_template_market')}
-                <ChevronRightIcon w={4} h={4} />
-              </Flex>
-            </Flex>
+          </Box>
+        )}
 
-            <Grid
-              userSelect={'none'}
-              gridTemplateColumns={
-                templateList.length > 0 ? ['repeat(1,1fr)', 'repeat(2,1fr)'] : '1fr'
-              }
-              gridGap={[2, 4]}
-            >
-              <Card
-                h="152px"
-                boxShadow={'none'}
-                display={'flex'}
-                flexDirection={'column'}
-                alignItems={'center'}
+        {/* 图标 & 名称 */}
+        <Box mb={4}>
+          <FormLabel required mb={2.5}>
+            {t('common:app_icon_and_name')}
+          </FormLabel>
+          <Flex alignItems={'center'}>
+            <MyTooltip label={t('common:set_avatar')}>
+              <Flex
+                borderRadius={'6px'}
+                w={10}
+                h={10}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
                 justifyContent={'center'}
-                p={'20px 20px 16px'}
-                bg="#FFFFFF"
-                border="1px solid"
-                borderColor="#DCE0E6"
-                borderRadius="8px"
-                position="relative"
-                overflow="hidden"
-                cursor="pointer"
-                transition="border-color 0.15s"
-                _hover={{ borderColor: '#91BBF2', color: 'primary.700' }}
-                onClick={handleSubmit((data) => onclickCreate(data))}
+                alignItems={'center'}
+                mr={2.5}
+                cursor={'pointer'}
+                flexShrink={0}
+                onClick={handleAvatarSelectorOpen}
               >
-                <MyIcon name={'common/addLight'} w={'1.5rem'} />
-                <Box fontSize={'sm'} mt={2}>
-                  {t(typeData.intro)}
-                </Box>
-              </Card>
-              {templateList.map((item) => (
-                <MyCard
-                  key={item.templateId}
-                  avatar={item.avatar}
-                  name={t(item.name as any)}
-                  intro={t(item.intro as any)}
-                  author={item.author || feConfigs.systemTitle}
-                  onClick={() => {
-                    handleSubmit((data) => onclickCreate(data, item.templateId))();
-                  }}
-                  hoverAction={
-                    <Button
-                      height="24px"
-                      variant="primaryOutline"
-                      borderRadius="4px"
-                      fontSize="12px"
-                      size="xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSubmit((data) => onclickCreate(data, item.templateId))();
-                      }}
-                    >
-                      <Flex align="center" color="blue.650">
-                        <MyIcon name="common/addLight" w="12px" h="12px" mr="4px" display="block" />
-                        {t('app:templateMarket.Use')}
-                      </Flex>
-                    </Button>
+                <Avatar src={avatar} borderRadius={'4.667px'} />
+              </Flex>
+            </MyTooltip>
+            <Input
+              flex={1}
+              h={'34px'}
+              autoFocus
+              {...register('name', {
+                required: t('common:core.app.error.App name can not be empty')
+              })}
+            />
+          </Flex>
+        </Box>
+
+        {/* 描述 */}
+        <Box mb={4}>
+          <FormLabel mb={2.5}>{t('common:plugin.Description')}</FormLabel>
+          <Textarea rows={3} resize={'vertical'} {...register('intro')} />
+        </Box>
+
+        {/* 智能问答：知识库选择 */}
+        {type === AppTypeEnum.assistant && (
+          <SmartCustomerServiceForm
+            value={smartCustomerService!}
+            onChange={(data) => setValue('smartCustomerService', data)}
+          />
+        )}
+
+        {/* 工作流-智能生成：AI 模型 + 需求 */}
+        {type === AppTypeEnum.workflow && createMode === 'copilot' && (
+          <>
+            <Box mb={4}>
+              <FormLabel required mb={2.5}>
+                {t('app:workflow_model_label')}
+              </FormLabel>
+              <AIModelSelector
+                w={'100%'}
+                value={copilotModel}
+                list={modelList}
+                onChange={setCopilotModel}
+              />
+            </Box>
+
+            <Box>
+              <Flex alignItems={'center'} mb={2.5}>
+                <FormLabel required>{t('app:workflow_requirement_label')}</FormLabel>
+                <MyPopover
+                  trigger={'hover'}
+                  placement={'right-start'}
+                  hasArrow={false}
+                  p={0}
+                  w={'360px'}
+                  Trigger={
+                    <Box ml={1} display={'inline-flex'} alignItems={'center'} cursor={'default'}>
+                      <MyIcon name={'help' as any} w={'16px'} color={'myGray.500'} />
+                    </Box>
                   }
-                />
-              ))}
-            </Grid>
+                >
+                  {() => (
+                    <Box p={'12px'}>
+                      <Box fontSize={'xs'} color={'#333'} mb={2}>
+                        {t('app:workflow_requirement_tooltip_title')}
+                      </Box>
+                      <Box
+                        fontSize={'xs'}
+                        color={'#333'}
+                        border={'1px solid #E8EBF0'}
+                        borderRadius={'4px'}
+                        p={'10px'}
+                        whiteSpace={'pre-wrap'}
+                        cursor={'default'}
+                        maxH={'400px'}
+                        overflowY={'auto'}
+                      >
+                        {t('app:workflow_requirement_tooltip_example')}
+                      </Box>
+                    </Box>
+                  )}
+                </MyPopover>
+              </Flex>
+              <Textarea
+                value={workflowGenerationRequirement}
+                onChange={(e) => setValue('workflowGenerationRequirement', e.target.value)}
+                minH={'200px'}
+                resize={'vertical'}
+              />
+            </Box>
           </>
         )}
       </ModalBody>
-      {/* 统一的底部按钮 */}
-      {renderFooterButtons()}
+
+      <ModalFooter gap={2}>
+        <Button variant={'whiteBase'} onClick={onClose}>
+          {t('common:Cancel')}
+        </Button>
+        <MyTooltip label={tooltipLabel} isDisabled={!tooltipLabel}>
+          <Button
+            variant={'primary'}
+            isLoading={isCreating}
+            isDisabled={isConfirmDisabled}
+            onClick={handleSubmit((data) =>
+              onclickCreate(data, isWorkflowCopilot ? 'copilot' : 'manual')
+            )}
+          >
+            {t('common:Confirm')}
+          </Button>
+        </MyTooltip>
+      </ModalFooter>
       <AvatarUploader />
     </MyModal>
   );
