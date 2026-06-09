@@ -261,6 +261,36 @@ const CollectionNavActions = () => {
         onChange={(e) => setSearchText(e.target.value)}
       />
 
+      {/* 更多按钮 */}
+      {datasetDetail.permission.hasManagePer && (
+        <MyMenu
+          offset={[0, 5]}
+          Button={
+            <Button variant={'whiteBase'}>
+              {t('common:More')}
+            </Button>
+          }
+          menuList={[
+            {
+              children: [
+                {
+                  icon: 'key',
+                  type: 'grayBg' as const,
+                  label: t('common:permission.Permission'),
+                  onClick: () => setEditPerOpen(true)
+                },
+                {
+                  icon: 'edit',
+                  type: 'grayBg' as const,
+                  label: t('common:Edit'),
+                  onClick: () => setShowCreateModal(true)
+                }
+              ]
+            }
+          ]}
+        />
+      )}
+
       {/* 同步按钮（API 数据集：apiDataset / feishu / yuque） */}
       {isApiDataset && datasetDetail.permission.hasWritePer && feConfigs?.isPlus && (
         <>
@@ -361,36 +391,6 @@ const CollectionNavActions = () => {
         <Button variant={'whiteBase'} onClick={() => setShowTagManage(true)}>
           {t('dataset:tag.manage')}
         </Button>
-      )}
-
-      {/* 更多按钮 */}
-      {datasetDetail.permission.hasManagePer && (
-        <MyMenu
-          offset={[0, 5]}
-          Button={
-            <Button variant={'whiteBase'}>
-              {t('common:More')}
-            </Button>
-          }
-          menuList={[
-            {
-              children: [
-                {
-                  icon: 'key',
-                  type: 'grayBg' as const,
-                  label: t('common:permission.Permission'),
-                  onClick: () => setEditPerOpen(true)
-                },
-                {
-                  icon: 'edit',
-                  type: 'grayBg' as const,
-                  label: t('common:Edit'),
-                  onClick: () => setShowCreateModal(true)
-                }
-              ]
-            }
-          ]}
-        />
       )}
 
       {/* 添加按钮（dataset：子菜单） */}

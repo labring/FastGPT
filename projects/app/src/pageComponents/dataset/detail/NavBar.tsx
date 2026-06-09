@@ -194,7 +194,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           h={showNavTab ? '16' : '12'}
           alignItems={'center'}
           flexShrink={0}
-          templateColumns={'minmax(0, 1fr) auto minmax(0, 1fr)'}
+          templateColumns={'350px 1fr auto'}
         >
           {/* 左列：面包屑路径 */}
           <Flex alignItems={'center'} py={'0.38rem'} pr={4} h={10} minW={0} overflow={'hidden'}>
@@ -259,7 +259,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           </Flex>
 
           {/* 中列：TabList，内容宽度 auto */}
-          <Flex justifyContent={'center'} alignItems={'center'}>
+          <Flex alignItems={'center'}>
             {showNavTab && (
               <MyTabs
                 tabs={tabList}
