@@ -145,7 +145,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         systemKeyCost: systemTool.systemKeyCost ?? 0,
         nodes: systemTool.nodes,
         edges: systemTool.edges,
-        hasTokenFee: !!systemTool.hasTokenFee
+        hasTokenFee: !!systemTool.hasTokenFee,
+        associatedPluginId: systemTool.associatedPluginId
       };
     }
 
@@ -211,6 +212,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       sourceVariableState: props.variableState
     });
     const runtimeVariables = childVariableState.toRuntimeRecord();
+    const shouldStoreChildNodeResponses = !workflowTool.associatedPluginId;
     const {
       flowUsages,
       assistantResponses,
@@ -220,6 +222,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWorkflow({
       ...props,
+      // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
+      ...(shouldStoreChildNodeResponses ? {} : { nodeResponseWriter: undefined }),
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
