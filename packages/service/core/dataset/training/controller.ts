@@ -9,7 +9,6 @@ import { getLLMModelById, getEmbeddingModelById, getVlmModelById } from '../../a
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '../../../../global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
-import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLock/utils';
 
@@ -226,12 +225,11 @@ export const pushDataListToTrainingQueue = async ({
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.slice(i, i + chunkSize);
 
-      await retryFn(async () => {
-        const inserted = await mongoSessionRun(async (chunkSession) => {
-          return insertDataIterative(chunk, chunkSession);
-        });
-        totalInserted += inserted;
+      // mongoSessionRun has its own internal retryFn — no outer retry needed.
+      const inserted = await mongoSessionRun(async (chunkSession) => {
+        return insertDataIterative(chunk, chunkSession);
       });
+      totalInserted += inserted;
     }
 
     logger.info('Chunked transactions completed', { durationMs: Date.now() - start });

@@ -8,6 +8,10 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
+import {
+  markIndexingStart,
+  markDataTrainingPhaseTrace
+} from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import {
@@ -35,7 +39,7 @@ const reduceQueue = () => {
 
 type PopulateType = {
   dataset: { vectorModelId: string; agentModelId: string; vlmModelId?: string };
-  collection: { qaPrompt?: string };
+  collection: { qaPrompt?: string; indexingStartTime?: Date };
 };
 
 export async function generateQA(): Promise<any> {
@@ -74,7 +78,7 @@ export async function generateQA(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'qaPrompt'
+                select: 'qaPrompt indexingStartTime'
               }
             ])
             .lean();
@@ -116,7 +120,10 @@ export async function generateQA(): Promise<any> {
         continue;
       }
       // auth balance
+      // NOTE: findOneAndUpdate has already locked this record. If balance check
+      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
@@ -126,6 +133,15 @@ export async function generateQA(): Promise<any> {
         collectionId: data.collectionId,
         teamId: data.teamId,
         tmbId: data.tmbId
+      });
+
+      // Mark indexing start on collection (idempotent).
+      // Phase timing is deferred until new QA Data records are created inside the session —
+      // the original pre-created Data will be deleted and replaced by QA pair Data records.
+      const phaseStartTime = data.collection?.indexingStartTime || new Date();
+      await markIndexingStart({
+        collectionId: String(data.collectionId),
+        startTime: phaseStartTime
       });
 
       try {
@@ -206,6 +222,21 @@ export async function generateQA(): Promise<any> {
           // delete data from training
           await MongoDatasetTraining.findByIdAndDelete(data._id, { session });
         });
+
+        // Write QA phase trace on each new Data record
+        // (startTime + endTime in a single $push — 2 writes → 1 write).
+        const qaDataIds = qaItems.map((item) => item.id).filter((id): id is string => !!id);
+        if (qaDataIds.length > 0) {
+          await Promise.all(
+            qaDataIds.map((dataId) =>
+              markDataTrainingPhaseTrace({
+                dataId,
+                mode: TrainingModeEnum.qa,
+                startTime: phaseStartTime
+              })
+            )
+          );
+        }
 
         // Push usage (outside transaction — fire-and-forget, non-critical)
         pushLLMTrainingUsage({

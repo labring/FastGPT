@@ -13,7 +13,6 @@ import { jiebaSplit } from '../../../common/string/jieba/index';
 import { detectLang } from 'diting-rag-ts';
 import { removeS3TTL } from '../../../common/s3/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { retryFn } from '@fastgpt/global/common/system/utils';
 import type { ClientSession } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 
@@ -309,12 +308,12 @@ export async function createDataDrafts({
     for (let i = 0; i < items.length; i += CHUNK_SIZE) {
       const chunk = items.slice(i, i + CHUNK_SIZE);
 
-      await retryFn(async () => {
-        const chunkResults = await mongoSessionRun(async (chunkSession) => {
-          return insertChunk(chunk, chunkSession);
-        });
-        allResults.push(...chunkResults);
+      // mongoSessionRun has its own internal retryFn that handles transaction
+      // failures with proper rollback — no outer retry needed.
+      const chunkResults = await mongoSessionRun(async (chunkSession) => {
+        return insertChunk(chunk, chunkSession);
       });
+      allResults.push(...chunkResults);
     }
 
     return allResults.map((doc) => ({ _id: doc._id }));

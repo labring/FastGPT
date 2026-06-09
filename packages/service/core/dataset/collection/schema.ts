@@ -103,6 +103,12 @@ const DatasetCollectionSchema = new Schema({
   parsingCompleteTime: {
     type: Date
   },
+  parseStartTime: {
+    type: Date
+  },
+  indexingStartTime: {
+    type: Date
+  },
   indexingCompleteTime: {
     type: Date
   },

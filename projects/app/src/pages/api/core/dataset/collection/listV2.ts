@@ -49,6 +49,7 @@ function getFileStatus(item: {
   tableSchemaExist?: boolean; // 数据库表是否存在（仅数据库类型知识库）
   hasActive?: boolean; // 是否有训练任务在近10分钟内被队列 worker 拉取（lockTime > now-10min）
   allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
+  parseStartTime?: Date; // 持久化标记：parse 任务创建时设置，用于判断处理是否已启动
 }): CollectionStatusEnum {
   // 不存在状态：数据库知识库的表被删除
   if (item.tableSchemaExist === false) {
@@ -58,11 +59,12 @@ function getFileStatus(item: {
     return CollectionStatusEnum.error;
   }
   if (item.trainingAmount > 0) {
-    // 训练任务全部未被 worker 拉取 且 全部是 parse 模式 → 排队中（parse 之前）
-    if (!item.hasActive && item.allParse) {
+    // parseStartTime 是持久化标记，在 Worker 首次拉取任务时通过 { $exists: false } 原子设置。
+    // 一旦设置就不会因训练记录 deleteOne 而丢失，因此无需再依赖 hasActive 瞬态聚合值。
+    if (item.allParse && !item.parseStartTime) {
       return CollectionStatusEnum.queued;
     }
-    // 全部是 parse 模式 且 有任务正在执行 → 解析中
+    // 全部是 parse 模式 → 解析中（parseStartTime 已设置，或 worker 正在活跃处理）
     if (item.allParse) {
       return CollectionStatusEnum.parsing;
     }
@@ -94,6 +96,7 @@ type CollectionCacheItem = {
   _id: string;
   parentId: string | null;
   type: string;
+  parseStartTime?: Date;
   tableSchema?: { exist?: boolean };
 };
 
@@ -101,18 +104,19 @@ type CollectionCacheItem = {
 function getChildCollectionIdsFromCache(
   allCollections: CollectionCacheItem[],
   parentId: string
-): { id: Types.ObjectId; tableSchemaExist?: boolean }[] {
+): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
   function findDescendantFileIds(
     pid: string
-  ): { id: Types.ObjectId; tableSchemaExist?: boolean }[] {
+  ): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
     const children = allCollections.filter((c) => String(c.parentId) === pid);
-    const result: { id: Types.ObjectId; tableSchemaExist?: boolean }[] = [];
+    const result: { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] = [];
     for (const child of children) {
       if (child.type === DatasetCollectionTypeEnum.folder) {
         result.push(...findDescendantFileIds(String(child._id)));
       } else {
         result.push({
           id: new Types.ObjectId(String(child._id)),
+          parseStartTime: child.parseStartTime,
           tableSchemaExist: child.tableSchema?.exist
         });
       }
@@ -130,13 +134,14 @@ async function preloadAllCollections(
 ): Promise<CollectionCacheItem[]> {
   const collections = await MongoDatasetCollection.find(
     { teamId, datasetId, deleteTime: null },
-    { _id: 1, parentId: 1, type: 1, 'tableSchema.exist': 1 }
+    { _id: 1, parentId: 1, type: 1, parseStartTime: 1, 'tableSchema.exist': 1 }
   ).lean();
 
   return collections.map((c) => ({
     _id: String(c._id),
     parentId: c.parentId ? String(c.parentId) : null,
     type: c.type,
+    parseStartTime: c.parseStartTime,
     tableSchema: c.tableSchema
   }));
 }
@@ -157,10 +162,12 @@ async function computeFolderMatchingStatuses(
 
   const childIds = childItems.map((item) => item.id);
 
-  // 创建 tableSchemaExist 映射
+  // 创建 tableSchemaExist 和 parseStartTime 映射
   const tableSchemaExistMap = new Map<string, boolean | undefined>();
+  const parseStartTimeMap = new Map<string, Date | undefined>();
   childItems.forEach((item) => {
     tableSchemaExistMap.set(String(item.id), item.tableSchemaExist);
+    parseStartTimeMap.set(String(item.id), item.parseStartTime);
   });
 
   const [trainingResult, dataResult] = await Promise.all([
@@ -222,6 +229,7 @@ async function computeFolderMatchingStatuses(
     const training = trainingMap.get(idStr);
     const data = dataMap.get(idStr);
     const tableSchemaExist = tableSchemaExistMap.get(idStr);
+    const childParseStartTime = parseStartTimeMap.get(idStr);
 
     return getFileStatus({
       dataAmount: data?.count || 0,
@@ -229,6 +237,7 @@ async function computeFolderMatchingStatuses(
       hasError: training?.hasError || false,
       hasActive: training?.hasActive || false,
       allParse: training?.allParse || false,
+      parseStartTime: childParseStartTime,
       tableSchemaExist
     });
   });
@@ -422,6 +431,7 @@ async function handler(
     externalFileId: 1,
     inheritPermission: 1,
     permissionEffectScope: 1,
+    parseStartTime: 1,
     ...(isDatabaseDataset ? { tableSchema: 1 } : {}),
     ...(isStructureDocument ? { metadata: 1 } : {})
   };
@@ -755,6 +765,7 @@ async function handleFieldSort({
           hasError,
           hasActive,
           allParse,
+          parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist
         });
         return {
@@ -950,6 +961,7 @@ async function handleFieldSort({
         hasError,
         hasActive,
         allParse,
+        parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {
@@ -1143,7 +1155,10 @@ async function handleDataAmountSortOrStatusFilter({
                         then: {
                           $cond: {
                             if: {
-                              $and: [{ $eq: ['$hasActive', false] }, { $eq: ['$allParse', true] }]
+                              $and: [
+                                { $eq: ['$allParse', true] },
+                                { $not: { $ifNull: ['$parseStartTime', false] } }
+                              ]
                             },
                             then: CollectionStatusEnum.queued,
                             else: {
@@ -1443,6 +1458,7 @@ async function handleStatusFilterWithMemoryPagination({
         hasError: hasErrorVal,
         hasActive: hasActiveVal,
         allParse: allParseVal,
+        parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {

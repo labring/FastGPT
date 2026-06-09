@@ -111,6 +111,18 @@ const DatasetDataSchema = new Schema({
   },
   rebuilding: Boolean,
 
+  // Per-phase processing timings for performance tracking
+  phaseTimings: {
+    type: [
+      {
+        phase: { type: String },
+        startTime: { type: Date },
+        endTime: { type: Date }
+      }
+    ],
+    default: []
+  },
+
   // Abandon
   fullTextToken: String,
   initFullText: Boolean,

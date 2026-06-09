@@ -23,14 +23,23 @@ type GetVectorProps = {
 };
 
 // text to vector
-export async function getVectorsByText({ model, input, type, headers, useInstruction = true }: GetVectorProps) {
+export async function getVectorsByText({
+  model,
+  input,
+  type,
+  headers,
+  useInstruction = true
+}: GetVectorProps) {
   if (!input) {
     return Promise.reject({
       code: 500,
       message: 'input is empty'
     });
   }
-  const ai = getAIApi();
+  // 30-second timeout prevents workers from hanging indefinitely
+  // when the embedding API is overloaded by concurrent requests.
+  const embeddingTimeout = model.dbConfig?.timeout || model.defaultConfig?.timeout || 30000;
+  const ai = getAIApi({ timeout: embeddingTimeout });
 
   const formatInput = Array.isArray(input) ? input : [input];
 

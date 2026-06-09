@@ -8,9 +8,11 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum,
+  CollectionStatusEnum,
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '../../../../core/dataset/constants';
+import { PermissionEffectScopeEnum } from '../../../../support/permission/constant';
 import {
   ChunkSettingsSchema,
   CollectionTagValueSchema,
@@ -142,10 +144,37 @@ export const DatasetCollectionsListItemSchema = z.object({
   permission: PermissionSchema,
   dataAmount: z.number().meta({ description: '数据数量' }),
   trainingAmount: z.number().meta({ description: '训练数量' }),
+  processedCount: z.number().optional().meta({ description: '已处理数据量（索引完成）' }),
+  remainingCount: z.number().optional().meta({ description: '剩余待处理数据量' }),
+  indexAmount: z.number().optional().meta({ description: '索引数量（simple 模式）' }),
   hasError: z.boolean().optional().meta({ description: '是否错误' }),
 
+  // 计算得出的状态字段
+  status: z
+    .enum(CollectionStatusEnum)
+    .optional()
+    .meta({ description: '文件状态（非 folder 类型）' }),
+  matchingStatuses: z
+    .array(z.enum(CollectionStatusEnum))
+    .optional()
+    .meta({ description: 'folder 的匹配状态数组（仅 folder 类型）' }),
+
+  // 持久化的时间标记（直接来自 collection 文档）
+  parseStartTime: z.coerce.date().optional().meta({ description: '解析开始时间' }),
+
+  // 权限相关
+  inheritPermission: z.boolean().optional().meta({ description: '继承权限' }),
+  permissionEffectScope: z
+    .nativeEnum(PermissionEffectScopeEnum)
+    .optional()
+    .meta({ description: '权限生效范围' }),
+
   tableSchema: z.any().optional().meta({ description: '数据库表结构' }),
-  tableSchemaDescription: z.string().optional().meta({ description: '数据库表描述' })
+  tableSchemaDescription: z.string().optional().meta({ description: '数据库表描述' }),
+
+  // 结构化文档元数据
+  rows: z.number().optional().meta({ description: '结构化文档行数' }),
+  cols: z.number().optional().meta({ description: '结构化文档列数' })
 });
 export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;
 export const ListCollectionV2ResponseSchema = PaginationResponseSchema(

@@ -3,6 +3,10 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
+import {
+  markIndexingStart,
+  markDataTrainingPhaseTrace
+} from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -39,7 +43,7 @@ const reduceQueue = () => {
 
 type PopulateType = {
   dataset: { vectorModelId: string };
-  collection: { tableSchema?: any };
+  collection: { tableSchema?: any; indexingStartTime?: Date };
 };
 
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
@@ -81,7 +85,7 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'tableSchema'
+                select: 'tableSchema indexingStartTime'
               }
             ])
             .lean();
@@ -124,7 +128,10 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
       }
 
       // auth balance
+      // NOTE: findOneAndUpdate has already locked this record. If balance check
+      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
@@ -136,12 +143,18 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
         tmbId: data.tmbId
       });
 
+      const phaseStartTime = data.collection?.indexingStartTime || new Date();
+      await markIndexingStart({
+        collectionId: String(data.collectionId),
+        startTime: phaseStartTime
+      });
+
       try {
         const { tokens } = await (async () => {
           if (data.dataId) {
-            return rebuildData({ trainingData: data });
+            return rebuildData({ trainingData: data, phaseStartTime });
           } else {
-            return insertData({ trainingData: data });
+            return insertData({ trainingData: data, phaseStartTime });
           }
         })();
 
@@ -184,7 +197,13 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
   logger.debug('DB Schema queue loop exit', { queueSize: global.vectorQueueLen });
 }
 
-const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+const rebuildData = async ({
+  trainingData,
+  phaseStartTime
+}: {
+  trainingData: TrainingDataType;
+  phaseStartTime: Date;
+}) => {
   // Note: For database schema mode, we don't need to check trainingData.data
   // as the data comes from collection.tableSchema
   if (!trainingData.collection?.tableSchema) {
@@ -242,11 +261,25 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     isRebuild: true
   });
 
+  if (trainingData.dataId) {
+    await markDataTrainingPhaseTrace({
+      dataId: String(trainingData.dataId),
+      mode: TrainingModeEnum.databaseSchema,
+      startTime: phaseStartTime
+    });
+  }
+
   return { tokens };
 };
 
-const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
-  return mongoSessionRun(async (session) => {
+const insertData = async ({
+  trainingData,
+  phaseStartTime
+}: {
+  trainingData: TrainingDataType;
+  phaseStartTime: Date;
+}) => {
+  const result = await mongoSessionRun(async (session) => {
     // Process database schema embedding
     const { tokens } = await processDatabaseSchema({
       trainingData,
@@ -261,6 +294,16 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       tokens
     };
   });
+
+  if (trainingData.dataId) {
+    await markDataTrainingPhaseTrace({
+      dataId: String(trainingData.dataId),
+      mode: TrainingModeEnum.databaseSchema,
+      startTime: phaseStartTime
+    });
+  }
+
+  return result;
 };
 
 const processDatabaseSchema = async ({

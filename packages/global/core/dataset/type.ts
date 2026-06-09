@@ -171,6 +171,14 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
   parsingCompleteTime: z.coerce.date().optional().meta({ description: '解析完成时间' }),
+  parseStartTime: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '解析开始时间（Worker 首次拉取 parse 任务时设置）' }),
+  indexingStartTime: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '索引开始时间（Worker 首次拉取非 parse 任务时设置）' }),
   indexingCompleteTime: z.coerce.date().optional().meta({ description: '索引完成时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
@@ -251,6 +259,13 @@ export const DatasetDataHistorySchema = DatasetDataFieldSchema.extend({
 });
 export type DatasetDataHistoryType = z.infer<typeof DatasetDataHistorySchema>;
 
+export const DatasetDataPhaseTimingSchema = z.object({
+  phase: z.string().meta({ description: '处理阶段名称' }),
+  startTime: z.coerce.date().meta({ description: '开始时间' }),
+  endTime: z.coerce.date().optional().meta({ description: '结束时间' })
+});
+export type DatasetDataPhaseTimingType = z.infer<typeof DatasetDataPhaseTimingSchema>;
+
 export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   _id: ObjectIdSchema.meta({ description: '数据 ID' }),
   userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
@@ -273,7 +288,11 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
     .enum(['standardize', 'restore'])
     .optional()
     .meta({ description: '同义词处理状态' }),
-  synonymFileIds: z.array(z.string()).optional().meta({ description: '同义词文件 ID' })
+  synonymFileIds: z.array(z.string()).optional().meta({ description: '同义词文件 ID' }),
+  phaseTimings: z
+    .array(DatasetDataPhaseTimingSchema)
+    .optional()
+    .meta({ description: '各处理阶段的开始/结束时间' })
 });
 export type DatasetDataSchemaType = z.infer<typeof DatasetDataSchema>;
 
