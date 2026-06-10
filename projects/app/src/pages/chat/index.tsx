@@ -146,15 +146,20 @@ const ChatLogin = ({ onSuccess }: { onSuccess: (res: LoginSuccessResponseType) =
 
 const ChatContent = (props: ChatPageProps) => {
   const { appId: pageAppId, isStandalone } = props;
-  const { appId: storeAppId, chatId } = useChatStore();
+  const { appId: storeAppId, chatId, source } = useChatStore();
   const { setUserInfo } = useUserStore();
 
   const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
   const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
 
-  // URL appId 是入口的明确目标，优先级高于 sessionStorage 中可能残留的上一应用 appId。
-  const currentAppId = pageAppId || storeAppId;
-  const currentChatId = storeAppId === currentAppId ? chatId : '';
+  // 首次入口若还停在 detail/share 等其它 source，以页面入口 appId 为准等待 store 归位；站内切换时 store 会先更新，用 store 保持无感切换。
+  const entryAppId = pageAppId;
+  const currentAppId =
+    source === ChatSourceEnum.online ? storeAppId || entryAppId : entryAppId || storeAppId;
+  const currentChatId =
+    source === ChatSourceEnum.online && storeAppId === currentAppId ? chatId : '';
+  const isChatStoreReady =
+    source === ChatSourceEnum.online && (!currentAppId || storeAppId === currentAppId);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId: currentAppId, source: ChatSourceEnum.online }),
@@ -168,7 +173,6 @@ const ChatContent = (props: ChatPageProps) => {
       chatId: currentChatId
     };
   }, [currentAppId, currentChatId]);
-
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
@@ -188,6 +192,14 @@ const ChatContent = (props: ChatPageProps) => {
   // Not login
   if (!userInfo) {
     return <ChatLogin onSuccess={loginSuccess} />;
+  }
+
+  if (!isChatStoreReady) {
+    return (
+      <PageContainer isLoading flex={'1'} p={4}>
+        <NextHead />
+      </PageContainer>
+    );
   }
 
   // show main chat interface

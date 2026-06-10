@@ -113,7 +113,8 @@ const AppCard = ({
               onClick={() =>
                 window.open(
                   `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-                  '_blank'
+                  '_blank',
+                  'noopener'
                 )
               }
             />

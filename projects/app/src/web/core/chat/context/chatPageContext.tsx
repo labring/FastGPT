@@ -186,14 +186,18 @@ export const ChatPageContextProvider = ({
         setAppId(_id);
       }
 
-      await router.replace({
-        query: {
-          ...router.query,
-          appId: _id,
-          pane: newPane,
-          tab
-        }
-      });
+      await router.replace(
+        {
+          query: {
+            ...router.query,
+            appId: _id,
+            pane: newPane,
+            tab
+          }
+        },
+        undefined,
+        { shallow: true }
+      );
 
       setLastPane(newPane);
       setLastChatAppId(_id);
