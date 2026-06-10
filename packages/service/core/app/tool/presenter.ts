@@ -63,6 +63,7 @@ export async function getToolPreviewNode({
     intro: toolDetail.intro,
     toolDescription: toolDetail.toolDescription,
     courseUrl: toolDetail.courseUrl,
+    readmeUrl: toolDetail.readmeUrl,
     userGuide: toolDetail.userGuide ?? undefined,
     showStatus: true,
     isTool: true,

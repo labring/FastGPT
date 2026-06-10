@@ -123,6 +123,9 @@ export const ToolDataSchema = z.object({
   courseUrl: z.string().optional().meta({
     description: '工具教程地址'
   }),
+  readmeUrl: z.string().optional().meta({
+    description: '工具 README 地址'
+  }),
   name: z.string().optional().meta({
     description: '工具展示名称'
   }),
@@ -171,7 +174,8 @@ export const FlowNodeCommonTypeSchema = z.object({
   currentCost: NumSchema.optional(),
   systemKeyCost: NumSchema.optional(),
   hasTokenFee: BoolSchema.optional(),
-  hasSystemSecret: BoolSchema.optional()
+  hasSystemSecret: BoolSchema.optional(),
+  readmeUrl: z.string().optional()
 });
 export type FlowNodeCommonType = z.infer<typeof FlowNodeCommonTypeSchema>;
 
@@ -199,6 +203,7 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 
   diagram: z.string().optional(),
   courseUrl: z.string().optional(),
+  readmeUrl: z.string().optional(),
   userGuide: z.string().optional(),
   tags: z.array(z.string()).nullish(),
 

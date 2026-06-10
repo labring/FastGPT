@@ -3,10 +3,12 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 
-const { authAppByTmbIdMock, getAppVersionByIdMock } = vi.hoisted(() => ({
+const { authAppByTmbIdMock, getAppVersionByIdMock, getSystemToolDetailMock } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
-  getAppVersionByIdMock: vi.fn()
+  getAppVersionByIdMock: vi.fn(),
+  getSystemToolDetailMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -20,7 +22,7 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: vi.fn(() => ({
-      getSystemToolDetail: vi.fn()
+      getSystemToolDetail: getSystemToolDetailMock
     }))
   }
 }));
@@ -127,6 +129,7 @@ const createToolsetApp = ({
 describe('getAgentRuntimeTools schema loading', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getSystemToolDetailMock.mockReset();
 
     authAppByTmbIdMock.mockImplementation(async ({ appId }: { appId: string }) => {
       const app = appMap[appId];
@@ -243,5 +246,68 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads system tool params from standard JSON schema description', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-gpjj5s',
+      name: '热榜工具',
+      avatar: 'hot-list.png',
+      intro: '获取热榜信息，支持36氪、知乎、微博、掘金、头条等多个平台',
+      toolDescription: '获取热榜信息',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      outputs: [],
+      inputs: jsonSchema2NodeInput({
+        schemaType: 'systemTool',
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            platform: {
+              type: 'array',
+              title: '热榜平台',
+              description: '选择热榜来源网站（可多选）',
+              items: {
+                type: 'string',
+                enum: ['36kr', 'zhihu', 'weibo', 'juejin', 'toutiao']
+              }
+            }
+          },
+          required: ['platform']
+        }
+      })
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-gpjj5s', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
+    expect(tools[0].requestSchema.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        platform: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['36kr', 'zhihu', 'weibo', 'juejin', 'toutiao']
+          },
+          description: '选择热榜来源网站（可多选）'
+        }
+      },
+      required: ['platform']
+    });
   });
 });

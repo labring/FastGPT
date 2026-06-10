@@ -10,6 +10,7 @@ import {
   jsonSchema2NodeOutput,
   jsonSchema2SecretInput
 } from '@fastgpt/global/core/app/jsonschema';
+import { fetchRemoteMarkdown } from '../../../../common/Markdown/utils';
 
 export type UseToolDetailProps = {
   toolId?: string;
@@ -149,23 +150,7 @@ export const useToolDetail = ({
       }
 
       try {
-        const response = await fetch(readmeUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch README: ${response.status}`);
-        }
-        let content = await response.text();
-
-        const baseUrl = readmeUrl.substring(0, readmeUrl.lastIndexOf('/') + 1);
-
-        content = content.replace(
-          /!\[([^\]]*)\]\(\.\/([^)]+)\)/g,
-          (match, alt, path) => `![${alt}](${baseUrl}${path})`
-        );
-        content = content.replace(
-          /!\[([^\]]*)\]\((?!http|https|\/\/)([^)]+)\)/g,
-          (match, alt, path) => `![${alt}](${baseUrl}${path})`
-        );
-        setReadmeContent(content);
+        setReadmeContent(await fetchRemoteMarkdown(readmeUrl));
       } catch (error) {
         console.error('Failed to fetch README:', error);
         setReadmeContent('');

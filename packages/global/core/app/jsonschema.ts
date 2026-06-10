@@ -169,7 +169,7 @@ export const jsonSchema2NodeInput = ({
       schemaType === 'http'
         ? value['x-tool-description']
         : schemaType === 'systemTool'
-          ? value['toolDescription']
+          ? value['toolDescription'] || value.description
           : value.description || key,
     required: jsonSchema?.required?.includes(key),
     ...getNodeInputRenderTypeFromSchemaInputType(value)

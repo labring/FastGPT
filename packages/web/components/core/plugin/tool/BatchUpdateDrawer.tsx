@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -19,10 +19,10 @@ import MyIconButton from '../../../common/Icon/button';
 import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
-import Markdown from '../../../common/Markdown';
 import { useTableMultipleSelect } from '../../../../hooks/useTableMultipleSelect';
 import {
   ParamSection,
+  ReadmeBox,
   SubToolAccordionItem,
   useToolDetail,
   drawerScrollbarStyles,
@@ -76,15 +76,13 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     autoFetch: viewMode === 'detail'
   });
 
-  // Reset view mode when drawer closes
-  useEffect(() => {
-    if (!isOpen) {
-      setViewMode('list');
-      setSelectedToolForDetail(null);
-      setActiveTab('params');
-      setSelectedItems([]);
-    }
-  }, [isOpen, setSelectedItems]);
+  const handleClose = useCallback(() => {
+    setViewMode('list');
+    setSelectedToolForDetail(null);
+    setActiveTab('params');
+    setSelectedItems([]);
+    onClose();
+  }, [onClose, setSelectedItems]);
 
   const handleViewDetail = useCallback((tool: ToolCardItemType) => {
     setSelectedToolForDetail(tool);
@@ -111,7 +109,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   }, [selectedToolForDetail, onBatchUpdate, handleBack]);
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} placement="right">
+    <Drawer isOpen={isOpen} onClose={handleClose} placement="right">
       <DrawerOverlay />
       <DrawerContent maxW="480px" borderLeftRadius="md">
         <DrawerHeader pt={6} pb={1}>
@@ -121,7 +119,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 {t('app:toolkit_updatable_plugins')}
               </Box>
               <Box flex={1} />
-              <MyIconButton icon={'common/closeLight'} onClick={onClose} />
+              <MyIconButton icon={'common/closeLight'} onClick={handleClose} />
             </Flex>
           ) : (
             <Flex gap={1.5}>
@@ -270,7 +268,12 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                   ]}
                   value={activeTab}
                   onChange={(value) => {
-                    if (value === 'guide' && parentTool?.courseUrl) {
+                    if (
+                      value === 'guide' &&
+                      parentTool?.courseUrl &&
+                      !parentTool?.readme &&
+                      !parentTool?.userGuide
+                    ) {
                       window.open(parentTool?.courseUrl, '_blank');
                     } else {
                       setActiveTab(value as 'guide' | 'params');
@@ -284,21 +287,11 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
               <Box mt={4}>
                 {activeTab === 'guide' && (
                   <VStack align="stretch" spacing={4} flex="1" minH="0">
-                    {(readmeContent || parentTool?.userGuide) && (
-                      <Box
-                        px={4}
-                        py={3}
-                        border="1px solid"
-                        borderColor="myGray.200"
-                        borderRadius="md"
-                        bg="myGray.50"
-                        fontSize="sm"
-                        color="myGray.900"
-                        flex="1"
-                        overflowY="auto"
-                      >
-                        <Markdown source={readmeContent || parentTool?.userGuide || ''} />
-                      </Box>
+                    {(parentTool?.readme || readmeContent || parentTool?.userGuide) && (
+                      <ReadmeBox
+                        source={readmeContent || parentTool?.userGuide || ''}
+                        courseUrl={parentTool?.courseUrl}
+                      />
                     )}
                   </VStack>
                 )}

@@ -65,6 +65,7 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
           hasSystemSecret={node?.hasSystemSecret}
           secretCost={node?.systemKeyCost}
           courseUrl={node?.courseUrl}
+          readmeUrl={node?.readmeUrl}
           parentId={node?.pluginId}
           onClose={setFalse}
           onSubmit={onSubmit}

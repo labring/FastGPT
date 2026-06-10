@@ -154,7 +154,8 @@ export async function rewriteAppWorkflowToDetail({
             status: preview.status,
             diagram: preview.diagram,
             userGuide: preview.userGuide,
-            courseUrl: preview.courseUrl
+            courseUrl: preview.courseUrl,
+            readmeUrl: preview.readmeUrl
           };
           node.versionLabel = preview.versionLabel;
           node.isLatestVersion = preview.isLatestVersion;

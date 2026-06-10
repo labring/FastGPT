@@ -216,6 +216,44 @@ describe('jsonSchema2NodeInput', () => {
     ]);
   });
 
+  it('should keep standard description as tool description for system tool schema', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        sources: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['36kr', 'zhihu', 'weibo']
+          },
+          title: '热榜来源',
+          description: '选择热榜来源网站（可多选）'
+        }
+      },
+      required: ['sources']
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'systemTool' });
+
+    expect(result).toEqual([
+      {
+        key: 'sources',
+        label: '热榜来源',
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        description: '选择热榜来源网站（可多选）',
+        toolDescription: '选择热榜来源网站（可多选）',
+        required: true,
+        value: [],
+        renderTypeList: ['multipleSelect', 'reference'],
+        list: [
+          { label: '36kr', value: '36kr' },
+          { label: 'zhihu', value: 'zhihu' },
+          { label: 'weibo', value: 'weibo' }
+        ]
+      }
+    ]);
+  });
+
   it('should stringify enum options to match node input schema', () => {
     const jsonSchema: JSONSchemaInputType = {
       type: 'object',
