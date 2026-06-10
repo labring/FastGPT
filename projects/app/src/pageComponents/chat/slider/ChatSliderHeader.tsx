@@ -35,7 +35,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
-  const isHomePane = pane === ChatSidebarPaneEnum.HOME && currentAppId === homeAppId;
+  const isHomePane = pane === ChatSidebarPaneEnum.HOME && activeAppId === homeAppId;
   const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
 
   return isPc ? (

@@ -1,8 +1,8 @@
 import { type BoxProps } from '@chakra-ui/react';
 
-export const textareaMinH = '22px';
+export const textareaMinH = '24px';
 
-export const ChatInputDefaultHeight: BoxProps['h'] = '132px';
+export const ChatInputDefaultHeight: BoxProps['h'] = '112px';
 
 export const HomeChatMobileBottomGap = 0;
 

@@ -272,6 +272,7 @@ const NavigationSection = () => {
     (v) => v.pane === ChatSidebarPaneEnum.ALL_APPS
   );
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+  const showHome = feConfigs.isPlus && isEnableHome;
 
   return (
     <Flex mt={4} flexDirection={'column'} gap={'12px'} px={4}>
@@ -283,51 +284,43 @@ const NavigationSection = () => {
         {isCollapsed ? (
           <AnimatedSection show={true}>
             <Flex flexDir="column" gap={0}>
-              {feConfigs.isPlus && (
-                <>
-                  {isEnableHome && (
-                    <ActionButton
-                      icon="core/chat/sidebar/home"
-                      isCollapsed={true}
-                      isActive={isHomeActive}
-                      onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
-                    />
-                  )}
-
-                  <ActionButton
-                    icon="common/app"
-                    isCollapsed={true}
-                    isActive={isAllAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
-                  />
-                </>
+              {showHome && (
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  isCollapsed={true}
+                  isActive={isHomeActive}
+                  onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                />
               )}
+
+              <ActionButton
+                icon="common/app"
+                isCollapsed={true}
+                isActive={isAllAppsActive}
+                onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
+              />
             </Flex>
           </AnimatedSection>
         ) : (
           <AnimatedSection show={true}>
             <Flex flexDir="column" gap={0}>
-              {feConfigs.isPlus && (
-                <>
-                  {isEnableHome && (
-                    <ActionButton
-                      icon="core/chat/sidebar/home"
-                      text={t('chat:sidebar.home')}
-                      isCollapsed={false}
-                      isActive={isHomeActive}
-                      onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
-                    />
-                  )}
-
-                  <ActionButton
-                    icon="common/app"
-                    text={t('chat:sidebar.all_apps')}
-                    isCollapsed={false}
-                    isActive={isAllAppsActive}
-                    onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
-                  />
-                </>
+              {showHome && (
+                <ActionButton
+                  icon="core/chat/sidebar/home"
+                  text={t('chat:sidebar.home')}
+                  isCollapsed={false}
+                  isActive={isHomeActive}
+                  onClick={() => handlePaneChange(ChatSidebarPaneEnum.HOME)}
+                />
               )}
+
+              <ActionButton
+                icon="common/app"
+                text={t('chat:sidebar.all_apps')}
+                isCollapsed={false}
+                isActive={isAllAppsActive}
+                onClick={() => handlePaneChange(ChatSidebarPaneEnum.ALL_APPS)}
+              />
             </Flex>
           </AnimatedSection>
         )}

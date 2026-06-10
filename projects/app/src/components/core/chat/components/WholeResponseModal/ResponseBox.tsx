@@ -9,7 +9,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING,
-  WHOLE_RESPONSE_SIDE_TAB_WIDTH,
   WholeResponseSideTab
 } from './SideTab';
 import { WholeResponseContent } from './WholeResponseContent';
