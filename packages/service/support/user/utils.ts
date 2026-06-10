@@ -46,6 +46,23 @@ export const updateWebSyncLimit = async (teamId: string) => {
     });
   } catch {}
 };
+
+/**
+ * 清除团队站点同步冷却时间。
+ *
+ * 站点同步任务入队时会先写入 `limit.lastWebsiteSyncTime` 做触发频率限制；
+ * 如果 worker 最终没有成功同步任何页面，这次空同步不应占用团队后续手动同步机会。
+ */
+export const clearWebSyncLimit = async (teamId: string) => {
+  try {
+    await MongoTeam.findByIdAndUpdate(teamId, {
+      $unset: {
+        'limit.lastWebsiteSyncTime': 1
+      }
+    });
+  } catch {}
+};
+
 export const checkWebSyncLimit = async ({
   teamId,
   limitMinutes = 0
