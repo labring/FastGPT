@@ -184,7 +184,7 @@ const DataInputPanel = ({
           submitData();
         }}
       >
-        {t('dataset:generate_index')}
+        {t('common:generate_index')}
       </Button>
     </Flex>
   );

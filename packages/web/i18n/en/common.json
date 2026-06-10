@@ -769,6 +769,7 @@
   "dataset_data_input_q": "question",
   "dataset_data_input_qa": "QA",
   "dataset_text_model_tip": "Used for text processing in the knowledge base preprocessing stage, such as automatic supplementary indexing, Q&A pair extraction.",
+  "generate_index": "Update index",
   "date_12_months": "12 Months",
   "date_1_month": "1 Month",
   "date_3_months": "3 Months",
