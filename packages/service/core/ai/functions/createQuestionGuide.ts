@@ -6,6 +6,7 @@ import {
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getLLMModel } from '../model';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
@@ -22,6 +23,7 @@ export async function createQuestionGuide({
   inputTokens: number;
   outputTokens: number;
 }> {
+  const questionGuideModel = getLLMModel(model);
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
@@ -39,7 +41,8 @@ export async function createQuestionGuide({
       temperature: 0.1,
       max_tokens: 200,
       messages: concatMessages,
-      stream: true
+      stream: true,
+      ...(questionGuideModel?.reasoning ? { reasoning_effort: 'none' as const } : {})
     }
   });
 
