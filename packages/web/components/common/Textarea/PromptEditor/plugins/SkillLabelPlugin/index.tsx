@@ -1,5 +1,5 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { $createSkillNode, SkillNode } from './node';
 import type { TextNode } from 'lexical';
 import { getSkillRegexString } from './utils';
@@ -16,17 +16,13 @@ export type SkillLabelItemType = SelectedToolItemType & {
 
 function SkillLabelPlugin({
   selectedSkills = [],
-  onClickSkill,
-  onRemoveSkill
+  onClickSkill
 }: {
   selectedSkills: SkillLabelItemType[];
   onClickSkill: (id: string) => void;
   onRemoveSkill: (id: string) => void;
 }) {
   const [editor] = useLexicalComposerContext();
-
-  // Track the mapping of node keys to skill IDs for detecting deletions
-  const previousIdsRef = useRef<Map<string, string>>(new Map());
 
   // Check if SkillNode is registered in the editor
   useEffect(() => {
@@ -144,41 +140,6 @@ function SkillLabelPlugin({
       });
     });
   }, [selectedSkills, editor, onClickSkill]);
-
-  // Monitor skill node mutations and notify parent on destruction
-  useEffect(() => {
-    const unregister = editor.registerMutationListener(SkillNode, (mutatedNodes) => {
-      const currentState = editor.getEditorState();
-
-      mutatedNodes.forEach((mutation, nodeKey) => {
-        if (mutation === 'destroyed') {
-          const removedId = previousIdsRef.current.get(nodeKey);
-          if (removedId) {
-            onRemoveSkill(removedId);
-          }
-          previousIdsRef.current.delete(nodeKey);
-          return;
-        }
-
-        const node = currentState._nodeMap.get(nodeKey);
-        if (node instanceof SkillNode) {
-          previousIdsRef.current.set(nodeKey, node.getSkillKey());
-        }
-      });
-    });
-
-    // Initialize with current state
-    editor.getEditorState().read(() => {
-      const nodes = editor.getEditorState()._nodeMap;
-      nodes.forEach((node, nodeKey) => {
-        if (node instanceof SkillNode) {
-          previousIdsRef.current.set(nodeKey, node.getSkillKey());
-        }
-      });
-    });
-
-    return unregister;
-  }, [editor, onRemoveSkill]);
 
   return null;
 }

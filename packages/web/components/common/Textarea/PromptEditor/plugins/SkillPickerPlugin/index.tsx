@@ -1,6 +1,5 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import type { TextNode } from 'lexical';
 import {
   $createTextNode,
   $getSelection,
@@ -72,11 +71,15 @@ export default function SkillPickerPlugin({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
-    setSkillOptions((state) => {
-      const newOptions = [...state];
-      newOptions[0] = skillOption;
-      return newOptions;
-    });
+    const timer = window.setTimeout(() => {
+      setSkillOptions((state) => {
+        const newOptions = [...state];
+        newOptions[0] = skillOption;
+        return newOptions;
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [skillOption]);
 
   const [editor] = useLexicalComposerContext();
@@ -91,7 +94,11 @@ export default function SkillPickerPlugin({
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Scroll selected item into view
-  const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
+  const scrollIntoView = useCallback(function scrollIntoView(
+    columnIndex: number,
+    rowIndex: number,
+    retryCount = 0
+  ) {
     const itemKey = `${columnIndex}-${rowIndex}`;
     const itemElement = itemRefs.current.get(itemKey);
     if (itemElement) {
@@ -177,6 +184,39 @@ export default function SkillPickerPlugin({
     }
   );
 
+  const insertSkillNodeText = useCallback(
+    (skillId: string, matchingString?: string | null) => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+
+        const anchorNode = selection.anchor.getNode();
+        const anchorOffset = selection.anchor.offset;
+
+        if ($isTextNode(anchorNode)) {
+          const text = anchorNode.getTextContent();
+          const triggerText = `@${matchingString ?? ''}`;
+          let atIndex = text.lastIndexOf(triggerText, anchorOffset);
+
+          if (atIndex === -1) {
+            atIndex = text.lastIndexOf('@', anchorOffset);
+          }
+
+          if (atIndex !== -1) {
+            const removeEnd = Math.max(anchorOffset, atIndex + triggerText.length, atIndex + 1);
+            const beforeAt = text.substring(0, atIndex);
+            const afterTrigger = text.substring(removeEnd);
+            anchorNode.setTextContent(beforeAt + afterTrigger);
+            anchorNode.select(beforeAt.length, beforeAt.length);
+          }
+        }
+
+        selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+      });
+    },
+    [editor]
+  );
+
   // Handle item click (confirm selection)
   const itemClickLock = useRef(false);
   const [isItemClickLoading, setIsItemClickLoading] = useState(false);
@@ -191,34 +231,7 @@ export default function SkillPickerPlugin({
 
         // Step 2: Update editor with the skillId (inside a fresh editor.update)
         if (skillId) {
-          console.log(skillId, 2222);
-          editor.update(() => {
-            // Re-acquire selection in this update cycle to avoid stale node references
-            const selection = $getSelection();
-            if (!$isRangeSelection(selection)) return;
-
-            // Re-acquire nodes in this update cycle
-            const nodes = selection.getNodes();
-            nodes.forEach((node) => {
-              if ($isTextNode(node)) {
-                const text = node.getTextContent();
-                const atIndex = text.lastIndexOf('@');
-                if (atIndex !== -1) {
-                  // Remove the '@' trigger character
-                  const beforeAt = text.substring(0, atIndex);
-                  const afterAt = text.substring(atIndex + 1);
-                  node.setTextContent(beforeAt + afterAt);
-
-                  // Move cursor to where '@' was
-                  const newOffset = beforeAt.length;
-                  node.select(newOffset, newOffset);
-                }
-              }
-            });
-
-            // Insert skill node text at current selection
-            selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-          });
+          insertSkillNodeText(skillId);
         }
       } catch (error) {
         return Promise.reject(error);
@@ -228,7 +241,7 @@ export default function SkillPickerPlugin({
       }
     },
     {
-      refreshDeps: [editor]
+      refreshDeps: [insertSkillNodeText]
     }
   );
 
@@ -584,13 +597,14 @@ export default function SkillPickerPlugin({
 
   // Recursively render item list
   const renderItemList = useCallback(
-    (
+    function renderItemList(
       items: SkillItemType[],
       columnData: SkillOptionItemType,
       columnIndex: number,
+      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void,
       depth: number = 0,
       startFlatIndex: number = 0
-    ): { elements: JSX.Element[]; nextFlatIndex: number } => {
+    ): { elements: JSX.Element[]; nextFlatIndex: number } {
       const result: JSX.Element[] = [];
       const activeRowIndex = selectedRowIndex[columnIndex];
       let currentFlatIndex = startFlatIndex;
@@ -643,10 +657,14 @@ export default function SkillPickerPlugin({
                   option: columnData
                 });
               } else {
-                handleItemClick({
-                  item,
-                  option: columnData
-                });
+                if (onSelectOption) {
+                  onSelectOption(item, columnData);
+                } else {
+                  handleItemClick({
+                    item,
+                    option: columnData
+                  });
+                }
               }
             }}
             onMouseEnter={(e) => {
@@ -705,6 +723,7 @@ export default function SkillPickerPlugin({
             item.folderChildren,
             columnData,
             columnIndex,
+            onSelectOption,
             depth + 1,
             currentFlatIndex
           );
@@ -729,7 +748,11 @@ export default function SkillPickerPlugin({
   );
   // Render single column
   const renderColumn = useCallback(
-    (columnData: SkillOptionItemType, columnIndex: number) => {
+    (
+      columnData: SkillOptionItemType,
+      columnIndex: number,
+      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void
+    ) => {
       const columnWidth = columnData.onFolderLoad ? '280px' : '200px';
 
       return (
@@ -751,7 +774,7 @@ export default function SkillPickerPlugin({
               {columnData.description}
             </Box>
           )}
-          {renderItemList(columnData.list, columnData, columnIndex).elements}
+          {renderItemList(columnData.list, columnData, columnIndex, onSelectOption).elements}
         </MyBox>
       );
     },
@@ -768,39 +791,20 @@ export default function SkillPickerPlugin({
     );
   }, [skillOptions]);
   const onSelectOption = useCallback(
-    async (selectedOption: any, nodeToRemove: TextNode | null, closeMenu: () => void) => {
+    async (
+      selectedOption: any,
+      nodeToRemove: unknown,
+      closeMenu: () => void,
+      matchingString: string | null
+    ) => {
+      void nodeToRemove;
+
       // Step 1: Call async onClick handler (outside editor.update)
       const skillId = await selectedOption.onClick?.(selectedOption.id);
 
       // Step 2: Update editor with the skill (inside a fresh editor.update)
       if (skillId) {
-        editor.update(() => {
-          // Re-acquire selection in this update cycle to avoid stale node references
-          const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
-
-          // Re-acquire nodes in this update cycle
-          const nodes = selection.getNodes();
-          nodes.forEach((node) => {
-            if ($isTextNode(node)) {
-              const text = node.getTextContent();
-              const atIndex = text.lastIndexOf('@');
-              if (atIndex !== -1) {
-                // Remove the '@' trigger character
-                const beforeAt = text.substring(0, atIndex);
-                const afterAt = text.substring(atIndex + 1);
-                node.setTextContent(beforeAt + afterAt);
-
-                // Move cursor to where '@' was
-                const newOffset = beforeAt.length;
-                node.select(newOffset, newOffset);
-              }
-            }
-          });
-
-          // Insert skill node text at current selection
-          selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-        });
+        insertSkillNodeText(skillId, matchingString);
 
         // Close menu after editor update to avoid flushSync warning
         setTimeout(() => {
@@ -811,7 +815,7 @@ export default function SkillPickerPlugin({
         closeMenu();
       }
     },
-    [editor]
+    [insertSkillNodeText]
   );
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -826,15 +830,8 @@ export default function SkillPickerPlugin({
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={menuOptions}
-      menuRenderFn={(anchorElementRef) => {
+      menuRenderFn={(anchorElementRef, { selectOptionAndCleanUp }) => {
         const shouldShow = skillOptions.length > 0 && anchorElementRef.current !== null && isFocus;
-
-        // Sync menu open state with render
-        if (!shouldShow && isMenuOpen) {
-          setIsMenuOpen(false);
-        } else if (shouldShow && !isMenuOpen) {
-          setIsMenuOpen(true);
-        }
 
         return ReactDOM.createPortal(
           <Flex
@@ -844,7 +841,14 @@ export default function SkillPickerPlugin({
             zIndex={99999}
           >
             {skillOptions.map((column, index) => {
-              return renderColumn(column, index);
+              return renderColumn(column, index, (item, option) => {
+                if (!option.onClick) return;
+                selectOptionAndCleanUp({
+                  key: item.id,
+                  ...item,
+                  onClick: option.onClick
+                } as any);
+              });
             })}
 
             {selectedTool && (
