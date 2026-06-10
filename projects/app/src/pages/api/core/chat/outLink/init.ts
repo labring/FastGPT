@@ -12,9 +12,13 @@ import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { InitOutLinkChatQuerySchema } from '@fastgpt/global/openapi/core/chat/outLink/api';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { chatId, shareId, outLinkUid } = InitOutLinkChatQuerySchema.parse(req.query);
+  const { chatId, shareId, outLinkUid } = parseApiInput({
+    req,
+    querySchema: InitOutLinkChatQuerySchema
+  }).query;
 
   // auth link permission
   const { uid, appId } = await authOutLink({ shareId, outLinkUid });
