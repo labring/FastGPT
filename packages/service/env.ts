@@ -57,10 +57,6 @@ export const serviceEnv = createEnv({
     // 插件
     PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004'),
     PLUGIN_TOKEN: z.string().default('token'),
-    PLUGIN_ACCESS_TOKEN_SECRET: z.string().default('plugin_access_token_secret'),
-    PLUGIN_ACCESS_TOKEN_EXPIRES_IN: IntSchema.default(3600).meta({
-      description: '过期时间，单位: 秒'
-    }),
 
     // 代码沙箱
     CODE_SANDBOX_URL: UrlSchema.default('http://localhost:3002'),
