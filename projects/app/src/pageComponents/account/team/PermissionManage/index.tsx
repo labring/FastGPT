@@ -60,6 +60,7 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { type CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 function PermissionManage({
   Tabs,
@@ -70,6 +71,7 @@ function PermissionManage({
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
 
   const collaboratorList = useContextSelector(
     CollaboratorContext,
@@ -263,12 +265,14 @@ function PermissionManage({
                     <QuestionTip ml="1" label={t('account_team:permission_apikeyCreate_Tip')} />
                   </Box>
                 </Th>
-                <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
-                    {t('account_team:permission_evaluationCreate')}
-                    <QuestionTip ml="1" label={t('account_team:permission_evaluationCreate_Tip')} />
-                  </Box>
-                </Th>
+                {feConfigs?.show_evaluation && (
+                  <Th bg="myGray.100">
+                    <Box mx="auto" w="fit-content">
+                      {t('account_team:permission_evaluationCreate')}
+                      <QuestionTip ml="1" label={t('account_team:permission_evaluationCreate_Tip')} />
+                    </Box>
+                  </Th>
+                )}
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
                     {t('account_team:permission_manage')}
@@ -332,12 +336,14 @@ function PermissionManage({
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
-                      <PermissionCheckBox
-                        isDisabled={member.permission.isOwner || !userManage}
-                        role={TeamEvaluationCreateRoleVal}
-                        clbPer={member.permission}
-                        id={member.tmbId!}
-                      />
+                      {feConfigs?.show_evaluation && (
+                        <PermissionCheckBox
+                          isDisabled={member.permission.isOwner || !userManage}
+                          role={TeamEvaluationCreateRoleVal}
+                          clbPer={member.permission}
+                          id={member.tmbId!}
+                        />
+                      )}
                       <PermissionCheckBox
                         isDisabled={!userInfo?.permission.isOwner}
                         role={TeamManageRoleVal}
@@ -407,12 +413,14 @@ function PermissionManage({
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
-                      <PermissionCheckBox
-                        isDisabled={org.permission.isOwner || !userManage}
-                        role={TeamEvaluationCreatePermissionVal}
-                        clbPer={org.permission}
-                        id={org.orgId!}
-                      />
+                      {feConfigs?.show_evaluation && (
+                        <PermissionCheckBox
+                          isDisabled={org.permission.isOwner || !userManage}
+                          role={TeamEvaluationCreatePermissionVal}
+                          clbPer={org.permission}
+                          id={org.orgId!}
+                        />
+                      )}
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userInfo?.permission.isOwner}
                         role={TeamManagePermissionVal}
@@ -487,12 +495,14 @@ function PermissionManage({
                         clbPer={group.permission}
                         id={group.groupId!}
                       />
-                      <PermissionCheckBox
-                        isDisabled={group.permission.isOwner || !userManage}
-                        role={TeamEvaluationCreatePermissionVal}
-                        clbPer={group.permission}
-                        id={group.groupId!}
-                      />
+                      {feConfigs?.show_evaluation && (
+                        <PermissionCheckBox
+                          isDisabled={group.permission.isOwner || !userManage}
+                          role={TeamEvaluationCreatePermissionVal}
+                          clbPer={group.permission}
+                          id={group.groupId!}
+                        />
+                      )}
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userInfo?.permission.isOwner}
                         role={TeamManagePermissionVal}
@@ -542,3 +552,4 @@ export const Render = ({ Tabs }: { Tabs: React.ReactNode }) => {
 };
 
 export default Render;
+
