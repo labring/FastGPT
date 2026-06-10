@@ -48,6 +48,7 @@ const exactMap: Record<string, string> = {
   '/introduction/guide/dashboard/intro': '/guide/build/workflow/intro',
   '/introduction/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
   '/introduction/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/build/tools/system-plugins/dev_system_tool': '/plugin/system-tool-development',
 
   // Workspace.
   '/introduction/commercial': '/guide/version/commercial',
