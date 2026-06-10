@@ -1226,6 +1226,9 @@ importers:
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.10(typescript@6.0.3)
 
   projects/app:
     dependencies:
