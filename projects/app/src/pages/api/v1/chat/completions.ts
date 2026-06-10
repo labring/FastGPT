@@ -276,6 +276,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           apiVersion: 'v1',
+          req,
           res,
           lang: getLocale(req),
           requestOrigin: req.headers.origin,

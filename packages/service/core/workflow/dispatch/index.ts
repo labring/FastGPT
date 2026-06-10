@@ -63,6 +63,7 @@ import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
+import { createClientAbortTracker } from './utils/clientAbort';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -165,7 +166,8 @@ export async function dispatchWorkFlow({
     histories,
     query,
     chatId,
-    apiVersion
+    apiVersion,
+    req
   } = data;
 
   // Check url valid
@@ -247,6 +249,14 @@ export async function dispatchWorkFlow({
     }
   }
 
+  const clientAbortTracker =
+    apiVersion === 'v1'
+      ? createClientAbortTracker({
+          req,
+          res
+        })
+      : undefined;
+
   const variableState = await WorkflowVariableState.create({
     timezone,
     runningAppInfo,
@@ -266,8 +276,7 @@ export async function dispatchWorkFlow({
       return stopping;
     }
     if (apiVersion === 'v1') {
-      if (!res) return false;
-      return res.closed || !!res.errored;
+      return !!clientAbortTracker?.isClientAborted();
     }
     return false;
   };
@@ -315,6 +324,7 @@ export async function dispatchWorkFlow({
             if (checkStoppingTimer) {
               clearInterval(checkStoppingTimer);
             }
+            clientAbortTracker?.cleanup();
 
             // Close mcpClient connections
             Object.values(ctx.mcpClientMemory).forEach((client) => {

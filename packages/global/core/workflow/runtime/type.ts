@@ -12,6 +12,7 @@ import type { NodeInputKeyEnum } from '../constants';
 import { NodeOutputKeyEnum } from '../constants';
 import { ClassifyQuestionAgentItemSchema } from '../template/system/classifyQuestion/type';
 import type { NextApiResponse } from 'next';
+import type { IncomingMessage } from 'node:http';
 import type { AppSchemaType } from '../../app/type';
 import type { RuntimeEdgeItemType } from '../type/edge';
 import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
@@ -59,6 +60,7 @@ export type WorkflowVariableStateLike = {
 
 /* workflow props */
 export type ChatDispatchProps = {
+  req?: IncomingMessage;
   res?: NextApiResponse;
   checkIsStopping: () => boolean;
   lang?: localeType;
