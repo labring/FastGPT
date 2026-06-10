@@ -243,7 +243,8 @@ const toolChoice = async (props: ActionProps) => {
     messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } },
-    toolCallMode: 'toolChoice'
+    toolCallMode: 'toolChoice',
+    ...(extractModel.reasoning ? { reasoning_effort: 'none' as const } : {})
   } as const;
 
   const {
