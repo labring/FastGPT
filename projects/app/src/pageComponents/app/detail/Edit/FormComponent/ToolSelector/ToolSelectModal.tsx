@@ -289,7 +289,7 @@ const RenderList = React.memo(function RenderList({
       const topTool = topAgentSelectedTools.find((tool) => tool.pluginId === res.pluginId);
       if (topTool) {
         res.inputs.forEach((input) => {
-          const topInput = topTool.inputs.find((input) => input.key === input.key);
+          const topInput = topTool.inputs.find((topInput) => topInput.key === input.key);
           if (topInput) {
             input.value = topInput.value;
           }
@@ -452,7 +452,7 @@ const RenderList = React.memo(function RenderList({
   return (
     <Flex position="relative" direction="column" h="100%">
       <Box overflowY="auto" mb={8} w={'full'}>
-        <PluginListRender />
+        {PluginListRender()}
       </Box>
       {type === TemplateTypeEnum.systemTools && (
         <Flex

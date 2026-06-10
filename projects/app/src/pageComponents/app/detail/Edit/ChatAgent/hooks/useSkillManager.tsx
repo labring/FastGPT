@@ -48,7 +48,6 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
 export const useSkillManager = ({
   selectedTools,
   onUpdateOrAddTool,
-  onDeleteTool,
   canUploadFile,
   hasSelectedDataset,
   useAgentSandbox
@@ -96,6 +95,17 @@ export const useSkillManager = ({
           label: parseI18nString(datasetSearchInfo.name, i18n.language),
           icon: datasetSearchInfo.avatar,
           description: datasetSearchInfo.toolDescription,
+          canClick: true
+        });
+      }
+
+      const readFilesInfo = systemSubInfo[SubAppIds.readFiles];
+      if (readFilesInfo) {
+        apiTools.unshift({
+          id: SubAppIds.readFiles,
+          label: parseI18nString(readFilesInfo.name, i18n.language),
+          icon: readFilesInfo.avatar,
+          description: readFilesInfo.toolDescription,
           canClick: true
         });
       }
@@ -177,7 +187,6 @@ export const useSkillManager = ({
   const lastSelectedTools = useLatest(selectedTools);
   const onAddAppOrTool = useCallback(
     async (toolId: string) => {
-      console.log('Add tool', toolId);
       // Check tool exists, if exists, not update/add tool
       const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
@@ -305,6 +314,22 @@ export const useSkillManager = ({
       });
     }
 
+    const readFilesInfo = systemSubInfo[SubAppIds.readFiles];
+    if (readFilesInfo) {
+      tools.push({
+        id: SubAppIds.readFiles,
+        pluginId: SubAppIds.readFiles,
+        name: parseI18nString(readFilesInfo.name, i18n.language),
+        avatar: readFilesInfo.avatar,
+        intro: readFilesInfo.toolDescription,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        inputs: [],
+        outputs: [],
+        configStatus: canUploadFile ? 'configured' : 'invalid'
+      });
+    }
+
     // Merge sandbox tool
     const sandboxToolInfo = systemSubInfo[AGENT_SANDBOX_TOOLSET_ID];
     if (sandboxToolInfo) {
@@ -328,7 +353,7 @@ export const useSkillManager = ({
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(
     (id: string) => {
-      const tool = selectedTools.find((tool) => tool.id === id);
+      const tool = selectedTools.find((tool) => tool.pluginId === id);
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
@@ -338,19 +363,11 @@ export const useSkillManager = ({
         }
 
         setConfigTool(tool);
-      } else {
-        console.log('onClickSkill', tool);
       }
     },
     [selectedTools]
   );
-  const onRemoveSkill = useCallback(
-    (id: string) => {
-      console.log('onRemoveSkill', id);
-      onDeleteTool(id);
-    },
-    [onDeleteTool]
-  );
+  const onRemoveSkill = useCallback(() => {}, []);
 
   const SkillModal = useCallback(() => {
     return (

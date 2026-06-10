@@ -6,6 +6,11 @@ import { useTranslation } from 'next-i18next';
 import type { SkillLabelNodeBasicType } from '../node';
 import { useMemoEnhance } from '../../../../../../../hooks/useMemoEnhance';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { NodeKey } from 'lexical';
+
+type SkillLabelProps = SkillLabelNodeBasicType & {
+  nodeKey: NodeKey;
+};
 
 export default function SkillLabel({
   id,
@@ -13,8 +18,9 @@ export default function SkillLabel({
   icon,
   skillType,
   status,
-  onClick
-}: SkillLabelNodeBasicType) {
+  onClick,
+  nodeKey
+}: SkillLabelProps) {
   const { t } = useTranslation();
 
   const isInvalid = status === 'invalid';
@@ -83,7 +89,7 @@ export default function SkillLabel({
         bg: colors.hoverBg,
         borderColor: colors.hoverBorderColor
       }}
-      onClick={() => onClick(id)}
+      onClick={() => onClick(id, nodeKey)}
       transform={'translateY(2px)'}
     >
       <MyTooltip shouldWrapChildren={false} label={tipText}>

@@ -20,7 +20,7 @@ export type SkillLabelNodeBasicType = {
   icon?: string;
   skillType: FlowNodeTypeEnum;
   status: SkillLabelItemType['configStatus'];
-  onClick: (id: string) => void;
+  onClick: (id: string, nodeKey?: NodeKey) => void;
 };
 export type SerializedSkillNode = Spread<
   {
@@ -40,10 +40,13 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   __icon?: string;
   __skillType: FlowNodeTypeEnum;
   __status: SkillLabelItemType['configStatus'];
-  __onClick: (id: string) => void;
+  __onClick: (id: string, nodeKey?: NodeKey) => void;
 
-  constructor({ id, name, icon, skillType, status, onClick }: SkillLabelNodeBasicType) {
-    super();
+  constructor(
+    { id, name, icon, skillType, status, onClick }: SkillLabelNodeBasicType,
+    key?: NodeKey
+  ) {
+    super(key);
     this.__id = id;
     this.__name = name;
     this.__icon = icon;
@@ -57,14 +60,17 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   }
 
   static clone(node: SkillNode): SkillNode {
-    const newNode = new SkillNode({
-      id: node.__id,
-      name: node.__name,
-      icon: node.__icon,
-      skillType: node.__skillType,
-      status: node.__status,
-      onClick: node.__onClick
-    });
+    const newNode = new SkillNode(
+      {
+        id: node.__id,
+        name: node.__name,
+        icon: node.__icon,
+        skillType: node.__skillType,
+        status: node.__status,
+        onClick: node.__onClick
+      },
+      node.__key
+    );
     return newNode;
   }
 
@@ -148,6 +154,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
         skillType={this.__skillType}
         status={this.__status}
         onClick={this.__onClick}
+        nodeKey={this.getKey()}
       />
     );
   }
