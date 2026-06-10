@@ -774,9 +774,9 @@ describe('getChatItems', () => {
       expect(result.histories).toHaveLength(1);
       expect(result.histories[0].responseData?.[0]).toMatchObject({
         id: 'root-response',
-        childTotalPoints: 2,
         childResponseCount: 1
       });
+      expect(result.histories[0].responseData?.[0].childTotalPoints).toBeUndefined();
       expect(result.histories[0].responseData?.[0].childrenResponses?.[0]).toMatchObject({
         id: 'child-response',
         parentId: 'root-response',
