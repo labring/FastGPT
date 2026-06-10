@@ -769,6 +769,7 @@
   "dataset_data_input_q": "问题",
   "dataset_data_input_qa": "QA 模式",
   "dataset_text_model_tip": "用于知识库预处理阶段的文本处理，例如自动补充索引、问答对提取。",
+  "generate_index": "更新索引",
   "date_12_months": "12个月",
   "date_1_month": "1个月",
   "date_3_months": "3个月",

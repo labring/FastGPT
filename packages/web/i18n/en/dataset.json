@@ -90,7 +90,6 @@
   "file_model_function_tip": "Used for QA generation, auto-indexing, and other AI-powered data processing.",
   "filename": "Filename",
   "folder_dataset": "Folder",
-  "generate_index": "Update index",
   "image_auto_parse": "Automatic image indexing",
   "image_auto_parse_tips": "Call VLM to automatically label the pictures in the document and generate additional search indexes",
   "image_auto_parse_tip_commercial": "Upgrade to the commercial edition to use this feature",
