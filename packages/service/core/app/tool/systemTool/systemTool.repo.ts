@@ -426,7 +426,8 @@ export class SystemToolRepo {
       id: pluginId,
       name: tool.customConfig.name,
       nodes: appVersion.nodes,
-      currentCost: tool.currentCost
+      currentCost: tool.currentCost,
+      associatedPluginId
     };
   }
 }

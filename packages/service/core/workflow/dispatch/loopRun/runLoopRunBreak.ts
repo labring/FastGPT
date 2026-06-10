@@ -1,15 +1,11 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  type DispatchNodeResultType,
-  type ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 
-type Props = ModuleDispatchProps<Record<string, never>>;
 type Response = DispatchNodeResultType<Record<string, never>>;
 
-// Signal-only node. The parent loopRun detects the moduleType in flowResponses
-// to decide whether to terminate the loop.
-export const dispatchLoopRunBreak = async (_props: Props): Promise<Response> => {
+// Signal-only node. The workflow runtime records its moduleType into
+// runtimeNodeResponseSummary so the parent loopRun can terminate the loop.
+export const dispatchLoopRunBreak = async (): Promise<Response> => {
   return {
     data: {},
     [DispatchNodeResponseKeyEnum.nodeResponse]: {}

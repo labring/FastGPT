@@ -1,18 +1,15 @@
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
-import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { GetResDataQuerySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getChatItemResponseData } from '@fastgpt/service/core/chat/nodeResponseStorage';
 
-export async function handler(
-  req: ApiRequestProps,
-  res: ApiResponseType<any>
-): Promise<ChatHistoryItemResType[]> {
+export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResType[]> {
   const { appId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } = parseApiInput({
     req,
     querySchema: GetResDataQuerySchema
@@ -21,7 +18,7 @@ export async function handler(
     return [];
   }
 
-  const [{ showCite }, chatData, nodeResponses] = await Promise.all([
+  const [{ showCite }, chatData] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -40,20 +37,21 @@ export async function handler(
         dataId
       },
       'dataId obj responseData'
-    ).lean(),
-    (
-      await MongoChatItemResponse.find(
-        { appId, chatId, chatItemDataId: dataId },
-        { data: 1 }
-      ).lean()
-    ).map((item) => item.data)
+    ).lean()
   ]);
 
   if (chatData?.obj !== ChatRoleEnum.AI) {
     return [];
   }
 
-  const flowResponses = chatData.responseData?.length ? chatData.responseData : nodeResponses;
+  // 新数据优先从独立表拼详情；旧数据如果只有 chat_items.responseData，则作为 fallback 返回。
+  const hasInlineResponseData = Object.prototype.hasOwnProperty.call(chatData, 'responseData');
+  const flowResponses = await getChatItemResponseData({
+    appId,
+    chatId,
+    chatItemDataId: dataId,
+    fallbackResponseData: hasInlineResponseData ? chatData.responseData || [] : undefined
+  });
   return shareId
     ? filterPublicNodeResponseData({
         responseDetail: showCite,

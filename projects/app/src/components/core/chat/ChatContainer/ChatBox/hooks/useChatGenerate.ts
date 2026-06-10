@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import {
+  appendNodeResponseByParent,
   mergeChatResponseData,
   getChatTitleFromChatMessage
 } from '@fastgpt/global/core/chat/utils';
@@ -31,6 +32,7 @@ import { formatChatValue2InputType, stripChatValueFileUrls } from '../utils/chat
 import {
   getInteractiveByHistories,
   refreshSubmittedFormInteractiveValues,
+  resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '../utils/interactive';
 import { shouldAppendResumeInteractive } from '../utils/resume';
@@ -184,9 +186,7 @@ export const useChatGenerate = ({
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
               ...item,
-              responseData: item.responseData
-                ? [...item.responseData, nodeResponse]
-                : [nodeResponse]
+              responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
             };
           }
           if (event === SseResponseEventEnum.flowNodeStatus && status) {
@@ -530,7 +530,12 @@ export const useChatGenerate = ({
           const requestVariables = formatChatRequestVariables({ variableList, variables });
 
           const humanChatId = getNanoid(24);
-          const responseChatId = getNanoid(24);
+          const responseChatId = resolveInteractiveResponseChatItemId({
+            histories: history,
+            interactive,
+            interactiveVal: text,
+            responseChatItemId: getNanoid(24)
+          });
 
           if (autoTTSResponse) {
             await startSegmentedAudio();

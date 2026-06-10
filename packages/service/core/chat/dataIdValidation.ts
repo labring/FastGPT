@@ -8,7 +8,7 @@ type ValidateChatRoundDataIdsParams = {
   appId: string;
   chatId: string;
   userContent: UserChatItemType & { dataId?: string };
-  responseChatItemId: string;
+  responseChatItemId?: string;
 };
 
 const getValidDataIds = (dataIds: Array<string | undefined>) =>

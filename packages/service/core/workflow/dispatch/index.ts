@@ -1,5 +1,5 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SpanStatusCode, trace, type Span } from '@opentelemetry/api';
+import { SpanStatusCode, type Span } from '@opentelemetry/api';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -27,7 +27,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData, stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
 import {
   filterWorkflowEdges,
   getReferenceVariableValue,
@@ -43,8 +43,18 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
-import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, filterOrphanEdges } from './utils';
+import type {
+  DispatchFlowResponse,
+  RuntimeNodeResponseSummary,
+  WorkflowDebugResponse
+} from './type';
+import {
+  createRuntimeNodeResponseSummary,
+  mergeRuntimeNodeResponseSummary,
+  rewriteRuntimeWorkFlow,
+  filterOrphanEdges,
+  summarizeRuntimeNodeResponses
+} from './utils/index';
 import { WorkflowVariableState } from './utils/variables';
 import { getHandleId, nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
@@ -65,90 +75,48 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
+import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
+import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
+import {
+  createWorkflowEntryNodeResponseWriter,
+  type WorkflowNodeResponseWriteConfig
+} from './utils/entry';
+import {
+  addWorkflowStepEvent,
+  getWorkflowStepStatus,
+  shouldTraceWorkflowStep,
+  type WorkflowObservedStepResult
+} from './utils/trace';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
 type Props = Omit<
   ChatDispatchProps,
-  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'variableState'
+  | 'checkIsStopping'
+  | 'workflowDispatchDeep'
+  | 'timezone'
+  | 'externalProvider'
+  | 'variableState'
+  | 'responseChatItemId'
 > & {
+  responseChatItemId?: string;
   variables: Record<string, any>;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   req?: IncomingMessage;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
-}>;
+}> & {
+  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
+};
 
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
+  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
 };
-
-type WorkflowObservedStepResult = {
-  node: RuntimeNodeItemType;
-  runStatus: 'run';
-  result: NodeResponseCompleteType;
-};
-
-const tracedWorkflowStepTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.appModule,
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.agent,
-  FlowNodeTypeEnum.chatNode,
-  FlowNodeTypeEnum.datasetSearchNode,
-  FlowNodeTypeEnum.classifyQuestion,
-  FlowNodeTypeEnum.contentExtract,
-  FlowNodeTypeEnum.queryExtension,
-  FlowNodeTypeEnum.toolCall,
-  FlowNodeTypeEnum.httpRequest468,
-  FlowNodeTypeEnum.lafModule,
-  FlowNodeTypeEnum.code,
-  FlowNodeTypeEnum.readFiles,
-  FlowNodeTypeEnum.tool
-]);
-
-function shouldTraceWorkflowStep(nodeType: FlowNodeTypeEnum) {
-  return tracedWorkflowStepTypes.has(nodeType);
-}
-
-function getWorkflowStepStatus(result: WorkflowObservedStepResult): 'ok' | 'error' {
-  return result.result[DispatchNodeResponseKeyEnum.nodeResponse]?.error || result.result.error
-    ? 'error'
-    : 'ok';
-}
-
-function addWorkflowStepEvent({
-  eventName,
-  nodeType,
-  mode,
-  status,
-  durationMs
-}: {
-  eventName: 'workflow.step.start' | 'workflow.step.end';
-  nodeType: FlowNodeTypeEnum;
-  mode: string;
-  status?: 'ok' | 'error';
-  durationMs?: number;
-}) {
-  const activeSpan = trace.getActiveSpan();
-  if (!activeSpan) return;
-
-  const attributes: Record<string, string | number> = {
-    'fastgpt.workflow.node.type': nodeType,
-    'fastgpt.workflow.mode': mode
-  };
-
-  if (status) {
-    attributes['fastgpt.workflow.step.status'] = status;
-  }
-  if (typeof durationMs === 'number') {
-    attributes['fastgpt.workflow.step.duration_ms'] = durationMs;
-  }
-
-  activeSpan.addEvent(eventName, attributes);
-}
 
 // Run workflow
 type WorkflowUsageProps = RequireOnlyOne<{
@@ -156,6 +124,7 @@ type WorkflowUsageProps = RequireOnlyOne<{
   concatUsage: (points: number) => any;
   usageId: string;
 }>;
+
 export async function dispatchWorkFlow({
   usageSource,
   usageId,
@@ -173,6 +142,7 @@ export async function dispatchWorkFlow({
     chatId,
     apiVersion
   } = data;
+  const responseChatItemId = data.responseChatItemId || getNanoid(24);
 
   // Check url valid
   const invalidInput = query.some((item) => {
@@ -260,7 +230,7 @@ export async function dispatchWorkFlow({
     runningAppInfo,
     uid: data.uid,
     chatId,
-    responseChatItemId: data.responseChatItemId,
+    responseChatItemId,
     histories,
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
@@ -293,6 +263,15 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
+  const { nodeResponseWriter } = await createWorkflowEntryNodeResponseWriter({
+    lastInteractive: data.lastInteractive,
+    teamId: data.runningAppInfo.teamId,
+    appId: data.runningAppInfo.id,
+    chatId,
+    chatItemDataId: responseChatItemId,
+    nodeResponseWriteConfig: data.nodeResponseWriteConfig
+  });
+
   // Init some props
   return new Promise((resolve, reject) => {
     runWithContext(
@@ -303,6 +282,8 @@ export async function dispatchWorkFlow({
       (ctx) => {
         runWorkflow({
           ...data,
+          responseChatItemId,
+          nodeResponseWriter,
           checkIsStopping,
           query,
           histories,
@@ -313,8 +294,22 @@ export async function dispatchWorkFlow({
           usageId: newUsageId,
           concatUsage
         })
-          .then(resolve)
-          .catch(reject)
+          .then(async (result) => {
+            await nodeResponseWriter.close();
+            resolve({
+              ...result,
+              nodeResponseSummary: nodeResponseWriter.getSummary(),
+              ...(data.nodeResponseWriteConfig.retainInMemory
+                ? {
+                    flatNodeResponses: nodeResponseWriter.getFlatNodeResponses()
+                  }
+                : {})
+            });
+          })
+          .catch(async (error) => {
+            await nodeResponseWriter.close();
+            reject(error);
+          })
           .finally(async () => {
             if (streamCheckTimer) {
               clearInterval(streamCheckTimer);
@@ -345,31 +340,32 @@ export type RunWorkflowProps = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
 };
 /*
-    工作流队列控制
-    特点：
-      1. 可以控制一个 team 下，并发 run 的节点数量。
-      2. 每个节点，同时只会执行一个。一个节点不可能同时运行多次。
-      3. 都会返回 resolve，不存在 reject 状态。
-    方案：
-      - 采用回调的方式，避免深度递归。
-      - 使用 activeRunQueue 记录待运行检查的节点（可能可以运行），并控制并发数量。
-      - 每次添加新节点，以及节点运行结束后，均会执行一次 processActiveNode 方法。 processActiveNode 方法，如果没触发跳出条件，则必定会取一个 activeRunQueue 继续检查处理。
-      - checkNodeCanRun 会检查该节点状态
-        - 没满足运行条件：跳出函数
-        - 运行：执行节点逻辑，并返回结果，将 target node 加入到 activeRunQueue 中，等待队列处理。
-        - 跳过：执行跳过逻辑，并将其后续的 target node 也进行一次检查。
-    特殊情况：
-      - 触发交互节点后，需要跳过所有 skip 节点，避免后续执行了 skipNode。
-  */
+  工作流队列控制
+  特点：
+    1. 可以控制一个 team 下，并发 run 的节点数量。
+    2. 每个节点，同时只会执行一个。一个节点不可能同时运行多次。
+    3. 都会返回 resolve，不存在 reject 状态。
+  方案：
+    - 采用回调的方式，避免深度递归。
+    - 使用 activeRunQueue 记录待运行检查的节点（可能可以运行），并控制并发数量。
+    - 每次添加新节点，以及节点运行结束后，均会执行一次 processActiveNode 方法。 processActiveNode 方法，如果没触发跳出条件，则必定会取一个 activeRunQueue 继续检查处理。
+    - checkNodeCanRun 会检查该节点状态
+      - 没满足运行条件：跳出函数
+      - 运行：执行节点逻辑，并返回结果，将 target node 加入到 activeRunQueue 中，等待队列处理。
+      - 跳过：执行跳过逻辑，并将其后续的 target node 也进行一次检查。
+  特殊情况：
+    - 触发交互节点后，需要跳过所有 skip 节点，避免后续执行了 skipNode。
+*/
 export class WorkflowQueue {
   private data: RunWorkflowProps;
   isRootRuntime: boolean;
   private runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   // Workflow variables
   workflowRunTimes = 0;
-  chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
+  runtimeNodeResponseSummary = createRuntimeNodeResponseSummary();
   chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   chatNodeUsages: ChatNodeUsageType[] = [];
   toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
@@ -878,6 +874,8 @@ export class WorkflowQueue {
         return params;
       };
 
+      const nodeResponseId = getNanoid();
+
       // push run status messages
       if (node.showStatus && !this.data.isToolCall) {
         this.data.workflowStreamResponse?.({
@@ -905,7 +903,8 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         runtimeEdges: this.data.runtimeEdges,
         params,
-        mode
+        mode,
+        nodeResponseParentId: nodeResponseId
       };
 
       // run module
@@ -987,42 +986,69 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
+      const childResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
+      const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+      const childResponsesForWrite =
+        this.data.nodeResponseWriter && !!nodeResponse
+          ? childResponses.map((response) => ({
+              ...response,
+              parentId: response.parentId || nodeResponseId
+            }))
+          : childResponses;
+      const nodeResponsesForWrite = [...childResponsesForWrite];
+      const currentNodeChildResponseCount =
+        getNodeResponseChildResponseCount(childResponsesForWrite);
       // format response data. Add modulename and module type
-      const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
-        if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
-
+      const formatResponseData: ChatHistoryItemResType | undefined = (() => {
+        if (!nodeResponse) return undefined;
         const val = {
           moduleName: node.name,
           moduleType: node.flowNodeType,
           moduleLogo: node.avatar,
-          ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
-          id: getNanoid(),
+          ...nodeResponse,
+          ...(nodeResponse?.childResponseCount === undefined &&
+          currentNodeChildResponseCount !== undefined
+            ? { childResponseCount: currentNodeChildResponseCount }
+            : {}),
+          id: nodeResponseId,
+          ...(this.data.nodeResponseParentId ? { parentId: this.data.nodeResponseParentId } : {}),
           nodeId: node.nodeId,
           runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
         };
-        nodeResponses.push(val);
+        nodeResponsesForWrite.push(val);
         return val;
       })();
 
+      // 写库和 SSE 需要完整节点响应；writer 落库后，队列只继续保留摘要信号。
+      const persistedNodeResponses = this.data.nodeResponseWriter
+        ? await this.data.nodeResponseWriter.record(nodeResponsesForWrite)
+        : nodeResponsesForWrite;
+      const formatResponseDataForQueue =
+        formatResponseData && this.data.nodeResponseWriter
+          ? persistedNodeResponses.find((item) => item.id === formatResponseData.id) ||
+            formatResponseData
+          : formatResponseData;
+      const childResponsesForQueue = this.data.nodeResponseWriter
+        ? childResponsesForWrite.map(
+            (item) =>
+              persistedNodeResponses.find((persistedItem) => persistedItem.id === item.id) || item
+          )
+        : childResponses;
+      const shouldDropPersistedNodeResponses = !!this.data.nodeResponseWriter;
+
       // Response node response
-      if (
-        this.data.apiVersion === 'v2' &&
-        !this.data.isToolCall &&
-        this.isRootRuntime &&
-        nodeResponses.length > 0
-      ) {
+      if (this.data.apiVersion === 'v2' && persistedNodeResponses.length > 0) {
         const filteredResponses = this.data.responseAllData
-          ? nodeResponses
-          : filterPublicNodeResponseData({
-              nodeRespones: nodeResponses,
+          ? persistedNodeResponses
+          : filterNodeResponseTreeData({
+              nodeResponses: persistedNodeResponses,
               responseDetail: this.data.responseDetail
             });
 
         filteredResponses.forEach((item) => {
           this.data.workflowStreamResponse?.({
             event: SseResponseEventEnum.flowNodeResponse,
-            data: item
+            data: stripChildTotalPoints(item)
           });
         });
       }
@@ -1037,15 +1063,15 @@ export class WorkflowQueue {
       }
 
       // Error
-      if (dispatchRes?.responseData?.error) {
+      if (formatResponseData?.error) {
         if (stepSpan) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: String(dispatchRes.responseData.error)
+            message: String(formatResponseData.error)
           });
         }
-        logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
+        logger.warn('Workflow node returned error', { error: formatResponseData.error });
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
       }
@@ -1062,7 +1088,19 @@ export class WorkflowQueue {
         runStatus: 'run',
         result: {
           ...dispatchRes,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData
+          runtimeNodeResponseSummary: mergeRuntimeNodeResponseSummary(
+            dispatchRes.runtimeNodeResponseSummary,
+            summarizeRuntimeNodeResponses(undefined, persistedNodeResponses)
+          ),
+          ...(shouldDropPersistedNodeResponses
+            ? {
+                [DispatchNodeResponseKeyEnum.nodeResponse]: undefined,
+                [DispatchNodeResponseKeyEnum.nodeResponses]: undefined
+              }
+            : {
+                [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseDataForQueue,
+                [DispatchNodeResponseKeyEnum.nodeResponses]: childResponsesForQueue
+              })
         }
       };
     };
@@ -1165,9 +1203,8 @@ export class WorkflowQueue {
     const pushStore = ({
       answerText,
       reasoningText,
-      responseData,
-      nodeResponses,
-      toolResponses,
+      runtimeNodeResponseSummary,
+      toolResponse,
       assistantResponses,
       rewriteHistories,
       runTimes = 1,
@@ -1185,11 +1222,11 @@ export class WorkflowQueue {
         };
       }
 
-      if (responseData) {
-        this.chatResponses.push(responseData);
-      }
-      if (nodeResponses) {
-        this.chatResponses.push(...nodeResponses);
+      if (runtimeNodeResponseSummary) {
+        this.runtimeNodeResponseSummary = mergeRuntimeNodeResponseSummary(
+          this.runtimeNodeResponseSummary,
+          runtimeNodeResponseSummary
+        );
       }
 
       // Collect custom feedbacks
@@ -1198,14 +1235,14 @@ export class WorkflowQueue {
       }
 
       if (
-        (toolResponses !== undefined && toolResponses !== null) ||
-        (Array.isArray(toolResponses) && toolResponses.length > 0) ||
-        (!Array.isArray(toolResponses) &&
-          typeof toolResponses === 'object' &&
-          toolResponses !== null &&
-          Object.keys(toolResponses).length > 0)
+        (toolResponse !== undefined && toolResponse !== null) ||
+        (Array.isArray(toolResponse) && toolResponse.length > 0) ||
+        (!Array.isArray(toolResponse) &&
+          typeof toolResponse === 'object' &&
+          toolResponse !== null &&
+          Object.keys(toolResponse).length > 0)
       ) {
-        this.toolRunResponse = toolResponses;
+        this.toolRunResponse = toolResponse;
       }
 
       // Histories store
@@ -1351,18 +1388,23 @@ export class WorkflowQueue {
 
     // Store debug data
     if (this.isDebugMode) {
+      const currentDebugResponse = this.debugNodeResponses[node.nodeId];
       if (status === 'run') {
+        const response = nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse];
         this.debugNodeResponses[node.nodeId] = {
+          ...currentDebugResponse,
           nodeId: node.nodeId,
           type: 'run',
           interactiveResponse: nodeRunResult.result[DispatchNodeResponseKeyEnum.interactive],
-          response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse]
+          ...(response ? { response } : {})
         };
       } else if (status === 'skip') {
+        const response = nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse];
         this.debugNodeResponses[node.nodeId] = {
+          ...currentDebugResponse,
           nodeId: node.nodeId,
           type: 'skip',
-          response: nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse]
+          ...(response ? { response } : {})
         };
       }
     }
@@ -1496,12 +1538,15 @@ export class WorkflowQueue {
   }
 }
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
+  data.responseChatItemId ||= getNanoid(24);
   // Over max depth
-  data.workflowDispatchDeep++;
-  const isRootRuntime = data.workflowDispatchDeep === 1;
-  if (data.workflowDispatchDeep > 20) {
+  const previousWorkflowDispatchDeep = data.workflowDispatchDeep;
+  const currentWorkflowDispatchDeep = previousWorkflowDispatchDeep + 1;
+  data.workflowDispatchDeep = currentWorkflowDispatchDeep;
+  const isRootRuntime = currentWorkflowDispatchDeep === 1;
+  if (currentWorkflowDispatchDeep > 20) {
+    data.workflowDispatchDeep = previousWorkflowDispatchDeep;
     return {
-      flowResponses: [],
       flowUsages: [],
       debugResponse: {
         memoryEdges: [],
@@ -1512,17 +1557,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       },
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
-      [DispatchNodeResponseKeyEnum.toolResponses]: null,
+      [DispatchNodeResponseKeyEnum.toolResponse]: null,
       [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
+      runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
       durationSeconds: 0
     };
   }
-
-  data.runtimeEdges = filterOrphanEdges({
-    edges: data.runtimeEdges,
-    nodes: data.runtimeNodes,
-    workflowId: data.runningAppInfo.id
-  });
 
   return observeWorkflowRun(
     {
@@ -1546,106 +1586,124 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         },
         async (workflowSpan) => {
           const startTime = Date.now();
-
-          await rewriteRuntimeWorkFlow({
-            teamId: data.runningAppInfo.teamId,
-            nodes: data.runtimeNodes,
-            edges: data.runtimeEdges,
-            lang: data.lang
-          });
-          // Init default value
-          data.retainDatasetCite = data.retainDatasetCite ?? true;
-          data.responseDetail = data.responseDetail ?? true;
-          data.responseAllData = data.responseAllData ?? true;
-
-          // Start process width initInput
-          const entryNodes = data.runtimeNodes.filter((item) => item.isEntry);
-          // Reset entry
-          data.runtimeNodes.forEach((item) => {
-            // Interactively nodes will use the "isEntry", which does not need to be updated
-            if (
-              item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
-              item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-              item.flowNodeType !== FlowNodeTypeEnum.toolCall
-            ) {
-              item.isEntry = false;
-            }
-          });
-
-          const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
-            logger.info('Workflow run start', {
-              maxRunTimes: data.maxRunTimes,
-              appId: data.runningAppInfo.id
+          const nodeResponseWriter = data.nodeResponseWriter;
+          try {
+            await rewriteRuntimeWorkFlow({
+              teamId: data.runningAppInfo.teamId,
+              nodes: data.runtimeNodes,
+              edges: data.runtimeEdges,
+              lang: data.lang
             });
-            const workflowQueue = new WorkflowQueue({
-              data,
-              resolve,
-              defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue
+            // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
+            // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
+            // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。
+            data.runtimeEdges = filterOrphanEdges({
+              edges: data.runtimeEdges,
+              nodes: data.runtimeNodes,
+              workflowId: data.runningAppInfo.id
             });
+            // Init default value
+            data.retainDatasetCite = data.retainDatasetCite ?? true;
+            data.responseDetail = data.responseDetail ?? true;
+            data.responseAllData = data.responseAllData ?? true;
 
-            entryNodes.forEach((node) => {
-              workflowQueue.addActiveNode(node.nodeId);
-            });
-          });
-
-          // Get interactive node response.
-          const interactiveResult = (() => {
-            if (workflowQueue.nodeInteractiveResponse) {
-              const interactiveAssistant = workflowQueue.handleInteractiveResult({
-                entryNodeIds: workflowQueue.nodeInteractiveResponse.entryNodeIds,
-                interactiveResponse: workflowQueue.nodeInteractiveResponse.interactiveResponse
-              });
-              if (workflowQueue.isRootRuntime) {
-                workflowQueue.chatAssistantResponse.push(interactiveAssistant);
+            // Start process width initInput
+            const entryNodes = data.runtimeNodes.filter((item) => item.isEntry);
+            // Reset entry
+            data.runtimeNodes.forEach((item) => {
+              // Interactively nodes will use the "isEntry", which does not need to be updated
+              if (
+                item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
+                item.flowNodeType !== FlowNodeTypeEnum.formInput &&
+                item.flowNodeType !== FlowNodeTypeEnum.toolCall
+              ) {
+                item.isEntry = false;
               }
-              return interactiveAssistant.interactive;
-            }
-          })();
-
-          const durationSeconds = +((Date.now() - startTime) / 1000).toFixed(2);
-
-          workflowSpan.setAttribute('fastgpt.workflow.duration_seconds', durationSeconds);
-          workflowSpan.setAttribute('fastgpt.workflow.run_times', workflowQueue.workflowRunTimes);
-          workflowSpan.setAttribute(
-            'fastgpt.workflow.has_interactive_response',
-            !!workflowQueue.nodeInteractiveResponse
-          );
-          workflowSpan.setStatus({ code: SpanStatusCode.OK });
-
-          if (isRootRuntime) {
-            data.workflowStreamResponse?.({
-              event: SseResponseEventEnum.workflowDuration,
-              data: { durationSeconds }
             });
-          }
 
-          return {
-            flowResponses: workflowQueue.chatResponses,
-            flowUsages: workflowQueue.chatNodeUsages,
-            debugResponse: workflowQueue.getDebugResponse(),
-            workflowInteractiveResponse: interactiveResult,
-            [DispatchNodeResponseKeyEnum.runTimes]: workflowQueue.workflowRunTimes,
-            [DispatchNodeResponseKeyEnum.assistantResponses]: mergeAssistantResponseAnswerText(
-              workflowQueue.chatAssistantResponse
-            ),
-            [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-            [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
-            [DispatchNodeResponseKeyEnum.memories]:
-              Object.keys(workflowQueue.system_memories).length > 0
-                ? workflowQueue.system_memories
-                : undefined,
-            [DispatchNodeResponseKeyEnum.customFeedbacks]:
-              workflowQueue.customFeedbackList.length > 0
-                ? workflowQueue.customFeedbackList
-                : undefined,
-            durationSeconds
-          };
+            const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
+              logger.info('Workflow run start', {
+                maxRunTimes: data.maxRunTimes,
+                appId: data.runningAppInfo.id
+              });
+              const workflowQueue = new WorkflowQueue({
+                data,
+                resolve,
+                defaultSkipNodeQueue:
+                  data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue
+              });
+
+              entryNodes.forEach((node) => {
+                workflowQueue.addActiveNode(node.nodeId);
+              });
+            });
+
+            // Get interactive node response.
+            const interactiveResult = (() => {
+              if (workflowQueue.nodeInteractiveResponse) {
+                const interactiveAssistant = workflowQueue.handleInteractiveResult({
+                  entryNodeIds: workflowQueue.nodeInteractiveResponse.entryNodeIds,
+                  interactiveResponse: workflowQueue.nodeInteractiveResponse.interactiveResponse
+                });
+                if (workflowQueue.isRootRuntime) {
+                  workflowQueue.chatAssistantResponse.push(interactiveAssistant);
+                }
+                return interactiveAssistant.interactive;
+              }
+            })();
+
+            const durationSeconds = +((Date.now() - startTime) / 1000).toFixed(2);
+
+            workflowSpan.setAttribute('fastgpt.workflow.duration_seconds', durationSeconds);
+            workflowSpan.setAttribute('fastgpt.workflow.run_times', workflowQueue.workflowRunTimes);
+            workflowSpan.setAttribute(
+              'fastgpt.workflow.has_interactive_response',
+              !!workflowQueue.nodeInteractiveResponse
+            );
+            workflowSpan.setStatus({ code: SpanStatusCode.OK });
+
+            if (isRootRuntime) {
+              data.workflowStreamResponse?.({
+                event: SseResponseEventEnum.workflowDuration,
+                data: { durationSeconds }
+              });
+            }
+
+            return {
+              flowUsages: workflowQueue.chatNodeUsages,
+              debugResponse: workflowQueue.getDebugResponse(),
+              workflowInteractiveResponse: interactiveResult,
+              [DispatchNodeResponseKeyEnum.runTimes]: workflowQueue.workflowRunTimes,
+              [DispatchNodeResponseKeyEnum.assistantResponses]: mergeAssistantResponseAnswerText(
+                workflowQueue.chatAssistantResponse
+              ),
+              [DispatchNodeResponseKeyEnum.toolResponse]: workflowQueue.toolRunResponse,
+              [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
+              [DispatchNodeResponseKeyEnum.memories]:
+                Object.keys(workflowQueue.system_memories).length > 0
+                  ? workflowQueue.system_memories
+                  : undefined,
+              [DispatchNodeResponseKeyEnum.customFeedbacks]:
+                workflowQueue.customFeedbackList.length > 0
+                  ? workflowQueue.customFeedbackList
+                  : undefined,
+              nodeResponseSummary: nodeResponseWriter?.getSummary(),
+              runtimeNodeResponseSummary: workflowQueue.runtimeNodeResponseSummary,
+              durationSeconds
+            };
+          } finally {
+            data.workflowDispatchDeep = previousWorkflowDispatchDeep;
+          }
         }
       ),
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
-  );
+  ).finally(() => {
+    if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
+      data.workflowDispatchDeep = previousWorkflowDispatchDeep;
+    }
+  });
 };
 
 /**

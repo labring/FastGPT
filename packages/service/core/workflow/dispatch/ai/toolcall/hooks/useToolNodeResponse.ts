@@ -1,16 +1,16 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { ChildResponseItemType } from '../type';
+import type { ChildResponseItemType, ToolDispatchSummaryType } from '../type';
 import { AgentNodeResponseDisplay } from '../../../../../ai/llm/agentLoop/constants';
-import { parseJsonArgs } from '../../../../../ai/utils';
-
-type ToolInfo = {
-  name: string;
-  avatar?: string;
-};
+import {
+  createRuntimeNodeResponseSummary,
+  mergeRuntimeNodeResponseSummary,
+  summarizeRuntimeNodeResponses
+} from '../../../utils';
+import type { WorkflowNodeResponseWriter } from '../../../../../chat/nodeResponseStorage';
 
 type ToolResponseCompress = {
   response: string;
@@ -19,15 +19,12 @@ type ToolResponseCompress = {
   seconds: number;
 };
 
-type ToolResponseCompressRecord = {
-  nodeResponse: ChatHistoryItemResType;
-  usage: ChatNodeUsageType;
-};
-
 /**
- * 创建 ToolCall 内部压缩类 LLM 调用的 nodeResponse。
- * context/message compress 和 tool response compress 展示结构基本一致，
- * 区别只在 moduleName、textOutput 和是否需要旧版 compressTextAgent 字段。
+ * 构造 ToolCall 内部压缩类 LLM 调用的 nodeResponse。
+ *
+ * context compress 和 tool response compress 都是 ToolCall 自己的辅助 LLM 调用，
+ * 不属于某个真实工具子流程。这里统一生成可写入 writer 的独立节点；只有 context
+ * compress 需要保留旧版 compressTextAgent 结构，tool response compress 只展示压缩文本。
  */
 const createCompressNodeResponse = ({
   moduleName,
@@ -65,9 +62,7 @@ const createCompressNodeResponse = ({
     ...(includeCompressTextAgent
       ? {
           compressTextAgent: {
-            /**
-             * 旧数据/异常路径可能缺 token，但前端压缩详情需要数字结构。
-             */
+            // 旧数据/异常路径可能缺 token，但前端压缩详情需要数字结构。
             inputTokens: usage.inputTokens || 0,
             outputTokens: usage.outputTokens || 0,
             totalPoints: usage.totalPoints
@@ -78,8 +73,10 @@ const createCompressNodeResponse = ({
 };
 
 /**
- * 生成 ToolCall 节点自己的 message/context compress 运行详情。
- * 这类压缩不属于某个具体工具，因此后续会作为 ToolCall 的独立 child flow response。
+ * 生成上下文压缩节点。
+ *
+ * 该节点表示 ToolCall 在发起模型请求前对 messages/context 做的压缩，天然属于
+ * ToolCall 父节点的直接 child，而不是任何工具调用的 child。
  */
 const getContextCompressNodeResponse = ({
   moduleType,
@@ -91,21 +88,22 @@ const getContextCompressNodeResponse = ({
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
-}): ChatHistoryItemResType => {
-  return createCompressNodeResponse({
+}): ChatHistoryItemResType =>
+  createCompressNodeResponse({
     moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
     moduleType,
     usage,
     requestIds,
     seconds
   });
-};
 
 /**
- * 生成 tool response compress 的 child 记录。
- * 它只服务于某一次工具调用，不再作为 ToolCall 下的平级 nodeResponse 展示。
+ * 生成工具响应压缩节点。
+ *
+ * 工具响应压缩发生在工具执行完成后、结果回填给模型前。按当前极简记录规则，它也作为
+ * ToolCall 的直接 child 写入，避免再次包装或改写 child workflow 已经写入的真实工具节点。
  */
-const getToolResponseCompressRecord = ({
+const getToolResponseCompressNodeResponse = ({
   moduleType,
   response,
   usage,
@@ -117,120 +115,109 @@ const getToolResponseCompressRecord = ({
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
-}): ToolResponseCompressRecord => {
-  return {
-    nodeResponse: createCompressNodeResponse({
-      moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
-      moduleType,
-      usage,
-      requestIds,
-      seconds,
-      textOutput: response,
-      includeCompressTextAgent: false
-    }),
-    usage
-  };
-};
+}): ChatHistoryItemResType =>
+  createCompressNodeResponse({
+    moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
+    moduleType,
+    usage,
+    requestIds,
+    seconds,
+    textOutput: response,
+    includeCompressTextAgent: false
+  });
 
 /**
- * 兜底生成最小工具 nodeResponse。
- * 部分工具没有子 workflow flowResponse，或工具执行异常时拿不到完整子响应；
- * 这里仍保留 call.id、入参、响应文本和错误信息，保证运行详情能对应到每次 tool request。
- */
-const getFallbackToolFlowResponse = ({
-  call,
-  toolName,
-  toolAvatar,
-  response,
-  errorMessage,
-  seconds
-}: {
-  call: ChatCompletionMessageToolCall;
-  toolName?: string;
-  toolAvatar?: string;
-  response: string;
-  errorMessage?: string;
-  seconds: number;
-}): ChildResponseItemType => {
-  return {
-    flowResponses: [
-      {
-        id: call.id,
-        nodeId: call.id,
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: toolName || call.function.name,
-        moduleLogo: toolAvatar,
-        toolId: call.function.name,
-        toolInput: parseJsonArgs(call.function.arguments) || undefined,
-        toolRes: response,
-        runningTime: seconds,
-        totalPoints: 0,
-        ...(errorMessage ? { errorText: errorMessage } : {})
-      }
-    ],
-    flowUsages: [],
-    runTimes: seconds
-  };
-};
-
-/**
- * 把 tool response compress 挂到工具 flowResponse 的最后一个 nodeResponse 上。
- * 工具 workflow 可能包含多个内部节点，最后一个节点代表最终工具响应，更适合作为压缩 child 的父节点。
- */
-const appendToolResponseCompressRecord = ({
-  flowResponse,
-  compressRecord
-}: {
-  flowResponse: ChildResponseItemType;
-  compressRecord: ToolResponseCompressRecord;
-}): ChildResponseItemType => {
-  const targetIndex = flowResponse.flowResponses.length - 1;
-  if (targetIndex < 0) return flowResponse;
-
-  return {
-    ...flowResponse,
-    flowResponses: flowResponse.flowResponses.map((item, index) => {
-      if (index !== targetIndex) return item;
-
-      return {
-        ...item,
-        childrenResponses: [...(item.childrenResponses || []), compressRecord.nodeResponse]
-      };
-    }),
-    /**
-     * 工具响应压缩是该工具调用的内部子消耗，需要并入 flowUsages，
-     * 父 ToolCall 节点后续会用这些 usage 汇总 childTotalPoints。
-     */
-    flowUsages: [...flowResponse.flowUsages, compressRecord.usage]
-  };
-};
-
-/**
- * 维护 ToolCall 节点内普通工具调用产生的 nodeResponse。
- * onRunTool 阶段只暂存工具 flowResponse，onAfterToolCall 再统一写入并挂载工具响应压缩 child。
+ * ToolCall 只维护子流程 summary 和压缩节点详情。
+ *
+ * 普通工具子流程的真实 nodeResponse 由 child workflow 复用共享 writer 直接写库；
+ * afterToolCall 不再生成 `call_xxx` wrapper，也不缓存第一层 child nodeResponse。
+ *
+ * 内置工具是唯一例外：sandbox/file 没有 child workflow writer，因此它们会携带
+ * `builtinNodeResponses`，并且只在 afterToolCall 阶段写到 ToolCall 父节点下。
  */
 export const useToolNodeResponse = ({
   moduleType,
-  getToolInfo
+  nodeResponseWriter,
+  nodeResponseParentId
 }: {
   moduleType: FlowNodeTypeEnum;
-  getToolInfo: (name: string) => ToolInfo | undefined;
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+  nodeResponseParentId?: string;
 }) => {
-  /**
-   * 返回给 ToolCall dispatcher 的收集容器。
-   * hook 内部直接 push，调用方持有同一个数组引用，后续汇总 child responses/usage 时能拿到最终结果。
-   */
-  const toolRunResponses: ChildResponseItemType[] = [];
+  const toolDispatchSummary: ToolDispatchSummaryType = {
+    runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
+    runTimes: 0,
+    toolTotalPoints: 0
+  };
 
   /**
-   * onRunTool 与 onAfterToolCall 分阶段触发：前者先拿到工具 workflow 响应，
-   * 后者才拿到最终 tool response 和可能存在的压缩结果。这里用 call.id 暂存中间态。
+   * 暂存 onRunTool 阶段得到的工具子流程 summary。
+   *
+   * onRunTool 只负责执行工具；真实 nodeResponse 已经由 child workflow 复用共享 writer 写库。
+   * onAfterToolCall 再按 call.id 取回 summary 并入 ToolCall 父节点统计。
+   * sandbox/file 这类内置工具没有 child workflow，只在这里额外暂存待写入的单层响应。
    */
-  const pendingToolFlowResponseMap = new Map<string, ChildResponseItemType>();
+  const pendingToolSummaryMap = new Map<string, ChildResponseItemType>();
 
   /**
-   * onRunTool 只能拿到工具 workflow 的执行结果，拿不到压缩后的最终 tool response。
-   * 所以先按 call.id 暂存，等 onAfterToolCall 再统一落 nodeResponse。
+   * 合并工具子流程或压缩节点的轻量统计。
+   *
+   * 这里刻意只接收 ChildResponseItemType，不接收完整 nodeResponse tree：
+   * ToolCall 父节点只需要 summary/usage/runTimes 计算展示统计和费用，详情由 writer rows
+   * 在读取时重新组合，避免在 ToolCall loop 内保留重复的大对象。
+   *
+   * `builtinNodeResponses` 是内置工具的专用写入通道。它不是 child workflow 第一层响应缓存，
+   * 因为这些工具本身没有 child workflow；为了满足“afterTool 后才写节点”，只能在此处落库。
+   */
+  const appendToolSummary = (flowResponse?: ChildResponseItemType) => {
+    if (!flowResponse) return;
+
+    if (flowResponse.builtinNodeResponses?.length) {
+      void nodeResponseWriter?.recordWithParent(
+        flowResponse.builtinNodeResponses,
+        nodeResponseParentId
+      );
+    }
+
+    toolDispatchSummary.runtimeNodeResponseSummary = mergeRuntimeNodeResponseSummary(
+      toolDispatchSummary.runtimeNodeResponseSummary,
+      flowResponse.runtimeNodeResponseSummary
+    );
+    toolDispatchSummary.runTimes += flowResponse.runTimes || 0;
+    toolDispatchSummary.toolTotalPoints += (flowResponse.flowUsages || []).reduce(
+      (sum, usage) => sum + usage.totalPoints,
+      0
+    );
+  };
+
+  /**
+   * 写入 ToolCall 自己产生的压缩节点，并同步累计它的 summary/usage。
+   *
+   * compress 节点不是 child workflow 的真实节点，所以必须在这里显式写入；parentId 使用
+   * ToolCall 父节点 id，让最终详情中它和真实工具子流程节点处于同一层级。
+   */
+  const appendCompressNodeResponse = ({
+    nodeResponse,
+    usage
+  }: {
+    nodeResponse: ChatHistoryItemResType;
+    usage: ChatNodeUsageType;
+  }) => {
+    void nodeResponseWriter?.recordWithParent([nodeResponse], nodeResponseParentId);
+
+    appendToolSummary({
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [nodeResponse]),
+      flowUsages: [usage],
+      runTimes: 0
+    });
+  };
+
+  /**
+   * 缓存一次工具执行返回的轻量 summary。
+   *
+   * 空 summary 不缓存：这通常意味着工具未执行成功或没有产生可统计节点。当前规则下不再
+   * 为这种情况补写 fallback wrapper，避免重新引入 `call_xxx` 虚拟工具节点。
+   * 内置工具若携带 builtinNodeResponses，也必须等到 afterToolCall 再写库。
    */
   const cacheToolFlowResponse = ({
     call,
@@ -240,19 +227,24 @@ export const useToolNodeResponse = ({
     flowResponse?: ChildResponseItemType;
   }) => {
     if (!flowResponse) return;
+    if (!flowResponse.runtimeNodeResponseSummary && !flowResponse.builtinNodeResponses?.length) {
+      return;
+    }
 
-    pendingToolFlowResponseMap.set(call.id, flowResponse);
+    pendingToolSummaryMap.set(call.id, flowResponse);
   };
 
   /**
-   * 推送一个 tool response，只在 tool_response/afterToolCall 阶段真正写入 nodeResponse，
-   * 确保工具文本、错误信息和 tool response compress child 都已经齐全。
+   * 处理 agentLoop 的 afterToolCall 回调。
+   *
+   * 这里不写普通工具 nodeResponse：真实工具详情已经由 child workflow 写入。
+   * 该函数只做两件事：
+   * 1. 合并 onRunTool 阶段暂存的 child workflow summary。
+   * 2. 写入 sandbox/file 这类内置工具自己的单层 nodeResponse。
+   * 3. 如果发生 tool response compress，额外写入一个 ToolCall 直接 child 压缩节点。
    */
   const appendToolNodeResponse = ({
     call,
-    response,
-    errorMessage,
-    seconds,
     toolResponseCompress
   }: {
     call: ChatCompletionMessageToolCall;
@@ -261,59 +253,38 @@ export const useToolNodeResponse = ({
     seconds: number;
     toolResponseCompress?: ToolResponseCompress;
   }) => {
-    const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
+    appendToolSummary(pendingToolSummaryMap.get(call.id));
+    pendingToolSummaryMap.delete(call.id);
 
-    /**
-     * 文件工具、sandbox 工具或异常路径不一定有完整 workflow response。
-     * 缺失时补一个最小工具 nodeResponse，保证“每次 tool request 都有记录”。
-     */
-    const baseFlowResponse =
-      pendingFlowResponse ||
-      (() => {
-        const toolNode = getToolInfo(call.function.name);
+    if (!toolResponseCompress) return;
 
-        return getFallbackToolFlowResponse({
-          call,
-          toolName: toolNode?.name,
-          toolAvatar: toolNode?.avatar,
-          response: response || '',
-          errorMessage,
-          seconds
-        });
-      })();
-
-    /**
-     * tool response 压缩属于本次工具调用的内部 LLM 消耗；
-     * 它跟随工具 nodeResponse 作为 childrenResponses 展示，不再单独生成平级记录。
-     */
-    const completedFlowResponse = toolResponseCompress
-      ? appendToolResponseCompressRecord({
-          flowResponse: baseFlowResponse,
-          compressRecord: getToolResponseCompressRecord({
-            moduleType,
-            response: toolResponseCompress.response,
-            usage: toolResponseCompress.usage,
-            requestIds: toolResponseCompress.requestIds,
-            seconds: toolResponseCompress.seconds
-          })
-        })
-      : baseFlowResponse;
-
-    toolRunResponses.push(completedFlowResponse);
-    pendingToolFlowResponseMap.delete(call.id);
+    appendCompressNodeResponse({
+      nodeResponse: getToolResponseCompressNodeResponse({
+        moduleType,
+        response: toolResponseCompress.response,
+        usage: toolResponseCompress.usage,
+        requestIds: toolResponseCompress.requestIds,
+        seconds: toolResponseCompress.seconds
+      }),
+      usage: toolResponseCompress.usage
+    });
   };
 
   /**
-   * 推送非普通工具执行产生的 flowResponse。
-   * 例如系统交互类工具已经在上游构造好完整运行详情，这里只负责并入 ToolCall 汇总列表。
+   * 交互恢复工具没有新的 LLM tool_call 生命周期。
+   *
+   * 因此不会再触发 afterToolCall，只能在 runInteractiveTool 完成后直接把续跑子流程的
+   * summary 合并进 ToolCall 父节点统计。
    */
-  const appendToolFlowResponse = (flowResponse: ChildResponseItemType) => {
-    toolRunResponses.push(flowResponse);
+  const appendInteractiveToolSummary = (flowResponse: ChildResponseItemType) => {
+    appendToolSummary(flowResponse);
   };
 
   /**
-   * message/context compress 是 ToolCall 节点自己的 LLM 子调用。
-   * 它没有关联到某个具体工具，因此作为 ToolCall 的独立 child flow response 记录。
+   * 记录 message/context 压缩节点。
+   *
+   * context compress 发生在 ToolCall 内部模型调用前，不依附于某个工具，所以和
+   * tool response compress 一样作为 ToolCall 的直接 child 写入。
    */
   const appendContextCompressNodeResponse = ({
     usage,
@@ -324,25 +295,22 @@ export const useToolNodeResponse = ({
     requestIds: string[];
     seconds: number;
   }) => {
-    toolRunResponses.push({
-      flowResponses: [
-        getContextCompressNodeResponse({
-          moduleType,
-          usage,
-          requestIds,
-          seconds
-        })
-      ],
-      flowUsages: [usage],
-      runTimes: 0
+    appendCompressNodeResponse({
+      nodeResponse: getContextCompressNodeResponse({
+        moduleType,
+        usage,
+        requestIds,
+        seconds
+      }),
+      usage
     });
   };
 
   return {
-    toolRunResponses,
+    toolDispatchSummary,
     cacheToolFlowResponse,
     appendToolNodeResponse,
-    appendToolFlowResponse,
+    appendInteractiveToolSummary,
     appendContextCompressNodeResponse
   };
 };

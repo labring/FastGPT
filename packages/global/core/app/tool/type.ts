@@ -31,6 +31,8 @@ export type AppToolRuntimeType = {
   currentCost?: number;
   systemKeyCost?: number;
   hasTokenFee?: boolean;
+  /** 系统工具关联的真实 workflow app。存在时按系统级 workflow tool 处理。 */
+  associatedPluginId?: string;
 };
 
 // // System tool

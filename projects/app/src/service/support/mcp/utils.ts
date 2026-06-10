@@ -32,9 +32,17 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+
+const stringifyMcpPluginOutput = (pluginOutput: unknown) => {
+  if (pluginOutput === undefined || pluginOutput === null) {
+    return 'Can not get response from plugin';
+  }
+
+  return JSON.stringify(pluginOutput);
+};
 
 export const pluginNodes2InputSchema = (
   nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
@@ -209,35 +217,47 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     }
 
     const chatId = getNanoid();
+    const responseChatItemId = getNanoid(24);
 
-    const { assistantResponses, newVariables, flowResponses, durationSeconds, system_memories } =
-      await dispatchWorkFlow({
-        chatId,
-        mode: 'chat',
-        usageSource: UsageSourceEnum.mcp,
-        runningAppInfo: {
-          id: String(app._id),
-          name: app.name,
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-        uid: String(app.tmbId),
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-      });
+    const {
+      assistantResponses,
+      newVariables,
+      durationSeconds,
+      system_memories,
+      nodeResponseSummary,
+      runtimeNodeResponseSummary
+    } = await dispatchWorkFlow({
+      chatId,
+      mode: 'chat',
+      usageSource: UsageSourceEnum.mcp,
+      runningAppInfo: {
+        id: String(app._id),
+        name: app.name,
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
+      uid: String(app.tmbId),
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges),
+      variables,
+      responseChatItemId,
+      query: removeEmptyUserInput(userQuestion.value),
+      chatConfig,
+      histories: [],
+      stream: false,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      nodeResponseWriteConfig: {
+        persistToDb: true,
+        retainInMemory: false
+      }
+    });
 
     // Save chat
     const aiResponse: AIChatItemType & { dataId?: string } = {
+      dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       memories: system_memories
     };
     const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
@@ -254,20 +274,17 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       source: ChatSourceEnum.mcp,
       userContent: userQuestion,
       aiContent: aiResponse,
-      durationSeconds
+      durationSeconds,
+      nodeResponseSummary
     });
 
     // Get MCP response type
     let responseContent = (() => {
       if (isPlugin) {
-        const output = flowResponses.find(
-          (item) => item.moduleType === FlowNodeTypeEnum.pluginOutput
-        );
-        if (output) {
-          return JSON.stringify(output.pluginOutput);
-        } else {
-          return 'Can not get response from plugin';
-        }
+        const { pluginOutput } = getRuntimeNodeResponseSummary({
+          runtimeNodeResponseSummary
+        });
+        return stringifyMcpPluginOutput(pluginOutput);
       }
 
       return assistantResponses

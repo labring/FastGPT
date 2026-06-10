@@ -15,6 +15,7 @@ type UseSandboxParams = {
   appId: string;
   userId: string;
   chatId: string;
+  sandboxId?: string;
   teamId: string;
   useAgentSandbox: boolean;
   skillIds: string[];
@@ -80,6 +81,7 @@ export async function useSandbox({
   appId,
   userId,
   chatId,
+  sandboxId,
   teamId,
   useAgentSandbox,
   skillIds,
@@ -105,7 +107,9 @@ export async function useSandbox({
   }
 
   // 确认使用沙盒，启动沙盒实例
-  const sandboxClient = await getSandboxClient({ appId, userId, chatId });
+  const sandboxClient = await getSandboxClient(
+    sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
+  );
 
   const getSkillsInfo = async () => {
     // 编辑模式下复用编辑器已经写入 skills 目录的 skill 文件，避免工作区其他 SKILL.md 进入 prompt。

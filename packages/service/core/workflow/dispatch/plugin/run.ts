@@ -32,11 +32,15 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { WorkflowVariableState } from '../utils/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
+import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { getRuntimeNodeResponseSummary } from '../utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
-}>;
+}> & {
+  nodeResponseWriter?: WorkflowNodeResponseWriter;
+};
 type RunPluginResponse = DispatchNodeResultType<
   {
     [key: string]: any;
@@ -141,7 +145,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         systemKeyCost: systemTool.systemKeyCost ?? 0,
         nodes: systemTool.nodes,
         edges: systemTool.edges,
-        hasTokenFee: !!systemTool.hasTokenFee
+        hasTokenFee: !!systemTool.hasTokenFee,
+        associatedPluginId: systemTool.associatedPluginId
       };
     }
 
@@ -207,15 +212,18 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       sourceVariableState: props.variableState
     });
     const runtimeVariables = childVariableState.toRuntimeRecord();
+    const shouldStoreChildNodeResponses = !workflowTool.associatedPluginId;
     const {
-      flowResponses,
       flowUsages,
       assistantResponses,
       runTimes,
       system_memories,
+      runtimeNodeResponseSummary,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWorkflow({
       ...props,
+      // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
+      ...(shouldStoreChildNodeResponses ? {} : { nodeResponseWriter: undefined }),
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
@@ -241,12 +249,15 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(workflowTool.edges)
     });
-    const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
+    const runtimeSummary = getRuntimeNodeResponseSummary({
+      runtimeNodeResponseSummary
+    });
+    const pluginOutput = runtimeSummary.pluginOutput;
 
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: !!output?.pluginOutput?.error
+      error: !!pluginOutput?.error
     });
     // Child run not push usage
     props.usagePush([
@@ -255,9 +266,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints
       }
     ]);
+    const childResponseCount = runtimeSummary.childResponseCount;
 
     return {
-      data: output ? output.pluginOutput : {},
+      data: pluginOutput || {},
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       system_memories,
@@ -267,16 +279,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         moduleLogo: workflowTool.avatar,
         totalPoints: usagePoints,
         toolInput: data,
-        pluginOutput: output?.pluginOutput,
-        pluginDetail: toolData?.permission?.hasWritePer // Not system workflowTool
-          ? flowResponses
-          : undefined
+        pluginOutput,
+        childResponseCount
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
-        ? Object.keys(output.pluginOutput)
+      [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutput
+        ? Object.keys(pluginOutput)
             .filter((key) => outputFilterMap[key])
             .reduce<Record<string, any>>((acc, key) => {
-              acc[key] = output.pluginOutput![key];
+              acc[key] = pluginOutput[key];
               return acc;
             }, {})
         : undefined,

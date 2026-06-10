@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   type Props,
   failChatRound,
@@ -7,6 +7,8 @@ import {
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { serviceEnv } from '@fastgpt/service/env';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -27,7 +29,23 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+
+const axiosPostMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  return {
+    ...mod,
+    axios: {
+      ...mod.axios,
+      post: axiosPostMock
+    }
+  };
+});
+
+const originalChatLogUrl = serviceEnv.CHAT_LOG_URL;
+const originalChatLogInterval = serviceEnv.CHAT_LOG_INTERVAL;
+const originalChatLogSourceIdPrefix = serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX;
 
 const createMockProps = (
   overrides?: Partial<Props>,
@@ -66,8 +84,7 @@ const createMockProps = (
           content: 'I am doing well, thank you!'
         }
       }
-    ],
-    responseData: []
+    ]
   },
   durationSeconds: 2.5,
   ...overrides
@@ -77,16 +94,15 @@ describe('pushChatRecords', () => {
   let testAppId: string;
   let testTeamId: string;
   let testTmbId: string;
-  let testUserId: string;
 
   beforeEach(async () => {
+    axiosPostMock.mockReset();
+
     // Create test user
     const user = await MongoUser.create({
       username: 'test-user',
       password: 'test-password'
     });
-    testUserId = String(user._id);
-
     // Create test team
     const team = await MongoTeam.create({
       name: 'Test Team',
@@ -120,6 +136,12 @@ describe('pushChatRecords', () => {
       intro: 'Test intro'
     });
     testAppId = String(app._id);
+  });
+
+  afterEach(() => {
+    serviceEnv.CHAT_LOG_URL = originalChatLogUrl;
+    serviceEnv.CHAT_LOG_INTERVAL = originalChatLogInterval;
+    serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX = originalChatLogSourceIdPrefix;
   });
 
   describe('pushChatRecords function', () => {
@@ -253,8 +275,7 @@ describe('pushChatRecords', () => {
               {
                 agentStopGate
               }
-            ],
-            responseData: []
+            ]
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -273,73 +294,24 @@ describe('pushChatRecords', () => {
       );
     });
 
-    it('should create chat item responses when responseData is provided', async () => {
-      const props = createMockProps({
-        aiContent: {
-          obj: ChatRoleEnum.AI,
-          value: [
-            {
-              text: { content: 'Response' }
-            }
-          ],
-          responseData: [
-            {
-              nodeId: 'xx',
-              id: 'xx',
-              moduleType: FlowNodeTypeEnum.chatNode,
-              moduleName: 'Chat',
-              runningTime: 1.5,
-              totalPoints: 10
-            }
-          ]
-        }
-      });
-
-      await pushChatRecords(props);
-
-      const responses = await MongoChatItemResponse.find({
-        appId: testAppId,
-        chatId: props.chatId
-      });
-      // ResponseData is only created when dataId exists on the AI chat item
-      // Since we're using real database, check if responses were created
-      if (responses.length > 0) {
-        expect(responses[0].data.moduleType).toBe(FlowNodeTypeEnum.chatNode);
-        expect(responses[0].data.totalPoints).toBe(10);
-      }
-    });
-
-    it('should handle dataset search node with quoteList', async () => {
-      const quote: SearchDataResponseItemType = {
-        id: 'quote-1',
-        chunkIndex: 0,
-        datasetId: 'dataset-1',
-        collectionId: 'collection-1',
-        sourceId: 'source-1',
-        sourceName: 'doc.pdf',
-        score: [{ type: 'embedding' as const, value: 0.95, index: 0 }],
-        q: 'What is AI?',
-        a: 'AI stands for Artificial Intelligence...',
-        updateTime: new Date()
-      };
+    it('should drop inline responseData from aiContent and not persist response rows', async () => {
       const props = createMockProps(
         {
           aiContent: {
             obj: ChatRoleEnum.AI,
             value: [
               {
-                text: { content: 'Based on the search results...' }
+                text: { content: 'Response' }
               }
             ],
             responseData: [
               {
                 nodeId: 'xx',
                 id: 'xx',
-                moduleType: FlowNodeTypeEnum.datasetSearchNode,
-                moduleName: 'Dataset Search',
-                runningTime: 0.5,
-                totalPoints: 5,
-                quoteList: [quote]
+                moduleType: FlowNodeTypeEnum.chatNode,
+                moduleName: 'Chat',
+                runningTime: 1.5,
+                totalPoints: 10
               }
             ]
           }
@@ -349,34 +321,17 @@ describe('pushChatRecords', () => {
 
       await pushChatRecords(props);
 
-      expect(props.aiContent.responseData?.[0]?.quoteList?.[0]).toMatchObject({
-        q: quote.q,
-        a: quote.a
-      });
-
-      const responses = await MongoChatItemResponse.find({
-        appId: testAppId,
-        chatId: props.chatId
-      });
-      // ResponseData is only created when dataId exists on the AI chat item
-      if (responses.length > 0) {
-        expect(responses[0].data.quoteList).toBeDefined();
-        expect(responses[0].data.quoteList?.[0]).toMatchObject({
-          id: quote.id,
-          chunkIndex: quote.chunkIndex,
-          datasetId: quote.datasetId,
-          collectionId: quote.collectionId,
-          sourceId: quote.sourceId,
-          sourceName: quote.sourceName,
-          score: quote.score
-        });
-        // q and a should be removed
-        expect(responses[0].data.quoteList?.[0]?.q).toBeUndefined();
-        expect(responses[0].data.quoteList?.[0]?.a).toBeUndefined();
-      }
+      const [aiItem, responseCount, log] = await Promise.all([
+        MongoChatItem.findOne({ appId: testAppId, chatId: props.chatId, obj: ChatRoleEnum.AI }),
+        MongoChatItemResponse.countDocuments({ appId: testAppId, chatId: props.chatId }),
+        MongoAppChatLog.findOne({ appId: testAppId, chatId: props.chatId })
+      ]);
+      expect(aiItem?.responseData).toBeUndefined();
+      expect(responseCount).toBe(0);
+      expect(log?.totalPoints).toBe(0);
     });
 
-    it('should create chat data log with error count when response has error', async () => {
+    it('should ignore inline responseData when calculating chat log error count', async () => {
       const props = createMockProps(
         {
           aiContent: {
@@ -403,33 +358,20 @@ describe('pushChatRecords', () => {
 
       const logs = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId });
       expect(logs).toHaveLength(1);
-      expect(logs[0].errorCount).toBe(1);
+      expect(logs[0].errorCount).toBe(0);
     });
 
-    it('should calculate total points from response data', async () => {
+    it('should calculate total points from writer summary', async () => {
       const props = createMockProps(
         {
           aiContent: {
             obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: [
-              {
-                nodeId: 'xx',
-                id: 'xx',
-                moduleType: FlowNodeTypeEnum.chatNode,
-                moduleName: 'Chat',
-                runningTime: 1.0,
-                totalPoints: 10
-              },
-              {
-                nodeId: '22',
-                id: '33',
-                moduleType: FlowNodeTypeEnum.datasetSearchNode,
-                moduleName: 'Dataset Search',
-                runningTime: 0.5,
-                totalPoints: 5
-              }
-            ]
+            value: []
+          },
+          nodeResponseSummary: {
+            citeCollectionIds: [],
+            errorCount: 0,
+            totalPoints: 15
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -440,6 +382,89 @@ describe('pushChatRecords', () => {
       const logs = await MongoAppChatLog.find({ appId: testAppId, chatId: props.chatId });
       expect(logs).toHaveLength(1);
       expect(logs[0].totalPoints).toBe(15);
+    });
+
+    it('should save cite ids, error count and log points from writer summary', async () => {
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: []
+          },
+          nodeResponseSummary: {
+            citeCollectionIds: ['collection-summary'],
+            errorCount: 1,
+            lastError: 'summary error',
+            totalPoints: 9
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+
+      const [chat, aiItem, log, responseCount] = await Promise.all([
+        MongoChat.findOne({ appId: testAppId, chatId: props.chatId }),
+        MongoChatItem.findOne({ appId: testAppId, chatId: props.chatId, obj: ChatRoleEnum.AI }),
+        MongoAppChatLog.findOne({ appId: testAppId, chatId: props.chatId }),
+        MongoChatItemResponse.countDocuments({ appId: testAppId, chatId: props.chatId })
+      ]);
+
+      expect(chat?.errorCount).toBe(1);
+      expect(aiItem?.citeCollectionIds).toEqual(['collection-summary']);
+      expect(log?.errorCount).toBe(1);
+      expect(log?.totalPoints).toBe(9);
+      expect(responseCount).toBe(0);
+    });
+
+    it('should push chat log response time from persisted response rows', async () => {
+      serviceEnv.CHAT_LOG_URL = 'http://chat-log.test';
+      serviceEnv.CHAT_LOG_INTERVAL = 50;
+      serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX = 'test-';
+
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: { content: 'Log answer' }
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      await MongoChatItemResponse.create({
+        teamId: testTeamId,
+        appId: testAppId,
+        chatId: props.chatId,
+        chatItemDataId: aiItem?.dataId,
+        data: {
+          nodeId: 'log-node',
+          id: 'log-response',
+          moduleType: FlowNodeTypeEnum.chatNode,
+          moduleName: 'Log Chat',
+          runningTime: 1.25,
+          totalPoints: 4
+        }
+      });
+
+      await vi.waitFor(() => expect(axiosPostMock).toHaveBeenCalledTimes(1));
+
+      expect(axiosPostMock.mock.calls[0][0]).toBe('http://chat-log.test/api/chat/push');
+      expect(axiosPostMock.mock.calls[0][1]).toMatchObject({
+        chatId: props.chatId,
+        responseTime: 1250,
+        sourceId: `test-${testAppId}`
+      });
     });
 
     it('should merge metadata from existing chat', async () => {
@@ -493,160 +518,6 @@ describe('pushChatRecords', () => {
         }
       }
     });
-
-    it('should store citeCollectionIds from dataset search', async () => {
-      const props = createMockProps(
-        {
-          aiContent: {
-            obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: [
-              {
-                nodeId: 'xx',
-                id: 'xx',
-                moduleType: FlowNodeTypeEnum.datasetSearchNode,
-                moduleName: 'Dataset Search',
-                runningTime: 0.5,
-                totalPoints: 5,
-                quoteList: [
-                  {
-                    id: 'quote-1',
-                    chunkIndex: 0,
-                    datasetId: 'dataset-1',
-                    collectionId: 'collection-1',
-                    sourceId: 'source-1',
-                    sourceName: 'doc1.pdf',
-                    score: [{ type: 'embedding', value: 0.95, index: 0 }],
-                    q: 'What is AI?',
-                    a: 'AI stands for Artificial Intelligence...',
-                    updateTime: new Date()
-                  },
-                  {
-                    id: 'quote-2',
-                    chunkIndex: 1,
-                    datasetId: 'dataset-1',
-                    collectionId: 'collection-2',
-                    sourceId: 'source-2',
-                    sourceName: 'doc2.pdf',
-                    score: [{ type: 'embedding', value: 0.85, index: 0 }],
-                    q: 'What is AI?',
-                    a: 'AI stands for Artificial Intelligence...',
-                    updateTime: new Date()
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
-
-      await pushChatRecords(props);
-
-      const aiItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.AI
-      });
-
-      if (aiItem) {
-        if ('citeCollectionIds' in aiItem) {
-          expect(aiItem?.citeCollectionIds).toHaveLength(2);
-          expect(aiItem?.citeCollectionIds).toContain('collection-1');
-          expect(aiItem?.citeCollectionIds).toContain('collection-2');
-        } else {
-          throw new Error('aiItem does not have citeCollectionIds');
-        }
-      }
-    });
-
-    it('should collect citeCollectionIds from dataset search nested in loopRun / parallelRun', async () => {
-      const makeQuote = (id: string, collectionId: string) => ({
-        id,
-        chunkIndex: 0,
-        datasetId: 'dataset-1',
-        collectionId,
-        sourceId: `src-${collectionId}`,
-        sourceName: `${collectionId}.pdf`,
-        score: [{ type: 'embedding', value: 0.9, index: 0 }],
-        q: 'q',
-        a: 'a',
-        updateTime: new Date()
-      });
-      const makeDatasetSearch = (collectionId: string) => ({
-        nodeId: `ds-${collectionId}`,
-        id: `ds-${collectionId}`,
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        moduleName: 'Dataset Search',
-        runningTime: 0.1,
-        totalPoints: 1,
-        quoteList: [makeQuote(`quote-${collectionId}`, collectionId)]
-      });
-
-      const props = createMockProps(
-        {
-          aiContent: {
-            obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: [
-              {
-                nodeId: 'loopRun-1',
-                id: 'loopRun-1',
-                moduleType: FlowNodeTypeEnum.loopRun,
-                moduleName: 'LoopRun',
-                runningTime: 0.5,
-                totalPoints: 2,
-                loopRunDetail: [
-                  {
-                    nodeId: 'loopRun-1_iter_1',
-                    id: 'loopRun-1_iter_1',
-                    moduleType: FlowNodeTypeEnum.loopRun,
-                    moduleName: 'Iter 1',
-                    runningTime: 0.2,
-                    totalPoints: 1,
-                    childrenResponses: [makeDatasetSearch('collection-loop')]
-                  }
-                ]
-              },
-              {
-                nodeId: 'parallelRun-1',
-                id: 'parallelRun-1',
-                moduleType: FlowNodeTypeEnum.parallelRun,
-                moduleName: 'ParallelRun',
-                runningTime: 0.5,
-                totalPoints: 2,
-                parallelDetail: [
-                  {
-                    nodeId: 'parallelRun-1_task_0',
-                    id: 'parallelRun-1_task_0',
-                    moduleType: FlowNodeTypeEnum.parallelRun,
-                    moduleName: 'Task 1',
-                    runningTime: 0.2,
-                    totalPoints: 1,
-                    childrenResponses: [makeDatasetSearch('collection-parallel')]
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
-
-      await pushChatRecords(props);
-
-      const aiItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.AI
-      });
-
-      if (!aiItem || !('citeCollectionIds' in aiItem)) {
-        throw new Error('aiItem does not have citeCollectionIds');
-      }
-      expect(aiItem.citeCollectionIds).toContain('collection-loop');
-      expect(aiItem.citeCollectionIds).toContain('collection-parallel');
-    });
   });
 
   describe('prepared chat round lifecycle', () => {
@@ -699,16 +570,6 @@ describe('pushChatRecords', () => {
                   content: 'Final answer'
                 }
               }
-            ],
-            responseData: [
-              {
-                nodeId: 'node-1',
-                id: 'resp-1',
-                moduleType: FlowNodeTypeEnum.chatNode,
-                moduleName: 'Chat',
-                runningTime: 0.5,
-                totalPoints: 3
-              }
             ]
           }
         },
@@ -746,8 +607,8 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         chatItemDataId: responseChatItemId
       });
-      expect(responses).toHaveLength(1);
-      expect(responses[0].data.moduleType).toBe(FlowNodeTypeEnum.chatNode);
+      expect(responses).toHaveLength(0);
+      expect(aiItem?.responseData).toBeUndefined();
     });
 
     it('should mark prepared round as error and keep ai placeholder', async () => {
@@ -946,8 +807,7 @@ describe('pushChatRecords', () => {
           },
           aiContent: {
             obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: []
+            value: []
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1030,8 +890,7 @@ describe('pushChatRecords', () => {
           },
           aiContent: {
             obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: []
+            value: []
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1148,8 +1007,7 @@ describe('pushChatRecords', () => {
           },
           aiContent: {
             obj: ChatRoleEnum.AI,
-            value: [],
-            responseData: []
+            value: []
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1367,8 +1225,7 @@ describe('pushChatRecords', () => {
               {
                 text: { content: 'Second response' }
               }
-            ],
-            responseData: []
+            ]
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1457,7 +1314,7 @@ describe('pushChatRecords', () => {
       }
     });
 
-    it('should merge chat item responses', async () => {
+    it('should update interactive chat with node responses already owned by the existing AI item', async () => {
       // Create an AI chat item
       await MongoChatItem.create({
         chatId: 'test-chat-id',
@@ -1489,16 +1346,33 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         chatItemDataId: 'data-id-1',
         data: {
+          id: 'existing-root',
+          nodeId: 'existing-root',
           moduleType: FlowNodeTypeEnum.chatNode,
           moduleName: 'Chat',
           runningTime: 1.0,
           totalPoints: 10
         }
       });
+      await MongoChatItemResponse.create({
+        teamId: testTeamId,
+        appId: testAppId,
+        chatId: 'test-chat-id',
+        chatItemDataId: 'data-id-1',
+        data: {
+          id: 'new-root',
+          nodeId: 'new-root',
+          moduleType: FlowNodeTypeEnum.agent,
+          moduleName: 'New Agent',
+          runningTime: 0.5,
+          totalPoints: 5
+        }
+      });
 
       const props = createMockProps(
         {
           aiContent: {
+            dataId: 'data-id-1',
             obj: ChatRoleEnum.AI,
             value: [],
             responseData: [
@@ -1508,7 +1382,17 @@ describe('pushChatRecords', () => {
                 moduleType: FlowNodeTypeEnum.datasetSearchNode,
                 moduleName: 'Dataset Search',
                 runningTime: 0.5,
-                totalPoints: 5
+                totalPoints: 5,
+                childrenResponses: [
+                  {
+                    nodeId: 'xx-child',
+                    id: 'xx-child',
+                    moduleType: FlowNodeTypeEnum.agent,
+                    moduleName: 'Child Agent',
+                    runningTime: 0.2,
+                    totalPoints: 2
+                  }
+                ]
               }
             ]
           }
@@ -1535,9 +1419,24 @@ describe('pushChatRecords', () => {
       const responses = await MongoChatItemResponse.find({
         appId: testAppId,
         chatId: props.chatId
+      }).sort({ _id: 1 });
+
+      expect(responses).toHaveLength(2);
+      const existingResponse = responses.find((item) => item.data.id === 'existing-root');
+      expect(existingResponse?.data.moduleType).toBe(FlowNodeTypeEnum.chatNode);
+      expect(responses.map((item) => item.chatItemDataId)).toEqual(['data-id-1', 'data-id-1']);
+      expect(responses.map((item) => item.data.id)).toEqual(['existing-root', 'new-root']);
+
+      const records = await getChatItems({
+        appId: testAppId,
+        chatId: props.chatId,
+        offset: 0,
+        limit: 10,
+        field: 'obj value responseData'
       });
-      // Should have merged responses
-      expect(responses.length).toBeGreaterThan(0);
+      const aiRecord = records.histories.find((item) => item.obj === ChatRoleEnum.AI);
+
+      expect(aiRecord?.responseData?.map((item) => item.id)).toEqual(['existing-root', 'new-root']);
     });
   });
 });

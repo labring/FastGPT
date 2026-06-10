@@ -6,8 +6,10 @@ import { getLogger } from '@fastgpt-sdk/otel/logger';
 import { LogCategories } from '../../../../../../common/logger';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import z from 'zod';
 import type { ChildResponseItemType } from '../type';
+import { summarizeRuntimeNodeResponses } from '../../../utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
 
@@ -57,22 +59,32 @@ export const dispatchReadFileTool = async ({
 }: FileReadParams) => {
   const startTime = Date.now();
   const usages: ChatNodeUsageType[] = [];
-  const getFlowResponse = (nodeResponse: Record<string, any> = {}): ChildResponseItemType => ({
-    flowResponses: [
+  const toolInput = {
+    ids: files.map((file) => file.id)
+  };
+  const getFlowResponse = (nodeResponse: Record<string, any> = {}): ChildResponseItemType => {
+    const flowResponses = [
       {
         ...nodeResponse,
         moduleType: FlowNodeTypeEnum.readFiles,
         moduleName: i18nT('chat:read_file'),
         moduleLogo: ReadFileTooData.avatar,
+        toolId: ReadFileTooData.id,
+        toolInput,
         id: toolCallId,
         nodeId: toolCallId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         totalPoints: usages.reduce((sum, item) => sum + item.totalPoints, 0)
       }
-    ],
-    flowUsages: usages,
-    runTimes: 0
-  });
+    ];
+
+    return {
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, flowResponses),
+      builtinNodeResponses: flowResponses,
+      flowUsages: usages,
+      runTimes: 0
+    };
+  };
 
   try {
     const readFilesResult = await Promise.all(
@@ -110,16 +122,27 @@ export const dispatchReadFileTool = async ({
 </file>`
       )
       .join('\n');
+    const readFilesResultPreview = readFilesResult
+      .map((file) => `## ${file.name}\n${sliceStrStartEnd(file.content, 1000, 1000)}`)
+      .join('\n\n');
 
     return {
       response,
       usages,
-      flowResponse: getFlowResponse()
+      flowResponse: getFlowResponse({
+        toolRes: response,
+        readFiles: readFilesResult.map((file, index) => ({
+          name: file.name,
+          url: files[index]?.url ?? ''
+        })),
+        readFilesResult: readFilesResultPreview
+      })
     };
   } catch (error) {
     logger.error('[File Read] Compression failed, using original content', { error });
     const response = `Failed to read file: ${getErrText(error)}`;
     const nodeResponse = {
+      toolRes: response,
       errorText: response
     };
 

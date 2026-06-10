@@ -2,9 +2,10 @@ import type {
   ChatCompletionMessageParam,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import type { ChildResponseItemType, DispatchToolModuleProps } from './type';
+import type { DispatchToolModuleProps } from './type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { RuntimeNodeResponseSummary } from '../../type';
 import { runAgentLoop } from '../../../../ai/llm/agentLoop';
 import type {
   ToolCallChildrenInteractive,
@@ -18,7 +19,9 @@ import { useToolRunner } from './hooks/useToolRunner';
 type ResponseType = {
   requestIds: string[];
   error?: string;
-  toolDispatchFlowResponses: ChildResponseItemType[];
+  runtimeNodeResponseSummary: RuntimeNodeResponseSummary;
+  toolTotalPoints: number;
+  runTimes: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
   toolCallTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
@@ -75,19 +78,21 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     lang: workflowProps.lang,
     appId: workflowProps.runningAppInfo.id,
     userId: workflowProps.uid,
-    chatId: workflowProps.chatId
+    chatId: workflowProps.chatId,
+    sandboxId: workflowProps.runningAppInfo.sandboxId
   });
   // ToolCall 的一次运行会横跨 LLM loop、真实工具执行、SSE 预览和运行详情落库。
   // 这里按职责拆成 hook，toolCall.ts 只保留主流程编排。
   const {
-    toolRunResponses,
+    toolDispatchSummary,
     cacheToolFlowResponse,
     appendToolNodeResponse,
-    appendToolFlowResponse,
+    appendInteractiveToolSummary,
     appendContextCompressNodeResponse
   } = useToolNodeResponse({
     moduleType: workflowProps.node.flowNodeType,
-    getToolInfo
+    nodeResponseWriter: props.nodeResponseWriter,
+    nodeResponseParentId: workflowProps.nodeResponseParentId
   });
   const { streamReasoning, streamAnswer, streamToolCall, streamToolParams, streamToolResponse } =
     useToolStreamResponse({
@@ -104,7 +109,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     fileUrls: fileUrlList,
     getToolInfo,
     cacheToolFlowResponse,
-    appendToolFlowResponse,
+    appendInteractiveToolSummary,
     streamToolResponse
   });
 
@@ -202,7 +207,9 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   return {
     requestIds,
     error,
-    toolDispatchFlowResponses: toolRunResponses,
+    runtimeNodeResponseSummary: toolDispatchSummary.runtimeNodeResponseSummary,
+    toolTotalPoints: toolDispatchSummary.toolTotalPoints,
+    runTimes: toolDispatchSummary.runTimes,
     toolCallInputTokens: inputTokens,
     toolCallOutputTokens: outputTokens,
     toolCallTotalPoints: llmTotalPoints,

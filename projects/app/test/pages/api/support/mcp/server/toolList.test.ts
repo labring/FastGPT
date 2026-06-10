@@ -1,10 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { pluginNodes2InputSchema, workflow2InputSchema } from '@/service/support/mcp/utils';
+import {
+  callMcpServerTool,
+  pluginNodes2InputSchema,
+  workflow2InputSchema
+} from '@/service/support/mcp/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
+import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -41,6 +52,18 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/user/team/utils', () => ({
+  getRunningUserInfoByTmbId: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
+  dispatchWorkFlow: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
+  pushChatRecords: vi.fn()
 }));
 
 describe('toolList', () => {
@@ -141,5 +164,79 @@ describe('toolList', () => {
         required: ['question', 'var1']
       });
     });
+  });
+});
+
+describe('callMcpServerTool', () => {
+  it('returns workflowTool pluginOutput using the same value source as main', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        apps: [
+          {
+            appId: 'app-id',
+            toolName: 'plugin_tool',
+            description: 'plugin tool'
+          }
+        ]
+      })
+    } as any);
+    vi.mocked(MongoApp.find).mockReturnValue({
+      lean: () => [
+        {
+          _id: 'app-id',
+          name: 'Plugin App',
+          type: AppTypeEnum.workflowTool,
+          teamId: 'team-id',
+          tmbId: 'tmb-id',
+          modules: []
+        }
+      ]
+    } as any);
+    vi.mocked(getAppLatestVersion).mockResolvedValue({
+      versionId: 'version-id',
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    } as any);
+    vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({
+      username: 'user',
+      teamName: 'team',
+      memberName: 'member',
+      contact: '',
+      teamId: 'team-id',
+      tmbId: 'tmb-id'
+    });
+    vi.mocked(dispatchWorkFlow).mockResolvedValue({
+      assistantResponses: [],
+      newVariables: {},
+      toolResponse: { result: 'tool response should not be the plugin source' },
+      durationSeconds: 1,
+      runtimeNodeResponseSummary: {
+        responseIds: ['plugin-output-response-id'],
+        finishedNodeIds: [],
+        hasError: false,
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        runningTime: 0,
+        pluginOutput: {
+          result: 'plugin output value'
+        }
+      }
+    } as any);
+    vi.mocked(pushChatRecords).mockResolvedValue(undefined as any);
+
+    await expect(
+      callMcpServerTool({
+        key: 'mcp-key',
+        toolName: 'plugin_tool',
+        inputs: {}
+      })
+    ).resolves.toBe(JSON.stringify({ result: 'plugin output value' }));
   });
 });

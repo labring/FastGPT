@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolRunner';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const { dispatchReadFileToolMock, runSandboxToolsMock, runWorkflowMock } = vi.hoisted(() => ({
   dispatchReadFileToolMock: vi.fn(),
@@ -93,25 +94,39 @@ const createRunner = ({
   fileUrls?: string[];
 }) => {
   const cacheToolFlowResponse = vi.fn();
-  const appendToolFlowResponse = vi.fn();
+  const appendInteractiveToolSummary = vi.fn();
   const streamToolResponse = vi.fn();
+  const nodeResponseWriter = {
+    record: vi.fn(async (responses = []) => responses),
+    recordWithParent: vi.fn(async (responses = [], parentId?: string) => {
+      return responses.map((response) => ({
+        ...response,
+        parentId: response.parentId || parentId
+      }));
+    })
+  };
   const runner = useToolRunner({
-    workflowProps: createWorkflowProps(),
+    workflowProps: {
+      ...createWorkflowProps(),
+      nodeResponseParentId: 'toolcall_parent',
+      nodeResponseWriter
+    },
     runtimeNodes,
     runtimeEdges,
     allFiles,
     fileUrls,
     getToolInfo,
     cacheToolFlowResponse,
-    appendToolFlowResponse,
+    appendInteractiveToolSummary,
     streamToolResponse
   });
 
   return {
     ...runner,
     cacheToolFlowResponse,
-    appendToolFlowResponse,
-    streamToolResponse
+    appendInteractiveToolSummary,
+    streamToolResponse,
+    nodeResponseWriter
   };
 };
 
@@ -179,19 +194,24 @@ describe('useToolRunner', () => {
     expect(cacheToolFlowResponse).toHaveBeenCalledWith({
       call,
       flowResponse: expect.objectContaining({
-        flowResponses: [
+        builtinNodeResponses: [
           expect.objectContaining({
-            moduleName: 'Run shell',
             moduleType: FlowNodeTypeEnum.tool,
+            moduleName: 'Run shell',
             moduleLogo: 'sandbox-avatar',
             toolId: 'sandbox_shell',
             toolInput: {
               cmd: 'ls'
             },
             toolRes: 'sandbox ok',
-            runningTime: 0.5
+            runningTime: 0.5,
+            totalPoints: 0
           })
-        ]
+        ],
+        runtimeNodeResponseSummary: expect.objectContaining({
+          childResponseCount: 1,
+          finishedNodeIds: expect.any(Array)
+        })
       })
     });
   });
@@ -201,13 +221,15 @@ describe('useToolRunner', () => {
       moduleName: 'read_file',
       totalPoints: 0.2
     };
+    const fileNodeResponse = {
+      id: 'call_read',
+      nodeId: 'call_read',
+      moduleType: FlowNodeTypeEnum.readFiles,
+      moduleName: 'Read file'
+    };
     const flowResponse = {
-      flowResponses: [
-        {
-          id: 'call_read',
-          moduleName: 'Read file'
-        }
-      ],
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [fileNodeResponse]),
+      builtinNodeResponses: [fileNodeResponse],
       flowUsages: [usage],
       runTimes: 0
     };
@@ -288,11 +310,11 @@ describe('useToolRunner', () => {
       }
     ];
     runWorkflowMock.mockResolvedValue({
-      toolResponses: 'dataset ok',
+      toolResponse: 'dataset ok',
       assistantResponses: [],
       flowUsages: [],
       workflowInteractiveResponse: undefined,
-      flowResponses: []
+      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [])
     });
 
     const { runTool } = createRunner({
@@ -370,38 +392,53 @@ describe('useToolRunner', () => {
       }
     ];
     runWorkflowMock
-      .mockResolvedValueOnce({
-        toolResponses: {
-          answer: 'workflow ok'
-        },
-        assistantResponses: [{ text: { content: 'assistant text' } }],
-        flowUsages: [usage],
-        workflowInteractiveResponse: {
-          type: 'userSelect'
-        },
-        flowResponses: [
+      .mockImplementationOnce(async (props) => {
+        const nodeResponses = [
           {
+            id: 'workflow_tool_response',
+            nodeId: 'workflow_tool_response',
+            parentId: 'toolcall_parent',
+            moduleType: 'tool' as any,
+            moduleName: 'Workflow Tool',
             toolStop: true
           }
-        ]
+        ];
+        await props.nodeResponseWriter?.record(nodeResponses);
+
+        return {
+          toolResponse: {
+            answer: 'workflow ok'
+          },
+          assistantResponses: [{ text: { content: 'assistant text' } }],
+          flowUsages: [usage],
+          workflowInteractiveResponse: {
+            type: 'userSelect'
+          },
+          runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses)
+        };
       })
       .mockResolvedValueOnce({
-        toolResponses: 'interactive ok',
+        toolResponse: 'interactive ok',
         assistantResponses: [],
         flowUsages: [],
         workflowInteractiveResponse: undefined,
-        flowResponses: [
+        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
           {
+            id: 'interactive_tool_response',
+            nodeId: 'interactive_tool_response',
+            moduleType: 'tool' as any,
+            moduleName: 'Interactive Tool',
             toolStop: false
           }
-        ]
+        ])
       });
     const {
       runTool,
       runInteractiveTool,
       cacheToolFlowResponse,
-      appendToolFlowResponse,
-      streamToolResponse
+      appendInteractiveToolSummary,
+      streamToolResponse,
+      nodeResponseWriter
     } = createRunner({
       runtimeNodes,
       runtimeEdges,
@@ -421,6 +458,7 @@ describe('useToolRunner', () => {
     });
 
     const result = await runTool({ call });
+    const workflowRunProps = runWorkflowMock.mock.calls[0][0];
 
     expect(runtimeNodes[0]).toEqual({
       nodeId: 'search',
@@ -443,12 +481,20 @@ describe('useToolRunner', () => {
     });
     expect(result.stop).toBe(true);
     expect(result.assistantMessages.length).toBeGreaterThan(0);
+    expect(workflowRunProps.nodeResponseWriter).toBe(nodeResponseWriter);
+    expect(nodeResponseWriter.record).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'workflow_tool_response'
+      })
+    ]);
     expect(cacheToolFlowResponse).toHaveBeenCalledWith({
       call,
       flowResponse: expect.objectContaining({
-        toolResponses: {
-          answer: 'workflow ok'
-        }
+        flowUsages: [usage],
+        runtimeNodeResponseSummary: expect.objectContaining({
+          responseIds: ['workflow_tool_response'],
+          hasToolStop: true
+        })
       })
     });
 
@@ -465,9 +511,11 @@ describe('useToolRunner', () => {
       toolCallId: 'call_interactive',
       response: 'interactive ok'
     });
-    expect(appendToolFlowResponse).toHaveBeenCalledWith(
+    expect(appendInteractiveToolSummary).toHaveBeenCalledWith(
       expect.objectContaining({
-        toolResponses: 'interactive ok'
+        runtimeNodeResponseSummary: expect.objectContaining({
+          responseIds: ['interactive_tool_response']
+        })
       })
     );
     expect(interactiveResult).toEqual({

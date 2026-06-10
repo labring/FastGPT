@@ -48,6 +48,9 @@ export const createWorkflowAgentLoopRuntime = ({
   workflowStreamResponse,
   assistantResponses = [],
   nodeResponses = [],
+  appendNodeResponse = (nodeResponse) => {
+    nodeResponses.push(nodeResponse);
+  },
   executeToolFactory = getExecuteTool
 }: {
   context: WorkflowAgentLoopRuntimeContext;
@@ -55,6 +58,7 @@ export const createWorkflowAgentLoopRuntime = ({
   workflowStreamResponse?: WorkflowResponseType;
   assistantResponses?: AIChatItemValueItemType[];
   nodeResponses?: ChatHistoryItemResType[];
+  appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
   executeToolFactory?: typeof getExecuteTool;
 }): {
   runtime: AgentLoopRuntime;
@@ -91,6 +95,7 @@ export const createWorkflowAgentLoopRuntime = ({
   const { cacheToolResult, appendToolNodeResponse } = useToolNodeResponse({
     node: context.node,
     nodeResponses: artifacts.nodeResponses,
+    appendNodeResponse,
     toolCatalog,
     getSubAppInfo: context.getSubAppInfo
   });
@@ -117,7 +122,7 @@ export const createWorkflowAgentLoopRuntime = ({
       reasoningText: event.reasoningText,
       ...(event.error ? { errorText: getErrText(event.error) } : {})
     };
-    artifacts.nodeResponses.push(agentResponse);
+    appendNodeResponse(agentResponse);
   };
 
   // Message 压缩是独立内部 LLM 调用，需要作为顶层运行详情展示。
@@ -142,7 +147,7 @@ export const createWorkflowAgentLoopRuntime = ({
     };
   };
   const appendMessageCompressNodeResponse = (event: MessageCompressNodeResponseInput) => {
-    artifacts.nodeResponses.push(createMessageCompressNodeResponse(event));
+    appendNodeResponse(createMessageCompressNodeResponse(event));
   };
 
   return {

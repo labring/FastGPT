@@ -1,0 +1,16 @@
+---
+title: 'V4.14.24'
+description: 'FastGPT V4.14.24 release notes'
+---
+
+## Upgrade Guide
+
+### 1. Update image tags
+
+- Update the fastgpt-app image tag (FastGPT main service): v4.14.24
+- Update the fastgpt-pro image tag (FastGPT commercial edition): v4.14.24
+
+## Changes
+
+1. Improved the `v1/completions` abort condition to reduce false aborts caused by socket reconnections, which could occasionally terminate workflow API calls.
+2. Added an upload API for admin deployments without an S3 external URL configured.

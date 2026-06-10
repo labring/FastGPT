@@ -82,7 +82,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     sourceVariableState: variableState
   });
 
-  const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
+  const { assistantResponses, system_memories, runtimeNodeResponseSummary } = await runWorkflow({
     ...props,
     runningAppInfo: childRunningAppInfo,
     runtimeNodes: storeNodes2RuntimeNodes(
@@ -124,7 +124,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       moduleLogo: appData.avatar,
       query: userChatInput,
       textOutput: text,
-      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      totalPoints: runtimeNodeResponseSummary.totalPoints
     }
   };
 };

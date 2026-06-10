@@ -117,7 +117,6 @@ describe('agent adapter useToolNodeResponse', () => {
         id: 'call_search',
         runningTime: 0.8,
         toolRes: 'tool response',
-        childTotalPoints: 1,
         childrenResponses: [
           expect.objectContaining({
             id: 'existing_child',
@@ -233,7 +232,6 @@ describe('agent adapter useToolNodeResponse', () => {
         runningTime: 0.3,
         agentPlanStatus: 'ask_question',
         textOutput: 'need more info',
-        childTotalPoints: 0.1,
         childrenResponses: [
           expect.objectContaining({
             moduleName: 'chat:tool_response_compress',

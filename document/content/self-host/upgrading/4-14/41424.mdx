@@ -1,0 +1,16 @@
+---
+title: 'V4.14.24'
+description: 'FastGPT V4.14.24 更新说明'
+---
+
+## 升级指南
+
+### 1. 更新镜像 tag
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.24
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.14.24
+
+## 变更说明
+
+1. 优化 v1/completions abort 条件判断，减少 socket 重连导致误判中断，导致 API 调用工作流时不时终止。
+2. 补充 admin 无 s3 external URL 时的上传接口

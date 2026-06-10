@@ -38,6 +38,7 @@ export const runSandboxTools = async ({
   appId,
   userId,
   chatId,
+  sandboxId,
   toolName,
   args,
   sandboxClient
@@ -45,6 +46,7 @@ export const runSandboxTools = async ({
   appId: string;
   userId: string;
   chatId: string;
+  sandboxId?: string;
   toolName: string;
   args: string;
   sandboxClient?: SandboxClient;
@@ -73,7 +75,11 @@ export const runSandboxTools = async ({
     };
   }
 
-  const instance = sandboxClient ?? (await getSandboxClient({ appId, userId, chatId }));
+  const instance =
+    sandboxClient ??
+    (await getSandboxClient(
+      sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
+    ));
   const result = await tool.execute({
     appId,
     userId,
@@ -99,14 +105,18 @@ export const injectSandboxFiles = async ({
   appId,
   userId,
   chatId,
+  sandboxId,
   files
 }: {
   appId: string;
   userId: string;
   chatId: string;
+  sandboxId?: string;
   files: { path: string; url: string }[];
 }) => {
-  const instance = await getSandboxClient({ appId, userId, chatId });
+  const instance = await getSandboxClient(
+    sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
+  );
   await instance.ensureAvailable();
   await writeUrlFilesToSandbox(instance.provider, files);
 };

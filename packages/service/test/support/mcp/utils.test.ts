@@ -20,13 +20,18 @@ vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
-  MongoApp: {
-    find: vi.fn().mockReturnValue({
-      lean: vi.fn()
-    })
-  }
-}));
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
+
+  return {
+    ...actual,
+    MongoApp: {
+      find: vi.fn().mockReturnValue({
+        lean: vi.fn()
+      })
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: vi.fn()

@@ -12,6 +12,7 @@ export const dispatchSandboxTool = async ({
   appId,
   userId,
   chatId,
+  sandboxId,
   lang,
   sandboxClient
 }: {
@@ -20,6 +21,7 @@ export const dispatchSandboxTool = async ({
   appId: string;
   userId: string;
   chatId: string;
+  sandboxId?: string;
   lang?: localeType;
   sandboxClient?: SandboxClient;
 }): Promise<DispatchSubAppResponse> => {
@@ -29,6 +31,7 @@ export const dispatchSandboxTool = async ({
     appId,
     userId,
     chatId,
+    sandboxId,
     sandboxClient
   });
 

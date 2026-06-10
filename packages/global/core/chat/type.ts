@@ -24,8 +24,10 @@ import { ObjectIdSchema } from '../../common/type/mongo';
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
   id: z.string(),
+  parentId: z.string().optional(),
   moduleType: z.enum(FlowNodeTypeEnum),
-  moduleName: z.string()
+  moduleName: z.string(),
+  childResponseCount: z.number().optional()
 });
 export type ChatHistoryItemResType = z.infer<typeof ChatHistoryItemResSchema>;
 
@@ -290,6 +292,7 @@ export const ChatItemResponseSchema = z.object({
   appId: z.string(),
   chatId: z.string(),
   chatItemDataId: z.string(),
+  time: z.coerce.date().optional(),
   data: ChatHistoryItemResSchema
 });
 export type ChatItemResponseSchemaType = z.infer<typeof ChatItemResponseSchema>;

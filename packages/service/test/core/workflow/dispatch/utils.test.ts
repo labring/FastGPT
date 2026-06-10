@@ -11,7 +11,8 @@ import {
   formatHttpError,
   rewriteRuntimeWorkFlow,
   getNodeErrResponse,
-  safePoints
+  safePoints,
+  summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -880,6 +881,39 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
 
+  it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
+    const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCPTool',
+      avatar: 'avatar.png',
+      toolConfig: {
+        // 模拟前端 preview 后的 ToolSet 节点：保留工具名，但没有完整 inputSchema。
+        mcpToolSet: { toolId: 'mcp-tool-1', toolList: [{ name: 'tool1', description: 'desc' }] }
+      }
+    } as any);
+    const parentNode = makeNode('parent', FlowNodeTypeEnum.toolCall);
+    const nodes = [parentNode, toolSetNode];
+    // 交互暂停会保存 ToolSet 展开后的运行态边；续跑时 store nodes 里仍只有 ToolSet。
+    const edges = [
+      makeEdge('parent', 'ts20', { sourceHandle: 'selectedTools', targetHandle: 'selectedTools' })
+    ];
+
+    const fullSchema = { type: 'object', properties: { city: { type: 'string' } } };
+    mockMongoAppFindOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
+    });
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'tool1', description: 'desc', inputSchema: fullSchema }
+    ]);
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
+
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
+    expect(filteredEdges).toHaveLength(1);
+    expect(filteredEdges[0].target).toBe('ts20');
+  });
+
   it('should skip MCP toolSet when app not found', async () => {
     const toolSetNode = makeNode('ts3', FlowNodeTypeEnum.toolSet, {
       pluginId: 'missing-app',
@@ -1103,10 +1137,10 @@ describe('getNodeErrResponse', () => {
       'errorText',
       'test error'
     );
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toHaveProperty('error', 'test error');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toHaveProperty('error', 'test error');
   });
 
-  it('should include customErr in error and toolResponses', () => {
+  it('should include customErr in error and toolResponse', () => {
     const result = getNodeErrResponse({
       error: 'fail',
       customErr: { code: 500, detail: 'internal' }
@@ -1116,7 +1150,7 @@ describe('getNodeErrResponse', () => {
       code: 500,
       detail: 'internal'
     });
-    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       error: 'fail',
       code: 500,
       detail: 'internal'
@@ -1153,6 +1187,87 @@ describe('getNodeErrResponse', () => {
     expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
+  });
+});
+
+describe('summarizeRuntimeNodeResponses', () => {
+  it('deduplicates flattened child rows that are already included in parent child stats', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'parent',
+        nodeId: 'parent-node',
+        moduleName: 'Parent',
+        totalPoints: 1,
+        childTotalPoints: 2,
+        childResponseCount: 1
+      },
+      {
+        id: 'child',
+        parentId: 'parent',
+        nodeId: 'child-node',
+        moduleName: 'Child',
+        totalPoints: 2
+      }
+    ]);
+
+    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.childResponseCount).toBe(2);
+  });
+
+  it('counts nested children when only an in-memory child tree is available', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'parent',
+        nodeId: 'parent-node',
+        moduleName: 'Parent',
+        totalPoints: 1,
+        childrenResponses: [
+          {
+            id: 'child',
+            nodeId: 'child-node',
+            moduleName: 'Child',
+            totalPoints: 2
+          }
+        ]
+      }
+    ]);
+
+    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.childResponseCount).toBe(2);
+  });
+
+  it('does not count the same response id again across incremental summaries', () => {
+    const firstSummary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'repeat',
+        nodeId: 'repeat-node',
+        moduleName: 'Repeat',
+        runningTime: 1,
+        totalPoints: 2
+      }
+    ]);
+    const nextSummary = summarizeRuntimeNodeResponses(firstSummary, [
+      {
+        id: 'repeat',
+        nodeId: 'repeat-node',
+        moduleName: 'Repeat',
+        runningTime: 1,
+        totalPoints: 2
+      },
+      {
+        id: 'next',
+        nodeId: 'next-node',
+        moduleName: 'Next',
+        runningTime: 3,
+        totalPoints: 4
+      }
+    ]);
+
+    expect(nextSummary.responseIds).toEqual(['repeat', 'next']);
+    expect(nextSummary.finishedNodeIds).toEqual(['repeat-node', 'next-node']);
+    expect(nextSummary.runningTime).toBe(4);
+    expect(nextSummary.childTotalPoints).toBe(6);
+    expect(nextSummary.childResponseCount).toBe(2);
   });
 });
 

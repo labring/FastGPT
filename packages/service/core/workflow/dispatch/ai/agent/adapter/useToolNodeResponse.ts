@@ -1,5 +1,6 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopEvent, AgentLoopToolCatalog } from '../../../../../ai/llm/agentLoop';
@@ -19,9 +20,6 @@ type PendingToolResult = {
 const getUsageTotalPoints = (usages: ChatNodeUsageType[] = []) =>
   usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
-const getChildrenTotalPoints = (childrenResponses: ChatHistoryItemResType[] = []) =>
-  childrenResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
 /**
  * 维护 agent-loop 工具调用产生的 workflow nodeResponse。
  * 包含普通工具、plan/ask 内部工具，以及工具响应压缩 child 的挂载。
@@ -29,6 +27,9 @@ const getChildrenTotalPoints = (childrenResponses: ChatHistoryItemResType[] = []
 export const useToolNodeResponse = ({
   node,
   nodeResponses,
+  appendNodeResponse = (nodeResponse) => {
+    nodeResponses.push(nodeResponse);
+  },
   toolCatalog,
   getSubAppInfo
 }: {
@@ -37,6 +38,7 @@ export const useToolNodeResponse = ({
     flowNodeType: FlowNodeTypeEnum;
   };
   nodeResponses: ChatHistoryItemResType[];
+  appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
   toolCatalog: AgentLoopToolCatalog;
   getSubAppInfo: GetSubAppInfoFnType;
 }) => {
@@ -90,20 +92,8 @@ export const useToolNodeResponse = ({
     };
   };
 
-  const withChildTotalPoints = (nodeResponse: ChatHistoryItemResType): ChatHistoryItemResType => {
-    /**
-     * childrenResponses 可能来自原工具 nodeResponse，也可能是本 hook 追加的压缩 child。
-     * 每次返回前重算 childTotalPoints，避免沿用旧值导致父节点消耗展示不准。
-     */
-    const restNodeResponse = { ...nodeResponse };
-    delete restNodeResponse.childTotalPoints;
-
-    const childTotalPoints = getChildrenTotalPoints(nodeResponse.childrenResponses);
-    return {
-      ...restNodeResponse,
-      ...(childTotalPoints > 0 ? { childTotalPoints } : {})
-    };
-  };
+  const stripNodeResponseChildTotalPoints = (nodeResponse: ChatHistoryItemResType) =>
+    stripChildTotalPoints(nodeResponse);
 
   const getUpdatePlanStatus = (call: ToolResponseEvent['call']): AgentPlanStatus => {
     /**
@@ -190,8 +180,8 @@ export const useToolNodeResponse = ({
       : undefined;
     const childrenResponses = compressNodeResponse ? [compressNodeResponse] : [];
 
-    nodeResponses.push(
-      withChildTotalPoints({
+    appendNodeResponse(
+      stripNodeResponseChildTotalPoints({
         id: `${node.nodeId}-plan-${call.id}`,
         nodeId: `${node.nodeId}-plan-${call.id}`,
         moduleName: AgentNodeResponseDisplay.plan.moduleName,
@@ -232,7 +222,7 @@ export const useToolNodeResponse = ({
       ...(compressNodeResponse ? [compressNodeResponse] : [])
     ];
 
-    return withChildTotalPoints({
+    return stripNodeResponseChildTotalPoints({
       ...toolNodeResponse,
       runningTime: toolNodeResponse.runningTime ?? event.seconds,
       toolRes: toolNodeResponse.toolRes ?? event.response,
@@ -259,7 +249,7 @@ export const useToolNodeResponse = ({
     }
 
     const toolNodeResponse = createToolNodeResponse(event);
-    nodeResponses.push(toolNodeResponse);
+    appendNodeResponse(toolNodeResponse);
     pendingToolResultMap.delete(event.call.id);
   };
 

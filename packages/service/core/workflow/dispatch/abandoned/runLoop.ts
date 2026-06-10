@@ -7,10 +7,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  type AIChatItemValueItemType,
-  type ChatHistoryItemResType
-} from '@fastgpt/global/core/chat/type';
+import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -52,8 +49,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let lastIndex = interactiveData?.currentIndex;
 
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
-  const loopResponseDetail: ChatHistoryItemResType[] = [];
-  let assistantResponses: AIChatItemValueItemType[] = [];
+  const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
   let totalPoints = 0;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
@@ -98,7 +94,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     if (!response.workflowInteractiveResponse) {
       outputValueArr.push(getNestedEndOutputValue(response));
     }
-    loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
 
     totalPoints += pushSubWorkflowUsage({
@@ -140,7 +135,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr,
-      loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:

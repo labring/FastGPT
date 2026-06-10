@@ -505,7 +505,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
         moduleName: 'chat:plan_agent',
         runningTime: 0.08,
         agentPlanStatus: 'update_plan',
-        childTotalPoints: 0.2,
         childrenResponses: [
           expect.objectContaining({
             moduleName: 'chat:tool_response_compress',
@@ -807,7 +806,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
       expect.objectContaining({
         id: 'call_search',
         runningTime: 0.77,
-        childTotalPoints: 0.3,
         childrenResponses: [
           expect.objectContaining({
             moduleName: 'chat:tool_response_compress',

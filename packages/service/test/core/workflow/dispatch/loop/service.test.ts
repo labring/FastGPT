@@ -9,7 +9,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,19 +38,22 @@ const makeNode = (
 });
 
 const makeDispatchFlowResponse = (
-  overrides: Partial<DispatchFlowResponse> = {}
-): DispatchFlowResponse => ({
-  flowResponses: [],
-  flowUsages: [],
-  debugResponse: { storeNodes: [], storeEdges: [] } as any,
-  workflowInteractiveResponse: undefined,
-  [DispatchNodeResponseKeyEnum.toolResponses]: [] as any,
-  [DispatchNodeResponseKeyEnum.assistantResponses]: [],
-  [DispatchNodeResponseKeyEnum.runTimes]: 1,
-  [DispatchNodeResponseKeyEnum.newVariables]: {},
-  durationSeconds: 0,
-  ...overrides
-});
+  overrides: Partial<DispatchFlowResponse> & { nodeResponses?: ChatHistoryItemResType[] } = {}
+): DispatchFlowResponse => {
+  const { nodeResponses = [], ...rest } = overrides;
+  return {
+    flowUsages: [],
+    debugResponse: { storeNodes: [], storeEdges: [] } as any,
+    workflowInteractiveResponse: undefined,
+    [DispatchNodeResponseKeyEnum.toolResponse]: [] as any,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+    [DispatchNodeResponseKeyEnum.runTimes]: 1,
+    [DispatchNodeResponseKeyEnum.newVariables]: {},
+    runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
+    durationSeconds: 0,
+    ...rest
+  };
+};
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -128,7 +133,7 @@ describe('loop/service', () => {
   describe('getNestedEndOutputValue', () => {
     it('存在 nestedEnd 节点 → 返回其 loopOutputValue', () => {
       const response = makeDispatchFlowResponse({
-        flowResponses: [
+        nodeResponses: [
           { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: 'result', id: 'end' } as any
         ]
       });
@@ -137,7 +142,7 @@ describe('loop/service', () => {
 
     it('loopOutputValue 为 null → 返回 null', () => {
       const response = makeDispatchFlowResponse({
-        flowResponses: [
+        nodeResponses: [
           { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: null, id: 'end' } as any
         ]
       });
@@ -146,20 +151,20 @@ describe('loop/service', () => {
 
     it('无 nestedEnd 节点 → 返回 undefined', () => {
       const response = makeDispatchFlowResponse({
-        flowResponses: [{ moduleType: FlowNodeTypeEnum.chatNode, id: 'llm' } as any]
+        nodeResponses: [{ moduleType: FlowNodeTypeEnum.chatNode, id: 'llm' } as any]
       });
       expect(getNestedEndOutputValue(response)).toBeUndefined();
     });
 
-    it('flowResponses 为空 → 返回 undefined', () => {
-      const response = makeDispatchFlowResponse({ flowResponses: [] });
+    it('nodeResponses 为空 → 返回 undefined', () => {
+      const response = makeDispatchFlowResponse({ nodeResponses: [] });
       expect(getNestedEndOutputValue(response)).toBeUndefined();
     });
 
     it('loopOutputValue 为数组时正确返回', () => {
       const arr = [1, 2, 3];
       const response = makeDispatchFlowResponse({
-        flowResponses: [
+        nodeResponses: [
           { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: arr, id: 'end' } as any
         ]
       });

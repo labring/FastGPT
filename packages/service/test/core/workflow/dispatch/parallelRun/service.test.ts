@@ -13,7 +13,9 @@ import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/wo
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,19 +50,22 @@ const makeEdge = (source: string, target: string): RuntimeEdgeItemType => ({
 });
 
 const makeDispatchFlowResponse = (
-  overrides: Partial<DispatchFlowResponse> = {}
-): DispatchFlowResponse => ({
-  flowResponses: [],
-  flowUsages: [],
-  debugResponse: { storeNodes: [], storeEdges: [] } as any,
-  workflowInteractiveResponse: undefined,
-  [DispatchNodeResponseKeyEnum.toolResponses]: [] as any,
-  [DispatchNodeResponseKeyEnum.assistantResponses]: [],
-  [DispatchNodeResponseKeyEnum.runTimes]: 1,
-  [DispatchNodeResponseKeyEnum.newVariables]: {},
-  durationSeconds: 0,
-  ...overrides
-});
+  overrides: Partial<DispatchFlowResponse> & { nodeResponses?: ChatHistoryItemResType[] } = {}
+): DispatchFlowResponse => {
+  const { nodeResponses = [], ...rest } = overrides;
+  return {
+    flowUsages: [],
+    debugResponse: { storeNodes: [], storeEdges: [] } as any,
+    workflowInteractiveResponse: undefined,
+    [DispatchNodeResponseKeyEnum.toolResponse]: [] as any,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+    [DispatchNodeResponseKeyEnum.runTimes]: 1,
+    [DispatchNodeResponseKeyEnum.newVariables]: {},
+    runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
+    durationSeconds: 0,
+    ...rest
+  };
+};
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -280,10 +285,18 @@ describe('parallelRun/service', () => {
   describe('parseTaskResponse', () => {
     it('无 interactive，有 nestedEnd → success=true，data 为 loopOutputValue', () => {
       const response = makeDispatchFlowResponse({
-        flowResponses: [
+        nodeResponses: [
+          {
+            moduleType: FlowNodeTypeEnum.chatNode,
+            totalPoints: 2,
+            childTotalPoints: 3,
+            childResponseCount: 1,
+            id: 'llm'
+          } as any,
           {
             moduleType: FlowNodeTypeEnum.nestedEnd,
             loopOutputValue: 'result-data',
+            totalPoints: 1,
             id: 'end'
           } as any
         ]
@@ -294,6 +307,7 @@ describe('parallelRun/service', () => {
       if (result.success) {
         expect(result.data).toBe('result-data');
         expect(result.index).toBe(0);
+        expect(result.totalPoints).toBe(3);
       }
     });
 
@@ -309,7 +323,7 @@ describe('parallelRun/service', () => {
 
     it('无 nestedEnd 响应 → success=false（子工作流未到达终点）', () => {
       const response = makeDispatchFlowResponse({
-        flowResponses: [{ moduleType: FlowNodeTypeEnum.chatNode, id: 'llm' } as any]
+        nodeResponses: [{ moduleType: FlowNodeTypeEnum.chatNode, id: 'llm' } as any]
       });
 
       const result = parseTaskResponse({ index: 2, response });
@@ -375,7 +389,7 @@ describe('parallelRun/service', () => {
           { type: 'text', text: { content: 'hi' } } as any
         ],
         [DispatchNodeResponseKeyEnum.customFeedbacks]: ['fb1'],
-        flowResponses: [{ id: 'n0' } as any]
+        nodeResponses: [{ id: 'n0' } as any]
       })
     };
 
@@ -394,7 +408,7 @@ describe('parallelRun/service', () => {
       response: makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 5, moduleName: 'llm' } as any],
         [DispatchNodeResponseKeyEnum.assistantResponses]: [],
-        flowResponses: [{ id: 'n2' } as any]
+        nodeResponses: [{ id: 'n2' } as any]
       })
     };
 
@@ -435,7 +449,7 @@ describe('parallelRun/service', () => {
       expect(customFeedbacks).toEqual(['fb1']);
     });
 
-    it('responseDetails 每次任务包装成一个虚拟节点；assistantResponses 按顺序累加', () => {
+    it('responseDetails 每次任务包装成一个虚拟节点并保留轻量 child 统计；assistantResponses 按顺序累加', () => {
       const { responseDetails, assistantResponses } = agg([successResult0, successResult2]);
 
       // 每次任务一个 wrapper（不再平铺子节点）
@@ -449,14 +463,15 @@ describe('parallelRun/service', () => {
         loopOutputValue: 'data-0',
         error: undefined
       });
-      // 子节点挂在 childrenResponses 下
-      expect(responseDetails[0].childrenResponses).toEqual([{ id: 'n0' }]);
+      expect(responseDetails[0].childrenResponses).toBeUndefined();
+      expect(responseDetails[0].childResponseCount).toBe(1);
       expect(responseDetails[1]).toMatchObject({
         id: 'parent_task_2',
         moduleNameArgs: { index: 3 },
         loopOutputValue: 'data-2'
       });
-      expect(responseDetails[1].childrenResponses).toEqual([{ id: 'n2' }]);
+      expect(responseDetails[1].childrenResponses).toBeUndefined();
+      expect(responseDetails[1].childResponseCount).toBe(1);
 
       expect(assistantResponses).toHaveLength(1); // only index 0 has assistant response
     });
@@ -471,8 +486,7 @@ describe('parallelRun/service', () => {
         error: 'task failed',
         loopOutputValue: undefined
       });
-      // 失败任务没有 response → childrenResponses 为空数组
-      expect(responseDetails[0].childrenResponses).toEqual([]);
+      expect(responseDetails[0].childrenResponses).toBeUndefined();
     });
 
     it('wrapper.runningTime 为子节点 runningTime 之和（精确到百分位）', () => {
@@ -482,7 +496,7 @@ describe('parallelRun/service', () => {
         data: 'ok',
         totalPoints: 0,
         response: makeDispatchFlowResponse({
-          flowResponses: [
+          nodeResponses: [
             { id: 'a', runningTime: 0.33 } as any,
             { id: 'b', runningTime: 0.67 } as any,
             { id: 'c' } as any // missing runningTime → treated as 0
@@ -552,7 +566,7 @@ describe('parallelRun/service', () => {
         response: makeDispatchFlowResponse({
           // response 里的 flowUsages 只反映最后一次 attempt（8 pts）
           flowUsages: [{ totalPoints: 8, moduleName: 'llm' } as any],
-          flowResponses: [{ id: 'n0' } as any]
+          nodeResponses: [{ id: 'n0' } as any]
         })
       };
 

@@ -124,13 +124,18 @@ export const createPiAgentToolEventHandler = ({
   ctx,
   assistantResponses,
   appendChildNodeResponse,
-  nodeResponses
+  appendedNodeResponseIds
 }: {
   ctx: ToolDispatchContext;
   assistantResponses: AIChatItemValueItemType[];
   appendChildNodeResponse: (nodeResponse: ChatHistoryItemResType) => void;
-  nodeResponses: ChatHistoryItemResType[];
+  /**
+   * PiAgent 事件流和 buildAgentTools 都可能为同一次工具调用补 nodeResponse。
+   * 业务链路下 nodeResponse 会被 writer 立即释放，不能再依赖完整数组做去重。
+   */
+  appendedNodeResponseIds?: Set<string>;
 }) => {
+  const recordedNodeResponseIds = appendedNodeResponseIds || new Set<string>();
   const toolStarts = new Map<
     string,
     {
@@ -200,9 +205,10 @@ export const createPiAgentToolEventHandler = ({
     toolName: string;
     response: string;
   }) => {
-    if (!callId || nodeResponses.some((item) => item.id === callId || item.nodeId === callId)) {
+    if (!callId || recordedNodeResponseIds.has(callId)) {
       return;
     }
+    recordedNodeResponseIds.add(callId);
 
     const started = toolStarts.get(callId);
     const subAppInfo = ctx.getSubAppInfo(toolName);

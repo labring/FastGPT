@@ -4,10 +4,13 @@ import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispa
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
 
-const { dispatchAgentDatasetSearchMock, dispatchFileReadMock } = vi.hoisted(() => ({
-  dispatchAgentDatasetSearchMock: vi.fn(),
-  dispatchFileReadMock: vi.fn()
-}));
+const { dispatchAgentDatasetSearchMock, dispatchAppMock, dispatchFileReadMock } = vi.hoisted(
+  () => ({
+    dispatchAgentDatasetSearchMock: vi.fn(),
+    dispatchAppMock: vi.fn(),
+    dispatchFileReadMock: vi.fn()
+  })
+);
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
   dispatchFileRead: dispatchFileReadMock
@@ -19,6 +22,11 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
   dispatchAgentDatasetSearch: dispatchAgentDatasetSearchMock
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app', () => ({
+  dispatchApp: dispatchAppMock,
+  dispatchPlugin: vi.fn()
 }));
 
 describe('Agent read_files tool protocol', () => {
@@ -195,6 +203,75 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userKey
+      })
+    );
+  });
+
+  it('passes shared nodeResponseWriter and callId parent to workflow sub apps', async () => {
+    const nodeResponseWriter = { record: vi.fn() } as any;
+    dispatchAppMock.mockResolvedValue({
+      response: 'workflow result',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Sub Workflow'
+      }
+    });
+
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: undefined
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 1,
+      nodeResponseWriter,
+      nodeResponseParentId: 'agent-parent',
+      params: {
+        model: 'gpt-4'
+      },
+      stream: false,
+      getSubAppInfo: () => ({
+        name: 'Sub Workflow',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => ({
+        type: 'workflow',
+        id: 'workflow-tool',
+        name: 'Sub Workflow',
+        avatar: '',
+        params: {}
+      }),
+      completionTools: [],
+      filesMap: {}
+    } as any);
+
+    await executeTool({
+      callId: 'call_workflow',
+      toolId: 'workflow-tool',
+      args: '{"userChatInput":"hello"}'
+    });
+
+    expect(dispatchAppMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeResponseWriter,
+        nodeResponseParentId: 'call_workflow'
       })
     );
   });

@@ -4,6 +4,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { createRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const { getLLMModelMock, runToolCallMock, useToolMessagesMock, useToolNodeListMock } = vi.hoisted(
   () => ({
@@ -114,7 +115,9 @@ describe('dispatchRunTools file context', () => {
     });
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
-      toolDispatchFlowResponses: [],
+      runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
+      runTimes: 0,
+      toolTotalPoints: 0,
       toolCallInputTokens: 0,
       toolCallOutputTokens: 0,
       toolCallTotalPoints: 0,

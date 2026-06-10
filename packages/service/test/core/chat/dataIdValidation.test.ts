@@ -112,4 +112,28 @@ describe('chat dataId validation', () => {
       })
     ).resolves.toBeUndefined();
   });
+
+  it('should allow validating only the current human dataId for interactive submit', async () => {
+    await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId,
+      chatId,
+      dataId: 'existing-ai',
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: 'old answer' } }]
+    });
+
+    await expect(
+      validateChatRoundDataIds({
+        appId,
+        chatId,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          dataId: 'new-human',
+          value: [{ text: { content: 'hello' } }]
+        }
+      })
+    ).resolves.toBeUndefined();
+  });
 });

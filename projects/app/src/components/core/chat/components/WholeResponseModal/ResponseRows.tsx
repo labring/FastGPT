@@ -1,21 +1,33 @@
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuoteList from '../../ChatContainer/ChatBox/components/QuoteList';
 import FormInputResult from '../FormInputResult';
 import { agentPlanStatusMap } from './constants';
-import { Row } from './Row';
+import { responseRowValueBoxStyles, Row } from './Row';
 
 const ImageQuery = dynamic(() => import('./ImageQuery'));
 
+const getChildTotalPoints = (item: ChatHistoryItemResType): number =>
+  getChildrenResponses(item).reduce((sum, child) => sum + (child.totalPoints || 0), 0);
+
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
+  const childResponses = getChildrenResponses(activeModule);
+  const hasChildResponses = childResponses.length > 0;
+  const childTotalPoints = getChildTotalPoints(activeModule);
+  const showChildTotalPoints =
+    hasChildResponses &&
+    !!activeModule.moduleType &&
+    !isNestedParentNodeType(activeModule.moduleType);
 
   return (
     <>
@@ -37,17 +49,8 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
           value={formatNumber(activeModule.totalPoints)}
         />
       )}
-      {(activeModule.childrenResponses || activeModule.toolDetail || activeModule.pluginDetail) && (
-        <Row
-          label={t('chat:response.child total points')}
-          value={formatNumber(
-            [
-              ...(activeModule.childrenResponses || []),
-              ...(activeModule.toolDetail || []),
-              ...(activeModule.pluginDetail || [])
-            ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
-          )}
-        />
+      {showChildTotalPoints && (
+        <Row label={t('chat:response.child total points')} value={formatNumber(childTotalPoints)} />
       )}
       <Row
         label={t('workflow:response.Error')}
@@ -119,11 +122,9 @@ const LlmRequestIdsRow = ({
 
 export const AiChatRows = ({
   activeModule,
-  queryPreviewDatasetId,
   onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
-  queryPreviewDatasetId?: string;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
@@ -181,9 +182,10 @@ export const AiChatRows = ({
       <Row label={t('chat:reasoning_content')} value={activeModule.reasoningText} />
       <Row
         label={t('common:core.chat.response.module historyPreview')}
+        rawDomBoxProps={responseRowValueBoxStyles}
         rawDom={
           activeModule.historyPreview ? (
-            <Box px={3} py={2} border={'base'} borderRadius={'md'}>
+            <Box>
               {activeModule.historyPreview.map((item, i) => (
                 <Box
                   key={i}
@@ -222,8 +224,9 @@ export const DatasetSearchRows = ({
       {activeModule.searchMode && (
         <Row
           label={t('common:core.dataset.search.search mode')}
+          rawDomBoxProps={responseRowValueBoxStyles}
           rawDom={
-            <Flex border={'base'} borderRadius={'md'} p={2}>
+            <Flex>
               <Box>{t(DatasetSearchModeMap[activeModule.searchMode]?.title as any)}</Box>
               {activeModule.embeddingWeight && (
                 <>{`(${t('chat:response_hybrid_weight', {
@@ -260,8 +263,9 @@ export const DatasetSearchRows = ({
         <>
           <Row
             label={t('common:core.chat.response.search using reRank')}
+            rawDomBoxProps={responseRowValueBoxStyles}
             rawDom={
-              <Box border={'base'} borderRadius={'md'} p={2}>
+              <Box>
                 {activeModule.searchUsingReRank ? (
                   activeModule.rerankModel ? (
                     <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>

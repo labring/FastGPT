@@ -64,6 +64,6 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
     },
-    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal
+    [DispatchNodeResponseKeyEnum.toolResponse]: userSelectedVal
   };
 };

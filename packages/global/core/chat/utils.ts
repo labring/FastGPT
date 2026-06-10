@@ -12,6 +12,246 @@ import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 
+const deprecatedChildrenResponseFields = [
+  'pluginDetail',
+  'toolDetail',
+  'loopDetail',
+  'parallelDetail',
+  'loopRunDetail'
+] as const;
+
+// 新数据统一使用 childrenResponses；历史 detail 字段只在读取旧数据、
+// 旧会话追加合并、递归统计时保留兼容，不再作为新的嵌套写入结构。
+export const childrenResponseFields = [
+  'childrenResponses',
+  ...deprecatedChildrenResponseFields
+] as const;
+
+export type ChildrenResponseField = (typeof childrenResponseFields)[number];
+
+/** 获取所有历史兼容 child 字段里的节点响应，返回顺序作为详情展示和统计顺序使用。 */
+export const getChildrenResponses = (item: ChatHistoryItemResType) =>
+  childrenResponseFields.flatMap((key) => item[key] || []);
+
+/**
+ * 对外 responseData 不再携带 childTotalPoints。
+ *
+ * 子节点积分展示统一由客户端基于 childrenResponses 现场计算；后端只保留 totalPoints 和
+ * childResponseCount 这类节点自身消耗/结构字段，避免存储值和展示计算值产生双口径。
+ */
+export const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
+  const { childTotalPoints, ...rest } = item;
+  const strippedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+    (acc, field) => {
+      const children = item[field] as ChatHistoryItemResType[] | undefined;
+      if (!children?.length) return acc;
+
+      return {
+        ...acc,
+        [field]: children.map(stripChildTotalPoints)
+      };
+    },
+    {}
+  );
+
+  return {
+    ...rest,
+    ...strippedChildren
+  } as ChatHistoryItemResType;
+};
+
+export const stripChildTotalPointsFromResponseData = (
+  responseData: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] => responseData.map(stripChildTotalPoints);
+
+/**
+ * 合并同一个 nodeResponse 的增量数据。
+ *
+ * SSE、恢复生成、旧会话 append 都可能多次收到相同 `id` 的节点结果：标量字段以后
+ * 到达的 incoming 为准，子节点则递归按 `id/parentId` 合并，避免后续增量覆盖掉
+ * 已经挂载好的 childrenResponses。历史 detail 字段只做兼容合并。
+ */
+const mergeNodeResponse = (
+  current: ChatHistoryItemResType,
+  incoming: ChatHistoryItemResType
+): ChatHistoryItemResType => {
+  const childrenResponses = [
+    ...(current.childrenResponses || []),
+    ...(incoming.childrenResponses || [])
+  ].reduce<ChatHistoryItemResType[]>((list, child) => appendNodeResponseByParent(list, child), []);
+
+  const mergedLegacyChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+    (acc, field) => {
+      if (field === 'childrenResponses') return acc;
+      const merged = [
+        ...((current[field] || []) as ChatHistoryItemResType[]),
+        ...((incoming[field] || []) as ChatHistoryItemResType[])
+      ].reduce<ChatHistoryItemResType[]>(
+        (list, child) => appendNodeResponseByParent(list, child),
+        []
+      );
+
+      return merged.length > 0 ? { ...acc, [field]: merged } : acc;
+    },
+    {}
+  );
+
+  return {
+    ...current,
+    ...incoming,
+    ...mergedLegacyChildren,
+    ...(childrenResponses.length > 0 ? { childrenResponses } : {})
+  };
+};
+
+/**
+ * 从响应树中递归移除匹配节点，并返回被移除节点。
+ *
+ * 这个 helper 主要服务于两类场景：
+ * 1. 收到相同 `id` 的增量时，先摘出旧节点再和新节点合并；
+ * 2. parent 后到达时，回收之前临时挂在 root 层的 orphan child。
+ */
+const removeNodeResponses = (
+  responses: ChatHistoryItemResType[],
+  predicate: (response: ChatHistoryItemResType) => boolean
+): {
+  responses: ChatHistoryItemResType[];
+  removed: ChatHistoryItemResType[];
+} => {
+  const removed: ChatHistoryItemResType[] = [];
+
+  const nextResponses = responses.flatMap((response) => {
+    if (predicate(response)) {
+      removed.push(response);
+      return [];
+    }
+
+    const childResults = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+      (acc, field: ChildrenResponseField) => {
+        const childResponses = response[field] as ChatHistoryItemResType[] | undefined;
+        if (!childResponses?.length) return acc;
+
+        const childResult = removeNodeResponses(childResponses, predicate);
+        removed.push(...childResult.removed);
+        return {
+          ...acc,
+          [field]: childResult.responses
+        };
+      },
+      {}
+    );
+
+    return [{ ...response, ...childResults }];
+  });
+
+  return {
+    responses: nextResponses,
+    removed
+  };
+};
+
+/**
+ * 在同一层级中按 `id` 合并 nodeResponse。
+ *
+ * 有 `id` 且已存在时合并，未命中则追加到末尾；这样既能去重，又能保持流式
+ * 到达顺序，供前端详情展示和后端读取拼树复用。
+ */
+const mergeNodeResponseList = (
+  responses: ChatHistoryItemResType[],
+  incoming: ChatHistoryItemResType
+): ChatHistoryItemResType[] => {
+  const incomingId = incoming.id;
+  let merged = false;
+
+  const nextResponses = responses.map((response) => {
+    if (incomingId && response.id === incomingId) {
+      merged = true;
+      return mergeNodeResponse(response, incoming);
+    }
+    return response;
+  });
+
+  return merged ? nextResponses : [...responses, incoming];
+};
+
+/**
+ * 将增量 nodeResponse 按 `parentId` 插入到 `childrenResponses`，用于 SSE 和恢复生成合并。
+ *
+ * 流式响应可能先收到 child、后收到 parent；此时 child 会先作为临时 root 保留，
+ * parent 到达后再按 `id` 回收并挂到 `childrenResponses`，避免客户端丢失乱序增量。
+ */
+export const appendNodeResponseByParent = (
+  responses: ChatHistoryItemResType[] = [],
+  nodeResponse: ChatHistoryItemResType
+): ChatHistoryItemResType[] => {
+  const nodeResponseId = nodeResponse.id;
+
+  // 同一个节点可能被多次推送，先从整棵树中摘出旧版本，再与新版本合并。
+  const duplicateResult = nodeResponseId
+    ? removeNodeResponses(responses, (response) => response.id === nodeResponseId)
+    : { responses, removed: [] };
+  const mergedIncoming = duplicateResult.removed.reduce(
+    (current, removed) => mergeNodeResponse(removed, current),
+    nodeResponse
+  );
+
+  // child 可能比 parent 更早到达并临时出现在 root 层；parent 到达后回收这些 orphan。
+  const orphanResult = nodeResponseId
+    ? removeNodeResponses(
+        duplicateResult.responses,
+        (response) => response.parentId === nodeResponseId
+      )
+    : { responses: duplicateResult.responses, removed: [] };
+  const incomingWithChildren = orphanResult.removed.reduce(
+    (current, child) => ({
+      ...current,
+      childrenResponses: mergeNodeResponseList(current.childrenResponses || [], child)
+    }),
+    mergedIncoming
+  );
+
+  const parentId = nodeResponse.parentId;
+  if (!parentId) {
+    return mergeNodeResponseList(orphanResult.responses, incomingWithChildren);
+  }
+
+  let inserted = false;
+
+  // parent 可能位于任意层级或旧 detail 字段中，因此需要递归查找所有兼容 child 字段。
+  const insert = (items: ChatHistoryItemResType[]): ChatHistoryItemResType[] =>
+    items.map((item) => {
+      if (item.id === parentId) {
+        inserted = true;
+        return {
+          ...item,
+          childrenResponses: mergeNodeResponseList(
+            item.childrenResponses || [],
+            incomingWithChildren
+          )
+        };
+      }
+
+      const nextItem = childrenResponseFields.reduce<ChatHistoryItemResType>(
+        (currentItem, field: ChildrenResponseField) => {
+          const childResponses = currentItem[field] as ChatHistoryItemResType[] | undefined;
+          if (!childResponses?.length) return currentItem;
+
+          return {
+            ...currentItem,
+            [field]: insert(childResponses)
+          };
+        },
+        item
+      );
+
+      return nextItem;
+    });
+
+  const nextResponses = insert(orphanResult.responses);
+  // 找不到 parent 时保留为临时 root，等待后续 parent 增量到达后再回收挂载。
+  return inserted ? nextResponses : [...orphanResult.responses, incomingWithChildren];
+};
+
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
@@ -93,53 +333,132 @@ export const getHistoryPreview = (
   });
 };
 
-// Filter workflow public response
+const publicNodeMap: Record<string, boolean> = {
+  [FlowNodeTypeEnum.appModule]: true,
+  [FlowNodeTypeEnum.pluginModule]: true,
+  [FlowNodeTypeEnum.datasetSearchNode]: true,
+  [FlowNodeTypeEnum.agent]: true,
+  [FlowNodeTypeEnum.pluginOutput]: true,
+  [FlowNodeTypeEnum.runApp]: true,
+  [FlowNodeTypeEnum.toolCall]: true,
+  [FlowNodeTypeEnum.tool]: true
+};
+
+const publicNodeResponseFields: Record<string, boolean> = {
+  pluginOutput: true,
+  runningTime: true,
+  toolId: true
+};
+
+const treeNodeResponseFields: Record<string, boolean> = {
+  ...publicNodeResponseFields,
+  parentId: true,
+  moduleNameArgs: true,
+  totalPoints: true,
+  childResponseCount: true,
+  errorText: true
+};
+
+const getNodeResponseFieldMap = ({
+  responseDetail,
+  keepTreeFields
+}: {
+  responseDetail: boolean;
+  keepTreeFields: boolean;
+}) => {
+  const fields = keepTreeFields ? treeNodeResponseFields : publicNodeResponseFields;
+
+  return responseDetail
+    ? {
+        quoteList: true,
+        ...fields
+      }
+    : fields;
+};
+
+const filterNodeResponseData = ({
+  nodeResponses = [],
+  responseDetail = false,
+  keepTreeFields = false
+}: {
+  nodeResponses?: ChatHistoryItemResType[];
+  responseDetail?: boolean;
+  keepTreeFields?: boolean;
+}) => {
+  const fieldMap = getNodeResponseFieldMap({ responseDetail, keepTreeFields });
+
+  return nodeResponses
+    .filter((item) => publicNodeMap[item.moduleType])
+    .map((item) => {
+      const obj: DispatchNodeResponseType = {};
+      for (const key in item) {
+        const childField = key as (typeof childrenResponseFields)[number];
+        if (childrenResponseFields.includes(childField)) {
+          const childResponses = item[childField] as ChatHistoryItemResType[] | undefined;
+          obj[childField] = filterNodeResponseData({
+            nodeResponses: childResponses,
+            responseDetail,
+            keepTreeFields
+          });
+        } else if (fieldMap[key]) {
+          // @ts-expect-error Dynamic public field copy is constrained by fieldMap.
+          obj[key] = item[key];
+        }
+      }
+
+      if (keepTreeFields) {
+        return {
+          id: item.id,
+          nodeId: item.nodeId,
+          moduleName: item.moduleName,
+          moduleType: item.moduleType,
+          ...obj
+        } as ChatHistoryItemResType;
+      }
+
+      return {
+        moduleType: item.moduleType,
+        ...obj
+      } as ChatHistoryItemResType;
+    });
+};
+
+/**
+ * 过滤工作流节点对外可见的响应字段。
+ *
+ * 公共 API 和分享场景不应直接暴露完整 nodeResponse，只保留旧契约中的展示字段。
+ * childrenResponses 与历史 detail 字段会递归过滤，保证新旧数据结构返回口径一致。
+ */
 export const filterPublicNodeResponseData = ({
   nodeRespones = [],
   responseDetail = false
 }: {
   nodeRespones?: ChatHistoryItemResType[];
   responseDetail?: boolean;
-}) => {
-  const publicNodeMap: Record<string, any> = {
-    [FlowNodeTypeEnum.appModule]: true,
-    [FlowNodeTypeEnum.pluginModule]: true,
-    [FlowNodeTypeEnum.datasetSearchNode]: true,
-    [FlowNodeTypeEnum.agent]: true,
-    [FlowNodeTypeEnum.pluginOutput]: true,
-    [FlowNodeTypeEnum.runApp]: true,
-    [FlowNodeTypeEnum.toolCall]: true,
-    [FlowNodeTypeEnum.tool]: true
-  };
+}) =>
+  filterNodeResponseData({
+    nodeResponses: nodeRespones,
+    responseDetail
+  });
 
-  const commonFields = {
-    moduleType: true,
-    pluginOutput: true,
-    runningTime: true,
-    toolId: true
-  };
-  const filedMap: Record<string, boolean> = responseDetail
-    ? {
-        quoteList: true,
-        ...commonFields
-      }
-    : commonFields;
-
-  return nodeRespones
-    .filter((item) => publicNodeMap[item.moduleType])
-    .map((item) => {
-      const obj: DispatchNodeResponseType = {};
-      for (const key in item) {
-        if (key === 'toolDetail' || key === 'pluginDetail') {
-          obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
-        } else if (filedMap[key]) {
-          // @ts-expect-error Dynamic public field copy is constrained by filedMap.
-          obj[key] = item[key];
-        }
-      }
-      return obj as ChatHistoryItemResType;
-    });
-};
+/**
+ * 过滤前端树形详情需要的 nodeResponse 字段。
+ *
+ * 与 public/share 过滤不同，SSE 和 completion response 需要保留 `id/parentId` 等树形归属
+ * 字段，否则乱序 child 无法在前端挂回 parent；但仍过滤 toolInput/toolRes 等大字段或敏感字段。
+ */
+export const filterNodeResponseTreeData = ({
+  nodeResponses = [],
+  responseDetail = false
+}: {
+  nodeResponses?: ChatHistoryItemResType[];
+  responseDetail?: boolean;
+}) =>
+  filterNodeResponseData({
+    nodeResponses,
+    responseDetail,
+    keepTreeFields: true
+  });
 
 // Remove dataset cite in ai response
 export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(
@@ -217,19 +536,16 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
   }
 };
 
-// 扁平化响应
+/**
+ * 扁平化节点响应树。
+ *
+ * 新数据使用 childrenResponses，历史数据可能仍在 pluginDetail/toolDetail 等字段中；
+ * 统一通过 getChildrenResponses 递归展开，供统计、标签计算和详情搜索复用。
+ */
 export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
   return res
     .map((item) => {
-      return [
-        item,
-        ...getFlatAppResponses(item.pluginDetail || []),
-        ...getFlatAppResponses(item.toolDetail || []),
-        ...getFlatAppResponses(item.loopDetail || []),
-        ...getFlatAppResponses(item.loopRunDetail || []),
-        ...getFlatAppResponses(item.parallelDetail || []),
-        ...getFlatAppResponses(item.childrenResponses || [])
-      ];
+      return [item, ...getFlatAppResponses(getChildrenResponses(item))];
     })
     .flat();
 };
@@ -240,8 +556,7 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
   2. 发送 user 消息，此时对话会新增一条 user 消息
 */
 export const checkInteractiveResponseStatus = ({
-  interactive,
-  input
+  interactive
 }: {
   interactive: { type: WorkflowInteractiveResponseType['type'] };
   input: string;
@@ -252,18 +567,113 @@ export const checkInteractiveResponseStatus = ({
   return 'submit';
 };
 
-/*
-  Merge chat responseData
-  1. Same tool mergeSignId (Interactive tool node)
-  2. Recursively merge plugin details with same mergeSignId
-*/
+/**
+ * 按 mergeSignId 合并 chat responseData。
+ *
+ * 交互式工具节点在多轮 append 时会产生相同 mergeSignId 的响应，需要把运行时间、
+ * 积分和 child 统计累加，同时递归合并 childrenResponses。历史 detail 字段只用于
+ * 兼容旧数据和旧 append 逻辑，新数据不再往这些字段写入 child 节点。
+ */
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
   const result: ChatHistoryItemResType[] = [];
   const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  for (const item of responseDataList) {
+  const numberMergeFields = [
+    'totalPoints',
+    'childResponseCount',
+    'tokens',
+    'inputTokens',
+    'outputTokens',
+    'toolCallInputTokens',
+    'toolCallOutputTokens',
+    'embeddingTokens',
+    'reRankInputTokens',
+    'extensionTokens'
+  ] as const;
+
+  const sumNumberFields = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ): Partial<ChatHistoryItemResType> => {
+    return numberMergeFields.reduce<Partial<ChatHistoryItemResType>>((acc, field) => {
+      const total = (existing[field] || 0) + (incoming[field] || 0);
+      if (total !== 0) {
+        acc[field] = total;
+      }
+
+      return acc;
+    }, {});
+  };
+
+  const mergeRequestIds = (existing: ChatHistoryItemResType, incoming: ChatHistoryItemResType) => {
+    const ids = [...(existing.llmRequestIds || []), ...(incoming.llmRequestIds || [])].filter(
+      Boolean
+    );
+    return ids.length > 0 ? { llmRequestIds: Array.from(new Set(ids)) } : {};
+  };
+
+  const mergeCompressTextAgent = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ) => {
+    if (!existing.compressTextAgent && !incoming.compressTextAgent) return {};
+
+    return {
+      compressTextAgent: {
+        inputTokens:
+          (existing.compressTextAgent?.inputTokens || 0) +
+          (incoming.compressTextAgent?.inputTokens || 0),
+        outputTokens:
+          (existing.compressTextAgent?.outputTokens || 0) +
+          (incoming.compressTextAgent?.outputTokens || 0),
+        totalPoints:
+          (existing.compressTextAgent?.totalPoints || 0) +
+          (incoming.compressTextAgent?.totalPoints || 0)
+      }
+    };
+  };
+
+  const mergeDeepSearchResult = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ): Partial<ChatHistoryItemResType> => {
+    const model = incoming.deepSearchResult?.model || existing.deepSearchResult?.model;
+    if (!model) return {};
+
+    return {
+      deepSearchResult: {
+        ...(existing.deepSearchResult || {}),
+        ...(incoming.deepSearchResult || {}),
+        model,
+        inputTokens:
+          (existing.deepSearchResult?.inputTokens || 0) +
+          (incoming.deepSearchResult?.inputTokens || 0),
+        outputTokens:
+          (existing.deepSearchResult?.outputTokens || 0) +
+          (incoming.deepSearchResult?.outputTokens || 0)
+      }
+    };
+  };
+
+  const mergeChildrenFields = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
+    const mergedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+      (acc, field) => {
+        const children = item[field] as ChatHistoryItemResType[] | undefined;
+        if (!children?.length) return acc;
+
+        const merged = mergeChatResponseData(children);
+        return merged.length > 0 ? { ...acc, [field]: merged } : acc;
+      },
+      {}
+    );
+
+    return Object.keys(mergedChildren).length > 0 ? { ...item, ...mergedChildren } : item;
+  };
+
+  for (const rawItem of responseDataList) {
+    const item = stripChildTotalPoints(mergeChildrenFields(rawItem));
     if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
       // Merge with existing item
       const existingIndex = mergeMap.get(item.mergeSignId)!;
@@ -272,28 +682,18 @@ export const mergeChatResponseData = (
       result[existingIndex] = {
         ...item,
         runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
-        totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
-        childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
-        toolDetail: mergeChatResponseData([
-          ...(existing.toolDetail || []),
-          ...(item.toolDetail || [])
-        ]),
-        loopDetail: mergeChatResponseData([
-          ...(existing.loopDetail || []),
-          ...(item.loopDetail || [])
-        ]),
-        loopRunDetail: mergeChatResponseData([
-          ...(existing.loopRunDetail || []),
-          ...(item.loopRunDetail || [])
-        ]),
-        parallelDetail: mergeChatResponseData([
-          ...(existing.parallelDetail || []),
-          ...(item.parallelDetail || [])
-        ]),
-        pluginDetail: mergeChatResponseData([
-          ...(existing.pluginDetail || []),
-          ...(item.pluginDetail || [])
-        ])
+        ...sumNumberFields(existing, item),
+        ...mergeRequestIds(existing, item),
+        ...mergeCompressTextAgent(existing, item),
+        ...mergeDeepSearchResult(existing, item),
+        ...childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>((acc, field) => {
+          const mergedChildren = mergeChatResponseData([
+            ...((existing[field] || []) as ChatHistoryItemResType[]),
+            ...((item[field] || []) as ChatHistoryItemResType[])
+          ]);
+
+          return mergedChildren.length > 0 ? { ...acc, [field]: mergedChildren } : acc;
+        }, {})
       };
     } else {
       // Add new item

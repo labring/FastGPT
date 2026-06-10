@@ -10,13 +10,15 @@ type FileReadParams = {
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  usageId?: string;
 };
 
 export const dispatchFileRead = async ({
   files,
   teamId,
   tmbId,
-  customPdfParse
+  customPdfParse,
+  usageId
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
     const readFilesResult = await Promise.all(
@@ -26,7 +28,8 @@ export const dispatchFileRead = async ({
             url,
             teamId,
             tmbId,
-            customPdfParse
+            customPdfParse,
+            usageId
           });
 
           return {

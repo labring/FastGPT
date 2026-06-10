@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { formatToolResponse } from '@fastgpt/service/core/workflow/dispatch/ai/utils';
 import {
   filterToolResponseToPreview,
-  formatToolResponse,
   initToolCallEdges,
   initToolNodes,
   updateToolInputValue

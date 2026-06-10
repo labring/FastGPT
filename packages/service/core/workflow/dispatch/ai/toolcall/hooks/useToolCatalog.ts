@@ -80,7 +80,8 @@ export const useToolCatalog = async ({
   lang,
   appId,
   userId,
-  chatId
+  chatId,
+  sandboxId
 }: {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
@@ -90,6 +91,7 @@ export const useToolCatalog = async ({
   appId: string;
   userId: string;
   chatId: string;
+  sandboxId?: string;
 }) => {
   let finalMessages = messages;
   const toolNodesMap = new Map<string, ToolNodeItemType>();
@@ -124,6 +126,7 @@ export const useToolCatalog = async ({
         appId,
         userId,
         chatId,
+        sandboxId,
         files: currentInputFiles.map((file) => ({
           path: file.sandboxPath!,
           url: file.url

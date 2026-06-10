@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/common';
-import { getSseErrorResponse, sseErrRes, jsonRes } from '@fastgpt/service/common/response';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -30,7 +30,6 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
   concatHistories,
-  filterPublicNodeResponseData,
   getChatTitleFromChatMessage,
   removeAIResponseCite,
   removeEmptyUserInput
@@ -43,7 +42,6 @@ import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -54,7 +52,6 @@ import {
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -69,13 +66,21 @@ import {
   tryStartGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
-import {
-  ChatGenerateStatusEnum,
-  STREAM_RESUME_REQUEST_HEADER
-} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
+import {
+  filterWorkflowFinalResponseData,
+  getWorkflowFinalResponseData
+} from '@/service/core/workflow/nodeResponse';
+import {
+  getInteractiveResponseStatus,
+  resolveResponseChatItemId
+} from '@fastgpt/service/core/chat/interactiveResponseDataId';
+import {
+  createWorkflowStreamResponseContext,
+  type WorkflowStreamResponseContext
+} from '@/service/core/workflow/streamResponseContext';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -102,11 +107,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
-  let mirror: Awaited<ReturnType<typeof getStreamResumeMirror>>;
   let runningChatId: string | undefined;
   let runningAppId: string | undefined;
-  let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
-  const finalResponseChatItemId = responseChatItemId || getNanoid(24);
+  let streamResponseContext: WorkflowStreamResponseContext | undefined;
+  let finalResponseChatItemId = responseChatItemId || getNanoid(24);
   let usePreparedRound = false;
   let hasAcquiredGenerateSlot = false;
 
@@ -247,6 +251,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories) || undefined;
+    const saveChatId = chatId || getNanoid(24);
+    const interactiveStatus = getInteractiveResponseStatus({
+      interactive,
+      userContent: userQuestion
+    });
+    finalResponseChatItemId = await resolveResponseChatItemId({
+      appId: String(app._id),
+      chatId: saveChatId,
+      responseChatItemId: finalResponseChatItemId,
+      interactive,
+      userContent: userQuestion
+    });
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
@@ -258,12 +274,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    const saveChatId = chatId || getNanoid(24);
     await validateChatRoundDataIds({
       appId: String(app._id),
       chatId: saveChatId,
       userContent: userQuestion,
-      responseChatItemId: finalResponseChatItemId
+      responseChatItemId:
+        !interactive || interactiveStatus === 'query' ? finalResponseChatItemId : undefined
     });
 
     const source = (() => {
@@ -314,33 +330,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    mirror = stream
-      ? await getStreamResumeMirror({
-          resumeRequestHeaderValue: req.headers[STREAM_RESUME_REQUEST_HEADER],
-          teamId,
-          appId: runningAppId,
-          chatId: runningChatId
-        })
-      : undefined;
-
-    workflowResponseWrite = getWorkflowResponseWrite({
+    streamResponseContext = await createWorkflowStreamResponseContext({
+      req,
       res,
+      stream,
       detail,
-      streamResponse: stream,
-      id: chatId,
-      showNodeStatus: showRunningStatus,
-      streamResumeMirror: mirror
+      teamId,
+      appId: runningAppId,
+      chatId: runningChatId,
+      responseId: chatId,
+      showNodeStatus: showRunningStatus
     });
+    const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
 
     /* start flow controller */
     const {
-      flowResponses,
       flowUsages,
       assistantResponses,
       newVariables,
       durationSeconds,
       system_memories,
-      customFeedbacks
+      customFeedbacks,
+      nodeResponseSummary,
+      flatNodeResponses
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
@@ -373,9 +385,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           retainDatasetCite,
           showSkillReferences: finalShowSkillReferences,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-          workflowStreamResponse: workflowResponseWrite,
+          workflowStreamResponse: streamResponseContext.responseWrite,
           responseAllData,
-          responseDetail: showCite
+          responseDetail: showCite,
+          nodeResponseWriteConfig: {
+            persistToDb: true,
+            retainInMemory: shouldCollectFinalResponseData
+          }
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
@@ -390,7 +406,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
       memories: system_memories,
       customFeedbacks
     };
@@ -415,6 +430,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp,
         ...metadata
       },
+      nodeResponseSummary,
       durationSeconds
     };
     if (interactive) {
@@ -443,12 +459,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     logger.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = responseAllData
-      ? flowResponses
-      : filterPublicNodeResponseData({ nodeRespones: flowResponses, responseDetail: showCite });
+    const finalResponseData = getWorkflowFinalResponseData({
+      flatNodeResponses,
+      shouldCollect: shouldCollectFinalResponseData
+    });
+    const finalError =
+      nodeResponseSummary?.lastError ||
+      finalResponseData[finalResponseData.length - 1]?.error ||
+      finalResponseData[finalResponseData.length - 1]?.errorText;
+    const feResponseData = filterWorkflowFinalResponseData({
+      responseData: finalResponseData,
+      responseAllData,
+      responseDetail: showCite
+    });
 
     if (stream) {
-      workflowResponseWrite({
+      streamResponseContext.responseWrite({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text: null,
@@ -456,13 +482,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         })
       });
 
-      workflowResponseWrite({
+      streamResponseContext.responseWrite({
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
+      await streamResponseContext.flushResume();
       res.end();
     } else {
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -495,13 +520,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return formatResponseContent;
       })();
 
-      const error =
-        flowResponses[flowResponses.length - 1]?.error ||
-        flowResponses[flowResponses.length - 1]?.errorText;
-
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
-        error,
+        error: finalError,
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -531,7 +552,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid,
         shareId,
         appName: app.name,
-        flowResponses,
+        flowResponses: finalResponseData,
         chatId: saveChatId
       });
       addOutLinkUsage({
@@ -563,20 +584,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
     if (stream) {
-      if (workflowResponseWrite) {
-        const { event, data, shouldClearCookie } = getSseErrorResponse(err);
-        if (shouldClearCookie) {
-          clearCookie(res);
-        }
-        workflowResponseWrite({
-          event,
-          data
-        });
+      if (streamResponseContext) {
+        streamResponseContext.writeStreamError(err);
       } else {
         sseErrRes(res, err);
       }
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
+      await streamResponseContext?.flushResume();
       res.end();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;

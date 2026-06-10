@@ -3,6 +3,16 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
+export const responseRowValueBoxStyles: BoxProps = {
+  minH: '32px',
+  px: 3,
+  py: 2,
+  border: '1px solid',
+  borderColor: 'myGray.200',
+  color: 'myGray.900',
+  bg: 'myGray.50'
+};
+
 const RowRender = ({
   children,
   label,
@@ -33,11 +43,13 @@ const RowRender = ({
 export const Row = ({
   label,
   value,
-  rawDom
+  rawDom,
+  rawDomBoxProps
 }: {
   label: string;
   value?: string | number | boolean | object;
   rawDom?: ReactNode;
+  rawDomBoxProps?: BoxProps;
 }) => {
   const { t } = useSafeTranslation();
   const val = value || rawDom;
@@ -55,7 +67,7 @@ export const Row = ({
 
   if (rawDom) {
     return (
-      <RowRender label={label} bg={'transparent'}>
+      <RowRender label={label} bg={'transparent'} {...rawDomBoxProps}>
         {rawDom}
       </RowRender>
     );
@@ -69,15 +81,9 @@ export const Row = ({
       {...(isObject
         ? { bg: 'transparent' }
         : {
-            minH: '32px',
-            px: 3,
-            py: 2,
+            ...responseRowValueBoxStyles,
             display: 'flex',
-            alignItems: 'flex-start',
-            border: '1px solid',
-            borderColor: 'myGray.200',
-            color: 'myGray.900',
-            bg: 'myGray.50'
+            alignItems: 'flex-start'
           })}
     >
       <Box

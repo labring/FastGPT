@@ -14,7 +14,6 @@ export const WholeResponseContent = ({
   dataId?: string;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
-  const queryPreviewDatasetId = activeModule?.quoteList?.[0]?.datasetId;
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,11 +41,7 @@ export const WholeResponseContent = ({
           })}
     >
       <CommonInfoRows activeModule={activeModule} />
-      <AiChatRows
-        activeModule={activeModule}
-        queryPreviewDatasetId={queryPreviewDatasetId}
-        onOpenRequestIdDetail={onOpenRequestIdDetail}
-      />
+      <AiChatRows activeModule={activeModule} onOpenRequestIdDetail={onOpenRequestIdDetail} />
       <DatasetSearchRows activeModule={activeModule} dataId={dataId} />
       <WorkflowResultRows activeModule={activeModule} />
     </Box>

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { summarizeRuntimeNodeResponses } from '../../../../../core/workflow/dispatch/utils';
 
 const runWorkflowMock = vi.fn();
 const authAppByTmbIdMock = vi.fn();
@@ -81,11 +83,20 @@ describe('abandoned dispatchAppRequest', () => {
         flowResponses: [],
         flowUsages: [],
         assistantResponses: [],
-        system_memories: []
+        system_memories: [],
+        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+          {
+            id: 'child-root',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            totalPoints: 2,
+            childTotalPoints: 3,
+            childResponseCount: 1
+          } as any
+        ])
       };
     });
 
-    await dispatchAppRequest({
+    const result = await dispatchAppRequest({
       runningAppInfo: {
         id: 'parent-app',
         teamId: 'team',
@@ -117,5 +128,6 @@ describe('abandoned dispatchAppRequest', () => {
     expect(childInitialValue).toBe('parent-value');
     expect(childVariableState.get('shared')).toBe('child-value');
     expect(parentVariableState.get('shared')).toBe('parent-value');
+    expect(result.responseData?.totalPoints).toBe(2);
   });
 });

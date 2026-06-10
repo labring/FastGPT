@@ -76,6 +76,8 @@ export type ChatDispatchProps = {
     tmbId: string; // App tmbId
     name: string;
     isChildApp?: boolean;
+    /** 显式指定本轮工作流使用的 sandbox 资源，避免由 appId/userId/chatId 重新生成。 */
+    sandboxId?: string;
   };
   runningUserInfo: {
     username: string;
@@ -88,7 +90,8 @@ export type ChatDispatchProps = {
   uid: string; // Who run this workflow
 
   chatId: string;
-  responseChatItemId?: string;
+  /** 当前 AI 回复 chat item 的 dataId；workflow 运行期必须有值，外部入口缺省时由 dispatchWorkFlow 补齐。 */
+  responseChatItemId: string;
   histories: ChatItemMiniType[];
   variableState: WorkflowVariableStateLike; // global variable state
   query: UserChatItemValueItemType[]; // trigger query
@@ -106,6 +109,7 @@ export type ChatDispatchProps = {
 
   responseAllData?: boolean;
   responseDetail?: boolean;
+  nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
 
   // TODO: 移除
   usageId?: string;
@@ -184,6 +188,7 @@ export const DispatchNodeResponseSchema = z
     nodeInputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输入' }),
     nodeOutputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输出' }),
     mergeSignId: z.string().optional().meta({ description: '合并签名 ID' }),
+    parentId: z.string().optional().meta({ description: '父节点响应实例 ID' }),
 
     // bill
     tokens: z.number().optional().meta({ description: '总 token' }),
@@ -193,6 +198,7 @@ export const DispatchNodeResponseSchema = z
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
     childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
+    childResponseCount: z.number().optional().meta({ description: '子节点响应数量' }),
 
     // LLM chat
     temperature: z.number().optional().meta({ description: '温度' }),
@@ -321,7 +327,7 @@ export const DispatchNodeResponseSchema = z
     parallelDetail: z
       .array(z.any())
       .optional()
-      .meta({ description: '成功任务子工作流完整响应列表' }),
+      .meta({ description: '成功任务子工作流完整响应列表', deprecated: true }),
 
     // loopRun
     loopRunInput: z
@@ -333,8 +339,7 @@ export const DispatchNodeResponseSchema = z
     loopRunDetail: z
       .array(z.any())
       .optional()
-      .meta({ description: 'loopRun 各轮子工作流节点响应聚合' }),
-
+      .meta({ description: 'loopRun 各轮子工作流节点响应聚合', deprecated: true }),
     childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 
     // Tools
@@ -349,10 +354,17 @@ export const DispatchNodeResponseSchema = z
 type Tmp_DispatchNodeResponseType = z.infer<typeof DispatchNodeResponseSchema>;
 export type DispatchNodeResponseType = Omit<
   Tmp_DispatchNodeResponseType,
-  'childrenResponses' | 'loopDetail' | 'pluginDetail' | 'toolDetail'
+  | 'childrenResponses'
+  | 'loopDetail'
+  | 'loopRunDetail'
+  | 'parallelDetail'
+  | 'pluginDetail'
+  | 'toolDetail'
 > & {
   childrenResponses?: DispatchNodeResponseType[];
   loopDetail?: DispatchNodeResponseType[];
+  loopRunDetail?: DispatchNodeResponseType[];
+  parallelDetail?: DispatchNodeResponseType[];
   pluginDetail?: DispatchNodeResponseType[];
   toolDetail?: DispatchNodeResponseType[];
 };
@@ -367,7 +379,7 @@ export type DispatchNodeResultType<
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
   [DispatchNodeResponseKeyEnum.nodeResponses]?: ChatHistoryItemResType[]; // Node responses
   [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
-  [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
+  [DispatchNodeResponseKeyEnum.toolResponse]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemMiniType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;

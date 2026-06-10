@@ -12,6 +12,7 @@ import {
   concatHistories,
   getChatTitleFromChatMessage,
   getHistoryPreview,
+  filterNodeResponseTreeData,
   filterPublicNodeResponseData,
   removeEmptyUserInput,
   getPluginOutputsFromChatResponses,
@@ -20,9 +21,19 @@ import {
   checkInteractiveResponseStatus,
   mergeChatResponseData,
   removeAIResponseCite,
-  hasContextCheckpoint
+  hasContextCheckpoint,
+  appendNodeResponseByParent
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+
+const createNodeResponse = (
+  override: Partial<ChatHistoryItemResType> & { id: string }
+): ChatHistoryItemResType => ({
+  nodeId: override.id,
+  moduleName: override.id,
+  moduleType: FlowNodeTypeEnum.agent,
+  ...override
+});
 
 describe('concatHistories', () => {
   it('should concat two history arrays', () => {
@@ -175,7 +186,10 @@ describe('filterPublicNodeResponseData', () => {
     const result = filterPublicNodeResponseData({ nodeRespones: nodeResponses });
 
     expect(result).toHaveLength(1);
-    expect(result[0].moduleType).toBe(FlowNodeTypeEnum.datasetSearchNode);
+    expect(result[0]).toEqual({
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      runningTime: 0.5
+    });
   });
 
   it('should return empty array for undefined input', () => {
@@ -238,6 +252,148 @@ describe('filterPublicNodeResponseData', () => {
         moduleType: FlowNodeTypeEnum.tool,
         runningTime: 0.8,
         toolId: SANDBOX_SHELL_TOOL_NAME
+      }
+    ]);
+  });
+
+  it('should recursively filter childrenResponses', () => {
+    const nodeResponses: ChatHistoryItemResType[] = [
+      {
+        id: 'agent',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        childTotalPoints: 2,
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'dataset',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: 'quote-1',
+                q: 'private question',
+                a: 'private answer',
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceName: 'source',
+                chunkIndex: 0,
+                score: []
+              }
+            ]
+          },
+          {
+            id: 'hidden',
+            nodeId: 'hidden-node',
+            moduleName: 'Hidden',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            textOutput: 'hidden'
+          }
+        ]
+      }
+    ];
+
+    const result = filterPublicNodeResponseData({
+      nodeRespones: nodeResponses,
+      responseDetail: true
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses).toEqual([
+      {
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-1',
+            q: 'private question',
+            a: 'private answer',
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          }
+        ]
+      }
+    ]);
+    expect(result[0]).toEqual({
+      moduleType: FlowNodeTypeEnum.agent,
+      childrenResponses: result[0].childrenResponses
+    });
+  });
+});
+
+describe('filterNodeResponseTreeData', () => {
+  it('keeps tree identity fields needed by SSE responseData merge', () => {
+    const nodeResponses: ChatHistoryItemResType[] = [
+      {
+        id: 'agent',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        totalPoints: 2,
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'dataset',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: 'quote-1',
+                q: 'private question',
+                a: 'private answer',
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceName: 'source',
+                chunkIndex: 0,
+                score: []
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = filterNodeResponseTreeData({
+      nodeResponses,
+      responseDetail: true
+    });
+
+    expect(result).toEqual([
+      {
+        id: 'agent',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        totalPoints: 2,
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'dataset',
+            parentId: 'agent',
+            nodeId: 'dataset-node',
+            moduleName: 'Dataset Search',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: 'quote-1',
+                q: 'private question',
+                a: 'private answer',
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceName: 'source',
+                chunkIndex: 0,
+                score: []
+              }
+            ]
+          }
+        ]
       }
     ]);
   });
@@ -407,46 +563,57 @@ describe('getFlatAppResponses', () => {
     expect(result).toHaveLength(3);
   });
 
-  it('should recurse into loopRunDetail and parallelDetail', () => {
+  it('should flatten deprecated parallelDetail and loopRunDetail responses', () => {
     const responses: ChatHistoryItemResType[] = [
       {
-        id: 'loopRunParent',
-        nodeId: 'loopRunParent',
-        moduleName: 'LoopRun',
-        moduleType: FlowNodeTypeEnum.loopRun,
-        loopRunDetail: [
-          {
-            id: 'iter1',
-            nodeId: 'iter1',
-            moduleName: 'Iter 1',
-            moduleType: FlowNodeTypeEnum.loopRun,
-            childrenResponses: [
-              {
-                id: 'ds1',
-                nodeId: 'ds1',
-                moduleName: 'Dataset Search',
-                moduleType: FlowNodeTypeEnum.datasetSearchNode
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'parallelParent',
-        nodeId: 'parallelParent',
+        id: 'parallel',
+        nodeId: 'parallel-node',
         moduleName: 'Parallel',
         moduleType: FlowNodeTypeEnum.parallelRun,
         parallelDetail: [
           {
-            id: 'task1',
-            nodeId: 'task1',
-            moduleName: 'Task 1',
-            moduleType: FlowNodeTypeEnum.parallelRun,
+            id: 'task',
+            nodeId: 'task-node',
+            moduleName: 'Task',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            loopRunDetail: [
+              {
+                id: 'loop-run',
+                nodeId: 'loop-run-node',
+                moduleName: 'Loop Run',
+                moduleType: FlowNodeTypeEnum.loopRun
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    expect(getFlatAppResponses(responses).map((item) => item.id)).toEqual([
+      'parallel',
+      'task',
+      'loop-run'
+    ]);
+  });
+
+  it('should recurse into childrenResponses', () => {
+    const responses: ChatHistoryItemResType[] = [
+      {
+        id: 'root',
+        nodeId: 'root-node',
+        moduleName: 'Root',
+        moduleType: FlowNodeTypeEnum.agent,
+        childrenResponses: [
+          {
+            id: 'child',
+            nodeId: 'child-node',
+            moduleName: 'Child',
+            moduleType: FlowNodeTypeEnum.tool,
             childrenResponses: [
               {
-                id: 'ds2',
-                nodeId: 'ds2',
-                moduleName: 'Dataset Search',
+                id: 'grandchild',
+                nodeId: 'grandchild-node',
+                moduleName: 'Grandchild',
                 moduleType: FlowNodeTypeEnum.datasetSearchNode
               }
             ]
@@ -455,12 +622,56 @@ describe('getFlatAppResponses', () => {
       }
     ];
 
-    const result = getFlatAppResponses(responses);
-    const ids = result.map((item) => item.id);
+    expect(getFlatAppResponses(responses).map((item) => item.id)).toEqual([
+      'root',
+      'child',
+      'grandchild'
+    ]);
+  });
+});
 
-    expect(ids).toContain('ds1');
-    expect(ids).toContain('ds2');
-    expect(result).toHaveLength(6);
+describe('appendNodeResponseByParent', () => {
+  it('moves an earlier child root under its parent when the parent arrives later', () => {
+    const withOrphan = appendNodeResponseByParent(
+      [],
+      createNodeResponse({
+        id: 'child-response',
+        parentId: 'root-response'
+      })
+    );
+
+    const result = appendNodeResponseByParent(
+      withOrphan,
+      createNodeResponse({
+        id: 'root-response'
+      })
+    );
+
+    expect(result.map((item) => item.id)).toEqual(['root-response']);
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-response']);
+  });
+
+  it('updates duplicate responses by id without appending duplicate rows', () => {
+    const result = appendNodeResponseByParent(
+      [
+        createNodeResponse({
+          id: 'root-response',
+          runningTime: 1
+        })
+      ],
+      createNodeResponse({
+        id: 'root-response',
+        runningTime: 2,
+        childrenResponses: [createNodeResponse({ id: 'child-response' })]
+      })
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'root-response',
+      runningTime: 2
+    });
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-response']);
   });
 });
 
@@ -572,6 +783,356 @@ describe('mergeChatResponseData', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolDetail).toHaveLength(2);
+  });
+
+  it('should merge childrenResponses recursively', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'agent-1',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        mergeSignId: 'agent',
+        childTotalPoints: 1,
+        childrenResponses: [
+          {
+            id: 'child-1',
+            nodeId: 'tool-node',
+            moduleName: 'Tool 1',
+            moduleType: FlowNodeTypeEnum.tool
+          }
+        ]
+      },
+      {
+        id: 'agent-2',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        mergeSignId: 'agent',
+        childTotalPoints: 2,
+        childrenResponses: [
+          {
+            id: 'child-2',
+            nodeId: 'tool-node-2',
+            moduleName: 'Tool 2',
+            moduleType: FlowNodeTypeEnum.tool
+          }
+        ]
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childTotalPoints).toBeUndefined();
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-1', 'child-2']);
+  });
+
+  it('should merge accumulated tool call fields by mergeSignId', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'tool-call-before-interactive',
+        nodeId: 'tool-call-node',
+        moduleName: 'ToolCall',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        mergeSignId: 'tool-call-node',
+        runningTime: 1.2,
+        totalPoints: 0.3,
+        childTotalPoints: 0.2,
+        childResponseCount: 1,
+        tokens: 10,
+        inputTokens: 6,
+        outputTokens: 4,
+        toolCallInputTokens: 20,
+        toolCallOutputTokens: 8,
+        embeddingTokens: 7,
+        reRankInputTokens: 5,
+        extensionTokens: 3,
+        llmRequestIds: ['req-1', 'req-2'],
+        datasetQueries: ['old-query'],
+        quoteList: [
+          {
+            id: 'quote-old',
+            q: 'old query',
+            a: 'old answer',
+            datasetId: 'dataset-old',
+            collectionId: 'collection-old',
+            sourceName: 'old source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 4,
+          outputTokens: 2,
+          totalPoints: 0.1
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 11,
+          outputTokens: 5
+        }
+      },
+      {
+        id: 'tool-call-after-interactive',
+        nodeId: 'tool-call-node',
+        moduleName: 'ToolCall',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        mergeSignId: 'tool-call-node',
+        runningTime: 2.34,
+        totalPoints: 0.4,
+        childTotalPoints: 0.6,
+        childResponseCount: 2,
+        tokens: 15,
+        inputTokens: 9,
+        outputTokens: 6,
+        toolCallInputTokens: 30,
+        toolCallOutputTokens: 12,
+        embeddingTokens: 8,
+        reRankInputTokens: 6,
+        extensionTokens: 4,
+        llmRequestIds: ['req-2', 'req-3'],
+        datasetQueries: ['latest-query'],
+        quoteList: [
+          {
+            id: 'quote-latest',
+            q: 'latest query',
+            a: 'latest answer',
+            datasetId: 'dataset-latest',
+            collectionId: 'collection-latest',
+            sourceName: 'latest source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 8,
+          outputTokens: 3,
+          totalPoints: 0.2
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 13,
+          outputTokens: 7
+        }
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        id: 'tool-call-after-interactive',
+        runningTime: 3.54,
+        totalPoints: 0.7,
+        childResponseCount: 3,
+        tokens: 25,
+        inputTokens: 15,
+        outputTokens: 10,
+        toolCallInputTokens: 50,
+        toolCallOutputTokens: 20,
+        embeddingTokens: 15,
+        reRankInputTokens: 11,
+        extensionTokens: 7,
+        llmRequestIds: ['req-1', 'req-2', 'req-3'],
+        datasetQueries: ['latest-query'],
+        quoteList: [
+          {
+            id: 'quote-latest',
+            q: 'latest query',
+            a: 'latest answer',
+            datasetId: 'dataset-latest',
+            collectionId: 'collection-latest',
+            sourceName: 'latest source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 12,
+          outputTokens: 5,
+          totalPoints: expect.closeTo(0.3)
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 24,
+          outputTokens: 12
+        }
+      })
+    );
+    expect(result[0].childTotalPoints).toBeUndefined();
+  });
+
+  it('should merge duplicated children under a non-duplicated parent', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'loop-task-1',
+        nodeId: 'loop-task-1',
+        moduleName: 'Task 1',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        childrenResponses: [
+          {
+            id: 'tool-call-before-interactive',
+            nodeId: 'tool-call-node',
+            moduleName: 'ToolCall',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            mergeSignId: 'tool-call-node',
+            runningTime: 10.02,
+            childrenResponses: [
+              {
+                id: 'reply-before-interactive',
+                nodeId: 'reply-node',
+                moduleName: 'Reply',
+                moduleType: FlowNodeTypeEnum.answerNode
+              }
+            ]
+          },
+          {
+            id: 'tool-call-after-interactive',
+            nodeId: 'tool-call-node',
+            moduleName: 'ToolCall',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            mergeSignId: 'tool-call-node',
+            runningTime: 1.66,
+            childrenResponses: [
+              {
+                id: 'user-select',
+                nodeId: 'user-select-node',
+                moduleName: 'User Select',
+                moduleType: FlowNodeTypeEnum.userSelect
+              },
+              {
+                id: 'reply-after-interactive',
+                nodeId: 'reply-node-2',
+                moduleName: 'Reply 2',
+                moduleType: FlowNodeTypeEnum.answerNode
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses).toHaveLength(1);
+    expect(result[0].childrenResponses?.[0]).toEqual(
+      expect.objectContaining({
+        id: 'tool-call-after-interactive',
+        mergeSignId: 'tool-call-node',
+        runningTime: 11.68
+      })
+    );
+    expect(result[0].childrenResponses?.[0].childrenResponses?.map((item) => item.id)).toEqual([
+      'reply-before-interactive',
+      'user-select',
+      'reply-after-interactive'
+    ]);
+  });
+
+  it('should merge legacy childrenResponses and childResponseCount', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'agent-1',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        mergeSignId: 'agent',
+        childResponseCount: 1,
+        childrenResponses: [
+          {
+            id: 'legacy-child',
+            nodeId: 'legacy-child',
+            moduleName: 'Legacy Child',
+            moduleType: FlowNodeTypeEnum.chatNode
+          }
+        ]
+      },
+      {
+        id: 'agent-2',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        mergeSignId: 'agent',
+        childResponseCount: 2,
+        childrenResponses: [
+          {
+            id: 'append-child',
+            nodeId: 'append-child',
+            moduleName: 'Append Child',
+            moduleType: FlowNodeTypeEnum.chatNode
+          }
+        ]
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childResponseCount).toBe(3);
+    expect(result[0].childrenResponses?.map((item) => item.id)).toEqual([
+      'legacy-child',
+      'append-child'
+    ]);
+  });
+
+  it('should merge deprecated parallelDetail and loopRunDetail recursively', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'parallel-1',
+        nodeId: 'parallel-node',
+        moduleName: 'Parallel',
+        moduleType: FlowNodeTypeEnum.parallelRun,
+        mergeSignId: 'parallel',
+        parallelDetail: [
+          {
+            id: 'task-1',
+            nodeId: 'task-node-1',
+            moduleName: 'Task 1',
+            moduleType: FlowNodeTypeEnum.chatNode
+          }
+        ],
+        loopRunDetail: [
+          {
+            id: 'loop-1',
+            nodeId: 'loop-node-1',
+            moduleName: 'Loop 1',
+            moduleType: FlowNodeTypeEnum.loopRun
+          }
+        ]
+      },
+      {
+        id: 'parallel-2',
+        nodeId: 'parallel-node',
+        moduleName: 'Parallel',
+        moduleType: FlowNodeTypeEnum.parallelRun,
+        mergeSignId: 'parallel',
+        parallelDetail: [
+          {
+            id: 'task-2',
+            nodeId: 'task-node-2',
+            moduleName: 'Task 2',
+            moduleType: FlowNodeTypeEnum.chatNode
+          }
+        ],
+        loopRunDetail: [
+          {
+            id: 'loop-2',
+            nodeId: 'loop-node-2',
+            moduleName: 'Loop 2',
+            moduleType: FlowNodeTypeEnum.loopRun
+          }
+        ]
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].parallelDetail?.map((item) => item.id)).toEqual(['task-1', 'task-2']);
+    expect(result[0].loopRunDetail?.map((item) => item.id)).toEqual(['loop-1', 'loop-2']);
   });
 });
 
