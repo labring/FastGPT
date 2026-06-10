@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import { readFileRawText } from './rawText';
+import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
 
 // 加载源文件内容
 export const readCsvRawText = async (params: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
@@ -8,15 +9,19 @@ export const readCsvRawText = async (params: ReadRawTextByBuffer): Promise<ReadF
 
   const csvArr = Papa.parse(rawText).data as string[][];
 
-  const header = csvArr[0];
+  const filteredData = filterEmptyTableData(csvArr);
+  const header = filteredData[0];
+  if (!header) {
+    return {
+      rawText,
+      formatText: ''
+    };
+  }
 
   // format to md table
-  const formatText = `| ${header.join(' | ')} |
+  const formatText = `${formatMarkdownTableRow(header)}
 | ${header.map(() => '---').join(' | ')} |
-${csvArr
-  .slice(1)
-  .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
-  .join('\n')}`;
+${filteredData.slice(1).map(formatMarkdownTableRow).join('\n')}`;
 
   return {
     rawText,
