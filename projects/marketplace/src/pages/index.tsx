@@ -10,6 +10,7 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
   getDownloadURL,
@@ -21,11 +22,38 @@ import {
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import I18nLngSelector from '@/web/common/Select/I18nLngSelector';
 import Head from 'next/head';
+import {
+  buildMarketplacePageUrl,
+  getMarketplaceDetailQueryFromSearch,
+  getSingleQueryValue,
+  type MarketplaceDetailQuery
+} from '@/web/query';
+
+const getToolQuery = (tool: ToolCardItemType | null): MarketplaceDetailQuery | null =>
+  tool
+    ? {
+        pluginId: tool.id,
+        version: tool.version
+      }
+    : null;
+
+const createQuerySelectedTool = ({
+  pluginId,
+  version
+}: Required<Pick<MarketplaceDetailQuery, 'pluginId'>> &
+  Pick<MarketplaceDetailQuery, 'version'>): ToolCardItemType => ({
+    id: pluginId,
+    name: pluginId,
+    description: '',
+    version
+  });
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { search, tags } = router.query;
+  const { search, tags, pluginId, version } = router.query;
+  const queryPluginId = getSingleQueryValue(pluginId);
+  const queryVersion = getSingleQueryValue(version);
   const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -33,6 +61,14 @@ const ToolkitMarketplace = () => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
+  const detailQueryRef = useRef<MarketplaceDetailQuery | null>(
+    queryPluginId
+      ? {
+          pluginId: queryPluginId,
+          version: queryVersion
+        }
+      : null
+  );
 
   // 从 URL 初始化状态
   useEffect(() => {
@@ -77,23 +113,15 @@ const ToolkitMarketplace = () => {
 
   // 更新 URL 的函数
   const updateUrlParams = useCallback(
-    (newSearch: string, newTags: string[]) => {
+    (newSearch: string, newTags: string[], detailQuery = detailQueryRef.current) => {
       try {
-        // 使用更安全的 URL 参数构建方式
-        const params: Record<string, string> = {};
-        if (newSearch) {
-          params.search = newSearch;
-        }
-        if (newTags.length > 0) {
-          params.tags = newTags.join(',');
-        }
-
-        // 手动构建查询字符串，避免 URLSearchParams 的安全问题
-        const queryString = Object.entries(params)
-          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-          .join('&');
-
-        const newUrl = queryString ? `${router.pathname}?${queryString}` : router.pathname;
+        const newUrl = buildMarketplacePageUrl({
+          pathname: router.pathname,
+          search: newSearch,
+          tags: newTags,
+          pluginId: detailQuery?.pluginId,
+          version: detailQuery?.version
+        });
 
         // 使用原生 History API 替代 Next.js router（更安全）
         if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
@@ -119,15 +147,21 @@ const ToolkitMarketplace = () => {
     [router.pathname]
   );
 
+  const getCurrentDetailQuery = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return queryPluginId
+        ? {
+            pluginId: queryPluginId,
+            version: queryVersion
+          }
+        : {};
+    }
+
+    return getMarketplaceDetailQueryFromSearch(window.location.search);
+  }, [queryPluginId, queryVersion]);
+
   // 处理搜索框失焦,更新 URL
   const handleSearchBlur = useCallback(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
-
-  // 监听 selectedTagIds 变化,更新 URL
-  useEffect(() => {
     if (router.isReady) {
       updateUrlParams(searchText, selectedTagIds);
     }
@@ -176,6 +210,56 @@ const ToolkitMarketplace = () => {
     });
   }, [tools, i18n.language, toolTags]);
 
+  const selectedTagKey = selectedTagIds.join(',');
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list: displayTools,
+    listKey: `${searchText}-${selectedTagKey}-${i18n.language}`,
+    estimatedRowHeight: 160,
+    estimatedRowGap: 20
+  });
+
+  useEffect(() => {
+    const currentDetailQuery = getCurrentDetailQuery();
+    if (!router.isReady || !currentDetailQuery.pluginId) return;
+
+    const queryDetail = {
+      pluginId: currentDetailQuery.pluginId,
+      version: currentDetailQuery.version
+    };
+    const matchedTool = displayTools.find((tool) => tool.id === currentDetailQuery.pluginId);
+    const queryTool = matchedTool
+      ? {
+          ...matchedTool,
+          version: currentDetailQuery.version || matchedTool.version
+        }
+      : createQuerySelectedTool(queryDetail);
+
+    detailQueryRef.current = {
+      pluginId: queryTool.id,
+      version: queryTool.version
+    };
+
+    setSelectedTool((prev) => {
+      if (
+        prev?.id === queryTool.id &&
+        prev.version === queryTool.version &&
+        prev.name === queryTool.name &&
+        prev.icon === queryTool.icon
+      ) {
+        return prev;
+      }
+
+      return queryTool;
+    });
+  }, [displayTools, getCurrentDetailQuery, router.isReady]);
+
+  // 监听 selectedTagIds 变化,更新 URL
+  useEffect(() => {
+    if (router.isReady) {
+      updateUrlParams(searchText, selectedTagIds);
+    }
+  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+
   const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
       const url = await getDownloadURL(toolId, version);
@@ -194,6 +278,53 @@ const ToolkitMarketplace = () => {
       // Can add error prompt here
     }
   }, []);
+
+  const handleSelectTool = useCallback(
+    (tool: ToolCardItemType) => {
+      const detailQuery = getToolQuery(tool);
+
+      detailQueryRef.current = detailQuery;
+      setSelectedTool(tool);
+      updateUrlParams(searchText, selectedTagIds, detailQuery);
+    },
+    [searchText, selectedTagIds, updateUrlParams]
+  );
+
+  const handleCloseToolDetail = useCallback(() => {
+    detailQueryRef.current = null;
+    setSelectedTool(null);
+    updateUrlParams(searchText, selectedTagIds, null);
+  }, [searchText, selectedTagIds, updateUrlParams]);
+
+  const handleVersionChange = useCallback(
+    (nextVersion: string) => {
+      if (!selectedTool) return;
+
+      const detailQuery = {
+        pluginId: selectedTool.id,
+        version: nextVersion
+      };
+
+      detailQueryRef.current = detailQuery;
+      setSelectedTool((prev) => (prev ? { ...prev, version: nextVersion } : prev));
+      updateUrlParams(searchText, selectedTagIds, detailQuery);
+    },
+    [searchText, selectedTagIds, selectedTool, updateUrlParams]
+  );
+
+  const renderToolCard = useCallback(
+    (tool: ToolCardItemType) => (
+      <Box key={tool.id} data-virtual-item="">
+        <ToolCard
+          item={tool}
+          mode="marketplace"
+          onInstall={() => onDownload(tool.id)}
+          onClickCard={() => handleSelectTool(tool)}
+        />
+      </Box>
+    ),
+    [handleSelectTool, onDownload]
+  );
 
   // 使用 IntersectionObserver 监听英雄区域是否在视窗中
   useEffect(() => {
@@ -448,21 +579,12 @@ const ToolkitMarketplace = () => {
             </Flex>
             {displayTools.length > 0 ? (
               <Grid
+                ref={gridRef}
                 gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
                 gridGap={5}
                 alignItems={'stretch'}
               >
-                {displayTools.map((tool) => {
-                  return (
-                    <ToolCard
-                      key={tool.id}
-                      item={tool}
-                      mode="marketplace"
-                      onInstall={() => onDownload(tool.id)}
-                      onClickCard={() => setSelectedTool(tool)}
-                    />
-                  );
-                })}
+                {renderVirtualGridItems(renderToolCard)}
               </Grid>
             ) : (
               <EmptyTip />
@@ -473,7 +595,7 @@ const ToolkitMarketplace = () => {
 
       {!!selectedTool && (
         <ToolDetailDrawer
-          onClose={() => setSelectedTool(null)}
+          onClose={handleCloseToolDetail}
           showPoint={false}
           mode="marketplace"
           selectedTool={selectedTool}
@@ -485,6 +607,7 @@ const ToolkitMarketplace = () => {
             onDownload(selectedTool.id, version);
           }}
           onFetchVersions={getMarketplaceToolVersions}
+          onVersionChange={handleVersionChange}
         />
       )}
     </>

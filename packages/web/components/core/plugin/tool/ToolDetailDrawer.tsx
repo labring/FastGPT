@@ -40,6 +40,7 @@ const ToolDetailDrawer = ({
   systemTitle,
   onFetchDetail,
   onFetchVersions,
+  onVersionChange,
   isLoading,
   showPoint,
   mode,
@@ -53,6 +54,7 @@ const ToolDetailDrawer = ({
   systemTitle?: string;
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
   onFetchVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
+  onVersionChange?: (version: string) => void;
   isLoading?: boolean;
   showPoint: boolean;
   mode: 'admin' | 'team' | 'marketplace';
@@ -137,7 +139,10 @@ const ToolDetailDrawer = ({
                       label: item.version,
                       description: item.versionDescription,
                       isActive: item.version === currentVersion,
-                      onClick: () => setSelectedVersion(item.version)
+                      onClick: () => {
+                        setSelectedVersion(item.version);
+                        onVersionChange?.(item.version);
+                      }
                     }))
                   }
                 ]}
