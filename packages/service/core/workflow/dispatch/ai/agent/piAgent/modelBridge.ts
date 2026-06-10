@@ -25,7 +25,12 @@ export function buildPiModel(modelId?: string, useVision?: boolean): Model {
     baseUrl,
     reasoning: cfg?.reasoning ?? false,
     input: useVision ? ['text', 'image'] : ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost: {
+      input: cfg?.priceTiers?.[0]?.inputPrice ?? cfg?.inputPrice ?? 0,
+      output: cfg?.priceTiers?.[0]?.outputPrice ?? cfg?.outputPrice ?? 0,
+      cacheRead: 0,
+      cacheWrite: 0
+    },
     contextWindow: cfg?.maxContext ?? 128000,
     maxTokens: Math.min(cfg?.maxResponse ?? 4096, (cfg?.maxContext ?? 128000) - 2048),
     headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
