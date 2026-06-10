@@ -383,6 +383,7 @@ describe('authChatCrud', () => {
       });
 
       expect(result).toEqual({
+        appId: 'app1',
         teamId: 'team1',
         tmbId: 'tmb1',
         uid: 'user1',
