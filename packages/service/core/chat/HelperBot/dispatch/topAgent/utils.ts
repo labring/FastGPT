@@ -59,16 +59,16 @@ export const generateResourceList = async ({
   resourceList: string;
 }> => {
   const getPrompt = ({ tool, dataset }: { tool: string; dataset: string }) => {
-    return `## 可用资源列表
+    return `## 可用工具与知识库
 ### 工具
 ${tool}
 
 ### 知识库
 ${dataset}
 
-### 系统功能
-- **file_upload**: 文件上传功能，允许用户在对话中上传文件，让 Agent 读取私有文件内容
-- **sandbox**: 虚拟机执行环境，为 Agent 提供代码运行能力（Python、Shell 等），适用于数据处理、科学计算、代码执行等场景
+## 可配置前端开关（不是工具，不能 @ 引用）
+- **file_upload**: 文件上传开关，允许用户在对话中上传文件
+- **sandbox**: 虚拟机开关，允许 Agent 使用虚拟机执行环境
 `;
   };
 
@@ -115,7 +115,6 @@ ${dataset}
   });
 
   const allTools = [...systemTools, ...myTools, ...builtinTools];
-
   return {
     resourceList: getPrompt({
       tool: allTools.length > 0 ? allTools.join('\n') : '暂无已安装的工具',
@@ -175,19 +174,21 @@ export const buildSystemPrompt = (data: TopAgentGenerationAnswerType): string =>
       let description = step.description;
 
       // 替换 description 中的资源引用：
-      // - 工具: @工具ID -> {{@工具ID@}}
-      // - 知识库: @知识库ID -> {{@dataset_search@}}
+      // - 工具: @工具ID / @工具ID@ / @[工具ID] -> {{@工具ID@}}
+      // - 知识库: @知识库ID / @知识库ID@ / @[知识库ID] -> {{@dataset_search@}}
       if (step.expectedTools && step.expectedTools.length > 0) {
         step.expectedTools.forEach((resourceRef) => {
           const replaceId =
             resourceRef.type === 'knowledge' ? SubAppIds.datasetSearch : resourceRef.id;
-          const regex = new RegExp(
-            `@${resourceRef.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}@?`,
-            'g'
-          );
+          const escapedId = resourceRef.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`@(?:\\[${escapedId}\\]|${escapedId}@?)`, 'g');
           description = description.replace(regex, `{{@${replaceId}@}}`);
         });
       }
+      description = description.replace(
+        /(?<!\{\{)@(?:\[(file_upload|sandbox)\]|(file_upload|sandbox)@?)(?!\}\})/g,
+        '$1$2'
+      );
 
       parts.push(`\n步骤 ${index + 1}. ${step.title} \n${description}`);
       // if (step.expectedTools && step.expectedTools.length > 0) {
