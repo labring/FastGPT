@@ -84,15 +84,19 @@ const ToolSelect = ({
 
           return (
             <MyTooltip key={item.id} label={item.intro}>
-              <Flex
+              <Grid
                 overflow={'hidden'}
                 alignItems={'center'}
-                p={2.5}
+                gridTemplateColumns={'auto minmax(0, 1fr) auto'}
+                columnGap={2}
+                minW={0}
+                h={'46px'}
+                px={3}
+                py={0}
                 bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
+                borderRadius={'6px'}
                 border={'base'}
-                borderColor={toolError ? 'red.600' : ''}
+                borderColor={toolError ? 'red.600' : 'myGray.200'}
                 userSelect={'none'}
                 _hover={{
                   borderColor: toolError ? 'red.600' : 'primary.300',
@@ -107,66 +111,60 @@ const ToolSelect = ({
                   }
                 }}
               >
-                <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-                <Box
-                  flex={'1 0 0'}
-                  ml={2}
-                  gap={2}
-                  className={'textEllipsis'}
-                  fontSize={'sm'}
-                  color={'myGray.900'}
-                >
+                <Avatar src={item.avatar} w={'28px'} h={'28px'} borderRadius={'sm'} />
+                <Box minW={0} className={'textEllipsis'} fontSize={'sm'} color={'myGray.900'}>
                   {item.name}
                 </Box>
 
-                {status !== undefined && status !== PluginStatusEnum.Normal && (
-                  <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
-                    <MyTag
-                      display={'block'}
-                      className="unHoverStyle"
-                      mr={2}
-                      colorSchema={PluginStatusMap[status].tagColor}
-                      type="borderFill"
-                    >
-                      {t(PluginStatusMap[status].label)}
+                <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
+                  {status !== undefined && status !== PluginStatusEnum.Normal && (
+                    <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
+                      <MyTag
+                        display={'block'}
+                        className="unHoverStyle"
+                        colorSchema={PluginStatusMap[status].tagColor}
+                        type="borderFill"
+                      >
+                        {t(PluginStatusMap[status].label)}
+                      </MyTag>
+                    </MyTooltip>
+                  )}
+                  {toolError && (
+                    <MyTag colorSchema="red" type="fill" className="unHoverStyle">
+                      <MyIcon name={'common/error'} w={'14px'} mr={1} />
+                      <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
+                        {t(toolError as any)}
+                      </Box>
                     </MyTag>
-                  </MyTooltip>
-                )}
-                {toolError && (
-                  <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                    <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                    <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                      {t(toolError as any)}
-                    </Box>
-                  </MyTag>
-                )}
-                {isUnconfigured && (
-                  <MyTag colorSchema="blue" type="fill" className="unHoverStyle">
-                    {t('app:wait_for_config')}
-                  </MyTag>
-                )}
-                {/* Edit icon */}
-                {hasFormInput && !toolError && (
-                  <MyIconButton
-                    className="hoverStyle"
-                    display={['flex', 'none']}
-                    icon="common/setting"
-                    onClick={() => setConfigTool(item)}
-                  />
-                )}
-                {/* Delete icon */}
-                <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
-                  <MyIconButton
-                    icon="delete"
-                    hoverBg="red.50"
-                    hoverColor="red.600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveTool(item.pluginId!);
-                    }}
-                  />
-                </Box>
-              </Flex>
+                  )}
+                  {isUnconfigured && (
+                    <MyTag colorSchema="blue" type="fill" className="unHoverStyle">
+                      {t('app:wait_for_config')}
+                    </MyTag>
+                  )}
+                  {/* Edit icon */}
+                  {hasFormInput && !toolError && (
+                    <MyIconButton
+                      className="hoverStyle"
+                      display={['flex', 'none']}
+                      icon="common/setting"
+                      onClick={() => setConfigTool(item)}
+                    />
+                  )}
+                  {/* Delete icon */}
+                  <Box className="hoverStyle" display={['flex', 'none']}>
+                    <MyIconButton
+                      icon="delete"
+                      hoverBg="red.50"
+                      hoverColor="red.600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveTool(item.pluginId!);
+                      }}
+                    />
+                  </Box>
+                </Flex>
+              </Grid>
             </MyTooltip>
           );
         })}
