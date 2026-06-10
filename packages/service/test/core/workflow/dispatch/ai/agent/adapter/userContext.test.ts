@@ -101,6 +101,7 @@ const getUserContextMessagesForTest = async ({
   return {
     chatHistories: context.chatHistories,
     queryInput: context.queryInput,
+    fileUrlMap: context.fileUrlMap,
     filesMap: context.filesMap,
     ...context.getCurrentMessages({
       skillInfos,
@@ -111,7 +112,7 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentInputFilesPrompt', () => {
-  it('generates file XML block for document files only', () => {
+  it('generates file XML block with ids types and urls', () => {
     const result = buildAgentInputFilesPrompt([
       {
         id: 'current-0',
@@ -142,12 +143,15 @@ describe('buildAgentInputFilesPrompt', () => {
     expect(result).toContain('## 文件');
     expect(result).toContain('<id>current-0</id>');
     expect(result).toContain('<name>guide.pdf</name>');
-    expect(result).not.toContain('<id>current-1</id>');
-    expect(result).not.toContain('<id>current-2</id>');
-    expect(result).not.toContain('<id>current-3</id>');
-    expect(result).not.toContain('<type>image</type>');
-    expect(result).not.toContain('<type>audio</type>');
-    expect(result).not.toContain('<type>video</type>');
+    expect(result).toContain('<type>file</type>');
+    expect(result).toContain('<url>/guide.pdf</url>');
+    expect(result).toContain('<id>current-1</id>');
+    expect(result).toContain('<id>current-2</id>');
+    expect(result).toContain('<id>current-3</id>');
+    expect(result).toContain('<type>image</type>');
+    expect(result).toContain('<type>audio</type>');
+    expect(result).toContain('<type>video</type>');
+    expect(result).toContain('<url>/chart.png</url>');
   });
 
   it('escapes XML fields in file metadata', () => {
@@ -162,6 +166,7 @@ describe('buildAgentInputFilesPrompt', () => {
 
     expect(result).toContain('<id>current-&amp;-&apos;&quot;-0</id>');
     expect(result).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
+    expect(result).toContain('<url>/guide.pdf</url>');
   });
 
   it('returns empty string when there are no files', () => {
@@ -370,6 +375,11 @@ describe('useUserContext', () => {
           'history_1-0': '/old.pdf',
           'current_chat_item-0': '/current.pdf'
         });
+        expect(result.fileUrlMap).toEqual({
+          'history_1-0': '/old.pdf',
+          'current_chat_item-0': '/current.pdf',
+          'current_chat_item-1': '/current.png'
+        });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText, files: currentFiles } = chatValue2RuntimePrompt(
@@ -383,7 +393,9 @@ describe('useUserContext', () => {
         expect(currentText).toContain('## 背景信息');
         expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
-        expect(currentText).not.toContain('<id>current_chat_item-1</id>');
+        expect(currentText).toContain('<id>current_chat_item-1</id>');
+        expect(currentText).toContain('<type>image</type>');
+        expect(currentText).toContain('<url>/current.png</url>');
         expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
@@ -394,6 +406,12 @@ describe('useUserContext', () => {
             name: 'current.pdf',
             type: ChatFileTypeEnum.file,
             url: '/current.pdf'
+          },
+          {
+            id: 'current_chat_item-1',
+            name: 'current.png',
+            type: ChatFileTypeEnum.image,
+            url: '/current.png'
           }
         ]);
       }
@@ -707,7 +725,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('filters invalid urls and excludes image/audio/video files from agent context', async () => {
+  it('filters invalid urls and keeps image audio video urls in agent context', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
@@ -740,24 +758,48 @@ describe('useUserContext', () => {
         expect(result.filesMap).toEqual({
           'current_ai-2': '/doc.pdf'
         });
+        expect(result.fileUrlMap).toEqual({
+          'current_ai-1': dataImage,
+          'current_ai-2': '/doc.pdf',
+          'current_ai-3': '/voice.mp3',
+          'current_ai-4': '/demo.mp4'
+        });
         expect(result.currentFiles).toEqual([
+          {
+            id: 'current_ai-1',
+            name: 'image.png',
+            type: ChatFileTypeEnum.image,
+            url: dataImage
+          },
           {
             id: 'current_ai-2',
             name: 'doc.pdf',
             type: ChatFileTypeEnum.file,
             url: '/doc.pdf'
+          },
+          {
+            id: 'current_ai-3',
+            name: 'voice.mp3',
+            type: ChatFileTypeEnum.audio,
+            url: '/voice.mp3'
+          },
+          {
+            id: 'current_ai-4',
+            name: 'demo.mp4',
+            type: ChatFileTypeEnum.video,
+            url: '/demo.mp4'
           }
         ]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).not.toContain('<id>current_ai-0</id>');
-        expect(text).not.toContain('<id>current_ai-1</id>');
+        expect(text).toContain('<id>current_ai-1</id>');
         expect(text).toContain('<id>current_ai-2</id>');
-        expect(text).not.toContain('<id>current_ai-3</id>');
-        expect(text).not.toContain('<id>current_ai-4</id>');
-        expect(text).not.toContain('<type>image</type>');
-        expect(text).not.toContain('<type>audio</type>');
-        expect(text).not.toContain('<type>video</type>');
+        expect(text).toContain('<id>current_ai-3</id>');
+        expect(text).toContain('<id>current_ai-4</id>');
+        expect(text).toContain('<type>image</type>');
+        expect(text).toContain('<type>audio</type>');
+        expect(text).toContain('<type>video</type>');
         expect(text).not.toContain('not-a-url');
         expect(text).not.toContain('data:text/plain');
       }

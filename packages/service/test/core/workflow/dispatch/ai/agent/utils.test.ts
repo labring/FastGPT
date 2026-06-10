@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
+import {
+  getSubapps,
+  getExecuteTool,
+  replaceAgentFileIdsWithUrls
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
 
@@ -37,6 +41,30 @@ describe('Agent read_files tool protocol', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAgentRuntimeToolsMock.mockResolvedValue([]);
+  });
+
+  it('replaces exact agent file ids in user tool params with urls', () => {
+    const result = replaceAgentFileIdsWithUrls(
+      {
+        fileUrl: 'current-0',
+        nested: {
+          urls: ['current-0', 'current-1', 'keep']
+        },
+        text: 'please use current-0'
+      },
+      {
+        'current-0': 'https://files/current.pdf',
+        'current-1': 'https://files/image.png'
+      }
+    );
+
+    expect(result).toEqual({
+      fileUrl: 'https://files/current.pdf',
+      nested: {
+        urls: ['https://files/current.pdf', 'https://files/image.png', 'keep']
+      },
+      text: 'please use current-0'
+    });
   });
 
   it('exposes read_files with ids parameter', async () => {

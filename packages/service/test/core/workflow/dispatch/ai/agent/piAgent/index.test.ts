@@ -334,6 +334,7 @@ describe('dispatchPiAgent user context', () => {
     const prompt = agentPromptMock.mock.calls[0][0];
     expect(prompt).toContain('<system-reminder>');
     expect(prompt).toContain('<id>current_ai_1-0</id>');
+    expect(prompt).toContain('<url>/current.pdf</url>');
     expect(prompt).toContain('## 知识库');
     expect(prompt).toContain('<id>dataset_1</id>');
     expect(prompt).toContain('当前时间');

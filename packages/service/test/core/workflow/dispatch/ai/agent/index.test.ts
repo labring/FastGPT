@@ -293,8 +293,10 @@ describe('dispatchRunAgent user context', () => {
         content: expect.stringContaining('<id>current_ai_1-0</id>')
       })
     ]);
+    expect(loopInput.messages[0].content).toContain('<url>/old.pdf</url>');
     expect(loopInput.messages[0].content).not.toContain('## 知识库');
     expect(loopInput.messages[0].content).not.toContain('## 背景信息');
+    expect(loopInput.messages[1].content).toContain('<url>/current.pdf</url>');
     expect(loopInput.messages[1].content).toContain('## 知识库');
     expect(loopInput.messages[1].content).toContain('## 背景信息');
     expect(loopInput.messages[1].content).toContain('当前问题');
