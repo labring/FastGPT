@@ -50,7 +50,6 @@ const RenderText = React.memo(function RenderText({
       onOpenCiteModal={onOpenCiteModal}
       isDisabled={isDisabled}
       autoPreviewHtmlCodeBlock
-      chatItemDataId={chatItemDataId}
     />
   );
 });

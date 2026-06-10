@@ -36,7 +36,6 @@ type Props = {
   forbidZhFormat?: boolean;
   className?: string;
   autoPreviewHtmlCodeBlock?: boolean;
-  chatItemDataId?: string;
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -54,7 +53,6 @@ const MarkdownRender = ({
   forbidZhFormat,
   className,
   autoPreviewHtmlCodeBlock,
-  chatItemDataId,
 
   chatAuthData,
   onOpenCiteModal
@@ -68,7 +66,6 @@ const MarkdownRender = ({
           {...props}
           showAnimation={showAnimation}
           autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-          chatItemDataId={chatItemDataId}
           markdownClassName={className}
         />
       ),
@@ -82,14 +79,7 @@ const MarkdownRender = ({
         />
       )
     };
-  }, [
-    autoPreviewHtmlCodeBlock,
-    chatAuthData,
-    chatItemDataId,
-    className,
-    onOpenCiteModal,
-    showAnimation
-  ]);
+  }, [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
@@ -154,7 +144,7 @@ function Code(e: any) {
     }
     if (
       codeType === CodeClassNameEnum.html ||
-      (autoPreviewHtmlCodeBlock && codeType === CodeClassNameEnum.htm) ||
+      codeType === CodeClassNameEnum.htm ||
       codeType === CodeClassNameEnum.svg
     ) {
       return (
