@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -348,15 +347,14 @@ export const WorkflowResultRows = ({
   contentHeight?: number;
 }) => {
   const { t } = useSafeTranslation();
-  const codeJsonMaxHeight =
-    activeModule.moduleType === FlowNodeTypeEnum.code && contentHeight
-      ? `${Math.floor(contentHeight * 0.8)}px`
-      : undefined;
-  const codeJsonContentBoxProps = codeJsonMaxHeight
+  const responseCodeBlockHeight = contentHeight
+    ? `${Math.floor(contentHeight * 0.8)}px`
+    : undefined;
+  const codeBlockContentBoxProps = responseCodeBlockHeight
     ? {
         className: styles.codeJsonConstrained,
         style: {
-          '--code-json-max-height': codeJsonMaxHeight
+          '--response-code-block-height': responseCodeBlockHeight
         } as CSSProperties
       }
     : undefined;
@@ -393,16 +391,20 @@ export const WorkflowResultRows = ({
       />
       <Row label={t('chat:tool_input')} value={activeModule.toolInput} />
       <Row label={t('chat:tool_output')} value={activeModule.pluginOutput} />
-      <Row label={t('common:core.chat.response.text output')} value={activeModule.textOutput} />
+      <Row
+        label={t('common:core.chat.response.text output')}
+        value={activeModule.textOutput}
+        contentBoxProps={codeBlockContentBoxProps}
+      />
       <Row
         label={t('workflow:response.Custom inputs')}
         value={activeModule.customInputs}
-        contentBoxProps={codeJsonContentBoxProps}
+        contentBoxProps={codeBlockContentBoxProps}
       />
       <Row
         label={t('workflow:response.Custom outputs')}
         value={activeModule.customOutputs}
-        contentBoxProps={codeJsonContentBoxProps}
+        contentBoxProps={codeBlockContentBoxProps}
       />
       <Row label={t('workflow:response.Code log')} value={activeModule.codeLog} />
       <ReadFilesRows activeModule={activeModule} />

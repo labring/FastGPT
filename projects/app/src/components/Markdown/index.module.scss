@@ -525,13 +525,14 @@
   }
 }
 
-// 完整响应弹窗代码块：外层按内容区 80% 限高，header 固定，内容区内部滚动。
+// 完整响应弹窗代码块：外层固定为弹窗内容区 80%，header 固定，内容区内部滚动。
 .codeJsonConstrained {
   :global(.markdown) :global(.code-block-wrapper),
   :global(.markdown) :global(.htmlCodeBlock) {
     display: flex;
     flex-direction: column;
-    max-height: var(--code-json-max-height);
+    height: var(--response-code-block-height);
+    max-height: var(--response-code-block-height);
     width: 100%;
     overflow: hidden;
     border-radius: var(--chakra-radii-md);
@@ -544,7 +545,7 @@
   :global(.markdown) :global(.code-block-wrapper) pre,
   :global(.markdown) :global(.htmlCodeBlock) pre,
   :global(.markdown) :global(.code-block-body) {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 0;
     height: auto !important;
     max-height: none !important;
@@ -556,7 +557,7 @@
 
   // HTML 预览区在完整响应弹窗内跟随外层限高，覆盖聊天的 60vh 上限。
   :global(.markdown) :global(.htmlCodeBlock) :global(.code-block-body) {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 0;
     max-height: none !important;
     overflow: auto !important;

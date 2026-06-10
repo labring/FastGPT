@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -12,7 +12,6 @@ import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
 import { CodeClassNameEnum, mdTextFormat } from './utils';
-import { useCreation } from 'ahooks';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 
@@ -28,6 +27,57 @@ const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 const A = dynamic(() => import('./A'), { ssr: false });
+
+type MarkdownRenderContextValue = {
+  showAnimation?: boolean;
+  autoPreviewHtmlCodeBlock?: boolean;
+  markdownClassName?: string;
+  chatAuthData?: AProps['chatAuthData'];
+  onOpenCiteModal?: AProps['onOpenCiteModal'];
+};
+
+/** 通过 context 传递流式/样式等动态 props，避免 react-markdown components 引用变化导致代码块 remount。 */
+const MarkdownRenderContext = React.createContext<MarkdownRenderContextValue>({});
+
+function MarkdownImgRenderer(props: any) {
+  const { chatAuthData } = useContext(MarkdownRenderContext);
+  return <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />;
+}
+
+function MarkdownCodeRenderer(props: any) {
+  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } =
+    useContext(MarkdownRenderContext);
+
+  return (
+    <Code
+      {...props}
+      showAnimation={showAnimation}
+      autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+      markdownClassName={markdownClassName}
+    />
+  );
+}
+
+function MarkdownLinkRenderer(props: any) {
+  const { showAnimation, chatAuthData, onOpenCiteModal } = useContext(MarkdownRenderContext);
+
+  return (
+    <A
+      {...props}
+      showAnimation={showAnimation}
+      chatAuthData={chatAuthData}
+      onOpenCiteModal={onOpenCiteModal}
+    />
+  );
+}
+
+const markdownComponents = {
+  img: MarkdownImgRenderer,
+  pre: RewritePre,
+  code: MarkdownCodeRenderer,
+  table: MarkdownTable as any,
+  a: MarkdownLinkRenderer
+};
 
 type Props = {
   source?: string;
@@ -57,29 +107,16 @@ const MarkdownRender = ({
   chatAuthData,
   onOpenCiteModal
 }: Props) => {
-  const components = useCreation(() => {
-    return {
-      img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
-      pre: RewritePre,
-      code: (props: any) => (
-        <Code
-          {...props}
-          showAnimation={showAnimation}
-          autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-          markdownClassName={className}
-        />
-      ),
-      table: MarkdownTable as any,
-      a: (props: any) => (
-        <A
-          {...props}
-          showAnimation={showAnimation}
-          chatAuthData={chatAuthData}
-          onOpenCiteModal={onOpenCiteModal}
-        />
-      )
-    };
-  }, [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]);
+  const renderContextValue = useMemo(
+    () => ({
+      showAnimation,
+      autoPreviewHtmlCodeBlock,
+      markdownClassName: className,
+      chatAuthData,
+      onOpenCiteModal
+    }),
+    [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]
+  );
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
@@ -91,21 +128,25 @@ const MarkdownRender = ({
   }, []);
 
   return (
-    <Box position={'relative'}>
-      <ReactMarkdown
-        className={`markdown ${styles.markdown}
+    <MarkdownRenderContext.Provider value={renderContextValue}>
+      <Box position={'relative'}>
+        <ReactMarkdown
+          className={`markdown ${styles.markdown}
       ${className || ''}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-        remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
-        components={components}
-        urlTransform={urlTransform}
-      >
-        {formatSource}
-      </ReactMarkdown>
-      {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} zIndex={1} />}
-    </Box>
+          remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
+          rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+          components={markdownComponents}
+          urlTransform={urlTransform}
+        >
+          {formatSource}
+        </ReactMarkdown>
+        {isDisabled && (
+          <Box position={'absolute'} top={0} right={0} left={0} bottom={0} zIndex={1} />
+        )}
+      </Box>
+    </MarkdownRenderContext.Provider>
   );
 };
 
@@ -126,64 +167,50 @@ function Code(e: any) {
 
   const strChildren = String(children);
 
-  const Component = useMemo(() => {
-    if (codeType === CodeClassNameEnum.mermaid) {
-      return <MermaidCodeBlock code={strChildren} />;
-    }
-    if (codeType === CodeClassNameEnum.guide) {
-      return <ChatGuide text={strChildren} className={markdownClassName} />;
-    }
-    if (codeType === CodeClassNameEnum.questionguide) {
-      return <QuestionGuide text={strChildren} />;
-    }
-    if (codeType === CodeClassNameEnum.echarts) {
-      return <EChartsCodeBlock code={strChildren} />;
-    }
-    if (codeType === CodeClassNameEnum.iframe) {
-      return <IframeCodeBlock code={strChildren} />;
-    }
-    if (
-      codeType === CodeClassNameEnum.html ||
-      codeType === CodeClassNameEnum.htm ||
-      codeType === CodeClassNameEnum.svg
-    ) {
-      return (
-        <IframeHtmlCodeBlock
-          className={className}
-          codeBlock={codeBlock}
-          match={match}
-          showAnimation={showAnimation}
-          autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-        >
-          {children}
-        </IframeHtmlCodeBlock>
-      );
-    }
-    if (codeType === CodeClassNameEnum.video) {
-      return <VideoBlock code={strChildren} />;
-    }
-    if (codeType === CodeClassNameEnum.audio) {
-      return <AudioBlock code={strChildren} />;
-    }
-
+  if (codeType === CodeClassNameEnum.mermaid) {
+    return <MermaidCodeBlock code={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.guide) {
+    return <ChatGuide text={strChildren} className={markdownClassName} />;
+  }
+  if (codeType === CodeClassNameEnum.questionguide) {
+    return <QuestionGuide text={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.echarts) {
+    return <EChartsCodeBlock code={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.iframe) {
+    return <IframeCodeBlock code={strChildren} />;
+  }
+  if (
+    codeType === CodeClassNameEnum.html ||
+    codeType === CodeClassNameEnum.htm ||
+    codeType === CodeClassNameEnum.svg
+  ) {
     return (
-      <CodeLight className={className} codeBlock={codeBlock} match={match}>
+      <IframeHtmlCodeBlock
+        className={className}
+        codeBlock={codeBlock}
+        match={match}
+        showAnimation={showAnimation}
+        autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
+      >
         {children}
-      </CodeLight>
+      </IframeHtmlCodeBlock>
     );
-  }, [
-    autoPreviewHtmlCodeBlock,
-    codeType,
-    className,
-    codeBlock,
-    match,
-    children,
-    showAnimation,
-    strChildren,
-    markdownClassName
-  ]);
+  }
+  if (codeType === CodeClassNameEnum.video) {
+    return <VideoBlock code={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.audio) {
+    return <AudioBlock code={strChildren} />;
+  }
 
-  return Component;
+  return (
+    <CodeLight className={className} codeBlock={codeBlock} match={match}>
+      {children}
+    </CodeLight>
+  );
 }
 
 function Image({ src, chatAuthData }: { src?: string; chatAuthData?: AProps['chatAuthData'] }) {
