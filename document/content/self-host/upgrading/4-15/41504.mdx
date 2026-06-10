@@ -1,5 +1,5 @@
 ---
-title: 'V4.15.0-beta4(进行中)'
+title: 'V4.15.0-beta4'
 description: 'FastGPT V4.15.0-beta4 更新说明'
 ---
 
@@ -7,29 +7,25 @@ description: 'FastGPT V4.15.0-beta4 更新说明'
 
 ‼️重要更新，插件服务更新到 v1.0.0-beta1 版本，系统工具运行方式有较大调整。
 
-### 镜像变更
+### 1. 修改环境变量
+
+1. 修改 `fastgpt-plugin` 的环境变量 `AUTH_TOKEN`，要求 32 位以上。
+2. 同时修改 `fastgpt` 的环境变量 `PLUGIN_TOKEN`，与 `fastgpt-plugin` 的 `AUTH_TOKEN` 一致。
+3. 修改 `fastgpt-plugin` 的环境变量 `MONGODB_URI` 中的数据库名，不与 `fastgpt` 的 Mongo 数据库名重名即可，例如：`mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+### 2. 镜像变更
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta4
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta4
-- 更新 fastgpt-plugin 镜像 tag: v1.0.0-beta1
-- 更新 aiproxy 镜像 tag: v0.6.0
+- 更新 fastgpt-plugin 镜像 tag: v1.0.0-beta2
+- 更新 aiproxy 镜像 tag: v0.6.1
 
-### 插件服务升级
+### 3. 重装系统工具
 
-本次插件服务将系统工具从旧的内置工具源码与运行时缓存机制，升级为独立插件包的上传、安装、版本管理和 local-pool 运行机制。
+1. 下载所有系统工具的 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)
+2. 打开 `fastgpt` 网页 - 点击 `管理员` navbar - 点击添加插件 - 点击 `导入/更新插件` - 上传 zip - 确认。即可重装旧的所有系统工具。
 
-- 升级后可使用官方系统工具 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)重新导入系统工具，该 zip 包含了旧版所有系统工具。
-- 模型配置和 workflow 模板保持兼容，无需专项迁移。
-- 插件服务建议连接新的 MongoDB 数据库，保留旧插件服务数据库和对象存储数据，便于回滚和审计。
-- 插件服务生产环境需设置强 `AUTH_TOKEN`，要求 32 位以上。
-
-插件服务可继续复用原 MongoDB 实例，可使用独立数据库名，避免冲突，参考：
-
-```yaml
-fastgpt-plugin:
-  environment:
-    MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin
-```
+也可以打开插件市场逐个下载，正式版之前，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
 
 ## 🚀 新增内容
 

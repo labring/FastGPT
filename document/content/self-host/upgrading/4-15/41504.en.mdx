@@ -1,19 +1,61 @@
 ---
-title: 'V4.15.0-beta4 (in progress)'
+title: 'V4.15.0-beta4'
 description: 'FastGPT V4.15.0-beta4 Release Notes'
 ---
 
+## 📦 Upgrade Guide
+
+‼️ Important update: the plugin service has been upgraded to v1.0.0-beta1, and system tool execution has changed significantly.
+
+### 1. Update Environment Variables
+
+1. Update the `AUTH_TOKEN` environment variable for `fastgpt-plugin`. It must be at least 32 characters long.
+2. Update the `PLUGIN_TOKEN` environment variable for `fastgpt` to match the `AUTH_TOKEN` value used by `fastgpt-plugin`.
+3. Update the database name in the `MONGODB_URI` environment variable for `fastgpt-plugin` so it does not conflict with the MongoDB database name used by `fastgpt`. For example: `mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+### 2. Image Changes
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta4.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta4.
+- Update the fastgpt-plugin image tag to v1.0.0-beta2.
+- Update the aiproxy image tag to v0.6.1.
+
+### 3. Reinstall System Tools
+
+1. Download the [zip package](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>) for all system tools.
+2. Open the `fastgpt` web app, click `Admin` in the navbar, click add plugin, click `Import/Update Plugin`, upload the zip package, and confirm. This reinstalls all legacy system tools.
+
+You can also download tools one by one from the plugin marketplace. Before the stable release, the marketplace URL is: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
+
 ## 🚀 New Features
 
-1. Added virtual list rendering for apps and Knowledge Bases.
-2. Added separate OpenAPI documentation to distinguish it from the dev API documentation.
+1. Reworked the plugin system architecture.
+2. Reworked the chatbox UI.
+3. Added virtual list rendering for apps and Knowledge Bases.
+4. Added separate OpenAPI documentation to distinguish it from the dev API documentation.
+5. Workflow template export now includes the name and description.
 
 ## ⚙️ Improvements
 
-1. Added validation to input guide configuration to avoid invalid custom lexicon URLs.
+1. Migrated system tool execution to local-pool, with support for process pools, queues, timeouts, retry backoff, and runtime metrics.
+2. Added plugin-level runtime config support.
+3. Plugin entry files can now be pulled from object storage and cached in the local file directory.
+4. Added validation to input guide configuration to avoid invalid custom lexicon URLs.
+5. Enhanced validation for Workflow array reference types to avoid conflicts with two-dimensional data.
+6. Apps now show a graceful prompt during orchestration when a Knowledge Base has been deleted.
+7. Replaced PDFJs with `liteparse` for PDF parsing, improving parsing speed by 3x.
+8. Optimized Workflow execution by storing nodeResponse in a flattened format, avoiding failures when saving large nested Workflows.
+9. XLSX parsing now automatically removes empty rows and columns and supplements merged cells.
 
 ## 🐛 Bug Fixes
 
-1. Fixed a potential unauthorized access risk in training APIs.
+1. Fixed abnormal multimodal file link retrieval for models.
+2. Fixed a potential unauthorized access risk in training APIs.
+3. Fixed an SSRF risk in HTTP tool parsing.
+4. Fixed abnormal MCP tool expansion after tool calls following an interaction node.
 
 ## 🛠️ Code Improvements
+
+1. Restructured the plugin service from the legacy `runtime` structure into a pnpm workspace monorepo, split into the HTTP service entry, domain models, use cases, API adapters, infrastructure, SDK, and CLI.
+2. Rewrote all app API endpoints with zod schemas and generated documentation from them.
+3. Process images in workers promptly instead of retaining base64 data, reducing memory usage.

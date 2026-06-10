@@ -17,7 +17,8 @@ export const appEnv = createEnv({
     HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
     AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
 
-    MARKETPLACE_URL: UrlSchema.default('https://marketplace.fastgpt.cn'),
+    // 临时
+    MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
     PASSWORD_EXPIRED_MONTH: IntSchema.optional()
   },
   emptyStringAsUndefined: true,
